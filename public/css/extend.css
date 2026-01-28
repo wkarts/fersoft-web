@@ -1,0 +1,117 @@
+/*
+:root {
+  --main-color: #1BC5BD;
+}*/
+
+.card-custom{
+  border-top: 3px solid var(--main-color) !important;
+  /*border-left: 3px solid var(--main-color) !important;*/
+}
+
+/*.form-control{
+  border-left: 1px solid var(--main-color) !important;
+}*/
+
+/* Link */
+#kt_brand a{
+ width:165px;
+}
+
+/* Image */
+.flex-root .page #kt_aside #kt_brand .brand-logo img{
+ width:100% !important;
+}
+
+/* Button */
+#kt_aside_toggle{
+ display:inline-block;
+ transform:translatex(0px) translatey(0px);
+ position:relative;
+ left:14px;
+}
+
+#kt_brand{
+  background-color:#ffffff;  
+  /*
+  background: var(--main-color) !important;
+  */
+}
+
+.div-topo{
+  background: linear-gradient(#999 1%,var(--main-color)) !important;
+}
+
+#toast-container > .toast-success{
+  background-color: var(--main-color)!important;
+  margin-top: 55px;
+}
+
+#toast-container > .toast-error{
+
+  margin-top: 55px;
+}
+
+.gutter-b h4{
+  color: var(--main-color)!important;
+}
+
+h5 strong{
+  color: var(--main-color)!important;
+}
+.lbl-custom{
+  color: var(--main-color)!important;
+}
+
+.btn-light-primary{
+  background-color: var(--main-color)!important;
+  color: #fff !important;
+}
+
+.card-footer .btn-success{
+  background-color: var(--main-color)!important;
+  color: #fff !important;
+  border: none;
+}
+
+.btn-light-primary i{
+  color: #fff !important;
+}
+
+.card-header{
+  background: var(--main-color) !important;
+}
+
+h3.card-title{
+  color: #fff !important;
+}
+
+.card{
+  border-radius: 10px !important;
+}
+
+
+body{
+  background: #e8eaf6 !important;
+}
+
+.wizard-title{
+  color: var(--main-color)!important;
+}
+.wizard-bar::after{
+  background: var(--main-color)!important;
+}
+.super-bg{
+  background: var(--main-color)!important;
+}
+.wizard-label .la{
+  color: var(--main-color)!important;
+}
+.card-toolbar i{
+  color: #fff!important;
+}
+
+.form-group label{
+  font-weight: 600!important;
+  /*margin-bottom: -5px!important;*/
+  /*color: var(--main-color)!important;*/
+}

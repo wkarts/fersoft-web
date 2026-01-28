@@ -1,0 +1,82 @@
+.select2-selection__arroww:before {
+	content: "";
+	position: absolute;
+	right: 7px;
+	top: 42%;
+	border-top: 5px solid #888;
+	border-left: 4px solid transparent;
+	border-right: 4px solid transparent;
+}
+
+.accordion.accordion-toggle-arrow .card .card-header .card-title::after{
+	display: none
+}
+
+body, .card-custom, .header, #kt_subheader, thead, tbody, .escfff{
+	background: #1E1E2D !important;
+}
+
+h2, h3, h4, h5, h6, td, label, strong{
+	color: #fff !important;
+}
+.card-title, .modal-title{
+	color: #fff !important;
+}
+
+.form-control, option{
+	background: #1E1E2D !important;
+	color: #fff;
+}
+
+.custom-select{
+	background: #1E1E2D !important;
+	color: #fff;
+}
+
+.swal-modal{
+	background: #1E1E2D !important;
+}
+.swal-title, .swal-text{
+	color: #fff !important;
+}
+.select2-dropdown, .select2-results, .select2-search__field, .modal-content{
+	background: #1E1E2D !important;
+	color: #fff;
+}
+
+.select2-selection{
+	background: #1E1E2D !important;
+}
+.select2-selection__rendered{
+	color: #fff !important;
+}
+.card-footer{
+	background: #1E1E2D !important;
+}
+.datatable-cell-sort span{
+	font-weight: bold !important;
+}
+.datatable-cell span{
+	color: #fff !important;
+}
+
+table{
+	background-color: #1E1E2D !important;
+}
+.form-control{
+	color: #fff !important;
+}
+
+.card-report{
+	background-color: #1E1E20 !important;
+
+}
+.label-light-info{
+	background-color: #7337EE !important;
+	color: #fff !important;
+}
+
+
+.kt-widget__label{
+	color: #fff !important;
+}
