@@ -2776,10 +2776,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/rastreamentoVeiculo', 'SiteViewController@rastreamento');
     });
 
-    Route::group(['prefix' => 'pesagens'], function () {
-        Route::get('/', 'PesagemController@list')->name('pesagens.list');
-        Route::get('/list', 'PesagemController@list')->name('pesagens.list');
-        Route::get('/new', 'PesagemController@register')->name('pesagens.register');
+	Route::group(['prefix' => 'pesagens'], function () {
+		Route::get('/', 'PesagemController@list')->name('pesagens.list');
+		Route::get('/list', 'PesagemController@list')->name('pesagens.list');
+		Route::get('/new', 'PesagemController@register')->name('pesagens.register');
         Route::get('/register', 'PesagemController@register')->name('pesagens.register');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
@@ -2801,9 +2801,14 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/gen/criarVenda/{id}', 'PesagemController@criarVendaDePesagem')->name('pesagens.criarVenda');
         Route::get('/gen/criarCompra/{id}', 'PesagemController@criarCompraDePesagem')->name('pesagens.criarCompra');
         Route::post('/reabrir/{id}', 'PesagemController@reabrir')->name('pesagens.reabrir');
-        Route::get('/relatorios/analitico', 'PesagemController@relatorioAnalitico')->name('pesagens.relatorios.analitico');
+		Route::get('/relatorios/analitico', 'PesagemController@relatorioAnalitico')->name('pesagens.relatorios.analitico');
 
-    });
+	});
+
+	Route::group(['prefix' => 'monitor'], function () {
+		Route::get('/pesagens', 'MonitorPesagemController@index')->name('monitor.pesagens');
+		Route::get('/pesagens/data', 'MonitorPesagemController@data')->name('monitor.pesagens.data');
+	});
 
     Route::group(['prefix' => 'ticketsPesagem'], function () {
         Route::get('/', 'TicketPesagemController@list')->name('ticketsPesagem.list');
