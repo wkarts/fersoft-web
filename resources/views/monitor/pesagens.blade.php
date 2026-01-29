@@ -196,22 +196,30 @@
                             <thead class="thead-light">
                                 <tr>
                                     <th>Produto</th>
-                                    <th>Entrada (KG)</th>
-                                    <th>Saída (KG)</th>
-                                    <th>Total (KG)</th>
+                                    <th>Entrada Bruto (KG)</th>
+                                    <th>Entrada Líquido (KG)</th>
+                                    <th>Entrada Final (KG)</th>
+                                    <th>Saída Bruto (KG)</th>
+                                    <th>Saída Líquido (KG)</th>
+                                    <th>Saída Final (KG)</th>
+                                    <th>Total Final (KG)</th>
                                 </tr>
                             </thead>
                             <tbody id="monitorProdutosBody">
                                 @forelse($analiticoProdutos as $produto)
                                     <tr data-produto-id="{{ $produto['produto_id'] }}">
                                         <td>{{ $produto['produto_nome'] }}</td>
-                                        <td>{{ number_format($produto['entrada'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['saida'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['total'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['entrada_bruto'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['entrada_liquido'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['entrada_final'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['saida_bruto'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['saida_liquido'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['saida_final'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['total_final'], 2, ',', '.') }} kg</td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted">Nenhum produto encontrado.</td>
+                                        <td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -335,18 +343,22 @@
         };
 
         const renderProdutos = () => {
-            const itens = Array.from(produtoState.values()).sort((a, b) => (b.total || 0) - (a.total || 0));
+            const itens = Array.from(produtoState.values()).sort((a, b) => (b.total_final || 0) - (a.total_final || 0));
             if (!itens.length) {
-                monitorProdutosBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
+                monitorProdutosBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
                 return;
             }
 
             monitorProdutosBody.innerHTML = itens.map((item) => `
                 <tr data-produto-id="${item.produto_id}">
                     <td>${escapeHtml(item.produto_nome)}</td>
-                    <td>${formatPeso(item.entrada)}</td>
-                    <td>${formatPeso(item.saida)}</td>
-                    <td>${formatPeso(item.total)}</td>
+                    <td>${formatPeso(item.entrada_bruto)}</td>
+                    <td>${formatPeso(item.entrada_liquido)}</td>
+                    <td>${formatPeso(item.entrada_final)}</td>
+                    <td>${formatPeso(item.saida_bruto)}</td>
+                    <td>${formatPeso(item.saida_liquido)}</td>
+                    <td>${formatPeso(item.saida_final)}</td>
+                    <td>${formatPeso(item.total_final)}</td>
                 </tr>
             `).join('');
         };
@@ -377,9 +389,13 @@
             (analiticoProdutos || []).forEach((item) => {
                 produtoState.set(String(item.produto_id), {
                     ...item,
-                    entrada: Number(item.entrada || 0),
-                    saida: Number(item.saida || 0),
-                    total: Number(item.total || 0),
+                    entrada_bruto: Number(item.entrada_bruto || 0),
+                    entrada_liquido: Number(item.entrada_liquido || 0),
+                    entrada_final: Number(item.entrada_final || 0),
+                    saida_bruto: Number(item.saida_bruto || 0),
+                    saida_liquido: Number(item.saida_liquido || 0),
+                    saida_final: Number(item.saida_final || 0),
+                    total_final: Number(item.total_final || 0),
                 });
             });
 

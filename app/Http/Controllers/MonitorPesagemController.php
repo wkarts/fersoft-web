@@ -171,6 +171,10 @@ class MonitorPesagemController extends BaseController
                 continue;
             }
 
+            $pesoFinalPesagem = (float) ($pesagem->peso_final ?? $pesagem->peso ?? 0);
+            $totalLiquidoPesagem = 0;
+            $totalBrutoPesagem = 0;
+
             foreach ($pesagem->tickets as $ticket) {
                 if (empty($ticket->produto_id)) {
                     continue;
@@ -180,7 +184,20 @@ class MonitorPesagemController extends BaseController
                 $pesoBag = (float) ($ticket->peso_bag ?? 0);
                 $pesoLiquido = max(0, $peso - $pesoBag);
 
-                if ($pesoLiquido <= 0) {
+                $totalBrutoPesagem += $peso;
+                $totalLiquidoPesagem += $pesoLiquido;
+            }
+
+            foreach ($pesagem->tickets as $ticket) {
+                if (empty($ticket->produto_id)) {
+                    continue;
+                }
+
+                $peso = (float) ($ticket->peso ?? 0);
+                $pesoBag = (float) ($ticket->peso_bag ?? 0);
+                $pesoLiquido = max(0, $peso - $pesoBag);
+
+                if ($pesoLiquido <= 0 && $peso <= 0) {
                     continue;
                 }
 
@@ -189,19 +206,30 @@ class MonitorPesagemController extends BaseController
                     $produtos[$key] = [
                         'produto_id' => (int) $ticket->produto_id,
                         'produto_nome' => $ticket->produto->nome ?? '—',
-                        'entrada' => 0,
-                        'saida' => 0,
-                        'total' => 0,
+                        'entrada_bruto' => 0,
+                        'entrada_liquido' => 0,
+                        'entrada_final' => 0,
+                        'saida_bruto' => 0,
+                        'saida_liquido' => 0,
+                        'saida_final' => 0,
+                        'total_final' => 0,
                     ];
                 }
 
-                $produtos[$key][$direcao] += $pesoLiquido;
-                $produtos[$key]['total'] = $produtos[$key]['entrada'] + $produtos[$key]['saida'];
+                $proporcaoFinal = $totalLiquidoPesagem > 0
+                    ? ($pesoLiquido / $totalLiquidoPesagem)
+                    : 0;
+                $pesoFinalItem = $pesoFinalPesagem * $proporcaoFinal;
+
+                $produtos[$key]["{$direcao}_bruto"] += $peso;
+                $produtos[$key]["{$direcao}_liquido"] += $pesoLiquido;
+                $produtos[$key]["{$direcao}_final"] += $pesoFinalItem;
+                $produtos[$key]['total_final'] = $produtos[$key]['entrada_final'] + $produtos[$key]['saida_final'];
             }
         }
 
         $resultado = array_values($produtos);
-        usort($resultado, fn ($a, $b) => $b['total'] <=> $a['total']);
+        usort($resultado, fn ($a, $b) => $b['total_final'] <=> $a['total_final']);
 
         return $resultado;
     }
