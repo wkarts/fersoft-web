@@ -12,6 +12,20 @@ class MonitorPesagemController extends BaseController
 {
     protected $redirectPage = '/monitor/pesagens';
 
+    /**
+     * Como este controller é apenas de MONITOR (não faz save/update via BaseController),
+     * implementamos rules/messages como vazio apenas para satisfazer o contrato do BaseController.
+     */
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
     public function index(Request $request, MonitorPesagemService $monitorPesagemService)
     {
         $filtros = $this->resolveFiltros($request);
@@ -29,6 +43,7 @@ class MonitorPesagemController extends BaseController
         })->values();
 
         $resumo = $this->montarResumo($pesagens);
+
         $filiais = Filial::where('empresa_id', $this->empresa_id)
             ->orderBy('descricao')
             ->get();

@@ -40,6 +40,10 @@ class Menu {
                     [
                         'nome' => 'Registro de Log\'s',
                         'rota' => '/logs'
+                    ],
+                    [
+                    'nome' => 'Monitor de Pesagens',
+                    'rota' => '/monitor/pesagens'
                     ]
                 ]
             ],
