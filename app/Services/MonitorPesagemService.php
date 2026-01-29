@@ -8,6 +8,8 @@ use Carbon\Carbon;
 
 class MonitorPesagemService
 {
+    private static array $usuarioCache = [];
+
     public function buildPayload(Pesagem $pesagem, string $tipoEvento, ?Carbon $timestamp = null): array
     {
         $timestamp = $timestamp ?? now();
@@ -26,7 +28,11 @@ class MonitorPesagemService
             ?? $pesagem->motorista->nome
             ?? '—';
 
-        $usuario = Usuario::find($pesagem->usuario_id);
+        if (!array_key_exists($pesagem->usuario_id, self::$usuarioCache)) {
+            self::$usuarioCache[$pesagem->usuario_id] = Usuario::find($pesagem->usuario_id);
+        }
+
+        $usuario = self::$usuarioCache[$pesagem->usuario_id];
         $usuarioNome = $usuario->login
             ?? $usuario->nome
             ?? '—';
@@ -53,6 +59,26 @@ class MonitorPesagemService
             $produtosResumo .= ' +' . ($produtos->count() - 2);
         }
 
+        $itensProduto = $pesagem->tickets
+            ->filter(fn ($ticket) => !empty($ticket->produto_id))
+            ->groupBy('produto_id')
+            ->map(function ($tickets) {
+                $produto = $tickets->first()->produto ?? null;
+                $pesoLiquido = $tickets->sum(function ($ticket) {
+                    $peso = (float) ($ticket->peso ?? 0);
+                    $pesoBag = (float) ($ticket->peso_bag ?? 0);
+                    return max(0, $peso - $pesoBag);
+                });
+
+                return [
+                    'produto_id' => (int) $tickets->first()->produto_id,
+                    'produto_nome' => $produto->nome ?? '—',
+                    'peso_liquido' => (float) $pesoLiquido,
+                ];
+            })
+            ->values()
+            ->all();
+
         $pesoBruto = (float) ($pesagem->peso_bruto ?? $pesagem->peso_liquido_bruto ?? 0);
         $pesoLiquido = (float) ($pesagem->peso_liquido_real ?? $pesagem->peso ?? 0);
         $pesoFinal = (float) ($pesagem->peso_final ?? $pesagem->peso ?? 0);
@@ -71,6 +97,26 @@ class MonitorPesagemService
             $precoKg = $valorTotal / $pesoFinal;
         }
 
+        $direcao = $pesagem->tipo === 'compra' ? 'entrada' : ($pesagem->tipo === 'venda' ? 'saida' : null);
+
+        $parceiroId = null;
+        $parceiroNome = '—';
+        $parceiroTipo = null;
+
+        if ($pesagem->tipo === 'compra') {
+            $parceiroId = $pesagem->fornecedor_id;
+            $parceiroNome = $pesagem->fornecedor->razao_social
+                ?? $pesagem->fornecedor->nome_fantasia
+                ?? '—';
+            $parceiroTipo = 'Fornecedor';
+        } elseif ($pesagem->tipo === 'venda') {
+            $parceiroId = $pesagem->cliente_id;
+            $parceiroNome = $pesagem->cliente->razao_social
+                ?? $pesagem->cliente->nome_fantasia
+                ?? '—';
+            $parceiroTipo = 'Cliente';
+        }
+
         return [
             'id' => $pesagem->id,
             'empresa_id' => $pesagem->empresa_id,
@@ -79,14 +125,19 @@ class MonitorPesagemService
             'tipo' => $pesagem->tipo,
             'acao' => $tipoEvento,
             'status' => $pesagem->status,
+            'direcao' => $direcao,
             'timestamp' => $timestamp->format('H:i:s'),
             'timestamp_iso' => $timestamp->toIso8601String(),
             'motorista' => $motorista,
             'usuario' => $usuarioNome,
             'fornecedor' => $fornecedorNome,
+            'parceiro_id' => $parceiroId,
+            'parceiro_nome' => $parceiroNome,
+            'parceiro_tipo' => $parceiroTipo,
             'produtos' => $produtos->values()->all(),
             'produtos_resumo' => $produtosResumo !== '' ? $produtosResumo : '—',
             'produtos_count' => $produtos->count(),
+            'produtos_itens' => $itensProduto,
             'pesos' => [
                 'bruto' => $pesoBruto,
                 'tara' => $tara,
@@ -94,6 +145,7 @@ class MonitorPesagemService
                 'liquido' => $pesoLiquido,
                 'final' => $pesoFinal,
             ],
+            'peso_total' => $pesoFinal > 0 ? $pesoFinal : $pesoLiquido,
             'preco_kg' => $precoKg,
             'valor_total' => $valorTotal,
             'venda_id' => $pesagem->venda_id,

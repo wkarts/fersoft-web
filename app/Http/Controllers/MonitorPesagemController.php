@@ -12,10 +12,6 @@ class MonitorPesagemController extends BaseController
 {
     protected $redirectPage = '/monitor/pesagens';
 
-    /**
-     * Como este controller é apenas de MONITOR (não faz save/update via BaseController),
-     * implementamos rules/messages como vazio apenas para satisfazer o contrato do BaseController.
-     */
     protected function rules(): array
     {
         return [];
@@ -43,7 +39,8 @@ class MonitorPesagemController extends BaseController
         })->values();
 
         $resumo = $this->montarResumo($pesagens);
-
+        $analiticoProdutos = $this->montarAnaliticoProdutos($pesagens);
+        $analiticoParceiros = $this->montarAnaliticoParceiros($pesagens);
         $filiais = Filial::where('empresa_id', $this->empresa_id)
             ->orderBy('descricao')
             ->get();
@@ -52,6 +49,8 @@ class MonitorPesagemController extends BaseController
             'title' => 'Painel ao Vivo - Pesagens',
             'eventos' => $eventos,
             'resumo' => $resumo,
+            'analiticoProdutos' => $analiticoProdutos,
+            'analiticoParceiros' => $analiticoParceiros,
             'filiais' => $filiais,
             'filtros' => $filtros,
             'empresaId' => $this->empresa_id,
@@ -77,6 +76,8 @@ class MonitorPesagemController extends BaseController
         return response()->json([
             'eventos' => $eventos,
             'resumo' => $this->montarResumo($pesagens),
+            'analitico_produtos' => $this->montarAnaliticoProdutos($pesagens),
+            'analitico_parceiros' => $this->montarAnaliticoParceiros($pesagens),
         ]);
     }
 
@@ -158,5 +159,107 @@ class MonitorPesagemController extends BaseController
             'total_kg' => $totalKg,
             'total_valor' => $totalValor,
         ];
+    }
+
+    private function montarAnaliticoProdutos($pesagens): array
+    {
+        $produtos = [];
+
+        foreach ($pesagens as $pesagem) {
+            $direcao = $pesagem->tipo === 'compra' ? 'entrada' : ($pesagem->tipo === 'venda' ? 'saida' : null);
+            if (!$direcao) {
+                continue;
+            }
+
+            foreach ($pesagem->tickets as $ticket) {
+                if (empty($ticket->produto_id)) {
+                    continue;
+                }
+
+                $peso = (float) ($ticket->peso ?? 0);
+                $pesoBag = (float) ($ticket->peso_bag ?? 0);
+                $pesoLiquido = max(0, $peso - $pesoBag);
+
+                if ($pesoLiquido <= 0) {
+                    continue;
+                }
+
+                $key = (string) $ticket->produto_id;
+                if (!isset($produtos[$key])) {
+                    $produtos[$key] = [
+                        'produto_id' => (int) $ticket->produto_id,
+                        'produto_nome' => $ticket->produto->nome ?? '—',
+                        'entrada' => 0,
+                        'saida' => 0,
+                        'total' => 0,
+                    ];
+                }
+
+                $produtos[$key][$direcao] += $pesoLiquido;
+                $produtos[$key]['total'] = $produtos[$key]['entrada'] + $produtos[$key]['saida'];
+            }
+        }
+
+        $resultado = array_values($produtos);
+        usort($resultado, fn ($a, $b) => $b['total'] <=> $a['total']);
+
+        return $resultado;
+    }
+
+    private function montarAnaliticoParceiros($pesagens): array
+    {
+        $parceiros = [];
+
+        foreach ($pesagens as $pesagem) {
+            $direcao = $pesagem->tipo === 'compra' ? 'entrada' : ($pesagem->tipo === 'venda' ? 'saida' : null);
+            if (!$direcao) {
+                continue;
+            }
+
+            $peso = (float) ($pesagem->peso_final ?? $pesagem->peso ?? 0);
+            if ($peso <= 0) {
+                continue;
+            }
+
+            $parceiroId = null;
+            $parceiroNome = 'Sem cadastro';
+            $parceiroTipo = '—';
+
+            if ($pesagem->tipo === 'compra') {
+                $parceiroId = $pesagem->fornecedor_id;
+                $parceiroNome = $pesagem->fornecedor->razao_social
+                    ?? $pesagem->fornecedor->nome_fantasia
+                    ?? 'Fornecedor';
+                $parceiroTipo = 'Fornecedor';
+            } elseif ($pesagem->tipo === 'venda') {
+                $parceiroId = $pesagem->cliente_id;
+                $parceiroNome = $pesagem->cliente->razao_social
+                    ?? $pesagem->cliente->nome_fantasia
+                    ?? 'Cliente';
+                $parceiroTipo = 'Cliente';
+            }
+
+            $key = $parceiroTipo . '-' . ($parceiroId ?? 'sem');
+            if (!isset($parceiros[$key])) {
+                $parceiros[$key] = [
+                    'parceiro_id' => $parceiroId,
+                    'parceiro_nome' => $parceiroNome,
+                    'parceiro_tipo' => $parceiroTipo,
+                    'entrada' => 0,
+                    'saida' => 0,
+                    'total' => 0,
+                    'total_pesagens' => 0,
+                ];
+            }
+
+            $parceiros[$key][$direcao] += $peso;
+            $parceiros[$key]['total'] = $parceiros[$key]['entrada'] + $parceiros[$key]['saida'];
+            $parceiros[$key]['total_pesagens']++;
+        }
+
+        $resultado = array_values($parceiros);
+        usort($resultado, fn ($a, $b) => $b['total'] <=> $a['total']);
+
+        return $resultado;
     }
 }

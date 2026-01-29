@@ -1467,7 +1467,15 @@ class PesagemController extends BaseController
             $payload = app(MonitorPesagemService::class)
                 ->buildPayload($pesagem, $tipoEvento, now());
 
-            event(new MovimentoRealtime($tipoEvento, $payload, $pesagem->empresa_id, $pesagem->filial_id));
+            try {
+                event(new MovimentoRealtime($tipoEvento, $payload, $pesagem->empresa_id, $pesagem->filial_id));
+            } catch (\Throwable $e) {
+                \Log::warning('Falha ao emitir evento de monitoramento de pesagem', [
+                    'pesagem_id' => $pesagemId,
+                    'tipo' => $tipoEvento,
+                    'erro' => $e->getMessage(),
+                ]);
+            }
         });
     }
 

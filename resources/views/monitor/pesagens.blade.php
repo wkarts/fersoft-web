@@ -112,67 +112,145 @@
                 </div>
             </form>
 
-            <div class="table-responsive monitor-feed">
-                <table class="table table-bordered table-hover monitor-table" id="monitorTabela">
-                    <thead class="thead-light">
-                        <tr>
-                            <th>Hora</th>
-                            <th>Filial</th>
-                            <th>Ação</th>
-                            <th>ID</th>
-                            <th>Motorista</th>
-                            <th>Usuário</th>
-                            <th>Fornecedor/Cliente</th>
-                            <th>Materiais</th>
-                            <th>Peso Bruto</th>
-                            <th>Tara</th>
-                            <th>Bag</th>
-                            <th>Peso Líquido</th>
-                            <th>Peso Final</th>
-                            <th>Preço/KG</th>
-                            <th>Valor Total</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="monitorEventos">
-                        @foreach($eventos as $evento)
-                            <tr data-pesagem-id="{{ $evento['id'] }}" class="{{ $evento['status'] === 'concluído' ? 'monitor-row-finished' : '' }}">
-                                <td>{{ $evento['timestamp'] }}</td>
-                                <td>{{ $evento['filial'] }}</td>
-                                <td>{{ $evento['acao'] }}</td>
-                                <td>#{{ $evento['id'] }}</td>
-                                <td>{{ $evento['motorista'] }}</td>
-                                <td>{{ $evento['usuario'] }}</td>
-                                <td>{{ $evento['fornecedor'] }}</td>
-                                <td>{{ $evento['produtos_resumo'] }}</td>
-                                <td>{{ number_format($evento['pesos']['bruto'] ?? 0, 2, ',', '.') }} kg</td>
-                                <td>{{ number_format($evento['pesos']['tara'] ?? 0, 2, ',', '.') }} kg</td>
-                                <td>{{ number_format($evento['pesos']['bag'] ?? 0, 2, ',', '.') }} kg</td>
-                                <td>{{ number_format($evento['pesos']['liquido'] ?? 0, 2, ',', '.') }} kg</td>
-                                <td>{{ number_format($evento['pesos']['final'] ?? 0, 2, ',', '.') }} kg</td>
-                                <td>
-                                    @if(!is_null($evento['preco_kg']))
-                                        R$ {{ number_format($evento['preco_kg'], 4, ',', '.') }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td>
-                                    @if(!is_null($evento['valor_total']))
-                                        R$ {{ number_format($evento['valor_total'], 2, ',', '.') }}
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="badge badge-light monitor-badge">
-                                        {{ ucfirst($evento['status']) }}
-                                    </span>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#tab-monitor-eventos" role="tab">Eventos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#tab-monitor-produtos" role="tab">Produtos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#tab-monitor-parceiros" role="tab">Fornecedor/Cliente</a>
+                </li>
+            </ul>
+
+            <div class="tab-content mt-4">
+                <div class="tab-pane fade show active" id="tab-monitor-eventos" role="tabpanel">
+                    <div class="table-responsive monitor-feed">
+                        <table class="table table-bordered table-hover monitor-table" id="monitorTabela">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Filial</th>
+                                    <th>Ação</th>
+                                    <th>ID</th>
+                                    <th>Motorista</th>
+                                    <th>Usuário</th>
+                                    <th>Fornecedor/Cliente</th>
+                                    <th>Materiais</th>
+                                    <th>Peso Bruto</th>
+                                    <th>Tara</th>
+                                    <th>Bag</th>
+                                    <th>Peso Líquido</th>
+                                    <th>Peso Final</th>
+                                    <th>Preço/KG</th>
+                                    <th>Valor Total</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitorEventos">
+                                @foreach($eventos as $evento)
+                                    <tr data-pesagem-id="{{ $evento['id'] }}" class="{{ $evento['status'] === 'concluído' ? 'monitor-row-finished' : '' }}">
+                                        <td>{{ $evento['timestamp'] }}</td>
+                                        <td>{{ $evento['filial'] }}</td>
+                                        <td>{{ $evento['acao'] }}</td>
+                                        <td>#{{ $evento['id'] }}</td>
+                                        <td>{{ $evento['motorista'] }}</td>
+                                        <td>{{ $evento['usuario'] }}</td>
+                                        <td>{{ $evento['fornecedor'] }}</td>
+                                        <td>{{ $evento['produtos_resumo'] }}</td>
+                                        <td>{{ number_format($evento['pesos']['bruto'] ?? 0, 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($evento['pesos']['tara'] ?? 0, 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($evento['pesos']['bag'] ?? 0, 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($evento['pesos']['liquido'] ?? 0, 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($evento['pesos']['final'] ?? 0, 2, ',', '.') }} kg</td>
+                                        <td>
+                                            @if(!is_null($evento['preco_kg']))
+                                                R$ {{ number_format($evento['preco_kg'], 4, ',', '.') }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if(!is_null($evento['valor_total']))
+                                                R$ {{ number_format($evento['valor_total'], 2, ',', '.') }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-light monitor-badge">
+                                                {{ ucfirst($evento['status']) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-monitor-produtos" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover monitor-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Entrada (KG)</th>
+                                    <th>Saída (KG)</th>
+                                    <th>Total (KG)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitorProdutosBody">
+                                @forelse($analiticoProdutos as $produto)
+                                    <tr data-produto-id="{{ $produto['produto_id'] }}">
+                                        <td>{{ $produto['produto_nome'] }}</td>
+                                        <td>{{ number_format($produto['entrada'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['saida'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($produto['total'], 2, ',', '.') }} kg</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Nenhum produto encontrado.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="tab-monitor-parceiros" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover monitor-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Fornecedor/Cliente</th>
+                                    <th>Tipo</th>
+                                    <th>Entrada (KG)</th>
+                                    <th>Saída (KG)</th>
+                                    <th>Total (KG)</th>
+                                    <th>Pesagens</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitorParceirosBody">
+                                @forelse($analiticoParceiros as $parceiro)
+                                    <tr data-parceiro-key="{{ $parceiro['parceiro_tipo'] }}-{{ $parceiro['parceiro_id'] ?? 'sem' }}">
+                                        <td>{{ $parceiro['parceiro_nome'] }}</td>
+                                        <td>{{ $parceiro['parceiro_tipo'] }}</td>
+                                        <td>{{ number_format($parceiro['entrada'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($parceiro['saida'], 2, ',', '.') }} kg</td>
+                                        <td>{{ number_format($parceiro['total'], 2, ',', '.') }} kg</td>
+                                        <td>{{ $parceiro['total_pesagens'] }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Nenhum parceiro encontrado.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -199,6 +277,8 @@
         const monitorTotalKg = document.getElementById('monitorTotalKg');
         const monitorTotalValor = document.getElementById('monitorTotalValor');
         const monitorTotalPesagens = document.getElementById('monitorTotalPesagens');
+        const monitorProdutosBody = document.getElementById('monitorProdutosBody');
+        const monitorParceirosBody = document.getElementById('monitorParceirosBody');
 
         const formatPeso = (valor) => `${Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
         const formatMoney = (valor, casas = 2) => `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}`;
@@ -239,6 +319,84 @@
             `;
         };
 
+        const analiticoProdutosInicial = @json($analiticoProdutos);
+        const analiticoParceirosInicial = @json($analiticoParceiros);
+        const produtoState = new Map();
+        const parceiroState = new Map();
+        let refreshTimeout = null;
+
+        const atualizarResumo = (resumo) => {
+            if (!resumo) {
+                return;
+            }
+            monitorTotalKg.textContent = `${Number(resumo.total_kg || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+            monitorTotalValor.textContent = formatMoney(resumo.total_valor || 0, 2);
+            monitorTotalPesagens.textContent = Number(resumo.total_pesagens || 0).toLocaleString('pt-BR');
+        };
+
+        const renderProdutos = () => {
+            const itens = Array.from(produtoState.values()).sort((a, b) => (b.total || 0) - (a.total || 0));
+            if (!itens.length) {
+                monitorProdutosBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
+                return;
+            }
+
+            monitorProdutosBody.innerHTML = itens.map((item) => `
+                <tr data-produto-id="${item.produto_id}">
+                    <td>${escapeHtml(item.produto_nome)}</td>
+                    <td>${formatPeso(item.entrada)}</td>
+                    <td>${formatPeso(item.saida)}</td>
+                    <td>${formatPeso(item.total)}</td>
+                </tr>
+            `).join('');
+        };
+
+        const renderParceiros = () => {
+            const itens = Array.from(parceiroState.values()).sort((a, b) => (b.total || 0) - (a.total || 0));
+            if (!itens.length) {
+                monitorParceirosBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum parceiro encontrado.</td></tr>';
+                return;
+            }
+
+            monitorParceirosBody.innerHTML = itens.map((item) => `
+                <tr data-parceiro-key="${item.parceiro_tipo}-${item.parceiro_id ?? 'sem'}">
+                    <td>${escapeHtml(item.parceiro_nome)}</td>
+                    <td>${escapeHtml(item.parceiro_tipo)}</td>
+                    <td>${formatPeso(item.entrada)}</td>
+                    <td>${formatPeso(item.saida)}</td>
+                    <td>${formatPeso(item.total)}</td>
+                    <td>${escapeHtml(item.total_pesagens)}</td>
+                </tr>
+            `).join('');
+        };
+
+        const atualizarAnaliticos = (analiticoProdutos, analiticoParceiros) => {
+            produtoState.clear();
+            parceiroState.clear();
+
+            (analiticoProdutos || []).forEach((item) => {
+                produtoState.set(String(item.produto_id), {
+                    ...item,
+                    entrada: Number(item.entrada || 0),
+                    saida: Number(item.saida || 0),
+                    total: Number(item.total || 0),
+                });
+            });
+
+            (analiticoParceiros || []).forEach((item) => {
+                const key = `${item.parceiro_tipo}-${item.parceiro_id ?? 'sem'}`;
+                parceiroState.set(key, {
+                    ...item,
+                    entrada: Number(item.entrada || 0),
+                    saida: Number(item.saida || 0),
+                    total: Number(item.total || 0),
+                });
+            });
+
+            renderProdutos();
+            renderParceiros();
+        };
+
         const inserirEvento = (evento) => {
             const existente = monitorTableBody.querySelector(`[data-pesagem-id="${evento.id}"]`);
 
@@ -255,7 +413,8 @@
             }
         };
 
-        const carregarDados = async () => {
+        const carregarDados = async (opcoes = {}) => {
+            const { atualizarFeed = true, atualizarAnaliticos = true } = opcoes;
             const formData = new FormData(monitorForm);
             const params = new URLSearchParams(formData);
             const response = await fetch(`{{ route('monitor.pesagens.data') }}?${params.toString()}`);
@@ -265,16 +424,17 @@
             }
 
             const data = await response.json();
-            monitorTableBody.innerHTML = '';
 
-            data.eventos.forEach((evento) => {
-                inserirEvento(evento);
-            });
+            if (atualizarFeed) {
+                monitorTableBody.innerHTML = '';
+                data.eventos.forEach((evento) => {
+                    inserirEvento(evento);
+                });
+            }
 
-            if (data.resumo) {
-                monitorTotalKg.textContent = `${Number(data.resumo.total_kg || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
-                monitorTotalValor.textContent = formatMoney(data.resumo.total_valor || 0, 2);
-                monitorTotalPesagens.textContent = Number(data.resumo.total_pesagens || 0).toLocaleString('pt-BR');
+            if (atualizarAnaliticos) {
+                atualizarResumo(data.resumo);
+                atualizarAnaliticos(data.analitico_produtos, data.analitico_parceiros);
             }
         };
 
@@ -285,6 +445,18 @@
             const filialId = monitorForm.querySelector('select[name="filial_id"]').value || null;
             conectarRealtime(filialId);
         });
+
+        atualizarAnaliticos(analiticoProdutosInicial, analiticoParceirosInicial);
+
+        const agendarAtualizacaoAnaliticos = () => {
+            if (refreshTimeout) {
+                clearTimeout(refreshTimeout);
+            }
+            refreshTimeout = setTimeout(() => {
+                carregarDados({ atualizarFeed: false, atualizarAnaliticos: true });
+                refreshTimeout = null;
+            }, 1200);
+        };
 
         const echo = new Echo({
             broadcaster: 'pusher',
@@ -322,6 +494,7 @@
 
                     const payload = evento.payload;
                     inserirEvento(payload);
+                    agendarAtualizacaoAnaliticos();
                 });
         };
 
