@@ -23,6 +23,15 @@
             vertical-align: middle;
         }
 
+        @media (max-width: 992px) {
+            .monitor-table td,
+            .monitor-table th {
+                font-size: 11px;
+                padding: 6px 8px;
+                white-space: normal;
+            }
+        }
+
         .monitor-badge {
             font-size: 11px;
             padding: 4px 8px;
@@ -65,9 +74,21 @@
                     <div class="card card-custom bg-light">
                         <div class="card-body">
                             <div class="text-muted">Total do dia (R$)</div>
-                            <div class="font-size-h4 font-weight-bold" id="monitorTotalValor">
-                                R$ {{ number_format($resumo['total_valor'] ?? 0, 2, ',', '.') }}
+                            <div class="font-size-h4 font-weight-bold" id="monitorTotalValorVenda">
+                                R$ {{ number_format($resumo['total_valor_venda'] ?? 0, 2, ',', '.') }}
                             </div>
+                            <div class="text-muted mt-2">Vendas</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card card-custom bg-light">
+                        <div class="card-body">
+                            <div class="text-muted">Total do dia (R$)</div>
+                            <div class="font-size-h4 font-weight-bold" id="monitorTotalValorCompra">
+                                R$ {{ number_format($resumo['total_valor_compra'] ?? 0, 2, ',', '.') }}
+                            </div>
+                            <div class="text-muted mt-2">Compras</div>
                         </div>
                     </div>
                 </div>
@@ -283,7 +304,8 @@
         const monitorTableBody = document.getElementById('monitorEventos');
         const monitorForm = document.getElementById('monitorFiltros');
         const monitorTotalKg = document.getElementById('monitorTotalKg');
-        const monitorTotalValor = document.getElementById('monitorTotalValor');
+        const monitorTotalValorVenda = document.getElementById('monitorTotalValorVenda');
+        const monitorTotalValorCompra = document.getElementById('monitorTotalValorCompra');
         const monitorTotalPesagens = document.getElementById('monitorTotalPesagens');
         const monitorProdutosBody = document.getElementById('monitorProdutosBody');
         const monitorParceirosBody = document.getElementById('monitorParceirosBody');
@@ -338,7 +360,8 @@
                 return;
             }
             monitorTotalKg.textContent = `${Number(resumo.total_kg || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
-            monitorTotalValor.textContent = formatMoney(resumo.total_valor || 0, 2);
+            monitorTotalValorVenda.textContent = formatMoney(resumo.total_valor_venda || 0, 2);
+            monitorTotalValorCompra.textContent = formatMoney(resumo.total_valor_compra || 0, 2);
             monitorTotalPesagens.textContent = Number(resumo.total_pesagens || 0).toLocaleString('pt-BR');
         };
 

@@ -144,10 +144,14 @@ class MonitorPesagemController extends BaseController
             return $pesoFinal > 0 ? $pesoFinal : ($pesagem->peso ?? 0);
         });
 
-        $totalValor = $pesagens->sum(function (Pesagem $pesagem) {
+        $totalValorVenda = $pesagens->sum(function (Pesagem $pesagem) {
             if ($pesagem->venda) {
                 return (float) $pesagem->venda->valor_total;
             }
+            return 0;
+        });
+
+        $totalValorCompra = $pesagens->sum(function (Pesagem $pesagem) {
             if ($pesagem->compra) {
                 return (float) $pesagem->compra->valor;
             }
@@ -157,7 +161,8 @@ class MonitorPesagemController extends BaseController
         return [
             'total_pesagens' => $pesagens->count(),
             'total_kg' => $totalKg,
-            'total_valor' => $totalValor,
+            'total_valor_venda' => $totalValorVenda,
+            'total_valor_compra' => $totalValorCompra,
         ];
     }
 
