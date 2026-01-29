@@ -20,6 +20,8 @@ use App\Models\Compra;
 use App\Models\Venda; // Adicione esta linha
 use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
+use App\Events\MovimentoRealtime;
+use App\Services\MonitorPesagemService;
 use Dompdf\Dompdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Http\Controllers\CompraManualController;
@@ -227,6 +229,9 @@ class PesagemController extends BaseController
                 'dados_depois' => $pesagem->toArray(),
             ]);
 
+            $tipoEvento = $acao === 'create' ? 'pesagem.created' : 'pesagem.updated';
+            $this->dispararMonitoramentoPesagem($pesagem->id, $tipoEvento);
+
             // Redireciona com sucesso, fechando o modal atual e abrindo o modal de ticket
             return redirect()->route('pesagens.list')
                 ->with('success', $mensagem)
@@ -313,6 +318,8 @@ class PesagemController extends BaseController
                 'dados_antes' => $dadosAnteriores,
                 'dados_depois' => $dadosDepois,
             ]);
+
+            $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
 
             return response()->json(['success' => 'Pesagem concluída com sucesso!']);
         } catch (\Exception $e) {
@@ -659,6 +666,8 @@ class PesagemController extends BaseController
                 'dados_antes' => $dadosAnteriores,
                 'dados_depois' => $pesagem->toArray(),
             ]);
+
+            $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.updated');
 
             return redirect($this->redirectPage)->with('success', 'Pesagem atualizada com sucesso!');
         } catch (\Exception $e) {
@@ -1286,6 +1295,8 @@ class PesagemController extends BaseController
                 'dados_depois' => $dadosDepois,
             ]);
 
+            $this->dispararMonitoramentoPesagem($pesagem->id, 'venda.created');
+
             // Adiciona mensagem de sucesso na sessão
             $mensagemSucesso = 'Venda gerada com sucesso! ';
             $mensagemSucesso .= 'Token da pesagem: ' . $pesagem->token . ' ';
@@ -1417,6 +1428,8 @@ class PesagemController extends BaseController
                 'dados_depois'    => $compra->toArray(),
             ]);
 
+            $this->dispararMonitoramentoPesagem($pesagem->id, 'compra.created');
+
             return response()->json([
                 'success'   => true,
                 'message'   => $mensagemSucesso,
@@ -1432,6 +1445,30 @@ class PesagemController extends BaseController
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
+    }
+
+    private function dispararMonitoramentoPesagem(int $pesagemId, string $tipoEvento): void
+    {
+        DB::afterCommit(function () use ($pesagemId, $tipoEvento) {
+            $pesagem = Pesagem::with([
+                'filial',
+                'cliente',
+                'fornecedor',
+                'motorista',
+                'tickets.produto',
+                'venda.itens',
+                'compra.itens',
+            ])->find($pesagemId);
+
+            if (!$pesagem) {
+                return;
+            }
+
+            $payload = app(MonitorPesagemService::class)
+                ->buildPayload($pesagem, $tipoEvento, now());
+
+            event(new MovimentoRealtime($tipoEvento, $payload, $pesagem->empresa_id, $pesagem->filial_id));
+        });
     }
 
     /**
