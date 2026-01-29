@@ -1366,7 +1366,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/corrige-locais', 'ProductController@corrigeLocais')->name('produtos.corrigeLocais');
         //Route::post('/corrige-locais', 'ProductController@corrigeLocais')->name('produtos.corrigeLocais')->middleware('auth');
 
-	});
+        Route::get('/ajax/cst-ibs-cbs', 'ProductController@ajaxCstIbsCbs');
+        Route::get('/ajax/class-trib-ibs-cbs', 'ProductController@ajaxClassTribIbsCbs');
+        Route::get('/ajax/reducao-ibs-cbs', 'ProductController@ajaxReducaoIbsCbs');
+        Route::post('/ibs-cbs/atualizar', 'ProdutoIbsCbsController@atualizar')->name('produtos.ibscbs.atualizar');
+    });
 
 	Route::group(['prefix' => 'receita'],function(){
 		Route::post('/save', 'ReceitaController@save');

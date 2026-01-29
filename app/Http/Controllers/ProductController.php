@@ -39,6 +39,8 @@ use App\Models\ProdutoIbpt;
 use App\Services\IbptService;
 use Illuminate\Support\Facades\DB;
 use App\Models\TelaPedido;
+use App\Models\ReformaTributaria\CstIbsCbs;
+use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ProductController extends Controller
 {
@@ -439,6 +441,21 @@ class ProductController extends Controller
                 $request->merge([ 'controla_pesagem' => $request->input('controla_pesagem') ? true : false ]);
                 $request->merge([ 'produto_referenciado_id' => $request->input('produto_referenciado_id') ?? null ]);
                 $request->merge([ 'produto_prateleira_id' => $request->input('produto_prateleira_id') ?? null ]);
+
+                $request->merge([ 'CST_IBS_CBS' => $request->input('CST_IBS_CBS') ?? '' ]);
+                $request->merge([ 'CLASS_TRIB_IBS_CBS' => $request->input('CLASS_TRIB_IBS_CBS') ?? '' ]);
+                $request->merge([ 'REDUCAO_IBS' => $request->input('REDUCAO_IBS') ? __replace($request->input('REDUCAO_IBS')) : 0 ]);
+                $request->merge([ 'REDUCAO_CBS' => $request->input('REDUCAO_CBS') ? __replace($request->input('REDUCAO_CBS')) : 0 ]);
+
+                // regra Delphi (CST 200 => buscar percentuais pela class_trib)
+                if (($request->input('CST_IBS_CBS') ?? '') === '200' && ($request->input('CLASS_TRIB_IBS_CBS') ?? '') !== '') {
+                    $vals = $this->resolveReducaoIbsCbs($request->input('CLASS_TRIB_IBS_CBS'));
+                    $request->merge([
+                        'REDUCAO_IBS' => $vals['predibs'],
+                        'REDUCAO_CBS' => $vals['predcbs'],
+                    ]);
+                }
+
 
                 if (!$request->grade) {
                     $request->merge([ 'referencia_grade' => Str::random(20) ]);
@@ -1424,6 +1441,17 @@ class ProductController extends Controller
                 $resp->CST_COFINS = $request->input('CST_COFINS');
                 $resp->CST_IPI = $request->input('CST_IPI');
                 $resp->cenq_ipi = $request->input('cenq_ipi');
+
+                $resp->CST_IBS_CBS = $request->input('CST_IBS_CBS') ?? '';
+                $resp->CLASS_TRIB_IBS_CBS = $request->input('CLASS_TRIB_IBS_CBS') ?? '';
+                $resp->REDUCAO_IBS = $request->input('REDUCAO_IBS') ? __replace($request->input('REDUCAO_IBS')) : 0;
+                $resp->REDUCAO_CBS = $request->input('REDUCAO_CBS') ? __replace($request->input('REDUCAO_CBS')) : 0;
+
+                if (($resp->CST_IBS_CBS ?? '') === '200' && ($resp->CLASS_TRIB_IBS_CBS ?? '') !== '') {
+                    $vals = $this->resolveReducaoIbsCbs($resp->CLASS_TRIB_IBS_CBS);
+                    $resp->REDUCAO_IBS = $vals['predibs'];
+                    $resp->REDUCAO_CBS = $vals['predcbs'];
+                }
 
                 $resp->CST_CSOSN_entrada = $request->input('CST_CSOSN_entrada');
                 $resp->CST_PIS_entrada = $request->input('CST_PIS_entrada');
@@ -4192,6 +4220,95 @@ class ProductController extends Controller
 
         return redirect()->back()
             ->with('mensagem_sucesso', "Corrigidos {$count} produto(s).");
+    }
+
+    private function resolveReducaoIbsCbs(string $classTrib): array
+    {
+        $classTrib = trim($classTrib);
+        if ($classTrib === '') {
+            return ['predibs' => 0, 'predcbs' => 0];
+        }
+
+        $row = ClassTribIbsCbs::where('CCLASSTRIB', $classTrib)->first();
+
+        if (!$row) {
+            return ['predibs' => 0, 'predcbs' => 0];
+        }
+
+        return [
+            'predibs' => (float) ($row->PREDIBS ?? 0),
+            'predcbs' => (float) ($row->PREDCBS ?? 0),
+        ];
+    }
+
+    public function ajaxCstIbsCbs(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+        $page = max(1, (int) $request->get('page', 1));
+        $perPage = 20;
+
+        $q = CstIbsCbs::query()
+            ->select(['cst_ibs_cbs', 'descricao_cst_ibs_cbs'])
+            ->when($term !== '', function ($qq) use ($term) {
+                $qq->where('cst_ibs_cbs', 'like', "%{$term}%")
+                    ->orWhere('descricao_cst_ibs_cbs', 'like', "%{$term}%");
+            })
+            ->orderBy('cst_ibs_cbs', 'asc');
+
+        $total = (clone $q)->count();
+
+        $items = $q->skip(($page - 1) * $perPage)->take($perPage)->get();
+
+        $results = $items->map(function ($i) {
+            $text = trim($i->cst_ibs_cbs . ' - ' . ($i->descricao_cst_ibs_cbs ?? ''));
+            return ['id' => (string) $i->cst_ibs_cbs, 'text' => $text];
+        });
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => ['more' => ($page * $perPage) < $total],
+        ]);
+    }
+
+    public function ajaxClassTribIbsCbs(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+        $page = max(1, (int) $request->get('page', 1));
+        $perPage = 20;
+
+        $q = ClassTribIbsCbs::query()
+            ->select(['CCLASSTRIB', 'PREDIBS', 'PREDCBS'])
+            ->when($term !== '', function ($qq) use ($term) {
+                $qq->where('CCLASSTRIB', 'like', "%{$term}%");
+            })
+            ->orderBy('CCLASSTRIB', 'asc');
+
+        $total = (clone $q)->count();
+        $items = $q->skip(($page - 1) * $perPage)->take($perPage)->get();
+
+        $results = $items->map(function ($i) {
+            $text = (string) $i->CCLASSTRIB;
+            return ['id' => $text, 'text' => $text];
+        });
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => ['more' => ($page * $perPage) < $total],
+        ]);
+    }
+
+    public function ajaxReducaoIbsCbs(Request $request)
+    {
+        $cst = trim((string) $request->get('cst', ''));
+        $classTrib = trim((string) $request->get('class', ''));
+
+        // só aplica automaticamente quando CST = 200
+        if ($cst !== '200' || $classTrib === '') {
+            return response()->json(['predibs' => 0, 'predcbs' => 0], 200);
+        }
+
+        $vals = $this->resolveReducaoIbsCbs($classTrib);
+        return response()->json($vals, 200);
     }
 
 }

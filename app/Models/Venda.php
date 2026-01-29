@@ -12,12 +12,101 @@ class Venda extends Model
 {
     protected $fillable = [
         'cliente_id', 'usuario_id', 'frete_id', 'valor_total', 'forma_pagamento', 'NfNumero',
-        'natureza_id', 'chave', 'path_xml', 'estado', 'observacao', 'desconto', 
-        'transportadora_id', 'sequencia_cce', 'tipo_pagamento', 'empresa_id', 
-        'pedido_ecommerce_id', 'bandeira_cartao', 'cnpj_cartao', 'cAut_cartao', 
+        'natureza_id', 'chave', 'path_xml', 'estado', 'observacao', 'desconto',
+        'transportadora_id', 'sequencia_cce', 'tipo_pagamento', 'empresa_id',
+        'pedido_ecommerce_id', 'bandeira_cartao', 'cnpj_cartao', 'cAut_cartao',
         'descricao_pag_outros', 'acrescimo', 'data_entrega', 'pedido_nuvemshop_id',
         'nSerie', 'data_emissao', 'troca', 'credito_troca', 'data_retroativa', 'numero_sequencial',
-        'vendedor_id', 'filial_id', 'data_saida'
+        'vendedor_id', 'filial_id', 'data_saida',
+
+        // 1) ICMS Monofásico - Totais
+        'TOTAL_QBCMONO',
+        'TOTAL_ICMSMONO',
+        'TOTAL_QBCMONORETEN',
+        'TOTAL_ICMSMONORETEN',
+        'TOTAL_QBCMONORET',
+        'TOTAL_ICMSMONORET',
+
+        // 2) Destino operação
+        'DESTINO_OPERACAO',
+
+        // 3) Retenções (IRRF/PIS/COFINS/CSLL)
+        'RET_BC_IRRF',
+        'RET_ALIQ_IRRF',
+        'RET_VIRRF',
+
+        'RET_BC_PIS',
+        'RET_ALIQ_PIS',
+        'RET_VPIS',
+
+        'RET_BC_COFINS',
+        'RET_ALIQ_COFINS',
+        'RET_VCOFINS',
+
+        'RET_BC_CSLL',
+        'RET_ALIQ_CSLL',
+        'RET_VCSLL',
+
+        'FLAG_NORMATIVA_IRRF',
+
+        // 4) Totais adicionais
+        'TOTAL_IPI_DEVOLVIDO',
+        'FK_PES_RETIRADA',
+        'FLAG_END_ENTREGA',
+        'TOTAL_II',
+
+        // 5) Receituário / Responsável técnico
+        'NRECEITUARIO',
+        'CPFRESPTEC',
+
+        // 6) Guia de Trânsito
+        'TIPO_GUIA_TRANSITO',
+        'UF_GUIA_TRANSITO',
+        'SERIE_GUIA_TRANSITO',
+        'NUM_GUIA_TRANSITO',
+
+        // 7) IBS/CBS/IS - Totais
+        'TOTAL_IS',
+        'TOTAL_BC_IBS_CBS',
+        'TOTAL_IBS',
+        'TOTAL_IBS_CRED_PRES',
+        'TOTAL_IBS_CRED_PRES_COND_SUS',
+
+        'TOTAL_IBS_UF_DIF',
+        'TOTAL_IBS_UF_DEV_TRIB',
+        'TOTAL_IBS_UF',
+
+        'TOTAL_IBS_MUN_DIF',
+        'TOTAL_IBS_MUN_DEV_TRIB',
+        'TOTAL_IBS_MUN',
+
+        'TOTAL_CBS_DIF',
+        'TOTAL_CBS_DEV_TRIB',
+        'TOTAL_CBS',
+        'TOTAL_CBS_CRED_PRES',
+        'TOTAL_CBS_CRED_PRES_COND_SUS',
+
+        'TOTAL_IBS_MONO',
+        'TOTAL_CBS_MONO',
+        'TOTAL_IBS_MONO_RETEN',
+        'TOTAL_CBS_MONO_RETEN',
+        'TOTAL_IBS_MONO_RET',
+        'TOTAL_CBS_MONO_RET',
+
+        'TOTAL_NF_IBC_CBS_IS',
+        'TOTAL_IBS_CBS',
+
+        'TIPO_NFCREDITO',
+        'TIPO_NFDEBITO',
+        'TIPO_ENTEGOV',
+        'PERC_REDUTOR_GOV',
+        'TIPO_OPERGOV',
+
+        // 8) Padrão Eloquent (sem ID) - campos adicionais
+        'ELOQUENT_UUID',
+        'CREATED_AT',
+        'UPDATED_AT',
+        'DELETED_AT',
     ];
 
     public function filial(){
@@ -42,8 +131,8 @@ class Venda extends Model
 
     public function troca(){
         return TrocaVenda::where('venda_id', $this->id)
-        ->where('tipo', 'pedido')
-        ->first();
+            ->where('tipo', 'pedido')
+            ->first();
     }
 
     public function usuario(){
@@ -86,21 +175,21 @@ class Venda extends Model
 
         $venda = Venda::
         where('NfNumero', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->orderBy('NfNumero', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->orderBy('NfNumero', 'desc')
+            ->first();
 
         $devolucao = Devolucao::
         where('numero_gerado', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->orderBy('numero_gerado', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->orderBy('numero_gerado', 'desc')
+            ->first();
 
         $compra = Compra::
         where('numero_emissao', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->orderBy('numero_emissao', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->orderBy('numero_emissao', 'desc')
+            ->first();
 
         $numeroDevolucao = $devolucao != null ? $devolucao->numero_gerado : 0;
         $numeroCompra = $compra != null ? $compra->numero_emissao : 0;
@@ -116,7 +205,7 @@ class Venda extends Model
                 $c = ConfigNota::where('empresa_id', $empresa_id)->first();
                 if($venda->nSerie != $c->numero_serie_nfe){
                     return Venda::alteraNumeroSerie($c, $empresa_id);
-                } 
+                }
                 return $numeroVenda;
             }
             else if($numeroCompra > $numeroDevolucao && $numeroCompra > $numeroVenda && $numeroCompra > $numeroConfig){
@@ -135,10 +224,10 @@ class Venda extends Model
     public static function alteraNumeroSerie($config, $empresa_id){
         $venda = Venda::
         where('NfNumero', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->where('nSerie', $config->numero_serie_nfe)
-        ->orderBy('NfNumero', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->where('nSerie', $config->numero_serie_nfe)
+            ->orderBy('NfNumero', 'desc')
+            ->first();
 
         $numeroConfig = ConfigNota::
         where('empresa_id', $empresa_id)->first()->ultimo_numero_nfe ?? 0;
@@ -234,10 +323,10 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $c = Venda::
         select('vendas.*')
-        ->whereBetween($tipoPesquisaData, [$dataInicial, 
-            $dataFinal])
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->whereBetween($tipoPesquisaData, [$dataInicial,
+                $dataFinal])
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
         if($estado != 'TODOS') $c->where('vendas.estado', $estado);
         if($numero_nfe != ""){
@@ -247,24 +336,24 @@ class Venda extends Model
         if($dataEmissao != '1969-12-31'){
             $c->whereDate('data_emissao', $dataEmissao);
         }
-        
+
         return $c->get();
     }
 
-    public static function filtroDataCliente($cliente, $dataInicial, $dataFinal, $estado, 
-        $tipoPesquisa, $tipoPesquisaData, $numero_nfe){
+    public static function filtroDataCliente($cliente, $dataInicial, $dataFinal, $estado,
+                                             $tipoPesquisa, $tipoPesquisaData, $numero_nfe){
 
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
         $c = Venda::
         select('vendas.*')
-        ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
-        ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
-        ->where('vendas.empresa_id', $empresa_id)
+            ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
+            ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
+            ->where('vendas.empresa_id', $empresa_id)
 
-        ->whereBetween($tipoPesquisaData, [$dataInicial, 
-            $dataFinal]);
+            ->whereBetween($tipoPesquisaData, [$dataInicial,
+                $dataFinal]);
         if($numero_nfe != ""){
             $c->where('NfNumero', $numero_nfe);
         }
@@ -278,10 +367,10 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $c = Venda::
         select('vendas.*')
-        ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
-        ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
+            ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
         if($estado != 'TODOS') $c->where('vendas.estado', $estado);
         if($numero_nfe != ""){
@@ -295,8 +384,8 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $c = Venda::
         where('vendas.estado', $estado)
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
         if($numero_nfe != ""){
             $c->where('NfNumero', $numero_nfe);
@@ -309,13 +398,13 @@ class Venda extends Model
 
         $c = Venda::
         select('vendas.*')
-        ->whereBetween('data_registro', [$dataInicial, 
-            $dataFinal])
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->whereBetween('data_registro', [$dataInicial,
+                $dataFinal])
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
         if($estado != 'TODOS') $c->where('vendas.estado', $estado);
-        
+
         return $c->get();
     }
 
@@ -323,13 +412,13 @@ class Venda extends Model
 
         $c = Venda::
         select('vendas.*')
-        ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
-        ->where('clientes.razao_social', 'LIKE', "%$cliente%")
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
-        ->where('vendas.empresa_id', $empresa_id)
+            ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
+            ->where('clientes.razao_social', 'LIKE', "%$cliente%")
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
+            ->where('vendas.empresa_id', $empresa_id)
 
-        ->whereBetween('data_registro', [$dataInicial, 
-            $dataFinal]);
+            ->whereBetween('data_registro', [$dataInicial,
+                $dataFinal]);
 
         if($estado != 'TODOS') $c->where('vendas.estado', $estado);
         return $c->get();
@@ -339,13 +428,13 @@ class Venda extends Model
 
         $c = Venda::
         select('vendas.*')
-        ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
-        ->where('clientes.razao_social', 'LIKE', "%$cliente%")
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
+            ->where('clientes.razao_social', 'LIKE', "%$cliente%")
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
         if($estado != 'TODOS') $c->where('vendas.estado', $estado);
-        
+
         return $c->get();
     }
 
@@ -353,8 +442,8 @@ class Venda extends Model
 
         $c = Venda::
         where('vendas.estado', $estado)
-        ->where('vendas.empresa_id', $empresa_id)
-        ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
+            ->where('vendas.empresa_id', $empresa_id)
+            ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
         return $c->get();
     }
 
@@ -393,7 +482,7 @@ class Venda extends Model
             "SE",
             "SP",
             "TO",
-            
+
         ];
     }
 
@@ -406,13 +495,13 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $formaPag = FormaPagamento::
         where('nome', $this->forma_pagamento)
-        ->where('empresa_id', $empresa_id)
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->first();
         if($formaPag != null){
             if($formaPag->tipo_taxa == 'perc'){
-                return number_format($formaPag->taxa,2,',', '.').'%' ; 
+                return number_format($formaPag->taxa,2,',', '.').'%' ;
             }else{
-                return 'R$ ' . number_format($formaPag->taxa,2,',', '.') ; 
+                return 'R$ ' . number_format($formaPag->taxa,2,',', '.') ;
             }
         }else{
             return "0,00";
@@ -424,8 +513,8 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $formaPag = FormaPagamento::
         where('nome', $this->forma_pagamento)
-        ->where('empresa_id', $empresa_id)
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->first();
         if($formaPag != null){
             $total = $this->valor_total+$this->acrescimo-$this->desconto;
             $valor = 0;
@@ -435,7 +524,7 @@ class Venda extends Model
                 $valor = $total - $formaPag->taxa;
             }
 
-            return $valor; 
+            return $valor;
 
         }else{
             return $this->valor_total-$this->desconto+$this->acrescimo;
@@ -447,8 +536,8 @@ class Venda extends Model
         $empresa_id = $value['empresa'];
         $formaPag = FormaPagamento::
         where('nome', $this->forma_pagamento)
-        ->where('empresa_id', $empresa_id)
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->first();
         if($formaPag != null){
             $total = $this->valor_total+$this->acrescimo-$this->desconto;
             $valor = 0;
@@ -458,7 +547,7 @@ class Venda extends Model
                 $valor = $formaPag->taxa;
             }
 
-            return 'R$ ' . number_format($valor,2,',', '.') ; 
+            return 'R$ ' . number_format($valor,2,',', '.') ;
 
         }else{
             return "R$ 0,00";
@@ -472,8 +561,8 @@ class Venda extends Model
         }
         $forma = FormaPagamento::
         where('chave', $this->forma_pagamento)
-        ->where('empresa_id', $empresa_id)
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->first();
 
         return $forma;
     }

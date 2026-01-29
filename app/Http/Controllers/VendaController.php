@@ -45,6 +45,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\Schema;
+use App\Services\ReformaTributariaService;
 
 class VendaController extends Controller
 {
@@ -747,6 +748,8 @@ class VendaController extends Controller
 					'numero_sequencial' => $numero_sequencial,
 					'filial_id' => $venda['filial_id'] != -1 ? $venda['filial_id'] : null
 				]);
+                $rt = app(ReformaTributariaService::class);
+                $applyRt = $rt->shouldApply($this->empresa_id);
 
 				if($venda['credito_troca']){
 					$this->recalcularCredito($desconto, $venda['cliente']);
@@ -1763,7 +1766,6 @@ class VendaController extends Controller
             }
         }
     }
-
 
     private function criaPdfPedido($venda){
         if(!is_dir(public_path('vendas_temp'))){

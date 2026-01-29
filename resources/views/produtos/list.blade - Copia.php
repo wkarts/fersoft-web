@@ -1,0 +1,1004 @@
+@extends('default.layout')
+
+@section('content')
+    <style type="text/css">
+        /* ---------------------------------------------------- */
+        /* 1) BOTÕES DO TOPO: ajustes de padding e fonte menores */
+        /* ---------------------------------------------------- */
+        .card-body .row > a.btn-sm {
+            padding: 4px 8px !important;    /* compacto */
+            font-size: 13px !important;     /* fonte menor */
+            line-height: 1.1 !important;
+            margin-left: 3px !important;    /* mantém os 3px de separação */
+            margin-top: 3px !important;     /* mantém os 3px de separação */
+        }
+        .card-body .row > a.btn-sm i {
+            font-size: 13px !important;
+            vertical-align: middle !important;
+        }
+
+        /* ----------------------------------------------- */
+        /* 2) GRID GERAL                                     */
+        /* ----------------------------------------------- */
+        /* Altura fixa para todas as linhas */
+        .datatable-row,
+        .datatable-cell {
+            height: 35px !important;           /* Altura uniforme */
+            vertical-align: middle !important; /* Alinhamento vertical */
+            font-size: 12px !important;
+            padding: 4px 5px !important;       /* Ajuste de padding um pouco menor */
+            white-space: nowrap !important;    /* Evita quebra de texto */
+        }
+
+        /* Células - Alinhamento e Responsividade */
+        .datatable-cell {
+            text-align: center !important;     /* Alinhamento horizontal */
+        }
+
+        /*
+         * Faz com que a tabela ocupe 100% da largura da .table-responsive,
+         * mas mantenha a possibilidade de scroll horizontal se “não couber”.
+         */
+        .table-responsive table {
+            width: 100% !important;
+            table-layout: auto !important; /* distribui o espaço entre colunas */
+        }
+
+        /* A .table-responsive já tem overflow-x/y para scroll */
+        .table-responsive {
+            position: relative;                /* permite que o thead fique sticky dentro deste bloco */
+            overflow-x: auto !important;       /* Rolagem horizontal */
+            overflow-y: auto !important;       /* Rolagem vertical */
+        }
+
+        /* Agora fixamos cada <th> dentro do próprio .table-responsive */
+        .table-responsive thead th {
+            position: sticky !important;
+            top: 0 !important;                 /* sempre no topo da área rolável */
+            z-index: 2 !important;             /* z-index maior que as células normais */
+            background-color: #ffffff !important; /* garante fundo branco por baixo do texto */
+        }
+
+        /* Badges - Largura fixa */
+        .badge-fixed-width-status {
+            width: 100px !important;           /* Largura padrão */
+            display: inline-block !important;
+            text-align: center !important;
+            padding: 6px !important;
+        }
+
+        /* ----- GRID DE PRODUTOS ----- */
+        .table-produtos {
+            font-size: 12px !important;        /* Tamanho menor para fontes */
+            max-height: 350px !important;      /* Altura máxima com scroll */
+        }
+        /* Ajuste específico para colunas */
+        .table-produtos th,
+        .table-produtos td {
+            white-space: nowrap !important;     /* Impede quebra de texto */
+        }
+
+        /* Botões de ação com espaçamento */
+        .acoes-produto .btn-custom {
+            margin-right: 4px !important;
+            margin-bottom: 2px !important;
+            padding: 3px 7px !important;       /* Ligeiramente mais compacto */
+            font-size: 12px !important;
+        }
+        .acoes-produto .btn-custom i {
+            font-size: 12px !important;
+        }
+    </style>
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <div class="card card-custom gutter-b">
+        <div class="card-body">
+            <!-- Top Buttons -->
+            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+                <div class="col-12">
+                    <div class="row">
+                        <a href="/produtos/new" class="btn btn-sm btn-success">
+                            <i class="fa fa-plus"></i> Novo Produto
+                        </a>
+                        <a href="/produtos/importacao" class="btn btn-sm btn-danger">
+                            <i class="fa fa-arrow-up"></i> Importação
+                        </a>
+                        <a href="/divisaoGrade" class="btn btn-sm btn-info">
+                            <i class="fa fa-th"></i> Divisão de Grade
+                        </a>
+                        @if(sizeof($produtos) > 0)
+                            <a href="/percentualuf" class="btn btn-sm btn-warning">
+                                <i class="fa fa-percent"></i> Tributação por Estado
+                            </a>
+                        @endif
+                        <a href="/produtos/exportacao" class="btn btn-sm btn-primary">
+                            <i class="fa fa-arrow-down"></i> Exportar Excel
+                        </a>
+                        <a href="/produtos/exportacaoBalanca" class="btn btn-sm btn-dark">
+                            <i class="fa fa-arrow-down"></i> Exportar Balança
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <br>
+
+            {{-- logo abaixo dos botões de topo, em vez de só @isset --}}
+            @if(!empty($hasLocaisErrors))
+                <div class="row mt-2">
+                    <div class="col text-left">
+                        <form id="form-corrige-locais"
+                              action="{{ route('produtos.corrigeLocais') }}"
+                              method="POST" class="d-inline">
+                            @csrf
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-warning btn-corrige-locais"
+                            >
+                                Corrigir Filiais
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
+            @isset($paraImprimir)
+                <form method="get" action="/produtos/relatorio">
+                    <input type="hidden" name="pesquisa"  value="{{{ isset($pesquisa) ? $pesquisa : '' }}}">
+                    <input type="hidden" name="categoria" value="{{$categoria}}">
+                    <input type="hidden" name="tipo"      value="{{$tipo}}">
+                    <input type="hidden" name="marca"     value="{{$marca}}">
+                    <input type="hidden" name="estoque"   value="{{ $estoque }}">
+                    <input type="hidden" name="filial_id" value="{{ $filial_id }}">
+                    <button class="btn btn-sm btn-info ml-1 mt-2">
+                        <i class="fa fa-print"></i> Imprimir Relatório
+                    </button>
+                </form>
+            @endisset
+
+            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight"
+                 id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+
+                <!-- Filtros (mantido igual ao original) -->
+                <form method="get" action="/produtos/filtroCategoria">
+                    <div class="row align-items-center">
+                        <div class="form-group col-lg-2 col-xl-2">
+                            <label class="col-form-label">Tipo de pesquisa</label>
+                            <div>
+                                <div class="input-group">
+                                    <select class="form-control" name="tipo">
+                                        <option @if(isset($tipo) && $tipo == 'nome') selected @endif value="nome">Nome</option>
+                                        <option @if(isset($tipo) && $tipo == 'referencia') selected @endif value="referencia">Referência</option>
+                                        <option @if(isset($tipo) && $tipo == 'cod_barras') selected @endif value="cod_barras">Código de barras</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-lg-3 col-xl-3">
+                            <label class="col-form-label">Produto</label>
+                            <div>
+                                <div class="input-group">
+                                    <input type="text" name="pesquisa" class="form-control" value="{{{ isset($pesquisa) ? $pesquisa : '' }}}"
+                                           placeholder="Produto...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-lg-3 col-xl-2">
+                            <label class="col-form-label">Categoria</label>
+                            <div>
+                                <div class="input-group">
+                                    <select class="form-control select2" id="kt_select2_1" name="categoria">
+                                        <option value="-">Todas</option>
+                                        @foreach($categorias as $c)
+                                            <option value="{{$c->id}}" @if(isset($categoria) && $c->id == $categoria) selected @endif>
+                                                {{$c->nome}}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-lg-3 col-xl-2">
+                            <label class="col-form-label">Marca</label>
+                            <div>
+                                <div class="input-group">
+                                    <select class="form-control select2" id="kt_select2_2" name="marca">
+                                        <option value="-">Todas</option>
+                                        @foreach($marcas as $c)
+                                            <option value="{{$c->id}}" @if(isset($marca) && $c->id == $marca) selected @endif>
+                                                {{$c->nome}}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group col-lg-1 col-xl-1">
+                            <label class="col-form-label">Estoque</label>
+                            <div>
+                                <div class="input-group">
+                                    <select class="form-control custom-select" name="estoque">
+                                        <option value="--">--</option>
+                                        <option value="1"  @if(isset($estoque) && $estoque == 1)  selected @endif>Positivo</option>
+                                        <option value="-1" @if(isset($estoque) && $estoque == -1) selected @endif>Negativo</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if(empresaComFilial())
+                            {!! __view_locais_select_filtro("Local", isset($filial_id) ? $filial_id : '') !!}
+                        @endif
+
+                        <div class="col-lg-2 col-xl-2 mt-4">
+                            <button type="submit" class="btn btn-light-primary font-weight-bold">Filtrar</button>
+                        </div>
+                    </div>
+                </form>
+
+                <br>
+                <h4>Lista de Produtos</h4>
+
+                @if(!isset($categoria))
+                    <p>Média % de lucro todos os produtos: <strong>{{ App\Models\Produto::mediaLucro() }}</strong></p>
+                    <label>Total de produtos cadastrados: <strong class="text-info">{{ $produtos->total() }}</strong></label>
+                @endif
+                <p class="text-danger">Produtos em vermelho inativos</p>
+
+                <div class="row">
+                    <div class="col-12">
+
+                        <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                            <!--begin: Wizard Nav-->
+                            <div class="wizard-nav">
+                                <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
+                                    <!--begin::Wizard Step 1 Nav-->
+                                    <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
+                                        <div class="wizard-label">
+                                            <h3 class="wizard-title">
+                                                <span>
+                                                    <i style="font-size: 40px" class="la la-table"></i>
+                                                    Tabela
+                                                </span>
+                                            </h3>
+                                            <div class="wizard-bar"></div>
+                                        </div>
+                                    </div>
+                                    <!--end::Wizard Step 1 Nav-->
+                                    <!--begin::Wizard Step 2 Nav-->
+                                    <div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
+                                        <div class="wizard-label" id="grade">
+                                            <h3 class="wizard-title">
+                                                <span>
+                                                    <i style="font-size: 40px" class="la la-tablet"></i>
+                                                    Grade
+                                                </span>
+                                            </h3>
+                                            <div class="wizard-bar"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- início grid TABELA -->
+                            <div class="pb-5" data-wizard-type="step-content">
+                                <div class="row">
+                                    <div class="col-12">
+                                        {{-- Cabeçalho fixo, tabela esticada 100% e colunas evitem ficarem muito largas --}}
+                                        <div class="table-responsive mt-3" style="max-height: 280px; overflow-y: auto; overflow-x: auto;">
+                                            <table class="table table-bordered table-hover table-produtos datatable datatable-bordered datatable-head-custom datatable-default datatable-primary">
+                                                <thead class="thead-light">
+                                                <tr class="datatable-row">
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- AÇÕES: mínimo 200px, mas pode crescer --}}
+                                                        <span style="min-width: 200px; display: inline-block;">AÇÕES</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- NOME: mínimo 200px --}}
+                                                        <span style="min-width: 200px; display: inline-block;">DESCRIÇÃO</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- VALOR DE VENDA: mínimo 80px --}}
+                                                        <span style="min-width: 80px; display: inline-block;">VALOR<br>DE VENDA</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- VALOR DE COMPRA: mínimo 80px --}}
+                                                        <span style="min-width: 80px; display: inline-block;">VALOR<br>DE COMPRA</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- UN. COMPRA/VENDA: mínimo 100px --}}
+                                                        <span style="min-width: 100px; display: inline-block;">UN. COMPRA/<br>VENDA</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- DATA DE CADASTRO: mínimo 100px --}}
+                                                        <span style="min-width: 100px; display: inline-block;">DATA DE<br>CADASTRO</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- GERENCIAR ESTOQUE: mínimo 100px --}}
+                                                        <span style="min-width: 100px; display: inline-block;">GERENCIAR<br>ESTOQUE</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- PRATELEIRA --}}
+                                                        <span style="min-width: 120px; display: inline-block;">PRATELEIRA</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- CONTROLAR PESAGEM: mínimo 100px --}}
+                                                        <span style="min-width: 100px; display: inline-block;">CONTROLAR<br>PESAGEM</span>
+                                                    </th>
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- PRODUTO VINCULADO: mínimo 150px --}}
+                                                        <span style="min-width: 150px; display: inline-block;">PRODUTO<br>VINCULADO</span>
+                                                    </th>
+                                                    @if(empresaComFilial())
+                                                        <th class="datatable-cell datatable-cell-sort">
+                                                            {{-- DISPONIBILIDADE: mínimo 150px --}}
+                                                            <span style="min-width: 150px; display: inline-block;">DISPONIBILIDADE</span>
+                                                        </th>
+                                                    @endif
+                                                    <th class="datatable-cell datatable-cell-sort">
+                                                        {{-- ESTOQUE: mínimo 80px --}}
+                                                        <span style="min-width: 80px; display: inline-block;">ESTOQUE</span>
+                                                    </th>
+                                                </tr>
+                                                </thead>
+
+                                                <tbody id="body" class="datatable-body">
+                                                @foreach($produtos as $p)
+                                                    <tr class="datatable-row" @if($p->inativo) style="background: #ffcdd2;" @endif>
+                                                        {{-- AÇÕES --}}
+                                                        <td class="datatable-cell acoes-produto">
+                                                                <span class="codigo" style="min-width: 200px; display: inline-block;" id="id">
+                                                                    <a title="Editar" class="btn btn-sm btn-warning btn-custom"
+                                                                       onclick='swal("Atenção!", "Deseja editar este registro?", "warning")
+                                                                       .then((sim) => { if(sim){ location.href="/produtos/edit/{{ $p->id }}" } })' href="#!">
+                                                                        <i class="la la-edit"></i>
+                                                                    </a>
+                                                                    <a title="Remover" class="btn btn-sm btn-danger btn-custom"
+                                                                       onclick='swal("Atenção!", "Deseja remover este registro?", "warning")
+                                                                       .then((sim) => { if(sim){ location.href="/produtos/delete/{{ $p->id }}" } })' href="#!">
+                                                                        <i class="la la-trash"></i>
+                                                                    </a>
+                                                                    @if($p->composto)
+                                                                        <a title="Receita/Composição" class="btn btn-sm btn-primary btn-custom"
+                                                                           href="/produtos/receita/{{ $p->id }}">
+                                                                            <i class="la la-list"></i>
+                                                                        </a>
+                                                                    @endif
+                                                                    @if($p->grade)
+                                                                        <a title="Grade" class="btn btn-sm btn-primary btn-custom"
+                                                                           href="/produtos/grade/{{ $p->id }}">
+                                                                            <i class="la la-th"></i>
+                                                                        </a>
+                                                                    @endif
+                                                                    <a title="Movimentação" class="btn btn-sm btn-info btn-custom"
+                                                                       href="/produtos/movimentacao/{{ $p->id }}">
+                                                                        <i class="las la-tasks"></i>
+                                                                    </a>
+                                                                    <a title="Duplicar" class="btn btn-sm btn-primary btn-custom"
+                                                                       onclick='swal("Atenção!", "Deseja duplicar este registro?", "warning")
+                                                                       .then((sim) => { if(sim){ location.href="/produtos/duplicar/{{ $p->id }}" } })' href="#!">
+                                                                        <i class="la la-copy"></i>
+                                                                    </a>
+                                                                    @if($p->ecommerce)
+                                                                        <a title="Ecommerce" class="btn btn-sm btn-info btn-custom"
+                                                                           href="/produtoEcommerce/edit/{{ $p->ecommerce->id }}">
+                                                                            <i class="la la-shopping-cart"></i>
+                                                                        </a>
+                                                                    @endif
+                                                                    <a title="Gerar etiqueta(s)" class="btn btn-sm btn-dark btn-custom"
+                                                                       href="/produtos/etiqueta/{{ $p->id }}">
+                                                                        <i class="la la-barcode"></i>
+                                                                    </a>
+                                                                    @if($p->prateleira)
+                                                                        {{-- Botão “Endereço” (abre modal) --}}
+                                                                        <button
+                                                                            title="Localização do Produto"
+                                                                            class="btn btn-sm btn-info btn-custom btn-endereco"
+                                                                            data-prateleira-id="{{ $p->prateleira->id }}"
+                                                                        >
+                                                                            <i class="la la-map-marker"></i>
+                                                                        </button>
+                                                                    @endif
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- NOME --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 200px; display: inline-block;" id="id">
+                                                                    {{ $p->nome }} @if($p->referencia) - #{{ $p->referencia }} @endif
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- VALOR DE VENDA ou “--” (se grade) --}}
+                                                        @if($p->grade)
+                                                            <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 80px; display: inline-block;" id="id">--</span>
+                                                            </td>
+                                                        @else
+                                                            <td class="datatable-cell">
+                                                                    <span class="codigo" style="min-width: 80px; display: inline-block;" id="id">
+                                                                        {{ number_format($p->valor_venda, $casasDecimais, ',', '.') }}
+                                                                    </span>
+                                                            </td>
+                                                        @endif
+
+                                                        {{-- VALOR DE COMPRA --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 80px; display: inline-block;" id="id">
+                                                                    {{ number_format($p->valor_compra, $casasDecimais, ',', '.') }}
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- UN. COMPRA/VENDA --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 100px; display: inline-block;" id="id">
+                                                                    {{ $p->unidade_compra }}/{{ $p->unidade_venda }}
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- DATA DE CADASTRO --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 100px; display: inline-block;">
+                                                                    {{ \Carbon\Carbon::parse($p->created_at)->format('d/m/Y H:i') }}
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- GERENCIAR ESTOQUE --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 100px; display: inline-block;">
+                                                                    @if($p->gerenciar_estoque)
+                                                                        <span class="badge badge-fixed-width-status badge-success">Sim</span>
+                                                                    @else
+                                                                        <span class="badge badge-fixed-width-status badge-warning">Não</span>
+                                                                    @endif
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- Prateleira --}}
+                                                        <td class="datatable-cell">
+                                                            @if(isset($p->prateleira) && $p->prateleira)
+                                                                {{ $p->prateleira->identificacao }}
+                                                            @else
+                                                                &ndash;
+                                                            @endif
+                                                        </td>
+
+                                                        {{-- CONTROLAR PESAGEM --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 100px; display: inline-block;">
+                                                                    @if($p->controla_pesagem)
+                                                                        <span class="badge badge-fixed-width-status badge-success">Sim</span>
+                                                                    @else
+                                                                        <span class="badge badge-fixed-width-status badge-warning">Não</span>
+                                                                    @endif
+                                                                </span>
+                                                        </td>
+
+                                                        {{-- PRODUTO VINCULADO --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 150px; display: inline-block;">
+                                                                    @if($p->produto_referenciado_id && $p->produtoReferenciado)
+                                                                        {{ Str::limit($p->produtoReferenciado->nome, 25) }}
+                                                                    @else
+                                                                        &ndash;
+                                                                    @endif
+                                                                </span>
+                                                        </td>
+
+                                                        @if(empresaComFilial())
+                                                            {{-- DISPONIBILIDADE --}}
+                                                            <td class="datatable-cell">
+                                                                    <span class="codigo" style="min-width: 150px; display: inline-block;">
+                                                                        {!! $p->locais_produto() !!}
+                                                                    </span>
+                                                            </td>
+                                                        @endif
+
+                                                        {{-- ESTOQUE POR LOCAL (ou total, se grade) --}}
+                                                        <td class="datatable-cell">
+                                                                <span class="codigo" style="min-width: 80px; display: inline-block;">
+                                                                    {{ $p->estoquePorLocal($filial_id ?? null) }}
+                                                                </span>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- fim grid TABELA -->
+
+                            <!-- início grid GRADE (permanece igual) -->
+                            <div class="pb-5" data-wizard-type="step-content">
+                                <div class="row">
+                                    @foreach($produtos as $p)
+                                        <div class="col-sm-12 col-md-6 col-lg-6 col-xl-4 mb-4">
+                                            <div class="card card-custom gutter-b example example-compact">
+                                                <div class="card-header">
+                                                    <div class="card-title d-flex align-items-center">
+                                                        <div class="flex-shrink-0 mr-4 mt-lg-0 mt-3">
+                                                            <div class="symbol symbol-circle symbol-lg-75">
+                                                                @if($p->imagem != '')
+                                                                    <img src="/imgs_produtos/{{ $p->imagem }}" alt="image">
+                                                                @else
+                                                                    <img src="/imgs/no_image.png" alt="image">
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                        <h3 style="width: 230px; font-size: 12px; height: 10px;" class="card-title text-truncate">
+                                                            {{ substr($p->nome, 0, 30) }}
+                                                        </h3>
+
+                                                        <div class="dropdown dropdown-inline ml-auto" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
+                                                            <a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                                <i class="fa fa-ellipsis-h"></i>
+                                                            </a>
+                                                            <div class="dropdown-menu p-0 m-0 dropdown-menu-md dropdown-menu-right">
+                                                                <ul class="navi navi-hover">
+                                                                    <li class="navi-header font-weight-bold py-4">
+                                                                        <span class="font-size-lg">Ações:</span>
+                                                                    </li>
+                                                                    <li class="navi-separator mb-3 opacity-70"></li>
+                                                                    <li class="navi-item">
+                                                                        <a href="/produtos/edit/{{ $p->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-primary">Editar</span>
+                                                                        </span>
+                                                                        </a>
+                                                                    </li>
+                                                                    <li class="navi-item">
+                                                                        <a onclick='swal("Atenção!", "Deseja remover este registro?", "warning")
+                                                                        .then((sim) => { if(sim){ location.href="/produtos/delete/{{ $p->id }}" } })' href="#!" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-danger">Excluir</span>
+                                                                        </span>
+                                                                        </a>
+                                                                    </li>
+                                                                    @if($p->composto)
+                                                                        <li class="navi-item">
+                                                                            <a href="/produtos/receita/{{ $p->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-warning">Receita/Composição</span>
+                                                                        </span>
+                                                                            </a>
+                                                                        </li>
+                                                                    @endif
+                                                                    @if($p->grade)
+                                                                        <li class="navi-item">
+                                                                            <a href="/produtos/grade/{{ $p->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-warning">Grade</span>
+                                                                        </span>
+                                                                            </a>
+                                                                        </li>
+                                                                    @endif
+                                                                    <li class="navi-item">
+                                                                        <a href="/produtos/movimentacao/{{ $p->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-info">Movimentação</span>
+                                                                        </span>
+                                                                        </a>
+                                                                    </li>
+                                                                    <li class="navi-item">
+                                                                        <a href="/produtos/etiqueta/{{ $p->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-dark">Etiqueta</span>
+                                                                        </span>
+                                                                        </a>
+                                                                    </li>
+                                                                    @if($p->ecommerce)
+                                                                        <li class="navi-item">
+                                                                            <a href="/produtoEcommerce/edit/{{ $p->ecommerce->id }}" class="navi-link">
+                                                                        <span class="navi-text">
+                                                                            <span class="label label-xl label-inline label-light-dark">Ecommerce</span>
+                                                                        </span>
+                                                                            </a>
+                                                                        </li>
+                                                                    @endif
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="card-body">
+                                                    <!-- Conteúdo do card “Grade” (permanece igual ao original) -->
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Categoria:</span>
+                                                        <a target="_blank" href="/categorias/edit/{{ $p->categoria->id }}" class="kt-widget__data text-success">{{ $p->categoria->nome }}</a>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Referência:</span>
+                                                        <span class="kt-widget__data text-info">@if($p->referencia) #{{ $p->referencia }} @else &ndash; @endif</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Valor de venda:</span>
+                                                        <span class="kt-widget__data text-success">{{ number_format($p->valor_venda, $casasDecimais, ',', '.') }}</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Valor de compra:</span>
+                                                        <span class="kt-widget__data text-success">{{ number_format($p->valor_compra, $casasDecimais, ',', '.') }}</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">% Lucro:</span>
+                                                        <span class="kt-widget__data text-success">{{ $p->percentual_lucro }}%</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Unidade:</span>
+                                                        <span class="kt-widget__data text-success">{{ $p->unidade_compra }}/{{ $p->unidade_venda }}</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Data de cadastro:</span>
+                                                        <span class="kt-widget__data text-success">{{ \Carbon\Carbon::parse($p->created_at)->format('d/m/Y H:i') }}</span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Gerenciar estoque:</span>
+                                                        @if($p->gerenciar_estoque)
+                                                            <span class="badge badge-fixed-width-status badge-light-success">Sim</span>
+                                                        @else
+                                                            <span class="badge badge-fixed-width-status badge-light-warning">Não</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Tipo grade:</span>
+                                                        @if($p->grade)
+                                                            <span class="badge badge-fixed-width-status badge-light-success">Sim</span>
+                                                        @else
+                                                            <span class="badge badge-fixed-width-status badge-light-warning">Não</span>
+                                                        @endif
+                                                    </div>
+                                                    @if(empresaComFilial())
+                                                        <div class="kt-widget__info mb-2">
+                                                            <span class="kt-widget__label">Disponibilidade:</span>
+                                                            <strong>{!! $p->locais_produto() !!}</strong>
+                                                        </div>
+                                                    @endif
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Estoque:</span>
+                                                        <span class="kt-widget__data text-success">
+                                                        @if($p->estoque)
+                                                                @if($p->unidade_venda == 'UN' || $p->unidade_venda == 'UNID')
+                                                                    {{ number_format($p->estoque_atual) }}
+                                                                @else
+                                                                    {{ $p->estoque_atual }}
+                                                                @endif
+                                                            @else
+                                                                0
+                                                            @endif
+                                                    </span>
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Controla Pesagem:</span>
+                                                        @if($p->controla_pesagem)
+                                                            <span class="badge badge-fixed-width-status badge-light-success">Sim</span>
+                                                        @else
+                                                            <span class="badge badge-fixed-width-status badge-light-warning">Não</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="kt-widget__info mb-2">
+                                                        <span class="kt-widget__label">Produto Referenciado:</span>
+                                                        <strong>
+                                                            @if($p->produto_referenciado_id && $p->produtoReferenciado)
+                                                                {{ Str::limit($p->produtoReferenciado->nome, 30) }}
+                                                            @else
+                                                                &ndash;
+                                                            @endif
+                                                        </strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <!-- fim grid GRADE -->
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="d-flex flex-wrap py-2 mr-3">
+                        @if(isset($links))
+                            {{ $produtos->links() }}
+                        @endif
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- ================================================ --}}
+    {{-- Modal “Endereço Completo da Prateleira”           --}}
+    {{-- ================================================ --}}
+    <div class="modal fade" id="modalEnderecoPrateleira" tabindex="-1" role="dialog" aria-labelledby="modalEnderecoPrateleiraLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+
+                {{-- Cabeçalho do Modal --}}
+                <div class="modal-header">
+                    <h5 id="modalEnderecoPrateleiraLabel" class="modal-title">
+                        <i class="la la-map-marker"></i>
+                        Endereço da Prateleira
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                {{-- Corpo do Modal --}}
+                <div class="modal-body">
+                    {{-- Card para agrupar visualmente os detalhes --}}
+                    <div class="card">
+                        <div class="card-body">
+
+                            {{-- 1) Identificação em destaque --}}
+                            <div class="mb-4">
+                                <h4 class="font-weight-bold" id="prateleira_identificacao_interna" style="font-size: 1.5rem;">
+                                    <!-- Será preenchido via JS -->
+                                </h4>
+                            </div>
+
+                            {{-- 2) Dados organizados em dl.row (descricao / valor) --}}
+                            <dl class="row">
+                                <dt class="col-sm-3 text-right">Descrição:</dt>
+                                <dd class="col-sm-9" id="prateleira_descricao_interna"></dd>
+
+                                <dt class="col-sm-3 text-right">Posição:</dt>
+                                <dd class="col-sm-9" id="prateleira_posicao_interna"></dd>
+
+                                <dt class="col-sm-3 text-right">Localização:</dt>
+                                <dd class="col-sm-9" id="prateleira_localizacao_interna"></dd>
+
+                                <dt class="col-sm-3 text-right">Observação:</dt>
+                                <dd class="col-sm-9" id="prateleira_observacao_interna"></dd>
+                            </dl>
+
+                            <hr>
+
+                            {{-- 3) Datas de cadastro/atualização --}}
+                            <dl class="row">
+                                <dt class="col-sm-3 text-right">Cadastrado em:</dt>
+                                <dd class="col-sm-9" id="prateleira_created_at_interna"></dd>
+
+                                <dt class="col-sm-3 text-right">Atualizado em:</dt>
+                                <dd class="col-sm-9" id="prateleira_updated_at_interna"></dd>
+                            </dl>
+
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Rodapé do Modal --}}
+                <div class="modal-footer">
+                    <button id="btnPrintEndereco" type="button" class="btn btn-primary">
+                        <i class="fa fa-print"></i> Imprimir Endereço
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- ================================================ --}}
+    {{-- Estilos CSS específicos para impressão de endereço --}}
+    {{-- ================================================ --}}
+    <style>
+        @media print {
+            /* Esconde o backdrop do modal e cabeçalho/rodapé para a impressão */
+            body * {
+                visibility: hidden;
+            }
+            #modalEnderecoPrateleira,
+            #modalEnderecoPrateleira * {
+                visibility: visible;
+            }
+            #modalEnderecoPrateleira .modal-dialog {
+                position: absolute;
+                top: 0;
+                left: 0;
+                margin: 0;
+                width: 100%;
+            }
+            /* Esconde o botão “Fechar” e “Imprimir Endereço” no print */
+            #modalEnderecoPrateleira .modal-header,
+            #modalEnderecoPrateleira .modal-footer {
+                display: none !important;
+            }
+            /* Ajusta margens no corpo impresso */
+            #modalEnderecoPrateleira .modal-body {
+                padding: 1rem !important;
+            }
+            /* Aumenta legibilidade da fonte no papel */
+            #modalEnderecoPrateleira .card-body {
+                font-size: 14px;
+                line-height: 1.5;
+            }
+        }
+    </style>
+
+    {{-- Modais reutilizáveis --}}
+    {{-- Modal de confirmação --}}
+    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalConfirmacaoMensagem">
+                    Deseja realmente continuar?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Não</button>
+                    <button type="button" id="btnConfirmarAcao" class="btn btn-primary">Sim</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal de mensagens --}}
+    <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalMensagemLabel">Mensagem</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalMensagemTexto">
+                    Mensagem exibida aqui.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+@endsection
+
+@section('javascript')
+    <script type="text/javascript">
+        $('.btn-ibpt').click(() => {
+            $('.btn-ibpt').addClass('spinner')
+        });
+    </script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            // 1) Ao clicar em “Endereço”, faz AJAX para buscar dados da prateleira
+            $(document).on('click', '.btn-endereco', function(e) {
+                e.preventDefault();
+                let prateleiraId = $(this).data('prateleira-id');
+                if (!prateleiraId) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Prateleira não definida para este produto.'
+                    });
+                    return;
+                }
+
+                // Requisição AJAX ao endpoint /produto_prateleiras/{id}/json
+                $.ajax({
+                    url: '/produto_prateleiras/' + prateleiraId + '/json',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                        // 1. Identificação (em destaque)
+                        $('#prateleira_identificacao_interna').text(data.identificacao ?? '-');
+
+                        // 2. Demais campos
+                        $('#prateleira_descricao_interna').text(data.descricao ?? '-');
+                        $('#prateleira_posicao_interna').text(data.posicao ?? '-');
+                        $('#prateleira_localizacao_interna').text(data.localizacao ?? '-');
+                        $('#prateleira_observacao_interna').text(data.observacao ?? '-');
+
+                        // 3. Formatar datas (de ISO para dd/mm/YYYY HH:mm)
+                        if (data.created_at) {
+                            let c = new Date(data.created_at);
+                            let cad = c.toLocaleDateString('pt-BR') + ' ' +
+                                String(c.getHours()).padStart(2,'0') + ':' + String(c.getMinutes()).padStart(2,'0');
+                            $('#prateleira_created_at_interna').text(cad);
+                        } else {
+                            $('#prateleira_created_at_interna').text('-');
+                        }
+                        if (data.updated_at) {
+                            let u = new Date(data.updated_at);
+                            let upd = u.toLocaleDateString('pt-BR') + ' ' +
+                                String(u.getHours()).padStart(2,'0') + ':' + String(u.getMinutes()).padStart(2,'0');
+                            $('#prateleira_updated_at_interna').text(upd);
+                        } else {
+                            $('#prateleira_updated_at_interna').text('-');
+                        }
+
+                        // 4. Abre o modal
+                        $('#modalEnderecoPrateleira').modal('show');
+                    },
+                    error: function(err) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: 'Não foi possível carregar o endereço da prateleira.'
+                        });
+                    }
+                });
+            });
+
+            // 2) Botão “Imprimir Endereço”: abre nova janela com conteúdo formatado
+            $('#btnPrintEndereco').on('click', function() {
+                // Gera um HTML simplificado contendo o conteúdo do modal (somente o .modal-body)
+                let modalBody = document.querySelector('#modalEnderecoPrateleira .modal-body').innerHTML;
+
+                // Monta um novo documento para impressão
+                let printWindow = window.open('', '', 'height=800,width=800');
+                printWindow.document.write('<html><head><title>Endereço da Prateleira</title>');
+
+                // Importa estilos básicos do site (caso queira manter tipografia)
+                // Se tiver um arquivo CSS global para impressão, insira link aqui
+                printWindow.document.write(`
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h4 { margin-bottom: 0.5rem; }
+                        dl { margin: 0; }
+                        dt { font-weight: bold; float: left; width: 25%; clear: left; }
+                        dd { margin-left: 26%; margin-bottom: 0.5rem; }
+                        hr { margin: 1rem 0; }
+                    </style>
+                `);
+
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(modalBody);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+
+                // Aguarda um instante e chama print()
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            });
+        });
+    </script>
+    <script>
+        $(function() {
+            let formParaSubmeter = null;
+
+            // Quando clicar no botão, abre o modal de confirmação
+            $('.btn-corrige-locais').on('click', function(e) {
+                e.preventDefault();
+                formParaSubmeter = $('#form-corrige-locais');
+                $('#modalConfirmacaoMensagem').text('Encontramos filial(ais) mal formatada(s). Corrigir tudo agora?');
+                $('#modalConfirmacao').modal('show');
+            });
+
+            // Se confirmar, envia o form
+            $('#btnConfirmarAcao').on('click', function() {
+                if (formParaSubmeter) {
+                    formParaSubmeter.submit();
+                }
+            });
+
+            // Exibe flash message (sucesso ou erro) no modal de mensagem
+            @if(session('mensagem_sucesso') || session('mensagem_erro'))
+            const tipo  = "{{ session('mensagem_sucesso') ? 'Sucesso' : 'Erro' }}";
+            const texto = "{{ session('mensagem_sucesso') ?? session('mensagem_erro') }}";
+            $('#modalMensagemLabel').text(tipo);
+            $('#modalMensagemTexto').text(texto);
+            $('#modalMensagem').modal('show');
+            @endif
+        });
+    </script>
+@endsection

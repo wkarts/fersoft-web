@@ -1717,6 +1717,50 @@
                                                     </div>
                                                 </div>
 
+                                                <div class="row mt-2">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">CST IBS/CBS</label>
+                                                        <select name="CST_IBS_CBS" id="CST_IBS_CBS" class="form-control">
+                                                            @if(isset($produto) && !empty($produto->CST_IBS_CBS))
+                                                                <option value="{{ $produto->CST_IBS_CBS }}" selected>
+                                                                    {{ $produto->CST_IBS_CBS }}
+                                                                </option>
+                                                            @endif
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Class. Trib. IBS/CBS</label>
+                                                        <select name="CLASS_TRIB_IBS_CBS" id="CLASS_TRIB_IBS_CBS" class="form-control">
+                                                            @if(isset($produto) && !empty($produto->CLASS_TRIB_IBS_CBS))
+                                                                <option value="{{ $produto->CLASS_TRIB_IBS_CBS }}" selected>
+                                                                    {{ $produto->CLASS_TRIB_IBS_CBS }}
+                                                                </option>
+                                                            @endif
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Redução IBS (%)</label>
+                                                        <input type="text"
+                                                               name="REDUCAO_IBS"
+                                                               id="REDUCAO_IBS"
+                                                               class="form-control"
+                                                               value="{{ old('REDUCAO_IBS', $produto->REDUCAO_IBS ?? 0) }}"
+                                                               readonly>
+                                                    </div>
+
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Redução CBS (%)</label>
+                                                        <input type="text"
+                                                               name="REDUCAO_CBS"
+                                                               id="REDUCAO_CBS"
+                                                               class="form-control"
+                                                               value="{{ old('REDUCAO_CBS', $produto->REDUCAO_CBS ?? 0) }}"
+                                                               readonly>
+                                                    </div>
+                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -2688,6 +2732,79 @@
                 @endisset
 
             });
+        </script>
+        <script>
+            (function(){
+                function initSelect2IbsCbs(){
+                    if(!window.jQuery || !jQuery.fn.select2) return;
+
+                    $('#CST_IBS_CBS').select2({
+                        width: '100%',
+                        placeholder: 'Selecione...',
+                        allowClear: true,
+                        ajax: {
+                            url: '/produtos/ajax/cst-ibs-cbs',
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                return { term: params.term || '', page: params.page || 1 };
+                            },
+                            processResults: function (data) {
+                                return data;
+                            }
+                        }
+                    });
+
+                    $('#CLASS_TRIB_IBS_CBS').select2({
+                        width: '100%',
+                        placeholder: 'Selecione...',
+                        allowClear: true,
+                        ajax: {
+                            url: '/produtos/ajax/class-trib-ibs-cbs',
+                            dataType: 'json',
+                            delay: 250,
+                            data: function (params) {
+                                return { term: params.term || '', page: params.page || 1 };
+                            },
+                            processResults: function (data) {
+                                return data;
+                            }
+                        }
+                    });
+
+                    async function atualizarReducao(){
+                        const cst = ($('#CST_IBS_CBS').val() || '').toString().trim();
+                        const cls = ($('#CLASS_TRIB_IBS_CBS').val() || '').toString().trim();
+
+                        // só aplica automaticamente quando CST = 200
+                        if(cst !== '200' || !cls){
+                            return;
+                        }
+
+                        try{
+                            const url = '/produtos/ajax/reducao-ibs-cbs?cst=' + encodeURIComponent(cst) + '&class=' + encodeURIComponent(cls);
+                            const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                            const j = await r.json();
+
+                            const predibs = (j && typeof j.predibs !== 'undefined') ? j.predibs : 0;
+                            const predcbs = (j && typeof j.predcbs !== 'undefined') ? j.predcbs : 0;
+
+                            $('#REDUCAO_IBS').val(predibs);
+                            $('#REDUCAO_CBS').val(predcbs);
+                        }catch(e){
+                            // silencioso (não quebra cadastro)
+                        }
+                    }
+
+                    $('#CST_IBS_CBS').on('change', atualizarReducao);
+                    $('#CLASS_TRIB_IBS_CBS').on('change', atualizarReducao);
+
+                    // se estiver editando e já tiver valores, tenta preencher ao carregar
+                    setTimeout(atualizarReducao, 250);
+                }
+
+                document.addEventListener('DOMContentLoaded', initSelect2IbsCbs);
+            })();
         </script>
     @endsection
 @endsection

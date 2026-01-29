@@ -927,7 +927,7 @@ class NFCeService{
             $stdCl = new Standardize($response);
             $arr = $stdCl->toArray();
 
-            if($arr['xMotivo'] == 'Autorizado o uso da NF-e'){
+            if($arr['xMotivo'] == 'Autorizado o uso da NFC-e'){
                 if($venda->estado != 'APROVADO'){
 
                     $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();

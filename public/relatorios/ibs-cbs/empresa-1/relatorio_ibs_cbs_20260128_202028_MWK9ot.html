@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Relatório de Conclusão — Atualização IBS/CBS/IS (TIPI x NCM)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#0f1b33; --muted:#9fb2d0; --text:#eaf2ff;
+      --accent:#22c55e; --warn:#f59e0b; --bad:#ef4444; --line:#1d2e52;
+      --paper:#ffffff; --ink:#0b1220;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#071022; color:var(--text);}
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 18px 40px;}
+    .header{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;}
+    .title{font-size:22px;font-weight:800;margin:0;letter-spacing:.2px}
+    .subtitle{margin:6px 0 0;color:var(--muted);font-size:13px}
+    .badge{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;margin-top:14px}
+    .card{grid-column:span 12;background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)); border:1px solid var(--line); border-radius:14px;padding:14px}
+    .card h2{margin:0 0 10px;font-size:14px;letter-spacing:.4px;text-transform:uppercase;color:#cfe2ff}
+    .kpis{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+    .kpi{grid-column:span 3;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .kpi .n{font-size:22px;font-weight:900;margin:0}
+    .kpi .l{margin:4px 0 0;color:var(--muted);font-size:12px}
+    .ok{color:var(--accent)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
+    td,th{border-bottom:1px solid var(--line);padding:10px 10px;vertical-align:top}
+    th{color:#cfe2ff;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.35px}
+    td{color:var(--text);font-size:13px}
+    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px}
+    .hr{height:1px;background:var(--line);margin:10px 0}
+    .list{margin:0;padding-left:18px;color:var(--text)}
+    .list li{margin:6px 0;color:var(--text)}
+    .muted{color:var(--muted)}
+    .foot{margin-top:14px;color:var(--muted);font-size:12px}
+    .print{margin-top:10px}
+    .btn{display:inline-block;margin:0;padding:10px 12px;border-radius:12px;border:1px solid var(--line);color:var(--text);text-decoration:none;background:rgba(255,255,255,.03)}
+    @media print{
+      body{background:var(--paper);color:var(--ink)}
+      .card,.kpi,code,.btn{background:#fff!important;color:#000!important}
+      .card,.kpi,table,td,th{border-color:#ddd!important}
+      .subtitle,.muted,.badge,.foot{color:#333!important}
+      .btn{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1 class="title">Relatório de Conclusão — Atualização IBS/CBS/IS (TIPI x NCM)</h1>
+        <p class="subtitle">
+          Gerado em <strong>28/01/2026 20:20:28</strong> — Responsável: <strong>Sistema</strong>
+        </p>
+      </div>
+      <div>
+        <span class="badge">Empresa ID: <strong>1</strong></span>
+        <span class="badge">Modo: <strong>Conservador (somente campos vazios/nulos)</strong></span>
+        <span class="badge">Chunk: <strong>500</strong></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card" style="grid-column:span 12">
+        <h2>Resumo do processamento</h2>
+        <div class="kpis">
+          <div class="kpi"><p class="n ok">0</p><p class="l">Atualizados</p></div>
+          <div class="kpi"><p class="n">0</p><p class="l">Sem alteração</p></div>
+          <div class="kpi"><p class="n warn">125</p><p class="l">Sem correspondência na TIPI</p></div>
+          <div class="kpi"><p class="n">364 ms</p><p class="l">Duração total</p></div>
+
+          <div class="kpi" style="grid-column:span 6"><p class="n">125</p><p class="l">Registros varridos</p></div>
+          <div class="kpi" style="grid-column:span 6"><p class="n">0</p><p class="l">Elegíveis (com NCM e TIPI)</p></div>
+        </div>
+
+        <div class="hr"></div>
+
+        <table>
+          <tr>
+            <th>Origem</th><th>Destino</th><th>Observação</th>
+          </tr>
+          <tr>
+            <td><strong>Tabela TIPI</strong><br><code>tbtipi_import</code></td>
+            <td><strong>Tabela Produtos</strong><br><code>produtos</code></td>
+            <td class="muted">Casamento por <strong>NCM</strong> (somente dígitos), com carga via cursor para economizar memória.</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="card" style="grid-column:span 6">
+        <h2>O que foi aplicado</h2>
+        <ul class="list">
+          <li>Atualização em massa de campos IBS/CBS/IS em produtos a partir da TIPI (por NCM).</li>
+          <li>Modo selecionado: <strong>Conservador (somente campos vazios/nulos)</strong>.</li>
+          <li>Processamento em lotes com <code>chunkById</code> (reduz consumo de memória e evita carregar tudo de uma vez).</li>
+          <li>Atualização idempotente: só grava quando existe diferença real no registro.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="grid-column:span 6">
+        <h2>Campos-alvo (lógicos)</h2>
+        <table>
+          <tr><th>Campo</th><th>Chave lógica</th></tr>
+          <tr><td>CST IBS/CBS</td><td><code>cst_ibs_cbs</code></td></tr><tr><td>Classificação IBS/CBS</td><td><code>class_trib_ibs_cbs</code></td></tr><tr><td>Redução IBS</td><td><code>reducao_ibs</code></td></tr><tr><td>Redução CBS</td><td><code>reducao_cbs</code></td></tr><tr><td>Flag IS</td><td><code>flag_is</code></td></tr><tr><td>CST IS</td><td><code>cst_is</code></td></tr><tr><td>Alíquota IS</td><td><code>aliq_is</code></td></tr>
+        </table>
+        <p class="foot">Nota: os nomes físicos podem variar (ex.: <code>CST_IBS_CBS</code>), pois o updater resolve automaticamente por candidates.</p>
+      </div>
+
+      <div class="card" style="grid-column:span 12">
+        <h2>O que NÃO foi alterado (para validação manual)</h2>
+        <ul class="list">
+          <li><strong>Registros “Sem alteração”</strong>: já estavam com os valores esperados (ou, no modo conservador, já estavam preenchidos).</li>
+          <li><strong>Registros “Sem TIPI”</strong>: NCM vazio/inválido, ou não houve correspondência para o NCM na TIPI importada.</li>
+          <li><strong>Filtragem por empresa</strong>: quando a tabela possui <code>empresa_id</code>/<code>EMPRESA_ID</code>, o processamento respeita o ID informado.</li>
+          <li><strong>Soft delete</strong>: se existir <code>deleted_at</code>/<code>DELETED_AT</code>, registros deletados não entram no processamento.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="grid-column:span 12">
+        <h2>Checklist de conferência (manual)</h2>
+        <p class="muted">Use este checklist para confirmar visualmente no sistema e/ou via SQL. O objetivo é permitir auditoria rápida sem depender do código.</p>
+        <table>
+  <tr><th>Item</th><th>Como validar</th></tr>
+  <tr>
+    <td><strong>1) Confirmar modo aplicado</strong></td>
+    <td>Modo aplicado: <strong>Conservador (only_missing = true)</strong><br><span class="muted">No modo conservador, um registro pode ter “Sem alteração” mesmo existindo TIPI, se já estiver preenchido.</span></td>
+  </tr>
+  <tr>
+    <td><strong>2) Conferir amostra de produtos</strong></td>
+    <td><code>SELECT * FROM produtos WHERE (empresa_id = 1 OR EMPRESA_ID = 1) LIMIT 50;</code><br><span class="muted">Se sua tabela não tiver empresa_id/EMPRESA_ID, remova o filtro.</span></td>
+  </tr>
+  <tr>
+    <td><strong>3) Conferir amostra TIPI importada</strong></td>
+    <td><code>SELECT * FROM tbtipi_import LIMIT 50;</code></td>
+  </tr>
+  <tr>
+    <td><strong>4) Conferir casamento por NCM</strong></td>
+    <td><code style="white-space:pre-wrap;display:block">/* Procure produtos cujo NCM exista na TIPI */
+SELECT p.*
+FROM produtos p
+JOIN tbtipi_import t ON REPLACE(REPLACE(REPLACE(REPLACE(p.ncm,&#039;.&#039;,&#039;&#039;),&#039;-&#039;,&#039;&#039;),&#039;/&#039;,&#039;&#039;),&#039; &#039;,&#039;&#039;) = REPLACE(REPLACE(REPLACE(REPLACE(t.ncm,&#039;.&#039;,&#039;&#039;),&#039;-&#039;,&#039;&#039;),&#039;/&#039;,&#039;&#039;),&#039; &#039;,&#039;&#039;)
+LIMIT 50;</code><br>
+        <span class="muted">A normalização do NCM considera somente dígitos; ajuste o JOIN conforme seu banco (MySQL/Postgres/Firebird).</span>
+    </td>
+  </tr>
+</table>
+      </div>
+
+      <div class="card print" style="grid-column:span 12">
+        <h2>Impressão / Arquivamento</h2>
+        <p class="muted">Este relatório é adequado para impressão (Ctrl+P) e arquivamento. O arquivo já foi salvo no servidor em <code>public/relatorios/ibs-cbs/empresa-1</code>.</p>
+        <a class="btn" href="javascript:window.print()">Imprimir</a>
+      </div>
+
+      <div class="foot" style="grid-column:span 12">
+        <div class="hr"></div>
+        <div>Relatório gerado automaticamente pelo sistema — IBS/CBS/IS via TIPI (NCM).</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
