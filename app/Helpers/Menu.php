@@ -471,6 +471,10 @@ class Menu {
                         'nome' => 'Pesagens',
                         'rota' => '/pesagens',
                     ],
+                    [
+                        'nome' => 'Monitor Pesagens',
+                        'rota' => '/monitor/pesagens',
+                    ],
                 ],
             ],
             [
