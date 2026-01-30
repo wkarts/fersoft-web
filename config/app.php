@@ -167,6 +167,8 @@ return [
         App\Providers\AppServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
+        Illuminate\Hashing\HashServiceProvider::class,
+        Laravel\Reverb\ReverbServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         //App\Providers\DanfeServiceProvider::class,

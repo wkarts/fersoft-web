@@ -50,6 +50,11 @@
             max-height: 560px;
             overflow-y: auto;
         }
+
+        .monitor-table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 
     <div class="card card-custom gutter-b monitor-card">
@@ -59,44 +64,44 @@
             </div>
         </div>
         <div class="card-body">
-            <div class="row mb-4">
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card card-custom bg-light">
-                        <div class="card-body">
-                            <div class="text-muted">Total do dia (KG)</div>
-                            <div class="font-size-h4 font-weight-bold" id="monitorTotalKg">
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-sm-6 col-lg-3 d-flex">
+                    <div class="card card-custom bg-light h-100 w-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="text-muted text-truncate">Total do dia (KG)</div>
+                            <div class="font-size-h4 font-weight-bold text-nowrap" id="monitorTotalKg">
                                 {{ number_format($resumo['total_kg'] ?? 0, 2, ',', '.') }} kg
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card card-custom bg-light">
-                        <div class="card-body">
-                            <div class="text-muted">Total do dia (R$)</div>
-                            <div class="font-size-h4 font-weight-bold" id="monitorTotalValorVenda">
+                <div class="col-12 col-sm-6 col-lg-3 d-flex">
+                    <div class="card card-custom bg-light h-100 w-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="text-muted text-truncate">Total do dia (R$)</div>
+                            <div class="font-size-h4 font-weight-bold text-nowrap" id="monitorTotalValorVenda">
                                 R$ {{ number_format($resumo['total_valor_venda'] ?? 0, 2, ',', '.') }}
                             </div>
-                            <div class="text-muted mt-2">Vendas</div>
+                            <div class="text-muted mt-2 text-truncate">Vendas</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card card-custom bg-light">
-                        <div class="card-body">
-                            <div class="text-muted">Total do dia (R$)</div>
-                            <div class="font-size-h4 font-weight-bold" id="monitorTotalValorCompra">
+                <div class="col-12 col-sm-6 col-lg-3 d-flex">
+                    <div class="card card-custom bg-light h-100 w-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="text-muted text-truncate">Total do dia (R$)</div>
+                            <div class="font-size-h4 font-weight-bold text-nowrap" id="monitorTotalValorCompra">
                                 R$ {{ number_format($resumo['total_valor_compra'] ?? 0, 2, ',', '.') }}
                             </div>
-                            <div class="text-muted mt-2">Compras</div>
+                            <div class="text-muted mt-2 text-truncate">Compras</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card card-custom bg-light">
-                        <div class="card-body">
-                            <div class="text-muted">Pesagens hoje</div>
-                            <div class="font-size-h4 font-weight-bold" id="monitorTotalPesagens">
+                <div class="col-12 col-sm-6 col-lg-3 d-flex">
+                    <div class="card card-custom bg-light h-100 w-100">
+                        <div class="card-body d-flex flex-column">
+                            <div class="text-muted text-truncate">Pesagens hoje</div>
+                            <div class="font-size-h4 font-weight-bold text-nowrap" id="monitorTotalPesagens">
                                 {{ $resumo['total_pesagens'] ?? 0 }}
                             </div>
                         </div>
@@ -147,8 +152,8 @@
 
             <div class="tab-content mt-4">
                 <div class="tab-pane fade show active" id="tab-monitor-eventos" role="tabpanel">
-                    <div class="table-responsive monitor-feed">
-                        <table class="table table-bordered table-hover monitor-table" id="monitorTabela">
+                    <div class="table-responsive monitor-feed monitor-table-wrapper">
+                        <table class="table table-sm align-middle monitor-table text-nowrap" id="monitorTabela">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Hora</th>
@@ -212,8 +217,8 @@
                 </div>
 
                 <div class="tab-pane fade" id="tab-monitor-produtos" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover monitor-table">
+                    <div class="table-responsive monitor-table-wrapper">
+                        <table class="table table-sm align-middle monitor-table text-nowrap">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Produto</th>
@@ -249,8 +254,8 @@
                 </div>
 
                 <div class="tab-pane fade" id="tab-monitor-parceiros" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover monitor-table">
+                    <div class="table-responsive monitor-table-wrapper">
+                        <table class="table table-sm align-middle monitor-table text-nowrap">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Fornecedor/Cliente</th>
