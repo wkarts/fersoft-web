@@ -11,13 +11,14 @@ use App\Helpers\EncryptionHelper;
 class Usuario extends Authenticatable
 {
     use Notifiable;
-
+    protected $table = 'usuarios';
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
     protected $fillable = [
+        'id',
         'nome',
         'senha',
         'login',
@@ -127,4 +128,8 @@ class Usuario extends Authenticatable
         return ! empty($this->otp_secret);
     }
 
+    public function getAuthPassword()
+    {
+        return $this->senha; // IMPORTANTÍSSIMO: Laravel Auth procura "password" por padrão
+    }
 }

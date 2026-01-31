@@ -507,9 +507,9 @@
             key: monitorConfig.pusherKey,
             cluster: monitorConfig.pusherCluster,
             wsHost: monitorConfig.pusherHost || window.location.hostname,
-            wsPort: Number(monitorConfig.pusherPort) || 80,
-            wssPort: Number(monitorConfig.pusherPort) || 443,
-            forceTLS: (monitorConfig.pusherScheme || 'https') === 'https',
+            wsPort: Number(monitorConfig.pusherPort) || 9000,
+            wssPort: Number(monitorConfig.pusherPort) || 9000,
+            forceTLS: (monitorConfig.pusherScheme || 'http') === 'https',
             enabledTransports: ['ws', 'wss'],
             authEndpoint: '{{ url('/broadcasting/auth') }}',
             auth: {
