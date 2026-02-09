@@ -87,6 +87,35 @@ function aplicarReformaItem(item){
 	});
 }
 
+function aplicarReformaFromServer(item, data){
+	if(!item || !data) return;
+
+	item.cst_ibs_cbs = data.cst_ibs_cbs || item.cst_ibs_cbs;
+	item.class_trib_ibs_cbs = data.class_trib_ibs_cbs || item.class_trib_ibs_cbs;
+	item.bc_ibs_cbs = data.bc_ibs_cbs || 0;
+	item.valor_ibs = data.valor_ibs || 0;
+	item.valor_ibs_uf = data.valor_ibs_uf || 0;
+	item.valor_ibs_mun = data.valor_ibs_mun || 0;
+	item.aliq_ibs_uf = data.aliq_ibs_uf || 0;
+	item.aliq_ibs_mun = data.aliq_ibs_mun || 0;
+	item.aliq_cbs = data.aliq_cbs || 0;
+	item.valor_cbs = data.valor_cbs || 0;
+	item.is_bc = data.is_bc || 0;
+	item.is_aliq = data.is_aliq || 0;
+	item.is_valor = data.is_valor || 0;
+	item.flag_is = data.flag_is || item.flag_is;
+	item.flag_combustivel = data.flag_combustivel || item.flag_combustivel;
+	item.anp = data.anp || item.anp;
+
+	item.ibs_bc = item.bc_ibs_cbs;
+	item.ibs_vlr = item.valor_ibs;
+	item.ibs_aliq = (item.aliq_ibs_uf || 0) + (item.aliq_ibs_mun || 0);
+	item.cbs_bc = item.bc_ibs_cbs;
+	item.cbs_vlr = item.valor_cbs;
+	item.cbs_aliq = item.aliq_cbs;
+	item.is_vlr = item.is_valor;
+}
+
 function convertData(data){
 	let d = data.split('-');
 	return d[2] + '/' + d[1] + '/' + d[0];
@@ -132,6 +161,11 @@ $(function () {
 			addItemTable(rs.produto.id, n, qtd, rs.valor, rs.altura, rs.largura,
 				rs.profundidade, rs.esquerda, rs.direita, rs.superior, rs.inferior, rs.acrescimo_perca,
 				rs.x_pedido, rs.num_item_pedido, rs.produto.peso);
+
+			let lastItem = ITENS[ITENS.length - 1];
+			if(lastItem){
+				aplicarReformaFromServer(lastItem, rs);
+			}
 		})
 
 		VENDA.referencias.map((rs) => {
@@ -3418,8 +3452,6 @@ function validaFrete(call){
             rtTick();
         });
     })();
-
-
 
 
 

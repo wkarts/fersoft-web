@@ -185,10 +185,6 @@ class VendaController extends Controller
             $rt->fillItemFromProdutoAliquota($this->empresa_id, $produtoId, $item);
             $rt->calcularItem($item, $this->empresa_id, null);
 
-            if (!$rt->shouldApply($this->empresa_id)) {
-                $rt->calcularItem($item, $this->empresa_id, 'REMESSA');
-            }
-
             $aliqIbsTotal = (float)($item->aliq_ibs_uf ?? 0) + (float)($item->aliq_ibs_mun ?? 0);
 
             return response()->json([
@@ -1061,11 +1057,9 @@ class VendaController extends Controller
 				]);
 
                 $rt = app(ReformaTributariaService::class);
-                $applyRt = $rt->shouldApply($this->empresa_id);
+                $applyRt = true;
 
-                if($applyRt){
-                    $this->rtResetTotals();
-                }
+                $this->rtResetTotals();
 
 				if($venda['credito_troca']){
 					$this->recalcularCredito($desconto, $venda['cliente']);
@@ -1158,16 +1152,12 @@ class VendaController extends Controller
                     ];
 
                     // >>> aplica RT no item (sem quebrar se não existirem colunas)
-                    if($applyRt){
-                        $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
-                    }
+                $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
 
                     ItemVenda::create($itemArr);
 
                     // >>> acumula totais de RT para depois gravar na venda
-                    if($applyRt){
-                        $this->rtAccumulateFromItemArray($itemArr);
-                    }
+                $this->rtAccumulateFromItemArray($itemArr);
 
 
 					$prod = Produto::where('id', $i['codigo'])
@@ -1207,9 +1197,7 @@ class VendaController extends Controller
 				}
 
                 // >>> grava totais RT na venda (sem quebrar se não existirem colunas)
-                if($applyRt){
-                    $this->applyRtToVendaTotals($result);
-                }
+                $this->applyRtToVendaTotals($result);
 
 				if(sizeof($referencias) > 0){
 					foreach($referencias as $r){
@@ -1481,11 +1469,8 @@ class VendaController extends Controller
                 $request = $payload;
 
                 $rt = app(ReformaTributariaService::class);
-                $applyRt = $rt->shouldApply($this->empresa_id);
-
-                if($applyRt){
-                    $this->rtResetTotals();
-                }
+                $applyRt = true;
+                $this->rtResetTotals();
 
                 $valorFrete = str_replace(".", "", $request['valorFrete'] ?? 0);
                 $valorFrete = str_replace(",", ".", $valorFrete );
@@ -1651,15 +1636,11 @@ class VendaController extends Controller
                         'valor_custo' => $produto->valor_compra
                     ];
 
-                    if($applyRt){
-                        $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
-                    }
+                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
 
                     ItemVenda::create($itemArr);
 
-                    if($applyRt){
-                        $this->rtAccumulateFromItemArray($itemArr);
-                    }
+                    $this->rtAccumulateFromItemArray($itemArr);
 
                     $prod = Produto
                     ::where('id', $i['codigo'])
@@ -1700,9 +1681,7 @@ class VendaController extends Controller
                     }
                 }
 
-                if($applyRt){
-                    $this->applyRtToVendaTotals($venda);
-                }
+                $this->applyRtToVendaTotals($venda);
 
                 $this->deleteChaves($venda);
 

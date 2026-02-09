@@ -78,6 +78,54 @@
 		margin-top: 7px;
 		font-size: 14px;
 	}
+
+	/* =========================
+	   REFORMA (VISUALIZAÇÃO)
+	   - NÃO EDITÁVEL
+	   - TAMANHOS MENORES
+	   ========================= */
+	.rt-card{
+		border: 1px dashed rgba(0,0,0,.18);
+		border-radius: 6px;
+		padding: 8px 8px 0 8px;
+		margin-top: 6px;
+	}
+	.rt-title{
+		display:flex;
+		align-items:center;
+		justify-content:space-between;
+		margin: 0 0 8px 0;
+	}
+	.rt-title h6{
+		margin:0;
+		font-weight:700;
+		letter-spacing:.2px;
+		font-size: 12px;
+	}
+	.rt-badge{
+		font-size: 10px;
+		padding: 1px 6px;
+		border-radius: 20px;
+		background: rgba(54,153,255,.10);
+		color: #3699FF;
+		font-weight: 700;
+	}
+	.rt-mini label{
+		font-size: 10px !important;
+		margin-bottom: 3px !important;
+		opacity: .85;
+	}
+	.rt-mini .form-control{
+		height: calc(1.05em + .65rem + 2px) !important;
+		font-size: 11px !important;
+		padding: .20rem .38rem !important;
+	}
+	.rt-mini .form-group{
+		margin-bottom: 8px !important;
+	}
+
+	.rt-row-tight{ margin-left:-6px; margin-right:-6px; }
+	.rt-row-tight > [class*="col-"]{ padding-left:6px; padding-right:6px; }
 </style>
 <div class="card card-custom gutter-b">
 	<div class="card-body">
@@ -380,6 +428,104 @@
 													</div>
 													<h6 class="mt-2">Quantidade de itens: <strong id="soma-quantidade" class="text-info">0</strong></h6>
 													<h6 class="mt-2">Valor total de produtos: <strong id="soma-produtos" class="text-info">R$ 0,00</strong></h6>
+
+													<!-- =========================
+														 REFORMA TRIBUTÁRIA • RESUMO (2 CARDS)
+														 - 1) Totais IBS/CBS/IS + NBS (GERAL)
+														 - 2) Detalhe do item selecionado (POR ITEM)
+														 Observação: apenas visualização (readonly). Os valores são preenchidos via JS.
+														 ========================= -->
+													<div class="row" id="rt-reforma-row" style="margin-top: 6px;">
+														<div class="col-lg-6 col-md-12">
+															<div class="rt-card rt-mini" id="rt-visao-geral">
+																<div class="rt-title">
+																	<h6>REFORMA • VISÃO GERAL</h6>
+																	<span class="rt-badge">Somente leitura</span>
+																</div>
+
+																<div class="row">
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Base IBS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_ibs_bc" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Valor IBS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_ibs_vlr" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Base CBS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_cbs_bc" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Valor CBS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_cbs_vlr" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Base IS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_is_bc" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Valor IS (Total)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_is_vlr" value="">
+																	</div>
+
+																	<div class="form-group col-12" style="margin-bottom: 8px !important;">
+																		<label class="col-form-label">NBS (Resumo)</label>
+																		<input type="text" readonly class="form-control" id="rt_total_nbs_resumo" value="">
+																	</div>
+																</div>
+															</div>
+														</div>
+
+														<div class="col-lg-6 col-md-12">
+															<div class="rt-card rt-mini" id="rt-visao-item">
+																<div class="rt-title">
+																	<h6>REFORMA • ITEM SELECIONADO</h6>
+																	<span class="rt-badge" id="rt_item_badge">Item: -</span>
+																</div>
+
+																<div class="row">
+																	<div class="form-group col-12" style="margin-bottom: 8px !important;">
+																		<label class="col-form-label">Classificação IBS/CBS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_classificacao" value="">
+																	</div>
+
+																	<div class="form-group col-6">
+																		<label class="col-form-label">% IBS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_ibs_aliq" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Vlr IBS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_ibs_vlr" value="">
+																	</div>
+
+																	<div class="form-group col-6">
+																		<label class="col-form-label">% CBS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_cbs_aliq" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Vlr CBS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_cbs_vlr" value="">
+																	</div>
+
+																	<div class="form-group col-6">
+																		<label class="col-form-label">% IS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_is_aliq" value="">
+																	</div>
+																	<div class="form-group col-6">
+																		<label class="col-form-label">Vlr IS</label>
+																		<input type="text" readonly class="form-control" id="rt_item_is_vlr" value="">
+																	</div>
+
+																	<div class="form-group col-12" style="margin-bottom: 8px !important;">
+																		<label class="col-form-label">NBS (Item)</label>
+																		<input type="text" readonly class="form-control" id="rt_item_nbs" value="">
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+													<!-- /REFORMA TRIBUTÁRIA • RESUMO (2 CARDS) -->
 												</div>
 											</div>
 
@@ -1991,4 +2137,193 @@
 		</div>
 	</div>
 </div>
+<script>
+(function(){
+    function rtParseNumber(v){
+        if(v === null || v === undefined) return 0;
+        if(typeof v === 'number') return isFinite(v) ? v : 0;
+        v = String(v).trim();
+        if(!v) return 0;
+
+        // remove currency and spaces
+        v = v.replace(/\s+/g,'').replace(/[R$\u00A0]/g,'');
+        // keep digits, dot, comma, minus
+        v = v.replace(/[^0-9\-,.]/g,'');
+
+        // BR format: 1.234,56 -> 1234.56
+        var hasComma = v.indexOf(',') !== -1;
+        var hasDot = v.indexOf('.') !== -1;
+
+        if(hasComma && hasDot){
+            // assume dot thousands, comma decimal
+            v = v.replace(/\./g,'').replace(',', '.');
+        }else if(hasComma && !hasDot){
+            v = v.replace(',', '.');
+        }
+        var n = parseFloat(v);
+        return isFinite(n) ? n : 0;
+    }
+
+    function rtFmtMoney(n){
+        n = rtParseNumber(n);
+        try{
+            return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }catch(e){
+            return 'R$ ' + (Math.round(n*100)/100).toFixed(2).replace('.',',');
+        }
+    }
+
+    function rtFmtPct(n){
+        n = rtParseNumber(n);
+        try{
+            return n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '%';
+        }catch(e){
+            return (Math.round(n*100)/100).toFixed(2).replace('.',',') + '%';
+        }
+    }
+
+    function rtFirst(obj, keys, def){
+        if(!obj) return def;
+        for(var i=0;i<keys.length;i++){
+            var k = keys[i];
+            if(Object.prototype.hasOwnProperty.call(obj,k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== ''){
+                return obj[k];
+            }
+        }
+        return def;
+    }
+
+    function rtGetItens(){
+        // Prefer o array global do JS da tela
+        if(Array.isArray(window.ITENS)) return window.ITENS;
+
+        // fallback: tenta montar algo mínimo a partir da tabela (sem reforma)
+        var trs = document.querySelectorAll('#body tr');
+        var fake = [];
+        trs.forEach(function(tr){
+            fake.push({});
+        });
+        return fake;
+    }
+
+    function rtUpdateTotalCard(){
+        var itens = rtGetItens();
+
+        var sumIbsBc=0, sumIbsVlr=0, sumCbsBc=0, sumCbsVlr=0, sumIsBc=0, sumIsVlr=0;
+        var nbsSet = {};
+        for(var i=0;i<itens.length;i++){
+            var it = itens[i] || {};
+            sumIbsBc  += rtParseNumber(rtFirst(it, ['rt_ibs_bc','ibs_bc','vbcibs','bc_ibs','ibsBase'], 0));
+            sumIbsVlr += rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','vibs','valor_ibs','ibs'], 0));
+            sumCbsBc  += rtParseNumber(rtFirst(it, ['rt_cbs_bc','cbs_bc','vbccbs','bc_cbs','cbsBase'], 0));
+            sumCbsVlr += rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','vcbs','valor_cbs','cbs'], 0));
+            sumIsBc   += rtParseNumber(rtFirst(it, ['rt_is_bc','is_bc','vbcis','bc_is','isBase'], 0));
+            sumIsVlr  += rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','vis','valor_is','is'], 0));
+
+            var nbs = rtFirst(it, ['nbs','NBS','nbs_codigo','nbsCodigo','codigo_nbs'], '');
+            if(nbs) nbsSet[String(nbs)] = true;
+        }
+
+        var el;
+        el = document.getElementById('rt_total_ibs_bc');  if(el) el.value = rtFmtMoney(sumIbsBc);
+        el = document.getElementById('rt_total_ibs_vlr'); if(el) el.value = rtFmtMoney(sumIbsVlr);
+        el = document.getElementById('rt_total_cbs_bc');  if(el) el.value = rtFmtMoney(sumCbsBc);
+        el = document.getElementById('rt_total_cbs_vlr'); if(el) el.value = rtFmtMoney(sumCbsVlr);
+        el = document.getElementById('rt_total_is_bc');   if(el) el.value = rtFmtMoney(sumIsBc);
+        el = document.getElementById('rt_total_is_vlr');  if(el) el.value = rtFmtMoney(sumIsVlr);
+
+        var nbsKeys = Object.keys(nbsSet);
+        var nbsResumo = nbsKeys.length ? ('Códigos: ' + nbsKeys.slice(0,6).join(', ') + (nbsKeys.length>6 ? ' …' : '') + ' | Qtd: ' + nbsKeys.length) : '';
+        el = document.getElementById('rt_total_nbs_resumo'); if(el) el.value = nbsResumo;
+    }
+
+    function rtFillItemCard(it, index){
+        it = it || {};
+        var badge = document.getElementById('rt_item_badge');
+        if(badge) badge.textContent = 'Item: ' + (index !== null && index !== undefined ? (index+1) : '-');
+
+        var el;
+        el = document.getElementById('rt_item_classificacao');
+        if(el) el.value = rtFirst(it, ['classificacao_ibs_cbs','ibs_cbs_classificacao','class_trib_ibs_cbs','class_trib','classificacao','rt_item_classificacao'], '');
+
+        el = document.getElementById('rt_item_ibs_aliq'); if(el) el.value = rtFmtPct(rtFirst(it, ['rt_ibs_aliq','ibs_aliq','pIbs','aliq_ibs','ibsAliq'], 0));
+        el = document.getElementById('rt_item_ibs_vlr');  if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','vIbs','valor_ibs','ibs'], 0));
+
+        el = document.getElementById('rt_item_cbs_aliq'); if(el) el.value = rtFmtPct(rtFirst(it, ['rt_cbs_aliq','cbs_aliq','pCbs','aliq_cbs','cbsAliq'], 0));
+        el = document.getElementById('rt_item_cbs_vlr');  if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','vCbs','valor_cbs','cbs'], 0));
+
+        el = document.getElementById('rt_item_is_aliq');  if(el) el.value = rtFmtPct(rtFirst(it, ['rt_is_aliq','is_aliq','pIs','aliq_is','isAliq'], 0));
+        el = document.getElementById('rt_item_is_vlr');   if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_is_vlr','is_vlr','vIs','valor_is','is'], 0));
+
+        el = document.getElementById('rt_item_nbs');
+        if(el) el.value = rtFirst(it, ['nbs','NBS','nbs_codigo','nbsCodigo','codigo_nbs'], '');
+    }
+
+    function rtBindRowClick(){
+        var tbody = document.getElementById('body');
+        if(!tbody) return;
+
+        tbody.addEventListener('click', function(ev){
+            var tr = ev.target;
+            while(tr && tr.tagName !== 'TR') tr = tr.parentElement;
+            if(!tr) return;
+
+            // tenta descobrir o índice pelo 1º TD (Item)
+            var tds = tr.querySelectorAll('td');
+            var idx = null;
+            if(tds && tds.length){
+                var n = parseInt(String(tds[0].innerText || '').trim(), 10);
+                if(!isNaN(n) && n > 0) idx = n-1;
+            }
+
+            var itens = rtGetItens();
+            if(idx !== null && idx >= 0 && idx < itens.length){
+                rtFillItemCard(itens[idx], idx);
+            }else{
+                // fallback: seleciona o primeiro, se existir
+                if(itens.length) rtFillItemCard(itens[0], 0);
+            }
+        }, true);
+    }
+
+    // Atualização contínua (leve) sem depender do JS existente
+    var lastSig = null;
+    function rtTick(){
+        try{
+            var itens = rtGetItens();
+            var sig = '';
+            if(Array.isArray(window.ITENS)){
+                sig = 'A|' + itens.length;
+                for(var i=0;i<Math.min(itens.length, 10);i++){
+                    var it = itens[i] || {};
+                    sig += '|' + rtParseNumber(rtFirst(it, ['subtotal','SubTotal','valor_total','total'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','valor_ibs','ibs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','valor_cbs','cbs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','valor_is','is'], 0));
+                }
+            }else{
+                var rows = document.querySelectorAll('#body tr').length;
+                sig = 'D|' + rows;
+            }
+            if(sig !== lastSig){
+                lastSig = sig;
+                rtUpdateTotalCard();
+
+                // se não tem item selecionado ainda, tenta preencher o primeiro
+                var badge = document.getElementById('rt_item_badge');
+                if(badge && (badge.textContent === 'Item: -' || badge.textContent === '' || badge.textContent === 'Item:')){
+                    var itens2 = rtGetItens();
+                    if(itens2.length) rtFillItemCard(itens2[0], 0);
+                }
+            }
+        }catch(e){}
+        setTimeout(rtTick, 700);
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        rtBindRowClick();
+        rtTick();
+    });
+})();
+</script>
 @endsection
