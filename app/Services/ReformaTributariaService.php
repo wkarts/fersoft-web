@@ -10,33 +10,33 @@ use App\Models\ReformaTributaria\ClassTribIbsCbs;
 class ReformaTributariaService
 {
     /**
-     * Decide se calcula Reforma Tributária para a empresa.
+     * Regra oficial:
+     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.ctr = 1
+     * - Homologação (config_notas.ambiente=2): pode aplicar mesmo ctr != 1, desde que campos RT estejam preenchidos
      */
     public function shouldApply(int $empresaId): bool
     {
-        $candidates = [
-            ['table' => 'empresas',     'col' => 'reforma_tributaria'],
-            ['table' => 'empresas',     'col' => 'calcula_reforma_tributaria'],
-            ['table' => 'config_notas', 'col' => 'reforma_tributaria'],
-            ['table' => 'tributacaos',  'col' => 'reforma_tributaria'],
-            ['table' => 'tributacoes',  'col' => 'reforma_tributaria'],
-        ];
+        // 1) Ambiente (1 produção, 2 homologação)
+        $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
 
-        foreach ($candidates as $c) {
-            if (Schema::hasTable($c['table']) && Schema::hasColumn($c['table'], $c['col'])) {
-                $whereCol = $this->resolveEmpresaWhereColumn($c['table']);
-                if ($whereCol === null) continue;
+        // 2) CTR na tributacaos (se existir)
+        $ctr = $this->getCtrEmpresa($empresaId); // null se não existir coluna
 
-                $val = DB::table($c['table'])
-                    ->where($whereCol, $empresaId)
-                    ->value($c['col']);
-
-                if ($val !== null) {
-                    return (int)$val === 1 || strtoupper((string)$val) === 'S' || (bool)$val === true;
-                }
-            }
+        // 3) Em produção: exige ctr=1
+        if ((int)$ambiente === 1) {
+            if ($ctr === null) return false;
+            return (int)$ctr === 1;
         }
 
+        // 4) Em homologação: aplica se tiver parametrização da RT preenchida
+        if ((int)$ambiente === 2) {
+            if ($this->hasRtFieldsFilled($empresaId)) return true;
+
+            // fallback: permite via ENV, se quiser ligar manualmente
+            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+        }
+
+        // fallback geral
         return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
     }
 
@@ -85,28 +85,59 @@ class ReformaTributariaService
         return str_pad((string)$n, 3, '0', STR_PAD_LEFT);
     }
 
+    // class trib com 6 dígitos (conforme pedido)
     public function fmtClassTrib6($v): string
     {
         $n = $this->toInt($v, 0);
         return str_pad((string)$n, 6, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Set tolerante: se campo não existir no case informado,
+     * tenta lowercase (padrão novo do seu banco).
+     * Para array, grava também a chave lowercase (pra bater com create()).
+     */
     protected function setIfExists(&$modelOrArray, string $field, $value): void
     {
+        // ARRAY: grava também em lowercase
         if (is_array($modelOrArray)) {
+
+            foreach (array_keys($modelOrArray) as $k) {
+                if (strcasecmp($k, $field) === 0) {
+                    $modelOrArray[$k] = $value;
+                    return;
+                }
+            }
+
             $modelOrArray[$field] = $value;
+
+            $lower = strtolower($field);
+            if ($lower !== $field) {
+                $modelOrArray[$lower] = $value;
+            }
+
             return;
         }
 
         if (!is_object($modelOrArray)) return;
 
+        $targetField = $field;
+
         if (method_exists($modelOrArray, 'getTable')) {
             $table = $modelOrArray->getTable();
-            if (!Schema::hasColumn($table, $field)) return;
+
+            if (!Schema::hasColumn($table, $targetField)) {
+                $lower = strtolower($targetField);
+                if (Schema::hasColumn($table, $lower)) {
+                    $targetField = $lower;
+                } else {
+                    return;
+                }
+            }
         }
 
         try {
-            $modelOrArray->$field = $value;
+            $modelOrArray->$targetField = $value;
         } catch (\Throwable $e) {
             // ignora
         }
@@ -114,10 +145,28 @@ class ReformaTributariaService
 
     protected function readField($item, string $field)
     {
-        if (is_array($item)) return $item[$field] ?? null;
-        if (is_object($item)) {
-            try { return $item->$field ?? $item->getAttribute($field); } catch (\Throwable $e) { return null; }
+        if (is_array($item)) {
+            if (array_key_exists($field, $item)) return $item[$field];
+            $lc = strtolower($field);
+            if (array_key_exists($lc, $item)) return $item[$lc];
+            return null;
         }
+
+        if (is_object($item)) {
+            try {
+                $v = $item->$field ?? $item->getAttribute($field);
+                if ($v !== null) return $v;
+            } catch (\Throwable $e) {}
+
+            $lc = strtolower($field);
+            try {
+                $v = $item->$lc ?? $item->getAttribute($lc);
+                if ($v !== null) return $v;
+            } catch (\Throwable $e) {}
+
+            return null;
+        }
+
         return null;
     }
 
@@ -125,12 +174,26 @@ class ReformaTributariaService
     {
         foreach ($candidates as $f) {
             $val = null;
-            if (is_array($modelOrArray) && array_key_exists($f, $modelOrArray)) $val = $modelOrArray[$f];
+
+            if (is_array($modelOrArray)) {
+                if (array_key_exists($f, $modelOrArray)) $val = $modelOrArray[$f];
+                else {
+                    $lc = strtolower($f);
+                    if (array_key_exists($lc, $modelOrArray)) $val = $modelOrArray[$lc];
+                }
+            }
+
             if (is_object($modelOrArray)) {
                 try { $val = $modelOrArray->$f ?? ($modelOrArray->getAttribute($f) ?? null); } catch (\Throwable $e) {}
+                if ($val === null) {
+                    $lc = strtolower($f);
+                    try { $val = $modelOrArray->$lc ?? ($modelOrArray->getAttribute($lc) ?? null); } catch (\Throwable $e) {}
+                }
             }
+
             if ($val !== null && trim((string)$val) !== '') return $this->toFloat($val, $default);
         }
+
         return $default;
     }
 
@@ -146,32 +209,124 @@ class ReformaTributariaService
     protected function rowVal(?object $row, array $cands)
     {
         if (!$row) return null;
+
         foreach ($cands as $c) {
             if (property_exists($row, $c)) {
                 $v = $row->{$c};
                 if ($v !== null && trim((string)$v) !== '') return $v;
             }
+
             $lc = strtolower($c);
             if (property_exists($row, $lc)) {
                 $v = $row->{$lc};
                 if ($v !== null && trim((string)$v) !== '') return $v;
             }
+
             $uc = strtoupper($c);
             if (property_exists($row, $uc)) {
                 $v = $row->{$uc};
                 if ($v !== null && trim((string)$v) !== '') return $v;
             }
         }
+
         return null;
     }
 
+    // ---------------------------------------------------------------------
+    // Ambientes / CTR / Parametrização
+    // ---------------------------------------------------------------------
+
+    protected function getAmbienteEmpresa(int $empresaId): int
+    {
+        // config_notas.ambiente: 1 produção, 2 homologação
+        if (!Schema::hasTable('config_notas')) return 1;
+        if (!Schema::hasColumn('config_notas', 'ambiente')) {
+            // tenta variações caso tenha sido padronizado
+            if (!Schema::hasColumn('config_notas', 'AMBIENTE')) return 1;
+            $col = 'AMBIENTE';
+        } else {
+            $col = 'ambiente';
+        }
+
+        $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
+        if ($whereCol === null) return 1;
+
+        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
+        if ($val === null || trim((string)$val) === '') return 1;
+
+        return (int)$val;
+    }
+
+    protected function getCtrEmpresa(int $empresaId): ?int
+    {
+        if (!Schema::hasTable('tributacaos')) return null;
+
+        $col = null;
+        if (Schema::hasColumn('tributacaos', 'ctr')) $col = 'ctr';
+        else if (Schema::hasColumn('tributacaos', 'CTR')) $col = 'CTR';
+
+        if ($col === null) return null;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+        if ($whereCol === null) return null;
+
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($col);
+        if ($val === null || trim((string)$val) === '') return null;
+
+        return (int)$val;
+    }
+
     /**
-     * Defaults (buscaProduto), mas configuráveis por ENV/colunas.
+     * Em homologação: aplica se os campos RT estiverem preenchidos na tributacaos.
      */
+    protected function hasRtFieldsFilled(int $empresaId): bool
+    {
+        if (!Schema::hasTable('tributacaos')) return false;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+        if ($whereCol === null) return false;
+
+        $cols = [
+            'aliq_cbs',
+            'aliq_ibs_uf',
+            'aliq_ibs_mun',
+            'cst_ibs_cbs',
+            'class_trib_ibs_cbs',
+        ];
+
+        $select = [];
+        foreach ($cols as $c) {
+            if (Schema::hasColumn('tributacaos', $c)) $select[] = $c;
+            else if (Schema::hasColumn('tributacaos', strtoupper($c))) $select[] = strtoupper($c);
+        }
+
+        if (!$select) return false;
+
+        $row = DB::table('tributacaos')->where($whereCol, $empresaId)->select($select)->first();
+        if (!$row) return false;
+
+        $arr = (array)$row;
+
+        // precisa estar preenchido de forma consistente
+        $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? ($arr['ALIQ_CBS'] ?? null), 0.0);
+        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? ($arr['ALIQ_IBS_UF'] ?? null), 0.0);
+        $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? ($arr['ALIQ_IBS_MUN'] ?? null), 0.0);
+
+        $cst = trim((string)($arr['cst_ibs_cbs'] ?? ($arr['CST_IBS_CBS'] ?? '')));
+        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ($arr['CLASS_TRIB_IBS_CBS'] ?? '')));
+
+        return ($aliqCbs > 0 || $aliqUf > 0 || $aliqMun > 0) && ($cst !== '' || $ct !== '');
+    }
+
+    // ---------------------------------------------------------------------
+    // Defaults (buscaProduto), mas configuráveis por ENV/colunas.
+    // ---------------------------------------------------------------------
+
     protected function aliquotaPadrao(int $empresaId, string $tipo): float
     {
         $tipo = strtoupper(trim($tipo));
 
+        // defaults corretos conforme pedido
         $defaultsEnv = [
             'CBS'     => $this->toFloat(env('REFORMA_ALIQ_CBS', 0.9000), 0.9000),
             'IBS_UF'  => $this->toFloat(env('REFORMA_ALIQ_IBS_UF', 0.1000), 0.1000),
@@ -180,27 +335,19 @@ class ReformaTributariaService
 
         $default = $defaultsEnv[$tipo] ?? 0.0;
 
+        // Prioridade: tributacaos (conforme sua regra)
         $map = [
             'CBS' => [
-                ['table' => 'empresas', 'col' => 'ALIQ_CBS'],
-                ['table' => 'empresas', 'col' => 'aliq_cbs'],
-                ['table' => 'empresas', 'col' => 'aliquota_cbs'],
-                ['table' => 'config_notas', 'col' => 'ALIQ_CBS'],
-                ['table' => 'config_notas', 'col' => 'aliq_cbs'],
+                ['table' => 'tributacaos', 'col' => 'aliq_cbs'],
+                ['table' => 'tributacaos', 'col' => 'ALIQ_CBS'],
             ],
             'IBS_UF' => [
-                ['table' => 'empresas', 'col' => 'ALIQ_IBS_UF'],
-                ['table' => 'empresas', 'col' => 'aliq_ibs_uf'],
-                ['table' => 'empresas', 'col' => 'aliquota_ibs_uf'],
-                ['table' => 'config_notas', 'col' => 'ALIQ_IBS_UF'],
-                ['table' => 'config_notas', 'col' => 'aliq_ibs_uf'],
+                ['table' => 'tributacaos', 'col' => 'aliq_ibs_uf'],
+                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_UF'],
             ],
             'IBS_MUN' => [
-                ['table' => 'empresas', 'col' => 'ALIQ_IBS_MUN'],
-                ['table' => 'empresas', 'col' => 'aliq_ibs_mun'],
-                ['table' => 'empresas', 'col' => 'aliquota_ibs_mun'],
-                ['table' => 'config_notas', 'col' => 'ALIQ_IBS_MUN'],
-                ['table' => 'config_notas', 'col' => 'aliq_ibs_mun'],
+                ['table' => 'tributacaos', 'col' => 'aliq_ibs_mun'],
+                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_MUN'],
             ],
         ];
 
@@ -250,14 +397,16 @@ class ReformaTributariaService
         $cst       = $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']);
         $classTrib = $this->rowVal($row, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']);
 
-        $redIbs = $this->rowVal($row, ['REDUCAO_IBS','reducao_ibs']);
-        $redCbs = $this->rowVal($row, ['REDUCAO_CBS','reducao_cbs']);
+        // reduções (aceita também perc_red_ibs/perc_red_cbs)
+        $redIbs = $this->rowVal($row, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']);
+        $redCbs = $this->rowVal($row, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']);
 
         $flagIs = $this->rowVal($row, ['FLAG_IS','flag_is']);
         $aliqIs = $this->rowVal($row, ['ALIQ_IS','aliq_is']);
 
         $anp = $this->rowVal($row, ['codigo_anp','CODIGO_ANP','PROD_CPRODANP','cProdAnp','ANP']);
 
+        // mantém seus nomes atuais (setIfExists resolve o case)
         $this->setIfExists($item, 'IS_ALIQ', $this->toFloat($aliqIs, 0.0));
         $this->setIfExists($item, 'CST_IBS_CBS', $this->fmtCst3($cst ?? ''));
         $this->setIfExists($item, 'CLASS_TRIB_IBS_CBS', $this->fmtClassTrib6($classTrib ?? ''));
@@ -282,21 +431,20 @@ class ReformaTributariaService
 
         // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
         $zeroFloat = [
-            'is_bc','is_aliq_espec','is_qtd_trib','is_valor',
-            'bc_ibs_cbs','valor_ibs','valor_ibs_uf','perc_dif_ibs_uf','valor_dif_ibs_uf','valor_dif_ibs_uf_devtrib','aliq_efet_ibs_uf',
-            'valor_ibs_mun','perc_dif_ibs_mun','valor_dif_ibs_mun','valor_dif_ibs_mun_trib','aliq_efet_ibs_mun',
-            'valor_cbs','perc_dif_cbs','valor_dif_cbs','valor_dif_cbs_devtrib','aliq_efet_cbs',
-            'trib_reg_aliq_efet_ibs_uf','trib_reg_valor_ibs_uf',
-            'trib_reg_aliq_efet_ibs_mun','trib_reg_valor_ibs_mun',
-            'trib_reg_aliq_efet_cbs','trib_reg_valor_cbs',
-            'perc_cred_pres_ibs','valor_cred_pres_ibs','valor_cred_pres_cond_sus_ibs',
-            'perc_cred_pres_cbs','valor_cred_pres_cbs','valor_cred_pres_cond_sus_cbs',
-            'qbcmono_ibs_cbs','valor_ibs_mono','valor_cbs_mono',
-            'qbcmonoreten_ibs_cbs','adrem_ibs_reten','adrem_cbs_reten','valor_ibs_reten','valor_cbs_reten',
-            'qbcmonoret_ibs_cbs','adrem_ibs_ret','adrem_cbs_ret','valor_ibs_ret','valor_cbs_ret',
-            'adrem_ibs','adrem_cbs',
+            'IS_BC','IS_ALIQ_ESPEC','IS_QTD_TRIB','IS_VALOR',
+            'BC_IBS_CBS','VALOR_IBS','VALOR_IBS_UF','PERC_DIF_IBS_UF','VALOR_DIF_IBS_UF','VALOR_DIF_IBS_UF_DEVTRIB','ALIQ_EFET_IBS_UF',
+            'VALOR_IBS_MUN','PERC_DIF_IBS_MUN','VALOR_DIF_IBS_MUN','VALOR_DIF_IBS_MUN_TRIB','ALIQ_EFET_IBS_MUN',
+            'VALOR_CBS','PERC_DIF_CBS','VALOR_DIF_CBS','VALOR_DIF_CBS_DEVTRIB','ALIQ_EFET_CBS',
+            'TRIB_REG_ALIQ_EFET_IBS_UF','TRIB_REG_VALOR_IBS_UF',
+            'TRIB_REG_ALIQ_EFET_IBS_MUN','TRIB_REG_VALOR_IBS_MUN',
+            'TRIB_REG_ALIQ_EFET_CBS','TRIB_REG_VALOR_CBS',
+            'PERC_CRED_PRES_IBS','VALOR_CRED_PRES_IBS','VALOR_CRED_PRES_COND_SUS_IBS',
+            'PERC_CRED_PRES_CBS','VALOR_CRED_PRES_CBS','VALOR_CRED_PRES_COND_SUS_CBS',
+            'QBCMONO_IBS_CBS','VALOR_IBS_MONO','VALOR_CBS_MONO',
+            'QBCMONORETEN_IBS_CBS','ADREM_IBS_RETEN','ADREM_CBS_RETEN','VALOR_IBS_RETEN','VALOR_CBS_RETEN',
+            'QBCMONORET_IBS_CBS','ADREM_IBS_RET','ADREM_CBS_RET','VALOR_IBS_RET','VALOR_CBS_RET',
+            'ADREM_IBS','ADREM_CBS'
         ];
-
         foreach ($zeroFloat as $f) $this->setIfExists($item, $f, 0.0);
 
         $zeroInt = ['CRED_PRES_COD_IBS','CRED_PRES_COD_CBS'];
@@ -310,7 +458,7 @@ class ReformaTributariaService
     }
 
     // ---------------------------------------------------------------------
-    // 3) Cálculo do item (CalculaIBSCBSItem)
+    // 3) Cálculo do item
     // ---------------------------------------------------------------------
 
     public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
@@ -321,7 +469,7 @@ class ReformaTributariaService
 
         $vUnit = $this->getNum($item, ['valor_unitario','valor_unit','vlr_unitario'], 0.0);
         if ($vUnit <= 0) {
-            $vUnit = $this->getNum($item, ['valor'], 0.0); // venda: valor costuma ser unitário
+            $vUnit = $this->getNum($item, ['valor'], 0.0);
         }
 
         $vProd = $vProdTotal;
@@ -330,7 +478,6 @@ class ReformaTributariaService
         }
 
         if ($vProd <= 0) {
-            // fallback conservador (metodo antigo do calculo)
             $vProd = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor'], 0.0);
         }
 
@@ -361,7 +508,7 @@ class ReformaTributariaService
         $flagIs = strtoupper(trim((string)($this->readField($item, 'FLAG_IS') ?? '')));
         if ($flagIs === 'S') {
             $this->setIfExists($item, 'IS_BC', $vProd);
-            $aliqIs = $this->getNum($item, ['IS_ALIQ'], 0);
+            $aliqIs = $this->getNum($item, ['IS_ALIQ','is_aliq'], 0);
             $this->setIfExists($item, 'IS_VALOR', $this->round2(($vProd * $aliqIs) / 100));
         } else {
             $this->setIfExists($item, 'IS_BC', 0.0);
@@ -409,13 +556,13 @@ class ReformaTributariaService
         $cst = $this->fmtCst3($this->readField($item, 'CST_IBS_CBS') ?? '');
         if ($cst !== '200') return;
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS'], 0);
+        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
 
-        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF'], 0);
-        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN'], 0);
-        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS'], 0);
+        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF','perc_red_aliq_uf'], 0);
+        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN','perc_red_aliq_ibs_mun'], 0);
+        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS','perc_red_aliq_cbs'], 0);
 
         if ($rUf > 0)  $this->setIfExists($item, 'ALIQ_EFET_IBS_UF',  $aUf  * (1 - ($rUf/100)));
         if ($rMun > 0) $this->setIfExists($item, 'ALIQ_EFET_IBS_MUN', $aMun * (1 - ($rMun/100)));
@@ -424,11 +571,11 @@ class ReformaTributariaService
 
     protected function calcIntegral($item): void
     {
-        $bc = $this->getNum($item, ['BC_IBS_CBS'], 0);
+        $bc = $this->getNum($item, ['BC_IBS_CBS','bc_ibs_cbs'], 0);
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS'], 0);
+        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
 
         $this->setIfExists($item, 'ALIQ_EFET_IBS_UF', $aUf);
         $this->setIfExists($item, 'VALOR_IBS_UF', $this->round2(($bc * $aUf) / 100));
@@ -442,15 +589,15 @@ class ReformaTributariaService
 
     protected function calcReduzido($item): void
     {
-        $bc = $this->getNum($item, ['BC_IBS_CBS'], 0);
+        $bc = $this->getNum($item, ['BC_IBS_CBS','bc_ibs_cbs'], 0);
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS'], 0);
+        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
 
-        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF'], 0);
-        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN'], 0);
-        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS'], 0);
+        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF','perc_red_aliq_uf'], 0);
+        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN','perc_red_aliq_ibs_mun'], 0);
+        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS','perc_red_aliq_cbs'], 0);
 
         $efUf = ($rUf > 0) ? $aUf * (1 - ($rUf/100)) : $aUf;
         $this->setIfExists($item, 'ALIQ_EFET_IBS_UF', $efUf);
@@ -517,8 +664,8 @@ class ReformaTributariaService
 
     protected function calcValorIbsTotal($item): void
     {
-        $uf  = $this->getNum($item, ['VALOR_IBS_UF'], 0);
-        $mun = $this->getNum($item, ['VALOR_IBS_MUN'], 0);
+        $uf  = $this->getNum($item, ['VALOR_IBS_UF','valor_ibs_uf'], 0);
+        $mun = $this->getNum($item, ['VALOR_IBS_MUN','valor_ibs_mun'], 0);
         $this->setIfExists($item, 'VALOR_IBS', $this->round2($uf + $mun));
     }
 
@@ -552,10 +699,23 @@ class ReformaTributariaService
 
         $selects = [];
         foreach ($sumCols as $col => $alias) {
+
+            $realCol = null;
+
             if (Schema::hasColumn($itensTable, $col)) {
-                $selects[] = "COALESCE(SUM($col),0) as $alias";
+                $realCol = $col;
+            } else {
+                $lc = strtolower($col);
+                if (Schema::hasColumn($itensTable, $lc)) {
+                    $realCol = $lc;
+                }
+            }
+
+            if ($realCol) {
+                $selects[] = "COALESCE(SUM($realCol),0) as $alias";
             }
         }
+
         if (!$selects) return [];
 
         $row = DB::table($itensTable)
@@ -576,9 +736,6 @@ class ReformaTributariaService
         return $t;
     }
 
-    /**
-     * Aplica os totais calculados em um model de Venda (sem quebrar: só seta se colunas existirem).
-     */
     public function applyTotaisToVenda($vendaModel, array $totais): void
     {
         if (!$vendaModel || !$totais) return;
@@ -587,8 +744,7 @@ class ReformaTributariaService
             $this->setIfExists($vendaModel, $k, $v);
         }
 
-        // extras comuns (se você criar as colunas)
-        if (isset($totais['TOTAL_IBS']))     $this->setIfExists($vendaModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
+        if (isset($totais['TOTAL_IBS'])) $this->setIfExists($vendaModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
         if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($vendaModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
 
         try { $vendaModel->save(); } catch (\Throwable $e) {}
@@ -624,10 +780,23 @@ class ReformaTributariaService
 
         $selects = [];
         foreach ($sumCols as $col => $alias) {
+
+            $realCol = null;
+
             if (Schema::hasColumn($itensTable, $col)) {
-                $selects[] = "COALESCE(SUM($col),0) as $alias";
+                $realCol = $col;
+            } else {
+                $lc = strtolower($col);
+                if (Schema::hasColumn($itensTable, $lc)) {
+                    $realCol = $lc;
+                }
+            }
+
+            if ($realCol) {
+                $selects[] = "COALESCE(SUM($realCol),0) as $alias";
             }
         }
+
         if (!$selects) return [];
 
         $row = DB::table($itensTable)
@@ -656,7 +825,7 @@ class ReformaTributariaService
             $this->setIfExists($compraModel, $k, $v);
         }
 
-        if (isset($totais['TOTAL_IBS']))     $this->setIfExists($compraModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
+        if (isset($totais['TOTAL_IBS'])) $this->setIfExists($compraModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
         if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($compraModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
 
         try { $compraModel->save(); } catch (\Throwable $e) {}
@@ -674,8 +843,9 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($codigo, $cache)) return $cache[$codigo];
 
-        if (!Schema::hasTable('ANP')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasTable('anp') && !Schema::hasTable('ANP')) return $cache[$codigo] = 0.0;
 
+        // tenta tabela/model do jeito que você já usa
         $val = Anp::query()
             ->where('CODIGO', $codigo)
             ->value('ADREMICMS');
@@ -692,20 +862,22 @@ class ReformaTributariaService
         $campo = strtoupper(trim((string)$campo));
         if ($campo === '') return '';
 
-        if (!Schema::hasTable('ANP')) return '';
+        if (!Schema::hasTable('ANP') && !Schema::hasTable('anp')) return '';
+
+        $table = Schema::hasTable('ANP') ? 'ANP' : 'anp';
 
         $col = $campo;
-        if (!Schema::hasColumn('ANP', $col)) {
+        if (!Schema::hasColumn($table, $col)) {
             $col2 = strtolower($campo);
-            if (!Schema::hasColumn('ANP', $col2)) return '';
+            if (!Schema::hasColumn($table, $col2)) return '';
             $col = $col2;
         }
 
         static $cache = [];
-        $key = $codigo . '|' . $col;
+        $key = $codigo . '|' . $table . '|' . $col;
         if (array_key_exists($key, $cache)) return $cache[$key];
 
-        $val = DB::table('ANP')->where('CODIGO', $codigo)->value($col);
+        $val = DB::table($table)->where('CODIGO', $codigo)->value($col);
         if ($val === null) $val = '';
 
         $cache[$key] = trim((string)$val);
@@ -720,30 +892,37 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($classTrib, $cache)) return $cache[$classTrib];
 
-        if (!Schema::hasTable('CLASS_TRIB_IBS_CBS')) return $cache[$classTrib] = 'S';
+        if (!Schema::hasTable('CLASS_TRIB_IBS_CBS') && !Schema::hasTable('class_trib_ibs_cbs')) {
+            return $cache[$classTrib] = 'S';
+        }
 
         $today = now()->toDateString();
 
         $q = ClassTribIbsCbs::query()->where('CCLASSTRIB', $classTrib);
 
-        if (Schema::hasColumn('CLASS_TRIB_IBS_CBS', 'DINIVIG')) {
+        $table = 'CLASS_TRIB_IBS_CBS';
+        if (!Schema::hasTable($table) && Schema::hasTable('class_trib_ibs_cbs')) $table = 'class_trib_ibs_cbs';
+
+        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
             $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DINIVIG')->orWhere('DINIVIG', '<=', $today);
+                $qq->whereNull('DINIVIG')->orWhere('DINIVIG', '<=', $today)
+                    ->orWhereNull('dinivig')->orWhere('dinivig', '<=', $today);
             });
         }
 
-        if (Schema::hasColumn('CLASS_TRIB_IBS_CBS', 'DFIMVIG')) {
+        if (Schema::hasColumn($table, 'DFIMVIG') || Schema::hasColumn($table, 'dfimvig')) {
             $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DFIMVIG')->orWhere('DFIMVIG', '>=', $today);
+                $qq->whereNull('DFIMVIG')->orWhere('DFIMVIG', '>=', $today)
+                    ->orWhereNull('dfimvig')->orWhere('dfimvig', '>=', $today);
             });
         }
 
-        if (Schema::hasColumn('CLASS_TRIB_IBS_CBS', 'DINIVIG')) {
-            $q->orderByRaw("COALESCE(DINIVIG, '1900-01-01') DESC");
+        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
+            $q->orderByRaw("COALESCE(DINIVIG, dinivig, '1900-01-01') DESC");
         }
 
-        if (Schema::hasColumn('CLASS_TRIB_IBS_CBS', 'DATAATUALIZACAO')) {
-            $q->orderByDesc('DATAATUALIZACAO');
+        if (Schema::hasColumn($table, 'DATAATUALIZACAO') || Schema::hasColumn($table, 'dataatualizacao')) {
+            $q->orderByDesc(Schema::hasColumn($table, 'DATAATUALIZACAO') ? 'DATAATUALIZACAO' : 'dataatualizacao');
         }
 
         $row = $q->first();
