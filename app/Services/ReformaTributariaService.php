@@ -16,6 +16,11 @@ class ReformaTributariaService
      */
     public function shouldApply(int $empresaId): bool
     {
+        $explicit = $this->readRtEnableFlag($empresaId);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
         // 1) Ambiente (1 produção, 2 homologação)
         $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
 
@@ -24,8 +29,9 @@ class ReformaTributariaService
 
         // 3) Em produção: exige ctr=1
         if ((int)$ambiente === 1) {
-            if ($ctr === null) return false;
-            return (int)$ctr === 1;
+            if ($ctr !== null) return (int)$ctr === 1;
+            if ($this->hasRtFieldsFilled($empresaId)) return true;
+            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
         }
 
         // 4) Em homologação: aplica se tiver parametrização da RT preenchida
@@ -203,6 +209,53 @@ class ReformaTributariaService
         if (Schema::hasColumn($table, 'EMPRESA_ID')) return 'EMPRESA_ID';
         if (Schema::hasColumn($table, 'id')) return 'id';
         if (Schema::hasColumn($table, 'ID')) return 'ID';
+        return null;
+    }
+
+    protected function readRtEnableFlag(int $empresaId): ?bool
+    {
+        $candidates = [
+            ['table' => 'empresas', 'col' => 'reforma_tributaria'],
+            ['table' => 'empresas', 'col' => 'calcula_reforma_tributaria'],
+            ['table' => 'config_notas', 'col' => 'reforma_tributaria'],
+            ['table' => 'tributacaos', 'col' => 'reforma_tributaria'],
+            ['table' => 'tributacoes', 'col' => 'reforma_tributaria'],
+        ];
+
+        foreach ($candidates as $c) {
+            if (!Schema::hasTable($c['table'])) {
+                continue;
+            }
+
+            $col = null;
+            if (Schema::hasColumn($c['table'], $c['col'])) {
+                $col = $c['col'];
+            } else if (Schema::hasColumn($c['table'], strtoupper($c['col']))) {
+                $col = strtoupper($c['col']);
+            }
+
+            if ($col === null) {
+                continue;
+            }
+
+            $whereCol = $this->resolveEmpresaWhereColumn($c['table']);
+            if ($whereCol === null) {
+                continue;
+            }
+
+            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($col);
+            if ($val === null) {
+                continue;
+            }
+
+            $str = strtoupper(trim((string)$val));
+            if ($str === '') {
+                continue;
+            }
+
+            return ($str === 'S' || $str === '1' || $str === 'SIM' || $val === true);
+        }
+
         return null;
     }
 
@@ -688,6 +741,10 @@ class ReformaTributariaService
             'VALOR_DIF_CBS'            => 'TOTAL_CBS_DIF',
             'VALOR_DIF_CBS_DEVTRIB'    => 'TOTAL_CBS_DEV_TRIB',
             'VALOR_CBS'                => 'TOTAL_CBS',
+            'VALOR_CRED_PRES_IBS'      => 'TOTAL_IBS_CRED_PRES',
+            'VALOR_CRED_PRES_COND_SUS_IBS' => 'TOTAL_IBS_CRED_PRES_COND_SUS',
+            'VALOR_CRED_PRES_CBS'      => 'TOTAL_CBS_CRED_PRES',
+            'VALOR_CRED_PRES_COND_SUS_CBS' => 'TOTAL_CBS_CRED_PRES_COND_SUS',
             'IS_VALOR'                 => 'TOTAL_IS',
             'VALOR_IBS_MONO'           => 'TOTAL_IBS_MONO',
             'VALOR_CBS_MONO'           => 'TOTAL_CBS_MONO',
@@ -729,9 +786,11 @@ class ReformaTributariaService
 
         $totalIbs = (float)($t['TOTAL_IBS_UF'] ?? 0) + (float)($t['TOTAL_IBS_MUN'] ?? 0);
         $totalIbsCbs = $totalIbs + (float)($t['TOTAL_CBS'] ?? 0);
+        $totalNfIbcCbsIs = (float)($t['TOTAL_BC_IBS_CBS'] ?? 0) + (float)($t['TOTAL_IS'] ?? 0);
 
         $t['TOTAL_IBS'] = $this->round2($totalIbs);
         $t['TOTAL_IBS_CBS'] = $this->round2($totalIbsCbs);
+        $t['TOTAL_NF_IBC_CBS_IS'] = $this->round2($totalNfIbcCbsIs);
 
         return $t;
     }
