@@ -190,23 +190,8 @@ class VendaController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'cst_ibs_cbs' => (string)($item->cst_ibs_cbs ?? ''),
-                    'class_trib_ibs_cbs' => (string)($item->class_trib_ibs_cbs ?? ''),
-                    'bc_ibs_cbs' => (float)($item->bc_ibs_cbs ?? 0),
-                    'valor_ibs' => (float)($item->valor_ibs ?? 0),
-                    'valor_ibs_uf' => (float)($item->valor_ibs_uf ?? 0),
-                    'valor_ibs_mun' => (float)($item->valor_ibs_mun ?? 0),
-                    'aliq_ibs_uf' => (float)($item->aliq_ibs_uf ?? 0),
-                    'aliq_ibs_mun' => (float)($item->aliq_ibs_mun ?? 0),
+                    ...$this->buildRtItemPayload($item, false),
                     'aliq_ibs_total' => $aliqIbsTotal,
-                    'aliq_cbs' => (float)($item->aliq_cbs ?? 0),
-                    'valor_cbs' => (float)($item->valor_cbs ?? 0),
-                    'is_bc' => (float)($item->is_bc ?? 0),
-                    'is_aliq' => (float)($item->is_aliq ?? 0),
-                    'is_valor' => (float)($item->is_valor ?? 0),
-                    'flag_is' => (string)($item->flag_is ?? ''),
-                    'flag_combustivel' => (string)($item->flag_combustivel ?? ''),
-                    'anp' => (string)($item->anp ?? ''),
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -216,40 +201,7 @@ class VendaController extends Controller
 
     private function serializeItemReforma(ItemVenda $item): array
     {
-        // Campos reais existentes na sua tabela item_vendas (minúsculos)
-        return [
-            'id' => (int)$item->id,
-            'produto_id' => (int)$item->produto_id,
-
-            'is_bc' => (float)($item->is_bc ?? 0),
-            'is_aliq' => (float)($item->is_aliq ?? 0),
-            'is_valor' => (float)($item->is_valor ?? 0),
-
-            'cst_ibs_cbs' => (string)($item->cst_ibs_cbs ?? ''),
-            'class_trib_ibs_cbs' => (string)($item->class_trib_ibs_cbs ?? ''),
-
-            'bc_ibs_cbs' => (float)($item->bc_ibs_cbs ?? 0),
-            'valor_ibs' => (float)($item->valor_ibs ?? 0),
-
-            'aliq_ibs_uf' => (float)($item->aliq_ibs_uf ?? 0),
-            'valor_ibs_uf' => (float)($item->valor_ibs_uf ?? 0),
-
-            'aliq_ibs_mun' => (float)($item->aliq_ibs_mun ?? 0),
-            'valor_ibs_mun' => (float)($item->valor_ibs_mun ?? 0),
-
-            'aliq_cbs' => (float)($item->aliq_cbs ?? 0),
-            'valor_cbs' => (float)($item->valor_cbs ?? 0),
-
-            'valor_ibs_mono' => (float)($item->valor_ibs_mono ?? 0),
-            'valor_cbs_mono' => (float)($item->valor_cbs_mono ?? 0),
-
-            'adrem_ibs' => (float)($item->adrem_ibs ?? 0),
-            'adrem_cbs' => (float)($item->adrem_cbs ?? 0),
-
-            'flag_is' => (string)($item->flag_is ?? ''),
-            'flag_combustivel' => (string)($item->flag_combustivel ?? ''),
-            'anp' => (string)($item->anp ?? ''),
-        ];
+        return $this->buildRtItemPayload($item, true);
     }
 
     private function serializeTotaisVendaReforma(Venda $venda): array
@@ -263,10 +215,91 @@ class VendaController extends Controller
 
             'total_ibs_uf' => (float)($venda->total_ibs_uf ?? 0),
             'total_ibs_mun' => (float)($venda->total_ibs_mun ?? 0),
+            'total_ibs_uf_dif' => (float)($venda->total_ibs_uf_dif ?? 0),
+            'total_ibs_uf_dev_trib' => (float)($venda->total_ibs_uf_dev_trib ?? 0),
+            'total_ibs_mun_dif' => (float)($venda->total_ibs_mun_dif ?? 0),
+            'total_ibs_mun_dev_trib' => (float)($venda->total_ibs_mun_dev_trib ?? 0),
+            'total_cbs_dif' => (float)($venda->total_cbs_dif ?? 0),
+            'total_cbs_dev_trib' => (float)($venda->total_cbs_dev_trib ?? 0),
+            'total_ibs_cred_pres' => (float)($venda->total_ibs_cred_pres ?? 0),
+            'total_ibs_cred_pres_cond_sus' => (float)($venda->total_ibs_cred_pres_cond_sus ?? 0),
+            'total_cbs_cred_pres' => (float)($venda->total_cbs_cred_pres ?? 0),
+            'total_cbs_cred_pres_cond_sus' => (float)($venda->total_cbs_cred_pres_cond_sus ?? 0),
 
             'total_ibs_mono' => (float)($venda->total_ibs_mono ?? 0),
             'total_cbs_mono' => (float)($venda->total_cbs_mono ?? 0),
+            'total_ibs_mono_reten' => (float)($venda->total_ibs_mono_reten ?? 0),
+            'total_cbs_mono_reten' => (float)($venda->total_cbs_mono_reten ?? 0),
+            'total_ibs_mono_ret' => (float)($venda->total_ibs_mono_ret ?? 0),
+            'total_cbs_mono_ret' => (float)($venda->total_cbs_mono_ret ?? 0),
+
+            'total_nf_ibc_cbs_is' => (float)($venda->total_nf_ibc_cbs_is ?? 0),
         ];
+    }
+
+    private function rtItemFieldLists(): array
+    {
+        return [
+            'strings' => [
+                'cst_ibs_cbs',
+                'class_trib_ibs_cbs',
+                'flag_is',
+                'flag_combustivel',
+                'anp',
+            ],
+            'ints' => [
+                'cred_pres_cod_ibs',
+                'cred_pres_cod_cbs',
+            ],
+            'floats' => [
+                'is_bc', 'is_aliq', 'is_aliq_espec', 'is_und_trib', 'is_qtd_trib', 'is_valor',
+                'bc_ibs_cbs', 'valor_ibs',
+                'aliq_ibs_uf', 'valor_ibs_uf', 'perc_dif_ibs_uf', 'valor_dif_ibs_uf', 'valor_dif_ibs_uf_devtrib',
+                'perc_red_aliq_uf', 'aliq_efet_ibs_uf',
+                'aliq_ibs_mun', 'valor_ibs_mun', 'perc_dif_ibs_mun', 'valor_dif_ibs_mun', 'valor_dif_ibs_mun_trib',
+                'perc_red_aliq_ibs_mun', 'aliq_efet_ibs_mun',
+                'aliq_cbs', 'valor_cbs', 'perc_dif_cbs', 'valor_dif_cbs', 'valor_dif_cbs_devtrib',
+                'perc_red_aliq_cbs', 'aliq_efet_cbs',
+                'trib_reg_aliq_efet_ibs_uf', 'trib_reg_valor_ibs_uf',
+                'trib_reg_aliq_efet_ibs_mun', 'trib_reg_valor_ibs_mun',
+                'trib_reg_aliq_efet_cbs', 'trib_reg_valor_cbs',
+                'perc_cred_pres_ibs', 'valor_cred_pres_ibs', 'valor_cred_pres_cond_sus_ibs',
+                'perc_cred_pres_cbs', 'valor_cred_pres_cbs', 'valor_cred_pres_cond_sus_cbs',
+                'nfsi_ipi_vlrimposto_devolucao', 'nfsi_vicmsdeson', 'nfsi_trib_mun', 'nfsi_trib_est', 'nfsi_trib_fed',
+                'nfsi_trib_imp', 'nfsi_vicmsmonoret', 'nfsi_qbcmonoret', 'nfsi_vicmsmono', 'nfsi_qbcmono',
+                'nfsi_vicmsmonoreten', 'nfsi_qbcmonoreten', 'nfsi_vicmsmonoop', 'nfsi_vicmsmonodif',
+                'valor_ibs_mono', 'valor_cbs_mono', 'valor_ibs_reten', 'valor_cbs_reten', 'valor_ibs_ret', 'valor_cbs_ret',
+                'qbcmono_ibs_cbs', 'adrem_ibs', 'adrem_cbs',
+                'qbcmonoreten_ibs_cbs', 'adrem_ibs_reten', 'adrem_cbs_reten',
+                'qbcmonoret_ibs_cbs', 'adrem_ibs_ret', 'adrem_cbs_ret',
+            ],
+        ];
+    }
+
+    private function buildRtItemPayload(ItemVenda $item, bool $includeMeta): array
+    {
+        $data = [];
+
+        if ($includeMeta) {
+            $data['id'] = (int)$item->id;
+            $data['produto_id'] = (int)$item->produto_id;
+        }
+
+        $lists = $this->rtItemFieldLists();
+
+        foreach ($lists['strings'] as $field) {
+            $data[$field] = (string)($item->getAttribute($field) ?? '');
+        }
+
+        foreach ($lists['ints'] as $field) {
+            $data[$field] = (int)($item->getAttribute($field) ?? 0);
+        }
+
+        foreach ($lists['floats'] as $field) {
+            $data[$field] = (float)($item->getAttribute($field) ?? 0);
+        }
+
+        return $data;
     }
 
     private function rtResetTotals(): void
@@ -294,40 +327,20 @@ class VendaController extends Controller
         $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$item->produto_id, $item);
         $rt->calcularItem($item, $this->empresa_id, null);
 
-        $candidates = [
-            'cst_ibs_cbs' => $item->cst_ibs_cbs,
-            'class_trib_ibs_cbs' => $item->class_trib_ibs_cbs,
-            'bc_ibs_cbs' => $item->bc_ibs_cbs,
-            'valor_ibs' => $item->valor_ibs,
-            'aliq_ibs_uf' => $item->aliq_ibs_uf,
-            'valor_ibs_uf' => $item->valor_ibs_uf,
-            'aliq_ibs_mun' => $item->aliq_ibs_mun,
-            'valor_ibs_mun' => $item->valor_ibs_mun,
-            'perc_red_aliq_uf' => $item->perc_red_aliq_uf,
-            'perc_red_aliq_ibs_mun' => $item->perc_red_aliq_ibs_mun,
-            'aliq_efet_ibs_uf' => $item->aliq_efet_ibs_uf,
-            'aliq_efet_ibs_mun' => $item->aliq_efet_ibs_mun,
-            'aliq_cbs' => $item->aliq_cbs,
-            'valor_cbs' => $item->valor_cbs,
-            'perc_red_aliq_cbs' => $item->perc_red_aliq_cbs,
-            'aliq_efet_cbs' => $item->aliq_efet_cbs,
-            'is_bc' => $item->is_bc,
-            'is_aliq' => $item->is_aliq,
-            'is_valor' => $item->is_valor,
-            'valor_ibs_mono' => $item->valor_ibs_mono,
-            'valor_cbs_mono' => $item->valor_cbs_mono,
-            'adrem_ibs' => $item->adrem_ibs,
-            'adrem_cbs' => $item->adrem_cbs,
-            'flag_is' => $item->flag_is,
-            'flag_combustivel' => $item->flag_combustivel,
-            'anp' => $item->anp,
-        ];
+        $lists = $this->rtItemFieldLists();
+        $fields = array_merge($lists['strings'], $lists['ints'], $lists['floats']);
 
-        foreach ($candidates as $col => $val) {
-            if ($val === null) continue;
-            if (Schema::hasColumn('item_vendas', $col)) {
-                $itemArr[$col] = $val;
+        foreach ($fields as $col) {
+            if (!Schema::hasColumn('item_vendas', $col)) {
+                continue;
             }
+
+            $val = $item->getAttribute($col);
+            if ($val === null) {
+                continue;
+            }
+
+            $itemArr[$col] = $val;
         }
 
         return $itemArr;
@@ -1848,17 +1861,21 @@ class VendaController extends Controller
         $stockMove = new StockMove();
         foreach ($itens as $i) {
             $pTemp = Produto::find((int) $i['id']);
-            ItemVenda::create([
+            $itemArr = [
                 'venda_id' => $result->id,
                 'produto_id' => (int) $i['id'],
                 'quantidade' => (float) str_replace(",", ".", $i['quantidade']),
                 'valor' => (float) str_replace(",", ".", $i['valor']),
                 'valor_custo' => $pTemp->valor_compra
-            ]);
+            ];
+            $itemArr = $this->applyRtToItemVendaArray($itemArr, $pTemp);
+            ItemVenda::create($itemArr);
             $stockMove->downStock(
                 (int) $i['id'], (float) str_replace(",", ".", $i['quantidade']),
                 $venda['filial_id']);
         }
+
+        $this->applyRtToVendaTotals($result);
 
         echo json_encode($result);
     }
@@ -2609,16 +2626,13 @@ class VendaController extends Controller
             $itens = $venda->itens;
             $stockMove = new StockMove();
             foreach ($itens as $i) {
-                ItemVenda::create([
-                    'venda_id'          => $result->id,
-                    'produto_id'        => $i->produto_id,
-                    'quantidade'        => $i->quantidade,
-                    'valor'             => $i->valor,
-                    'cfop'              => $i->cfop,
-                    'valor_custo'       => $i->produto->valor_compra,
-                    'x_pedido'          => $i->x_pedido,
-                    'num_item_pedido'   => $i->num_item_pedido
-                ]);
+                $itemArr = $i->only($i->getFillable());
+                $itemArr['venda_id'] = $result->id;
+                $itemArr['produto_id'] = $i->produto_id;
+                $itemArr['valor_custo'] = $i->valor_custo ?? $i->produto->valor_compra;
+                $itemArr['x_pedido'] = $i->x_pedido;
+                $itemArr['num_item_pedido'] = $i->num_item_pedido;
+                ItemVenda::create($itemArr);
 
                 // Ajusta estoque
                 $prod = Produto::find($i->produto_id);
@@ -2646,6 +2660,8 @@ class VendaController extends Controller
                     $stockMove->downStock($i->produto_id, $i->quantidade, $venda->filial_id);
                 }
             }
+
+            $this->applyRtToVendaTotals($result);
 
             // Copia duplicatas / faturas, se houver
             if ($venda->forma_pagamento !== 'a_vista' && $venda->forma_pagamento !== 'conta_crediario') {
@@ -3160,18 +3176,25 @@ class VendaController extends Controller
 
 	}
 
-	private function gravarItensVenda($vendaId, $itens){
-		foreach($itens as $i){
-			$pTemp = Produto::find($i['codigo']);
-			ItemVenda::create([
-				'venda_id' => $vendaId,
-				'produto_id' => $i['codigo'],
-				'quantidade' => $i['quantidade'],
-				'valor' => $i['valor'],
-				'valor_custo' => $pTemp->valor_compra
-			]);
-		}
-	}
+    private function gravarItensVenda($vendaId, $itens){
+        foreach($itens as $i){
+            $pTemp = Produto::find($i['codigo']);
+            $itemArr = [
+                'venda_id' => $vendaId,
+                'produto_id' => $i['codigo'],
+                'quantidade' => $i['quantidade'],
+                'valor' => $i['valor'],
+                'valor_custo' => $pTemp->valor_compra
+            ];
+            $itemArr = $this->applyRtToItemVendaArray($itemArr, $pTemp);
+            ItemVenda::create($itemArr);
+        }
+
+        $venda = Venda::find($vendaId);
+        if ($venda) {
+            $this->applyRtToVendaTotals($venda);
+        }
+    }
 
 	private function gravarItensVendaCaixa($vendaId, $itens){
 		foreach($itens as $i){
