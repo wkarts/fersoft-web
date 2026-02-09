@@ -3220,6 +3220,3 @@ function validaFrete(call){
 
 		console.log(js)
 	}
-
-
-
