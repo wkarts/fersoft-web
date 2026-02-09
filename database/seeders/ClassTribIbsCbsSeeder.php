@@ -12,9 +12,9 @@ class ClassTribIbsCbsSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'CLASS_TRIB_IBS_CBS',
-            uniqueBy: ['ID_CCLAS_IBS_CBS'],
-            updateColumns: ['ID_CST_IBS_CBS', 'CST_IBS_CBS', 'DESCRICAO_CST_IBS_CBS', 'CCLASSTRIB', 'NOME_CCLASSTRIB', 'DESCRICAO_CCLASSTRIB', 'LC_214_25', 'TIPO_DE_ALIQUOTA', 'PREDIBS', 'PREDCBS', 'PRED_IBS_CBS', 'IND_REDUTORBC', 'IND_GTRIBREGULAR', 'IND_CREDPRES', 'INDMONO', 'INDMONORETEN', 'INDMONORET', 'INDMONODIF', 'CREDITO_PARA', 'DINIVIG', 'DFIMVIG', 'DATAATUALIZACAO'],
+            table: 'class_trib_ibs_cbs',
+            uniqueBy: [ 'id_cclas_ibs_cbs'],
+            updateColumns: [ 'id_cst_ibs_cbs', 'cst_ibs_cbs', 'descricao_cst_ibs_cbs', 'cclasstrib', 'nome_cclasstrib', 'descricao_cclasstrib', 'lc_214_25', 'tipo_de_aliquota', 'predibs', 'predcbs', 'pred_ibs_cbs', 'ind_redutorbc', 'ind_gtribregular', 'ind_credpres', 'indmono', 'indmonoreten', 'indmonoret', 'indmonodif', 'credito_para', 'dinivig', 'dfimvig', 'dataatualizacao'],
             relativePath: 'CLASS_TRIB_IBS_CBS.ndjson',
             chunkSize: 500
         );

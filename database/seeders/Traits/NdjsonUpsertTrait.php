@@ -37,14 +37,14 @@ trait NdjsonUpsertTrait
             $row = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
 
             // Padrões "Eloquent" custom (colunas maiúsculas)
-            if (!array_key_exists('ELOQUENT_UUID', $row) || empty($row['ELOQUENT_UUID'])) {
-                $row['ELOQUENT_UUID'] = (string) Str::uuid();
+            if (!array_key_exists('eloquent_uuid', $row) || empty($row[ 'eloquent_uuid'])) {
+                $row[ 'eloquent_uuid'] = (string) Str::uuid();
             }
-            if (!array_key_exists('CREATED_AT', $row) || empty($row['CREATED_AT'])) {
-                $row['CREATED_AT'] = $now;
+            if (!array_key_exists('created_at', $row) || empty($row[ 'created_at'])) {
+                $row[ 'created_at'] = $now;
             }
-            if (!array_key_exists('UPDATED_AT', $row) || empty($row['UPDATED_AT'])) {
-                $row['UPDATED_AT'] = $now;
+            if (!array_key_exists('updated_at', $row) || empty($row[ 'updated_at'])) {
+                $row[ 'updated_at'] = $now;
             }
 
             $batch[] = $row;

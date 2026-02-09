@@ -282,20 +282,21 @@ class ReformaTributariaService
 
         // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
         $zeroFloat = [
-            'IS_BC','IS_ALIQ_ESPEC','IS_QTD_TRIB','IS_VALOR',
-            'BC_IBS_CBS','VALOR_IBS','VALOR_IBS_UF','PERC_DIF_IBS_UF','VALOR_DIF_IBS_UF','VALOR_DIF_IBS_UF_DEVTRIB','ALIQ_EFET_IBS_UF',
-            'VALOR_IBS_MUN','PERC_DIF_IBS_MUN','VALOR_DIF_IBS_MUN','VALOR_DIF_IBS_MUN_TRIB','ALIQ_EFET_IBS_MUN',
-            'VALOR_CBS','PERC_DIF_CBS','VALOR_DIF_CBS','VALOR_DIF_CBS_DEVTRIB','ALIQ_EFET_CBS',
-            'TRIB_REG_ALIQ_EFET_IBS_UF','TRIB_REG_VALOR_IBS_UF',
-            'TRIB_REG_ALIQ_EFET_IBS_MUN','TRIB_REG_VALOR_IBS_MUN',
-            'TRIB_REG_ALIQ_EFET_CBS','TRIB_REG_VALOR_CBS',
-            'PERC_CRED_PRES_IBS','VALOR_CRED_PRES_IBS','VALOR_CRED_PRES_COND_SUS_IBS',
-            'PERC_CRED_PRES_CBS','VALOR_CRED_PRES_CBS','VALOR_CRED_PRES_COND_SUS_CBS',
-            'QBCMONO_IBS_CBS','VALOR_IBS_MONO','VALOR_CBS_MONO',
-            'QBCMONORETEN_IBS_CBS','ADREM_IBS_RETEN','ADREM_CBS_RETEN','VALOR_IBS_RETEN','VALOR_CBS_RETEN',
-            'QBCMONORET_IBS_CBS','ADREM_IBS_RET','ADREM_CBS_RET','VALOR_IBS_RET','VALOR_CBS_RET',
-            'ADREM_IBS','ADREM_CBS'
+            'is_bc','is_aliq_espec','is_qtd_trib','is_valor',
+            'bc_ibs_cbs','valor_ibs','valor_ibs_uf','perc_dif_ibs_uf','valor_dif_ibs_uf','valor_dif_ibs_uf_devtrib','aliq_efet_ibs_uf',
+            'valor_ibs_mun','perc_dif_ibs_mun','valor_dif_ibs_mun','valor_dif_ibs_mun_trib','aliq_efet_ibs_mun',
+            'valor_cbs','perc_dif_cbs','valor_dif_cbs','valor_dif_cbs_devtrib','aliq_efet_cbs',
+            'trib_reg_aliq_efet_ibs_uf','trib_reg_valor_ibs_uf',
+            'trib_reg_aliq_efet_ibs_mun','trib_reg_valor_ibs_mun',
+            'trib_reg_aliq_efet_cbs','trib_reg_valor_cbs',
+            'perc_cred_pres_ibs','valor_cred_pres_ibs','valor_cred_pres_cond_sus_ibs',
+            'perc_cred_pres_cbs','valor_cred_pres_cbs','valor_cred_pres_cond_sus_cbs',
+            'qbcmono_ibs_cbs','valor_ibs_mono','valor_cbs_mono',
+            'qbcmonoreten_ibs_cbs','adrem_ibs_reten','adrem_cbs_reten','valor_ibs_reten','valor_cbs_reten',
+            'qbcmonoret_ibs_cbs','adrem_ibs_ret','adrem_cbs_ret','valor_ibs_ret','valor_cbs_ret',
+            'adrem_ibs','adrem_cbs',
         ];
+
         foreach ($zeroFloat as $f) $this->setIfExists($item, $f, 0.0);
 
         $zeroInt = ['CRED_PRES_COD_IBS','CRED_PRES_COD_CBS'];
@@ -314,7 +315,25 @@ class ReformaTributariaService
 
     public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
     {
-        $vProd   = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor']);
+        $vProdTotal = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor_total_item'], 0.0);
+
+        $qtd = $this->getNum($item, ['NFSI_QUANTIDADE','quantidade','qtd'], 0.0);
+
+        $vUnit = $this->getNum($item, ['valor_unitario','valor_unit','vlr_unitario'], 0.0);
+        if ($vUnit <= 0) {
+            $vUnit = $this->getNum($item, ['valor'], 0.0); // venda: valor costuma ser unitário
+        }
+
+        $vProd = $vProdTotal;
+        if ($vProd <= 0 && $qtd > 0 && $vUnit > 0) {
+            $vProd = $this->round2($qtd * $vUnit);
+        }
+
+        if ($vProd <= 0) {
+            // fallback conservador (metodo antigo do calculo)
+            $vProd = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor'], 0.0);
+        }
+
         $vSeg    = $this->getNum($item, ['NFSI_SEGURO','seguro']);
         $vFrete  = $this->getNum($item, ['NFSI_FRETE','frete']);
         $vOutro  = $this->getNum($item, ['NFSI_DESPESAS','despesas','outros']);
@@ -573,6 +592,74 @@ class ReformaTributariaService
         if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($vendaModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
 
         try { $vendaModel->save(); } catch (\Throwable $e) {}
+    }
+
+    // ---------------------------------------------------------------------
+    // 4B) Totais (cabeçalho) por compra
+    // ---------------------------------------------------------------------
+
+    public function calcularTotaisCompra(int $empresaId, int $compraId, string $itensTable = 'item_compras'): array
+    {
+        if (!Schema::hasTable($itensTable)) return [];
+
+        $sumCols = [
+            'BC_IBS_CBS'               => 'TOTAL_BC_IBS_CBS',
+            'VALOR_DIF_IBS_UF'         => 'TOTAL_IBS_UF_DIF',
+            'VALOR_DIF_IBS_UF_DEVTRIB' => 'TOTAL_IBS_UF_DEV_TRIB',
+            'VALOR_IBS_UF'             => 'TOTAL_IBS_UF',
+            'VALOR_DIF_IBS_MUN'        => 'TOTAL_IBS_MUN_DIF',
+            'VALOR_DIF_IBS_MUN_TRIB'   => 'TOTAL_IBS_MUN_DEV_TRIB',
+            'VALOR_IBS_MUN'            => 'TOTAL_IBS_MUN',
+            'VALOR_DIF_CBS'            => 'TOTAL_CBS_DIF',
+            'VALOR_DIF_CBS_DEVTRIB'    => 'TOTAL_CBS_DEV_TRIB',
+            'VALOR_CBS'                => 'TOTAL_CBS',
+            'IS_VALOR'                 => 'TOTAL_IS',
+            'VALOR_IBS_MONO'           => 'TOTAL_IBS_MONO',
+            'VALOR_CBS_MONO'           => 'TOTAL_CBS_MONO',
+            'VALOR_IBS_RETEN'          => 'TOTAL_IBS_MONO_RETEN',
+            'VALOR_CBS_RETEN'          => 'TOTAL_CBS_MONO_RETEN',
+            'VALOR_IBS_RET'            => 'TOTAL_IBS_MONO_RET',
+            'VALOR_CBS_RET'            => 'TOTAL_CBS_MONO_RET',
+        ];
+
+        $selects = [];
+        foreach ($sumCols as $col => $alias) {
+            if (Schema::hasColumn($itensTable, $col)) {
+                $selects[] = "COALESCE(SUM($col),0) as $alias";
+            }
+        }
+        if (!$selects) return [];
+
+        $row = DB::table($itensTable)
+            ->where('compra_id', $compraId)
+            ->selectRaw(implode(",\n", $selects))
+            ->first();
+
+        if (!$row) return [];
+
+        $t = (array)$row;
+
+        $totalIbs = (float)($t['TOTAL_IBS_UF'] ?? 0) + (float)($t['TOTAL_IBS_MUN'] ?? 0);
+        $totalIbsCbs = $totalIbs + (float)($t['TOTAL_CBS'] ?? 0);
+
+        $t['TOTAL_IBS'] = $this->round2($totalIbs);
+        $t['TOTAL_IBS_CBS'] = $this->round2($totalIbsCbs);
+
+        return $t;
+    }
+
+    public function applyTotaisToCompra($compraModel, array $totais): void
+    {
+        if (!$compraModel || !$totais) return;
+
+        foreach ($totais as $k => $v) {
+            $this->setIfExists($compraModel, $k, $v);
+        }
+
+        if (isset($totais['TOTAL_IBS']))     $this->setIfExists($compraModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
+        if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($compraModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
+
+        try { $compraModel->save(); } catch (\Throwable $e) {}
     }
 
     // ---------------------------------------------------------------------

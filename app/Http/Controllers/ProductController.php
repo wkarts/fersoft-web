@@ -442,17 +442,17 @@ class ProductController extends Controller
                 $request->merge([ 'produto_referenciado_id' => $request->input('produto_referenciado_id') ?? null ]);
                 $request->merge([ 'produto_prateleira_id' => $request->input('produto_prateleira_id') ?? null ]);
 
-                $request->merge([ 'CST_IBS_CBS' => $request->input('CST_IBS_CBS') ?? '' ]);
-                $request->merge([ 'CLASS_TRIB_IBS_CBS' => $request->input('CLASS_TRIB_IBS_CBS') ?? '' ]);
-                $request->merge([ 'REDUCAO_IBS' => $request->input('REDUCAO_IBS') ? __replace($request->input('REDUCAO_IBS')) : 0 ]);
-                $request->merge([ 'REDUCAO_CBS' => $request->input('REDUCAO_CBS') ? __replace($request->input('REDUCAO_CBS')) : 0 ]);
+                $request->merge([ 'cst_ibs_cbs' => $request->input('cst_ibs_cbs') ?? '' ]);
+                $request->merge([ 'class_trib_ibs_cbs' => $request->input('class_trib_ibs_cbs') ?? '' ]);
+                $request->merge([ 'reducao_ibs' => $request->input('reducao_ibs') ? __replace($request->input('reducao_ibs')) : 0 ]);
+                $request->merge([ 'reducao_cbs' => $request->input('reducao_cbs') ? __replace($request->input('reducao_cbs')) : 0 ]);
 
                 // regra Delphi (CST 200 => buscar percentuais pela class_trib)
-                if (($request->input('CST_IBS_CBS') ?? '') === '200' && ($request->input('CLASS_TRIB_IBS_CBS') ?? '') !== '') {
-                    $vals = $this->resolveReducaoIbsCbs($request->input('CLASS_TRIB_IBS_CBS'));
+                if (($request->input('cst_ibs_cbs') ?? '') === '200' && ($request->input('class_trib_ibs_cbs') ?? '') !== '') {
+                    $vals = $this->resolveReducaoIbsCbs($request->input('class_trib_ibs_cbs'));
                     $request->merge([
-                        'REDUCAO_IBS' => $vals['predibs'],
-                        'REDUCAO_CBS' => $vals['predcbs'],
+                        'reducao_ibs' => $vals['predibs'],
+                        'reducao_cbs' => $vals['predcbs'],
                     ]);
                 }
 
@@ -1442,15 +1442,15 @@ class ProductController extends Controller
                 $resp->CST_IPI = $request->input('CST_IPI');
                 $resp->cenq_ipi = $request->input('cenq_ipi');
 
-                $resp->CST_IBS_CBS = $request->input('CST_IBS_CBS') ?? '';
-                $resp->CLASS_TRIB_IBS_CBS = $request->input('CLASS_TRIB_IBS_CBS') ?? '';
-                $resp->REDUCAO_IBS = $request->input('REDUCAO_IBS') ? __replace($request->input('REDUCAO_IBS')) : 0;
-                $resp->REDUCAO_CBS = $request->input('REDUCAO_CBS') ? __replace($request->input('REDUCAO_CBS')) : 0;
+                $resp->cst_ibs_cbs = $request->input('cst_ibs_cbs') ?? '';
+                $resp->class_trib_ibs_cbs = $request->input('class_trib_ibs_cbs') ?? '';
+                $resp->reducao_ibs = $request->input('reducao_ibs') ? __replace($request->input('reducao_ibs')) : 0;
+                $resp->reducao_cbs = $request->input('reducao_cbs') ? __replace($request->input('reducao_cbs')) : 0;
 
-                if (($resp->CST_IBS_CBS ?? '') === '200' && ($resp->CLASS_TRIB_IBS_CBS ?? '') !== '') {
-                    $vals = $this->resolveReducaoIbsCbs($resp->CLASS_TRIB_IBS_CBS);
-                    $resp->REDUCAO_IBS = $vals['predibs'];
-                    $resp->REDUCAO_CBS = $vals['predcbs'];
+                if (($resp->cst_ibs_cbs ?? '') === '200' && ($resp->class_trib_ibs_cbs ?? '') !== '') {
+                    $vals = $this->resolveReducaoIbsCbs($resp->class_trib_ibs_cbs);
+                    $resp->reducao_ibs = $vals['predibs'];
+                    $resp->reducao_cbs = $vals['predcbs'];
                 }
 
                 $resp->CST_CSOSN_entrada = $request->input('CST_CSOSN_entrada');

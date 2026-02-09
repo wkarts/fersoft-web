@@ -9,65 +9,65 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'CLASS_TRIB_IBS_CBS';
+        $tbl = 'class_trib_ibs_cbs';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
                 // Legado / negócio
-                $table->integer('ID_CCLAS_IBS_CBS')->notNull();
-                $table->integer('ID_CST_IBS_CBS')->nullable();
-                $table->string('CST_IBS_CBS', 8)->nullable();
-                $table->string('DESCRICAO_CST_IBS_CBS', 257)->nullable();
-                $table->string('CCLASSTRIB', 8)->nullable();
-                $table->string('NOME_CCLASSTRIB', 257)->nullable();
-                $table->string('DESCRICAO_CCLASSTRIB', 257)->nullable();
-                $table->text('LC_REDACAO')->nullable();
-                $table->string('LC_214_25', 257)->nullable();
-                $table->string('TIPO_DE_ALIQUOTA', 257)->nullable();
+                $table->integer('id_cclas_ibs_cbs')->notNull();
+                $table->integer('id_cst_ibs_cbs')->nullable();
+                $table->string('cst_ibs_cbs', 8)->nullable();
+                $table->string('descricao_cst_ibs_cbs', 257)->nullable();
+                $table->string('cclasstrib', 8)->nullable();
+                $table->string('nome_cclasstrib', 257)->nullable();
+                $table->string('descricao_cclasstrib', 257)->nullable();
+                $table->text('lc_redacao')->nullable();
+                $table->string('lc_214_25', 257)->nullable();
+                $table->string('tipo_de_aliquota', 257)->nullable();
 
-                $table->decimal('PREDIBS', 18, 4)->default(0)->notNull();
-                $table->decimal('PREDCBS', 18, 4)->default(0)->notNull();
-                $table->decimal('PRED_IBS_CBS', 18, 4)->default(0)->notNull();
+                $table->decimal('predibs', 18, 4)->default(0)->notNull();
+                $table->decimal('predcbs', 18, 4)->default(0)->notNull();
+                $table->decimal('pred_ibs_cbs', 18, 4)->default(0)->notNull();
 
-                $table->string('IND_REDUTORBC', 1)->nullable();
-                $table->string('IND_GTRIBREGULAR', 1)->nullable();
-                $table->string('IND_CREDPRES', 1)->nullable();
-                $table->string('INDMONO', 1)->nullable();
-                $table->string('INDMONORETEN', 1)->nullable();
-                $table->string('INDMONORET', 1)->nullable();
-                $table->string('INDMONODIF', 1)->nullable();
+                $table->string('ind_redutorbc', 1)->nullable();
+                $table->string('ind_gtribregular', 1)->nullable();
+                $table->string('ind_credpres', 1)->nullable();
+                $table->string('indmono', 1)->nullable();
+                $table->string('indmonoreten', 1)->nullable();
+                $table->string('indmonoret', 1)->nullable();
+                $table->string('indmonodif', 1)->nullable();
 
-                $table->string('CREDITO_PARA', 257)->nullable();
-                $table->date('DINIVIG')->nullable();
-                $table->date('DFIMVIG')->nullable();
-                $table->dateTime('DATAATUALIZACAO')->nullable();
+                $table->string('credito_para', 257)->nullable();
+                $table->date('dinivig')->nullable();
+                $table->date('dfimvig')->nullable();
+                $table->dateTime('dataatualizacao')->nullable();
 
                 // Padrão Eloquent
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_CLASS_TRIB_IBS_CBS_LEGACY', ['ID_CCLAS_IBS_CBS']);
-        $this->ensureIndex($tbl,  'IDX_CLASS_TRIB_CST',           ['CST_IBS_CBS']);
-        $this->ensureIndex($tbl,  'IDX_CLASS_TRIB_CCLAS',         ['CCLASSTRIB']);
-        $this->ensureIndex($tbl,  'IDX_CLASS_TRIB_VIG',           ['DINIVIG', 'DFIMVIG']);
+        $this->ensureUnique($tbl, 'uq_class_trib_ibs_cbs_legacy', ['id_cclas_ibs_cbs']);
+        $this->ensureIndex($tbl,  'idx_class_trib_cst',           ['cst_ibs_cbs']);
+        $this->ensureIndex($tbl,  'idx_class_trib_cclas',         ['cclasstrib']);
+        $this->ensureIndex($tbl,  'idx_class_trib_vig',           ['dinivig', 'dfimvig']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('CLASS_TRIB_IBS_CBS');
+        Schema::dropIfExists('class_trib_ibs_cbs');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

@@ -9,36 +9,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'BANCOS';
+        $tbl = 'bancos';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
-                $table->integer('CODIGO')->notNull();
-                $table->string('DESCRICAO', 200)->notNull();
+                $table->integer('codigo')->notNull();
+                $table->string('descricao', 200)->notNull();
 
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_BANCOS_CODIGO', ['CODIGO']);
-        $this->ensureIndex($tbl,  'IDX_BANCOS_DESCRICAO', ['DESCRICAO']);
+        $this->ensureUnique($tbl, 'uq_bancos_codigo', ['codigo']);
+        $this->ensureIndex($tbl,  'idx_bancos_descricao', ['descricao']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('BANCOS');
+        Schema::dropIfExists('bancos');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

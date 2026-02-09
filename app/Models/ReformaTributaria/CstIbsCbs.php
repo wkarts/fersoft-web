@@ -6,46 +6,47 @@ use App\Models\Support\LookupModel;
 
 class CstIbsCbs extends LookupModel
 {
-    protected $table = 'CST_IBS_CBS';
-    protected $primaryKey = 'ID';
+    protected $table = 'cst_ibs_cbs';
+    protected $primaryKey = 'id';
     public $incrementing = true;
     protected $keyType = 'int';
 
     protected $fillable = [
-        'ID_CST_IBS_CBS',
-        'CST_IBS_CBS',
-        'DESCRICAO_CST_IBS_CBS',
-        'IND_GIBSCBS',
-        'IND_GIBSCBSMONO',
-        'IND_GRED',
-        'IND_GDIF',
-        'IND_GTRANSFCRED',
-        'INDNFE',
-        'INDNFCE',
-        'INDCTE',
-        'INDCTEOS',
-        'INDBPE',
-        'INDBPETM',
-        'INDNF3E',
-        'INDNFCOM',
-        'INDNFSE',
-        'ELOQUENT_UUID',
-        'CREATED_AT',
-        'UPDATED_AT',
-        'DELETED_AT',
+        'id_cst_ibs_cbs',
+        'cst_ibs_cbs',
+        'descricao_cst_ibs_cbs',
+        'ind_gibscbs',
+        'ind_gibscbsmono',
+        'ind_gred',
+        'ind_gdif',
+        'ind_gtransfcred',
+        'indnfe',
+        'indnfce',
+        'indcte',
+        'indcteos',
+        'indbpe',
+        'indbpetm',
+        'indnf3e',
+        'indnfcom',
+        'indnfse',
+        'eloquent_uuid',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
+
     protected $casts = [
-        'ID' => 'integer',
-        'ID_CST_IBS_CBS' => 'integer',
-        'CREATED_AT' => 'datetime',
-        'UPDATED_AT' => 'datetime',
-        'DELETED_AT' => 'datetime',
-        'ELOQUENT_UUID' => 'string',
+        'id' => 'integer',
+        'id_cst_ibs_cbs' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+        'eloquent_uuid' => 'string',
     ];
 
     public function scopeByCst($q, string $cst)
     {
-        return $q->where('CST_IBS_CBS', $cst);
+        return $q->where('cst_ibs_cbs', $cst);
     }
 }

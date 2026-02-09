@@ -12,9 +12,9 @@ class CnaeFiscalSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'CNAE_FISCAL',
-            uniqueBy: ['CODIGO'],
-            updateColumns: ['DESC_CNAE'],
+            table: 'cnae_fiscal',
+            uniqueBy: [ 'codigo'],
+            updateColumns: [ 'desc_cnae'],
             relativePath: 'CNAE_FISCAL.ndjson',
             chunkSize: 500
         );

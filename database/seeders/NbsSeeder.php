@@ -12,9 +12,9 @@ class NbsSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'NBS',
-            uniqueBy: ['CODIGO'],
-            updateColumns: ['DESC_NBS', 'ALIQ_NAC', 'ALIQ_IMP'],
+            table: 'nbs',
+            uniqueBy: [ 'codigo'],
+            updateColumns: [ 'desc_nbs', 'aliq_nac', 'aliq_imp'],
             relativePath: 'NBS.ndjson',
             chunkSize: 500
         );

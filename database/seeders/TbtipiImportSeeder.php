@@ -12,9 +12,9 @@ class TbtipiImportSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'TBTIPI_IMPORT',
-            uniqueBy: ['NCM', 'EX', 'LC214_CODIGO_RAW', 'CCLASSTRIB'],
-            updateColumns: ['DESCRICAO', 'ALIQUOTA_RAW', 'ALIQUOTA_PERC', 'CST_IBS_CBS', 'TIPO_REDUCAO'],
+            table: 'tbtipi_import',
+            uniqueBy: [ 'ncm', 'ex', 'lc214_codigo_raw', 'cclasstrib'],
+            updateColumns: [ 'descricao', 'aliquota_raw', 'aliquota_perc', 'cst_ibs_cbs', 'tipo_reducao'],
             relativePath: 'TBTIPI_IMPORT.ndjson',
             chunkSize: 500
         );

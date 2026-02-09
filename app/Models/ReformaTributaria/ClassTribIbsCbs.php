@@ -7,65 +7,65 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClassTribIbsCbs extends LookupModel
 {
-    protected $table = 'CLASS_TRIB_IBS_CBS';
-    protected $primaryKey = 'ID';
+    protected $table = 'class_trib_ibs_cbs';
+    protected $primaryKey = 'id';
     public $incrementing = true;
     protected $keyType = 'int';
 
     protected $fillable = [
-        'ID_CCLAS_IBS_CBS',
-        'ID_CST_IBS_CBS',
-        'CST_IBS_CBS',
-        'DESCRICAO_CST_IBS_CBS',
-        'CCLASSTRIB',
-        'NOME_CCLASSTRIB',
-        'DESCRICAO_CCLASSTRIB',
-        'LC_REDACAO',
-        'LC_214_25',
-        'TIPO_DE_ALIQUOTA',
-        'PREDIBS',
-        'PREDCBS',
-        'PRED_IBS_CBS',
-        'IND_REDUTORBC',
-        'IND_GTRIBREGULAR',
-        'IND_CREDPRES',
-        'INDMONO',
-        'INDMONORETEN',
-        'INDMONORET',
-        'INDMONODIF',
-        'CREDITO_PARA',
-        'DINIVIG',
-        'DFIMVIG',
-        'DATAATUALIZACAO',
-        'ELOQUENT_UUID',
-        'CREATED_AT',
-        'UPDATED_AT',
-        'DELETED_AT',
+        'id_cclas_ibs_cbs',
+        'id_cst_ibs_cbs',
+        'cst_ibs_cbs',
+        'descricao_cst_ibs_cbs',
+        'cclasstrib',
+        'nome_cclasstrib',
+        'descricao_cclasstrib',
+        'lc_redacao',
+        'lc_214_25',
+        'tipo_de_aliquota',
+        'predibs',
+        'predcbs',
+        'pred_ibs_cbs',
+        'ind_redutorbc',
+        'ind_gtribregular',
+        'ind_credpres',
+        'indmono',
+        'indmonoreten',
+        'indmonoret',
+        'indmonodif',
+        'credito_para',
+        'dinivig',
+        'dfimvig',
+        'dataatualizacao',
+        'eloquent_uuid',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected $casts = [
-        'ID' => 'integer',
-        'ID_CCLAS_IBS_CBS' => 'integer',
-        'ID_CST_IBS_CBS' => 'integer',
-        'PREDIBS' => 'decimal:4',
-        'PREDCBS' => 'decimal:4',
-        'PRED_IBS_CBS' => 'decimal:4',
-        'DINIVIG' => 'date',
-        'DFIMVIG' => 'date',
-        'DATAATUALIZACAO' => 'datetime',
-        'CREATED_AT' => 'datetime',
-        'UPDATED_AT' => 'datetime',
-        'DELETED_AT' => 'datetime',
-        'ELOQUENT_UUID' => 'string',
+        'id' => 'integer',
+        'id_cclas_ibs_cbs' => 'integer',
+        'id_cst_ibs_cbs' => 'integer',
+        'predibs' => 'decimal:4',
+        'predcbs' => 'decimal:4',
+        'pred_ibs_cbs' => 'decimal:4',
+        'dinivig' => 'date',
+        'dfimvig' => 'date',
+        'dataatualizacao' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+        'eloquent_uuid' => 'string',
     ];
 
     public function cst(): BelongsTo
     {
-        return $this->belongsTo(CstIbsCbs::class, 'ID_CST_IBS_CBS', 'ID_CST_IBS_CBS');
+        return $this->belongsTo(CstIbsCbs::class, 'id_cst_ibs_cbs', 'id_cst_ibs_cbs');
     }
 
     public function scopeByCclasstrib($q, string $cclasstrib)
     {
-        return $q->where('CCLASSTRIB', $cclasstrib);
+        return $q->where('cclasstrib', $cclasstrib);
     }
 }

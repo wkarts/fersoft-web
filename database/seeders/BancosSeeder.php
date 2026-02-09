@@ -12,9 +12,9 @@ class BancosSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'BANCOS',
-            uniqueBy: ['CODIGO'],
-            updateColumns: ['DESCRICAO'],
+            table: 'bancos',
+            uniqueBy: [ 'codigo'],
+            updateColumns: [ 'descricao'],
             relativePath: 'BANCOS.ndjson',
             chunkSize: 500
         );

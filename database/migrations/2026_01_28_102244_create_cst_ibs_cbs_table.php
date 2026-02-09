@@ -9,54 +9,54 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'CST_IBS_CBS';
+        $tbl = 'cst_ibs_cbs';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
                 // legado / negócio
-                $table->integer('ID_CST_IBS_CBS')->notNull();
-                $table->string('CST_IBS_CBS', 8)->nullable();
-                $table->string('DESCRICAO_CST_IBS_CBS', 255)->nullable();
+                $table->integer('id_cst_ibs_cbs')->notNull();
+                $table->string('cst_ibs_cbs', 8)->nullable();
+                $table->string('descricao_cst_ibs_cbs', 255)->nullable();
 
-                $table->string('IND_GIBSCBS', 1)->nullable();
-                $table->string('IND_GIBSCBSMONO', 1)->nullable();
-                $table->string('IND_GRED', 1)->nullable();
-                $table->string('IND_GDIF', 1)->nullable();
-                $table->string('IND_GTRANSFCRED', 1)->nullable();
-                $table->string('INDNFE', 1)->nullable();
-                $table->string('INDNFCE', 1)->nullable();
-                $table->string('INDCTE', 1)->nullable();
-                $table->string('INDCTEOS', 1)->nullable();
-                $table->string('INDBPE', 1)->nullable();
-                $table->string('INDBPETM', 1)->nullable();
-                $table->string('INDNF3E', 1)->nullable();
-                $table->string('INDNFCOM', 1)->nullable();
-                $table->string('INDNFSE', 1)->nullable();
+                $table->string('ind_gibscbs', 1)->nullable();
+                $table->string('ind_gibscbsmono', 1)->nullable();
+                $table->string('ind_gred', 1)->nullable();
+                $table->string('ind_gdif', 1)->nullable();
+                $table->string('ind_gtransfcred', 1)->nullable();
+                $table->string('indnfe', 1)->nullable();
+                $table->string('indnfce', 1)->nullable();
+                $table->string('indcte', 1)->nullable();
+                $table->string('indcteos', 1)->nullable();
+                $table->string('indbpe', 1)->nullable();
+                $table->string('indbpetm', 1)->nullable();
+                $table->string('indnf3e', 1)->nullable();
+                $table->string('indnfcom', 1)->nullable();
+                $table->string('indnfse', 1)->nullable();
 
                 // padrão Eloquent
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_CST_IBS_CBS_LEGACY', ['ID_CST_IBS_CBS']);
-        $this->ensureIndex($tbl,  'IDX_CST_IBS_CBS_CST',   ['CST_IBS_CBS']);
+        $this->ensureUnique($tbl, 'uq_cst_ibs_cbs_legacy', ['id_cst_ibs_cbs']);
+        $this->ensureIndex($tbl,  'idx_cst_ibs_cbs_cst',   ['cst_ibs_cbs']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('CST_IBS_CBS');
+        Schema::dropIfExists('cst_ibs_cbs');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

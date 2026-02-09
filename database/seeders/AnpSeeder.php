@@ -12,9 +12,9 @@ class AnpSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'ANP',
-            uniqueBy: ['CODIGO'],
-            updateColumns: ['DESCRICAO', 'ADREMICMS', 'MONOFASICO', 'PBIO', 'ORIGCOMB', 'UTRIB'],
+            table: 'anp',
+            uniqueBy: [ 'codigo'],
+            updateColumns: [ 'descricao', 'adremicms', 'monofasico', 'pbio', 'origcomb', 'utrib'],
             relativePath: 'ANP.ndjson',
             chunkSize: 500
         );

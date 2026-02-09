@@ -9,61 +9,61 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'TBTIPI_IMPORT';
+        $tbl = 'tbtipi_import';
 
         // 1) CreateTableIfNotExists (idempotente)
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
                 // colunas da planilha
-                $table->string('NCM', 20)->nullable();
-                $table->string('EX', 10)->nullable();
-                $table->string('DESCRICAO', 3000)->nullable(); // no seu Delphi: 3000 (depois complementa 2000)
-                $table->string('ALIQUOTA_RAW', 20)->nullable();
-                $table->decimal('ALIQUOTA_PERC', 15, 4)->nullable();
-                $table->string('CST_IBS_CBS', 20)->nullable();
-                $table->string('CCLASSTRIB', 30)->nullable();
-                $table->string('TIPO_REDUCAO', 120)->nullable();
-                $table->string('LC214_CODIGO_RAW', 30)->nullable();
+                $table->string('ncm', 20)->nullable();
+                $table->string('ex', 10)->nullable();
+                $table->string('descricao', 3000)->nullable(); // no seu Delphi: 3000 (depois complementa 2000)
+                $table->string('aliquota_raw', 20)->nullable();
+                $table->decimal('aliquota_perc', 15, 4)->nullable();
+                $table->string('cst_ibs_cbs', 20)->nullable();
+                $table->string('cclasstrib', 30)->nullable();
+                $table->string('tipo_reducao', 120)->nullable();
+                $table->string('lc214_codigo_raw', 30)->nullable();
 
                 // padrão eloquent (no seu padrão de nomes)
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         }
 
         // 2) Se a base já tinha tabela antiga sem ID: tenta injetar ID e PK (best-effort)
         //    (em Laravel isso pode variar por SGBD; aqui é conservador e não derruba a migration)
-        if (Schema::hasTable($tbl) && !Schema::hasColumn($tbl, 'ID')) {
+        if (Schema::hasTable($tbl) && !Schema::hasColumn($tbl, 'id')) {
             $this->tryAddAutoIdAndPk($tbl);
         }
 
         // 3) Garante campos padrão (idempotente)
-        $this->ensureColumn($tbl, 'ELOQUENT_UUID', fn(Blueprint $t) => $t->uuid('ELOQUENT_UUID')->nullable());
-        $this->ensureColumn($tbl, 'CREATED_AT',    fn(Blueprint $t) => $t->dateTime('CREATED_AT')->nullable());
-        $this->ensureColumn($tbl, 'UPDATED_AT',    fn(Blueprint $t) => $t->dateTime('UPDATED_AT')->nullable());
-        $this->ensureColumn($tbl, 'DELETED_AT',    fn(Blueprint $t) => $t->dateTime('DELETED_AT')->nullable());
+        $this->ensureColumn($tbl, 'eloquent_uuid', fn(Blueprint $t) => $t->uuid('eloquent_uuid')->nullable());
+        $this->ensureColumn($tbl, 'created_at',    fn(Blueprint $t) => $t->dateTime('created_at')->nullable());
+        $this->ensureColumn($tbl, 'updated_at',    fn(Blueprint $t) => $t->dateTime('updated_at')->nullable());
+        $this->ensureColumn($tbl, 'deleted_at',    fn(Blueprint $t) => $t->dateTime('deleted_at')->nullable());
 
         // 4) Complementa colunas caso a tabela já existisse (idempotente)
         // OBS: no seu Delphi algumas eram "NotNull" na complementação; aqui mantenho conservador como nullable,
         //      porque mudar NULL -> NOT NULL em base antiga pode quebrar.
-        $this->ensureColumn($tbl, 'NCM',              fn(Blueprint $t) => $t->string('NCM', 20)->nullable());
-        $this->ensureColumn($tbl, 'EX',               fn(Blueprint $t) => $t->string('EX', 10)->nullable());
-        $this->ensureColumn($tbl, 'DESCRICAO',        fn(Blueprint $t) => $t->string('DESCRICAO', 3000)->nullable());
-        $this->ensureColumn($tbl, 'ALIQUOTA_RAW',     fn(Blueprint $t) => $t->string('ALIQUOTA_RAW', 20)->nullable());
-        $this->ensureColumn($tbl, 'ALIQUOTA_PERC',    fn(Blueprint $t) => $t->decimal('ALIQUOTA_PERC', 15, 4)->nullable());
-        $this->ensureColumn($tbl, 'CST_IBS_CBS',      fn(Blueprint $t) => $t->string('CST_IBS_CBS', 20)->nullable());
-        $this->ensureColumn($tbl, 'CCLASSTRIB',       fn(Blueprint $t) => $t->string('CCLASSTRIB', 30)->nullable());
-        $this->ensureColumn($tbl, 'TIPO_REDUCAO',     fn(Blueprint $t) => $t->string('TIPO_REDUCAO', 120)->nullable());
-        $this->ensureColumn($tbl, 'LC214_CODIGO_RAW', fn(Blueprint $t) => $t->string('LC214_CODIGO_RAW', 30)->nullable());
+        $this->ensureColumn($tbl, 'ncm',              fn(Blueprint $t) => $t->string('ncm', 20)->nullable());
+        $this->ensureColumn($tbl, 'ex',               fn(Blueprint $t) => $t->string('ex', 10)->nullable());
+        $this->ensureColumn($tbl, 'descricao',        fn(Blueprint $t) => $t->string('descricao', 3000)->nullable());
+        $this->ensureColumn($tbl, 'aliquota_raw',     fn(Blueprint $t) => $t->string('aliquota_raw', 20)->nullable());
+        $this->ensureColumn($tbl, 'aliquota_perc',    fn(Blueprint $t) => $t->decimal('aliquota_perc', 15, 4)->nullable());
+        $this->ensureColumn($tbl, 'cst_ibs_cbs',      fn(Blueprint $t) => $t->string('cst_ibs_cbs', 20)->nullable());
+        $this->ensureColumn($tbl, 'cclasstrib',       fn(Blueprint $t) => $t->string('cclasstrib', 30)->nullable());
+        $this->ensureColumn($tbl, 'tipo_reducao',     fn(Blueprint $t) => $t->string('tipo_reducao', 120)->nullable());
+        $this->ensureColumn($tbl, 'lc214_codigo_raw', fn(Blueprint $t) => $t->string('lc214_codigo_raw', 30)->nullable());
 
         // 5) Índices / chaves de negócio
-        $this->ensureUnique($tbl, 'UQ_TBTIPI_IMPORT_KEY', ['NCM','EX','LC214_CODIGO_RAW','CCLASSTRIB']);
-        $this->ensureIndex($tbl,  'IX_TBTIPI_IMPORT_NCM',  ['NCM']);
-        $this->ensureIndex($tbl,  'IX_TBTIPI_IMPORT_LC214',['LC214_CODIGO_RAW']);
+        $this->ensureUnique($tbl, 'uq_tbtipi_import_key', ['ncm','ex','lc214_codigo_raw','cclasstrib']);
+        $this->ensureIndex($tbl,  'ix_tbtipi_import_ncm',  ['ncm']);
+        $this->ensureIndex($tbl,  'ix_tbtipi_import_lc214',['lc214_codigo_raw']);
 
         // 6) Triggers padrão (UUID + CREATED_AT + UPDATED_AT) — MySQL/Postgres
         $this->ensureTriggers($tbl);
@@ -72,7 +72,7 @@ return new class extends Migration
     public function down(): void
     {
         // Opcional: se você quiser também dropar triggers, dá pra fazer aqui.
-        Schema::dropIfExists('TBTIPI_IMPORT');
+        Schema::dropIfExists('tbtipi_import');
     }
 
     // -----------------------

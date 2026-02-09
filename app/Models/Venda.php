@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Devolucao;
 use App\Models\ConfigNota;
 use App\Models\FormaPagamento;
@@ -10,6 +11,12 @@ use App\Models\Compra;
 
 class Venda extends Model
 {
+    //use SoftDeletes;
+
+    public const CREATED_AT = 'created_at';
+    public const UPDATED_AT = 'updated_at';
+    //public const DELETED_AT = 'deleted_at';
+
     protected $fillable = [
         'cliente_id', 'usuario_id', 'frete_id', 'valor_total', 'forma_pagamento', 'NfNumero',
         'natureza_id', 'chave', 'path_xml', 'estado', 'observacao', 'desconto',
@@ -20,93 +27,133 @@ class Venda extends Model
         'vendedor_id', 'filial_id', 'data_saida',
 
         // 1) ICMS Monofásico - Totais
-        'TOTAL_QBCMONO',
-        'TOTAL_ICMSMONO',
-        'TOTAL_QBCMONORETEN',
-        'TOTAL_ICMSMONORETEN',
-        'TOTAL_QBCMONORET',
-        'TOTAL_ICMSMONORET',
+        'total_qbcmono',
+        'total_icmsmono',
+        'total_qbcmonoreten',
+        'total_icmsmonoreten',
+        'total_qbcmonoret',
+        'total_icmsmonoret',
 
         // 2) Destino operação
-        'DESTINO_OPERACAO',
+        'destino_operacao',
 
         // 3) Retenções (IRRF/PIS/COFINS/CSLL)
-        'RET_BC_IRRF',
-        'RET_ALIQ_IRRF',
-        'RET_VIRRF',
+        'ret_bc_irrf',
+        'ret_aliq_irrf',
+        'ret_virrf',
 
-        'RET_BC_PIS',
-        'RET_ALIQ_PIS',
-        'RET_VPIS',
+        'ret_bc_pis',
+        'ret_aliq_pis',
+        'ret_vpis',
 
-        'RET_BC_COFINS',
-        'RET_ALIQ_COFINS',
-        'RET_VCOFINS',
+        'ret_bc_cofins',
+        'ret_aliq_cofins',
+        'ret_vcofins',
 
-        'RET_BC_CSLL',
-        'RET_ALIQ_CSLL',
-        'RET_VCSLL',
+        'ret_bc_csll',
+        'ret_aliq_csll',
+        'ret_vcsll',
 
-        'FLAG_NORMATIVA_IRRF',
+        'flag_normativa_irrf',
 
         // 4) Totais adicionais
-        'TOTAL_IPI_DEVOLVIDO',
-        'FK_PES_RETIRADA',
-        'FLAG_END_ENTREGA',
-        'TOTAL_II',
+        'total_ipi_devolvido',
+        'fk_pes_retirada',
+        'flag_end_entrega',
+        'total_ii',
 
         // 5) Receituário / Responsável técnico
-        'NRECEITUARIO',
-        'CPFRESPTEC',
+        'nreceituario',
+        'cpfresptec',
 
         // 6) Guia de Trânsito
-        'TIPO_GUIA_TRANSITO',
-        'UF_GUIA_TRANSITO',
-        'SERIE_GUIA_TRANSITO',
-        'NUM_GUIA_TRANSITO',
+        'tipo_guia_transito',
+        'uf_guia_transito',
+        'serie_guia_transito',
+        'num_guia_transito',
 
         // 7) IBS/CBS/IS - Totais
-        'TOTAL_IS',
-        'TOTAL_BC_IBS_CBS',
-        'TOTAL_IBS',
-        'TOTAL_IBS_CRED_PRES',
-        'TOTAL_IBS_CRED_PRES_COND_SUS',
+        'total_is',
+        'total_bc_ibs_cbs',
+        'total_ibs',
+        'total_ibs_cred_pres',
+        'total_ibs_cred_pres_cond_sus',
 
-        'TOTAL_IBS_UF_DIF',
-        'TOTAL_IBS_UF_DEV_TRIB',
-        'TOTAL_IBS_UF',
+        'total_ibs_uf_dif',
+        'total_ibs_uf_dev_trib',
+        'total_ibs_uf',
 
-        'TOTAL_IBS_MUN_DIF',
-        'TOTAL_IBS_MUN_DEV_TRIB',
-        'TOTAL_IBS_MUN',
+        'total_ibs_mun_dif',
+        'total_ibs_mun_dev_trib',
+        'total_ibs_mun',
 
-        'TOTAL_CBS_DIF',
-        'TOTAL_CBS_DEV_TRIB',
-        'TOTAL_CBS',
-        'TOTAL_CBS_CRED_PRES',
-        'TOTAL_CBS_CRED_PRES_COND_SUS',
+        'total_cbs_dif',
+        'total_cbs_dev_trib',
+        'total_cbs',
+        'total_cbs_cred_pres',
+        'total_cbs_cred_pres_cond_sus',
 
-        'TOTAL_IBS_MONO',
-        'TOTAL_CBS_MONO',
-        'TOTAL_IBS_MONO_RETEN',
-        'TOTAL_CBS_MONO_RETEN',
-        'TOTAL_IBS_MONO_RET',
-        'TOTAL_CBS_MONO_RET',
+        'total_ibs_mono',
+        'total_cbs_mono',
+        'total_ibs_mono_reten',
+        'total_cbs_mono_reten',
+        'total_ibs_mono_ret',
+        'total_cbs_mono_ret',
 
-        'TOTAL_NF_IBC_CBS_IS',
-        'TOTAL_IBS_CBS',
+        'total_nf_ibc_cbs_is',
+        'total_ibs_cbs',
 
-        'TIPO_NFCREDITO',
-        'TIPO_NFDEBITO',
-        'TIPO_ENTEGOV',
-        'PERC_REDUTOR_GOV',
-        'TIPO_OPERGOV',
+        'tipo_nfcredito',
+        'tipo_nfdebito',
+        'tipo_entegov',
+        'perc_redutor_gov',
+        'tipo_opergov',
 
         // 8) Padrão Eloquent (sem ID) - campos adicionais
-        'ELOQUENT_UUID',
-        'CREATED_AT',
-        'UPDATED_AT',
-        'DELETED_AT',
+        'eloquent_uuid',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    /**
+     * Casts mínimos para evitar strings em campos monetários e datas.
+     * Ajuste se algum campo for INT/BOOLEAN no seu banco.
+     */
+    protected $casts = [
+        'valor_total' => 'decimal:2',
+        'desconto' => 'decimal:2',
+        'acrescimo' => 'decimal:2',
+
+        'total_is' => 'decimal:2',
+        'total_bc_ibs_cbs' => 'decimal:2',
+        'total_ibs' => 'decimal:2',
+        'total_cbs' => 'decimal:2',
+        'total_ibs_cbs' => 'decimal:2',
+
+        'total_ii' => 'decimal:2',
+        'total_ipi_devolvido' => 'decimal:2',
+
+        'ret_bc_irrf' => 'decimal:2',
+        'ret_aliq_irrf' => 'decimal:6',
+        'ret_virrf' => 'decimal:2',
+
+        'ret_bc_pis' => 'decimal:2',
+        'ret_aliq_pis' => 'decimal:6',
+        'ret_vpis' => 'decimal:2',
+
+        'ret_bc_cofins' => 'decimal:2',
+        'ret_aliq_cofins' => 'decimal:6',
+        'ret_vcofins' => 'decimal:2',
+
+        'ret_bc_csll' => 'decimal:2',
+        'ret_aliq_csll' => 'decimal:6',
+        'ret_vcsll' => 'decimal:2',
+
+        'data_entrega' => 'date',
+        'data_emissao' => 'date',
+        'data_saida' => 'date',
+        'data_retroativa' => 'date',
     ];
 
     public function filial(){

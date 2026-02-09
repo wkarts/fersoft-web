@@ -7,37 +7,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NcmNbsIbsCbs extends LookupModel
 {
-    protected $table = 'NCM_NBS_IBS_CBS';
-    protected $primaryKey = 'ID';
+    protected $table = 'ncm_nbs_ibs_cbs';
+    protected $primaryKey = 'id';
     public $incrementing = true;
     protected $keyType = 'int';
 
     protected $fillable = [
-        'ID_NCM_NBS_IBS_CBS',
-        'ID_CCLASS_IBS_CBS',
-        'CST_IBS_CBS',
-        'CCLASS_TRIB',
-        'NCM_NBS_IBS_CBS',
-        'NOME_NCM_NBS_IBS_CBS',
-        'TIPO_NCM_NBS_IBS_CBS',
-        'INICIO_VIGENCIA',
-        'TERMININO_VIGENCIA',
-        'ELOQUENT_UUID',
-        'CREATED_AT',
-        'UPDATED_AT',
-        'DELETED_AT',
+        'id_ncm_nbs_ibs_cbs',
+        'id_cclass_ibs_cbs',
+        'cst_ibs_cbs',
+        'cclass_trib',
+        'ncm_nbs_ibs_cbs',
+        'nome_ncm_nbs_ibs_cbs',
+        'tipo_ncm_nbs_ibs_cbs',
+        'inicio_vigencia',
+        'terminino_vigencia',
+        'eloquent_uuid',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected $casts = [
-        'ID' => 'integer',
-        'ID_NCM_NBS_IBS_CBS' => 'integer',
-        'ID_CCLASS_IBS_CBS' => 'integer',
-        'INICIO_VIGENCIA' => 'date',
-        'TERMININO_VIGENCIA' => 'date',
-        'CREATED_AT' => 'datetime',
-        'UPDATED_AT' => 'datetime',
-        'DELETED_AT' => 'datetime',
-        'ELOQUENT_UUID' => 'string',
+        'id' => 'integer',
+        'id_ncm_nbs_ibs_cbs' => 'integer',
+        'id_cclass_ibs_cbs' => 'integer',
+        'inicio_vigencia' => 'date',
+        'terminino_vigencia' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+        'eloquent_uuid' => 'string',
     ];
 
     // Relacionamento “conservador” usando o legado

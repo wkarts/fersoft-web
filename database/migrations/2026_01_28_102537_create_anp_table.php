@@ -9,44 +9,44 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'ANP';
+        $tbl = 'anp';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
                 // No seu Delphi o ID estava comentado — mantendo CODIGO como chave de negócio.
-                $table->integer('CODIGO');
-                $table->primary('CODIGO');
+                $table->integer('codigo');
+                $table->primary('codigo');
 
-                $table->string('DESCRICAO', 250)->nullable();
-                $table->decimal('ADREMICMS', 15, 4)->nullable();
-                $table->string('MONOFASICO', 1)->nullable();
-                $table->integer('PBIO')->default(0)->notNull();
-                $table->integer('ORIGCOMB')->default(0)->notNull()->comment(
+                $table->string('descricao', 250)->nullable();
+                $table->decimal('adremicms', 15, 4)->nullable();
+                $table->string('monofasico', 1)->nullable();
+                $table->integer('pbio')->default(0)->notNull();
+                $table->integer('origcomb')->default(0)->notNull()->comment(
                     'O Grupo "origComb" deve ser preenchido na NFe quando a operação for com biodiesel/óleo diesel B, etanol/gasolina (misturas) ou GLP/GLGN contendo GLGNn ou GLGNi.'
                 );
-                $table->string('UTRIB', 10)->nullable();
+                $table->string('utrib', 10)->nullable();
 
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_ANP_CODIGO', ['CODIGO']);
-        $this->ensureIndex($tbl,  'IDX_ANP_DESCRICAO', ['DESCRICAO']);
+        $this->ensureUnique($tbl, 'uq_anp_codigo', ['codigo']);
+        $this->ensureIndex($tbl,  'idx_anp_descricao', ['descricao']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('ANP');
+        Schema::dropIfExists('anp');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

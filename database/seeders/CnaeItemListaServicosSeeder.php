@@ -12,9 +12,9 @@ class CnaeItemListaServicosSeeder extends Seeder
     public function run(): void
     {
         $this->upsertFromNdjson(
-            table: 'CNAE_ITEM_LISTA_SERVICOS',
-            uniqueBy: ['CNAE', 'COD_SERVICO'],
-            updateColumns: ['DESCRICAO_CNAE', 'DESCRICAO_SERVICO', 'COD_TRIB_MUNICIPIO', 'ALIQUOTA', 'PERMITE_TRIB_FORA', 'RETENCAO_OBRIGATORIA', 'PERMITE_REDUCAO_BC', 'DEDUCAO_MAX'],
+            table: 'cnae_item_lista_servicos',
+            uniqueBy: [ 'cnae', 'cod_servico'],
+            updateColumns: [ 'descricao_cnae', 'descricao_servico', 'cod_trib_municipio', 'aliquota', 'permite_trib_fora', 'retencao_obrigatoria', 'permite_reducao_bc', 'deducao_max'],
             relativePath: 'CNAE_ITEM_LISTA_SERVICOS.ndjson',
             chunkSize: 500
         );

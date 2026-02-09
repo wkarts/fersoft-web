@@ -9,36 +9,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'CNAE_FISCAL';
+        $tbl = 'cnae_fiscal';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
-                $table->string('CODIGO', 7)->notNull();
-                $table->string('DESC_CNAE', 200)->notNull();
+                $table->string('codigo', 7)->notNull();
+                $table->string('desc_cnae', 200)->notNull();
 
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_CNAE_FISCAL_CODIGO', ['CODIGO']);
-        $this->ensureIndex($tbl,  'IDX_CNAE_FISCAL_DESC',  ['DESC_CNAE']);
+        $this->ensureUnique($tbl, 'uq_cnae_fiscal_codigo', ['codigo']);
+        $this->ensureIndex($tbl,  'idx_cnae_fiscal_desc',  ['desc_cnae']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('CNAE_FISCAL');
+        Schema::dropIfExists('cnae_fiscal');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

@@ -12,63 +12,63 @@ return new class extends Migration
         Schema::table('produtos', function (Blueprint $table) {
 
             // CST_IBS_CBS VARCHAR(8) DEFAULT 'N'
-            if (!Schema::hasColumn('produtos', 'CST_IBS_CBS')) {
-                $table->string('CST_IBS_CBS', 8)->default('N')->after('CST_IPI');
+            if (!Schema::hasColumn('produtos', 'cst_ibs_cbs')) {
+                $table->string('cst_ibs_cbs', 8)->default('N')->after('cst_ipi');
             }
 
             // CLASS_TRIB_IBS_CBS VARCHAR(8)
-            if (!Schema::hasColumn('produtos', 'CLASS_TRIB_IBS_CBS')) {
-                $table->string('CLASS_TRIB_IBS_CBS', 8)->nullable()->after('CST_IBS_CBS');
+            if (!Schema::hasColumn('produtos', 'class_trib_ibs_cbs')) {
+                $table->string('class_trib_ibs_cbs', 8)->nullable()->after('cst_ibs_cbs');
             }
 
             // REDUCAO_IBS DECIMAL(15,2)
-            if (!Schema::hasColumn('produtos', 'REDUCAO_IBS')) {
-                $table->decimal('REDUCAO_IBS', 15, 2)->default(0)->after('CLASS_TRIB_IBS_CBS');
+            if (!Schema::hasColumn('produtos', 'reducao_ibs')) {
+                $table->decimal('reducao_ibs', 15, 2)->default(0)->after('class_trib_ibs_cbs');
             }
 
             // REDUCAO_CBS DECIMAL(15,2)
-            if (!Schema::hasColumn('produtos', 'REDUCAO_CBS')) {
-                $table->decimal('REDUCAO_CBS', 15, 2)->default(0)->after('REDUCAO_IBS');
+            if (!Schema::hasColumn('produtos', 'reducao_cbs')) {
+                $table->decimal('reducao_cbs', 15, 2)->default(0)->after('reducao_ibs');
             }
 
             // FLAG_IS VARCHAR(1) DEFAULT 'N'
-            if (!Schema::hasColumn('produtos', 'FLAG_IS')) {
-                $table->string('FLAG_IS', 1)->default('N')->after('REDUCAO_CBS');
+            if (!Schema::hasColumn('produtos', 'flag_is')) {
+                $table->string('flag_is', 1)->default('N')->after('reducao_cbs');
             }
 
             // CST_IS VARCHAR(8)
-            if (!Schema::hasColumn('produtos', 'CST_IS')) {
-                $table->string('CST_IS', 8)->nullable()->after('FLAG_IS');
+            if (!Schema::hasColumn('produtos', 'cst_is')) {
+                $table->string('cst_is', 8)->nullable()->after('flag_is');
             }
 
             // ALIQ_IS DECIMAL(15,3)
-            if (!Schema::hasColumn('produtos', 'ALIQ_IS')) {
-                $table->decimal('ALIQ_IS', 15, 3)->default(0)->after('CST_IS');
+            if (!Schema::hasColumn('produtos', 'aliq_is')) {
+                $table->decimal('aliq_is', 15, 3)->default(0)->after('cst_is');
             }
 
             // DIFERIMENTO_IBS DECIMAL(15,4)
-            if (!Schema::hasColumn('produtos', 'DIFERIMENTO_IBS')) {
-                $table->decimal('DIFERIMENTO_IBS', 15, 4)->default(0)->after('ALIQ_IS');
+            if (!Schema::hasColumn('produtos', 'diferimento_ibs')) {
+                $table->decimal('diferimento_ibs', 15, 4)->default(0)->after('aliq_is');
             }
 
             // DIFERIMENTO_CBS DECIMAL(15,4)
-            if (!Schema::hasColumn('produtos', 'DIFERIMENTO_CBS')) {
-                $table->decimal('DIFERIMENTO_CBS', 15, 4)->default(0)->after('DIFERIMENTO_IBS');
+            if (!Schema::hasColumn('produtos', 'diferimento_cbs')) {
+                $table->decimal('diferimento_cbs', 15, 4)->default(0)->after('diferimento_ibs');
             }
 
         });
 
         // Índices úteis (opcional, mas ajuda nas consultas/joins/filters)
-        $this->ensureIndex('produtos', 'idx_produtos_cst_ibs_cbs', ['CST_IBS_CBS']);
-        $this->ensureIndex('produtos', 'idx_produtos_class_trib_ibs_cbs', ['CLASS_TRIB_IBS_CBS']);
-        $this->ensureIndex('produtos', 'idx_produtos_flag_is', ['FLAG_IS']);
+        $this->ensureIndex('produtos', 'idx_produtos_cst_ibs_cbs', ['cst_ibs_cbs']);
+        $this->ensureIndex('produtos', 'idx_produtos_class_trib_ibs_cbs', ['class_trib_ibs_cbs']);
+        $this->ensureIndex('produtos', 'idx_produtos_flag_is', ['flag_is']);
         $this->ensureIndex('produtos', 'idx_produtos_cst_is', ['CST_IS']);
 
         // Normaliza defaults em registros antigos (idempotente)
-        DB::table('produtos')->whereNull('CST_IBS_CBS')->update(['CST_IBS_CBS' => 'N']);
-        DB::table('produtos')->whereNull('FLAG_IS')->update(['FLAG_IS' => 'N']);
+        DB::table('produtos')->whereNull('cst_ibs_cbs')->update(['cst_ibs_cbs' => 'N']);
+        DB::table('produtos')->whereNull('flag_is')->update(['flag_is' => 'N']);
 
-        foreach (['REDUCAO_IBS','REDUCAO_CBS','ALIQ_IS','DIFERIMENTO_IBS','DIFERIMENTO_CBS'] as $col) {
+        foreach (['reducao_ibs','reducao_cbs','aliq_is','diferimento_ibs','diferimento_cbs'] as $col) {
             if (Schema::hasColumn('produtos', $col)) {
                 DB::table('produtos')->whereNull($col)->update([$col => 0]);
             }
@@ -85,15 +85,15 @@ return new class extends Migration
 
         Schema::table('produtos', function (Blueprint $table) {
             $cols = [
-                'CST_IBS_CBS',
-                'CLASS_TRIB_IBS_CBS',
-                'REDUCAO_IBS',
-                'REDUCAO_CBS',
-                'FLAG_IS',
-                'CST_IS',
-                'ALIQ_IS',
-                'DIFERIMENTO_IBS',
-                'DIFERIMENTO_CBS',
+                'cst_ibs_cbs',
+                'class_trib_ibs_cbs',
+                'reducao_ibs',
+                'reducao_cbs',
+                'flag_is',
+                'cst_is',
+                'aliq_is',
+                'diferimento_ibs',
+                'diferimento_cbs',
             ];
 
             $toDrop = [];

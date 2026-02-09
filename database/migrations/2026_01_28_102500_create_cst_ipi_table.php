@@ -9,36 +9,36 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'CST_IPI';
+        $tbl = 'cst_ipi';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->string('CODIGO', 10);
-                $table->primary('CODIGO');
+                $table->string('codigo', 10);
+                $table->primary('codigo');
 
-                $table->string('DESCRICAO', 80)->nullable();
-                $table->string('TIPO', 1)->nullable();
+                $table->string('descricao', 80)->nullable();
+                $table->string('tipo', 1)->nullable();
 
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_CST_IPI_CODIGO', ['CODIGO']);
+        $this->ensureUnique($tbl, 'uq_cst_ipi_codigo', ['codigo']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('CST_IPI');
+        Schema::dropIfExists('cst_ipi');
     }
 
     private function ensureUnique(string $table, string $indexName, array $columns): void

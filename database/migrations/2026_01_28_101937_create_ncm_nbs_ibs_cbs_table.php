@@ -9,47 +9,47 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'NCM_NBS_IBS_CBS';
+        $tbl = 'ncm_nbs_ibs_cbs';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
                 // Legado / negócio
-                $table->integer('ID_NCM_NBS_IBS_CBS')->notNull();
-                $table->integer('ID_CCLASS_IBS_CBS')->nullable();
-                $table->string('CST_IBS_CBS', 8)->nullable();
-                $table->string('CCLASS_TRIB', 8)->nullable();
-                $table->string('NCM_NBS_IBS_CBS', 9)->nullable();
-                $table->string('NOME_NCM_NBS_IBS_CBS', 2000)->nullable();
-                $table->string('TIPO_NCM_NBS_IBS_CBS', 3)->nullable();
-                $table->date('INICIO_VIGENCIA')->nullable();
-                $table->date('TERMININO_VIGENCIA')->nullable();
+                $table->integer('id_ncm_nbs_ibs_cbs')->notNull();
+                $table->integer('id_cclass_ibs_cbs')->nullable();
+                $table->string('cst_ibs_cbs', 8)->nullable();
+                $table->string('cclass_trib', 8)->nullable();
+                $table->string('ncm_nbs_ibs_cbs', 9)->nullable();
+                $table->string('nome_ncm_nbs_ibs_cbs', 2000)->nullable();
+                $table->string('tipo_ncm_nbs_ibs_cbs', 3)->nullable();
+                $table->date('inicio_vigencia')->nullable();
+                $table->date('terminino_vigencia')->nullable();
 
                 // Padrão Eloquent (no seu padrão de nomes)
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             // Garante colunas padrão se faltarem (idempotente/conservador)
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_NCM_NBS_IBS_CBS_LEGACY', ['ID_NCM_NBS_IBS_CBS']);
-        $this->ensureIndex($tbl,  'IDX_NCM_NBS_IBS_CBS_COD',   ['NCM_NBS_IBS_CBS']);
-        $this->ensureIndex($tbl,  'IDX_NCM_NBS_IBS_CBS_VIG',   ['INICIO_VIGENCIA', 'TERMININO_VIGENCIA']);
+        $this->ensureUnique($tbl, 'uq_ncm_nbs_ibs_cbs_legacy', ['id_ncm_nbs_ibs_cbs']);
+        $this->ensureIndex($tbl,  'idx_ncm_nbs_ibs_cbs_cod',   ['ncm_nbs_ibs_cbs']);
+        $this->ensureIndex($tbl,  'idx_ncm_nbs_ibs_cbs_vig',   ['inicio_vigencia', 'terminino_vigencia']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('NCM_NBS_IBS_CBS');
+        Schema::dropIfExists('ncm_nbs_ibs_cbs');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

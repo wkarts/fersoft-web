@@ -9,48 +9,48 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $tbl = 'CNAE_ITEM_LISTA_SERVICOS';
+        $tbl = 'cnae_item_lista_servicos';
 
         if (!Schema::hasTable($tbl)) {
             Schema::create($tbl, function (Blueprint $table) {
-                $table->bigIncrements('ID');
+                $table->bigIncrements('id');
 
-                $table->integer('CNAE')->notNull();
-                $table->string('DESCRICAO_CNAE', 500)->nullable();
-                $table->integer('COD_SERVICO')->notNull();
-                $table->string('DESCRICAO_SERVICO', 500)->nullable();
-                $table->integer('COD_TRIB_MUNICIPIO')->nullable();
-                $table->decimal('ALIQUOTA', 15, 2)->nullable();
-                $table->string('PERMITE_TRIB_FORA', 1)->nullable();
-                $table->string('RETENCAO_OBRIGATORIA', 1)->nullable();
-                $table->string('PERMITE_REDUCAO_BC', 1)->nullable();
-                $table->decimal('DEDUCAO_MAX', 15, 2)->nullable();
+                $table->integer('cnae')->notNull();
+                $table->string('descricao_cnae', 500)->nullable();
+                $table->integer('cod_servico')->notNull();
+                $table->string('descricao_servico', 500)->nullable();
+                $table->integer('cod_trib_municipio')->nullable();
+                $table->decimal('aliquota', 15, 2)->nullable();
+                $table->string('permite_trib_fora', 1)->nullable();
+                $table->string('retencao_obrigatoria', 1)->nullable();
+                $table->string('permite_reducao_bc', 1)->nullable();
+                $table->decimal('deducao_max', 15, 2)->nullable();
 
-                $table->uuid('ELOQUENT_UUID')->nullable();
-                $table->dateTime('CREATED_AT')->nullable();
-                $table->dateTime('UPDATED_AT')->nullable();
-                $table->dateTime('DELETED_AT')->nullable();
+                $table->uuid('eloquent_uuid')->nullable();
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+                $table->dateTime('deleted_at')->nullable();
             });
         } else {
             Schema::table($tbl, function (Blueprint $table) use ($tbl) {
-                if (!Schema::hasColumn($tbl, 'ELOQUENT_UUID')) $table->uuid('ELOQUENT_UUID')->nullable();
-                if (!Schema::hasColumn($tbl, 'CREATED_AT'))    $table->dateTime('CREATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'UPDATED_AT'))    $table->dateTime('UPDATED_AT')->nullable();
-                if (!Schema::hasColumn($tbl, 'DELETED_AT'))    $table->dateTime('DELETED_AT')->nullable();
+                if (!Schema::hasColumn($tbl, 'eloquent_uuid')) $table->uuid('eloquent_uuid')->nullable();
+                if (!Schema::hasColumn($tbl, 'created_at'))    $table->dateTime('created_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'updated_at'))    $table->dateTime('updated_at')->nullable();
+                if (!Schema::hasColumn($tbl, 'deleted_at'))    $table->dateTime('deleted_at')->nullable();
             });
         }
 
-        $this->ensureUnique($tbl, 'UQ_CNAE_ITEM_LISTA', ['CNAE', 'COD_SERVICO']);
+        $this->ensureUnique($tbl, 'uq_cnae_item_lista', ['cnae', 'cod_servico']);
 
-        $this->ensureIndex($tbl, 'IDX_CNAE_ITEM_LISTA_CNAE',     ['CNAE']);
-        $this->ensureIndex($tbl, 'IDX_CNAE_ITEM_LISTA_CODSERV',  ['COD_SERVICO']);
-        $this->ensureIndex($tbl, 'IDX_CNAE_ITEM_LISTA_CODMUN',   ['COD_TRIB_MUNICIPIO']);
-        $this->ensureIndex($tbl, 'IDX_CNAE_ITEM_LISTA_ALIQUOTA', ['ALIQUOTA']);
+        $this->ensureIndex($tbl, 'idx_cnae_item_lista_cnae',     ['cnae']);
+        $this->ensureIndex($tbl, 'idx_cnae_item_lista_codserv',  ['cod_servico']);
+        $this->ensureIndex($tbl, 'idx_cnae_item_lista_codmun',   ['cod_trib_municipio']);
+        $this->ensureIndex($tbl, 'idx_cnae_item_lista_aliquota', ['aliquota']);
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('CNAE_ITEM_LISTA_SERVICOS');
+        Schema::dropIfExists('cnae_item_lista_servicos');
     }
 
     private function ensureIndex(string $table, string $indexName, array $columns): void

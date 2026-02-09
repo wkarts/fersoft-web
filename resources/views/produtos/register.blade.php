@@ -1721,9 +1721,9 @@
                                                     <div class="col-md-4">
                                                         <label class="form-label">CST IBS/CBS</label>
                                                         <select name="CST_IBS_CBS" id="CST_IBS_CBS" class="form-control">
-                                                            @if(isset($produto) && !empty($produto->CST_IBS_CBS))
-                                                                <option value="{{ $produto->CST_IBS_CBS }}" selected>
-                                                                    {{ $produto->CST_IBS_CBS }}
+                                                            @if(isset($produto) && !empty($produto->cst_ibs_cbs))
+                                                                <option value="{{ $produto->cst_ibs_cbs }}" selected>
+                                                                    {{ $produto->cst_ibs_cbs }}
                                                                 </option>
                                                             @endif
                                                         </select>
@@ -1732,9 +1732,9 @@
                                                     <div class="col-md-4">
                                                         <label class="form-label">Class. Trib. IBS/CBS</label>
                                                         <select name="CLASS_TRIB_IBS_CBS" id="CLASS_TRIB_IBS_CBS" class="form-control">
-                                                            @if(isset($produto) && !empty($produto->CLASS_TRIB_IBS_CBS))
-                                                                <option value="{{ $produto->CLASS_TRIB_IBS_CBS }}" selected>
-                                                                    {{ $produto->CLASS_TRIB_IBS_CBS }}
+                                                            @if(isset($produto) && !empty($produto->class_trib_ibs_cbs))
+                                                                <option value="{{ $produto->class_trib_ibs_cbs }}" selected>
+                                                                    {{ $produto->class_trib_ibs_cbs }}
                                                                 </option>
                                                             @endif
                                                         </select>
@@ -1746,7 +1746,7 @@
                                                                name="REDUCAO_IBS"
                                                                id="REDUCAO_IBS"
                                                                class="form-control"
-                                                               value="{{ old('REDUCAO_IBS', $produto->REDUCAO_IBS ?? 0) }}"
+                                                               value="{{ old('REDUCAO_IBS', $produto->reducao_ibs ?? 0) }}"
                                                                readonly>
                                                     </div>
 
@@ -1756,7 +1756,7 @@
                                                                name="REDUCAO_CBS"
                                                                id="REDUCAO_CBS"
                                                                class="form-control"
-                                                               value="{{ old('REDUCAO_CBS', $produto->REDUCAO_CBS ?? 0) }}"
+                                                               value="{{ old('REDUCAO_CBS', $produto->reducao_cbs ?? 0) }}"
                                                                readonly>
                                                     </div>
                                                 </div>
