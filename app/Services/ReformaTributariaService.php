@@ -11,8 +11,8 @@ class ReformaTributariaService
 {
     /**
      * Regra oficial:
-     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.ctr = 1
-     * - Homologação (config_notas.ambiente=2): pode aplicar mesmo ctr != 1, desde que campos RT estejam preenchidos
+     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1
+     * - Homologação (config_notas.ambiente=2): pode aplicar mesmo regime != 1, desde que campos RT estejam preenchidos
      */
     public function shouldApply(int $empresaId): bool
     {
@@ -24,14 +24,14 @@ class ReformaTributariaService
         // 1) Ambiente (1 produção, 2 homologação)
         $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
 
-        // 2) CTR na tributacaos (se existir)
-        $ctr = $this->getCtrEmpresa($empresaId); // null se não existir coluna
+        // 2) REGIME na tributacaos (se existir)
+        $regime = $this->getRegimeEmpresa($empresaId); // null se não existir coluna
 
-        // 3) Em produção: exige ctr=1
+        // 3) Em produção: exige regime=1
         if ((int)$ambiente === 1) {
-            if ($ctr !== null) return (int)$ctr === 1;
+            if (regime !== null) return (int)regime === 1;
             if ($this->hasRtFieldsFilled($empresaId)) return true;
-            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+            //return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
         }
 
         // 4) Em homologação: aplica se tiver parametrização da RT preenchida
@@ -39,11 +39,11 @@ class ReformaTributariaService
             if ($this->hasRtFieldsFilled($empresaId)) return true;
 
             // fallback: permite via ENV, se quiser ligar manualmente
-            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+           // return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
         }
 
         // fallback geral
-        return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+        //return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
     }
 
     // ---------------------------------------------------------------------
@@ -286,7 +286,7 @@ class ReformaTributariaService
     }
 
     // ---------------------------------------------------------------------
-    // Ambientes / CTR / Parametrização
+    // Ambientes / REGIME / Parametrização
     // ---------------------------------------------------------------------
 
     protected function getAmbienteEmpresa(int $empresaId): int
@@ -310,13 +310,13 @@ class ReformaTributariaService
         return (int)$val;
     }
 
-    protected function getCtrEmpresa(int $empresaId): ?int
+    protected function getRegimeEmpresa(int $empresaId): ?int
     {
         if (!Schema::hasTable('tributacaos')) return null;
 
         $col = null;
-        if (Schema::hasColumn('tributacaos', 'ctr')) $col = 'ctr';
-        else if (Schema::hasColumn('tributacaos', 'CTR')) $col = 'CTR';
+        if (Schema::hasColumn('tributacaos', 'regime')) $col = 'regime';
+        else if (Schema::hasColumn('tributacaos', 'REGIME')) $col = 'REGIME';
 
         if ($col === null) return null;
 
