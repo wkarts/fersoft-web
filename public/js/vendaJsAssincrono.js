@@ -18,6 +18,75 @@ var REFERENCIASNFE = [];
 var FORMASPAGAMENTO = [];
 var TIPODIMENSAO = ''
 
+function rtParseNumber(v){
+	if(v === null || v === undefined) return 0;
+	if(typeof v === 'number') return isFinite(v) ? v : 0;
+	v = String(v).trim();
+	if(!v) return 0;
+	v = v.replace(/\s+/g,'').replace(/[R$\u00A0]/g,'');
+	v = v.replace(/[^0-9\-,.]/g,'');
+	if(v.indexOf(',') !== -1 && v.indexOf('.') !== -1){
+		v = v.replace(/\./g,'').replace(',', '.');
+	}else if(v.indexOf(',') !== -1){
+		v = v.replace(',', '.');
+	}
+	var n = parseFloat(v);
+	return isFinite(n) ? n : 0;
+}
+
+function aplicarReformaItem(item){
+	if(!item || !item.codigo) return;
+	$.ajax({
+		type: 'POST',
+		url: path + 'vendas/reforma/preview-item',
+		dataType: 'json',
+		data: {
+			produto_id: item.codigo,
+			quantidade: item.quantidade,
+			valor: item.valor,
+			_token: $('#_token').val()
+		}
+	}).done((res) => {
+		if(!res || !res.success || !res.data) return;
+
+		const data = res.data;
+
+		item.cst_ibs_cbs = data.cst_ibs_cbs || item.cst_ibs_cbs;
+		item.class_trib_ibs_cbs = data.class_trib_ibs_cbs || item.class_trib_ibs_cbs;
+
+		item.bc_ibs_cbs = data.bc_ibs_cbs;
+		item.valor_ibs = data.valor_ibs;
+		item.valor_ibs_uf = data.valor_ibs_uf;
+		item.valor_ibs_mun = data.valor_ibs_mun;
+		item.aliq_ibs_uf = data.aliq_ibs_uf;
+		item.aliq_ibs_mun = data.aliq_ibs_mun;
+
+		item.aliq_cbs = data.aliq_cbs;
+		item.valor_cbs = data.valor_cbs;
+
+		item.is_bc = data.is_bc;
+		item.is_aliq = data.is_aliq;
+		item.is_valor = data.is_valor;
+
+		item.flag_is = data.flag_is;
+		item.flag_combustivel = data.flag_combustivel;
+		item.anp = data.anp;
+
+		// aliases para os cards da tela
+		item.ibs_bc = data.bc_ibs_cbs;
+		item.ibs_vlr = data.valor_ibs;
+		item.ibs_aliq = data.aliq_ibs_total;
+		item.cbs_bc = data.bc_ibs_cbs;
+		item.cbs_vlr = data.valor_cbs;
+		item.cbs_aliq = data.aliq_cbs;
+		item.is_bc = data.is_bc;
+		item.is_vlr = data.is_valor;
+		item.is_aliq = data.is_aliq;
+	}).fail((err) => {
+		console.log(err)
+	});
+}
+
 function convertData(data){
 	let d = data.split('-');
 	return d[2] + '/' + d[1] + '/' + d[0];
@@ -770,8 +839,33 @@ function addItemTable(codigo, nome, quantidade, valor, altura = 0, largura = 0, 
 			num_item_pedido: num_item_pedido,
 			gerenciar_estoque: PRODUTO ? PRODUTO.gerenciar_estoque : 0,
 			estoque_atual: PRODUTO ? PRODUTO.estoqueAtual : 0,
-			rand: Math.floor(Math.random() * 2000000)
+			rand: Math.floor(Math.random() * 2000000),
+
+			cst_ibs_cbs: PRODUTO ? PRODUTO.cst_ibs_cbs : '',
+			class_trib_ibs_cbs: PRODUTO ? PRODUTO.class_trib_ibs_cbs : '',
+			bc_ibs_cbs: 0,
+			valor_ibs: 0,
+			aliq_ibs_uf: 0,
+			aliq_ibs_mun: 0,
+			valor_ibs_uf: 0,
+			valor_ibs_mun: 0,
+			aliq_cbs: 0,
+			valor_cbs: 0,
+			is_bc: 0,
+			is_aliq: 0,
+			is_valor: 0,
+			flag_is: PRODUTO ? (PRODUTO.flag_is || '') : '',
+			flag_combustivel: '',
+			anp: PRODUTO ? (PRODUTO.codigo_anp || PRODUTO.anp || '') : '',
+			ibs_bc: 0,
+			ibs_vlr: 0,
+			ibs_aliq: 0,
+			cbs_bc: 0,
+			cbs_vlr: 0,
+			cbs_aliq: 0,
+			is_vlr: 0
 		})
+		aplicarReformaItem(ITENS[ITENS.length-1])
 		PESOATUAL = 0
 
 		// apagar linhas tabela
@@ -852,6 +946,8 @@ $('#salvar-edit').click(() => {
 			ITENS[i].x_pedido = $('#x_pedido').val()
 			ITENS[i].num_item_pedido = $('#num_item_pedido').val()
 			ITENS[i].peso = p * ITENS[i].quantidade
+
+			aplicarReformaItem(ITENS[i])
 		}
 		TOTALQTD += parseFloat(ITENS[i].quantidade)
 
@@ -3090,7 +3186,6 @@ function validaFrete(call){
 
 		console.log(js)
 	}
-
 
 
 
