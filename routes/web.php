@@ -1938,11 +1938,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/detalhe-pagamento/{id}', 'VendaController@detalhesPagamento');
 		Route::get('/nova', 'VendaController@nova');
 		// Route::get('/lista', 'VendaController@lista');
-                Route::get('/detalhar/{id}', 'VendaController@detalhar');
-                Route::get('/delete/{id}', 'VendaController@delete');
-                Route::get('/inutilizar/{id}', 'VendaController@inutilizar')->name('vendas.inutilizar');
-                Route::get('/edit/{id}', 'VendaController@edit');
-                Route::get('/find/{id}', 'VendaController@find');
+        Route::get('/detalhar/{id}', 'VendaController@detalhar');
+        Route::get('/delete/{id}', 'VendaController@delete');
+        Route::get('/inutilizar/{id}', 'VendaController@inutilizar')->name('vendas.inutilizar');
+        Route::get('/edit/{id}', 'VendaController@edit');
+        Route::get('/find/{id}', 'VendaController@find');
 		Route::post('/salvar', 'VendaController@salvar');
 		Route::post('/atualizar', 'VendaController@atualizar');
 		Route::post('/salvarCrediario', 'VendaController@salvarCrediario');

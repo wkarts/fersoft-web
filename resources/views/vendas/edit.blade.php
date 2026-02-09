@@ -4,6 +4,53 @@
 	#focus-codigo:hover{
 		cursor: pointer
 	}
+
+
+        /* =========================
+           REFORMA TRIBUTÁRIA (VISUALIZAÇÃO) - EDIT
+           ========================= */
+.rt-card{
+            border: 1px dashed rgba(0,0,0,.18);
+            border-radius: 6px;
+            padding: 8px 8px 0 8px;
+            margin-top: 6px;
+        }
+	.rt-title{
+		display:flex;
+		align-items:center;
+		justify-content:space-between;
+		margin: 0 0 8px 0;
+	}
+	.rt-title h6{
+            margin:0;
+            font-weight:700;
+            letter-spacing:.2px;
+            font-size: 12px;
+        }
+	.rt-badge{
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 20px;
+            background: rgba(54,153,255,.10);
+            color: #3699FF;
+            font-weight: 700;
+        }
+	.rt-mini label{
+            font-size: 10px !important;
+            margin-bottom: 3px !important;
+            opacity: .85;
+        }
+	.rt-mini .form-control{
+            height: calc(1.05em + .65rem + 2px) !important;
+            font-size: 11px !important;
+            padding: .20rem .38rem !important;
+        }
+	.rt-mini .form-group{
+            margin-bottom: 8px !important;
+        }
+
+        .rt-row-tight{ margin-left:-6px; margin-right:-6px; }
+        .rt-row-tight > [class*="col-"]{ padding-left:6px; padding-right:6px; }
 </style>
 <div class="card card-custom gutter-b">
 	<div class="card-body">
@@ -1712,3 +1759,95 @@
 	</div>
 </div>
 @endsection
+
+<div class="row" id="rt-reforma-row" style="margin-top: 6px;">
+                                                            <div class="col-lg-6 col-md-12">
+                                                                <div class="rt-card rt-mini" id="rt-visao-geral">
+                                                                    <div class="rt-title">
+                                                                        <h6>REFORMA • VISÃO GERAL</h6>
+                                                                        <span class="rt-badge">Somente leitura</span>
+                                                                    </div>
+
+                                                                    <div class="row">
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Base IBS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_ibs_bc" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Valor IBS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_ibs_vlr" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Base CBS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_cbs_bc" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Valor CBS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_cbs_vlr" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Base IS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_is_bc" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Valor IS (Total)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_is_vlr" value="">
+                                                                        </div>
+
+                                                                        <div class="form-group col-12" style="margin-bottom: 8px !important;">
+                                                                            <label class="col-form-label">NBS (Resumo)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_total_nbs_resumo" value="">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="col-lg-6 col-md-12">
+                                                                <div class="rt-card rt-mini" id="rt-visao-item">
+                                                                    <div class="rt-title">
+                                                                        <h6>REFORMA • ITEM SELECIONADO</h6>
+                                                                        <span class="rt-badge" id="rt_item_badge">Item: -</span>
+                                                                    </div>
+
+                                                                    <div class="row">
+                                                                        <div class="form-group col-12" style="margin-bottom: 8px !important;">
+                                                                            <label class="col-form-label">Classificação IBS/CBS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_classificacao" value="">
+                                                                        </div>
+
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">% IBS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_ibs_aliq" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Vlr IBS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_ibs_vlr" value="">
+                                                                        </div>
+
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">% CBS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_cbs_aliq" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Vlr CBS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_cbs_vlr" value="">
+                                                                        </div>
+
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">% IS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_is_aliq" value="">
+                                                                        </div>
+                                                                        <div class="form-group col-6">
+                                                                            <label class="col-form-label">Vlr IS</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_is_vlr" value="">
+                                                                        </div>
+
+                                                                        <div class="form-group col-12" style="margin-bottom: 8px !important;">
+                                                                            <label class="col-form-label">NBS (Item)</label>
+                                                                            <input type="text" readonly class="form-control" id="rt_item_nbs" value="">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
