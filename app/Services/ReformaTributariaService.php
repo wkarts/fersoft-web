@@ -688,6 +688,10 @@ class ReformaTributariaService
             'VALOR_DIF_CBS'            => 'TOTAL_CBS_DIF',
             'VALOR_DIF_CBS_DEVTRIB'    => 'TOTAL_CBS_DEV_TRIB',
             'VALOR_CBS'                => 'TOTAL_CBS',
+            'VALOR_CRED_PRES_IBS'      => 'TOTAL_IBS_CRED_PRES',
+            'VALOR_CRED_PRES_COND_SUS_IBS' => 'TOTAL_IBS_CRED_PRES_COND_SUS',
+            'VALOR_CRED_PRES_CBS'      => 'TOTAL_CBS_CRED_PRES',
+            'VALOR_CRED_PRES_COND_SUS_CBS' => 'TOTAL_CBS_CRED_PRES_COND_SUS',
             'IS_VALOR'                 => 'TOTAL_IS',
             'VALOR_IBS_MONO'           => 'TOTAL_IBS_MONO',
             'VALOR_CBS_MONO'           => 'TOTAL_CBS_MONO',
@@ -729,9 +733,11 @@ class ReformaTributariaService
 
         $totalIbs = (float)($t['TOTAL_IBS_UF'] ?? 0) + (float)($t['TOTAL_IBS_MUN'] ?? 0);
         $totalIbsCbs = $totalIbs + (float)($t['TOTAL_CBS'] ?? 0);
+        $totalNfIbcCbsIs = (float)($t['TOTAL_BC_IBS_CBS'] ?? 0) + (float)($t['TOTAL_IS'] ?? 0);
 
         $t['TOTAL_IBS'] = $this->round2($totalIbs);
         $t['TOTAL_IBS_CBS'] = $this->round2($totalIbsCbs);
+        $t['TOTAL_NF_IBC_CBS_IS'] = $this->round2($totalNfIbcCbsIs);
 
         return $t;
     }
