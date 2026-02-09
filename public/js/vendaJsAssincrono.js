@@ -3453,5 +3453,3 @@ function validaFrete(call){
         });
     })();
 
-
-
