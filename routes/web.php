@@ -1967,7 +1967,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/numero_sequencial', 'VendaController@numeroSequencial');
 		Route::get('/edit_xml/{id}', 'VendaController@editXml');
         Route::get('/syncDataEmissaoRetroativa', 'VendaController@syncDataEmissaoRetroativa');
-
+        Route::post('/{venda}/nfe/reforma/recalc-item/{item}', 'VendaNfeReformaController@recalcItem')->name('vendas.nfe.reforma.recalcItem');
+        Route::post('/{venda}/nfe/reforma/recalc-all', 'VendaNfeReformaController@recalcAll')->name('vendas.nfe.reforma.recalcAll');
     });
 
 	Route::group(['prefix' => 'compras'],function(){

@@ -55,6 +55,170 @@ class VendaController extends Controller
     // >>> RT runtime state
     private array $rtTotals = [];
 
+	public function __construct(WhatsAppUtil $util){
+		$this->util = $util;
+		$this->middleware(function ($request, $next) {
+			$this->empresa_id = $request->empresa_id;
+			$value = session('user_logged');
+			if(!$value){
+				return redirect("/login");
+			}
+			return $next($request);
+		});
+	}
+
+    public function recalcItem(Request $request, Venda $venda, ItemVenda $item, ReformaTributariaService $rt)
+    {
+        $value = session('user_logged');
+        $empresaId = (int)($venda->empresa_id ?? ($value['empresa'] ?? 0));
+
+        if ((int)$item->venda_id !== (int)$venda->id) {
+            return response()->json(['success' => false, 'error' => 'Item não pertence à venda.'], 422);
+        }
+
+        // se não deve aplicar reforma, ainda assim você pode zerar/recalcular de forma neutra
+        $aplicar = $rt->shouldApply($empresaId);
+
+        DB::beginTransaction();
+        try {
+            // 1) garante defaults nos campos do item (aliquotas/cst/class etc)
+            // (busca do produto, aliquotas padrão, class trib 6 dígitos)
+            $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
+
+            // 2) calcula item (base/valores)
+            // cfopDescricao opcional: se você tiver natureza/cfop descrição, passe aqui
+            $rt->calcularItem($item, $empresaId, null);
+
+            // 3) se NÃO aplicar, zera campos de reforma (se quiser manter visível em homologação, deixe)
+            if (!$aplicar) {
+                // regra: em produção sem ctr=1 você não quer gerar RT no XML
+                // aqui só “zera” os campos de resultado, mantendo alíquotas padrão se preferir
+                $rt->calcularItem($item, $empresaId, 'REMESSA'); // força zera no service do jeito que já fizemos
+            }
+
+            $item->save();
+
+            // 4) recalcula totais e salva em vendas
+            $totais = $rt->calcularTotaisVenda($empresaId, (int)$venda->id, 'item_vendas');
+            $rt->applyTotaisToVenda($venda, $totais);
+
+            DB::commit();
+
+            // retorna item + totais pra atualizar a view
+            return response()->json([
+                'success' => true,
+                'aplicar_reforma' => $aplicar,
+                'item' => $this->serializeItemReforma($item),
+                'totais' => $this->serializeTotaisVendaReforma($venda),
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function recalcAll(Request $request, Venda $venda, ReformaTributariaService $rt)
+    {
+        $value = session('user_logged');
+        $empresaId = (int)($venda->empresa_id ?? ($value['empresa'] ?? 0));
+
+        $aplicar = $rt->shouldApply($empresaId);
+
+        DB::beginTransaction();
+        try {
+            $itens = ItemVenda::where('venda_id', $venda->id)->get();
+
+            foreach ($itens as $item) {
+                $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
+                $rt->calcularItem($item, $empresaId, null);
+
+                if (!$aplicar) {
+                    $rt->calcularItem($item, $empresaId, 'REMESSA');
+                }
+
+                $item->save();
+            }
+
+            $totais = $rt->calcularTotaisVenda($empresaId, (int)$venda->id, 'item_vendas');
+            $rt->applyTotaisToVenda($venda, $totais);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'aplicar_reforma' => $aplicar,
+                'totais' => $this->serializeTotaisVendaReforma($venda),
+                'itens' => $itens->map(fn($i) => $this->serializeItemReforma($i))->values(),
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function serializeItemReforma(ItemVenda $item): array
+    {
+        // Campos reais existentes na sua tabela item_vendas (minúsculos)
+        return [
+            'id' => (int)$item->id,
+            'produto_id' => (int)$item->produto_id,
+
+            'is_bc' => (float)($item->is_bc ?? 0),
+            'is_aliq' => (float)($item->is_aliq ?? 0),
+            'is_valor' => (float)($item->is_valor ?? 0),
+
+            'cst_ibs_cbs' => (string)($item->cst_ibs_cbs ?? ''),
+            'class_trib_ibs_cbs' => (string)($item->class_trib_ibs_cbs ?? ''),
+
+            'bc_ibs_cbs' => (float)($item->bc_ibs_cbs ?? 0),
+            'valor_ibs' => (float)($item->valor_ibs ?? 0),
+
+            'aliq_ibs_uf' => (float)($item->aliq_ibs_uf ?? 0),
+            'valor_ibs_uf' => (float)($item->valor_ibs_uf ?? 0),
+
+            'aliq_ibs_mun' => (float)($item->aliq_ibs_mun ?? 0),
+            'valor_ibs_mun' => (float)($item->valor_ibs_mun ?? 0),
+
+            'aliq_cbs' => (float)($item->aliq_cbs ?? 0),
+            'valor_cbs' => (float)($item->valor_cbs ?? 0),
+
+            'valor_ibs_mono' => (float)($item->valor_ibs_mono ?? 0),
+            'valor_cbs_mono' => (float)($item->valor_cbs_mono ?? 0),
+
+            'adrem_ibs' => (float)($item->adrem_ibs ?? 0),
+            'adrem_cbs' => (float)($item->adrem_cbs ?? 0),
+
+            'flag_is' => (string)($item->flag_is ?? ''),
+            'flag_combustivel' => (string)($item->flag_combustivel ?? ''),
+            'anp' => (string)($item->anp ?? ''),
+        ];
+    }
+
+    private function serializeTotaisVendaReforma(Venda $venda): array
+    {
+        return [
+            'total_is' => (float)($venda->total_is ?? 0),
+            'total_bc_ibs_cbs' => (float)($venda->total_bc_ibs_cbs ?? 0),
+            'total_ibs' => (float)($venda->total_ibs ?? 0),
+            'total_cbs' => (float)($venda->total_cbs ?? 0),
+            'total_ibs_cbs' => (float)($venda->total_ibs_cbs ?? 0),
+
+            'total_ibs_uf' => (float)($venda->total_ibs_uf ?? 0),
+            'total_ibs_mun' => (float)($venda->total_ibs_mun ?? 0),
+
+            'total_ibs_mono' => (float)($venda->total_ibs_mono ?? 0),
+            'total_cbs_mono' => (float)($venda->total_cbs_mono ?? 0),
+        ];
+    }
+
     private function rtResetTotals(): void
     {
         $this->rtTotals = [
@@ -149,18 +313,6 @@ class VendaController extends Controller
             $venda->update($upd);
         }
     }
-
-	public function __construct(WhatsAppUtil $util){
-		$this->util = $util;
-		$this->middleware(function ($request, $next) {
-			$this->empresa_id = $request->empresa_id;
-			$value = session('user_logged');
-			if(!$value){
-				return redirect("/login");
-			}
-			return $next($request);
-		});
-	}
 
 	private function verificaAberturaCaixa(){
 
