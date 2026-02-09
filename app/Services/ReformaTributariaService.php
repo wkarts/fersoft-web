@@ -12,7 +12,7 @@ class ReformaTributariaService
     /**
      * Regra oficial:
      * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1
-     * - Homologação (config_notas.ambiente=2): pode aplicar mesmo regime != 1, desde que campos RT estejam preenchidos
+     * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime)
      */
     public function shouldApply(int $empresaId): bool
     {
@@ -29,17 +29,13 @@ class ReformaTributariaService
 
         // 3) Em produção: exige regime=1
         if ((int)$ambiente === 1) {
-            if (regime !== null) return (int)regime === 1;
-            if ($this->hasRtFieldsFilled($empresaId)) return true;
-            //return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+            if ($regime !== null) return (int)$regime === 1;
+            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
         }
 
-        // 4) Em homologação: aplica se tiver parametrização da RT preenchida
+        // 4) Em homologação: sempre aplica (independe de regime)
         if ((int)$ambiente === 2) {
-            if ($this->hasRtFieldsFilled($empresaId)) return true;
-
-            // fallback: permite via ENV, se quiser ligar manualmente
-           // return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+            return true;
         }
 
         // fallback geral
