@@ -164,6 +164,56 @@ class VendaController extends Controller
         }
     }
 
+    public function previewReformaItem(Request $request, ReformaTributariaService $rt)
+    {
+        try {
+            $produtoId = (int)($request->input('produto_id') ?? 0);
+            if ($produtoId <= 0) {
+                return response()->json(['success' => false, 'error' => 'Produto inválido.'], 422);
+            }
+
+            $quantidade = (float)str_replace(',', '.', (string)($request->input('quantidade') ?? 0));
+            $valor = (float)str_replace(',', '.', (string)($request->input('valor') ?? 0));
+
+            $item = new ItemVenda();
+            $item->produto_id = $produtoId;
+            $item->quantidade = $quantidade;
+            $item->valor = $valor;
+            $item->valor_unitario = $valor;
+            $item->valor_total = $quantidade * $valor;
+
+            $rt->fillItemFromProdutoAliquota($this->empresa_id, $produtoId, $item);
+            $rt->calcularItem($item, $this->empresa_id, null);
+
+            $aliqIbsTotal = (float)($item->aliq_ibs_uf ?? 0) + (float)($item->aliq_ibs_mun ?? 0);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'cst_ibs_cbs' => (string)($item->cst_ibs_cbs ?? ''),
+                    'class_trib_ibs_cbs' => (string)($item->class_trib_ibs_cbs ?? ''),
+                    'bc_ibs_cbs' => (float)($item->bc_ibs_cbs ?? 0),
+                    'valor_ibs' => (float)($item->valor_ibs ?? 0),
+                    'valor_ibs_uf' => (float)($item->valor_ibs_uf ?? 0),
+                    'valor_ibs_mun' => (float)($item->valor_ibs_mun ?? 0),
+                    'aliq_ibs_uf' => (float)($item->aliq_ibs_uf ?? 0),
+                    'aliq_ibs_mun' => (float)($item->aliq_ibs_mun ?? 0),
+                    'aliq_ibs_total' => $aliqIbsTotal,
+                    'aliq_cbs' => (float)($item->aliq_cbs ?? 0),
+                    'valor_cbs' => (float)($item->valor_cbs ?? 0),
+                    'is_bc' => (float)($item->is_bc ?? 0),
+                    'is_aliq' => (float)($item->is_aliq ?? 0),
+                    'is_valor' => (float)($item->is_valor ?? 0),
+                    'flag_is' => (string)($item->flag_is ?? ''),
+                    'flag_combustivel' => (string)($item->flag_combustivel ?? ''),
+                    'anp' => (string)($item->anp ?? ''),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     private function serializeItemReforma(ItemVenda $item): array
     {
         // Campos reais existentes na sua tabela item_vendas (minúsculos)
@@ -231,47 +281,48 @@ class VendaController extends Controller
 
     private function applyRtToItemVendaArray(array $itemArr, $produto): array
     {
-        // base do item (venda)
-        $qtd = (float)($itemArr['quantidade'] ?? 0);
-        $vl  = (float)($itemArr['valor'] ?? 0);
-        $base = $qtd * $vl;
+        $rt = app(ReformaTributariaService::class);
 
-        // tenta ler alíquotas e classe no Produto (ajuste se seus nomes forem outros)
-        $ibsAliq = (float)($produto->ibs_aliq ?? $produto->rt_ibs_aliq ?? 0);
-        $cbsAliq = (float)($produto->cbs_aliq ?? $produto->rt_cbs_aliq ?? 0);
-        $isAliq  = (float)($produto->is_aliq  ?? $produto->rt_is_aliq  ?? 0);
+        $item = new ItemVenda();
+        $item->fill($itemArr);
+        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
+        $item->quantidade = (float)($itemArr['quantidade'] ?? 0);
+        $item->valor = (float)($itemArr['valor'] ?? 0);
+        $item->valor_unitario = (float)($itemArr['valor'] ?? 0);
+        $item->valor_total = $item->quantidade * $item->valor;
 
-        $ibsValor = $base * ($ibsAliq / 100);
-        $cbsValor = $base * ($cbsAliq / 100);
-        $isValor  = $base * ($isAliq / 100);
+        $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$item->produto_id, $item);
+        $rt->calcularItem($item, $this->empresa_id, null);
 
-        // monta mapa candidato => valor
         $candidates = [
-            // classe
-            'class_trib_ibs_cbs' => $produto->class_trib_ibs_cbs ?? null,
-            'rt_class_trib_ibs_cbs' => $produto->class_trib_ibs_cbs ?? null,
-
-            // base/aliq/valor (IBS)
-            'rt_base' => $base,
-            'ibs_aliq' => $ibsAliq,
-            'rt_ibs_aliq' => $ibsAliq,
-            'ibs_valor' => $ibsValor,
-            'rt_ibs_valor' => $ibsValor,
-
-            // base/aliq/valor (CBS)
-            'cbs_aliq' => $cbsAliq,
-            'rt_cbs_aliq' => $cbsAliq,
-            'cbs_valor' => $cbsValor,
-            'rt_cbs_valor' => $cbsValor,
-
-            // base/aliq/valor (IS)
-            'is_aliq' => $isAliq,
-            'rt_is_aliq' => $isAliq,
-            'is_valor' => $isValor,
-            'rt_is_valor' => $isValor,
+            'cst_ibs_cbs' => $item->cst_ibs_cbs,
+            'class_trib_ibs_cbs' => $item->class_trib_ibs_cbs,
+            'bc_ibs_cbs' => $item->bc_ibs_cbs,
+            'valor_ibs' => $item->valor_ibs,
+            'aliq_ibs_uf' => $item->aliq_ibs_uf,
+            'valor_ibs_uf' => $item->valor_ibs_uf,
+            'aliq_ibs_mun' => $item->aliq_ibs_mun,
+            'valor_ibs_mun' => $item->valor_ibs_mun,
+            'perc_red_aliq_uf' => $item->perc_red_aliq_uf,
+            'perc_red_aliq_ibs_mun' => $item->perc_red_aliq_ibs_mun,
+            'aliq_efet_ibs_uf' => $item->aliq_efet_ibs_uf,
+            'aliq_efet_ibs_mun' => $item->aliq_efet_ibs_mun,
+            'aliq_cbs' => $item->aliq_cbs,
+            'valor_cbs' => $item->valor_cbs,
+            'perc_red_aliq_cbs' => $item->perc_red_aliq_cbs,
+            'aliq_efet_cbs' => $item->aliq_efet_cbs,
+            'is_bc' => $item->is_bc,
+            'is_aliq' => $item->is_aliq,
+            'is_valor' => $item->is_valor,
+            'valor_ibs_mono' => $item->valor_ibs_mono,
+            'valor_cbs_mono' => $item->valor_cbs_mono,
+            'adrem_ibs' => $item->adrem_ibs,
+            'adrem_cbs' => $item->adrem_cbs,
+            'flag_is' => $item->flag_is,
+            'flag_combustivel' => $item->flag_combustivel,
+            'anp' => $item->anp,
         ];
 
-        // só grava se existir coluna na tabela de itens
         foreach ($candidates as $col => $val) {
             if ($val === null) continue;
             if (Schema::hasColumn('item_vendas', $col)) {
@@ -294,7 +345,13 @@ class VendaController extends Controller
 
     private function applyRtToVendaTotals($venda): void
     {
-        // Mapa candidato => total
+        $rt = app(ReformaTributariaService::class);
+        $totais = $rt->calcularTotaisVenda($this->empresa_id, (int)$venda->id, 'item_vendas');
+        if (!empty($totais)) {
+            $rt->applyTotaisToVenda($venda, $totais);
+        }
+
+        // fallback legado (caso existam colunas antigas)
         $candidates = [
             'rt_base' => $this->rtTotals['rt_base'] ?? 0,
             'rt_ibs_valor' => $this->rtTotals['rt_ibs_valor'] ?? 0,
@@ -1000,11 +1057,9 @@ class VendaController extends Controller
 				]);
 
                 $rt = app(ReformaTributariaService::class);
-                $applyRt = $rt->shouldApply($this->empresa_id);
+                $applyRt = true;
 
-                if($applyRt){
-                    $this->rtResetTotals();
-                }
+                $this->rtResetTotals();
 
 				if($venda['credito_troca']){
 					$this->recalcularCredito($desconto, $venda['cliente']);
@@ -1097,16 +1152,12 @@ class VendaController extends Controller
                     ];
 
                     // >>> aplica RT no item (sem quebrar se não existirem colunas)
-                    if($applyRt){
-                        $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
-                    }
+                $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
 
                     ItemVenda::create($itemArr);
 
                     // >>> acumula totais de RT para depois gravar na venda
-                    if($applyRt){
-                        $this->rtAccumulateFromItemArray($itemArr);
-                    }
+                $this->rtAccumulateFromItemArray($itemArr);
 
 
 					$prod = Produto::where('id', $i['codigo'])
@@ -1146,9 +1197,7 @@ class VendaController extends Controller
 				}
 
                 // >>> grava totais RT na venda (sem quebrar se não existirem colunas)
-                if($applyRt){
-                    $this->applyRtToVendaTotals($result);
-                }
+                $this->applyRtToVendaTotals($result);
 
 				if(sizeof($referencias) > 0){
 					foreach($referencias as $r){
@@ -1420,11 +1469,8 @@ class VendaController extends Controller
                 $request = $payload;
 
                 $rt = app(ReformaTributariaService::class);
-                $applyRt = $rt->shouldApply($this->empresa_id);
-
-                if($applyRt){
-                    $this->rtResetTotals();
-                }
+                $applyRt = true;
+                $this->rtResetTotals();
 
                 $valorFrete = str_replace(".", "", $request['valorFrete'] ?? 0);
                 $valorFrete = str_replace(",", ".", $valorFrete );
@@ -1590,15 +1636,11 @@ class VendaController extends Controller
                         'valor_custo' => $produto->valor_compra
                     ];
 
-                    if($applyRt){
-                        $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
-                    }
+                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
 
                     ItemVenda::create($itemArr);
 
-                    if($applyRt){
-                        $this->rtAccumulateFromItemArray($itemArr);
-                    }
+                    $this->rtAccumulateFromItemArray($itemArr);
 
                     $prod = Produto
                     ::where('id', $i['codigo'])
@@ -1639,9 +1681,7 @@ class VendaController extends Controller
                     }
                 }
 
-                if($applyRt){
-                    $this->applyRtToVendaTotals($venda);
-                }
+                $this->applyRtToVendaTotals($venda);
 
                 $this->deleteChaves($venda);
 

@@ -2399,6 +2399,9 @@
                 for(var i=0;i<Math.min(itens.length, 10);i++){
                     var it = itens[i] || {};
                     sig += '|' + rtParseNumber(rtFirst(it, ['subtotal','SubTotal','valor_total','total'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','valor_ibs','ibs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','valor_cbs','cbs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','valor_is','is'], 0));
                 }
             }else{
                 var rows = document.querySelectorAll('#body tr').length;
