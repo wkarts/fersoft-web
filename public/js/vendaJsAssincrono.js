@@ -3187,6 +3187,239 @@ function validaFrete(call){
 		console.log(js)
 	}
 
+    /* ==========================================================
+    REFORMA TRIBUTÁRIA - CARDS (VISÃO GERAL + ITEM SELECIONADO)
+    - Somente leitura
+    - Sem refatoração abrupta
+    - Integra com ITENS / tabela #body
+    ========================================================== */
+    (function () {
+        function rtParseNumber(v) {
+            if (v === null || v === undefined) return 0;
+            if (typeof v === 'number') return isFinite(v) ? v : 0;
+            v = String(v).trim();
+            if (!v) return 0;
+
+            v = v.replace(/\s+/g, '').replace(/[R$\u00A0]/g, '');
+            v = v.replace(/[^0-9\-,.]/g, '');
+
+            var hasComma = v.indexOf(',') !== -1;
+            var hasDot = v.indexOf('.') !== -1;
+
+            if (hasComma && hasDot) {
+                v = v.replace(/\./g, '').replace(',', '.');
+            } else if (hasComma && !hasDot) {
+                v = v.replace(',', '.');
+            }
+
+            var n = parseFloat(v);
+            return isFinite(n) ? n : 0;
+        }
+
+        function rtFmtMoney(n) {
+            n = rtParseNumber(n);
+            try {
+                return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } catch (e) {
+                return 'R$ ' + (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
+            }
+        }
+
+        function rtFmtPct(n) {
+            n = rtParseNumber(n);
+            try {
+                return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+            } catch (e) {
+                return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',') + '%';
+            }
+        }
+
+        function rtFirst(obj, keys, def) {
+            if (!obj) return def;
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== '') {
+                    return obj[k];
+                }
+            }
+            return def;
+        }
+
+        function rtGetItens() {
+            if (Array.isArray(window.ITENS)) return window.ITENS;
+            return [];
+        }
+
+        // tenta achar o item pelo "id" (se existir) ou pelo índice
+        function rtGetItemByIndexOrId(idx, id) {
+            var itens = rtGetItens();
+            if (id !== null && id !== undefined && id !== '') {
+                for (var i = 0; i < itens.length; i++) {
+                    if (String(itens[i]?.id ?? '') === String(id)) return { item: itens[i], index: i };
+                }
+            }
+            if (idx !== null && idx !== undefined && idx >= 0 && idx < itens.length) {
+                return { item: itens[idx], index: idx };
+            }
+            if (itens.length) return { item: itens[0], index: 0 };
+            return { item: null, index: null };
+        }
+
+        function rtUpdateTotalCard() {
+            var itens = rtGetItens();
+
+            var sumIbsBc = 0, sumIbsVlr = 0, sumCbsBc = 0, sumCbsVlr = 0, sumIsBc = 0, sumIsVlr = 0;
+            var nbsSet = {};
+
+            for (var i = 0; i < itens.length; i++) {
+                var it = itens[i] || {};
+
+                // Base e Valor por item (tenta vários nomes pra encaixar com seu array ITENS)
+                sumIbsBc += rtParseNumber(rtFirst(it, ['rt_ibs_bc', 'ibs_bc', 'vbcibs', 'bc_ibs', 'ibsBase', 'ibs_bc_total'], 0));
+                sumIbsVlr += rtParseNumber(rtFirst(it, ['rt_ibs_vlr', 'ibs_vlr', 'vibs', 'valor_ibs', 'ibs', 'ibs_total'], 0));
+
+                sumCbsBc += rtParseNumber(rtFirst(it, ['rt_cbs_bc', 'cbs_bc', 'vbccbs', 'bc_cbs', 'cbsBase', 'cbs_bc_total'], 0));
+                sumCbsVlr += rtParseNumber(rtFirst(it, ['rt_cbs_vlr', 'cbs_vlr', 'vcbs', 'valor_cbs', 'cbs', 'cbs_total'], 0));
+
+                sumIsBc += rtParseNumber(rtFirst(it, ['rt_is_bc', 'is_bc', 'vbcis', 'bc_is', 'isBase', 'is_bc_total'], 0));
+                sumIsVlr += rtParseNumber(rtFirst(it, ['rt_is_vlr', 'is_vlr', 'vis', 'valor_is', 'is', 'is_total'], 0));
+
+                var nbs = rtFirst(it, ['nbs', 'NBS', 'nbs_codigo', 'nbsCodigo', 'codigo_nbs'], '');
+                if (nbs) nbsSet[String(nbs)] = true;
+            }
+
+            var el;
+            el = document.getElementById('rt_total_ibs_bc'); if (el) el.value = rtFmtMoney(sumIbsBc);
+            el = document.getElementById('rt_total_ibs_vlr'); if (el) el.value = rtFmtMoney(sumIbsVlr);
+
+            el = document.getElementById('rt_total_cbs_bc'); if (el) el.value = rtFmtMoney(sumCbsBc);
+            el = document.getElementById('rt_total_cbs_vlr'); if (el) el.value = rtFmtMoney(sumCbsVlr);
+
+            el = document.getElementById('rt_total_is_bc'); if (el) el.value = rtFmtMoney(sumIsBc);
+            el = document.getElementById('rt_total_is_vlr'); if (el) el.value = rtFmtMoney(sumIsVlr);
+
+            var nbsKeys = Object.keys(nbsSet);
+            var nbsResumo = nbsKeys.length
+                ? ('Códigos: ' + nbsKeys.slice(0, 6).join(', ') + (nbsKeys.length > 6 ? ' …' : '') + ' | Qtd: ' + nbsKeys.length)
+                : '';
+            el = document.getElementById('rt_total_nbs_resumo'); if (el) el.value = nbsResumo;
+        }
+
+        function rtFillItemCard(it, index) {
+            it = it || {};
+            var badge = document.getElementById('rt_item_badge');
+            if (badge) badge.textContent = 'Item: ' + (index !== null && index !== undefined ? (index + 1) : '-');
+
+            var el;
+
+            el = document.getElementById('rt_item_classificacao');
+            if (el) el.value = rtFirst(it, ['classificacao_ibs_cbs', 'ibs_cbs_classificacao', 'class_trib_ibs_cbs', 'class_trib', 'classificacao'], '');
+
+            el = document.getElementById('rt_item_ibs_aliq'); if (el) el.value = rtFmtPct(rtFirst(it, ['rt_ibs_aliq', 'ibs_aliq', 'pIbs', 'aliq_ibs', 'ibsAliq'], 0));
+            el = document.getElementById('rt_item_ibs_vlr'); if (el) el.value = rtFmtMoney(rtFirst(it, ['rt_ibs_vlr', 'ibs_vlr', 'vIbs', 'valor_ibs', 'ibs'], 0));
+
+            el = document.getElementById('rt_item_cbs_aliq'); if (el) el.value = rtFmtPct(rtFirst(it, ['rt_cbs_aliq', 'cbs_aliq', 'pCbs', 'aliq_cbs', 'cbsAliq'], 0));
+            el = document.getElementById('rt_item_cbs_vlr'); if (el) el.value = rtFmtMoney(rtFirst(it, ['rt_cbs_vlr', 'cbs_vlr', 'vCbs', 'valor_cbs', 'cbs'], 0));
+
+            el = document.getElementById('rt_item_is_aliq'); if (el) el.value = rtFmtPct(rtFirst(it, ['rt_is_aliq', 'is_aliq', 'pIs', 'aliq_is', 'isAliq'], 0));
+            el = document.getElementById('rt_item_is_vlr'); if (el) el.value = rtFmtMoney(rtFirst(it, ['rt_is_vlr', 'is_vlr', 'vIs', 'valor_is', 'is'], 0));
+
+            el = document.getElementById('rt_item_nbs');
+            if (el) el.value = rtFirst(it, ['nbs', 'NBS', 'nbs_codigo', 'nbsCodigo', 'codigo_nbs'], '');
+        }
+
+        function rtBindRowClick() {
+            var tbody = document.getElementById('body');
+            if (!tbody) return;
+
+            tbody.addEventListener('click', function (ev) {
+                var tr = ev.target;
+                while (tr && tr.tagName !== 'TR') tr = tr.parentElement;
+                if (!tr) return;
+
+                // 1) tenta pegar índice pelo 1º TD (Item)
+                var idx = null;
+                var id = null;
+
+                var tds = tr.querySelectorAll('td');
+                if (tds && tds.length) {
+                    var n = parseInt(String((tds[0].innerText || '')).trim(), 10);
+                    if (!isNaN(n) && n > 0) idx = n - 1;
+                }
+
+                // 2) se tiver algum atributo data-id (se você já usa)
+                if (tr.dataset && tr.dataset.id) id = tr.dataset.id;
+
+                var found = rtGetItemByIndexOrId(idx, id);
+                if (found.item) rtFillItemCard(found.item, found.index);
+            }, true);
+        }
+
+        // Hook leve: se sua tela tiver funções típicas, tentamos atualizar após elas rodarem (sem quebrar nada).
+        function rtTryHook(fnName) {
+            if (typeof window[fnName] !== 'function') return;
+            if (window[fnName].__rt_hooked) return;
+
+            var original = window[fnName];
+            window[fnName] = function () {
+                var res = original.apply(this, arguments);
+                try { rtUpdateTotalCard(); } catch (e) { }
+                return res;
+            };
+            window[fnName].__rt_hooked = true;
+        }
+
+        // Atualização automática quando ITENS muda (fallback por polling leve)
+        var lastSig = null;
+        function rtTick() {
+            try {
+                var itens = rtGetItens();
+                var sig = 'I|' + itens.length;
+
+                for (var i = 0; i < Math.min(itens.length, 10); i++) {
+                    var it = itens[i] || {};
+                    sig += '|' + rtParseNumber(rtFirst(it, ['subtotal', 'SubTotal', 'valor_total', 'total'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_ibs_vlr', 'ibs_vlr', 'valor_ibs', 'ibs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_cbs_vlr', 'cbs_vlr', 'valor_cbs', 'cbs'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_is_vlr', 'is_vlr', 'valor_is', 'is'], 0));
+                }
+
+                if (sig !== lastSig) {
+                    lastSig = sig;
+                    rtUpdateTotalCard();
+
+                    // se ainda não selecionou item, preenche o primeiro
+                    var badge = document.getElementById('rt_item_badge');
+                    if (badge && (!badge.textContent || badge.textContent.indexOf('-') !== -1)) {
+                        if (itens.length) rtFillItemCard(itens[0], 0);
+                    }
+                }
+            } catch (e) { }
+
+            setTimeout(rtTick, 600);
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // clique na linha para item selecionado
+            rtBindRowClick();
+
+            // tenta hook em funções comuns da tela (não quebra se não existir)
+            rtTryHook('montaTabelaProdutos');
+            rtTryHook('renderizarTabela');
+            rtTryHook('renderizarItens');
+            rtTryHook('calcularTotal');
+            rtTryHook('atualizarTotal');
+            rtTryHook('removerItem');
+            rtTryHook('addItem');
+            rtTryHook('salvarEditItem');
+
+            // start
+            rtUpdateTotalCard();
+            rtTick();
+        });
+    })();
+
+
 
 
 

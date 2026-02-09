@@ -1,6 +1,55 @@
 @extends('default.layout')
 @section('content')
 <style type="text/css">
+/* =========================
+	   REFORMA (VISUALIZAÇÃO)
+	   - NÃO EDITÁVEL
+	   - TAMANHOS MENORES
+	   ========================= */
+	.rt-card{
+            border: 1px dashed rgba(0,0,0,.18);
+            border-radius: 6px;
+            padding: 8px 8px 0 8px;
+            margin-top: 6px;
+        }
+	.rt-title{
+		display:flex;
+		align-items:center;
+		justify-content:space-between;
+		margin: 0 0 8px 0;
+	}
+	.rt-title h6{
+            margin:0;
+            font-weight:700;
+            letter-spacing:.2px;
+            font-size: 12px;
+        }
+	.rt-badge{
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 20px;
+            background: rgba(54,153,255,.10);
+            color: #3699FF;
+            font-weight: 700;
+        }
+	.rt-mini label{
+            font-size: 10px !important;
+            margin-bottom: 3px !important;
+            opacity: .85;
+        }
+	.rt-mini .form-control{
+            height: calc(1.05em + .65rem + 2px) !important;
+            font-size: 11px !important;
+            padding: .20rem .38rem !important;
+        }
+	.rt-mini .form-group{
+            margin-bottom: 8px !important;
+        }
+
+        .rt-row-tight{ margin-left:-6px; margin-right:-6px; }
+        .rt-row-tight > [class*="col-"]{ padding-left:6px; padding-right:6px; }
+    
+
 	#focus-codigo:hover{
 		cursor: pointer
 	}
