@@ -16,6 +16,11 @@ class ReformaTributariaService
      */
     public function shouldApply(int $empresaId): bool
     {
+        $explicit = $this->readRtEnableFlag($empresaId);
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
         // 1) Ambiente (1 produção, 2 homologação)
         $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
 
@@ -24,8 +29,9 @@ class ReformaTributariaService
 
         // 3) Em produção: exige ctr=1
         if ((int)$ambiente === 1) {
-            if ($ctr === null) return false;
-            return (int)$ctr === 1;
+            if ($ctr !== null) return (int)$ctr === 1;
+            if ($this->hasRtFieldsFilled($empresaId)) return true;
+            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
         }
 
         // 4) Em homologação: aplica se tiver parametrização da RT preenchida
@@ -203,6 +209,53 @@ class ReformaTributariaService
         if (Schema::hasColumn($table, 'EMPRESA_ID')) return 'EMPRESA_ID';
         if (Schema::hasColumn($table, 'id')) return 'id';
         if (Schema::hasColumn($table, 'ID')) return 'ID';
+        return null;
+    }
+
+    protected function readRtEnableFlag(int $empresaId): ?bool
+    {
+        $candidates = [
+            ['table' => 'empresas', 'col' => 'reforma_tributaria'],
+            ['table' => 'empresas', 'col' => 'calcula_reforma_tributaria'],
+            ['table' => 'config_notas', 'col' => 'reforma_tributaria'],
+            ['table' => 'tributacaos', 'col' => 'reforma_tributaria'],
+            ['table' => 'tributacoes', 'col' => 'reforma_tributaria'],
+        ];
+
+        foreach ($candidates as $c) {
+            if (!Schema::hasTable($c['table'])) {
+                continue;
+            }
+
+            $col = null;
+            if (Schema::hasColumn($c['table'], $c['col'])) {
+                $col = $c['col'];
+            } else if (Schema::hasColumn($c['table'], strtoupper($c['col']))) {
+                $col = strtoupper($c['col']);
+            }
+
+            if ($col === null) {
+                continue;
+            }
+
+            $whereCol = $this->resolveEmpresaWhereColumn($c['table']);
+            if ($whereCol === null) {
+                continue;
+            }
+
+            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($col);
+            if ($val === null) {
+                continue;
+            }
+
+            $str = strtoupper(trim((string)$val));
+            if ($str === '') {
+                continue;
+            }
+
+            return ($str === 'S' || $str === '1' || $str === 'SIM' || $val === true);
+        }
+
         return null;
     }
 

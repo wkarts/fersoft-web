@@ -315,6 +315,7 @@ class VendaController extends Controller
     private function applyRtToItemVendaArray(array $itemArr, $produto): array
     {
         $rt = app(ReformaTributariaService::class);
+        $aplicar = $rt->shouldApply($this->empresa_id);
 
         $item = new ItemVenda();
         $item->fill($itemArr);
@@ -326,6 +327,9 @@ class VendaController extends Controller
 
         $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$item->produto_id, $item);
         $rt->calcularItem($item, $this->empresa_id, null);
+        if (!$aplicar) {
+            $rt->calcularItem($item, $this->empresa_id, 'REMESSA');
+        }
 
         $lists = $this->rtItemFieldLists();
         $fields = array_merge($lists['strings'], $lists['ints'], $lists['floats']);
