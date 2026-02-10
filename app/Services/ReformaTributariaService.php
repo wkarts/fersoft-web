@@ -10,27 +10,20 @@ use App\Models\ReformaTributaria\ClassTribIbsCbs;
 class ReformaTributariaService
 {
     /**
-     * Regra oficial (somente tabelas):
+     * Regra oficial:
      * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1
      * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime)
      */
     public function shouldApply(int $empresaId): bool
     {
-        $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2/null
-        $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
+        $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
+        $regime   = $this->getRegimeEmpresa($empresaId);   // 0 simples, 1 normal, 2 mei (ou null)
 
-        if ($ambiente === 2) {
-            return true;
-        }
+        if ((int)$ambiente === 2) return true;
+        if ((int)$ambiente === 1) return ((int)$regime === 1);
 
-        if ($ambiente === 1) {
-            return ($regime === 1);
-        }
-
-        // fallback seguro: não aplica
         return false;
     }
-
 
     /*
     public function shouldApply(int $empresaId): bool
@@ -178,13 +171,15 @@ class ReformaTributariaService
             try {
                 $v = $item->$field ?? $item->getAttribute($field);
                 if ($v !== null) return $v;
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             $lc = strtolower($field);
             try {
                 $v = $item->$lc ?? $item->getAttribute($lc);
                 if ($v !== null) return $v;
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             return null;
         }
@@ -206,10 +201,16 @@ class ReformaTributariaService
             }
 
             if (is_object($modelOrArray)) {
-                try { $val = $modelOrArray->$f ?? ($modelOrArray->getAttribute($f) ?? null); } catch (\Throwable $e) {}
+                try {
+                    $val = $modelOrArray->$f ?? ($modelOrArray->getAttribute($f) ?? null);
+                } catch (\Throwable $e) {
+                }
                 if ($val === null) {
                     $lc = strtolower($f);
-                    try { $val = $modelOrArray->$lc ?? ($modelOrArray->getAttribute($lc) ?? null); } catch (\Throwable $e) {}
+                    try {
+                        $val = $modelOrArray->$lc ?? ($modelOrArray->getAttribute($lc) ?? null);
+                    } catch (\Throwable $e) {
+                    }
                 }
             }
 
@@ -352,8 +353,8 @@ class ReformaTributariaService
 
         // tolerância (se algum legado gravou texto)
         if (str_contains($s, 'SIMP')) return 0;
-        if (str_contains($s, 'NOR'))  return 1;
-        if (str_contains($s, 'MEI'))  return 2;
+        if (str_contains($s, 'NOR')) return 1;
+        if (str_contains($s, 'MEI')) return 2;
 
         return null;
     }
@@ -462,11 +463,11 @@ class ReformaTributariaService
 
         // precisa estar preenchido de forma consistente
         $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? ($arr['ALIQ_CBS'] ?? null), 0.0);
-        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? ($arr['ALIQ_IBS_UF'] ?? null), 0.0);
+        $aliqUf = $this->toFloat($arr['aliq_ibs_uf'] ?? ($arr['ALIQ_IBS_UF'] ?? null), 0.0);
         $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? ($arr['ALIQ_IBS_MUN'] ?? null), 0.0);
 
         $cst = trim((string)($arr['cst_ibs_cbs'] ?? ($arr['CST_IBS_CBS'] ?? '')));
-        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ($arr['CLASS_TRIB_IBS_CBS'] ?? '')));
+        $ct = trim((string)($arr['class_trib_ibs_cbs'] ?? ($arr['CLASS_TRIB_IBS_CBS'] ?? '')));
 
         return ($aliqCbs > 0 || $aliqUf > 0 || $aliqMun > 0) && ($cst !== '' || $ct !== '');
     }
@@ -475,6 +476,46 @@ class ReformaTributariaService
     // Defaults (buscaProduto), mas configuráveis por ENV/colunas.
     // ---------------------------------------------------------------------
 
+    protected function aliquotaPadrao(int $empresaId, string $tipo): float
+    {
+        $tipo = strtoupper(trim($tipo));
+
+        // fallback fixo (sem env)
+        $defaults = [
+            'CBS' => 0.9000,
+            'IBS_UF' => 0.1000,
+            'IBS_MUN' => 0.0500,
+        ];
+
+        $default = $defaults[$tipo] ?? 0.0;
+
+        // Prioridade: tributacaos.*
+        $map = [
+            'CBS' => 'aliq_cbs',
+            'IBS_UF' => 'aliq_ibs_uf',
+            'IBS_MUN' => 'aliq_ibs_mun',
+        ];
+
+        $col = $map[$tipo] ?? null;
+        if ($col === null) return $default;
+
+        if (!Schema::hasTable('tributacaos')) return $default;
+
+        $realCol = Schema::hasColumn('tributacaos', $col) ? $col :
+            (Schema::hasColumn('tributacaos', strtoupper($col)) ? strtoupper($col) : null);
+
+        if ($realCol === null) return $default;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+        if ($whereCol === null) return $default;
+
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($realCol);
+        if ($val === null || trim((string)$val) === '') return $default;
+
+        return $this->toFloat($val, $default);
+    }
+
+    /*
     protected function aliquotaPadrao(int $empresaId, string $tipo): float
     {
         $tipo = strtoupper(trim($tipo));
@@ -522,6 +563,7 @@ class ReformaTributariaService
 
         return $default;
     }
+    */
 
     // ---------------------------------------------------------------------
     // 2) Preencher defaults do item (somente tabelas)
@@ -531,35 +573,67 @@ class ReformaTributariaService
      * Puxa dados tributários do produto e preenche campos do item.
      * OBS: aqui não tenta VIEW; usa somente tabela produtos.
      */
-    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, &$item): void
+    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, $item): void
     {
         $row = null;
 
         if (Schema::hasTable('produtos')) {
+
+            // 1) tenta com filtro por empresa_id (se existir)
             $q = DB::table('produtos')->where('id', $produtoId);
 
-            if (Schema::hasColumn('produtos', 'empresa_id')) {
-                $q->where('empresa_id', $empresaId);
+            $hasEmpresaCol = Schema::hasColumn('produtos', 'empresa_id') || Schema::hasColumn('produtos', 'EMPRESA_ID');
+            $empresaCol = Schema::hasColumn('produtos', 'empresa_id') ? 'empresa_id' : (Schema::hasColumn('produtos', 'EMPRESA_ID') ? 'EMPRESA_ID' : null);
+
+            if ($hasEmpresaCol && $empresaCol) {
+                $q->where($empresaCol, $empresaId);
             }
 
             $row = $q->first();
+
+            // 2) fallback: se não achou, tenta SEM empresa_id (produto global/compartilhado)
+            if (!$row) {
+                $row = DB::table('produtos')->where('id', $produtoId)->first();
+            }
         }
 
-        if (!$row) return;
+        // Defaults por tabela (tributacaos), mesmo sem produto
+        $defaultCst = null;
+        $defaultClassTrib = null;
 
-        $cst       = $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']);
-        $classTrib = $this->rowVal($row, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']);
+        if (Schema::hasTable('tributacaos')) {
+            $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
 
-        // reduções (aceita também perc_red_ibs/perc_red_cbs)
-        $redIbs = $this->rowVal($row, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']);
-        $redCbs = $this->rowVal($row, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']);
+            if ($whereCol !== null) {
+                // cst_ibs_cbs / class_trib_ibs_cbs em tributacaos (conforme seu DDL)
+                $cstCol = Schema::hasColumn('tributacaos', 'cst_ibs_cbs') ? 'cst_ibs_cbs' :
+                    (Schema::hasColumn('tributacaos', 'CST_IBS_CBS') ? 'CST_IBS_CBS' : null);
 
-        $flagIs = $this->rowVal($row, ['FLAG_IS','flag_is']);
-        $aliqIs = $this->rowVal($row, ['ALIQ_IS','aliq_is']);
+                $ctCol = Schema::hasColumn('tributacaos', 'class_trib_ibs_cbs') ? 'class_trib_ibs_cbs' :
+                    (Schema::hasColumn('tributacaos', 'CLASS_TRIB_IBS_CBS') ? 'CLASS_TRIB_IBS_CBS' : null);
 
-        $anp = $this->rowVal($row, ['codigo_anp','CODIGO_ANP','PROD_CPRODANP','cProdAnp','ANP']);
+                if ($cstCol) {
+                    $defaultCst = DB::table('tributacaos')->where($whereCol, $empresaId)->value($cstCol);
+                }
+                if ($ctCol) {
+                    $defaultClassTrib = DB::table('tributacaos')->where($whereCol, $empresaId)->value($ctCol);
+                }
+            }
+        }
 
-        // mantém seus nomes atuais (setIfExists resolve o case)
+        // Se achou produto, usa dados do produto. Se não, usa defaults do tributacaos.
+        $cst       = $row ? $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']) : $defaultCst;
+        $classTrib = $row ? $this->rowVal($row, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']) : $defaultClassTrib;
+
+        $redIbs = $row ? $this->rowVal($row, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']) : null;
+        $redCbs = $row ? $this->rowVal($row, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']) : null;
+
+        $flagIs = $row ? $this->rowVal($row, ['FLAG_IS','flag_is']) : null;
+        $aliqIs = $row ? $this->rowVal($row, ['ALIQ_IS','aliq_is']) : null;
+
+        $anp = $row ? $this->rowVal($row, ['codigo_anp','CODIGO_ANP','PROD_CPRODANP','cProdAnp','ANP']) : null;
+
+        // mantém seus nomes atuais (setIfExists resolve o case e array/object)
         $this->setIfExists($item, 'IS_ALIQ', $this->toFloat($aliqIs, 0.0));
         $this->setIfExists($item, 'CST_IBS_CBS', $this->fmtCst3($cst ?? ''));
         $this->setIfExists($item, 'CLASS_TRIB_IBS_CBS', $this->fmtClassTrib6($classTrib ?? ''));
@@ -577,10 +651,10 @@ class ReformaTributariaService
             $this->setIfExists($item, 'FLAG_COMBUSTIVEL', 'S');
         }
 
-        // >>> DEFAULTS <<<
-        $this->setIfExists($item, 'ALIQ_CBS',     $this->aliquotaPadrao($empresaId, 'CBS'));     // 0.9000
-        $this->setIfExists($item, 'ALIQ_IBS_UF',  $this->aliquotaPadrao($empresaId, 'IBS_UF'));  // 0.1000
-        $this->setIfExists($item, 'ALIQ_IBS_MUN', $this->aliquotaPadrao($empresaId, 'IBS_MUN')); // 0.0500
+        // >>> DEFAULTS DE ALÍQUOTA SEMPRE (MESMO SEM PRODUTO) <<<
+        $this->setIfExists($item, 'ALIQ_CBS',     $this->aliquotaPadrao($empresaId, 'CBS'));
+        $this->setIfExists($item, 'ALIQ_IBS_UF',  $this->aliquotaPadrao($empresaId, 'IBS_UF'));
+        $this->setIfExists($item, 'ALIQ_IBS_MUN', $this->aliquotaPadrao($empresaId, 'IBS_MUN'));
 
         // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
         $zeroFloat = [
@@ -609,6 +683,88 @@ class ReformaTributariaService
             $this->setIfExists($item, 'ADREM_CBS', $adrem);
         }
     }
+
+    /*
+    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, &$item): void
+    {
+        $row = null;
+
+        if (Schema::hasTable('produtos')) {
+            $q = DB::table('produtos')->where('id', $produtoId);
+
+            if (Schema::hasColumn('produtos', 'empresa_id')) {
+                $q->where('empresa_id', $empresaId);
+            }
+
+            $row = $q->first();
+        }
+
+        if (!$row) return;
+
+        $cst = $this->rowVal($row, ['CST_IBS_CBS', 'cst_ibs_cbs']);
+        $classTrib = $this->rowVal($row, ['CLASS_TRIB_IBS_CBS', 'class_trib_ibs_cbs']);
+
+        // reduções (aceita também perc_red_ibs/perc_red_cbs)
+        $redIbs = $this->rowVal($row, ['perc_red_ibs', 'PERC_RED_IBS', 'REDUCAO_IBS', 'reducao_ibs']);
+        $redCbs = $this->rowVal($row, ['perc_red_cbs', 'PERC_RED_CBS', 'REDUCAO_CBS', 'reducao_cbs']);
+
+        $flagIs = $this->rowVal($row, ['FLAG_IS', 'flag_is']);
+        $aliqIs = $this->rowVal($row, ['ALIQ_IS', 'aliq_is']);
+
+        $anp = $this->rowVal($row, ['codigo_anp', 'CODIGO_ANP', 'PROD_CPRODANP', 'cProdAnp', 'ANP']);
+
+        // mantém seus nomes atuais (setIfExists resolve o case)
+        $this->setIfExists($item, 'IS_ALIQ', $this->toFloat($aliqIs, 0.0));
+        $this->setIfExists($item, 'CST_IBS_CBS', $this->fmtCst3($cst ?? ''));
+        $this->setIfExists($item, 'CLASS_TRIB_IBS_CBS', $this->fmtClassTrib6($classTrib ?? ''));
+
+        $this->setIfExists($item, 'PERC_RED_ALIQ_UF', $this->toFloat($redIbs, 0.0));
+        $this->setIfExists($item, 'PERC_RED_ALIQ_IBS_MUN', $this->toFloat($redIbs, 0.0));
+        $this->setIfExists($item, 'PERC_RED_ALIQ_CBS', $this->toFloat($redCbs, 0.0));
+
+        $this->setIfExists($item, 'FLAG_IS', strtoupper(trim((string)($flagIs ?? 'N'))));
+
+        $anp = trim((string)($anp ?? ''));
+        $this->setIfExists($item, 'ANP', $anp);
+
+        if ($anp !== '') {
+            $this->setIfExists($item, 'FLAG_COMBUSTIVEL', 'S');
+        }
+
+        // >>> DEFAULTS <<<
+        $this->setIfExists($item, 'ALIQ_CBS', $this->aliquotaPadrao($empresaId, 'CBS'));     // 0.9000
+        $this->setIfExists($item, 'ALIQ_IBS_UF', $this->aliquotaPadrao($empresaId, 'IBS_UF'));  // 0.1000
+        $this->setIfExists($item, 'ALIQ_IBS_MUN', $this->aliquotaPadrao($empresaId, 'IBS_MUN')); // 0.0500
+
+        // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
+        $zeroFloat = [
+            'IS_BC', 'IS_ALIQ_ESPEC', 'IS_QTD_TRIB', 'IS_VALOR',
+            'BC_IBS_CBS', 'VALOR_IBS', 'VALOR_IBS_UF', 'PERC_DIF_IBS_UF', 'VALOR_DIF_IBS_UF', 'VALOR_DIF_IBS_UF_DEVTRIB', 'ALIQ_EFET_IBS_UF',
+            'VALOR_IBS_MUN', 'PERC_DIF_IBS_MUN', 'VALOR_DIF_IBS_MUN', 'VALOR_DIF_IBS_MUN_TRIB', 'ALIQ_EFET_IBS_MUN',
+            'VALOR_CBS', 'PERC_DIF_CBS', 'VALOR_DIF_CBS', 'VALOR_DIF_CBS_DEVTRIB', 'ALIQ_EFET_CBS',
+            'TRIB_REG_ALIQ_EFET_IBS_UF', 'TRIB_REG_VALOR_IBS_UF',
+            'TRIB_REG_ALIQ_EFET_IBS_MUN', 'TRIB_REG_VALOR_IBS_MUN',
+            'TRIB_REG_ALIQ_EFET_CBS', 'TRIB_REG_VALOR_CBS',
+            'PERC_CRED_PRES_IBS', 'VALOR_CRED_PRES_IBS', 'VALOR_CRED_PRES_COND_SUS_IBS',
+            'PERC_CRED_PRES_CBS', 'VALOR_CRED_PRES_CBS', 'VALOR_CRED_PRES_COND_SUS_CBS',
+            'QBCMONO_IBS_CBS', 'VALOR_IBS_MONO', 'VALOR_CBS_MONO',
+            'QBCMONORETEN_IBS_CBS', 'ADREM_IBS_RETEN', 'ADREM_CBS_RETEN', 'VALOR_IBS_RETEN', 'VALOR_CBS_RETEN',
+            'QBCMONORET_IBS_CBS', 'ADREM_IBS_RET', 'ADREM_CBS_RET', 'VALOR_IBS_RET', 'VALOR_CBS_RET',
+            'ADREM_IBS', 'ADREM_CBS'
+        ];
+        foreach ($zeroFloat as $f) $this->setIfExists($item, $f, 0.0);
+
+        $zeroInt = ['CRED_PRES_COD_IBS', 'CRED_PRES_COD_CBS'];
+        foreach ($zeroInt as $f) $this->setIfExists($item, $f, 0);
+
+        if ($anp !== '') {
+            $adrem = $this->aliquotaAnp($anp);
+            $this->setIfExists($item, 'ADREM_IBS', $adrem);
+            $this->setIfExists($item, 'ADREM_CBS', $adrem);
+        }
+    }
+    */
+
 
     // ---------------------------------------------------------------------
     // 3) Cálculo do item
