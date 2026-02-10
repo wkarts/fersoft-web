@@ -10,16 +10,10 @@ use App\Models\ReformaTributaria\ClassTribIbsCbs;
 class ReformaTributariaService
 {
     /**
-     * Regra oficial:
-     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1 (NORMAL)
-     * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime: 0/1/2)
-     *
-     * Regime:
-     * 0 = Simples Nacional
-     * 1 = Normal
-     * 2 = MEI
+     * Regra oficial (somente tabelas):
+     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1
+     * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime)
      */
-
     public function shouldApply(int $empresaId): bool
     {
         $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2/null
@@ -36,6 +30,7 @@ class ReformaTributariaService
         // fallback seguro: não aplica
         return false;
     }
+
 
     /*
     public function shouldApply(int $empresaId): bool
@@ -337,6 +332,37 @@ class ReformaTributariaService
     {
         if (!Schema::hasTable('tributacaos')) return null;
 
+        $col = null;
+        if (Schema::hasColumn('tributacaos', 'regime')) $col = 'regime';
+        else if (Schema::hasColumn('tributacaos', 'REGIME')) $col = 'REGIME';
+
+        if ($col === null) return null;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+        if ($whereCol === null) return null;
+
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($col);
+        if ($val === null) return null;
+
+        $s = strtoupper(trim((string)$val));
+        if ($s === '') return null;
+
+        // aceita "0/1/2"
+        if (is_numeric($s)) return (int)$s;
+
+        // tolerância (se algum legado gravou texto)
+        if (str_contains($s, 'SIMP')) return 0;
+        if (str_contains($s, 'NOR'))  return 1;
+        if (str_contains($s, 'MEI'))  return 2;
+
+        return null;
+    }
+
+    /*
+    protected function getRegimeEmpresa(int $empresaId): ?int
+    {
+        if (!Schema::hasTable('tributacaos')) return null;
+
         $col = Schema::hasColumn('tributacaos', 'regime') ? 'regime'
             : (Schema::hasColumn('tributacaos', 'REGIME') ? 'REGIME' : null);
 
@@ -359,6 +385,7 @@ class ReformaTributariaService
 
         return $n;
     }
+    */
 
     /*
     protected function getAmbienteEmpresa(int $empresaId): int
