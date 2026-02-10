@@ -22,19 +22,18 @@ class ReformaTributariaService
 
     public function shouldApply(int $empresaId): bool
     {
-        $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
+        $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2/null
         $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
-        // Homologação: sempre aplica
-        if ((int)$ambiente === 2) {
+        if ($ambiente === 2) {
             return true;
         }
 
-        // Produção: apenas regime NORMAL (1)
-        if ((int)$ambiente === 1) {
-            return ((int)($regime ?? -1) === 1);
+        if ($ambiente === 1) {
+            return ($regime === 1);
         }
 
+        // fallback seguro: não aplica
         return false;
     }
 
@@ -310,22 +309,28 @@ class ReformaTributariaService
     // ---------------------------------------------------------------------
     // Ambientes / REGIME / Parametrização
     // ---------------------------------------------------------------------
-    protected function getAmbienteEmpresa(int $empresaId): int
+    protected function getAmbienteEmpresa(int $empresaId): ?int
     {
-        if (!Schema::hasTable('config_notas')) return 1;
+        if (!Schema::hasTable('config_notas')) return null;
 
         $col = Schema::hasColumn('config_notas', 'ambiente') ? 'ambiente'
             : (Schema::hasColumn('config_notas', 'AMBIENTE') ? 'AMBIENTE' : null);
 
-        if ($col === null) return 1;
+        if ($col === null) return null;
 
         $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
-        if ($whereCol === null) return 1;
+        if ($whereCol === null) return null;
 
         $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
-        $amb = (int)$val;
+        if ($val === null) return null;
 
-        return ($amb === 2) ? 2 : 1; // só 1 ou 2
+        $amb = (int)preg_replace('/\D+/', '', trim((string)$val));
+
+        if (in_array($amb, [1, 2], true)) {
+            return $amb;
+        }
+
+        return null;
     }
 
     protected function getRegimeEmpresa(int $empresaId): ?int
@@ -447,14 +452,14 @@ class ReformaTributariaService
     {
         $tipo = strtoupper(trim($tipo));
 
-        // defaults corretos conforme pedido
-        $defaultsEnv = [
-            'CBS'     => $this->toFloat(env('REFORMA_ALIQ_CBS', 0.9000), 0.9000),
-            'IBS_UF'  => $this->toFloat(env('REFORMA_ALIQ_IBS_UF', 0.1000), 0.1000),
-            'IBS_MUN' => $this->toFloat(env('REFORMA_ALIQ_IBS_MUN', 0.0500), 0.0500),
+        // fallback fixo (sem env): CBS 0.9000 / IBS_UF 0.1000 / IBS_MUN 0.0500
+        $defaults = [
+            'CBS'     => 0.9000,
+            'IBS_UF'  => 0.1000,
+            'IBS_MUN' => 0.0500,
         ];
 
-        $default = $defaultsEnv[$tipo] ?? 0.0;
+        $default = $defaults[$tipo] ?? 0.0;
 
         // Prioridade: tributacaos (conforme sua regra)
         $map = [
@@ -499,7 +504,7 @@ class ReformaTributariaService
      * Puxa dados tributários do produto e preenche campos do item.
      * OBS: aqui não tenta VIEW; usa somente tabela produtos.
      */
-    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, $item): void
+    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, &$item): void
     {
         $row = null;
 
@@ -511,19 +516,51 @@ class ReformaTributariaService
             }
 
             $row = $q->first();
+
+            // fallback: produto global/compartilhado (sem filtro empresa)
+            if (!$row) {
+                $row = DB::table('produtos')->where('id', $produtoId)->first();
+            }
         }
 
-        if (!$row) return;
+        $trib = null;
+        if (Schema::hasTable('tributacaos')) {
+            $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+            if ($whereCol !== null) {
+                $trib = DB::table('tributacaos')->where($whereCol, $empresaId)->first();
+            }
+        }
 
-        $cst       = $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']);
+        $cst = $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']);
+        if ($cst === null) {
+            $cst = $this->rowVal($trib, ['CST_IBS_CBS','cst_ibs_cbs']);
+        }
+
         $classTrib = $this->rowVal($row, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']);
+        if ($classTrib === null) {
+            $classTrib = $this->rowVal($trib, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']);
+        }
 
         // reduções (aceita também perc_red_ibs/perc_red_cbs)
         $redIbs = $this->rowVal($row, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']);
+        if ($redIbs === null) {
+            $redIbs = $this->rowVal($trib, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']);
+        }
+
         $redCbs = $this->rowVal($row, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']);
+        if ($redCbs === null) {
+            $redCbs = $this->rowVal($trib, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']);
+        }
 
         $flagIs = $this->rowVal($row, ['FLAG_IS','flag_is']);
+        if ($flagIs === null) {
+            $flagIs = $this->rowVal($trib, ['FLAG_IS','flag_is']);
+        }
+
         $aliqIs = $this->rowVal($row, ['ALIQ_IS','aliq_is']);
+        if ($aliqIs === null) {
+            $aliqIs = $this->rowVal($trib, ['ALIQ_IS','aliq_is']);
+        }
 
         $anp = $this->rowVal($row, ['codigo_anp','CODIGO_ANP','PROD_CPRODANP','cProdAnp','ANP']);
 
@@ -582,7 +619,7 @@ class ReformaTributariaService
     // 3) Cálculo do item
     // ---------------------------------------------------------------------
 
-    public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
+    public function calcularItem(&$item, int $empresaId, ?string $cfopDescricao = null): void
     {
         $vProdTotal = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor_total_item'], 0.0);
 
