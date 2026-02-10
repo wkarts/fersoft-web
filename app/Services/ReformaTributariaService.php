@@ -16,20 +16,18 @@ class ReformaTributariaService
      */
     public function shouldApply(int $empresaId): bool
     {
-        // 1) Ambiente (1 produção, 2 homologação)
-        $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
+        $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2/null
+        $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
-        // 2) REGIME na tributacaos (0 simples, 1 normal, 2 mei)
-        $regime = $this->getRegimeEmpresa($empresaId); // null se não existir
-
-        if ((int)$ambiente === 2) {
+        if ($ambiente === 2) {
             return true;
         }
 
-        if ((int)$ambiente === 1) {
-            return ((int)$regime === 1);
+        if ($ambiente === 1) {
+            return ($regime === 1);
         }
 
+        // fallback seguro: não aplica
         return false;
     }
 
@@ -306,22 +304,28 @@ class ReformaTributariaService
     // ---------------------------------------------------------------------
     // Ambientes / REGIME / Parametrização
     // ---------------------------------------------------------------------
-    protected function getAmbienteEmpresa(int $empresaId): int
+    protected function getAmbienteEmpresa(int $empresaId): ?int
     {
-        if (!Schema::hasTable('config_notas')) return 1;
+        if (!Schema::hasTable('config_notas')) return null;
 
         $col = Schema::hasColumn('config_notas', 'ambiente') ? 'ambiente'
             : (Schema::hasColumn('config_notas', 'AMBIENTE') ? 'AMBIENTE' : null);
 
-        if ($col === null) return 1;
+        if ($col === null) return null;
 
         $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
-        if ($whereCol === null) return 1;
+        if ($whereCol === null) return null;
 
         $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
-        $amb = (int)$val;
+        if ($val === null) return null;
 
-        return ($amb === 2) ? 2 : 1; // só 1 ou 2
+        $amb = (int)preg_replace('/\D+/', '', trim((string)$val));
+
+        if (in_array($amb, [1, 2], true)) {
+            return $amb;
+        }
+
+        return null;
     }
 
     protected function getRegimeEmpresa(int $empresaId): ?int
@@ -527,7 +531,7 @@ class ReformaTributariaService
      * Puxa dados tributários do produto e preenche campos do item.
      * OBS: aqui não tenta VIEW; usa somente tabela produtos.
      */
-    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, $item): void
+    public function fillItemFromProdutoAliquota(int $empresaId, int $produtoId, &$item): void
     {
         $row = null;
 
@@ -610,7 +614,7 @@ class ReformaTributariaService
     // 3) Cálculo do item
     // ---------------------------------------------------------------------
 
-    public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
+    public function calcularItem(&$item, int $empresaId, ?string $cfopDescricao = null): void
     {
         $vProdTotal = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor_total_item'], 0.0);
 

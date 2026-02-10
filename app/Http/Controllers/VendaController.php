@@ -317,18 +317,17 @@ class VendaController extends Controller
         $rt = app(ReformaTributariaService::class);
         $aplicar = $rt->shouldApply($this->empresa_id);
 
-        $item = new ItemVenda();
-        $item->fill($itemArr);
-        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
-        $item->quantidade = (float)($itemArr['quantidade'] ?? 0);
-        $item->valor = (float)($itemArr['valor'] ?? 0);
-        $item->valor_unitario = (float)($itemArr['valor'] ?? 0);
-        $item->valor_total = $item->quantidade * $item->valor;
+        $itemRt = $itemArr;
+        $itemRt['produto_id'] = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
+        $itemRt['quantidade'] = (float)($itemArr['quantidade'] ?? 0);
+        $itemRt['valor'] = (float)($itemArr['valor'] ?? 0);
+        $itemRt['valor_unitario'] = (float)($itemArr['valor_unitario'] ?? $itemRt['valor']);
+        $itemRt['valor_total'] = (float)($itemArr['valor_total'] ?? ($itemRt['quantidade'] * $itemRt['valor_unitario']));
 
-        $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$item->produto_id, $item);
-        $rt->calcularItem($item, $this->empresa_id, null);
+        $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$itemRt['produto_id'], $itemRt);
+        $rt->calcularItem($itemRt, $this->empresa_id, null);
         if (!$aplicar) {
-            $rt->calcularItem($item, $this->empresa_id, 'REMESSA');
+            $rt->calcularItem($itemRt, $this->empresa_id, 'REMESSA');
         }
 
         $lists = $this->rtItemFieldLists();
@@ -339,25 +338,29 @@ class VendaController extends Controller
                 continue;
             }
 
-            $val = $item->getAttribute($col);
-            if ($val === null) {
+            if (!array_key_exists($col, $itemRt)) {
                 continue;
             }
 
-            $itemArr[$col] = $val;
+            $itemArr[$col] = $itemRt[$col];
         }
+
+        // espelho legado opcional para compatibilidade
+        $itemArr['rt_base'] = (float)($itemArr['bc_ibs_cbs'] ?? 0);
+        $itemArr['rt_ibs_valor'] = (float)($itemArr['valor_ibs'] ?? 0);
+        $itemArr['rt_cbs_valor'] = (float)($itemArr['valor_cbs'] ?? 0);
+        $itemArr['rt_is_valor'] = (float)($itemArr['is_valor'] ?? 0);
 
         return $itemArr;
     }
 
     private function rtAccumulateFromItemArray(array $itemArr): void
     {
-        // acumula usando as chaves “padrão”
-        $this->rtTotals['rt_base'] += (float)($itemArr['rt_base'] ?? 0);
-
-        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['rt_ibs_valor'] ?? $itemArr['ibs_valor'] ?? 0);
-        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['rt_cbs_valor'] ?? $itemArr['cbs_valor'] ?? 0);
-        $this->rtTotals['rt_is_valor']  += (float)($itemArr['rt_is_valor']  ?? $itemArr['is_valor']  ?? 0);
+        // acumula priorizando campos novos da RT
+        $this->rtTotals['rt_base'] += (float)($itemArr['bc_ibs_cbs'] ?? $itemArr['rt_base'] ?? 0);
+        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['valor_ibs'] ?? $itemArr['rt_ibs_valor'] ?? 0);
+        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['valor_cbs'] ?? $itemArr['rt_cbs_valor'] ?? 0);
+        $this->rtTotals['rt_is_valor']  += (float)($itemArr['is_valor'] ?? $itemArr['rt_is_valor'] ?? 0);
     }
 
     private function applyRtToVendaTotals($venda): void
