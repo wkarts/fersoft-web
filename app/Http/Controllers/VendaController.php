@@ -167,6 +167,211 @@ class VendaController extends Controller
     public function previewReformaItem(Request $request, ReformaTributariaService $rt)
     {
         try {
+            $produtoId = (int)($request->get('produto_id') ?? 0);
+            if ($produtoId <= 0) {
+                return response()->json(['success' => false, 'message' => 'produto_id inválido'], 422);
+            }
+
+            $produto = Produto::query()->find($produtoId);
+            if (!$produto) {
+                return response()->json(['success' => false, 'message' => 'Produto não encontrado'], 404);
+            }
+
+            // Resolve empresa_id de forma tolerante (AJAX nem sempre envia o mesmo nome).
+            // OBS: o sistema usa session('user_logged') amplamente (BaseController), então
+            // não podemos depender somente de auth()->user().
+            $userLogged = session('user_logged') ?? [];
+
+            $empresaId = (int)(
+                $request->get('empresa_id')
+                ?? $request->get('empresaId')
+                ?? $this->empresa_id
+                ?? ($userLogged['empresa_id'] ?? ($userLogged['empresaId'] ?? ($userLogged['empresa'] ?? null)))
+                ?? ($produto->empresa_id ?? null)
+                ?? (auth()->user()->empresa_id ?? null)
+                ?? 0
+            );
+
+            // Se não conseguir resolver a empresa, não derruba: apenas retorna preview zerado
+            $aplicar = ($empresaId > 0) ? $rt->shouldApply($empresaId) : false;
+
+            // Monta item para preview aceitando múltiplos nomes vindos do frontend.
+            // IMPORTANTE: não usar cast (float) direto, pois "1.234,56" vira 1.234 em PHP.
+            $qtd = $rt->toFloat(
+                $request->get('quantidade')
+                ?? $request->get('qtd')
+                ?? $request->get('NFSI_QUANTIDADE')
+                ?? 1,
+                1.0
+            );
+
+            $vTotal = $rt->toFloat(
+                $request->get('valor_total')
+                ?? $request->get('valor_total_item')
+                ?? $request->get('vlr_total')
+                ?? $request->get('NFSI_VLRTOTAL')
+                ?? $request->get('valor')
+                ?? 1,
+                1.0
+            );
+
+            $vUnit = $rt->toFloat(
+                $request->get('valor_unitario')
+                ?? $request->get('valor_unit')
+                ?? $request->get('vlr_unitario')
+                ?? 0,
+                0.0
+            );
+
+            $item = [
+                'produto_id'     => $produtoId,
+                'quantidade'     => $qtd,
+                'valor_total'    => $vTotal,
+                'valor'          => $vTotal, // compat
+                'valor_unitario' => $vUnit,
+            ];
+
+            // Preenche defaults (CST/ClassTrib/aliquotas/ANP etc.) a partir do produto/tributacaos
+            if ($empresaId > 0) {
+                $rt->fillItemFromProdutoAliquota($empresaId, $produtoId, $item);
+
+                // Calcula: se não aplicar, força "REMESSA" para zerar (mesma lógica do fluxo real)
+                if ($aplicar) {
+                    $rt->calcularItem($item, $empresaId, null);
+                } else {
+                    $rt->calcularItem($item, $empresaId, 'REMESSA');
+                }
+            }
+
+            $itemOut = [];
+            if (is_array($item)) {
+                foreach ($item as $k => $v) {
+                    $itemOut[strtolower((string)$k)] = $v;
+                }
+            }
+
+            return response()->json(array_merge([
+                'success'    => true,
+                'aplicar'    => $aplicar,
+                'empresa_id' => $empresaId,
+                'produto'    => [
+                    'id'   => $produto->id,
+                    'nome' => $produto->nome ?? null,
+                ],
+                // compat: mantém também em data/item (lowercase) para quem consome assim
+                'data'       => $itemOut,
+                'item'       => $itemOut,
+            ], $itemOut));
+
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    public function previewReformaItem_err_2(Request $request, ReformaTributariaService $rt)
+    {
+        try {
+            $produtoId = (int)($request->get('produto_id') ?? 0);
+            if ($produtoId <= 0) {
+                return response()->json(['success' => false, 'message' => 'produto_id inválido'], 422);
+            }
+
+            $produto = Produto::query()->find($produtoId);
+            if (!$produto) {
+                return response()->json(['success' => false, 'message' => 'Produto não encontrado'], 404);
+            }
+
+            // Resolve empresa_id de forma tolerante (AJAX nem sempre envia o mesmo nome).
+            // OBS: o sistema usa session('user_logged') amplamente (BaseController), então
+            // não podemos depender somente de auth()->user().
+            $userLogged = session('user_logged') ?? [];
+
+            $empresaId = (int)(
+                $request->get('empresa_id')
+                ?? $request->get('empresaId')
+                ?? $this->empresa_id
+                ?? ($userLogged['empresa_id'] ?? ($userLogged['empresaId'] ?? ($userLogged['empresa'] ?? null)))
+                ?? ($produto->empresa_id ?? null)
+                ?? (auth()->user()->empresa_id ?? null)
+                ?? 0
+            );
+
+            // Se não conseguir resolver a empresa, não derruba: apenas retorna preview zerado
+            $aplicar = ($empresaId > 0) ? $rt->shouldApply($empresaId) : false;
+
+            // Monta item para preview aceitando múltiplos nomes vindos do frontend.
+            // IMPORTANTE: não usar cast (float) direto, pois "1.234,56" vira 1.234 em PHP.
+            $qtd = $rt->toFloat(
+                $request->get('quantidade')
+                ?? $request->get('qtd')
+                ?? $request->get('NFSI_QUANTIDADE')
+                ?? 1,
+                1.0
+            );
+
+            $vTotal = $rt->toFloat(
+                $request->get('valor_total')
+                ?? $request->get('valor_total_item')
+                ?? $request->get('vlr_total')
+                ?? $request->get('NFSI_VLRTOTAL')
+                ?? $request->get('valor')
+                ?? 1,
+                1.0
+            );
+
+            $vUnit = $rt->toFloat(
+                $request->get('valor_unitario')
+                ?? $request->get('valor_unit')
+                ?? $request->get('vlr_unitario')
+                ?? 0,
+                0.0
+            );
+
+            $item = [
+                'produto_id'     => $produtoId,
+                'quantidade'     => $qtd,
+                'valor_total'    => $vTotal,
+                'valor'          => $vTotal, // compat
+                'valor_unitario' => $vUnit,
+            ];
+
+            // Preenche defaults (CST/ClassTrib/aliquotas/ANP etc.) a partir do produto/tributacaos
+            if ($empresaId > 0) {
+                $rt->fillItemFromProdutoAliquota($empresaId, $produtoId, $item);
+
+                // Calcula: se não aplicar, força "REMESSA" para zerar (mesma lógica do fluxo real)
+                if ($aplicar) {
+                    $rt->calcularItem($item, $empresaId, null);
+                } else {
+                    $rt->calcularItem($item, $empresaId, 'REMESSA');
+                }
+            }
+
+            return response()->json([
+                'success'    => true,
+                'aplicar'    => $aplicar,
+                'empresa_id' => $empresaId,
+                'produto'    => [
+                    'id'   => $produto->id,
+                    'nome' => $produto->nome ?? null,
+                ],
+                'item'       => $item,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function previewReformaItem_err(Request $request, ReformaTributariaService $rt)
+    {
+        try {
             $produtoId = (int)($request->input('produto_id') ?? 0);
             if ($produtoId <= 0) {
                 return response()->json(['success' => false, 'error' => 'Produto inválido.'], 422);
