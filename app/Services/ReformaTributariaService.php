@@ -11,41 +11,67 @@ class ReformaTributariaService
 {
     /**
      * Regra oficial:
-     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1
-     * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime)
+     * - Produção (config_notas.ambiente=1): aplica SOMENTE se tributacaos.regime = 1 (NORMAL)
+     * - Homologação (config_notas.ambiente=2): sempre aplica (independe de regime: 0/1/2)
+     *
+     * Regime:
+     * 0 = Simples Nacional
+     * 1 = Normal
+     * 2 = MEI
      */
+
     public function shouldApply(int $empresaId): bool
     {
+        $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
+        $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
+
+        // Homologação: sempre aplica
+        if ((int)$ambiente === 2) {
+            return true;
+        }
+
+        // Produção: apenas regime NORMAL (1)
+        if ((int)$ambiente === 1) {
+            return ((int)($regime ?? -1) === 1);
+        }
+
+        return false;
+    }
+
+    /*
+    public function shouldApply(int $empresaId): bool
+    {
+        // Mantém a prioridade de flag explícita (se você quiser manter isso, ok)
+        // Se quiser ignorar completamente flags, é só remover esse bloco.
         $explicit = $this->readRtEnableFlag($empresaId);
         if ($explicit !== null) {
             return $explicit;
         }
 
-        // 1) Ambiente (1 produção, 2 homologação)
+        // SOMENTE config_notas.ambiente
         $ambiente = $this->getAmbienteEmpresa($empresaId); // default 1
 
-        // 2) REGIME na tributacaos (se existir)
-        $regime = $this->getRegimeEmpresa($empresaId); // null se não existir coluna
+        // SOMENTE tributacaos.regime
+        $regime = $this->getRegimeEmpresa($empresaId); // null se não achar (ou não existir)
 
-        // 3) Em produção: exige regime=1
-        if ((int)$ambiente === 1) {
-            if ($regime !== null) return (int)$regime === 1;
-            return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
-        }
-
-        // 4) Em homologação: sempre aplica (independe de regime)
+        // Homologação: sempre aplica
         if ((int)$ambiente === 2) {
             return true;
         }
 
-        // fallback geral
-        //return (int)env('REFORMA_TRIBUTARIA', 0) === 1;
+        // Produção: aplica apenas se regime == 1 (NORMAL)
+        if ((int)$ambiente === 1) {
+            return ((int)($regime ?? -1) === 1);
+        }
+
+        // fallback seguro
+        return false;
     }
+    */
 
     // ---------------------------------------------------------------------
     // Helpers (parse seguro)
     // ---------------------------------------------------------------------
-
     public function toInt($v, int $default = 0): int
     {
         if ($v === null) return $default;
@@ -284,7 +310,52 @@ class ReformaTributariaService
     // ---------------------------------------------------------------------
     // Ambientes / REGIME / Parametrização
     // ---------------------------------------------------------------------
+    protected function getAmbienteEmpresa(int $empresaId): int
+    {
+        if (!Schema::hasTable('config_notas')) return 1;
 
+        $col = Schema::hasColumn('config_notas', 'ambiente') ? 'ambiente'
+            : (Schema::hasColumn('config_notas', 'AMBIENTE') ? 'AMBIENTE' : null);
+
+        if ($col === null) return 1;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
+        if ($whereCol === null) return 1;
+
+        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
+        $amb = (int)$val;
+
+        return ($amb === 2) ? 2 : 1; // só 1 ou 2
+    }
+
+    protected function getRegimeEmpresa(int $empresaId): ?int
+    {
+        if (!Schema::hasTable('tributacaos')) return null;
+
+        $col = Schema::hasColumn('tributacaos', 'regime') ? 'regime'
+            : (Schema::hasColumn('tributacaos', 'REGIME') ? 'REGIME' : null);
+
+        if ($col === null) return null;
+
+        $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
+        if ($whereCol === null) return null;
+
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($col);
+        if ($val === null) return null;
+
+        $s = trim((string)$val);
+        if ($s === '') return null;
+
+        // pega só dígitos (caso venha "1", " 1 ", "REGIME=1", etc)
+        $n = (int)preg_replace('/\D+/', '', $s);
+
+        // regime permitido: 0/1/2
+        if (!in_array($n, [0, 1, 2], true)) return null;
+
+        return $n;
+    }
+
+    /*
     protected function getAmbienteEmpresa(int $empresaId): int
     {
         // config_notas.ambiente: 1 produção, 2 homologação
@@ -324,6 +395,7 @@ class ReformaTributariaService
 
         return (int)$val;
     }
+    */
 
     /**
      * Em homologação: aplica se os campos RT estiverem preenchidos na tributacaos.
