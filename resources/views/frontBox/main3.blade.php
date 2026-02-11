@@ -149,7 +149,35 @@
 			url("/loading.gif") 50% 50% no-repeat;
 		}
 
-	</style>
+	
+
+    /* --- PDV: Select2 mais compacto no mobile (sem mexer na lógica) --- */
+    @media (max-width: 576px) {
+        .select2-container--default .select2-selection--single {
+            height: 34px !important;
+            min-height: 34px !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            font-size: 13px !important;
+            line-height: 32px !important;
+            padding-left: 10px !important;
+            padding-right: 28px !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px !important;
+        }
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            font-size: 13px !important;
+            padding: 6px 8px !important;
+        }
+        .select2-container--default .select2-results__option {
+            font-size: 13px !important;
+            padding: 6px 10px !important;
+            line-height: 1.25 !important;
+        }
+    }
+
+</style>
 	<style type="text/css">
 		.select2-selection__arroww:before {
 			content: "";
@@ -176,6 +204,96 @@
 			font-size: 20px !important;
 		}
 	</style>
+<style type="text/css">
+    /* PDV Minimal / Mobile-first tweaks (sem refatoração brusca) */
+    body.pdv-minimal .card.card-custom { border-radius: 10px; }
+
+    body.pdv-minimal .pdv-actions{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+    body.pdv-minimal .pdv-actions .btn{ margin: 0 !important; }
+
+    body.pdv-minimal .pdv-header{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* Tabelas do PDV: evita "estourar" em telas pequenas */
+    body.pdv-minimal .datatable{
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    body.pdv-minimal .datatable .datatable-table{
+        min-width: 720px;
+    }
+
+    @media (max-width: 991px){
+        body.pdv-minimal .container{ max-width: 100%; }
+    }
+
+    @media (max-width: 768px){
+        body.pdv-minimal .container{
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        body.pdv-minimal .card-header{
+            padding: 10px 12px !important;
+        }
+        body.pdv-minimal .card-body{
+            padding: 12px !important;
+        }
+
+        body.pdv-minimal h4{ font-size: 1.05rem; }
+        body.pdv-minimal h5{ font-size: 1.00rem; }
+        body.pdv-minimal h6{ font-size: 0.90rem; }
+
+        body.pdv-minimal .btn.btn-lg{
+            padding: .45rem .60rem !important;
+            font-size: .85rem !important;
+            line-height: 1.1 !important;
+        }
+        body.pdv-minimal .btn{
+            padding: .40rem .55rem;
+            font-size: .85rem;
+        }
+
+        body.pdv-minimal .label.label-xl{
+            font-size: 0.95rem !important;
+            padding: 10px 12px !important;
+            white-space: nowrap;
+        }
+
+        body.pdv-minimal input.form-control,
+        body.pdv-minimal select.form-control{
+            height: 42px;
+            font-size: 0.95rem;
+        }
+
+        /* Reduz "gaps" e margens grandes (sem mexer no HTML todo) */
+        body.pdv-minimal .gutter-b{ margin-bottom: 12px !important; }
+    }
+
+    @media (max-width: 576px){
+        body.pdv-minimal .btn.btn-lg{
+            padding: .40rem .55rem !important;
+            font-size: .82rem !important;
+        }
+        body.pdv-minimal h4{ font-size: 1.00rem; }
+        body.pdv-minimal .label.label-xl{ font-size: 0.90rem !important; }
+
+        /* Deixa o topo mais "enxuto" */
+        body.pdv-minimal .pdv-top-actions .btn{
+            padding: .35rem .50rem !important;
+            font-size: .82rem !important;
+        }
+    }
+</style>
 </head>
 
 
@@ -183,7 +301,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal">
 
 	<input type="hidden" id="categorias" value="{{json_encode($categorias)}}" name="">
 	<input type="hidden" id="clientes" value="{{json_encode($clientes)}}" name="">
@@ -370,7 +488,7 @@
 					</div>
 					<div class="col-lg-2 col-md-4">
 
-						<div class="dropdown dropdown-inline show" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
+						<div class="dropdown dropdown-inline show pdv-top-actions" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
 
 							<a @if(isset($preVenda) && $preVenda) href="/frenteCaixa/list" @else href="/frenteCaixa/list" @endif class="btn btn-light-danger" style="border-radius: 0;">
 								<i class="la la-angle-double-left"></i>
@@ -777,7 +895,7 @@
 			<div class="col-sm-3 col-lg-3 col-md-12 col-12 @if($atalhos && $atalhos->exibe_produtos) d-none @endif" id="div-categorias">
 				<div class="card card-custom gutter-b example example-compact">
 					<div class="card-header">
-						<div class="form-group validated col-12" style="margin-top: 15px;">
+						<div class="form-group validated col-12 pdv-actions" style="margin-top: 15px;">
 							<button title="Informar Cliente" id="click-client" class="btn btn-danger btn-lg"  @if(isset($is_troca)) style="display:none" @endif>
 								<i class="la la-user"></i>
 							</button>

@@ -49,23 +49,23 @@ use App\Services\ReformaTributariaService;
 
 class VendaController extends Controller
 {
-	protected $empresa_id = null;
-	protected $util;
+    protected $empresa_id = null;
+    protected $util;
 
     // >>> RT runtime state
     private array $rtTotals = [];
 
-	public function __construct(WhatsAppUtil $util){
-		$this->util = $util;
-		$this->middleware(function ($request, $next) {
-			$this->empresa_id = $request->empresa_id;
-			$value = session('user_logged');
-			if(!$value){
-				return redirect("/login");
-			}
-			return $next($request);
-		});
-	}
+    public function __construct(WhatsAppUtil $util){
+        $this->util = $util;
+        $this->middleware(function ($request, $next) {
+            $this->empresa_id = $request->empresa_id;
+            $value = session('user_logged');
+            if(!$value){
+                return redirect("/login");
+            }
+            return $next($request);
+        });
+    }
 
     public function recalcItem(Request $request, Venda $venda, ItemVenda $item, ReformaTributariaService $rt)
     {
@@ -193,7 +193,7 @@ class VendaController extends Controller
             );
 
             // Se não conseguir resolver a empresa, não derruba: apenas retorna preview zerado
-            $aplicar = ($empresaId > 0) ? $rt->shouldApply($empresaId) : false;
+            $aplicar = $rt->shouldApply($empresaId);
 
             // Monta item para preview aceitando múltiplos nomes vindos do frontend.
             // IMPORTANTE: não usar cast (float) direto, pois "1.234,56" vira 1.234 em PHP.
@@ -271,138 +271,7 @@ class VendaController extends Controller
             ], 500);
         }
     }
-    
-    public function previewReformaItem_err_2(Request $request, ReformaTributariaService $rt)
-    {
-        try {
-            $produtoId = (int)($request->get('produto_id') ?? 0);
-            if ($produtoId <= 0) {
-                return response()->json(['success' => false, 'message' => 'produto_id inválido'], 422);
-            }
 
-            $produto = Produto::query()->find($produtoId);
-            if (!$produto) {
-                return response()->json(['success' => false, 'message' => 'Produto não encontrado'], 404);
-            }
-
-            // Resolve empresa_id de forma tolerante (AJAX nem sempre envia o mesmo nome).
-            // OBS: o sistema usa session('user_logged') amplamente (BaseController), então
-            // não podemos depender somente de auth()->user().
-            $userLogged = session('user_logged') ?? [];
-
-            $empresaId = (int)(
-                $request->get('empresa_id')
-                ?? $request->get('empresaId')
-                ?? $this->empresa_id
-                ?? ($userLogged['empresa_id'] ?? ($userLogged['empresaId'] ?? ($userLogged['empresa'] ?? null)))
-                ?? ($produto->empresa_id ?? null)
-                ?? (auth()->user()->empresa_id ?? null)
-                ?? 0
-            );
-
-            // Se não conseguir resolver a empresa, não derruba: apenas retorna preview zerado
-            $aplicar = ($empresaId > 0) ? $rt->shouldApply($empresaId) : false;
-
-            // Monta item para preview aceitando múltiplos nomes vindos do frontend.
-            // IMPORTANTE: não usar cast (float) direto, pois "1.234,56" vira 1.234 em PHP.
-            $qtd = $rt->toFloat(
-                $request->get('quantidade')
-                ?? $request->get('qtd')
-                ?? $request->get('NFSI_QUANTIDADE')
-                ?? 1,
-                1.0
-            );
-
-            $vTotal = $rt->toFloat(
-                $request->get('valor_total')
-                ?? $request->get('valor_total_item')
-                ?? $request->get('vlr_total')
-                ?? $request->get('NFSI_VLRTOTAL')
-                ?? $request->get('valor')
-                ?? 1,
-                1.0
-            );
-
-            $vUnit = $rt->toFloat(
-                $request->get('valor_unitario')
-                ?? $request->get('valor_unit')
-                ?? $request->get('vlr_unitario')
-                ?? 0,
-                0.0
-            );
-
-            $item = [
-                'produto_id'     => $produtoId,
-                'quantidade'     => $qtd,
-                'valor_total'    => $vTotal,
-                'valor'          => $vTotal, // compat
-                'valor_unitario' => $vUnit,
-            ];
-
-            // Preenche defaults (CST/ClassTrib/aliquotas/ANP etc.) a partir do produto/tributacaos
-            if ($empresaId > 0) {
-                $rt->fillItemFromProdutoAliquota($empresaId, $produtoId, $item);
-
-                // Calcula: se não aplicar, força "REMESSA" para zerar (mesma lógica do fluxo real)
-                if ($aplicar) {
-                    $rt->calcularItem($item, $empresaId, null);
-                } else {
-                    $rt->calcularItem($item, $empresaId, 'REMESSA');
-                }
-            }
-
-            return response()->json([
-                'success'    => true,
-                'aplicar'    => $aplicar,
-                'empresa_id' => $empresaId,
-                'produto'    => [
-                    'id'   => $produto->id,
-                    'nome' => $produto->nome ?? null,
-                ],
-                'item'       => $item,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function previewReformaItem_err(Request $request, ReformaTributariaService $rt)
-    {
-        try {
-            $produtoId = (int)($request->input('produto_id') ?? 0);
-            if ($produtoId <= 0) {
-                return response()->json(['success' => false, 'error' => 'Produto inválido.'], 422);
-            }
-
-            $quantidade = (float)str_replace(',', '.', (string)($request->input('quantidade') ?? 0));
-            $valor = (float)str_replace(',', '.', (string)($request->input('valor') ?? 0));
-
-            $item = new ItemVenda();
-            $item->produto_id = $produtoId;
-            $item->quantidade = $quantidade;
-            $item->valor = $valor;
-            $item->valor_unitario = $valor;
-            $item->valor_total = $quantidade * $valor;
-
-            $rt->fillItemFromProdutoAliquota($this->empresa_id, $produtoId, $item);
-            $rt->calcularItem($item, $this->empresa_id, null);
-
-            $aliqIbsTotal = (float)($item->aliq_ibs_uf ?? 0) + (float)($item->aliq_ibs_mun ?? 0);
-
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    ...$this->buildRtItemPayload($item, false),
-                    'aliq_ibs_total' => $aliqIbsTotal,
-                ],
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
-        }
-    }
 
     private function serializeItemReforma(ItemVenda $item): array
     {
@@ -520,19 +389,28 @@ class VendaController extends Controller
     private function applyRtToItemVendaArray(array $itemArr, $produto): array
     {
         $rt = app(ReformaTributariaService::class);
-        $aplicar = $rt->shouldApply($this->empresa_id);
+        $empresaId = (int)($empresaId ?? 0);
+        if ($empresaId <= 0) {
+            $userLogged = session('user_logged');
+            if (is_array($userLogged)) {
+                $empresaId = (int)($userLogged['empresa'] ?? 0);
+            }
+        }
 
-        $itemRt = $itemArr;
-        $itemRt['produto_id'] = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
-        $itemRt['quantidade'] = (float)($itemArr['quantidade'] ?? 0);
-        $itemRt['valor'] = (float)($itemArr['valor'] ?? 0);
-        $itemRt['valor_unitario'] = (float)($itemArr['valor_unitario'] ?? $itemRt['valor']);
-        $itemRt['valor_total'] = (float)($itemArr['valor_total'] ?? ($itemRt['quantidade'] * $itemRt['valor_unitario']));
+        $aplicar = $rt->shouldApply($empresaId);
 
-        $rt->fillItemFromProdutoAliquota($this->empresa_id, (int)$itemRt['produto_id'], $itemRt);
-        $rt->calcularItem($itemRt, $this->empresa_id, null);
+        $item = new ItemVenda();
+        $item->fill($itemArr);
+        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
+        $item->quantidade = (float)($itemArr['quantidade'] ?? 0);
+        $item->valor = (float)($itemArr['valor'] ?? 0);
+        $item->valor_unitario = (float)($itemArr['valor'] ?? 0);
+        $item->valor_total = $item->quantidade * $item->valor;
+
+        $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
+        $rt->calcularItem($item, $empresaId, null);
         if (!$aplicar) {
-            $rt->calcularItem($itemRt, $this->empresa_id, 'REMESSA');
+            $rt->calcularItem($item, $empresaId, 'REMESSA');
         }
 
         $lists = $this->rtItemFieldLists();
@@ -543,29 +421,25 @@ class VendaController extends Controller
                 continue;
             }
 
-            if (!array_key_exists($col, $itemRt)) {
+            $val = $item->getAttribute($col);
+            if ($val === null) {
                 continue;
             }
 
-            $itemArr[$col] = $itemRt[$col];
+            $itemArr[$col] = $val;
         }
-
-        // espelho legado opcional para compatibilidade
-        $itemArr['rt_base'] = (float)($itemArr['bc_ibs_cbs'] ?? 0);
-        $itemArr['rt_ibs_valor'] = (float)($itemArr['valor_ibs'] ?? 0);
-        $itemArr['rt_cbs_valor'] = (float)($itemArr['valor_cbs'] ?? 0);
-        $itemArr['rt_is_valor'] = (float)($itemArr['is_valor'] ?? 0);
 
         return $itemArr;
     }
 
     private function rtAccumulateFromItemArray(array $itemArr): void
     {
-        // acumula priorizando campos novos da RT
-        $this->rtTotals['rt_base'] += (float)($itemArr['bc_ibs_cbs'] ?? $itemArr['rt_base'] ?? 0);
-        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['valor_ibs'] ?? $itemArr['rt_ibs_valor'] ?? 0);
-        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['valor_cbs'] ?? $itemArr['rt_cbs_valor'] ?? 0);
-        $this->rtTotals['rt_is_valor']  += (float)($itemArr['is_valor'] ?? $itemArr['rt_is_valor'] ?? 0);
+        // acumula usando as chaves “padrão”
+        $this->rtTotals['rt_base'] += (float)($itemArr['rt_base'] ?? 0);
+
+        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['rt_ibs_valor'] ?? $itemArr['ibs_valor'] ?? 0);
+        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['rt_cbs_valor'] ?? $itemArr['cbs_valor'] ?? 0);
+        $this->rtTotals['rt_is_valor']  += (float)($itemArr['rt_is_valor']  ?? $itemArr['is_valor']  ?? 0);
     }
 
     private function applyRtToVendaTotals($venda): void
@@ -596,647 +470,647 @@ class VendaController extends Controller
         }
     }
 
-	private function verificaAberturaCaixa(){
-
-		$ab = AberturaCaixa::where('ultima_venda_nfce', 0)
-		->where('empresa_id', $this->empresa_id)
-		->where('status', 0)
-		->orderBy('id', 'desc')->first();
-
-		$ab2 = AberturaCaixa::where('ultima_venda_nfe', 0)
-		->where('empresa_id', $this->empresa_id)
-		->where('status', 0)
-		->orderBy('id', 'desc')->first();
-
-		if($ab != null && $ab2 == null){
-			return $ab->valor;
-		}else if($ab == null && $ab2 != null){
-			$ab2->valor;
-		}else if($ab != null && $ab2 != null){
-			if(strtotime($ab->created_at) > strtotime($ab2->created_at)){
-				$ab->valor;
-			}else{
-				$ab2->valor;
-			}
-		}else{
-			return -1;
-		}
-
-		if($ab != null) return $ab->valor;
-		else return -1;
-	}
-
-	public function numeroSequencial(){
-		$verify = Venda::where('empresa_id', $this->empresa_id)
-		->where('numero_sequencial', 0)
-		->first();
-
-		if($verify){
-			$vendas = Venda::where('empresa_id', $this->empresa_id)
-			->get();
-
-			$n = 1;
-			foreach($vendas as $v){
-				$v->numero_sequencial = $n;
-				$n++;
-				$v->save();
-			}
-		}
-	}
-
-	private function getContigencia(){
-		$active = Contigencia::
-		where('empresa_id', $this->empresa_id)
-		->where('status', 1)
-		->where('documento', 'NFe')
-		->first();
-		return $active;
-	}
-
-	public function index(){
-
-		$permissaoAcesso = __getLocaisUsarioLogado();
-		$local_padrao = __get_local_padrao();
-
-		// echo $local_padrao;
-		if($local_padrao == -1){
-			$local_padrao = null;
-		}
-		$vendas = Venda::
-		where('estado', 'DISPONIVEL')
-		->where('empresa_id', $this->empresa_id)
-		->where('forma_pagamento', '!=', 'conta_crediario')
-		->where(function($query) use ($permissaoAcesso){
-			if($permissaoAcesso != null){
-				foreach ($permissaoAcesso as $value) {
-					if($value == -1){
-						$value = null;
-					}
-					$query->orWhere('filial_id', $value);
-				}
-			}
-		})->where('filial_id', $local_padrao)
-		->orderBy('id', 'desc')
-		->paginate(30);
-
-		$this->numeroSequencial();
-
-		$menos30 = $this->menos30Dias();
-		$date = date('d/m/Y');
-
-		$certificado = Certificado::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		return view("vendas/list")
-		->with('vendas', $vendas)
-		->with('config', $config)
-		->with('nf', true)
-		->with('links', true)
-		->with('dataInicial', $menos30)
-		->with('dataFinal', $date)
-		->with('contigencia', $this->getContigencia())
-		->with('certificado', $certificado)
-		->with('title', "Lista de Vendas");
-
-	}
-
-	public function detalhesPagamento($id){
-		$item = Venda::findOrFail($id);
-		return view('vendas.detalhes_pagamento', compact('item'));
-	}
-
-	public function nova(){
-
-		// $countProdutos = Produto::
-		// where('empresa_id', $this->empresa_id)
-		// ->where('inativo', false)
-		// ->count();
-
-		// if($countProdutos > 1000){
-		$view = $this->vendaAssincrona();
-		return $view;
-
-		if($countProdutos > 1000 || empresaComFilial()){
-
-			$view = $this->vendaAssincrona();
-			return $view;
-		}else{
-
-			$config = ConfigNota::
-			where('empresa_id', $this->empresa_id)
-			->first();
-			if($config == null){
-				return redirect('configNF');
-			}
-			$lastNF = Venda::lastNF();
-
-			$naturezas = NaturezaOperacao::
-			where('empresa_id', $this->empresa_id)
-			->get();
-
-			$config = ConfigNota::
-			where('empresa_id', $this->empresa_id)
-			->first();
-
-			$categorias = Categoria::
-			where('empresa_id', $this->empresa_id)
-			->get();
-
-			$produtos = $this->getProdutosParaVenda();
-
-			$tributacao = Tributacao::
-			where('empresa_id', $this->empresa_id)
-			->first();
-
-			$produtosAll = Produto::
-			where('empresa_id', $this->empresa_id)
-			->where('inativo', false)
-			->get();
-
-			$clientes = Cliente::
-			where('empresa_id', $this->empresa_id)
-			->where('inativo', 0)
-			->get();
-
-			$tiposPagamento = Venda::tiposPagamento();
-
-			$formasPagamento = FormaPagamento::
-			where('empresa_id', $this->empresa_id)
-			->where('status', true)
-			->get();
-
-			if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null || count($clientes) == 0){
-
-				return view("vendas/alerta")
-				->with('produtos', count($produtos))
-				->with('categorias', count($categorias))
-				->with('clientes', count($clientes))
-				->with('naturezas', $naturezas)
-				->with('formasPagamento', $formasPagamento)
-				->with('config', $config)
-				->with('tributacao', $tributacao)
-				->with('title', "Validação para Emitir");
-
-			}else{
-
-				$transportadoras = Transportadora::
-				where('empresa_id', $this->empresa_id)
-				->get();
-
-				foreach($clientes as $c){
-					$c->cidade;
-				}
-
-				foreach($produtos as $p){
-					$p->listaPreco;
-					$p->estoque;
-				}
-
-				foreach($produtosAll as $p){
-					$p->listaPreco;
-					$p->estoque;
-				}
-
-				$abertura = $this->verificaAberturaCaixa();
-				if($abertura == -1 && env("CAIXA_PARA_NFE") == 1){
-					session()->flash("mensagem_erro", "Abra o caixa para vender!");
-					return redirect('/caixa');
-				}
-
-				$contaPadrao = ContaBancaria::
-				where('empresa_id', $this->empresa_id)
-				->where('padrao', true)
-				->first();
-
-				$unidadesDeMedida = Produto::unidadesMedida();
-
-				$tributacao = Tributacao::
-				where('empresa_id', $this->empresa_id)
-				->first();
-				$anps = Produto::lista_ANP();
-
-				if($tributacao->regime == 1){
-					$listaCSTCSOSN = Produto::listaCST();
-				}else{
-					$listaCSTCSOSN = Produto::listaCSOSN();
-				}
-				$listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
-				$listaCST_IPI = Produto::listaCST_IPI();
-
-				$natureza = Produto::
-				firstNatureza($this->empresa_id);
-
-				$usuario = Usuario::find(get_id_user());
-
-				$usuarios = Usuario::where('empresa_id', $this->empresa_id)
-				->where('ativo', 1)
-				->orderBy('nome', 'asc')
-				->get();
-
-				$vendedores = [];
-				foreach($usuarios as $u){
-					if($u->funcionario){
-						array_push($vendedores, $u);
-					}
-				}
-
-				return view("vendas/register")
-				->with('naturezas', $naturezas)
-				->with('vendaJs', true)
-				->with('config', $config)
-				->with('usuario', $usuario)
-				->with('vendedores', $vendedores)
-				->with('formasPagamento', $formasPagamento)
-				->with('listaCSTCSOSN', $listaCSTCSOSN)
-				->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-				->with('listaCST_IPI', $listaCST_IPI)
-				->with('natureza', $natureza)
-				->with('contaPadrao', $contaPadrao)
-				->with('clientes', $clientes)
-				->with('categorias', $categorias)
-				->with('anps', $anps)
-				->with('unidadesDeMedida', $unidadesDeMedida)
-				->with('tributacao', $tributacao)
-				->with('produtos', $produtos)
-				->with('produtosAll', $produtosAll)
-				->with('transportadoras', $transportadoras)
-				->with('tiposPagamento', $tiposPagamento)
-				->with('lastNF', $lastNF)
-				->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
-				->with('title', "Nova Venda");
-			}
-		}
-	}
-
-	protected function vendaAssincrona(){
-
-		$cotacao = null;
-		if(isset(request()->cotacao_id)){
-			$cotacao = Cotacao::with('itens')->findOrFail(request()->cotacao_id);
-		}
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
-		if($config == null){
-			return redirect('configNF');
-		}
-		$lastNF = Venda::lastNF();
-
-		$naturezas = NaturezaOperacao::
-		where('empresa_id', $this->empresa_id)
-		->get();
-
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		$categorias = Categoria::
-		where('empresa_id', $this->empresa_id)
-		->get();
-
-		$tributacao = Tributacao::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		$clientes = Cliente::
-		where('empresa_id', $this->empresa_id)
-		->where('inativo', 0)
-		->count();
-
-		$tiposPagamento = Venda::tiposPagamento();
-
-		if(sizeof($naturezas) == 0 || $config == null || sizeof($categorias) == 0 || $tributacao == null || $clientes == 0){
-
-			$p = view("vendas/alerta")
-			->with('categorias', count($categorias))
-			->with('clientes', $clientes)
-			->with('naturezas', $naturezas)
-			->with('produtos', 0)
-			->with('config', $config)
-			->with('tributacao', $tributacao)
-			->with('title', "Validação para Emitir");
-			return $p;
-
-		}else{
-
-			$transportadoras = Transportadora::
-			where('empresa_id', $this->empresa_id)
-			->get();
-
-			$abertura = $this->verificaAberturaCaixa();
-			if($abertura == -1 && env("CAIXA_PARA_NFE") == 1){
-				session()->flash("mensagem_erro", "Abra o caixa para vender!");
-				return redirect('/caixa');
-			}
-
-			$contaPadrao = ContaBancaria::
-			where('empresa_id', $this->empresa_id)
-			->where('padrao', true)
-			->first();
-
-			$unidadesDeMedida = Produto::unidadesMedida();
-
-			$tributacao = Tributacao::
-			where('empresa_id', $this->empresa_id)
-			->first();
-			$anps = Produto::lista_ANP();
-
-			if($tributacao->regime == 1){
-				$listaCSTCSOSN = Produto::listaCST();
-			}else{
-				$listaCSTCSOSN = Produto::listaCSOSN();
-			}
-			$listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
-			$listaCST_IPI = Produto::listaCST_IPI();
-
-			$natureza = Produto::
-			firstNatureza($this->empresa_id);
-
-			$formasPagamento = FormaPagamento::
-			where('empresa_id', $this->empresa_id)
-			->where('status', true)
-			->get();
-
-			$usuario = Usuario::find(get_id_user());
-
-			$usuarios = Usuario::where('empresa_id', $this->empresa_id)
-			->where('ativo', 1)
-			->orderBy('nome', 'asc')
-			->get();
-
-			$vendedores = [];
-			foreach($usuarios as $u){
-				if($u->funcionario){
-					array_push($vendedores, $u);
-				}
-			}
-
-			$p = view("vendas/register_assincrono")
-			->with('naturezas', $naturezas)
-			->with('formasPagamento', $formasPagamento)
-			->with('vendaJsAssincrono', true)
-			->with('config', $config)
-			->with('usuario', $usuario)
-			->with('vendedores', $vendedores)
-			->with('listaCSTCSOSN', $listaCSTCSOSN)
-			->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-			->with('listaCST_IPI', $listaCST_IPI)
-			->with('natureza', $natureza)
-			->with('contaPadrao', $contaPadrao)
-			->with('categorias', $categorias)
-			->with('anps', $anps)
-			->with('cotacao', $cotacao)
-			->with('unidadesDeMedida', $unidadesDeMedida)
-			->with('tributacao', $tributacao)
-			->with('transportadoras', $transportadoras)
-			->with('tiposPagamento', $tiposPagamento)
-			->with('lastNF', $lastNF)
-			->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
-			->with('title', "Nova Venda");
-
-			return $p;
-		}
-
-	}
-
-	private function getProdutosParaVenda(){
-		$produtos = Produto::
-		where('empresa_id', $this->empresa_id)
-		->where('inativo', false)
-		->groupBy('referencia_grade')
-		->orderBy('nome')
-		->get();
-
-		foreach($produtos as $p){
-			if($p->grade){
-				$p->nome .= " [grade]";
-			}
-		}
-		return $produtos;
-	}
-
-	public function detalhar($id){
-		$venda = Venda::
-		where('id', $id)
-		->first();
-		if(valida_objeto($venda)){
-
-			$menos30 = $this->menos30Dias();
-			$date = date('d/m/Y');
-
-			$value = session('user_logged');
-			$config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
-
-			return view("vendas/detalhe")
-			->with('venda', $venda)
-			->with('config', $config)
-			->with('adm', $value['adm'])
-			->with('title', "Detalhe de Venda $id");
-		}else{
-			return redirect('/403');
-		}
-	}
+    private function verificaAberturaCaixa(){
+
+        $ab = AberturaCaixa::where('ultima_venda_nfce', 0)
+            ->where('empresa_id', $this->empresa_id)
+            ->where('status', 0)
+            ->orderBy('id', 'desc')->first();
+
+        $ab2 = AberturaCaixa::where('ultima_venda_nfe', 0)
+            ->where('empresa_id', $this->empresa_id)
+            ->where('status', 0)
+            ->orderBy('id', 'desc')->first();
+
+        if($ab != null && $ab2 == null){
+            return $ab->valor;
+        }else if($ab == null && $ab2 != null){
+            $ab2->valor;
+        }else if($ab != null && $ab2 != null){
+            if(strtotime($ab->created_at) > strtotime($ab2->created_at)){
+                $ab->valor;
+            }else{
+                $ab2->valor;
+            }
+        }else{
+            return -1;
+        }
+
+        if($ab != null) return $ab->valor;
+        else return -1;
+    }
+
+    public function numeroSequencial(){
+        $verify = Venda::where('empresa_id', $this->empresa_id)
+            ->where('numero_sequencial', 0)
+            ->first();
+
+        if($verify){
+            $vendas = Venda::where('empresa_id', $this->empresa_id)
+                ->get();
+
+            $n = 1;
+            foreach($vendas as $v){
+                $v->numero_sequencial = $n;
+                $n++;
+                $v->save();
+            }
+        }
+    }
+
+    private function getContigencia(){
+        $active = Contigencia::
+        where('empresa_id', $this->empresa_id)
+            ->where('status', 1)
+            ->where('documento', 'NFe')
+            ->first();
+        return $active;
+    }
+
+    public function index(){
+
+        $permissaoAcesso = __getLocaisUsarioLogado();
+        $local_padrao = __get_local_padrao();
+
+        // echo $local_padrao;
+        if($local_padrao == -1){
+            $local_padrao = null;
+        }
+        $vendas = Venda::
+        where('estado', 'DISPONIVEL')
+            ->where('empresa_id', $this->empresa_id)
+            ->where('forma_pagamento', '!=', 'conta_crediario')
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        if($value == -1){
+                            $value = null;
+                        }
+                        $query->orWhere('filial_id', $value);
+                    }
+                }
+            })->where('filial_id', $local_padrao)
+            ->orderBy('id', 'desc')
+            ->paginate(30);
+
+        $this->numeroSequencial();
+
+        $menos30 = $this->menos30Dias();
+        $date = date('d/m/Y');
+
+        $certificado = Certificado::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        return view("vendas/list")
+            ->with('vendas', $vendas)
+            ->with('config', $config)
+            ->with('nf', true)
+            ->with('links', true)
+            ->with('dataInicial', $menos30)
+            ->with('dataFinal', $date)
+            ->with('contigencia', $this->getContigencia())
+            ->with('certificado', $certificado)
+            ->with('title', "Lista de Vendas");
+
+    }
+
+    public function detalhesPagamento($id){
+        $item = Venda::findOrFail($id);
+        return view('vendas.detalhes_pagamento', compact('item'));
+    }
+
+    public function nova(){
+
+        // $countProdutos = Produto::
+        // where('empresa_id', $this->empresa_id)
+        // ->where('inativo', false)
+        // ->count();
+
+        // if($countProdutos > 1000){
+        $view = $this->vendaAssincrona();
+        return $view;
+
+        if($countProdutos > 1000 || empresaComFilial()){
+
+            $view = $this->vendaAssincrona();
+            return $view;
+        }else{
+
+            $config = ConfigNota::
+            where('empresa_id', $this->empresa_id)
+                ->first();
+            if($config == null){
+                return redirect('configNF');
+            }
+            $lastNF = Venda::lastNF();
+
+            $naturezas = NaturezaOperacao::
+            where('empresa_id', $this->empresa_id)
+                ->get();
+
+            $config = ConfigNota::
+            where('empresa_id', $this->empresa_id)
+                ->first();
+
+            $categorias = Categoria::
+            where('empresa_id', $this->empresa_id)
+                ->get();
+
+            $produtos = $this->getProdutosParaVenda();
+
+            $tributacao = Tributacao::
+            where('empresa_id', $this->empresa_id)
+                ->first();
+
+            $produtosAll = Produto::
+            where('empresa_id', $this->empresa_id)
+                ->where('inativo', false)
+                ->get();
+
+            $clientes = Cliente::
+            where('empresa_id', $this->empresa_id)
+                ->where('inativo', 0)
+                ->get();
+
+            $tiposPagamento = Venda::tiposPagamento();
+
+            $formasPagamento = FormaPagamento::
+            where('empresa_id', $this->empresa_id)
+                ->where('status', true)
+                ->get();
+
+            if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null || count($clientes) == 0){
+
+                return view("vendas/alerta")
+                    ->with('produtos', count($produtos))
+                    ->with('categorias', count($categorias))
+                    ->with('clientes', count($clientes))
+                    ->with('naturezas', $naturezas)
+                    ->with('formasPagamento', $formasPagamento)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('title', "Validação para Emitir");
+
+            }else{
+
+                $transportadoras = Transportadora::
+                where('empresa_id', $this->empresa_id)
+                    ->get();
+
+                foreach($clientes as $c){
+                    $c->cidade;
+                }
+
+                foreach($produtos as $p){
+                    $p->listaPreco;
+                    $p->estoque;
+                }
+
+                foreach($produtosAll as $p){
+                    $p->listaPreco;
+                    $p->estoque;
+                }
+
+                $abertura = $this->verificaAberturaCaixa();
+                if($abertura == -1 && env("CAIXA_PARA_NFE") == 1){
+                    session()->flash("mensagem_erro", "Abra o caixa para vender!");
+                    return redirect('/caixa');
+                }
+
+                $contaPadrao = ContaBancaria::
+                where('empresa_id', $this->empresa_id)
+                    ->where('padrao', true)
+                    ->first();
+
+                $unidadesDeMedida = Produto::unidadesMedida();
+
+                $tributacao = Tributacao::
+                where('empresa_id', $this->empresa_id)
+                    ->first();
+                $anps = Produto::lista_ANP();
+
+                if($tributacao->regime == 1){
+                    $listaCSTCSOSN = Produto::listaCST();
+                }else{
+                    $listaCSTCSOSN = Produto::listaCSOSN();
+                }
+                $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
+                $listaCST_IPI = Produto::listaCST_IPI();
+
+                $natureza = Produto::
+                firstNatureza($this->empresa_id);
+
+                $usuario = Usuario::find(get_id_user());
+
+                $usuarios = Usuario::where('empresa_id', $this->empresa_id)
+                    ->where('ativo', 1)
+                    ->orderBy('nome', 'asc')
+                    ->get();
+
+                $vendedores = [];
+                foreach($usuarios as $u){
+                    if($u->funcionario){
+                        array_push($vendedores, $u);
+                    }
+                }
+
+                return view("vendas/register")
+                    ->with('naturezas', $naturezas)
+                    ->with('vendaJs', true)
+                    ->with('config', $config)
+                    ->with('usuario', $usuario)
+                    ->with('vendedores', $vendedores)
+                    ->with('formasPagamento', $formasPagamento)
+                    ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                    ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                    ->with('listaCST_IPI', $listaCST_IPI)
+                    ->with('natureza', $natureza)
+                    ->with('contaPadrao', $contaPadrao)
+                    ->with('clientes', $clientes)
+                    ->with('categorias', $categorias)
+                    ->with('anps', $anps)
+                    ->with('unidadesDeMedida', $unidadesDeMedida)
+                    ->with('tributacao', $tributacao)
+                    ->with('produtos', $produtos)
+                    ->with('produtosAll', $produtosAll)
+                    ->with('transportadoras', $transportadoras)
+                    ->with('tiposPagamento', $tiposPagamento)
+                    ->with('lastNF', $lastNF)
+                    ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                    ->with('title', "Nova Venda");
+            }
+        }
+    }
+
+    protected function vendaAssincrona(){
+
+        $cotacao = null;
+        if(isset(request()->cotacao_id)){
+            $cotacao = Cotacao::with('itens')->findOrFail(request()->cotacao_id);
+        }
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+        if($config == null){
+            return redirect('configNF');
+        }
+        $lastNF = Venda::lastNF();
+
+        $naturezas = NaturezaOperacao::
+        where('empresa_id', $this->empresa_id)
+            ->get();
+
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        $categorias = Categoria::
+        where('empresa_id', $this->empresa_id)
+            ->get();
+
+        $tributacao = Tributacao::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        $clientes = Cliente::
+        where('empresa_id', $this->empresa_id)
+            ->where('inativo', 0)
+            ->count();
+
+        $tiposPagamento = Venda::tiposPagamento();
+
+        if(sizeof($naturezas) == 0 || $config == null || sizeof($categorias) == 0 || $tributacao == null || $clientes == 0){
+
+            $p = view("vendas/alerta")
+                ->with('categorias', count($categorias))
+                ->with('clientes', $clientes)
+                ->with('naturezas', $naturezas)
+                ->with('produtos', 0)
+                ->with('config', $config)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
+            return $p;
+
+        }else{
+
+            $transportadoras = Transportadora::
+            where('empresa_id', $this->empresa_id)
+                ->get();
+
+            $abertura = $this->verificaAberturaCaixa();
+            if($abertura == -1 && env("CAIXA_PARA_NFE") == 1){
+                session()->flash("mensagem_erro", "Abra o caixa para vender!");
+                return redirect('/caixa');
+            }
+
+            $contaPadrao = ContaBancaria::
+            where('empresa_id', $this->empresa_id)
+                ->where('padrao', true)
+                ->first();
+
+            $unidadesDeMedida = Produto::unidadesMedida();
+
+            $tributacao = Tributacao::
+            where('empresa_id', $this->empresa_id)
+                ->first();
+            $anps = Produto::lista_ANP();
+
+            if($tributacao->regime == 1){
+                $listaCSTCSOSN = Produto::listaCST();
+            }else{
+                $listaCSTCSOSN = Produto::listaCSOSN();
+            }
+            $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
+            $listaCST_IPI = Produto::listaCST_IPI();
+
+            $natureza = Produto::
+            firstNatureza($this->empresa_id);
+
+            $formasPagamento = FormaPagamento::
+            where('empresa_id', $this->empresa_id)
+                ->where('status', true)
+                ->get();
+
+            $usuario = Usuario::find(get_id_user());
+
+            $usuarios = Usuario::where('empresa_id', $this->empresa_id)
+                ->where('ativo', 1)
+                ->orderBy('nome', 'asc')
+                ->get();
+
+            $vendedores = [];
+            foreach($usuarios as $u){
+                if($u->funcionario){
+                    array_push($vendedores, $u);
+                }
+            }
+
+            $p = view("vendas/register_assincrono")
+                ->with('naturezas', $naturezas)
+                ->with('formasPagamento', $formasPagamento)
+                ->with('vendaJsAssincrono', true)
+                ->with('config', $config)
+                ->with('usuario', $usuario)
+                ->with('vendedores', $vendedores)
+                ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                ->with('listaCST_IPI', $listaCST_IPI)
+                ->with('natureza', $natureza)
+                ->with('contaPadrao', $contaPadrao)
+                ->with('categorias', $categorias)
+                ->with('anps', $anps)
+                ->with('cotacao', $cotacao)
+                ->with('unidadesDeMedida', $unidadesDeMedida)
+                ->with('tributacao', $tributacao)
+                ->with('transportadoras', $transportadoras)
+                ->with('tiposPagamento', $tiposPagamento)
+                ->with('lastNF', $lastNF)
+                ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                ->with('title', "Nova Venda");
+
+            return $p;
+        }
+
+    }
+
+    private function getProdutosParaVenda(){
+        $produtos = Produto::
+        where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->groupBy('referencia_grade')
+            ->orderBy('nome')
+            ->get();
+
+        foreach($produtos as $p){
+            if($p->grade){
+                $p->nome .= " [grade]";
+            }
+        }
+        return $produtos;
+    }
+
+    public function detalhar($id){
+        $venda = Venda::
+        where('id', $id)
+            ->first();
+        if(valida_objeto($venda)){
+
+            $menos30 = $this->menos30Dias();
+            $date = date('d/m/Y');
+
+            $value = session('user_logged');
+            $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+            return view("vendas/detalhe")
+                ->with('venda', $venda)
+                ->with('config', $config)
+                ->with('adm', $value['adm'])
+                ->with('title', "Detalhe de Venda $id");
+        }else{
+            return redirect('/403');
+        }
+    }
 
     public function delete($id){
-            $venda = Venda::
-            where('empresa_id', $this->empresa_id)
+        $venda = Venda::
+        where('empresa_id', $this->empresa_id)
             ->where('id', $id)
             ->first();
 
-            if(!valida_objeto($venda)){
-                    return redirect('/403');
-            }
+        if(!valida_objeto($venda)){
+            return redirect('/403');
+        }
 
-    $this->criarLog($venda, 'deletar');
+        $this->criarLog($venda, 'deletar');
 
-            $comissao = ComissaoVenda::
-            where('empresa_id', $this->empresa_id)
+        $comissao = ComissaoVenda::
+        where('empresa_id', $this->empresa_id)
             ->where('tabela', 'vendas')
             ->where('venda_id', $id)
             ->first();
 
-            if($comissao != null)
-                    $comissao->delete();
+        if($comissao != null)
+            $comissao->delete();
 
-            if($venda->troca()){
-                    $venda->troca()->delete();
-            }
+        if($venda->troca()){
+            $venda->troca()->delete();
+        }
 
-            $this->reverteEstoque($venda->itens);
-            $venda->delete();
-            session()->flash("mensagem_sucesso", "Venda removida!");
+        $this->reverteEstoque($venda->itens);
+        $venda->delete();
+        session()->flash("mensagem_sucesso", "Venda removida!");
 
-            return redirect('/vendas');
+        return redirect('/vendas');
     }
 
     public function inutilizar($id){
-            $venda = Venda::
-            where('empresa_id', $this->empresa_id)
+        $venda = Venda::
+        where('empresa_id', $this->empresa_id)
             ->where('id', $id)
             ->first();
 
-            if(!valida_objeto($venda)){
-                    return redirect('/403');
-            }
+        if(!valida_objeto($venda)){
+            return redirect('/403');
+        }
 
-            if(!$venda->podeSerInutilizada()){
-                    session()->flash("mensagem_erro", "Esta venda não está em status elegível para inutilização de NF-e.");
-                    return redirect('/vendas');
-            }
-
-            $config = ConfigNota::
-            where('empresa_id', $this->empresa_id)
-            ->first();
-            $isFilial = null;
-
-            if($venda->filial_id != null){
-                    $config = Filial::findOrFail($venda->filial_id);
-                    $isFilial = $venda->filial_id;
-                    if($config->arquivo_certificado == null){
-                            session()->flash("mensagem_erro", "Necessário o certificado para realizar esta ação!");
-                            return redirect('/vendas');
-                    }
-            }
-
-            $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
-
-            $nfe_service = new NFService([
-                    "atualizacao" => date('Y-m-d h:i:s'),
-                    "tpAmb" => (int)$config->ambiente,
-                    "razaosocial" => $config->razao_social,
-                    "siglaUF" => $config->UF,
-                    "cnpj" => $cnpj,
-                    "schemes" => "PL_009_V4",
-                    "versao" => "4.00",
-                    "tokenIBPT" => "AAAAAAA",
-                    "CSC" => $config->csc,
-                    "CSCid" => $config->csc_id,
-                    "is_filial" => $isFilial
-            ]);
-
-            $justificativa = 'Inutilização da venda ' . $venda->id . ' rejeitada';
-            $result = $nfe_service->inutilizar($config, $venda->NfNumero, $venda->NfNumero, $justificativa);
-
-            $sucesso = false;
-            if(is_array($result)){
-                    if((isset($result['cStat']) && $result['cStat'] == 102) ||
-                            (isset($result['infInut']['cStat']) && $result['infInut']['cStat'] == 102)){
-                            $sucesso = true;
-                    }
-            }
-
-            if($sucesso){
-                    $venda->estado = 'INUTILIZADA';
-                    $venda->save();
-                    $this->criarLog($venda, 'inutilizar');
-                    session()->flash("mensagem_sucesso", "Numeração de NF-e inutilizada e venda bloqueada para edição.");
-            }else{
-                    session()->flash("mensagem_erro", "Falha ao inutilizar NF-e: " . (is_array($result) ? json_encode($result) : $result));
-            }
-
+        if(!$venda->podeSerInutilizada()){
+            session()->flash("mensagem_erro", "Esta venda não está em status elegível para inutilização de NF-e.");
             return redirect('/vendas');
+        }
+
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+        $isFilial = null;
+
+        if($venda->filial_id != null){
+            $config = Filial::findOrFail($venda->filial_id);
+            $isFilial = $venda->filial_id;
+            if($config->arquivo_certificado == null){
+                session()->flash("mensagem_erro", "Necessário o certificado para realizar esta ação!");
+                return redirect('/vendas');
+            }
+        }
+
+        $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
+
+        $nfe_service = new NFService([
+            "atualizacao" => date('Y-m-d h:i:s'),
+            "tpAmb" => (int)$config->ambiente,
+            "razaosocial" => $config->razao_social,
+            "siglaUF" => $config->UF,
+            "cnpj" => $cnpj,
+            "schemes" => "PL_009_V4",
+            "versao" => "4.00",
+            "tokenIBPT" => "AAAAAAA",
+            "CSC" => $config->csc,
+            "CSCid" => $config->csc_id,
+            "is_filial" => $isFilial
+        ]);
+
+        $justificativa = 'Inutilização da venda ' . $venda->id . ' rejeitada';
+        $result = $nfe_service->inutilizar($config, $venda->NfNumero, $venda->NfNumero, $justificativa);
+
+        $sucesso = false;
+        if(is_array($result)){
+            if((isset($result['cStat']) && $result['cStat'] == 102) ||
+                (isset($result['infInut']['cStat']) && $result['infInut']['cStat'] == 102)){
+                $sucesso = true;
+            }
+        }
+
+        if($sucesso){
+            $venda->estado = 'INUTILIZADA';
+            $venda->save();
+            $this->criarLog($venda, 'inutilizar');
+            session()->flash("mensagem_sucesso", "Numeração de NF-e inutilizada e venda bloqueada para edição.");
+        }else{
+            session()->flash("mensagem_erro", "Falha ao inutilizar NF-e: " . (is_array($result) ? json_encode($result) : $result));
+        }
+
+        return redirect('/vendas');
     }
 
-	private function removerDuplicadas($venda){
-		foreach($venda->duplicatas as $dp){
-			$c = ContaReceber::
-			where('id', $dp->id)
-			->delete();
-		}
-	}
+    private function removerDuplicadas($venda){
+        foreach($venda->duplicatas as $dp){
+            $c = ContaReceber::
+            where('id', $dp->id)
+                ->delete();
+        }
+    }
 
-	function sanitizeString($str){
-		return preg_replace('{\W}', ' ', preg_replace('{ +}', ' ', strtr(
-			utf8_decode(html_entity_decode($str)),
-			utf8_decode('ÀÁÃÂÉÊÍÓÕÔÚÜÇÑàáãâéêíóõôúüçñ'),
-			'AAAAEEIOOOUUCNaaaaeeiooouucn')));
-	}
+    function sanitizeString($str){
+        return preg_replace('{\W}', ' ', preg_replace('{ +}', ' ', strtr(
+            utf8_decode(html_entity_decode($str)),
+            utf8_decode('ÀÁÃÂÉÊÍÓÕÔÚÜÇÑàáãâéêíóõôúüçñ'),
+            'AAAAEEIOOOUUCNaaaaeeiooouucn')));
+    }
 
-	private function criarLog($objeto, $tipo = 'criar'){
-		if(isset(session('user_logged')['log_id'])){
-			$record = [
-				'tipo' => $tipo,
-				'usuario_log_id' => session('user_logged')['log_id'],
-				'tabela' => 'vendas',
-				'registro_id' => $objeto->id,
-				'empresa_id' => $this->empresa_id
-			];
-			__saveLog($record);
-		}
-	}
+    private function criarLog($objeto, $tipo = 'criar'){
+        if(isset(session('user_logged')['log_id'])){
+            $record = [
+                'tipo' => $tipo,
+                'usuario_log_id' => session('user_logged')['log_id'],
+                'tabela' => 'vendas',
+                'registro_id' => $objeto->id,
+                'empresa_id' => $this->empresa_id
+            ];
+            __saveLog($record);
+        }
+    }
 
-	public function salvar(Request $request){
-		try{
-			$result = DB::transaction(function () use ($request) {
-				$venda = $request->venda;
-				$valorFrete = str_replace(".", "", $venda['valorFrete'] ?? 0);
-				$valorFrete = str_replace(",", ".", $valorFrete );
-				$vol = $venda['volume'];
+    public function salvar(Request $request){
+        try{
+            $result = DB::transaction(function () use ($request) {
+                $venda = $request->venda;
+                $valorFrete = str_replace(".", "", $venda['valorFrete'] ?? 0);
+                $valorFrete = str_replace(",", ".", $valorFrete );
+                $vol = $venda['volume'];
 
-				if($vol['pesoL']){
-					$pesoLiquido = str_replace(",", ".", $vol['pesoL']);
-				}else{
-					$pesoLiquido = 0;
-				}
+                if($vol['pesoL']){
+                    $pesoLiquido = str_replace(",", ".", $vol['pesoL']);
+                }else{
+                    $pesoLiquido = 0;
+                }
 
-				if($vol['pesoB']){
-					$pesoBruto = str_replace(",", ".", $vol['pesoB']);
-				}else{
-					$pesoBruto = 0;
-				}
+                if($vol['pesoB']){
+                    $pesoBruto = str_replace(",", ".", $vol['pesoB']);
+                }else{
+                    $pesoBruto = 0;
+                }
 
-				if($vol['qtdVol']){
-					$qtdVol = str_replace(",", ".", $vol['qtdVol']);
-				}else{
-					$qtdVol = 0;
-				}
+                if($vol['qtdVol']){
+                    $qtdVol = str_replace(",", ".", $vol['qtdVol']);
+                }else{
+                    $qtdVol = 0;
+                }
 
-				$frete = null;
-				if($venda['frete'] != '9'){
-					$frete = Frete::create([
-						'placa' => $venda['placaVeiculo'] ?? '',
-						'valor' => $valorFrete ?? 0,
-						'tipo' => (int)$venda['frete'],
-						'qtdVolumes' => $qtdVol?? 0,
-						'uf' => $venda['ufPlaca'] ?? '',
-						'numeracaoVolumes' => $vol['numeracaoVol'] ?? '0',
-						'especie' => $vol['especie'] ?? '*',
-						'peso_liquido' => $pesoLiquido ?? 0,
-						'peso_bruto' => $pesoBruto ?? 0
-					]);
-				}
+                $frete = null;
+                if($venda['frete'] != '9'){
+                    $frete = Frete::create([
+                        'placa' => $venda['placaVeiculo'] ?? '',
+                        'valor' => $valorFrete ?? 0,
+                        'tipo' => (int)$venda['frete'],
+                        'qtdVolumes' => $qtdVol?? 0,
+                        'uf' => $venda['ufPlaca'] ?? '',
+                        'numeracaoVolumes' => $vol['numeracaoVol'] ?? '0',
+                        'especie' => $vol['especie'] ?? '*',
+                        'peso_liquido' => $pesoLiquido ?? 0,
+                        'peso_bruto' => $pesoBruto ?? 0
+                    ]);
+                }
 
-				$totalVenda = str_replace(",", ".", $venda['total']);
+                $totalVenda = str_replace(",", ".", $venda['total']);
 
-				$desconto = 0;
-				if($venda['desconto']){
-					$desconto = str_replace(".", "", $venda['desconto']);
-					$desconto = str_replace(",", ".", $desconto);
-				}
+                $desconto = 0;
+                if($venda['desconto']){
+                    $desconto = str_replace(".", "", $venda['desconto']);
+                    $desconto = str_replace(",", ".", $desconto);
+                }
 
-				$acrescimo = 0;
-				if($venda['acrescimo']){
-					$acrescimo = str_replace(".", "", $venda['acrescimo']);
-					$acrescimo = str_replace(",", ".", $acrescimo);
-				}
+                $acrescimo = 0;
+                if($venda['acrescimo']){
+                    $acrescimo = str_replace(".", "", $venda['acrescimo']);
+                    $acrescimo = str_replace(",", ".", $acrescimo);
+                }
 
-				$numero_sequencial = 0;
-				$last = Venda::where('empresa_id', $this->empresa_id)
-				->orderBy('id', 'desc')
-				->first();
+                $numero_sequencial = 0;
+                $last = Venda::where('empresa_id', $this->empresa_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
-				$vendedor_id = $venda['vendedor_id'];
-				if(!$vendedor_id){
-					$vendedor_id = get_id_user();
-				}
+                $vendedor_id = $venda['vendedor_id'];
+                if(!$vendedor_id){
+                    $vendedor_id = get_id_user();
+                }
 
-				$numero_sequencial = $last != null ? ($last->numero_sequencial + 1) : 1;
-				$natureza = NaturezaOperacao::findOrFail($venda['naturezaOp']);
+                $numero_sequencial = $last != null ? ($last->numero_sequencial + 1) : 1;
+                $natureza = NaturezaOperacao::findOrFail($venda['naturezaOp']);
 
                 // Trata a data de emissão:
                 // Se houver data retroativa informada e for válida, use-a; caso contrário, use a data atual.
@@ -1249,90 +1123,90 @@ class VendaController extends Controller
                     $dataEmissao = date('Y-m-d H:i:s');
                 }
 
-				$result = Venda::create([
-					'cliente_id' => $venda['cliente'],
-					'transportadora_id' => $venda['transportadora'],
-					'forma_pagamento' => $venda['formaPagamento'],
-					'tipo_pagamento' => $venda['tipoPagamento'],
-					'usuario_id' => get_id_user(),
-					'valor_total' => $totalVenda,
-					'desconto' => $desconto,
-					'acrescimo' => $acrescimo,
-					'frete_id' => $frete != null ? $frete->id : null,
-					'NfNumero' => 0,
-					'natureza_id' => $venda['naturezaOp'],
-					'path_xml' => '',
-					'chave' => '',
-					'sequencia_cce' => 0,
-					'observacao' => $venda['observacao'] ?? '',
-					'data_entrega' => $venda['data_entrega'] != '' ? $this->parseDate($venda['data_entrega']) : null,
+                $result = Venda::create([
+                    'cliente_id' => $venda['cliente'],
+                    'transportadora_id' => $venda['transportadora'],
+                    'forma_pagamento' => $venda['formaPagamento'],
+                    'tipo_pagamento' => $venda['tipoPagamento'],
+                    'usuario_id' => get_id_user(),
+                    'valor_total' => $totalVenda,
+                    'desconto' => $desconto,
+                    'acrescimo' => $acrescimo,
+                    'frete_id' => $frete != null ? $frete->id : null,
+                    'NfNumero' => 0,
+                    'natureza_id' => $venda['naturezaOp'],
+                    'path_xml' => '',
+                    'chave' => '',
+                    'sequencia_cce' => 0,
+                    'observacao' => $venda['observacao'] ?? '',
+                    'data_entrega' => $venda['data_entrega'] != '' ? $this->parseDate($venda['data_entrega']) : null,
                     'data_emissao'   => $dataEmissao, // aqui usamos a data retroativa ou a data atual
                     'data_retroativa' => $venda['data_retroativa'] != '' ? $this->parseDate($venda['data_retroativa']) : null,
-					'data_saida' => $venda['data_saida'] != '' ? $this->parseDate($venda['data_saida']) : null,
-					'estado' => 'DISPONIVEL',
-					'empresa_id' => $this->empresa_id,
-					'bandeira_cartao' => $venda['bandeira_cartao'],
-					'cAut_cartao' => $venda['cAut_cartao'] ?? '',
-					'cnpj_cartao' => $venda['cnpj_cartao'] ?? '',
-					'descricao_pag_outros' => $venda['descricao_pag_outros'] ?? '',
-					'credito_troca' => $venda['credito_troca'] ? $desconto : 0,
-					'vendedor_id' => $vendedor_id,
-					'numero_sequencial' => $numero_sequencial,
-					'filial_id' => $venda['filial_id'] != -1 ? $venda['filial_id'] : null
-				]);
+                    'data_saida' => $venda['data_saida'] != '' ? $this->parseDate($venda['data_saida']) : null,
+                    'estado' => 'DISPONIVEL',
+                    'empresa_id' => $this->empresa_id,
+                    'bandeira_cartao' => $venda['bandeira_cartao'],
+                    'cAut_cartao' => $venda['cAut_cartao'] ?? '',
+                    'cnpj_cartao' => $venda['cnpj_cartao'] ?? '',
+                    'descricao_pag_outros' => $venda['descricao_pag_outros'] ?? '',
+                    'credito_troca' => $venda['credito_troca'] ? $desconto : 0,
+                    'vendedor_id' => $vendedor_id,
+                    'numero_sequencial' => $numero_sequencial,
+                    'filial_id' => $venda['filial_id'] != -1 ? $venda['filial_id'] : null
+                ]);
 
                 $rt = app(ReformaTributariaService::class);
                 $applyRt = true;
 
                 $this->rtResetTotals();
 
-				if($venda['credito_troca']){
-					$this->recalcularCredito($desconto, $venda['cliente']);
-				}
+                if($venda['credito_troca']){
+                    $this->recalcularCredito($desconto, $venda['cliente']);
+                }
 
-				if($venda['formaPagamento'] == 'conta_crediario'){
-					$credito = CreditoVenda::create([
-						'venda_id' => $result->id,
-						'cliente_id' => $venda['cliente'],
-						'status' => false,
-						'empresa_id' => $this->empresa_id
-					]);
-				}
+                if($venda['formaPagamento'] == 'conta_crediario'){
+                    $credito = CreditoVenda::create([
+                        'venda_id' => $result->id,
+                        'cliente_id' => $venda['cliente'],
+                        'status' => false,
+                        'empresa_id' => $this->empresa_id
+                    ]);
+                }
 
-				$itens = $venda['itens'];
-				$referencias = $venda['referencias'] ?? [];
-				$stockMove = new StockMove();
+                $itens = $venda['itens'];
+                $referencias = $venda['referencias'] ?? [];
+                $stockMove = new StockMove();
 
-				$cliente = Cliente::find($venda['cliente']);
+                $cliente = Cliente::find($venda['cliente']);
 
-				$config = ConfigNota::
-				where('empresa_id', $this->empresa_id)
-				->first();
+                $config = ConfigNota::
+                where('empresa_id', $this->empresa_id)
+                    ->first();
 
-				if($venda['data_venda'] != ''){
-					$v = Venda::findOrFail($result->id);
-					$dataVenda = $this->parseDate($venda['data_venda']) . " " . date('H:i:s');
-					$v->created_at = $dataVenda;
-					$v->save();
-				}
+                if($venda['data_venda'] != ''){
+                    $v = Venda::findOrFail($result->id);
+                    $dataVenda = $this->parseDate($venda['data_venda']) . " " . date('H:i:s');
+                    $v->created_at = $dataVenda;
+                    $v->save();
+                }
 
-				foreach ($itens as $i) {
-					$produto = Produto::find($i['codigo']);
-					$cfop = 0;
+                foreach ($itens as $i) {
+                    $produto = Produto::find($i['codigo']);
+                    $cfop = 0;
 
-					if($natureza->sobrescreve_cfop){
-						if($config->UF != $cliente->cidade->uf){
-							$cfop = $natureza->CFOP_saida_inter_estadual;
-						}else{
-							$cfop = $natureza->CFOP_saida_estadual;
-						}
-					}else{
-						if($config->UF != $cliente->cidade->uf){
-							$cfop = $produto->CFOP_saida_inter_estadual;
-						}else{
-							$cfop = $produto->CFOP_saida_estadual;
-						}
-					}
+                    if($natureza->sobrescreve_cfop){
+                        if($config->UF != $cliente->cidade->uf){
+                            $cfop = $natureza->CFOP_saida_inter_estadual;
+                        }else{
+                            $cfop = $natureza->CFOP_saida_estadual;
+                        }
+                    }else{
+                        if($config->UF != $cliente->cidade->uf){
+                            $cfop = $produto->CFOP_saida_inter_estadual;
+                        }else{
+                            $cfop = $produto->CFOP_saida_estadual;
+                        }
+                    }
 
                     /*
 					ItemVenda::create([
@@ -1377,237 +1251,237 @@ class VendaController extends Controller
                     ];
 
                     // >>> aplica RT no item (sem quebrar se não existirem colunas)
-                $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
+                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
 
                     ItemVenda::create($itemArr);
 
                     // >>> acumula totais de RT para depois gravar na venda
-                $this->rtAccumulateFromItemArray($itemArr);
+                    $this->rtAccumulateFromItemArray($itemArr);
 
 
-					$prod = Produto::where('id', $i['codigo'])
-					->first();
+                    $prod = Produto::where('id', $i['codigo'])
+                        ->first();
 
-					if($natureza->nao_movimenta_estoque == false && $prod->gerenciar_estoque){
-						if(!empty($prod->receita)){
-							$receita = $prod->receita;
-							foreach($receita->itens as $rec){
+                    if($natureza->nao_movimenta_estoque == false && $prod->gerenciar_estoque){
+                        if(!empty($prod->receita)){
+                            $receita = $prod->receita;
+                            foreach($receita->itens as $rec){
 
-								if(!empty($rec->produto->receita)){
-									$receita2 = $rec->produto->receita;
+                                if(!empty($rec->produto->receita)){
+                                    $receita2 = $rec->produto->receita;
 
-									foreach($receita2->itens as $rec2){
-										$stockMove->downStock(
-											$rec2->produto_id,
-											(float) str_replace(",", ".", $i['quantidade']) *
-											($rec2->quantidade/$receita2->rendimento),
-											$venda['filial_id']
-										);
-									}
-								}else{
+                                    foreach($receita2->itens as $rec2){
+                                        $stockMove->downStock(
+                                            $rec2->produto_id,
+                                            (float) str_replace(",", ".", $i['quantidade']) *
+                                            ($rec2->quantidade/$receita2->rendimento),
+                                            $venda['filial_id']
+                                        );
+                                    }
+                                }else{
 
-									$stockMove->downStock(
-										$rec->produto_id,
-										(float) str_replace(",", ".", $i['quantidade']) *
-										($rec->quantidade/$receita->rendimento),
-										$venda['filial_id']
-									);
-								}
-							}
-						}else{
-							$stockMove->downStock(
-								(int) $i['codigo'], (float) str_replace(",", ".", $i['quantidade']), $venda['filial_id']);
-						}
-					}
-				}
+                                    $stockMove->downStock(
+                                        $rec->produto_id,
+                                        (float) str_replace(",", ".", $i['quantidade']) *
+                                        ($rec->quantidade/$receita->rendimento),
+                                        $venda['filial_id']
+                                    );
+                                }
+                            }
+                        }else{
+                            $stockMove->downStock(
+                                (int) $i['codigo'], (float) str_replace(",", ".", $i['quantidade']), $venda['filial_id']);
+                        }
+                    }
+                }
 
                 // >>> grava totais RT na venda (sem quebrar se não existirem colunas)
                 $this->applyRtToVendaTotals($result);
 
-				if(sizeof($referencias) > 0){
-					foreach($referencias as $r){
-						NFeReferecia::create([
-							'venda_id' => $result->id,
-							'chave' => $r
-						]);
-					}
-				}
+                if(sizeof($referencias) > 0){
+                    foreach($referencias as $r){
+                        NFeReferecia::create([
+                            'venda_id' => $result->id,
+                            'chave' => $r
+                        ]);
+                    }
+                }
 
-				if(isset($venda['receberContas'])){
-					$receberContas = $venda['receberContas'];
-					foreach($receberContas as $r){
-						$c = CreditoVenda::where('id', $r)
-						->first();
-						$c->status = true;
-						$c->save();
-					}
-				}
+                if(isset($venda['receberContas'])){
+                    $receberContas = $venda['receberContas'];
+                    foreach($receberContas as $r){
+                        $c = CreditoVenda::where('id', $r)
+                            ->first();
+                        $c->status = true;
+                        $c->save();
+                    }
+                }
 
-				$mensagem = [];
-				$fatura = $venda['fatura'] ?? [];
+                $mensagem = [];
+                $fatura = $venda['fatura'] ?? [];
 
-				if($venda['tipoPagamento'] == '06'){
+                if($venda['tipoPagamento'] == '06'){
 
-					if($natureza->categoria_conta_id == null){
-						$catCrediario = $this->categoriaCrediario();
-					}else{
-						$catCrediario = CategoriaConta::findOrFail($natureza->categoria_conta_id)->id;
-					}
+                    if($natureza->categoria_conta_id == null){
+                        $catCrediario = $this->categoriaCrediario();
+                    }else{
+                        $catCrediario = CategoriaConta::findOrFail($natureza->categoria_conta_id)->id;
+                    }
 
-					foreach ($fatura as $key => $f) {
-						$valorParcela = str_replace(",", ".", $f['valor']);
-						$resultFatura = ContaReceber::create([
-							'venda_id' => $result->id,
-							'data_vencimento' => $this->parseDate($f['data']),
-							'data_recebimento' => $this->parseDate($f['data']),
-							'valor_integral' => $valorParcela,
-							'cliente_id' => $venda['cliente'],
-							'valor_recebido' => 0,
-							'status' => false,
-							'entrada' => $f['entrada'],
-							'tipo_pagamento' => 'Crediário',
-							'referencia' => "Parcela ".$f['numero']."/" . sizeof($fatura) .", da Venda " . $result->id,
-							'categoria_id' => $catCrediario,
-							'empresa_id' => $this->empresa_id,
+                    foreach ($fatura as $key => $f) {
+                        $valorParcela = str_replace(",", ".", $f['valor']);
+                        $resultFatura = ContaReceber::create([
+                            'venda_id' => $result->id,
+                            'data_vencimento' => $this->parseDate($f['data']),
+                            'data_recebimento' => $this->parseDate($f['data']),
+                            'valor_integral' => $valorParcela,
+                            'cliente_id' => $venda['cliente'],
+                            'valor_recebido' => 0,
+                            'status' => false,
+                            'entrada' => $f['entrada'],
+                            'tipo_pagamento' => 'Crediário',
+                            'referencia' => "Parcela ".$f['numero']."/" . sizeof($fatura) .", da Venda " . $result->id,
+                            'categoria_id' => $catCrediario,
+                            'empresa_id' => $this->empresa_id,
                             'filial_id' => $result['filial_id'] != -1 ? $result['filial_id'] : null,
 
                             'nf_modelo'       => '55',
                             'nf_numero'       => $result->NfNumero ?? 0,
                             'nf_data_emissao' => $result->data_emissao ?? $result->created_at ?? null,
                             'nf_chave'        => $result->chave ?? null,
-						]);
-					}
+                        ]);
+                    }
 
-				}elseif($venda['formaPagamento'] != 'a_vista' && $venda['formaPagamento'] != 'conta_crediario'){
+                }elseif($venda['formaPagamento'] != 'a_vista' && $venda['formaPagamento'] != 'conta_crediario'){
 
-					$gerarBoleto = isset($venda['gerar_boleto']);
-					$contaPadrao = ContaBancaria::
-					where('empresa_id', $this->empresa_id)
-					->where('padrao', true)
-					->first();
+                    $gerarBoleto = isset($venda['gerar_boleto']);
+                    $contaPadrao = ContaBancaria::
+                    where('empresa_id', $this->empresa_id)
+                        ->where('padrao', true)
+                        ->first();
 
-					foreach ($fatura as $key => $f) {
-						$valorParcela = str_replace(",", ".", $f['valor']);
-						if($natureza->categoria_conta_id == null){
-							$catVenda = $this->categoriaVenda();
-						}else{
-							$catVenda = CategoriaConta::findOrFail($natureza->categoria_conta_id)->id;
-						}
+                    foreach ($fatura as $key => $f) {
+                        $valorParcela = str_replace(",", ".", $f['valor']);
+                        if($natureza->categoria_conta_id == null){
+                            $catVenda = $this->categoriaVenda();
+                        }else{
+                            $catVenda = CategoriaConta::findOrFail($natureza->categoria_conta_id)->id;
+                        }
 
-						$resultFatura = ContaReceber::create([
-							'venda_id' => $result->id,
-							'data_vencimento' => $this->parseDate($f['data']),
-							'data_recebimento' => $this->parseDate($f['data']),
-							'valor_integral' => $valorParcela,
-							'cliente_id' => $venda['cliente'],
-							'valor_recebido' => 0,
-							'tipo_pagamento' => $f['tipo'],
-							'status' => false,
-							'entrada' => $f['entrada'],
-							'referencia' => "Parcela ".$f['numero']."/" . sizeof($fatura) .", da Venda " . $result->id,
-							'categoria_id' => $catVenda,
-							'empresa_id' => $this->empresa_id,
+                        $resultFatura = ContaReceber::create([
+                            'venda_id' => $result->id,
+                            'data_vencimento' => $this->parseDate($f['data']),
+                            'data_recebimento' => $this->parseDate($f['data']),
+                            'valor_integral' => $valorParcela,
+                            'cliente_id' => $venda['cliente'],
+                            'valor_recebido' => 0,
+                            'tipo_pagamento' => $f['tipo'],
+                            'status' => false,
+                            'entrada' => $f['entrada'],
+                            'referencia' => "Parcela ".$f['numero']."/" . sizeof($fatura) .", da Venda " . $result->id,
+                            'categoria_id' => $catVenda,
+                            'empresa_id' => $this->empresa_id,
                             'filial_id' => $result['filial_id'] != -1 ? $result['filial_id'] : null,
 
                             'nf_modelo'       => '55',
                             'nf_numero'       => $result->NfNumero ?? 0,
                             'nf_data_emissao' => $result->data_emissao ?? $result->created_at ?? null,
                             'nf_chave'        => $result->chave ?? null,
-						]);
+                        ]);
 
-						if($gerarBoleto){
-							if($contaPadrao != null){
-								$data = [
-									'banco_id' => $contaPadrao->id,
-									'conta_id' => $resultFatura->id,
-									'numero' => $key . $result->id,
-									'numero_documento' => $result->id,
-									'carteira' => $contaPadrao->carteira,
-									'convenio' => $contaPadrao->convenio,
-									'linha_digitavel' => '',
-									'nome_arquivo' => '',
-									'juros' => $contaPadrao->juros,
-									'multa' => $contaPadrao->multa,
-									'juros_apos' => $contaPadrao->juros_apos,
-									'instrucoes' => "",
-									'logo' => $contaPadrao->usar_logo ? true : false,
-									'tipo' => $contaPadrao->tipo,
-									'codigo_cliente' => rand(0,100),
-									'posto' => $request->posto ?? 1
-								];
+                        if($gerarBoleto){
+                            if($contaPadrao != null){
+                                $data = [
+                                    'banco_id' => $contaPadrao->id,
+                                    'conta_id' => $resultFatura->id,
+                                    'numero' => $key . $result->id,
+                                    'numero_documento' => $result->id,
+                                    'carteira' => $contaPadrao->carteira,
+                                    'convenio' => $contaPadrao->convenio,
+                                    'linha_digitavel' => '',
+                                    'nome_arquivo' => '',
+                                    'juros' => $contaPadrao->juros,
+                                    'multa' => $contaPadrao->multa,
+                                    'juros_apos' => $contaPadrao->juros_apos,
+                                    'instrucoes' => "",
+                                    'logo' => $contaPadrao->usar_logo ? true : false,
+                                    'tipo' => $contaPadrao->tipo,
+                                    'codigo_cliente' => rand(0,100),
+                                    'posto' => $request->posto ?? 1
+                                ];
 
-								$boleto = Boleto::create($data);
-								$empresa = Empresa::find($this->empresa_id);
+                                $boleto = Boleto::create($data);
+                                $empresa = Empresa::find($this->empresa_id);
 
-								$boletoHelper = new BoletoHelper($empresa);
-								$resultBoleto = $boletoHelper->gerar($boleto);
-								if(isset($resultBoleto['erro'])){
-									array_push($mensagem, "Erro ao gerar boleto $resultFatura->id");
-								}
+                                $boletoHelper = new BoletoHelper($empresa);
+                                $resultBoleto = $boletoHelper->gerar($boleto);
+                                if(isset($resultBoleto['erro'])){
+                                    array_push($mensagem, "Erro ao gerar boleto $resultFatura->id");
+                                }
 
-							}else{
-								array_push($mensagem, "Erro ao gerar boleto sem conta padrão definida");
-							}
-						}
-					}
-				}
+                            }else{
+                                array_push($mensagem, "Erro ao gerar boleto sem conta padrão definida");
+                            }
+                        }
+                    }
+                }
 
-				if(isset($venda['cotacao_id']) && $venda['cotacao_id']){
-					$cotacao = Cotacao::find($venda['cotacao_id']);
-					$cotacao->venda_id = $result->id;
-					$cotacao->save();
-				}
+                if(isset($venda['cotacao_id']) && $venda['cotacao_id']){
+                    $cotacao = Cotacao::find($venda['cotacao_id']);
+                    $cotacao->venda_id = $result->id;
+                    $cotacao->save();
+                }
 
-				$usuario = Usuario::find(get_id_user());
-				$vTemp = Venda::find($result->id);
+                $usuario = Usuario::find(get_id_user());
+                $vTemp = Venda::find($result->id);
 
-				$this->criarLog($vTemp);
-				if($venda['vendedor_id']){
-					$usr = Usuario::find($venda['vendedor_id']);
-					if($usr->funcionario){
-						$percentual_comissao = $usr->funcionario->percentual_comissao;
+                $this->criarLog($vTemp);
+                if($venda['vendedor_id']){
+                    $usr = Usuario::find($venda['vendedor_id']);
+                    if($usr->funcionario){
+                        $percentual_comissao = $usr->funcionario->percentual_comissao;
 
-						// $valorComissao = (($totalVenda-$desconto+$acrescimo) * $percentual_comissao) / 100;
-						$valorComissao = $this->calcularComissaoVenda($vTemp, $percentual_comissao);
-						if($valorComissao > 0){
-							ComissaoVenda::create(
-								[
-									'funcionario_id' => $usr->funcionario->id,
-									'venda_id' => $result->id,
-									'tabela' => 'vendas',
-									'valor' => $valorComissao,
-									'status' => 0,
-									'empresa_id' => $this->empresa_id
-								]
-							);
-						}
-					}
-				}else{
-					if($usuario->funcionario){
-						$percentual_comissao = $usuario->funcionario->percentual_comissao;
+                        // $valorComissao = (($totalVenda-$desconto+$acrescimo) * $percentual_comissao) / 100;
+                        $valorComissao = $this->calcularComissaoVenda($vTemp, $percentual_comissao);
+                        if($valorComissao > 0){
+                            ComissaoVenda::create(
+                                [
+                                    'funcionario_id' => $usr->funcionario->id,
+                                    'venda_id' => $result->id,
+                                    'tabela' => 'vendas',
+                                    'valor' => $valorComissao,
+                                    'status' => 0,
+                                    'empresa_id' => $this->empresa_id
+                                ]
+                            );
+                        }
+                    }
+                }else{
+                    if($usuario->funcionario){
+                        $percentual_comissao = $usuario->funcionario->percentual_comissao;
 
-						$valorComissao = $this->calcularComissaoVenda($vTemp, $percentual_comissao);
-						if($valorComissao > 0){
-							ComissaoVenda::create(
-								[
-									'funcionario_id' => $usuario->funcionario->id,
-									'venda_id' => $result->id,
-									'tabela' => 'vendas',
-									'valor' => $valorComissao,
-									'status' => 0,
-									'empresa_id' => $this->empresa_id
-								]
-							);
-						}
-					}
-				}
-				if(sizeof($mensagem) == 0){
-					return $result;
-				}else{
-					return $mensagem;
-				}
-			});
-        return response()->json($result, 200);
+                        $valorComissao = $this->calcularComissaoVenda($vTemp, $percentual_comissao);
+                        if($valorComissao > 0){
+                            ComissaoVenda::create(
+                                [
+                                    'funcionario_id' => $usuario->funcionario->id,
+                                    'venda_id' => $result->id,
+                                    'tabela' => 'vendas',
+                                    'valor' => $valorComissao,
+                                    'status' => 0,
+                                    'empresa_id' => $this->empresa_id
+                                ]
+                            );
+                        }
+                    }
+                }
+                if(sizeof($mensagem) == 0){
+                    return $result;
+                }else{
+                    return $mensagem;
+                }
+            });
+            return response()->json($result, 200);
         }catch(\Exception $e){
             // __saveError($e, $this->empresa_id);
             return response()->json($e->getMessage(), 400);
@@ -1617,10 +1491,10 @@ class VendaController extends Controller
     private function recalcularCredito($valor_utilizado, $cliente_id){
         $creditos = TrocaVenda::
         where('empresa_id', $this->empresa_id)
-        ->where('cliente_id', $cliente_id)
-        ->where('status', 0)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->where('cliente_id', $cliente_id)
+            ->where('status', 0)
+            ->orderBy('id', 'desc')
+            ->get();
 
         $tempSoma = 0;
         foreach($creditos as $c){
@@ -1642,8 +1516,8 @@ class VendaController extends Controller
     private function categoriaCrediario(){
         $cat = CategoriaConta::
         where('empresa_id', $this->empresa_id)
-        ->where('nome', 'Crediário')
-        ->first();
+            ->where('nome', 'Crediário')
+            ->first();
         if($cat != null) return $cat->id;
         $cat = CategoriaConta::create([
             'nome' => 'Crediário',
@@ -1656,8 +1530,8 @@ class VendaController extends Controller
     private function categoriaVenda(){
         $cat = CategoriaConta::
         where('empresa_id', $this->empresa_id)
-        ->where('nome', 'Vendas')
-        ->first();
+            ->where('nome', 'Vendas')
+            ->first();
         if($cat != null) return $cat->id;
         $cat = CategoriaConta::create([
             'nome' => 'Vendas',
@@ -1801,7 +1675,7 @@ class VendaController extends Controller
 
                 $config = ConfigNota::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
 
                 foreach ($itens as $i) {
                     $produto = Produto::find($i['codigo']);
@@ -1868,11 +1742,11 @@ class VendaController extends Controller
                     $this->rtAccumulateFromItemArray($itemArr);
 
                     $prod = Produto
-                    ::where('id', $i['codigo'])
-                    ->first();
+                        ::where('id', $i['codigo'])
+                        ->first();
 
                     if(!empty($prod->receita)){
-                    //baixa por receita
+                        //baixa por receita
                         $receita = $prod->receita;
                         foreach($receita->itens as $rec){
 
@@ -1941,7 +1815,7 @@ class VendaController extends Controller
                             'status' => false,
                             'cliente_id' => $venda->cliente_id,
                             'entrada' => $f['entrada'],
-                        // 'tipo_pagamento' => Venda::getTipo($request['tipoPagamento']),
+                            // 'tipo_pagamento' => Venda::getTipo($request['tipoPagamento']),
                             'tipo_pagamento' => $f['tipo'],
                             'referencia' => "Parcela ".$f['numero']."/" . sizeof($fatura) .", da Venda " . $venda->id,
                             'categoria_id' => $cat,
@@ -1959,10 +1833,10 @@ class VendaController extends Controller
                 return json_encode($resultFatura);
             });
             return response()->json($result, 200);
-            }catch(\Exception $e){
-                __saveError($e, $this->empresa_id);
-                return response()->json($e->getMessage(), 400);
-            }
+        }catch(\Exception $e){
+            __saveError($e, $this->empresa_id);
+            return response()->json($e->getMessage(), 400);
+        }
 
     }
 
@@ -2059,9 +1933,9 @@ class VendaController extends Controller
         if($venda['codigo_comanda'] > 0){
             $pedido = Pedido::
             where('comanda', $venda['codigo_comanda'])
-            ->where('status', 0)
-            ->where('desativado', 0)
-            ->first();
+                ->where('status', 0)
+                ->where('desativado', 0)
+                ->first();
 
             $pedido->status = 1;
             $pedido->desativado = 1;
@@ -2121,18 +1995,18 @@ class VendaController extends Controller
 
         $vendas = Venda::
         where('vendas.empresa_id', $this->empresa_id)
-        ->where(function($query) use ($permissaoAcesso){
-            if($permissaoAcesso != null){
-                foreach ($permissaoAcesso as $value) {
-                    if($value == -1){
-                        $value = null;
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        if($value == -1){
+                            $value = null;
+                        }
+                        $query->orWhere('vendas.filial_id', $value);
                     }
-                    $query->orWhere('vendas.filial_id', $value);
                 }
-            }
-        })
-        ->orderBy('vendas.id', 'desc')
-        ->select('vendas.*');
+            })
+            ->orderBy('vendas.id', 'desc')
+            ->select('vendas.*');
 
         if(isset($dataInicial) && isset($dataFinal)){
             $vendas->whereBetween('vendas.'.$request->tipo_pesquisa_data, [
@@ -2147,7 +2021,7 @@ class VendaController extends Controller
 
         if(isset($cliente)){
             $vendas->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
-            ->where('clientes.'.$request->tipo_pesquisa, 'LIKE', "%$cliente%");
+                ->where('clientes.'.$request->tipo_pesquisa, 'LIKE', "%$cliente%");
         }
 
         if($numero_nfe != ""){
@@ -2173,26 +2047,26 @@ class VendaController extends Controller
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
 
         return view("vendas/list")
-        ->with('vendas', $vendas)
-        ->with('nf', true)
-        ->with('contigencia', $this->getContigencia())
-        ->with('cliente', $cliente)
-        ->with('tipoPesquisa', $request->tipo_pesquisa)
-        ->with('tipoPesquisaData', $request->tipo_pesquisa_data)
-        ->with('certificado', $certificado)
-        ->with('dataInicial', $dataInicial)
-        ->with('dataFinal', $dataFinal)
-        ->with('dataEmissao', $dataEmissao)
-        ->with('numero_doc', $numero_doc)
-        ->with('numero_nfe', $numero_nfe)
-        ->with('filial_id', $filial_id)
-        ->with('estado', $estado)
+            ->with('vendas', $vendas)
+            ->with('nf', true)
+            ->with('contigencia', $this->getContigencia())
+            ->with('cliente', $cliente)
+            ->with('tipoPesquisa', $request->tipo_pesquisa)
+            ->with('tipoPesquisaData', $request->tipo_pesquisa_data)
+            ->with('certificado', $certificado)
+            ->with('dataInicial', $dataInicial)
+            ->with('dataFinal', $dataFinal)
+            ->with('dataEmissao', $dataEmissao)
+            ->with('numero_doc', $numero_doc)
+            ->with('numero_nfe', $numero_nfe)
+            ->with('filial_id', $filial_id)
+            ->with('estado', $estado)
 
-        ->with('title', "Filtro de Vendas");
+            ->with('title', "Filtro de Vendas");
     }
 
     public function rederizarDanfe($id){
@@ -2203,7 +2077,7 @@ class VendaController extends Controller
             if($venda->filial_id == null){
                 $config = ConfigNota::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
             }else{
                 $config = Filial::findOrFail($venda->filial_id);
                 if($config->arquivo_certificado == null){
@@ -2242,13 +2116,13 @@ class VendaController extends Controller
 
                 try {
                     $danfe = new Danfe($xml);
-                        // $id = $danfe->monta();
+                    // $id = $danfe->monta();
                     $danfe->setVUnComCasasDec($config->casas_decimais);
 
                     $pdf = $danfe->render();
                     header("Content-Disposition: ; filename=DANFE Temporária.pdf");
                     return response($pdf)
-                    ->header('Content-Type', 'application/pdf');
+                        ->header('Content-Type', 'application/pdf');
                 } catch (InvalidArgumentException $e) {
                     echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
                 }
@@ -2349,7 +2223,7 @@ class VendaController extends Controller
 
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($config->logo){
                 $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
@@ -2380,11 +2254,11 @@ class VendaController extends Controller
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $p = view('vendas/print')
-        ->with('config', $config)
-        ->with('venda', $venda);
+            ->with('config', $config)
+            ->with('venda', $venda);
 
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -2405,14 +2279,14 @@ class VendaController extends Controller
         if(valida_objeto($venda)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($venda->filial_id != null){
                 $config = $venda->filial;
             }
             $p = view('vendas/print')
-            ->with('config', $config)
-            ->with('venda', $venda);
+                ->with('config', $config)
+                ->with('venda', $venda);
             // return $p;
 
             $domPdf = new Dompdf(["enable_remote" => true]);
@@ -2445,14 +2319,14 @@ class VendaController extends Controller
     }
 
     public function edit($id){
-            $venda = Venda::where('empresa_id', $this->empresa_id)->find($id);
+        $venda = Venda::where('empresa_id', $this->empresa_id)->find($id);
 
-            if(!valida_objeto($venda)){
-                    return redirect('/403');
-            }
+        if(!valida_objeto($venda)){
+            return redirect('/403');
+        }
 
-            $countProdutos = Produto::
-            where('empresa_id', $this->empresa_id)
+        $countProdutos = Produto::
+        where('empresa_id', $this->empresa_id)
             ->where('inativo', false)
             ->count();
 
@@ -2464,7 +2338,7 @@ class VendaController extends Controller
 
                 $config = ConfigNota::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
                 if($config == null){
                     return redirect('configNF');
                 }
@@ -2472,25 +2346,25 @@ class VendaController extends Controller
 
                 $naturezas = NaturezaOperacao::
                 where('empresa_id', $this->empresa_id)
-                ->get();
+                    ->get();
 
                 $categorias = Categoria::
                 where('empresa_id', $this->empresa_id)
-                ->get();
+                    ->get();
 
                 $produtos = Produto::
                 where('empresa_id', $this->empresa_id)
-                ->where('inativo', false)
-                ->get();
+                    ->where('inativo', false)
+                    ->get();
 
                 $tributacao = Tributacao::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
 
                 $clientes = Cliente::
                 where('empresa_id', $this->empresa_id)
-                ->where('inativo', 0)
-                ->get();
+                    ->where('inativo', 0)
+                    ->get();
 
                 $tiposPagamento = Venda::tiposPagamento();
 
@@ -2505,13 +2379,13 @@ class VendaController extends Controller
 
                 $transportadoras = Transportadora::
                 where('empresa_id', $this->empresa_id)
-                ->get();
+                    ->get();
 
                 $produtos = $this->getProdutosParaVenda();
 
                 $tributacao = Tributacao::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
 
                 $anps = Produto::lista_ANP();
 
@@ -2535,39 +2409,39 @@ class VendaController extends Controller
 
                 $formasPagamento = FormaPagamento::
                 where('empresa_id', $this->empresa_id)
-                ->where('status', true)
-                ->get();
+                    ->where('status', true)
+                    ->get();
 
                 $usuario = Usuario::find(get_id_user());
 
                 $clientes = Cliente::
                 where('empresa_id', $this->empresa_id)
-                ->with('cidade')
-                ->where('inativo', 0)
-                ->get();
+                    ->with('cidade')
+                    ->where('inativo', 0)
+                    ->get();
 
                 return view("vendas/edit")
-                ->with('naturezas', $naturezas)
-                ->with('usuario', $usuario)
-                ->with('clientes', $clientes)
-                ->with('formasPagamento', $formasPagamento)
-                ->with('vendaJs', true)
-                ->with('config', $config)
-                ->with('tributacao', $tributacao)
-                ->with('categorias', $categorias)
-                ->with('transportadoras', $transportadoras)
-                ->with('produtos', $produtos)
-                ->with('unidadesDeMedida', $unidadesDeMedida)
-                ->with('venda', $venda)
-                ->with('anps', $anps)
-                ->with('tiposPagamento', $tiposPagamento)
-                ->with('lastNF', $lastNF)
-                ->with('listaCSTCSOSN', $listaCSTCSOSN)
-                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-                ->with('listaCST_IPI', $listaCST_IPI)
-                ->with('natureza', $natureza)
-                ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
-                ->with('title', "Editar Venda");
+                    ->with('naturezas', $naturezas)
+                    ->with('usuario', $usuario)
+                    ->with('clientes', $clientes)
+                    ->with('formasPagamento', $formasPagamento)
+                    ->with('vendaJs', true)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('categorias', $categorias)
+                    ->with('transportadoras', $transportadoras)
+                    ->with('produtos', $produtos)
+                    ->with('unidadesDeMedida', $unidadesDeMedida)
+                    ->with('venda', $venda)
+                    ->with('anps', $anps)
+                    ->with('tiposPagamento', $tiposPagamento)
+                    ->with('lastNF', $lastNF)
+                    ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                    ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                    ->with('listaCST_IPI', $listaCST_IPI)
+                    ->with('natureza', $natureza)
+                    ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                    ->with('title', "Editar Venda");
             }else{
                 return redirect('/403');
             }
@@ -2578,7 +2452,7 @@ class VendaController extends Controller
     protected function vendaAssincronaEdit($venda){
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
         if($config == null){
             return redirect('configNF');
         }
@@ -2586,45 +2460,45 @@ class VendaController extends Controller
 
         $naturezas = NaturezaOperacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', 0)
-        ->get();
+            ->where('inativo', 0)
+            ->get();
 
         $tiposPagamento = Venda::tiposPagamento();
 
         if(count($naturezas) == 0 || $config == null || count($categorias) == 0 || $tributacao == null || count($clientes) == 0){
 
             $p = view("vendas/alerta")
-            ->with('produtos', count($produtos))
-            ->with('categorias', count($categorias))
-            ->with('clientes', count($clientes))
-            ->with('naturezas', $naturezas)
-            ->with('config', $config)
-            ->with('formasPagamento', $formasPagamento)
-            ->with('tributacao', $tributacao)
-            ->with('title', "Validação para Emitir");
+                ->with('produtos', count($produtos))
+                ->with('categorias', count($categorias))
+                ->with('clientes', count($clientes))
+                ->with('naturezas', $naturezas)
+                ->with('config', $config)
+                ->with('formasPagamento', $formasPagamento)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
             return $p;
 
         }else{
 
             $transportadoras = Transportadora::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             foreach($clientes as $c){
                 $c->cidade;
@@ -2638,14 +2512,14 @@ class VendaController extends Controller
 
             $contaPadrao = ContaBancaria::
             where('empresa_id', $this->empresa_id)
-            ->where('padrao', true)
-            ->first();
+                ->where('padrao', true)
+                ->first();
 
             $unidadesDeMedida = Produto::unidadesMedida();
 
             $tributacao = Tributacao::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
             $anps = Produto::lista_ANP();
 
             if($tributacao->regime == 1){
@@ -2670,33 +2544,33 @@ class VendaController extends Controller
 
             $formasPagamento = FormaPagamento::
             where('empresa_id', $this->empresa_id)
-            ->where('status', true)
-            ->get();
+                ->where('status', true)
+                ->get();
 
             $usuario = Usuario::find(get_id_user());
 
             $p = view("vendas/edit_assincrono")
-            ->with('naturezas', $naturezas)
-            ->with('vendaJsAssincrono', true)
-            ->with('config', $config)
-            ->with('usuario', $usuario)
-            ->with('listaCSTCSOSN', $listaCSTCSOSN)
-            ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-            ->with('listaCST_IPI', $listaCST_IPI)
-            ->with('natureza', $natureza)
-            ->with('contaPadrao', $contaPadrao)
-            ->with('clientes', $clientes)
-            ->with('categorias', $categorias)
-            ->with('venda', $venda)
-            ->with('formasPagamento', $formasPagamento)
-            ->with('anps', $anps)
-            ->with('unidadesDeMedida', $unidadesDeMedida)
-            ->with('tributacao', $tributacao)
-            ->with('transportadoras', $transportadoras)
-            ->with('tiposPagamento', $tiposPagamento)
-            ->with('lastNF', $lastNF)
-            ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
-            ->with('title', "Editar Venda");
+                ->with('naturezas', $naturezas)
+                ->with('vendaJsAssincrono', true)
+                ->with('config', $config)
+                ->with('usuario', $usuario)
+                ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                ->with('listaCST_IPI', $listaCST_IPI)
+                ->with('natureza', $natureza)
+                ->with('contaPadrao', $contaPadrao)
+                ->with('clientes', $clientes)
+                ->with('categorias', $categorias)
+                ->with('venda', $venda)
+                ->with('formasPagamento', $formasPagamento)
+                ->with('anps', $anps)
+                ->with('unidadesDeMedida', $unidadesDeMedida)
+                ->with('tributacao', $tributacao)
+                ->with('transportadoras', $transportadoras)
+                ->with('tiposPagamento', $tiposPagamento)
+                ->with('lastNF', $lastNF)
+                ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                ->with('title', "Editar Venda");
 
             return $p;
         }
@@ -2709,7 +2583,7 @@ class VendaController extends Controller
         if(valida_objeto($venda)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $lastNF = Venda::lastNF();
             if($venda->filial_id != null){
@@ -2719,19 +2593,19 @@ class VendaController extends Controller
 
             $clientes = Cliente::
             where('empresa_id', $this->empresa_id)
-            ->where('inativo', 0)
-            ->get();
+                ->where('inativo', 0)
+                ->get();
 
             $semEstoque = $this->validaEstoque($venda);
 
             return view("vendas/clone")
-            ->with('vendaJs', true)
-            ->with('config', $config)
-            ->with('clientes', $clientes)
-            ->with('venda', $venda)
-            ->with('semEstoque', $semEstoque)
-            ->with('lastNF', $lastNF)
-            ->with('title', "Clonar Venda");
+                ->with('vendaJs', true)
+                ->with('config', $config)
+                ->with('clientes', $clientes)
+                ->with('venda', $venda)
+                ->with('semEstoque', $semEstoque)
+                ->with('lastNF', $lastNF)
+                ->with('title', "Clonar Venda");
         }else{
             return redirect('/403');
         }
@@ -2903,490 +2777,490 @@ class VendaController extends Controller
         return redirect('/403');
     }
 
-	public function gerarXml($id){
-		$certificado = Certificado::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		if($certificado == null){
-			echo "Necessário o certificado para realizar esta ação!";
-			die;
-		}
-		$venda = Venda::find($id);
-
-		if(valida_objeto($venda)){
-
-			$isFilial = $venda->filial_id;
-			if($venda->filial_id == null){
-				$config = ConfigNota::
-				where('empresa_id', $this->empresa_id)
-				->first();
-			}else{
-				$config = Filial::findOrFail($venda->filial_id);
-				if($config->arquivo_certificado == null){
-					echo "Necessário o certificado para realizar esta ação!";
-					die;
-				}
-			}
-			$cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
-
-			$nfe_service = new NFService([
-				"atualizacao" => date('Y-m-d h:i:s'),
-				"tpAmb" => (int)$config->ambiente,
-				"razaosocial" => $config->razao_social,
-				"siglaUF" => $config->UF,
-				"cnpj" => $cnpj,
-				"schemes" => "PL_009_V4",
-				"versao" => "4.00",
-				"tokenIBPT" => "AAAAAAA",
-				"CSC" => $config->csc,
-				"CSCid" => $config->csc_id,
-				"is_filial" => $isFilial,
-			]);
-			$nfe = $nfe_service->gerarNFe($id);
-			if(!isset($nfe['erros_xml'])){
-				$xml = $nfe_service->sign($nfe['xml']);
-
-				return response($xml)
-				->header('Content-Type', 'application/xml');
-
-			} else{
-				foreach($nfe['erros_xml'] as $e) {
-					echo $e;
-				}
-			}
-		}else{
-			return redirect('/403');
-		}
-	}
-
-	public function calculaFrete(Request $request){
-
-		$stringUrl = "&sCepOrigem=$request->sCepOrigem&sCepDestino=$request->sCepDestino&nVlPeso=$request->nVlPeso";
-
-		$stringUrl .= "&nVlComprimento=$request->nVlComprimento&nVlAltura=$request->nVlAltura&nVlLargura=$request->nVlLargura&nCdServico=04014";
-
-		$url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
-
-		$unparsedResult = file_get_contents($url);
-		$parsedResult = simplexml_load_string($unparsedResult);
-
-		$stringUrl = "&sCepOrigem=$request->sCepOrigem&sCepDestino=$request->sCepDestino&nVlPeso=$request->nVlPeso";
-
-		$stringUrl .= "&nVlComprimento=$request->nVlComprimento&nVlAltura=$request->nVlAltura&nVlLargura=$request->nVlLargura&nCdServico=04510";
-
-		$url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
-
-		$unparsedResultSedex = file_get_contents($url);
-		$parsedResultSedex = simplexml_load_string($unparsedResultSedex);
-
-		$retorno = array(
-			'preco_sedex' => strval($parsedResult->cServico->Valor),
-			'prazo_sedex' => strval($parsedResult->cServico->PrazoEntrega),
-
-			'preco' => strval($parsedResultSedex->cServico->Valor),
-			'prazo' => strval($parsedResultSedex->cServico->PrazoEntrega)
-		);
-
-		return response()->json($retorno, 200);
-	}
-
-	public function importacao(){
-		$zip_loaded = extension_loaded('zip') ? true : false;
-		if ($zip_loaded === false) {
-			session()->flash('mensagem_erro', "Por favor instale/habilite o PHP zip para importar");
-			return redirect()->back();
-		}
-
-		$natureza = NaturezaOperacao::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		if($natureza == null){
-			session()->flash('mensagem_erro', 'Informe uma natureza de operação!');
-			return redirect('/naturezaOperacao/new');
-		}
-
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		if($config == null){
-			session()->flash('mensagem_erro', 'Informe a configuração do emitente!');
-			return redirect('/configNF');
-		}
-
-		$tributacao = Tributacao::
-		where('empresa_id', $this->empresa_id)
-		->first();
-
-		if($tributacao == null){
-			session()->flash('mensagem_erro', 'Informe a tributação!');
-			return redirect('/tributos');
-		}
-
-		return view('vendas/importacao')
-		->with('title', 'Importação de xml');
-	}
-
-	public function importacaoStore(Request $request){
-		if ($request->hasFile('file')) {
-
-			$zip = new \ZipArchive();
-			$zip->open($request->file);
-
-			$public = env('SERVIDOR_WEB') ? 'public/' : '';
-			$destino = $public . 'extract';
-			$this->limparPasta($destino);
-			if($zip->extractTo($destino) == TRUE){
-
-				$data = $this->preparaXmls($destino);
-
-				if(sizeof($data) == 0){
-					session()->flash('mensagem_erro', "Algo errado com o arquivo!");
-					return redirect()->back();
-				}
-				return view('vendas/import')
-				->with('data', $data)
-				->with('title', 'Importação de XML');
-
-			}else {
-				session()->flash('mensagem_erro', "Erro ao desconpactar arquivo");
-				return redirect()->back();
-			}
-			$zip->close();
-		}else{
-			session()->flash('mensagem_erro', 'Nenhum Arquivo!!');
-			return redirect()->back();
-		}
-	}
-
-	private function limparPasta($destino){
-		$files = glob($destino."/*");
-		foreach($files as $file){
-			if(is_file($file)) unlink($file);
-		}
-	}
-
-	private function preparaXmls($destino){
-		$files = glob($destino."/*");
-		$data = [];
-		foreach($files as $file){
-			if(is_file($file)){
-				$xml = simplexml_load_file($file);
-				$cliente = $this->getCliente($xml);
-				$produtos = $this->getProdutos($xml);
-				$fatura = $this->getFatura($xml);
-
-				if($produtos != null){
-
-					$temp = [
-						'data' => $xml->NFe->infNFe->ide->dhEmi,
-						'chave' => substr($xml->NFe->infNFe->attributes()->Id, 3, 44),
-						'total' => $xml->NFe->infNFe->total->ICMSTot->vProd,
-						'numero_nf' => $xml->NFe->infNFe->ide->nNF,
-						'desconto' => $xml->NFe->infNFe->total->ICMSTot->vDesc,
-						'cliente' => $cliente,
-						'produtos' => $produtos,
-						'fatura' => $fatura,
-						'file' => $file,
-						'natureza' => $xml->NFe->infNFe->ide->natOp[0],
-						'observacao' => $xml->NFe->infNFe->infAdic ? $xml->NFe->infNFe->infAdic->infCpl[0] : '',
-						'tipo_pagamento' => $xml->NFe->infNFe->pag->detPag->tPag,
-						'forma_pagamento' => $xml->NFe->infNFe->pag->detPag->indPag ?? 0
-					];
-					array_push($data, $temp);
-				}
-			}
-		}
-
-		return $data;
-	}
-
-	private function getCliente($xml){
-		if(!isset($xml->NFe->infNFe->dest->enderDest->cMun)) return null;
-		$cidade = Cidade::getCidadeCod($xml->NFe->infNFe->dest->enderDest->cMun);
-		$dadosCliente = [
-			'cpf_cnpj' => isset($xml->NFe->infNFe->dest->CNPJ) ? $xml->NFe->infNFe->dest->CNPJ : $xml->NFe->infNFe->dest->CPF,
-			'razao_social' => $xml->NFe->infNFe->dest->xNome,
-			'nome_fantasia' => $xml->NFe->infNFe->dest->xFant,
-			'rua' => $xml->NFe->infNFe->dest->enderDest->xLgr,
-			'numero' => $xml->NFe->infNFe->dest->enderDest->nro,
-			'bairro' => $xml->NFe->infNFe->dest->enderDest->xBairro,
-			'cep' => $xml->NFe->infNFe->dest->enderDest->CEP,
-			'telefone' => $xml->NFe->infNFe->dest->enderDest->fone,
-			'celular' => '',
-			'ie_rg' => $xml->NFe->infNFe->dest->IE,
-			'cidade_id' => $cidade != null ? $cidade->id : 1,
-			'consumidor_final' => 1,
-			'limite_venda' => 0,
-			'contribuinte' => 1,
-			'rua_cobranca' => '',
-			'numero_cobranca' => '',
-			'bairro_cobranca' => '',
-			'cep_cobranca' => '',
-			'cidade_cobranca_id' => NULL,
-			'empresa_id' => $this->empresa_id
-		];
-
-		return $dadosCliente;
-	}
-
-	private function getProdutos($xml){
-		$itens = [];
-		try{
-			foreach($xml->NFe->infNFe->det as $item) {
-
-				$produto = Produto::verificaCadastrado($item->prod->cEAN,
-					$item->prod->xProd, $item->prod->cProd);
-
-				$produtoNovo = !$produto ? true : false;
-				$item = [
-					'codigo' => $item->prod->cProd,
-					'xProd' => $item->prod->xProd,
-					'NCM' => $item->prod->NCM,
-					'CFOP' => $item->prod->CFOP,
-					'CFOP_entrada' => $this->getCfopEntrada($item->prod->CFOP),
-					'uCom' => $item->prod->uCom,
-					'vUnCom' => $item->prod->vUnCom,
-					'qCom' => $item->prod->qCom,
-					'codBarras' => $item->prod->cEAN,
-					'produtoNovo' => $produtoNovo,
-					'produtoId' => $produtoNovo ? '0' : $produto->id
-				];
-				array_push($itens, $item);
-			}
-			return $itens;
-		}catch(\Exception $e){
-			return null;
-		}
-	}
-
-	private function getCfopEntrada($cfop){
-		$natureza = NaturezaOperacao::
-		where('empresa_id', $this->empresa_id)
-		->where('CFOP_saida_estadual', $cfop)
-		->first();
-
-		if($natureza != null){
-			return $natureza->CFOP_entrada_inter_estadual;
-		}
-
-		$natureza = NaturezaOperacao::
-		where('empresa_id', $this->empresa_id)
-		->where('CFOP_saida_inter_estadual', $cfop)
-		->first();
-
-		if($natureza != null){
-			return $natureza->CFOP_entrada_inter_estadual;
-		}
-
-		$digito = substr($cfop, 0, 1);
-		if($digito == '5'){
-			return '1'. substr($cfop, 1, 4);
-
-		}else{
-			return '2'. substr($cfop, 1, 4);
-		}
-	}
-
-	private function getCfopEstadual($cfop){
-		$digito = substr($cfop, 0, 1);
-		if($digito == '5'){
-			return $cfop;
-		}else{
-			return '5'. substr($cfop, 1, 4);
-		}
-	}
-
-	private function getCfopInterEstadual($cfop){
-		$digito = substr($cfop, 0, 1);
-		if($digito == '6'){
-			return $cfop;
-		}else{
-			return '6'. substr($cfop, 1, 4);
-		}
-	}
-
-	private function getCfopEntradaInterEstadual($cfop){
-		$digito = substr($cfop, 0, 1);
-		return '2'. substr($cfop, 1, 4);
-	}
-
-	private function getCfopEntradaEstadual($cfop){
-		$digito = substr($cfop, 0, 1);
-		return '1'. substr($cfop, 1, 4);
-	}
-
-	private function getFatura($xml){
-		$fatura = [];
-
-		try{
-			if (!empty($xml->NFe->infNFe->cobr->dup))
-			{
-				foreach($xml->NFe->infNFe->cobr->dup as $dup) {
-					$titulo = $dup->nDup;
-					$vencimento = $dup->dVenc;
-					$vencimento = explode('-', $vencimento);
-					$vencimento = $vencimento[2]."/".$vencimento[1]."/".$vencimento[0];
-					$vlr_parcela = number_format((double) $dup->vDup, 2, ",", ".");
-
-					$parcela = [
-						'numero' => (int)$titulo,
-						'vencimento' => $dup->dVenc,
-						'valor_parcela' => $vlr_parcela,
-						'rand' => rand(0, 10000)
-					];
-					array_push($fatura, $parcela);
-				}
-			}else{
-
-				$vencimento = explode('-', substr($xml->NFe->infNFe->ide->dhEmi[0], 0,10));
-				$vencimento = $vencimento[2]."/".$vencimento[1]."/".$vencimento[0];
-				$parcela = [
-					'numero' => 1,
-					'vencimento' => substr($xml->NFe->infNFe->ide->dhEmi[0], 0,10),
-					'valor_parcela' => (float)$xml->NFe->infNFe->pag->detPag->vPag[0],
-					'rand' => rand(0, 10000)
-				];
-				array_push($fatura, $parcela);
-			}
-		}catch(\Exception $e){
-
-		}
-
-		return $fatura;
-	}
-
-	public function importStore(Request $request){
-		$tabela = $request->tabela;
-		$data = json_decode($request->data);
-		$public = env('SERVIDOR_WEB') ? 'public/' : '';
-
-		foreach($data as $d){
-			if($request->input('ch_'.$d->chave)){
-				$cliente = json_decode(json_encode($d->cliente), true);
-				if($cliente){
-					$cliente = $this->insereCliente($cliente);
-				}else{
-
-				}
-
-				$produtos = json_decode(json_encode($d->produtos), true);
-
-				$itens = $this->insereProdutos($produtos);
-
-				if($tabela == 'vendas'){
-					if($cliente != null){
-
-						$vendaId = $this->salvarVenda($d, $cliente, $produtos);
-						$this->gravarItensVenda($vendaId, $itens);
-
-						$fatura = json_decode(json_encode($d->fatura), true);
-						$this->salvarFatura($vendaId, $fatura);
-
-						File::copy($d->file, public_path('xml_nfe/') . $d->chave.".xml");
-					}
-				}else{
-					$vendaId = $this->salvarVendaCaixa($d, $produtos);
-					$this->gravarItensVendaCaixa($vendaId, $itens);
-
-					File::copy($d->file, public_path('xml_nfce/'). $d->chave.".xml");
-				}
-			}
-		}
-
-		session()->flash('mensagem_sucesso', 'Importação concluida!!');
-		return redirect('/vendas/importacao');
-	}
-
-	private function salvarVenda($venda, $cliente, $produtos){
-		$venda = json_decode(json_encode($venda), true);
-
-		$natureza = $this->insereNatureza($venda['natureza'][0], $produtos);
-
-		$arrVenda = [
-			'cliente_id' => $cliente->id,
-			'transportadora_id' => NULL,
-			'forma_pagamento' => isset($venda['forma_pagamento'][0]) ? ($venda['forma_pagamento'][0] == 0 ? 'a_vista' : 'personalizado') : 'a_vista',
-			'tipo_pagamento' => $venda['tipo_pagamento'][0],
-			'usuario_id' => get_id_user(),
-			'valor_total' => $venda['total'][0],
-			'desconto' => $venda['desconto'][0],
-			'acrescimo' => 0,
-			'frete_id' => null,
-			'NfNumero' => $venda['numero_nf'][0],
-			'natureza_id' => $natureza,
-			'path_xml' => '',
-			'chave' => $venda['chave'],
-			'sequencia_cce' => 0,
-			'observacao' => $venda['observacao'][0] ?? '',
-			'estado' => 'APROVADO',
-			'empresa_id' => $this->empresa_id,
-		];
+    public function gerarXml($id){
+        $certificado = Certificado::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        if($certificado == null){
+            echo "Necessário o certificado para realizar esta ação!";
+            die;
+        }
+        $venda = Venda::find($id);
+
+        if(valida_objeto($venda)){
+
+            $isFilial = $venda->filial_id;
+            if($venda->filial_id == null){
+                $config = ConfigNota::
+                where('empresa_id', $this->empresa_id)
+                    ->first();
+            }else{
+                $config = Filial::findOrFail($venda->filial_id);
+                if($config->arquivo_certificado == null){
+                    echo "Necessário o certificado para realizar esta ação!";
+                    die;
+                }
+            }
+            $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
+
+            $nfe_service = new NFService([
+                "atualizacao" => date('Y-m-d h:i:s'),
+                "tpAmb" => (int)$config->ambiente,
+                "razaosocial" => $config->razao_social,
+                "siglaUF" => $config->UF,
+                "cnpj" => $cnpj,
+                "schemes" => "PL_009_V4",
+                "versao" => "4.00",
+                "tokenIBPT" => "AAAAAAA",
+                "CSC" => $config->csc,
+                "CSCid" => $config->csc_id,
+                "is_filial" => $isFilial,
+            ]);
+            $nfe = $nfe_service->gerarNFe($id);
+            if(!isset($nfe['erros_xml'])){
+                $xml = $nfe_service->sign($nfe['xml']);
+
+                return response($xml)
+                    ->header('Content-Type', 'application/xml');
+
+            } else{
+                foreach($nfe['erros_xml'] as $e) {
+                    echo $e;
+                }
+            }
+        }else{
+            return redirect('/403');
+        }
+    }
+
+    public function calculaFrete(Request $request){
+
+        $stringUrl = "&sCepOrigem=$request->sCepOrigem&sCepDestino=$request->sCepDestino&nVlPeso=$request->nVlPeso";
+
+        $stringUrl .= "&nVlComprimento=$request->nVlComprimento&nVlAltura=$request->nVlAltura&nVlLargura=$request->nVlLargura&nCdServico=04014";
+
+        $url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
+
+        $unparsedResult = file_get_contents($url);
+        $parsedResult = simplexml_load_string($unparsedResult);
+
+        $stringUrl = "&sCepOrigem=$request->sCepOrigem&sCepDestino=$request->sCepDestino&nVlPeso=$request->nVlPeso";
+
+        $stringUrl .= "&nVlComprimento=$request->nVlComprimento&nVlAltura=$request->nVlAltura&nVlLargura=$request->nVlLargura&nCdServico=04510";
+
+        $url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
+
+        $unparsedResultSedex = file_get_contents($url);
+        $parsedResultSedex = simplexml_load_string($unparsedResultSedex);
+
+        $retorno = array(
+            'preco_sedex' => strval($parsedResult->cServico->Valor),
+            'prazo_sedex' => strval($parsedResult->cServico->PrazoEntrega),
+
+            'preco' => strval($parsedResultSedex->cServico->Valor),
+            'prazo' => strval($parsedResultSedex->cServico->PrazoEntrega)
+        );
+
+        return response()->json($retorno, 200);
+    }
+
+    public function importacao(){
+        $zip_loaded = extension_loaded('zip') ? true : false;
+        if ($zip_loaded === false) {
+            session()->flash('mensagem_erro', "Por favor instale/habilite o PHP zip para importar");
+            return redirect()->back();
+        }
+
+        $natureza = NaturezaOperacao::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        if($natureza == null){
+            session()->flash('mensagem_erro', 'Informe uma natureza de operação!');
+            return redirect('/naturezaOperacao/new');
+        }
+
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        if($config == null){
+            session()->flash('mensagem_erro', 'Informe a configuração do emitente!');
+            return redirect('/configNF');
+        }
+
+        $tributacao = Tributacao::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        if($tributacao == null){
+            session()->flash('mensagem_erro', 'Informe a tributação!');
+            return redirect('/tributos');
+        }
+
+        return view('vendas/importacao')
+            ->with('title', 'Importação de xml');
+    }
+
+    public function importacaoStore(Request $request){
+        if ($request->hasFile('file')) {
+
+            $zip = new \ZipArchive();
+            $zip->open($request->file);
+
+            $public = env('SERVIDOR_WEB') ? 'public/' : '';
+            $destino = $public . 'extract';
+            $this->limparPasta($destino);
+            if($zip->extractTo($destino) == TRUE){
+
+                $data = $this->preparaXmls($destino);
+
+                if(sizeof($data) == 0){
+                    session()->flash('mensagem_erro', "Algo errado com o arquivo!");
+                    return redirect()->back();
+                }
+                return view('vendas/import')
+                    ->with('data', $data)
+                    ->with('title', 'Importação de XML');
+
+            }else {
+                session()->flash('mensagem_erro', "Erro ao desconpactar arquivo");
+                return redirect()->back();
+            }
+            $zip->close();
+        }else{
+            session()->flash('mensagem_erro', 'Nenhum Arquivo!!');
+            return redirect()->back();
+        }
+    }
+
+    private function limparPasta($destino){
+        $files = glob($destino."/*");
+        foreach($files as $file){
+            if(is_file($file)) unlink($file);
+        }
+    }
+
+    private function preparaXmls($destino){
+        $files = glob($destino."/*");
+        $data = [];
+        foreach($files as $file){
+            if(is_file($file)){
+                $xml = simplexml_load_file($file);
+                $cliente = $this->getCliente($xml);
+                $produtos = $this->getProdutos($xml);
+                $fatura = $this->getFatura($xml);
+
+                if($produtos != null){
+
+                    $temp = [
+                        'data' => $xml->NFe->infNFe->ide->dhEmi,
+                        'chave' => substr($xml->NFe->infNFe->attributes()->Id, 3, 44),
+                        'total' => $xml->NFe->infNFe->total->ICMSTot->vProd,
+                        'numero_nf' => $xml->NFe->infNFe->ide->nNF,
+                        'desconto' => $xml->NFe->infNFe->total->ICMSTot->vDesc,
+                        'cliente' => $cliente,
+                        'produtos' => $produtos,
+                        'fatura' => $fatura,
+                        'file' => $file,
+                        'natureza' => $xml->NFe->infNFe->ide->natOp[0],
+                        'observacao' => $xml->NFe->infNFe->infAdic ? $xml->NFe->infNFe->infAdic->infCpl[0] : '',
+                        'tipo_pagamento' => $xml->NFe->infNFe->pag->detPag->tPag,
+                        'forma_pagamento' => $xml->NFe->infNFe->pag->detPag->indPag ?? 0
+                    ];
+                    array_push($data, $temp);
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    private function getCliente($xml){
+        if(!isset($xml->NFe->infNFe->dest->enderDest->cMun)) return null;
+        $cidade = Cidade::getCidadeCod($xml->NFe->infNFe->dest->enderDest->cMun);
+        $dadosCliente = [
+            'cpf_cnpj' => isset($xml->NFe->infNFe->dest->CNPJ) ? $xml->NFe->infNFe->dest->CNPJ : $xml->NFe->infNFe->dest->CPF,
+            'razao_social' => $xml->NFe->infNFe->dest->xNome,
+            'nome_fantasia' => $xml->NFe->infNFe->dest->xFant,
+            'rua' => $xml->NFe->infNFe->dest->enderDest->xLgr,
+            'numero' => $xml->NFe->infNFe->dest->enderDest->nro,
+            'bairro' => $xml->NFe->infNFe->dest->enderDest->xBairro,
+            'cep' => $xml->NFe->infNFe->dest->enderDest->CEP,
+            'telefone' => $xml->NFe->infNFe->dest->enderDest->fone,
+            'celular' => '',
+            'ie_rg' => $xml->NFe->infNFe->dest->IE,
+            'cidade_id' => $cidade != null ? $cidade->id : 1,
+            'consumidor_final' => 1,
+            'limite_venda' => 0,
+            'contribuinte' => 1,
+            'rua_cobranca' => '',
+            'numero_cobranca' => '',
+            'bairro_cobranca' => '',
+            'cep_cobranca' => '',
+            'cidade_cobranca_id' => NULL,
+            'empresa_id' => $this->empresa_id
+        ];
+
+        return $dadosCliente;
+    }
+
+    private function getProdutos($xml){
+        $itens = [];
+        try{
+            foreach($xml->NFe->infNFe->det as $item) {
+
+                $produto = Produto::verificaCadastrado($item->prod->cEAN,
+                    $item->prod->xProd, $item->prod->cProd);
+
+                $produtoNovo = !$produto ? true : false;
+                $item = [
+                    'codigo' => $item->prod->cProd,
+                    'xProd' => $item->prod->xProd,
+                    'NCM' => $item->prod->NCM,
+                    'CFOP' => $item->prod->CFOP,
+                    'CFOP_entrada' => $this->getCfopEntrada($item->prod->CFOP),
+                    'uCom' => $item->prod->uCom,
+                    'vUnCom' => $item->prod->vUnCom,
+                    'qCom' => $item->prod->qCom,
+                    'codBarras' => $item->prod->cEAN,
+                    'produtoNovo' => $produtoNovo,
+                    'produtoId' => $produtoNovo ? '0' : $produto->id
+                ];
+                array_push($itens, $item);
+            }
+            return $itens;
+        }catch(\Exception $e){
+            return null;
+        }
+    }
+
+    private function getCfopEntrada($cfop){
+        $natureza = NaturezaOperacao::
+        where('empresa_id', $this->empresa_id)
+            ->where('CFOP_saida_estadual', $cfop)
+            ->first();
+
+        if($natureza != null){
+            return $natureza->CFOP_entrada_inter_estadual;
+        }
+
+        $natureza = NaturezaOperacao::
+        where('empresa_id', $this->empresa_id)
+            ->where('CFOP_saida_inter_estadual', $cfop)
+            ->first();
+
+        if($natureza != null){
+            return $natureza->CFOP_entrada_inter_estadual;
+        }
+
+        $digito = substr($cfop, 0, 1);
+        if($digito == '5'){
+            return '1'. substr($cfop, 1, 4);
+
+        }else{
+            return '2'. substr($cfop, 1, 4);
+        }
+    }
+
+    private function getCfopEstadual($cfop){
+        $digito = substr($cfop, 0, 1);
+        if($digito == '5'){
+            return $cfop;
+        }else{
+            return '5'. substr($cfop, 1, 4);
+        }
+    }
+
+    private function getCfopInterEstadual($cfop){
+        $digito = substr($cfop, 0, 1);
+        if($digito == '6'){
+            return $cfop;
+        }else{
+            return '6'. substr($cfop, 1, 4);
+        }
+    }
+
+    private function getCfopEntradaInterEstadual($cfop){
+        $digito = substr($cfop, 0, 1);
+        return '2'. substr($cfop, 1, 4);
+    }
+
+    private function getCfopEntradaEstadual($cfop){
+        $digito = substr($cfop, 0, 1);
+        return '1'. substr($cfop, 1, 4);
+    }
+
+    private function getFatura($xml){
+        $fatura = [];
+
+        try{
+            if (!empty($xml->NFe->infNFe->cobr->dup))
+            {
+                foreach($xml->NFe->infNFe->cobr->dup as $dup) {
+                    $titulo = $dup->nDup;
+                    $vencimento = $dup->dVenc;
+                    $vencimento = explode('-', $vencimento);
+                    $vencimento = $vencimento[2]."/".$vencimento[1]."/".$vencimento[0];
+                    $vlr_parcela = number_format((double) $dup->vDup, 2, ",", ".");
+
+                    $parcela = [
+                        'numero' => (int)$titulo,
+                        'vencimento' => $dup->dVenc,
+                        'valor_parcela' => $vlr_parcela,
+                        'rand' => rand(0, 10000)
+                    ];
+                    array_push($fatura, $parcela);
+                }
+            }else{
+
+                $vencimento = explode('-', substr($xml->NFe->infNFe->ide->dhEmi[0], 0,10));
+                $vencimento = $vencimento[2]."/".$vencimento[1]."/".$vencimento[0];
+                $parcela = [
+                    'numero' => 1,
+                    'vencimento' => substr($xml->NFe->infNFe->ide->dhEmi[0], 0,10),
+                    'valor_parcela' => (float)$xml->NFe->infNFe->pag->detPag->vPag[0],
+                    'rand' => rand(0, 10000)
+                ];
+                array_push($fatura, $parcela);
+            }
+        }catch(\Exception $e){
+
+        }
+
+        return $fatura;
+    }
+
+    public function importStore(Request $request){
+        $tabela = $request->tabela;
+        $data = json_decode($request->data);
+        $public = env('SERVIDOR_WEB') ? 'public/' : '';
+
+        foreach($data as $d){
+            if($request->input('ch_'.$d->chave)){
+                $cliente = json_decode(json_encode($d->cliente), true);
+                if($cliente){
+                    $cliente = $this->insereCliente($cliente);
+                }else{
+
+                }
+
+                $produtos = json_decode(json_encode($d->produtos), true);
+
+                $itens = $this->insereProdutos($produtos);
+
+                if($tabela == 'vendas'){
+                    if($cliente != null){
+
+                        $vendaId = $this->salvarVenda($d, $cliente, $produtos);
+                        $this->gravarItensVenda($vendaId, $itens);
+
+                        $fatura = json_decode(json_encode($d->fatura), true);
+                        $this->salvarFatura($vendaId, $fatura);
+
+                        File::copy($d->file, public_path('xml_nfe/') . $d->chave.".xml");
+                    }
+                }else{
+                    $vendaId = $this->salvarVendaCaixa($d, $produtos);
+                    $this->gravarItensVendaCaixa($vendaId, $itens);
+
+                    File::copy($d->file, public_path('xml_nfce/'). $d->chave.".xml");
+                }
+            }
+        }
+
+        session()->flash('mensagem_sucesso', 'Importação concluida!!');
+        return redirect('/vendas/importacao');
+    }
+
+    private function salvarVenda($venda, $cliente, $produtos){
+        $venda = json_decode(json_encode($venda), true);
+
+        $natureza = $this->insereNatureza($venda['natureza'][0], $produtos);
+
+        $arrVenda = [
+            'cliente_id' => $cliente->id,
+            'transportadora_id' => NULL,
+            'forma_pagamento' => isset($venda['forma_pagamento'][0]) ? ($venda['forma_pagamento'][0] == 0 ? 'a_vista' : 'personalizado') : 'a_vista',
+            'tipo_pagamento' => $venda['tipo_pagamento'][0],
+            'usuario_id' => get_id_user(),
+            'valor_total' => $venda['total'][0],
+            'desconto' => $venda['desconto'][0],
+            'acrescimo' => 0,
+            'frete_id' => null,
+            'NfNumero' => $venda['numero_nf'][0],
+            'natureza_id' => $natureza,
+            'path_xml' => '',
+            'chave' => $venda['chave'],
+            'sequencia_cce' => 0,
+            'observacao' => $venda['observacao'][0] ?? '',
+            'estado' => 'APROVADO',
+            'empresa_id' => $this->empresa_id,
+        ];
         $this->syncNotaEmContasReceber($venda, '55');
-		// dd($arrVenda);
-		// echo "<pre>";
-		// print_r($arrVenda);
-		// echo "</pre>";
+        // dd($arrVenda);
+        // echo "<pre>";
+        // print_r($arrVenda);
+        // echo "</pre>";
 
-		$result = Venda::create($arrVenda);
-		$data = $venda['data'][0];
-		$data = \Carbon\Carbon::parse($data)->format('Y-m-d H:i:s');
-		$result->created_at = $data;
-		$result->data_emissao = $data;
-		$result->save();
-		return $result->id;
+        $result = Venda::create($arrVenda);
+        $data = $venda['data'][0];
+        $data = \Carbon\Carbon::parse($data)->format('Y-m-d H:i:s');
+        $result->created_at = $data;
+        $result->data_emissao = $data;
+        $result->save();
+        return $result->id;
 
-	}
+    }
 
-	private function salvarVendaCaixa($venda, $produtos){
-		$venda = json_decode(json_encode($venda), true);
+    private function salvarVendaCaixa($venda, $produtos){
+        $venda = json_decode(json_encode($venda), true);
 
-		$natureza = $this->insereNatureza($venda['natureza'][0], $produtos);
-		$arrVenda = [
-			'cliente_id' => NULL,
-			'usuario_id' => get_id_user(),
-			'valor_total' => $venda['total'][0],
-			'NFcNumero' => $venda['numero_nf'][0],
-			'natureza_id' => $natureza,
-			'chave' => $venda['chave'],
-			'path_xml' => '',
-			'estado' => 'APROVADO',
-			'tipo_pagamento' => $venda['tipo_pagamento'][0],
-			'forma_pagamento' => isset($venda['forma_pagamento'][0]) ? $venda['forma_pagamento'][0] == 0 ? 'a_vista' : 'personalizado' : 'a_vista',
-			'dinheiro_recebido' => $venda['total'][0],
-			'troco' => 0,
-			'nome' => '',
-			'cpf' => '',
-			'observacao' => $venda['observacao'][0] ?? '',
-			'desconto' => $venda['desconto'][0],
-			'acrescimo' => 0,
-			'pedido_delivery_id' => 0,
-			'tipo_pagamento_1' => '',
-			'valor_pagamento_1' => 0,
-			'tipo_pagamento_2' => '',
-			'valor_pagamento_2' => 0,
-			'tipo_pagamento_3' => '',
-			'valor_pagamento_3' => 0,
-			'empresa_id' => $this->empresa_id,
-			'numero_sequencial' => VendaCaixa::lastNumero($this->empresa_id),
-			'created_at' => $venda['data'][0]
-		];
+        $natureza = $this->insereNatureza($venda['natureza'][0], $produtos);
+        $arrVenda = [
+            'cliente_id' => NULL,
+            'usuario_id' => get_id_user(),
+            'valor_total' => $venda['total'][0],
+            'NFcNumero' => $venda['numero_nf'][0],
+            'natureza_id' => $natureza,
+            'chave' => $venda['chave'],
+            'path_xml' => '',
+            'estado' => 'APROVADO',
+            'tipo_pagamento' => $venda['tipo_pagamento'][0],
+            'forma_pagamento' => isset($venda['forma_pagamento'][0]) ? $venda['forma_pagamento'][0] == 0 ? 'a_vista' : 'personalizado' : 'a_vista',
+            'dinheiro_recebido' => $venda['total'][0],
+            'troco' => 0,
+            'nome' => '',
+            'cpf' => '',
+            'observacao' => $venda['observacao'][0] ?? '',
+            'desconto' => $venda['desconto'][0],
+            'acrescimo' => 0,
+            'pedido_delivery_id' => 0,
+            'tipo_pagamento_1' => '',
+            'valor_pagamento_1' => 0,
+            'tipo_pagamento_2' => '',
+            'valor_pagamento_2' => 0,
+            'tipo_pagamento_3' => '',
+            'valor_pagamento_3' => 0,
+            'empresa_id' => $this->empresa_id,
+            'numero_sequencial' => VendaCaixa::lastNumero($this->empresa_id),
+            'created_at' => $venda['data'][0]
+        ];
         $this->syncNotaEmContasReceber($venda, '65');
-		// echo "<pre>";
-		// print_r($arrVenda);
-		// echo "</pre>";
+        // echo "<pre>";
+        // print_r($arrVenda);
+        // echo "</pre>";
 
-		$result = VendaCaixa::create($arrVenda);
-		$data = $venda['data'][0];
-		$data = \Carbon\Carbon::parse($data)->format('Y-m-d H:i:s');
-		$result->created_at = $data;
-		$result->created_at = $data;
-		$result->save();
-		return $result->id;
+        $result = VendaCaixa::create($arrVenda);
+        $data = $venda['data'][0];
+        $data = \Carbon\Carbon::parse($data)->format('Y-m-d H:i:s');
+        $result->created_at = $data;
+        $result->created_at = $data;
+        $result->save();
+        return $result->id;
 
-	}
+    }
 
     private function gravarItensVenda($vendaId, $itens){
         foreach($itens as $i){
@@ -3408,110 +3282,110 @@ class VendaController extends Controller
         }
     }
 
-	private function gravarItensVendaCaixa($vendaId, $itens){
-		foreach($itens as $i){
-			$pTemp = Produto::find($i['codigo']);
+    private function gravarItensVendaCaixa($vendaId, $itens){
+        foreach($itens as $i){
+            $pTemp = Produto::find($i['codigo']);
 
-			ItemVendaCaixa::create([
-				'venda_caixa_id' => $vendaId,
-				'produto_id' => $i['codigo'],
-				'quantidade' => $i['quantidade'],
-				'valor' => $i['valor'],
-				'item_pedido_id' => NULL,
-				'observacao' => '',
-				'valor_custo' => $pTemp->valor_compra
-			]);
-		}
-	}
+            ItemVendaCaixa::create([
+                'venda_caixa_id' => $vendaId,
+                'produto_id' => $i['codigo'],
+                'quantidade' => $i['quantidade'],
+                'valor' => $i['valor'],
+                'item_pedido_id' => NULL,
+                'observacao' => '',
+                'valor_custo' => $pTemp->valor_compra
+            ]);
+        }
+    }
 
-	private function salvarFatura($vendaId, $fatura){
-		foreach($fatura as $key => $f){
-			try{
-				$resultFatura = ContaReceber::create([
-					'venda_id' => $vendaId,
-					'data_vencimento' => (string)$f['vencimento'][0],
-					'data_recebimento' => (string)$f['vencimento'][0],
-					'valor_integral' => __replace($f['valor_parcela']),
-					'valor_recebido' => 0,
-					'status' => false,
-					'entrada' => $f['entrada'],
-					'referencia' => "Parcela da Venda $vendaId",
-					'categoria_id' => CategoriaConta::where('empresa_id', $this->empresa_id)->first()->id,
-					'empresa_id' => $this->empresa_id,
+    private function salvarFatura($vendaId, $fatura){
+        foreach($fatura as $key => $f){
+            try{
+                $resultFatura = ContaReceber::create([
+                    'venda_id' => $vendaId,
+                    'data_vencimento' => (string)$f['vencimento'][0],
+                    'data_recebimento' => (string)$f['vencimento'][0],
+                    'valor_integral' => __replace($f['valor_parcela']),
+                    'valor_recebido' => 0,
+                    'status' => false,
+                    'entrada' => $f['entrada'],
+                    'referencia' => "Parcela da Venda $vendaId",
+                    'categoria_id' => CategoriaConta::where('empresa_id', $this->empresa_id)->first()->id,
+                    'empresa_id' => $this->empresa_id,
                     'filial_id' => $fatura['filial_id'] != -1 ? $fatura['filial_id'] : null,
-				]);
-			}catch(\Exception $e){
+                ]);
+            }catch(\Exception $e){
 
-			}
-		}
-	}
+            }
+        }
+    }
 
-	private function insereNatureza($nome, $produtos){
-		$natureza = NaturezaOperacao::where('natureza', $nome)
-		->where('empresa_id', $this->empresa_id)
-		->first();
+    private function insereNatureza($nome, $produtos){
+        $natureza = NaturezaOperacao::where('natureza', $nome)
+            ->where('empresa_id', $this->empresa_id)
+            ->first();
 
-		$cfopEstadual = $this->getCfopEstadual($produtos[0]['CFOP'][0]);
-		$cfopInterEstadual = $this->getCfopInterEstadual($produtos[0]['CFOP'][0]);
-		$cfopEntradaEstadual = $this->getCfopEntradaEstadual(
-			$produtos[0]['CFOP'][0]);
-		$cfopEntradaInterEstadual = $this->getCfopEntradaInterEstadual(
-			$produtos[0]['CFOP'][0]);
+        $cfopEstadual = $this->getCfopEstadual($produtos[0]['CFOP'][0]);
+        $cfopInterEstadual = $this->getCfopInterEstadual($produtos[0]['CFOP'][0]);
+        $cfopEntradaEstadual = $this->getCfopEntradaEstadual(
+            $produtos[0]['CFOP'][0]);
+        $cfopEntradaInterEstadual = $this->getCfopEntradaInterEstadual(
+            $produtos[0]['CFOP'][0]);
 
-		if($natureza != null) return $natureza->id;
+        if($natureza != null) return $natureza->id;
 
-		$data = [
-			'natureza' => $nome,
-			'CFOP_entrada_estadual' => $cfopEntradaEstadual,
-			'CFOP_entrada_inter_estadual' => $cfopEntradaInterEstadual,
-			'CFOP_saida_estadual' => $cfopEstadual,
-			'CFOP_saida_inter_estadual' => $cfopInterEstadual,
-			'empresa_id' => $this->empresa_id,
-			'sobrescreve_cfop' => 0,
-			'finNFe' => 1,
-			'nao_movimenta_estoque' => 0
-		];
-		$res = NaturezaOperacao::create($data);
-		return $res->id;
-	}
+        $data = [
+            'natureza' => $nome,
+            'CFOP_entrada_estadual' => $cfopEntradaEstadual,
+            'CFOP_entrada_inter_estadual' => $cfopEntradaInterEstadual,
+            'CFOP_saida_estadual' => $cfopEstadual,
+            'CFOP_saida_inter_estadual' => $cfopInterEstadual,
+            'empresa_id' => $this->empresa_id,
+            'sobrescreve_cfop' => 0,
+            'finNFe' => 1,
+            'nao_movimenta_estoque' => 0
+        ];
+        $res = NaturezaOperacao::create($data);
+        return $res->id;
+    }
 
-	private function insereCliente($data){
+    private function insereCliente($data){
 
-		if(!isset($data['cpf_cnpj'][0])) return null;
+        if(!isset($data['cpf_cnpj'][0])) return null;
 
-		$cadastrado = Cliente::verificaCadastrado($data['cpf_cnpj'][0]);
+        $cadastrado = Cliente::verificaCadastrado($data['cpf_cnpj'][0]);
 
-		if($cadastrado != null) return $cadastrado;
+        if($cadastrado != null) return $cadastrado;
 
-		$cli = [
-			'cpf_cnpj' => $data['cpf_cnpj'][0],
-			'razao_social' => $data['razao_social'][0],
-			'nome_fantasia' => $data['nome_fantasia'] ? $data['nome_fantasia'][0] : "",
-			'rua' => $data['rua'][0],
-			'numero' => $data['numero'][0],
-			'bairro' => $data['bairro'][0],
-			'cep' => isset($data['cep'][0]) ? $data['cep'][0] : '',
-			'telefone' => $data['telefone'] ? $data['telefone'][0] : "",
-			'celular' => '',
-			'ie_rg' => $data['ie_rg'] ? $data['ie_rg'][0] : "",
-			'cidade_id' => $data['cidade_id'],
-			'consumidor_final' => 1,
-			'limite_venda' => 0,
-			'contribuinte' => 1,
-			'rua_cobranca' => '',
-			'numero_cobranca' => '',
-			'bairro_cobranca' => '',
-			'cep_cobranca' => '',
-			'email' => '',
-			'cidade_cobranca_id' => NULL,
-			'empresa_id' => $this->empresa_id
-		];
+        $cli = [
+            'cpf_cnpj' => $data['cpf_cnpj'][0],
+            'razao_social' => $data['razao_social'][0],
+            'nome_fantasia' => $data['nome_fantasia'] ? $data['nome_fantasia'][0] : "",
+            'rua' => $data['rua'][0],
+            'numero' => $data['numero'][0],
+            'bairro' => $data['bairro'][0],
+            'cep' => isset($data['cep'][0]) ? $data['cep'][0] : '',
+            'telefone' => $data['telefone'] ? $data['telefone'][0] : "",
+            'celular' => '',
+            'ie_rg' => $data['ie_rg'] ? $data['ie_rg'][0] : "",
+            'cidade_id' => $data['cidade_id'],
+            'consumidor_final' => 1,
+            'limite_venda' => 0,
+            'contribuinte' => 1,
+            'rua_cobranca' => '',
+            'numero_cobranca' => '',
+            'bairro_cobranca' => '',
+            'cep_cobranca' => '',
+            'email' => '',
+            'cidade_cobranca_id' => NULL,
+            'empresa_id' => $this->empresa_id
+        ];
 
-		$res = Cliente::create($cli);
-		$cliente = Cliente::find($res->id);
-		return $cliente;
+        $res = Cliente::create($cli);
+        $cliente = Cliente::find($res->id);
+        return $cliente;
 
-	}
+    }
 
     private function insereProdutos($data){
         $itens = [];
@@ -3610,188 +3484,188 @@ class VendaController extends Controller
         return $itens;
     }
 
-	public function estadoFiscal($id){
-		$venda = Venda::
-		where('id', $id)
-		->first();
-		$value = session('user_logged');
-		if($value['adm'] == 0) return redirect()->back();
-		if(valida_objeto($venda)){
+    public function estadoFiscal($id){
+        $venda = Venda::
+        where('id', $id)
+            ->first();
+        $value = session('user_logged');
+        if($value['adm'] == 0) return redirect()->back();
+        if(valida_objeto($venda)){
 
-			return view("vendas/alterar_estado_fiscal")
-			->with('venda', $venda)
-			->with('title', "Alterar estado venda $id");
-		}else{
-			return redirect('/403');
-		}
-	}
+            return view("vendas/alterar_estado_fiscal")
+                ->with('venda', $venda)
+                ->with('title', "Alterar estado venda $id");
+        }else{
+            return redirect('/403');
+        }
+    }
 
-	public function estadoFiscalStore(Request $request){
-		try{
-			$venda = Venda::find($request->venda_id);
-			$estado = $request->estado;
+    public function estadoFiscalStore(Request $request){
+        try{
+            $venda = Venda::find($request->venda_id);
+            $estado = $request->estado;
 
-			$venda->estado = $estado;
-			if($estado == 'CANCELADO'){
-				$venda->valor_total = 0;
-			}
-			if ($request->hasFile('file')){
-				$public = env('SERVIDOR_WEB') ? 'public/' : '';
+            $venda->estado = $estado;
+            if($estado == 'CANCELADO'){
+                $venda->valor_total = 0;
+            }
+            if ($request->hasFile('file')){
+                $public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-				$xml = simplexml_load_file($request->file);
-				$chave = substr($xml->NFe->infNFe->attributes()->Id, 3, 44);
-				$file = $request->file;
-				$file->move(public_path('xml_nfe'), $chave.'.xml');
-				$venda->chave = $chave;
-				$venda->data_emissao = date('Y-m-d H:i:s');
-				$venda->NfNumero = (int)$xml->NFe->infNFe->ide->nNF;
+                $xml = simplexml_load_file($request->file);
+                $chave = substr($xml->NFe->infNFe->attributes()->Id, 3, 44);
+                $file = $request->file;
+                $file->move(public_path('xml_nfe'), $chave.'.xml');
+                $venda->chave = $chave;
+                $venda->data_emissao = date('Y-m-d H:i:s');
+                $venda->NfNumero = (int)$xml->NFe->infNFe->ide->nNF;
 
-				if($venda->filial_id != null){
-					$config = Filial::findOrFail($venda->filial_id);
-					$config->ultimo_numero_nfe = (int)$xml->NFe->infNFe->ide->nNF;
-					$config->save();
-				}else{
-					$config = ConfigNota::
-					where('empresa_id', $this->empresa_id)
-					->first();
+                if($venda->filial_id != null){
+                    $config = Filial::findOrFail($venda->filial_id);
+                    $config->ultimo_numero_nfe = (int)$xml->NFe->infNFe->ide->nNF;
+                    $config->save();
+                }else{
+                    $config = ConfigNota::
+                    where('empresa_id', $this->empresa_id)
+                        ->first();
 
-					$config->ultimo_numero_nfe = (int)$xml->NFe->infNFe->ide->nNF;
-					$config->save();
-				}
+                    $config->ultimo_numero_nfe = (int)$xml->NFe->infNFe->ide->nNF;
+                    $config->save();
+                }
 
-			}
+            }
 
-			$venda->save();
-			session()->flash("mensagem_sucesso", "Estado alterado");
+            $venda->save();
+            session()->flash("mensagem_sucesso", "Estado alterado");
 
-		}catch(\Exception $e){
-			session()->flash("mensagem_erro", "Erro: " . $e->getMessage());
+        }catch(\Exception $e){
+            session()->flash("mensagem_erro", "Erro: " . $e->getMessage());
 
-		}
-		return redirect()->back();
-	}
+        }
+        return redirect()->back();
+    }
 
-	public function calcComissao(){
+    public function calcComissao(){
 
-		$vendas = Venda::
-		where('empresa_id', $this->empresa_id)
-		->get();
+        $vendas = Venda::
+        where('empresa_id', $this->empresa_id)
+            ->get();
 
-		foreach($vendas as $v){
-			$comissao = ComissaoVenda::
-			where('empresa_id', $this->empresa_id)
-			->where('tabela', 'vendas')
-			->where('venda_id', $v->id)
-			->first();
-			if($comissao == null){
-				try{
-					$usuario = Usuario::find($v->usuario_id);
-					if(isset($usuario->funcionario)){
-						$percentual_comissao = __replace($usuario->funcionario->percentual_comissao);
-						$valorComissao = ($v->valor_total * $percentual_comissao) / 100;
-						echo $v->valor_total  . "<br>";
-						echo $percentual_comissao  . "<br>";
-						echo $valorComissao . "<br>";
-						echo "<br><br>";
-						ComissaoVenda::create(
-							[
-								'funcionario_id' => $usuario->funcionario->id,
-								'venda_id' => $v->id,
-								'tabela' => 'vendas',
-								'valor' => $valorComissao,
-								'status' => 0,
-								'empresa_id' => $this->empresa_id,
-								'created_at' => $v->created_at
-							]
-						);
-					}else{
-						echo $v->usuario->nome . ' - '. $v->created_at . "<br>";
-					}
-				}catch(\Exception $e){
-					echo "Erro: ". $e->getMessage();
-					die;
-				}
-			}
+        foreach($vendas as $v){
+            $comissao = ComissaoVenda::
+            where('empresa_id', $this->empresa_id)
+                ->where('tabela', 'vendas')
+                ->where('venda_id', $v->id)
+                ->first();
+            if($comissao == null){
+                try{
+                    $usuario = Usuario::find($v->usuario_id);
+                    if(isset($usuario->funcionario)){
+                        $percentual_comissao = __replace($usuario->funcionario->percentual_comissao);
+                        $valorComissao = ($v->valor_total * $percentual_comissao) / 100;
+                        echo $v->valor_total  . "<br>";
+                        echo $percentual_comissao  . "<br>";
+                        echo $valorComissao . "<br>";
+                        echo "<br><br>";
+                        ComissaoVenda::create(
+                            [
+                                'funcionario_id' => $usuario->funcionario->id,
+                                'venda_id' => $v->id,
+                                'tabela' => 'vendas',
+                                'valor' => $valorComissao,
+                                'status' => 0,
+                                'empresa_id' => $this->empresa_id,
+                                'created_at' => $v->created_at
+                            ]
+                        );
+                    }else{
+                        echo $v->usuario->nome . ' - '. $v->created_at . "<br>";
+                    }
+                }catch(\Exception $e){
+                    echo "Erro: ". $e->getMessage();
+                    die;
+                }
+            }
 
-		}
-	}
+        }
+    }
 
-	public function gerarFormasPagamento(){
-		$empresas = Empresa::all();
-		foreach($empresas as $e){
-			FormaPagamento::create([
-				'empresa_id' => $e->id,
-				'nome' => 'A vista',
-				'chave' => 'a_vista',
-				'taxa' => 0,
-				'status' => 1,
-				'prazo_dias' => 0,
-				'tipo_taxa' => 'perc'
-			]);
-			FormaPagamento::create([
-				'empresa_id' => $e->id,
-				'nome' => '30 dias',
-				'chave' => '30_dias',
-				'taxa' => 0,
-				'status' => 1,
-				'prazo_dias' => 30,
-				'tipo_taxa' => 'perc'
-			]);
-			FormaPagamento::create([
-				'empresa_id' => $e->id,
-				'nome' => 'Personalizado',
-				'chave' => 'personalizado',
-				'taxa' => 0,
-				'status' => 1,
-				'prazo_dias' => 0,
-				'tipo_taxa' => 'perc'
-			]);
-			FormaPagamento::create([
-				'empresa_id' => $e->id,
-				'nome' => 'Conta crediario',
-				'chave' => 'conta_crediario',
-				'taxa' => 0,
-				'status' => 1,
-				'prazo_dias' => 0,
-				'tipo_taxa' => 'perc'
-			]);
-		}
-	}
+    public function gerarFormasPagamento(){
+        $empresas = Empresa::all();
+        foreach($empresas as $e){
+            FormaPagamento::create([
+                'empresa_id' => $e->id,
+                'nome' => 'A vista',
+                'chave' => 'a_vista',
+                'taxa' => 0,
+                'status' => 1,
+                'prazo_dias' => 0,
+                'tipo_taxa' => 'perc'
+            ]);
+            FormaPagamento::create([
+                'empresa_id' => $e->id,
+                'nome' => '30 dias',
+                'chave' => '30_dias',
+                'taxa' => 0,
+                'status' => 1,
+                'prazo_dias' => 30,
+                'tipo_taxa' => 'perc'
+            ]);
+            FormaPagamento::create([
+                'empresa_id' => $e->id,
+                'nome' => 'Personalizado',
+                'chave' => 'personalizado',
+                'taxa' => 0,
+                'status' => 1,
+                'prazo_dias' => 0,
+                'tipo_taxa' => 'perc'
+            ]);
+            FormaPagamento::create([
+                'empresa_id' => $e->id,
+                'nome' => 'Conta crediario',
+                'chave' => 'conta_crediario',
+                'taxa' => 0,
+                'status' => 1,
+                'prazo_dias' => 0,
+                'tipo_taxa' => 'perc'
+            ]);
+        }
+    }
 
-	public function editXml($id){
-		$item = Venda::findOrFail($id);
+    public function editXml($id){
+        $item = Venda::findOrFail($id);
 
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
 
-		$cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
+        $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
 
-		$nfe_service = new NFService([
-			"atualizacao" => date('Y-m-d h:i:s'),
-			"tpAmb" => (int)$config->ambiente,
-			"razaosocial" => $config->razao_social,
-			"siglaUF" => $config->UF,
-			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
-			"versao" => "4.00",
-			"tokenIBPT" => " v8zRciG2x1Y32X8Q_ebzXXHj5yKd6cwJgkdXgeJTak5rwqe4v4yzt0537HmXrY8G",
-			"CSC" => $config->csc,
-			"CSCid" => $config->csc_id
-		]);
+        $nfe_service = new NFService([
+            "atualizacao" => date('Y-m-d h:i:s'),
+            "tpAmb" => (int)$config->ambiente,
+            "razaosocial" => $config->razao_social,
+            "siglaUF" => $config->UF,
+            "cnpj" => $cnpj,
+            "schemes" => "PL_009_V4",
+            "versao" => "4.00",
+            "tokenIBPT" => " v8zRciG2x1Y32X8Q_ebzXXHj5yKd6cwJgkdXgeJTak5rwqe4v4yzt0537HmXrY8G",
+            "CSC" => $config->csc,
+            "CSCid" => $config->csc_id
+        ]);
 
-		$nfe = $nfe_service->gerarNFe($item->id);
+        $nfe = $nfe_service->gerarNFe($item->id);
 
-		if(!isset($nfe['erros_xml'])){
-			$xml = $nfe['xml'];
+        if(!isset($nfe['erros_xml'])){
+            $xml = $nfe['xml'];
 
-			return view('vendas.edit_xml', compact('item', 'xml'))
-			->with('title', 'Editando XML');
-		}else{
-			print_r($nfe['erros_xml']);
-		}
+            return view('vendas.edit_xml', compact('item', 'xml'))
+                ->with('title', 'Editando XML');
+        }else{
+            print_r($nfe['erros_xml']);
+        }
 
-	}
+    }
 
     public function syncDataEmissaoRetroativa(){
         try {
@@ -3899,8 +3773,5 @@ class VendaController extends Controller
             ->where('venda_id', $venda->id)
             ->update($update);
     }
-
-
-
 
 }

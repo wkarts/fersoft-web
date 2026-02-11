@@ -304,9 +304,11 @@
                                                         {{-- NOME: mínimo 200px --}}
                                                         <span style="min-width: 200px; display: inline-block;">DESCRIÇÃO</span>
                                                     </th>
+                                                    <!--
                                                     <th class="datatable-cell datatable-cell-sort">
                                                         <span style="min-width: 120px; display: inline-block;">IBS/CBS</span>
                                                     </th>
+                                                    -->
                                                     <th class="datatable-cell datatable-cell-sort">
                                                         {{-- VALOR DE VENDA: mínimo 80px --}}
                                                         <span style="min-width: 80px; display: inline-block;">VALOR<br>DE VENDA</span>

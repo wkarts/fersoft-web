@@ -18,6 +18,33 @@
 		url("/loading.gif") 50% 50% no-repeat;
 	}
 
+
+    /* --- PDV: Select2 mais compacto no mobile (sem mexer na lógica) --- */
+    @media (max-width: 576px) {
+        .select2-container--default .select2-selection--single {
+            height: 34px !important;
+            min-height: 34px !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            font-size: 13px !important;
+            line-height: 32px !important;
+            padding-left: 10px !important;
+            padding-right: 28px !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px !important;
+        }
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            font-size: 13px !important;
+            padding: 6px 8px !important;
+        }
+        .select2-container--default .select2-results__option {
+            font-size: 13px !important;
+            padding: 6px 10px !important;
+            line-height: 1.25 !important;
+        }
+    }
+
 </style>
 @endsection
 @section('content')

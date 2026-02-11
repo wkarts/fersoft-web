@@ -666,8 +666,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/gerar-venda/{id}', 'DFeController@gerarVenda');
 	});
 
-        Route::group(['prefix' => '/relatorios'], function(){
-                Route::get('/', 'RelatorioController@index');
+    Route::group(['prefix' => '/relatorios'], function(){
+        Route::get('/', 'RelatorioController@index');
         //Route::get('/relatorios', 'RelatorioController@index')->name('relatorios.index');
         //Route::get('/nfe-numeracao-gaps', 'Relatorios\\NFeNumeracaoGapController@index')->name('relatorios.nfe_numeracao_gaps.index');
         // LISTAGEM / FILTRO
