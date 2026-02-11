@@ -74,7 +74,7 @@ class ProdutoIbsCbsController extends BaseController
         $userId  = $user?->id;
         $userNome= $user?->name ?? $user?->nome ?? 'Usuário';
 
-        $publicDir = public_path('relatorios/ibs-cbs/prd/' . (int)$empresaId);
+        $publicDir = public_path('relatorios_rt/ibs-cbs/prd/' . (int)$empresaId);
         if (!File::exists($publicDir)) {
             File::makeDirectory($publicDir, 0755, true);
         }
@@ -222,7 +222,7 @@ class ProdutoIbsCbsController extends BaseController
             $rowsNoTipiHtml  = File::exists($tmpNoTipiRowsPath) ? File::get($tmpNoTipiRowsPath) : '';
 
             // URLs públicas
-            $baseUrl = url('relatorios/ibs-cbs/prd/' . (int)$empresaId);
+            $baseUrl = url('relatorios_rt/ibs-cbs/prd/' . (int)$empresaId);
             $reportUrl = $baseUrl . '/' . $reportName;
             $csvUpdatedUrl = $baseUrl . '/' . $csvUpdatedName;
             $csvNoTipiUrl  = $baseUrl . '/' . $csvNoTipiName;
