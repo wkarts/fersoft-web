@@ -6,7 +6,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "argws/laravel-updater": "^0.1.0",
+        "argws/laravel-updater": "^0.1.64",
         "cloud-dfe/sdk-php": "^v0.4.4",
         "comtele/comtele_sdk": "^1.1.6",
         "doctrine/dbal": "^4.2",
