@@ -270,23 +270,19 @@
                                                 </a>
                                             </li>
 
-                                                                                        @if(env("SERIALNUMBER") != "")
-                                                                                        <li class="menu-item" aria-haspopup="true">
-                                                                                                <a href="/appUpdate" class="menu-link">
-                                                                                                        <span class="menu-text">Atualização do Sistema</span>
-                                                                                                </a>
-                                                                                        </li>
-                                                                                        @endif
+                                            @if((bool) env('UPDATER_UI_ENABLED', false))
+                                                <li class="menu-item" aria-haspopup="true">
+                                                    <a href="/{{ trim(env('UPDATER_UI_PREFIX', ''), '/') }}" class="menu-link">
+                                                        <span class="menu-text">Atualização do Sistema</span>
+                                                    </a>
+                                                </li>
+                                            @endif
 
-                                                                                        <li class="menu-item" aria-haspopup="true">
-                                                                                                <a href="{{ route('updates.index') }}" class="menu-link">
-                                                                                                        <span class="menu-text">Atualizações do Sistema</span>
-                                                                                                </a>
-                                                                                        </li>
-
-                                                                                </ul>
-                                                                        </div>
-                                                                </li>
+                                             </ul>
+                                            </div>
+                                        <>
+                                        </>
+                                    </li>
 								@endif
 								@foreach($menu as $m)
 								@if(!isset($m['ativo']) || $m['ativo'])

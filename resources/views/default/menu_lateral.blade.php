@@ -458,9 +458,9 @@
                                             </a>
                                         </li>
 
-                                        @if(env("SERIALNUMBER") != "")
+                                        @if((bool) env('UPDATER_UI_ENABLED', false))
                                             <li class="menu-item  menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
-                                                <a href="/appUpdate" class="menu-link menu-">
+                                                <a href="/{{ trim(env('UPDATER_UI_PREFIX', ''), '/') }}"  class="menu-link menu-">
                                                     <i class="menu-bullet menu-bullet-line">
                                                                                                         <span>
                                                                                                         </span>
@@ -469,16 +469,6 @@
                                                 </a>
                                             </li>
                                         @endif
-
-                                        <li class="menu-item  menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
-                                            <a href="{{ route('updates.index') }}" class="menu-link menu-">
-                                                <i class="menu-bullet menu-bullet-line">
-                                                                                                        <span>
-                                                                                                        </span>
-                                                </i>
-                                                <span class="menu-text">Atualizações do Sistema</span>
-                                            </a>
-                                        </li>
 
                                         <li class="menu-item  menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
                                             <a href="/cancelamento-super" class="menu-link menu-">
