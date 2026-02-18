@@ -53,7 +53,7 @@ Route::group(['prefix' => '/getTicket', 'middleware' => 'throttle:10,1'], functi
     Route::get('/withToken/relPrn80mm/{token}', 'PublicRelatorioController@gerarRelatorio80mm');
 });
 
-
+/* Desabilitado por Wallace em 16022026
 Route::get('/teste', 'TesteController@index');
 
 Route::group(['prefix' => '/appUpdate'], function(){
@@ -65,7 +65,7 @@ Route::group(['prefix' => '/appUpdate'], function(){
 	Route::post('/sql', 'AppUpdateController@sqlStore');
 	Route::post('/run-sql', 'AppUpdateController@runSql');
 });
-
+*/
 Route::group(['prefix' => 'login'],function(){
         Route::get('/', 'UserController@newAccess')->name('login');
         Route::get('/logoff', 'UserController@logoff');
@@ -3066,7 +3066,7 @@ Route::get('/habilitadoApi', function(){
 });
 
 
-
+/* Desabilitado por Wallace em 16022026
 Route::group([
     'prefix' => 'updates',
     'middleware' => ['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'],
@@ -3078,3 +3078,4 @@ Route::group([
     Route::get('/{version}/logs-stream', 'Updates\UpdateController@logsStream')->name('updates.logs.stream');
     Route::get('/{version}/logs/{log}', 'Updates\UpdateController@showLog')->name('updates.logs.show');
 });
+*/

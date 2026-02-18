@@ -2,38 +2,85 @@
 
 declare(strict_types=1);
 
+$uiRateLimitMaxAttempts = env('UPDATER_UI_RATE_LIMIT_MAX');
+if ($uiRateLimitMaxAttempts === null) {
+    $uiRateLimitMaxAttempts = env('UPDATER_UI_LOGIN_MAX_ATTEMPTS', 10);
+}
+
+$uiRateLimitWindowSeconds = env('UPDATER_UI_RATE_LIMIT_WINDOW');
+if ($uiRateLimitWindowSeconds === null) {
+    $uiRateLimitWindowSeconds = (int) env('UPDATER_UI_LOGIN_DECAY_MINUTES', 10) * 60;
+}
+
 return [
     'enabled' => env('UPDATER_ENABLED', true),
     'mode' => env('UPDATER_MODE', 'inplace'),
     'channel' => env('UPDATER_CHANNEL', 'stable'),
 
     'git' => [
+        'path' => env('UPDATER_GIT_PATH', base_path()),
         'remote' => env('UPDATER_GIT_REMOTE', 'origin'),
+        'remote_url' => env('UPDATER_GIT_REMOTE_URL', ''),
         'branch' => env('UPDATER_GIT_BRANCH', 'main'),
         'ff_only' => (bool) env('UPDATER_GIT_FF_ONLY', true),
+        'update_type' => env('UPDATER_GIT_UPDATE_TYPE', 'git_ff_only'),
+        'tag' => env('UPDATER_GIT_TAG', ''),
+        'auto_init' => (bool) env('UPDATER_GIT_AUTO_INIT', false),
+        'default_update_mode' => env('UPDATER_GIT_DEFAULT_UPDATE_MODE', 'merge'),
+        'first_run_assume_behind' => (bool) env('UPDATER_GIT_FIRST_RUN_ASSUME_BEHIND', true),
+        'first_run_assume_behind_commits' => (int) env('UPDATER_GIT_FIRST_RUN_ASSUME_BEHIND_COMMITS', 1),
+        // Lista de caminhos que NÃO devem bloquear o update mesmo com working tree "dirty".
+        // Aceita array via config (config/updater.php). Para ENV, use vírgula: "config/updater.php,.env,storage/".
+        'dirty_allowlist' => array_values(array_filter(array_map('trim', explode(',', (string) env('UPDATER_GIT_DIRTY_ALLOWLIST', 'config/updater.php,.env,storage/,bootstrap/cache/'))))),
+
+        // Por padrão, a consulta de updates (check) NÃO deve ser bloqueada por working tree dirty,
+        // porque é uma operação somente leitura. Se quiser bloquear também no check:
+        // UPDATER_GIT_ALLOW_DIRTY_CHECK=false
+        'allow_dirty_check' => (bool) env('UPDATER_GIT_ALLOW_DIRTY_CHECK', true),
+    ],
+
+    'composer' => [
+        // Pode ser: "composer", "composer2", "/usr/bin/composer" ou "/caminho/composer.phar".
+        'bin' => env('UPDATER_COMPOSER_BIN', 'composer'),
     ],
 
     'backup' => [
         'enabled' => (bool) env('UPDATER_BACKUP_ENABLED', true),
+        // Backup obrigatório antes de atualizar (padrão seguro).
+        'pre_update' => (bool) env('UPDATER_BACKUP_PRE_UPDATE', true),
+        // Tipos aceitos: full, snapshot, database, full+snapshot, full+database.
+        'pre_update_type' => (string) env('UPDATER_BACKUP_TYPE', 'full'),
         'keep' => (int) env('UPDATER_BACKUP_KEEP', 10),
         'path' => env('UPDATER_BACKUP_PATH', storage_path('app/updater/backups')),
         'compress' => (bool) env('UPDATER_BACKUP_COMPRESS', true),
+        'upload_disk' => env('UPDATER_BACKUP_UPLOAD_DISK', ''),
+        'upload_prefix' => env('UPDATER_BACKUP_UPLOAD_PREFIX', 'updater/backups'),
+        'mysqldump_binary' => env('UPDATER_MYSQLDUMP_BINARY', ''),
+        'mysql_binary' => env('UPDATER_MYSQL_BINARY', ''),
+        'pg_dump_binary' => env('UPDATER_PG_DUMP_BINARY', ''),
+        'pg_restore_binary' => env('UPDATER_PG_RESTORE_BINARY', ''),
+        // Compatibilidade retroativa: mantém a chave antiga para instalações legadas.
+        'full_before_update' => (bool) env('UPDATER_BACKUP_FULL_BEFORE_UPDATE', false),
     ],
 
     'snapshot' => [
         'enabled' => (bool) env('UPDATER_SNAPSHOT_ENABLED', true),
         'path' => env('UPDATER_SNAPSHOT_PATH', storage_path('app/updater/snapshots')),
         'keep' => (int) env('UPDATER_SNAPSHOT_KEEP', 10),
+        'include_vendor' => (bool) env('UPDATER_SNAPSHOT_INCLUDE_VENDOR', false),
+        // Por padrão, snapshot é de "código" (evita travamentos e arquivos gigantes).
+        // Se você realmente precisa incluir storage, defina UPDATER_SNAPSHOT_EXCLUDE_STORAGE=false
+        'exclude_storage' => (bool) env('UPDATER_SNAPSHOT_EXCLUDE_STORAGE', true),
+        'compression' => env('UPDATER_SNAPSHOT_COMPRESSION', 'zip'), // zip
     ],
 
     'paths' => [
         'exclude_snapshot' => [
             '.env',
-            'storage',
             'bootstrap/cache',
-            'vendor',
             'node_modules',
             'public/uploads',
+            'storage/app/updater',
             'storage/app/updater/backups',
             'storage/app/updater/snapshots',
         ],
@@ -56,38 +103,137 @@ return [
     ],
 
     'trigger' => [
-        'driver' => env('UPDATER_TRIGGER_DRIVER', 'queue'),
+        'driver' => env('UPDATER_TRIGGER_DRIVER', 'auto'),
     ],
 
     'preflight' => [
         'min_free_disk_mb' => (int) env('UPDATER_MIN_FREE_DISK_MB', 200),
         'require_clean_git' => (bool) env('UPDATER_REQUIRE_CLEAN_GIT', true),
+        // Evita bloqueio de atualização via UI quando o projeto possui alterações locais
+        // esperadas em produção (ex.: ajustes de config, cache e storage).
+        'allow_dirty_updates' => true,
     ],
 
     'build_assets' => (bool) env('UPDATER_BUILD_ASSETS', false),
+
+
+    'migrate' => [
+        'idempotent' => (bool) env('UPDATER_MIGRATE_IDEMPOTENT', true),
+        'mode' => (string) env('UPDATER_MIGRATE_MODE', 'tolerant'),
+        'retry_locks' => (int) env('UPDATER_MIGRATE_RETRY_LOCKS', 2),
+        'retry_sleep_base' => (int) env('UPDATER_MIGRATE_RETRY_SLEEP_BASE', 3),
+        'dry_run' => (bool) env('UPDATER_MIGRATE_DRY_RUN', false),
+        'log_channel' => (string) env('UPDATER_MIGRATE_LOG_CHANNEL', 'stack'),
+        'reconcile_already_exists' => (bool) env('UPDATER_MIGRATE_RECONCILE_ALREADY_EXISTS', true),
+        'report_path' => env('UPDATER_MIGRATE_REPORT_PATH', storage_path('logs/updater-migrate-{timestamp}.log')),
+        'paths' => [],
+
+        // Compatibilidade retroativa
+        'strict_mode' => (bool) env('UPDATER_MIGRATE_STRICT_MODE', false),
+        'max_retries' => (int) env('UPDATER_MIGRATE_MAX_RETRIES', 3),
+        'backoff_ms' => (int) env('UPDATER_MIGRATE_BACKOFF_MS', 500),
+    ],
+
+
+    // Comandos genéricos pré-update (opcional).
+    // Exemplo COMENTADO (não executa automaticamente):
+    // UPDATER_PRE_UPDATE_COMMANDS="php artisan optimize:clear"
+    'pre_update_commands' => env('UPDATER_PRE_UPDATE_COMMANDS', ''),
+
+    // Comandos genéricos pós-update (opcional).
+    // Exemplo COMENTADO (não executa automaticamente):
+    // UPDATER_POST_UPDATE_COMMANDS="php artisan db:seed --class=Database\\Seeders\\ReformaTributariaSeeder --force"
+    'post_update_commands' => env('UPDATER_POST_UPDATE_COMMANDS', ''),
+
+    'seed' => [
+        'run_reforma_tributaria' => (bool) env('UPDATER_SEED_RUN_REFORMA_TRIBUTARIA', true),
+        'reforma_tributaria_seeder' => env('UPDATER_SEED_REFORMA_TRIBUTARIA_SEEDER', 'Database\\Seeders\\ReformaTributariaSeeder'),
+        'allow_default_database_seeder' => (bool) env('UPDATER_SEED_ALLOW_DEFAULT_DATABASE_SEEDER', false),
+    ],
+
+    'cache' => [
+        // Se true, executa `php artisan config:cache` ao final da pipeline.
+        // Default false para evitar quebrar aplicações que dependem de env() em runtime.
+        'config_cache' => (bool) env('UPDATER_CACHE_CONFIG_CACHE', false),
+        // Evita derrubar update quando route:cache falhar por rota duplicada no host.
+        // Nesse caso o updater registra warning e executa route:clear.
+        'ignore_route_cache_duplicate_name' => (bool) env('UPDATER_CACHE_IGNORE_ROUTE_CACHE_DUPLICATE_NAME', true),
+    ],
 
     'healthcheck' => [
         'enabled' => (bool) env('UPDATER_HEALTHCHECK_ENABLED', true),
         'url' => env('UPDATER_HEALTHCHECK_URL', env('APP_URL', 'http://localhost')),
         'timeout' => (int) env('UPDATER_HEALTHCHECK_TIMEOUT', 5),
+        'skip_localhost' => (bool) env('UPDATER_HEALTHCHECK_SKIP_LOCALHOST', true),
+    ],
+
+
+    'app' => [
+        'name' => env('UPDATER_APP_NAME', env('APP_NAME', 'Laravel')),
+        'sufix_name' => env('UPDATER_APP_SUFIX_NAME', env('APP_SUFIX_NAME', '')),
+        'desc' => env('UPDATER_APP_DESC', env('APP_DESC', '')),
+
+        // Whitelabel (opcional): URLs diretas (sem upload)
+        'logo_url' => env('UPDATER_BRAND_LOGO_URL', ''),
+        'favicon_url' => env('UPDATER_BRAND_FAVICON_URL', ''),
+        'primary_color' => env('UPDATER_BRAND_PRIMARY_COLOR', ''),
+    ],
+
+    'branding' => [
+        'max_upload_kb' => (int) env('UPDATER_BRANDING_MAX_UPLOAD_KB', 1024),
+    ],
+
+    'sync_token' => env('UPDATER_SYNC_TOKEN', ''),
+
+    'sources' => [
+        'allow_multiple' => (bool) env('UPDATER_SOURCES_ALLOW_MULTIPLE', false),
+    ],
+
+
+    'auto_publish' => [
+        'enabled' => (bool) env('UPDATER_AUTO_PUBLISH_ENABLED', true),
+        'config' => (bool) env('UPDATER_AUTO_PUBLISH_CONFIG', true),
+        'views' => (bool) env('UPDATER_AUTO_PUBLISH_VIEWS', true),
+        'run_vendor_publish' => (bool) env('UPDATER_AUTO_PUBLISH_RUN_VENDOR_PUBLISH', true),
     ],
 
     'ui' => [
         'enabled' => (bool) env('UPDATER_UI_ENABLED', true),
         'prefix' => env('UPDATER_UI_PREFIX', '_updater'),
         'middleware' => ['web', 'auth'],
+        'force_sync' => (bool) env('UPDATER_UI_FORCE_SYNC', false),
         'auth' => [
-            'enabled' => (bool) env('UPDATER_UI_AUTH_ENABLED', true),
-            'auto_provision_admin' => (bool) env('UPDATER_UI_AUTO_PROVISION_ADMIN', false),
+            'enabled' => (bool) env('UPDATER_UI_AUTH_ENABLED', false),
+            'auto_provision_admin' => (bool) env('UPDATER_UI_AUTO_PROVISION_ADMIN', true),
             'default_email' => env('UPDATER_UI_DEFAULT_EMAIL', 'admin@admin.com'),
             'default_password' => env('UPDATER_UI_DEFAULT_PASSWORD', '123456'),
-            'session_ttl' => (int) env('UPDATER_UI_SESSION_TTL', 120),
+            'default_name' => env('UPDATER_UI_DEFAULT_NAME', 'Admin'),
+            'master_email' => env('UPDATER_UI_MASTER_EMAIL', ''),
+            'session_ttl_minutes' => (int) env('UPDATER_UI_SESSION_TTL', 120),
+            'rate_limit' => [
+                'max_attempts' => (int) $uiRateLimitMaxAttempts,
+                'window_seconds' => (int) $uiRateLimitWindowSeconds,
+            ],
+            '2fa' => [
+                'enabled' => (bool) env('UPDATER_UI_2FA_ENABLED', true),
+                'required' => (bool) env('UPDATER_UI_2FA_REQUIRED', false),
+                'issuer' => env('UPDATER_UI_2FA_ISSUER', 'Argws Updater'),
+            ],
         ],
-        'two_factor' => [
-            'enabled' => (bool) env('UPDATER_UI_2FA_ENABLED', false),
-            'required' => (bool) env('UPDATER_UI_2FA_REQUIRED', false),
-            'issuer' => env('UPDATER_UI_2FA_ISSUER', 'Argws Updater'),
-        ],
+    ],
+
+
+    'notify' => [
+        'enabled' => (bool) env('UPDATER_NOTIFY_ENABLED', false),
+        'to' => env('UPDATER_NOTIFY_TO', env('UPDATER_REPORT_TO', '')),
+    ],
+
+    'report' => [
+        'enabled' => (bool) env('UPDATER_REPORT_ENABLED', false),
+        'on' => env('UPDATER_REPORT_ON', 'failure'),
+        'to' => env('UPDATER_REPORT_TO', ''),
+        'subject_prefix' => env('UPDATER_REPORT_SUBJECT_PREFIX', '[Updater]'),
+        'attach_logs' => (bool) env('UPDATER_REPORT_ATTACH_LOGS', false),
     ],
 
     'log' => [
@@ -95,4 +241,40 @@ return [
         'channel' => env('UPDATER_LOG_CHANNEL', 'updater'),
         'path' => env('UPDATER_LOG_PATH', storage_path('logs/updater.log')),
     ],
+
+    // Whitelabel (opcional)
+    // Se você não informar nada no .env, o updater continua usando o default.
+    'whitelabel' => [
+        'app_name' => env('UPDATER_BRAND_APP_NAME', env('APP_NAME', 'Laravel')),
+        'logo_url' => env('UPDATER_BRAND_LOGO_URL', ''),
+        'favicon_url' => env('UPDATER_BRAND_FAVICON_URL', ''),
+        'primary_color' => env('UPDATER_BRAND_PRIMARY_COLOR', ''),
+    ],
+
+
+    'maintenance' => [
+        // View used by `php artisan down --render=...` during update.
+        // Default uses the package view to avoid CLI-only globals (REQUEST_URI) issues.
+        'render_view' => env('UPDATER_MAINTENANCE_VIEW', 'laravel-updater::maintenance'),
+
+        // Basic message defaults used by the package maintenance view.
+        'default_title' => env('UPDATER_MAINTENANCE_TITLE', 'Manutenção Programada do Sistema'),
+        'default_message' => env('UPDATER_MAINTENANCE_MESSAGE', "Estamos realizando uma atualização programada em nosso sistema para aprimorar desempenho, segurança e estabilidade.\n\nDurante este período, o acesso poderá ficar temporariamente indisponível.\nNossa equipe técnica está trabalhando para concluir o processo o mais breve possível.\n\nPedimos que retorne em alguns minutos."),
+        'default_footer' => env('UPDATER_MAINTENANCE_FOOTER', "Agradecemos sua compreensão e confiança.\nSeguimos comprometidos em oferecer uma plataforma cada vez mais eficiente e segura para você."),
+        'logo_url' => env('UPDATER_MAINTENANCE_LOGO_URL', env('UPDATER_BRAND_LOGO_URL', '')),
+        'enter_on_update_start' => (bool) env('UPDATER_MAINTENANCE_ENTER_ON_UPDATE_START', true),
+
+        // Rotas que nunca devem ser bloqueadas pelo maintenance mode.
+        // Por padrão protege o prefixo da UI do updater.
+        'except_paths' => [
+            trim((string) env('UPDATER_UI_PREFIX', '_updater'), '/'),
+            trim((string) env('UPDATER_UI_PREFIX', '_updater'), '/') . '/*',
+        ],
+    ],
+
+    'version_bar' => [
+        'enabled' => true,
+        'position' => 'top',
+    ],
+
 ];

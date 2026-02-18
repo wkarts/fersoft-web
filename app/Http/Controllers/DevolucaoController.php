@@ -55,8 +55,13 @@ class DevolucaoController extends Controller
 	}
 
 	public function new(){
-		return view('devolucao/new')
-		->with('title', 'Nova Devolução');
+        // Define um valor padrão para evitar o erro de variável indefinida
+    $destinoPadrao = 'emitente';
+		return view('devolucao/new',
+		[
+            'title' => 'Nova Devolução',
+            'destinoPadrao' => $destinoPadrao
+        ]);
 	}
 
 	private function validaChave($chave){
@@ -146,13 +151,14 @@ class DevolucaoController extends Controller
                     'veiculo_uf'               => (string)$veicTransp->UF,
                     'frete_peso_bruto'         => (float)$vol->pesoB,
                     'frete_peso_liquido'       => (float)$vol->pesoL,
-                    'despesa_acessorias'       => (float)$xml->NFe->infNFe->total->ICMSTot->vOutro,
+                    'despesa_acessorias'       => (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0),
                 ];
             }
 
             // Formatação de valores
-            $vFrete = number_format((double)$xml->NFe->infNFe->total->ICMSTot->vFrete, 2, ",", ".");
-            $vDesc  = number_format((double)$xml->NFe->infNFe->total->ICMSTot->vDesc,  2, ",", ".");
+            $vFrete = number_format((double)($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
+            $vDesc  = number_format((double)($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0),  2, ",", ".");
+            $vOutro = (float)($icmsTot->vOutro ?? 0); // Aqui está o segredo
 
             // --- CADASTRA/ATUALIZA FORNECEDOR DESTINATÁRIO (padrão) ---
             $fornecedorEncontrado = $this->verificaFornecedor($dadosDestinatario['cnpj'] ?: $dadosDestinatario['cpf']);
@@ -192,18 +198,18 @@ class DevolucaoController extends Controller
                 $trib = Devolucao::getTrib($item->imposto);
                 $tagComb = $item->prod->comb ?? null;
                 $itens[] = [
-                    'codigo'                 => (string)$item->prod->cProd,
+                    'codigo'                 => $item->prod->cProd,
                     'randDelete'             => rand(10000, 99999),
-                    'xProd'                  => (string)$item->prod->xProd,
-                    'NCM'                    => (string)$item->prod->NCM,
+                    'xProd'                  => $item->prod->xProd,
+                    'NCM'                    => $item->prod->NCM,
                     'cBenef'                 => (string)($item->prod->cBenef ?? ''),
                     'vFrete'                 => (float)($item->prod->vFrete ?? 0),
-                    'CFOP'                   => (string)$item->prod->CFOP,
-                    'uCom'                   => (string)$item->prod->uCom,
+                    'CFOP'                   => $item->prod->CFOP,
+                    'uCom'                   => $item->prod->uCom,
                     'unidade_tributavel'     => (string)$item->prod->uTrib,
                     'quantidade_tributavel'  => (float)$item->prod->qTrib,
-                    'vUnCom'                 => (string)$item->prod->vUnCom,
-                    'qCom'                   => (string)$item->prod->qCom,
+                    'vUnCom'                 => $item->prod->vUnCom,
+                    'qCom'                   => $item->prod->qCom,
                     'codBarras'              => (string)($item->prod->cEAN ?? ''),
                     'cst_csosn'              => $trib['cst_csosn'],
                     'cst_pis'                => $trib['cst_pis'],
@@ -248,6 +254,7 @@ class DevolucaoController extends Controller
                 'nNf'   => (string)$xml->NFe->infNFe->ide->nNF,
                 'vFrete'=> $vFrete,
                 'vDesc' => $vDesc,
+                'vOutro'=> $vOutro, // Adicione esta segurança
             ];
 
             // --- FATURA / DUPLICATAS (se houver) ---
@@ -383,14 +390,16 @@ class DevolucaoController extends Controller
 					'veiculo_uf' => $veicTransp->UF,
 					'frete_peso_bruto' => (float)$vol->pesoB,
 					'frete_peso_liquido' => (float)$vol->pesoL,
-					'despesa_acessorias' => (float)$xml->NFe->infNFe->total->ICMSTot->vOutro
+					'despesa_acessorias' => (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0),
 				];
 			}
 
-			$vFrete = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vFrete,
-				2, ",", ".");
+			$vFrete = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
 
-			$vDesc = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vDesc, 2, ",", ".");
+			$vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
+            // Adicione esta linha caso queira usar o vOutro depois
+            
+            $vOutro  = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0);
 
 			$idFornecedor = 0;
 			$fornecedorEncontrado = $this->verificaFornecedor($dadosDestinatario['cnpj'] == '' ? $dadosDestinatario['cpf'] : $dadosDestinatario['cnpj']);
@@ -459,49 +468,49 @@ class DevolucaoController extends Controller
 				}
 
 				$item = [
-					'codigo' => $item->prod->cProd,
+					'codigo' => (string)$item->prod->cProd,
 					'randDelete' => rand(10000, 99999),
-					'xProd' => $item->prod->xProd,
-					'NCM' => $item->prod->NCM,
+					'xProd' => (string)$item->prod->xProd,
+					'NCM' => (string)$item->prod->NCM,
 					'cBenef' => (string)$item->prod->cBenef,
-					'vFrete' => $item->prod->vFrete ?? 0,
-					'CFOP' => $item->prod->CFOP,
-					'uCom' => $item->prod->uCom,
+					'vFrete' => (float)$item->prod->vFrete ?? 0,
+					'CFOP' => (string)$item->prod->CFOP,
+					'uCom' => (float)$item->prod->uCom,
 					'unidade_tributavel' => (string)$item->prod->uTrib,
 					'quantidade_tributavel' => (float)$item->prod->qTrib,
-					'vUnCom' => $item->prod->vUnCom,
-					'qCom' => $item->prod->qCom,
-					'codBarras' => $item->prod->cEAN ?? '',
-					'cst_csosn' => $trib['cst_csosn'],
-					'cst_pis' => $trib['cst_pis'],
-					'cst_cofins' => $trib['cst_cofins'],
-					'cst_ipi' => $trib['cst_ipi'],
-					'perc_icms' => $trib['pICMS'],
-					'perc_pis' => $trib['pPIS'],
-					'perc_cofins' => $trib['pCOFINS'],
-					'perc_ipi' => $trib['pIPI'],
-					'pRedBC' => $trib['pRedBC'],
-					'modBCST' => $trib['modBCST'],
-					'vBCST' => $trib['vBCST'],
-					'pICMSST' => $trib['pICMSST'],
-					'vICMSST' => $trib['vICMSST'],
-					'vBCSTRet' => $trib['vBCSTRet'],
-					'pMVAST' => $trib['pMVAST'],
-					'pST' => $trib['pST'],
-					'vICMSSubstituto' => $trib['vICMSSubstituto'],
-					'vICMSSTRet' => $trib['vICMSSTRet'],
-					'orig' => $trib['orig'],
-					'codigo_anp' => $tagComb != null ? (string)$tagComb->cProdANP : '',
-					'descricao_anp' => $tagComb != null ? (string)$tagComb->descANP : '',
-					'uf_cons' => $tagComb != null ? (string)$tagComb->UFCons : '',
-					'perc_glp' => $tagComb != null ? (float)$tagComb->pGLP : 0,
-					'perc_gnn' => $tagComb != null ? (float)$tagComb->pGNn : 0,
-					'perc_gni' => $tagComb != null ? (float)$tagComb->pGNi : 0,
-					'valor_partida' => $tagComb != null ? (float)$tagComb->vPart : 0,
+					'vUnCom' => (float)$item->prod->vUnCom,
+					'qCom' => (float)$item->prod->qCom,
+					'codBarras' =>(string) $item->prod->cEAN ?? '',
+					'cst_csosn' =>(string) $trib['cst_csosn'],
+					'cst_pis' => (string)$trib['cst_pis'],
+					'cst_cofins' => (string)$trib['cst_cofins'],
+					'cst_ipi' => (string)$trib['cst_ipi'],
+					'perc_icms' => (float)$trib['pICMS'],
+					'perc_pis' => (float)$trib['pPIS'],
+					'perc_cofins' =>(float) $trib['pCOFINS'],
+					'perc_ipi' => (float)$trib['pIPI'],
+					'pRedBC' => (float)$trib['pRedBC'],
+					'modBCST' => (float)$trib['modBCST'],
+					'vBCST' => (float)$trib['vBCST'],
+					'pICMSST' => (float)$trib['pICMSST'],
+					'vICMSST' => (float)$trib['vICMSST'],
+					'vBCSTRet' => (float)$trib['vBCSTRet'],
+					'pMVAST' => (float)$trib['pMVAST'],
+					'pST' => (float)$trib['pST'],
+					'vICMSSubstituto' => (float)$trib['vICMSSubstituto'],
+					'vICMSSTRet' => (float)$trib['vICMSSTRet'],
+					'orig' => (string)$trib['orig'],
+					'codigo_anp' => (string)$tagComb != null ? (string)$tagComb->cProdANP : '',
+					'descricao_anp' => (string)$tagComb != null ? (string)$tagComb->descANP : '',
+					'uf_cons' => (string)$tagComb != null ? (string)$tagComb->UFCons : '',
+					'perc_glp' => (float)$tagComb != null ? (float)$tagComb->pGLP : 0,
+					'perc_gnn' => (float)$tagComb != null ? (float)$tagComb->pGNn : 0,
+					'perc_gni' => (float)$tagComb != null ? (float)$tagComb->pGNi : 0,
+					'valor_partida' => (float)$tagComb != null ? (float)$tagComb->vPart : 0,
 					'cest' => isset($item->prod->CEST) ? (string)$item->prod->CEST : '',
-					'qBCMonoRet' => $trib['qBCMonoRet'],
-					'adRemICMSRet' => $trib['adRemICMSRet'],
-					'vICMSMonoRet' => $trib['vICMSMonoRet']
+					'qBCMonoRet' => (float)$trib['qBCMonoRet'],
+					'adRemICMSRet' => (float)$trib['adRemICMSRet'],
+					'vICMSMonoRet' => (float)$trib['vICMSMonoRet']
 				];
 
 				array_push($itens, $item);
@@ -516,6 +525,7 @@ class DevolucaoController extends Controller
 				'nNf' => $xml->NFe->infNFe->ide->nNF,
 				'vFrete' => $vFrete,
 				'vDesc' => $vDesc,
+                'vOutro' => (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0), // Adicione esta segurança
 			];
 
 
@@ -612,6 +622,10 @@ class DevolucaoController extends Controller
 		}else{
 			$doc = $this->formataCpf($doc);
 		}
+       // Busca o ID interno da cidade usando o código do IBGE
+    // O erro acontece porque você estava usando $fornecedor['cidade_id'] direto no 'create'
+         $cidade = Cidade::where('codigo', $fornecedor['cidade_id'])->first();
+    
 
 		$result = Fornecedor::create([
 			'razao_social' => $fornecedor['razaoSocial'],
@@ -625,7 +639,7 @@ class DevolucaoController extends Controller
 			'celular' => '*',
 			'telefone' => $this->formataTelefone($fornecedor['fone']),
 			'email' => '*',
-			'cidade_id' => $fornecedor['cidade_id'],
+			'cidade_id' => $cidade ? $cidade->id : 1, // <--- AQUI ESTÁ A CORREÇÃO: usa o ID da tabela
 			'empresa_id' => $this->empresa_id
 		]);
 		return $result->id;
@@ -758,6 +772,7 @@ class DevolucaoController extends Controller
                     'nNf' => $data['nNf'],
                     'vFrete' => str_replace(",", ".", $data['vFrete']),
                     'vDesc' => str_replace(",", ".", $data['vDesc']),
+                    'vOutro' => str_replace(',', '.', $request->vOutro ?? 0),
                     'chave_gerada' => '',
                     'numero_gerado' => 0,
                     'tipo' => $data['tipo'],
@@ -795,10 +810,10 @@ class DevolucaoController extends Controller
                 $stockMove = new StockMove();
                 foreach ($data['itens'] as $i) {
                     $item = ItemDevolucao::create([
-                        'cod' => $i['codigo'],
-                        'nome' => $i['xProd'],
-                        'ncm' => $i['NCM'],
-                        'cBenef' => $i['cBenef'],
+                        'cod' => (string)$i['codigo'],
+                        'nome' => (string)$i['xProd'],
+                        'ncm' => (string)$i['NCM'],
+                        'cBenef' => (string)$i['cBenef'],
                         'cfop' => $i['CFOP'],
                         'valor_unit' => $i['vUnCom'],
                         'vFrete' => $i['vFrete'] ?? 0,
@@ -939,11 +954,11 @@ class DevolucaoController extends Controller
                 $stockMove = new StockMove();
                 foreach ($data['itens'] as $i) {
                     $item = ItemDevolucao::create([
-                        'cod'                   => $i['codigo'],
-                        'nome'                  => $i['xProd'],
-                        'ncm'                   => $i['NCM'],
+                        'cod'                   => (string)$i['codigo'],
+                        'nome'                  => (string)$i['xProd'],
+                        'ncm'                   => (string)$i['NCM'],
                         'cBenef'                => $i['cBenef']            ?? '',
-                        'cfop'                  => $i['CFOP'],
+                        'cfop'                  => (string)$i['CFOP'],
                         'valor_unit'            => $i['vUnCom'],
                         'vFrete'                => $i['vFrete']            ?? 0,
                         'quantidade'            => $i['qCom'],
@@ -1064,16 +1079,16 @@ class DevolucaoController extends Controller
                 $stockMove = new StockMove();
                 foreach ($data['itens'] as $i) {
                     $item = ItemDevolucao::create([
-                        'cod'                   => $i['codigo'],
-                        'nome'                  => $i['xProd'],
-                        'ncm'                   => $i['NCM'],
+                        'cod'                   => (string)$i['codigo'],
+                        'nome'                  => (string)$i['xProd'],
+                        'ncm'                   => (string)$i['NCM'],
                         'cBenef'                => $i['cBenef']            ?? '',
-                        'cfop'                  => $i['CFOP'],
+                        'cfop'                  => (string)$i['CFOP'],
                         'valor_unit'            => $i['vUnCom'],
                         'vFrete'                => $i['vFrete']            ?? 0,
                         'quantidade'            => $i['qCom'],
                         'item_parcial'          => $i['parcial']           ?? 0,
-                        'unidade_medida'        => $i['uCom'],
+                        'unidade_medida'        => (string)$i['uCom'],
                         'codBarras'             => $i['codBarras']         ?? '',
                         'devolucao_id'          => $devolucao->id,
                         'cst_csosn'             => $i['cst_csosn'],
@@ -1272,9 +1287,9 @@ class DevolucaoController extends Controller
                 'cidade_id' => $cidade->id
             ];
 
-            $vFrete = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vFrete,
-                2, ",", ".");
-            $vDesc = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vDesc, 2, ",", ".");
+            $vFrete =number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
+            $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
+            $vOutro = (float)($icmsTot->vOutro ?? 0);
 
             $chave = substr($xml->NFe->infNFe->attributes()->Id, 3, 44);
             $dadosNf = [
@@ -2232,7 +2247,7 @@ class DevolucaoController extends Controller
                     'veiculo_uf' => '',
                     'frete_peso_bruto' => (float)$vol->pesoB,
                     'frete_peso_liquido' => (float)$vol->pesoL,
-                    'despesa_acessorias' => (float)$xml->NFe->infNFe->total->ICMSTot->vOutro
+                    'despesa_acessorias' => (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0),
                 ];
 
                         // print_r($transportadora);
@@ -2240,10 +2255,10 @@ class DevolucaoController extends Controller
 
             }
 
-            $vFrete = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vFrete,
-                2, ",", ".");
+            $vFrete = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
 
-            $vDesc = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vDesc, 2, ",", ".");
+            $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
+            $vOutro = (float)($icmsTot->vOutro ?? 0);
 
             $idFornecedor = 0;
             $fornecedorEncontrado = $this->verificaFornecedor($dadosEmitente['cnpj'] == '' ? $dadosEmitente['cpf'] : $dadosEmitente['cnpj']);
@@ -2447,7 +2462,7 @@ class DevolucaoController extends Controller
                     'veiculo_uf' => '',
                     'frete_peso_bruto' => (float)$vol->pesoB,
                     'frete_peso_liquido' => (float)$vol->pesoL,
-                    'despesa_acessorias' => (float)$xml->NFe->infNFe->total->ICMSTot->vOutro
+                    'despesa_acessorias' => (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0),
                 ];
 
                         // print_r($transportadora);
@@ -2455,10 +2470,10 @@ class DevolucaoController extends Controller
 
             }
 
-            $vFrete = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vFrete,
-                2, ",", ".");
+            $vFrete = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
 
-            $vDesc = number_format((double) $xml->NFe->infNFe->total->ICMSTot->vDesc, 2, ",", ".");
+            $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
+            $vOutro = (float)($icmsTot->vOutro ?? 0); // Aqui está o segredo
 
             $idFornecedor = 0;
             $fornecedorEncontrado = $this->verificaFornecedor($dadosEmitente['cnpj'] == '' ? $dadosEmitente['cpf'] : $dadosEmitente['cnpj']);
