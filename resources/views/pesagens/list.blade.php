@@ -392,6 +392,20 @@
                                                 $pesoLiquido = $pesagem->peso_liquido;
                                                 $pesoFinal = $pesagem->peso_final_calculado;
                                                 $desconto = max(0, $pesoLiquido - $pesoFinal);
+                                                $mostrarLinhaValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+                                                $valorUnitarioTicket = 0;
+                                                $valorTotalTicket = 0;
+
+                                                if ($mostrarLinhaValoresTicket) {
+                                                    $ticketComValorUnitario = $pesagem->tickets->first(function ($ticket) {
+                                                        return (float) ($ticket->valor_unitario ?? 0) > 0;
+                                                    });
+
+                                                    $valorUnitarioTicket = (float) ($ticketComValorUnitario->valor_unitario ?? 0);
+                                                    $valorTotalTicket = (float) $pesagem->tickets->sum(function ($ticket) {
+                                                        return max(0, (float) ($ticket->valor_total ?? 0));
+                                                    });
+                                                }
                                             @endphp
 
                                             {{ number_format($pesoLiquido, 2, ',', '.') }} kg
@@ -399,6 +413,15 @@
                                             <small class="text-hover-dark">
                                                 - {{ number_format($desconto, 2, ',', '.') }} kg
                                             </small>
+
+                                            @if($mostrarLinhaValoresTicket)
+                                                <br>
+                                                <small class="text-muted" style="font-size: 11px;">
+                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
+                                                    &nbsp;|&nbsp;
+                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
+                                                </small>
+                                            @endif
                                         </td>
 
                                         <!-- Peso Bruto -->
@@ -844,7 +867,8 @@
                         <button
                             type="button"
                             class="btn btn-secondary btn-sm btn-close-ticket ml-2"
-                            title="Fechar">
+                            title="Fechar"
+                            data-dismiss="modal">
                             <i class="fa fa-times"></i>Fechar
                         </button>
                     </div>
@@ -862,6 +886,8 @@
                             <input type="hidden" name="veiculo_id" value="{{ $pesagem->veiculo_id }}">
                             <input type="hidden" name="motorista_id" value="{{ $pesagem->motorista_id ?? '' }}">
                             <input type="hidden" name="token" id="token">
+                            <input type="hidden" name="balanca_config_id" id="balanca_config_id">
+                            <input type="hidden" name="peso_origem" id="peso_origem" value="manual">
 
                             <div class="row">
                                 <div class="form-group col-lg-6">
@@ -871,7 +897,7 @@
                                         <select id="balanca-select" class="form-control">
                                             <option value="">Selecione</option>
                                             @foreach($balancas as $balanca)
-                                                <option value="{{ $balanca->id }}"
+                                                <option value="{{ $balanca->id }}" {{ (int) ($balancaPadraoUsuarioId ?? 0) === (int) $balanca->id ? 'selected' : '' }}
                                                         data-backend="{{ $balanca->backend_server_address }}"
                                                         data-modelo="{{ $balanca->modelo }}"
                                                         data-port="{{ $balanca->port }}">
@@ -923,13 +949,27 @@
                                     <div class="row">
                                         <div class="form-group col-md-6 col-sm-12">
                                             <label for="peso">Peso (kg):</label>
-                                            <input type="number" name="peso" id="peso" step="0.01" class="form-control"  value="0.00" required>
+                                            <input type="number" name="peso" id="peso" step="0.01" class="form-control" value="0.00" required {{ ($configNota->bloquear_pesagem_manual_balanca ?? 0) ? "readonly" : "" }}>
                                         </div>
 
                                         <div class="form-group col-md-6 col-sm-12">
-                                            <label for="peso_bag">Peso dos Recipientes (kg):</label>
-                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00">
+                                            <label for="peso_bag">Peso dos Recipientes (kg):
+                                                @if($configNota->desbloquear_campo_peso_bag_ticket ?? false)
+                                                    <button type="button" class="btn btn-xs btn-light-primary py-0 px-1 ml-1 btn-repetir-tara" title="Repetir tara da balança">↻</button>
+                                                @endif
+                                            </label>
+                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" {{ ($configNota->desbloquear_campo_peso_bag_ticket ?? false) ? "" : "readonly" }}>
                                         </div>
+                                        @if($configNota->usar_valores_ticket_pesagem ?? false)
+                                            <div class="form-group col-md-6 col-sm-12">
+                                                <label for="valor_unitario">Valor Unitário (ticket):</label>
+                                                <input type="number" name="valor_unitario" id="valor_unitario" step="0.000001" class="form-control" value="0.00">
+                                            </div>
+                                            <div class="form-group col-md-6 col-sm-12">
+                                                <label for="valor_total">Valor Total (ticket):</label>
+                                                <input type="number" name="valor_total" id="valor_total" step="0.000001" class="form-control" value="0.00" readonly>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
 
@@ -978,6 +1018,10 @@
                                     <th style="width: 10%; white-space: nowrap;">Tipo</th>
                                     <th style="width: 10%; white-space: nowrap;">Peso</th>
                                     <th style="width: 10%; white-space: nowrap;">Peso Recip</th>
+                                    @if($configNota->exibir_valores_ticket_pesagem_grid ?? false)
+                                        <th style="width: 10%; white-space: nowrap;">Vlr. Unit.</th>
+                                        <th style="width: 10%; white-space: nowrap;">Vlr. Total</th>
+                                    @endif
                                     <th style="width: 10%; white-space: nowrap;">Status</th>
                                     <th style="width: 15%; white-space: nowrap;">Início</th>
                                     <th style="width: 15%; white-space: nowrap;">Fim</th>
@@ -992,6 +1036,10 @@
                                         <td id="tipo-{{ $ticket->id }}" class="datatable-cell">{{ ucfirst($ticket->tipo) }}</td>
                                         <td id="peso-{{ $ticket->id }}" class="datatable-cell">{{ number_format($ticket->peso, 2, ',', '.') }} kg</td>
                                         <td id="peso-{{ $ticket->id }}" class="datatable-cell">{{ number_format($ticket->peso_bag, 2, ',', '.') }} kg</td>
+                                        @if($configNota->exibir_valores_ticket_pesagem_grid ?? false)
+                                            <td class="datatable-cell">R$ {{ number_format($ticket->valor_unitario ?? 0, 2, ',', '.') }}</td>
+                                            <td class="datatable-cell">R$ {{ number_format($ticket->valor_total ?? 0, 2, ',', '.') }}</td>
+                                        @endif
                                         <td id="status-{{ $ticket->id }}" class="datatable-cell">
                                             <span class="badge badge-fixed-width-status {{ $ticket->status == 'concluído' ? 'badge-success' : 'badge-warning' }}">
                                                 {{ ucfirst($ticket->status) }}
@@ -1012,7 +1060,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center">Nenhum ticket encontrado.</td>
+                                        <td colspan="{{ ($configNota->exibir_valores_ticket_pesagem_grid ?? false) ? 10 : 8 }}" class="text-center">Nenhum ticket encontrado.</td>
                                     </tr>
                                 @endforelse
                                 </tbody>
@@ -1183,6 +1231,40 @@
 
 {{--    Controle de Pesagens    --}}
     <script type="text/javascript">
+        const BLOQUEAR_PESAGEM_MANUAL_BALANCA = {{ (int) ($configNota->bloquear_pesagem_manual_balanca ?? 0) }};
+        const USAR_VALORES_TICKET_PESAGEM = {{ (int) ($configNota->usar_valores_ticket_pesagem ?? 0) }};
+        const EXIBIR_VALORES_TICKET_PESAGEM_GRID = {{ (int) ($configNota->exibir_valores_ticket_pesagem_grid ?? 0) }};
+        const BALANCA_PADRAO_USUARIO_ID = {{ (int) ($balancaPadraoUsuarioId ?? 0) }};
+        const DESBLOQUEAR_CAMPO_PESO_BAG_TICKET = {{ (int) ($configNota->desbloquear_campo_peso_bag_ticket ?? 0) }};
+        const AUTO_CONNECT_BALANCA_PADRAO_USUARIO = {{ (int) ($configNota->conectar_automaticamente_balanca_padrao_usuario ?? 0) }};
+        const AUTO_CONNECT_BALANCA_AO_SELECIONAR = {{ (int) ($configNota->conectar_automaticamente_balanca_ao_selecionar ?? 0) }};
+
+
+        $(document).on('keydown paste', '[id^=modalTickets] #peso_bag', function (e) {
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                e.preventDefault();
+            }
+        });
+
+        $(document).on('click', '[id^=modalTickets] .btn-repetir-tara', function () {
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                return;
+            }
+
+            const $modal = $(this).closest('[id^=modalTickets]');
+            const taraAtual = parseFloat($modal.find('#pesoTara').text().replace(',', '.')) || 0;
+            $modal.find('#peso_bag').val(taraAtual.toFixed(2)).trigger('input');
+        });
+
+        $(document).on('keydown paste', '[id^=modalTickets] #peso', function (e) {
+            if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                e.preventDefault();
+            }
+        });
+
+        $(document).on('keydown paste', '[id^=modalTickets] #valor_total', function (e) {
+            e.preventDefault();
+        });
 
         //Controle Principal de Pesagens
         $(document).ready(function () {
@@ -1566,7 +1648,8 @@
             }
 
             // Modal de Mensagem/Aviso
-            function abrirModalMensagem(titulo, mensagem) {
+
+        function abrirModalMensagem(titulo, mensagem) {
                 $('#modalMensagemLabel').text(titulo);
                 $('#modalMensagemTexto').html(mensagem);
                 $('#modalMensagem').modal('show');
@@ -1988,7 +2071,8 @@
             }
 
             // Modal de Mensagem/Aviso
-            function abrirModalMensagem(titulo, mensagem) {
+
+        function abrirModalMensagem(titulo, mensagem) {
                 $('#modalMensagemLabel').html(titulo);
                 $('#modalMensagemTexto').html(mensagem);
                 $('#modalMensagem').modal('show');
@@ -2043,7 +2127,8 @@
             }
 
             // Modal de Mensagem/Aviso
-            function abrirModalMensagem(titulo, mensagem) {
+
+        function abrirModalMensagem(titulo, mensagem) {
                 $('#modalMensagemLabel').html(titulo);
                 $('#modalMensagemTexto').html(mensagem);
                 $('#modalMensagem').modal('show');
@@ -2122,7 +2207,8 @@
             }
 
             // Modal de Mensagem/Aviso
-            function abrirModalMensagem(titulo, mensagem) {
+
+        function abrirModalMensagem(titulo, mensagem) {
                 $('#modalMensagemLabel').html(titulo);
                 $('#modalMensagemTexto').html(mensagem);
                 $('#modalMensagem').modal('show');
@@ -2187,7 +2273,8 @@
             }
 
             // Modal de Mensagem/Aviso
-            function abrirModalMensagem(titulo, mensagem) {
+
+        function abrirModalMensagem(titulo, mensagem) {
                 $('#modalMensagemLabel').html(titulo);
                 $('#modalMensagemTexto').html(mensagem);
                 $('#modalMensagem').modal('show');
@@ -2256,7 +2343,8 @@
                     <td id="produto-${ticket.id}" class="datatable-cell">${ticket.produto ? ticket.produto.nome : 'N/A'}</td>
                     <td id="tipo-${ticket.id}" class="datatable-cell">${ticket.tipo.charAt(0).toUpperCase() + ticket.tipo.slice(1)}</td>
                     <td id="peso-${ticket.id}" class="datatable-cell">${parseFloat(ticket.peso).toFixed(2).replace('.', ',')} kg</td>
-                    <td id="peso-${ticket.id}" class="datatable-cell">${parseFloat(ticket.peso_bag).toFixed(2).replace('.', ',')} kg</td>
+                    <td id="peso-${ticket.id}" class="datatable-cell">${parseFloat(ticket.peso_bag || 0).toFixed(2).replace('.', ',')} kg</td>
+                    ${EXIBIR_VALORES_TICKET_PESAGEM_GRID ? `<td class="datatable-cell">R$ ${parseFloat(ticket.valor_unitario || 0).toFixed(2).replace('.', ',')}</td><td class="datatable-cell">R$ ${parseFloat(ticket.valor_total || 0).toFixed(2).replace('.', ',')}</td>` : ''}
                     <td id="status-${ticket.id}" class="datatable-cell">
                         <span class="badge badge-fixed-width-status ${ticket.status === 'concluído' ? 'badge-success' : 'badge-warning'}">
                             ${ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
@@ -2325,6 +2413,7 @@
             // Campos de dados
             $form.find('input[name="peso"]').val('0.00');
             $form.find('input[name="peso_bag"]').val('0.00');
+            calcularValorTotalTicket(modalSelector);
             $form.find('select[name="tipo"]').val('entrada');
             $form.find('select[name="status"]').val('em andamento');
             $form.find('input[name="inicio"]').val('');
@@ -2352,11 +2441,46 @@
             $(modalSelector).find('#_method').val('POST'); // Volta para método POST
             $(modalSelector).find('#formTicket').attr('action', '/ticketsPesagem/save'); // Redefine para criação
             $(modalSelector).find('#produto_id').val('').trigger('change');
+            $(modalSelector).find('#balanca_config_id').val('');
+            $(modalSelector).find('#peso_origem').val('manual');
+            $(modalSelector).find('#valor_unitario').val('0.00');
+            $(modalSelector).find('#valor_total').val('0.00');
+            calcularValorTotalTicket(modalSelector);
+        }
+
+
+        function calcularValorTotalTicket(modalSelector) {
+            if (!USAR_VALORES_TICKET_PESAGEM) {
+                return;
+            }
+
+            const $modal = $(modalSelector);
+            const peso = parseFloat($modal.find('#peso').val()) || 0;
+            const pesoBag = parseFloat($modal.find('#peso_bag').val()) || 0;
+            const valorUnitario = parseFloat($modal.find('#valor_unitario').val()) || 0;
+            const pesoLiquido = Math.max(0, peso - pesoBag);
+            const valorTotal = pesoLiquido * valorUnitario;
+
+            $modal.find('#valor_total').val(valorTotal.toFixed(6));
+        }
+
+        function bindCalculoValorTotalTicket(modalSelector) {
+            if (!USAR_VALORES_TICKET_PESAGEM) {
+                return;
+            }
+
+            const $modal = $(modalSelector);
+            $modal
+                .off('input.calculoTicket change.calculoTicket', '#peso, #peso_bag, #valor_unitario')
+                .on('input.calculoTicket change.calculoTicket', '#peso, #peso_bag, #valor_unitario', function () {
+                    calcularValorTotalTicket(modalSelector);
+                });
         }
 
         // Função para ativar eventos no modal
         function ativarEventosTickets(modalId, pesagemId) {
             const modalSelector = `#modalTickets${pesagemId}`;
+            bindCalculoValorTotalTicket(modalSelector);
 
             // Evento para salvar ou editar ticket
             $(modalSelector).find('#formTicket').off('submit').on('submit', function (e) {
@@ -2372,6 +2496,13 @@
                         Math.random().toString(36).substring(2, 15));
                 }
 
+                if (BLOQUEAR_PESAGEM_MANUAL_BALANCA && form.find('#peso_origem').val() !== 'balanca') {
+                    abrirModalMensagem('Aviso', 'Pesagem manual bloqueada. Conecte uma balança ativa e capture o peso.');
+                    return;
+                }
+
+                calcularValorTotalTicket(modalSelector);
+
                 // Envia requisição AJAX
                 $.ajax({
                     url: url,
@@ -2382,9 +2513,10 @@
                         carregarTickets(pesagemId); // Atualiza dinamicamente a tabela
                         atualizarTotaisGrid(pesagemId); // Atualiza os totais na grid principal
                         resetForm(modalSelector); // Reseta o formulário
+                        $(modalSelector).modal('hide');
                     },
                     error: function (xhr) {
-                        abrirModalMensagem('Erro', xhr.responseJSON.error); // Exibe mensagem de erro
+                        abrirModalMensagem('Erro', extrairMensagemErroAjax(xhr));
                     }
                 });
             });
@@ -2399,6 +2531,11 @@
                     $(modalSelector).find('#produto_id').val(data.produto_id).trigger('change');
                     $(modalSelector).find('#peso').val(parseFloat(data.peso).toFixed(2)); // Peso
                     $(modalSelector).find('#peso_bag').val(parseFloat(data.peso_bag || 0).toFixed(2));
+                    $(modalSelector).find('#balanca_config_id').val(data.balanca_config_id || '');
+                    $(modalSelector).find('#peso_origem').val(data.peso_origem || 'manual');
+                    $(modalSelector).find('#valor_unitario').val(parseFloat(data.valor_unitario || 0).toFixed(6));
+                    $(modalSelector).find('#valor_total').val(parseFloat(data.valor_total || 0).toFixed(6));
+                    calcularValorTotalTicket(modalSelector);
                     $(modalSelector).find('#tipo').val(data.tipo); // Tipo
                     $(modalSelector).find('#status').val(data.status); // Status
                     $(modalSelector).find('#inicio').val(data.inicio ? data.inicio.replace(' ', 'T') : ''); // Início
@@ -2464,6 +2601,7 @@
         }
 
         // Modal de Mensagem/Aviso
+
         function abrirModalMensagem(titulo, mensagem) {
             // Atualiza dinamicamente o título e a mensagem no modal
             $('#modalMensagemLabel').text(titulo); // Define o título do modal
@@ -2473,24 +2611,49 @@
             $('#modalMensagem').modal('show');
         }
 
-        // Reseta o modal de tickets ao fechar
-        $('#modalTickets').on('hidden.bs.modal', function () {
-            // Reseta o formulário de tickets
-            $('#formTicket')[0].reset(); // Reseta todos os campos do formulário
-            $('#ticket_id').val(''); // Limpa o ID do ticket
-            $('#_method').val('POST'); // Retorna para método POST
-            $('#formTicket').attr('action', '{{ route("ticketsPesagem.save") }}'); // Reconfigura para criar novo ticket
-        });
+        function extrairMensagemErroAjax(xhr) {
+            if (!xhr) {
+                return 'Erro inesperado ao salvar ticket.';
+            }
+
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.errors && typeof xhr.responseJSON.errors === 'object') {
+                    const mensagens = Object.values(xhr.responseJSON.errors)
+                        .flat()
+                        .filter(Boolean);
+                    if (mensagens.length) {
+                        return mensagens.join(' | ');
+                    }
+                }
+
+                if (xhr.responseJSON.error) {
+                    return xhr.responseJSON.error;
+                }
+
+                if (xhr.responseJSON.message) {
+                    return xhr.responseJSON.message;
+                }
+            }
+
+            if (xhr.responseText) {
+                const texto = String(xhr.responseText).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                if (texto) {
+                    return texto.slice(0, 500);
+                }
+            }
+
+            return `Erro ao salvar ticket (HTTP ${xhr.status || 'desconhecido'}).`;
+        }
 
         // Ativa os eventos sempre que o modal de tickets for aberto
-        $(document).on('shown.bs.modal', '.modal', function () {
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function () {
             const modalId = $(this).attr('id'); // Identifica o modal atual
             const pesagemId = modalId.replace('modalTickets', ''); // Extrai o ID da pesagem
             ativarEventosTickets(`#${modalId}`, pesagemId); // Ativa eventos dinamicamente
         });
 
         // === Enhancement: Date-Time Fields in #formTicket ===
-        $(document).on('shown.bs.modal', '.modal', function(){
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function(){
             var $modal = $(this),
                 $form  = $modal.find('#formTicket');
             if (!$form.length) return;
@@ -2611,9 +2774,17 @@
         $(document).on('hidden.bs.modal','[id^=modalTickets]', function(){
             var $modal = $(this);
             _origReset($modal);
+            $modal.find('#balanca-select').prop('disabled', false).val('');
+            $modal.find('#connect').prop('disabled', true);
+            $modal.find('#disconnect').prop('disabled', true);
+            $modal.find('#pesoAtual').text('----');
+            $modal.find('#pesoBruto, #pesoLiquido, #pesoTara').text('0.00');
+            $modal.find('#pesoEstabilidade').text('-');
+            $modal.find('#peso_origem').val('manual');
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
             $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
+            $modal.removeData('balancaState');
         });
 
     </script>
@@ -2621,74 +2792,178 @@
 {{--    Controle da Balança     --}}
     <script type="text/javascript">
         function ativarEventosBalança(modalId) {
-            let balancaSelecionada = null;
-            let intervaloLeitura;
+            const $modal = $(modalId);
+            const state = $modal.data('balancaState') || {
+                balancaSelecionada: null,
+                balancaConectada: null,
+                conectado: false,
+                conectando: false,
+                intervaloLeitura: null,
+                desconexaoManual: false,
+            };
+            $modal.data('balancaState', state);
 
-            // Seleciona a balança
-            $(modalId).find('#balanca-select').on('change', function () {
+            function atualizarUIConexao() {
+                const temSelecao = !!(state.balancaSelecionada && state.balancaSelecionada.id);
+                $modal.find('#connect').prop('disabled', !temSelecao || state.conectado || state.conectando);
+                $modal.find('#disconnect').prop('disabled', !state.conectado && !state.conectando);
+            }
+
+            function pararLeitura() {
+                if (state.intervaloLeitura) {
+                    clearInterval(state.intervaloLeitura);
+                    state.intervaloLeitura = null;
+                }
+            }
+
+            function iniciarLeitura() {
+                if (!state.balancaConectada) {
+                    return;
+                }
+
+                pararLeitura();
+                state.intervaloLeitura = setInterval(() => {
+                    axios.get(`${state.balancaConectada.backend}/api/data?equip=${state.balancaConectada.modelo}`)
+                        .then(response => {
+                            const dados = response.data.data;
+                            const bruto = parseFloat(dados.peso_bruto ?? 0) || 0;
+                            const tara = parseFloat(dados.tara ?? dados.peso_tara ?? 0) || 0;
+                            const liquido = (dados.peso_liq !== undefined && dados.peso_liq !== null)
+                                ? (parseFloat(dados.peso_liq) || 0)
+                                : Math.max(0, bruto - tara);
+
+                            $modal.find('#pesoAtual').text(bruto.toFixed(2));
+                            $modal.find('#pesoBruto').text(bruto.toFixed(2));
+                            $modal.find('#pesoLiquido').text(liquido.toFixed(2));
+                            $modal.find('#pesoTara').text(tara.toFixed(2));
+                            $modal.find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
+                            $modal.find('#peso').val(bruto);
+                            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                                $modal.find('#peso_bag').val(tara.toFixed(2));
+                            }
+                            calcularValorTotalTicket(modalId);
+                            $modal.find('#peso_origem').val('balanca');
+                            if (dados.sobrecarga) {
+                                $modal.find('#pesoEstabilidade').text("Sobrecarga");
+                            }
+                        })
+                        .catch(error => console.error('Erro ao ler peso:', error));
+                }, 200);
+            }
+
+            function conectarBalanca(auto = false) {
+                if (!state.balancaSelecionada || !state.balancaSelecionada.id) {
+                    if (!auto) {
+                        abrirModalMensagem('Aviso', 'Selecione uma balança!');
+                    }
+                    return Promise.resolve(false);
+                }
+
+                if (state.conectado || state.conectando) {
+                    return Promise.resolve(true);
+                }
+
+                if (auto && state.desconexaoManual) {
+                    return Promise.resolve(false);
+                }
+
+                state.conectando = true;
+                atualizarUIConexao();
+
+                return axios.get(`${state.balancaSelecionada.backend}/api/open?port=${state.balancaSelecionada.porta}`)
+                    .then(() => {
+                        state.conectado = true;
+                        state.balancaConectada = { ...state.balancaSelecionada };
+                        state.conectando = false;
+                        atualizarUIConexao();
+                        iniciarLeitura();
+                        return true;
+                    })
+                    .catch(error => {
+                        state.conectado = false;
+                        state.conectando = false;
+                        state.balancaConectada = null;
+                        atualizarUIConexao();
+                        pararLeitura();
+                        if (!auto) {
+                            abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message);
+                        }
+                        return false;
+                    });
+            }
+
+            function desconectarBalanca(auto = false) {
+                if (!state.balancaConectada) {
+                    state.conectado = false;
+                    state.conectando = false;
+                    pararLeitura();
+                    atualizarUIConexao();
+                    return Promise.resolve(true);
+                }
+
+                return axios.get(`${state.balancaConectada.backend}/api/close`)
+                    .then(() => {
+                        state.conectado = false;
+                        state.conectando = false;
+                        state.balancaConectada = null;
+                        pararLeitura();
+                        $modal.find('#pesoAtual').text('----');
+                        atualizarUIConexao();
+                        return true;
+                    })
+                    .catch(error => {
+                        if (!auto) {
+                            abrirModalMensagem('Erro', 'Erro ao desconectar: ' + error.message);
+                        }
+                        return false;
+                    });
+            }
+
+            $modal.find('#balanca-select').off('change.autoBalanca').on('change.autoBalanca', function () {
                 const select = $(this).find(':selected');
-                balancaSelecionada = {
+                const novaSelecao = {
                     id: select.val(),
                     backend: select.data('backend'),
                     modelo: select.data('modelo'),
                     porta: select.data('port')
                 };
-                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id);
-                $(modalId).find('#disconnect').prop('disabled', true);
-            });
+                const balancaAnteriorId = state.balancaSelecionada?.id || state.balancaConectada?.id || null;
+                state.balancaSelecionada = novaSelecao;
+                $modal.find('#balanca_config_id').val(novaSelecao.id || '');
 
-            // Conectar
-            $(modalId).find('#connect').on('click', function () {
-                if (!balancaSelecionada) {
-                    abrirModalMensagem('Aviso', 'Selecione uma balança!');
+                const trocouBalanca = !!balancaAnteriorId && !!novaSelecao.id && String(balancaAnteriorId) !== String(novaSelecao.id);
+
+                if (trocouBalanca && state.conectado) {
+                    desconectarBalanca(true).finally(() => {
+                        if (AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
+                            conectarBalanca(true);
+                        }
+                    });
                     return;
                 }
 
-                axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
-                    .then(() => {
-                        $(modalId).find('#connect').prop('disabled', true);
-                        $(modalId).find('#disconnect').prop('disabled', false);
-                        iniciarLeitura(modalId, balancaSelecionada);
-                    })
-                    .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message));
+                atualizarUIConexao();
+
+                if (AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
+                    conectarBalanca(true);
+                }
             });
 
-            // Desconectar
-            $(modalId).find('#disconnect').on('click', function () {
-                if (!balancaSelecionada) return;
-
-                axios.get(`${balancaSelecionada.backend}/api/close`)
-                    .then(() => {
-                        $(modalId).find('#connect').prop('disabled', false);
-                        $(modalId).find('#disconnect').prop('disabled', true);
-                        clearInterval(intervaloLeitura);
-                        $(modalId).find('#pesoAtual').text('----');
-                    })
-                    .catch(error => abrirModalMensagem('Erro', 'Erro ao desconectar: ' + error.message));
+            $modal.find('#connect').off('click.autoBalanca').on('click.autoBalanca', function () {
+                state.desconexaoManual = false;
+                conectarBalanca(false);
             });
 
-            // Iniciar leitura contínua
-            function iniciarLeitura(modalId, balancaSelecionada) {
-                intervaloLeitura = setInterval(() => {
-                    axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
-                        .then(response => {
-                            const dados = response.data.data;
-                            $(modalId).find('#pesoAtual').text(dados.peso_bruto || '----');
-                            $(modalId).find('#pesoBruto').text(dados.peso_bruto || '----');
-                            $(modalId).find('#pesoLiquido').text(dados.peso_liq || '----');
-                            $(modalId).find('#pesoTara').text(dados.tara || '----');
-                            $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
-                            $(modalId).find('#peso').val(dados.peso_bruto || 0); // Atualiza automaticamente no campo
-                            if (dados.sobrecarga) {
-                                $(modalId).find('#pesoEstabilidade').text("Sobrecarga");
-                            }
-                        })
-                        .catch(error => console.error('Erro ao ler peso:', error));
-                }, 200); // Atualiza a cada 500ms
-            }
+            $modal.find('#disconnect').off('click.autoBalanca').on('click.autoBalanca', function () {
+                state.desconexaoManual = true;
+                desconectarBalanca(false);
+            });
+
+            atualizarUIConexao();
         }
 
         // Modal de Mensagem/Aviso
+
         function abrirModalMensagem(titulo, mensagem) {
             // Atualiza dinamicamente o título e a mensagem no modal
             $('#modalMensagemLabel').text(titulo); // Define o título do modal
@@ -2699,9 +2974,27 @@
         }
 
         // Ativa os eventos sempre que o modal for aberto
-        $(document).on('shown.bs.modal', '.modal', function () {
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function () {
             const modalId = '#' + $(this).attr('id'); // Identifica o modal atual
             ativarEventosBalança(modalId); // Chama a função para ativar eventos
+
+            if (modalId.startsWith('#modalTickets')) {
+                const $modal = $(modalId);
+                if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                    $modal.find('#peso').prop('readonly', true);
+                    $modal.find('#peso_origem').val('manual');
+                }
+
+                if (BALANCA_PADRAO_USUARIO_ID > 0) {
+                    $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');
+                    if (AUTO_CONNECT_BALANCA_PADRAO_USUARIO) {
+                        const state = $modal.data('balancaState');
+                        if (state && !state.desconexaoManual) {
+                            $modal.find('#connect').trigger('click');
+                        }
+                    }
+                }
+            }
         });
     </script>
 
@@ -2730,6 +3023,7 @@
         }
 
         // Abre um modal genérico de mensagem/alerta
+
         function abrirModalMensagem(titulo, mensagem) {
             $('#modalMensagemLabel').html(titulo);
             $('#modalMensagemTexto').html(mensagem);
