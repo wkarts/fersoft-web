@@ -197,3 +197,4 @@ app/Services/ReformaTributariaService.php.bkp.8
 app/Services/ReformaTributariaService.php.bkp.7
 app/Http/Controllers/VendaController.php.bkp.7
 resources/views/pesagens/list.blade.php_
+app/Prints/PesagemPrint80.php.bkp.20022026

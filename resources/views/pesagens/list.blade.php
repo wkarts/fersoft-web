@@ -413,15 +413,6 @@
                                             <small class="text-hover-dark">
                                                 - {{ number_format($desconto, 2, ',', '.') }} kg
                                             </small>
-
-                                            @if($mostrarLinhaValoresTicket)
-                                                <br>
-                                                <small class="text-muted" style="font-size: 11px;">
-                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
-                                                    &nbsp;|&nbsp;
-                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
-                                                </small>
-                                            @endif
                                         </td>
 
                                         <!-- Peso Bruto -->
@@ -432,8 +423,17 @@
                                         <!-- Peso Final (calculado dinâmico, mesmo antes de concluir) -->
                                         <td id="pesoFinal-{{ $pesagem->id }}" class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">
                                             {{ number_format($pesoFinal, 2, ',', '.') }} kg
+                                            @if($mostrarLinhaValoresTicket)
+                                                <br>
+                                                <small class="text-hover-dark" style="font-size: 9px;">
+                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
+                                                </small>
+                                                <br>
+                                                <small class="text-hover-dark" style="font-size: 9px;">
+                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
+                                                </small>
+                                            @endif
                                         </td>
-
 
                                         <!--
                                         <td id="peso-{{ $pesagem->id }}" class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">{{ number_format($pesagem->peso, 2, ',', '.') }} kg</td>
