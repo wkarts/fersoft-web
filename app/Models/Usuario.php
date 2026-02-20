@@ -36,6 +36,7 @@ class Usuario extends Authenticatable
         'menu_representante',
         'locais',
         'local_padrao',
+        'balanca_padrao_id',
         'otp_secret',
     ];
 
