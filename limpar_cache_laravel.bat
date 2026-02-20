@@ -7,7 +7,7 @@ php artisan cache:clear
 php artisan config:clear
 php artisan route:clear
 php artisan view:clear
-php artisan key:generate
+php artisan key:generate --force
 REM php artisan config:cache
 
 REM Mensagem de conclusão
