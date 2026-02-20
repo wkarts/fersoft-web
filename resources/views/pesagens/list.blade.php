@@ -392,6 +392,20 @@
                                                 $pesoLiquido = $pesagem->peso_liquido;
                                                 $pesoFinal = $pesagem->peso_final_calculado;
                                                 $desconto = max(0, $pesoLiquido - $pesoFinal);
+                                                $mostrarLinhaValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+                                                $valorUnitarioTicket = 0;
+                                                $valorTotalTicket = 0;
+
+                                                if ($mostrarLinhaValoresTicket) {
+                                                    $ticketComValorUnitario = $pesagem->tickets->first(function ($ticket) {
+                                                        return (float) ($ticket->valor_unitario ?? 0) > 0;
+                                                    });
+
+                                                    $valorUnitarioTicket = (float) ($ticketComValorUnitario->valor_unitario ?? 0);
+                                                    $valorTotalTicket = (float) $pesagem->tickets->sum(function ($ticket) {
+                                                        return max(0, (float) ($ticket->valor_total ?? 0));
+                                                    });
+                                                }
                                             @endphp
 
                                             {{ number_format($pesoLiquido, 2, ',', '.') }} kg
@@ -399,6 +413,15 @@
                                             <small class="text-hover-dark">
                                                 - {{ number_format($desconto, 2, ',', '.') }} kg
                                             </small>
+
+                                            @if($mostrarLinhaValoresTicket)
+                                                <br>
+                                                <small class="text-muted" style="font-size: 11px;">
+                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
+                                                    &nbsp;|&nbsp;
+                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
+                                                </small>
+                                            @endif
                                         </td>
 
                                         <!-- Peso Bruto -->
