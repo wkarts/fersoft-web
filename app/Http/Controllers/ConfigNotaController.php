@@ -12,7 +12,6 @@ use App\Models\CashBackCliente;
 use App\Models\EscritorioContabil;
 use App\Models\NaturezaOperacao;
 use App\Models\BalancaConfig;
-use App\Models\Usuario;
 use App\Services\NFService;
 use NFePHP\Common\Certificate;
 use Mail;
@@ -341,7 +340,6 @@ class ConfigNotaController extends Controller
 		session()->put('user_logged', $value);
 
 		if($result){
-			$this->atualizarBalancaPadraoUsuario($request);
 			session()->flash("mensagem_sucesso", "Configurado com sucesso!");
 		}else{
 			session()->flash('mensagem_erro', 'Erro ao configurar!');
@@ -349,31 +347,7 @@ class ConfigNotaController extends Controller
 		return redirect('/configNF');
 	}
 
-	private function atualizarBalancaPadraoUsuario(Request $request): void
-	{
-		$usuarioId = session('user_logged.id');
-		if (!$usuarioId || !$request->has('balanca_padrao_id')) {
-			return;
-		}
 
-		$balancaPadraoId = (int) $request->input('balanca_padrao_id');
-		$balancaPadraoId = $balancaPadraoId > 0 ? $balancaPadraoId : null;
-
-		if ($balancaPadraoId) {
-			$balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
-				->where('ativo', true)
-				->where('id', $balancaPadraoId)
-				->exists();
-
-			if (!$balancaValida) {
-				$balancaPadraoId = null;
-			}
-		}
-
-		Usuario::where('empresa_id', $this->empresa_id)
-			->where('id', $usuarioId)
-			->update(['balanca_padrao_id' => $balancaPadraoId]);
-	}
 
 	private function validarAtivacaoBalancaPadrao(Request $request)
 	{
