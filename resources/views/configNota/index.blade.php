@@ -140,29 +140,29 @@
 
                                             </div>
 
-                                            <div class="row"> 
-                                                <div class="col-12"> 
-                                                    <div class="card card-custom gutter-b"> 
-                                                        <div class="card-body"> 
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <div class="card card-custom gutter-b">
+                                                        <div class="card-body">
                                                             <h5 class="mb-4">Controle de Pesagem por Balança</h5>
-                                                            <div class="form-group"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="bloquear_pesagem_manual_balanca" value="1" {{ (old('bloquear_pesagem_manual_balanca', $config->bloquear_pesagem_manual_balanca ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
-                                                                        Bloquear pesagem manual e obrigar leitura da balança padrão
+                                                                        Bloquear pesagem manual e obrigar leitura da balança
                                                                     </label>
                                                                 </div>
-                                                                <small class="text-muted">Quando ativo, o peso manual é bloqueado e o operador deve usar somente a balança padrão.</small>
+                                                                <small class="text-muted">Quando ativo, o peso manual é bloqueado e o operador deve usar somente a balança </small>
                                                             </div>
 
-                                                            <div class="form-group"> 
+                                                            <div class="form-group">
                                                                 <small class="text-muted">Sem balança ativa? <a href="/balancas">Cadastre uma balança</a> para habilitar leitura obrigatória via balança.</small>
                                                             </div>
 
-                                                            <div class="form-group mb-1"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mb-1">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="usar_valores_ticket_pesagem" value="1" {{ (old('usar_valores_ticket_pesagem', $config->usar_valores_ticket_pesagem ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Usar valores (unitário/total) vindos do ticket de pesagem
@@ -170,9 +170,9 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div class="form-group mb-0"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="exibir_valores_ticket_pesagem_grid" value="1" {{ (old('exibir_valores_ticket_pesagem_grid', $config->exibir_valores_ticket_pesagem_grid ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Exibir colunas de valor unitário/total da pesagem na grid
