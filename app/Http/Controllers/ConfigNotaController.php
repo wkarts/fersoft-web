@@ -11,6 +11,7 @@ use App\Models\CashBackConfig;
 use App\Models\CashBackCliente;
 use App\Models\EscritorioContabil;
 use App\Models\NaturezaOperacao;
+use App\Models\BalancaConfig;
 use App\Services\NFService;
 use NFePHP\Common\Certificate;
 use Mail;
@@ -21,6 +22,7 @@ class ConfigNotaController extends Controller
 	public function __construct(){
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
+
 			$value = session('user_logged');
 			if(!$value){
 				return redirect("/login");
@@ -71,6 +73,8 @@ class ConfigNotaController extends Controller
 
 			$empresa = Empresa::findOrFail($this->empresa_id);
 			$cnpj = $empresa->cnpj;
+			$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
+
 			return view('configNota/index')
 			->with('config', $config)
 			->with('cnpj', $cnpj)
@@ -87,6 +91,7 @@ class ConfigNotaController extends Controller
 			->with('testeJs', true)
 			->with('configJs', true)
 			->with('certificado', $certificado)
+			->with('balancasAtivas', $balancasAtivas)
 			->with('title', 'Configurar Emitente');
 		}catch(\Exception $e){
 			echo $e->getMessage();
@@ -114,6 +119,19 @@ class ConfigNotaController extends Controller
 
 	public function save(Request $request){
 		$this->_validate($request);
+		$request->merge([
+			'bloquear_pesagem_manual_balanca' => $request->boolean('bloquear_pesagem_manual_balanca'),
+			'usar_valores_ticket_pesagem' => $request->boolean('usar_valores_ticket_pesagem'),
+			'exibir_valores_ticket_pesagem_grid' => $request->boolean('exibir_valores_ticket_pesagem_grid'),
+		]);
+
+		if ($request->bloquear_pesagem_manual_balanca) {
+			$validacaoBalanca = $this->validarAtivacaoBalancaPadrao($request);
+			if ($validacaoBalanca !== true) {
+				session()->flash('mensagem_erro', $validacaoBalanca);
+				return redirect()->back()->withInput();
+			}
+		}
 		$uf = $request->uf;
 
 		$nomeImagem = "";
@@ -224,7 +242,10 @@ class ConfigNotaController extends Controller
 				'juro_padrao' => $request->juro_padrao ? __replace($request->juro_padrao) : 0,
 				'multa_padrao' => $request->multa_padrao ? __replace($request->multa_padrao) : 0,
 				'graficos_dash' => $request->graficos_dash,
-				'senha_remover' => trim($request->senha_remover) != '' ? md5($request->senha_remover) : ''
+				'senha_remover' => trim($request->senha_remover) != '' ? md5($request->senha_remover) : '',
+				'bloquear_pesagem_manual_balanca' => $request->bloquear_pesagem_manual_balanca,
+				'usar_valores_ticket_pesagem' => $request->usar_valores_ticket_pesagem,
+				'exibir_valores_ticket_pesagem_grid' => $request->exibir_valores_ticket_pesagem_grid,
 			]);
 		}else{
 			$config = ConfigNota::
@@ -299,6 +320,9 @@ class ConfigNotaController extends Controller
 			$config->gerenciar_comissao_usuario_logado = $request->gerenciar_comissao_usuario_logado;
 			$config->usar_email_proprio = $request->usar_email_proprio;
 			$config->graficos_dash = $request->graficos_dash;
+			$config->bloquear_pesagem_manual_balanca = $request->bloquear_pesagem_manual_balanca;
+			$config->usar_valores_ticket_pesagem = $request->usar_valores_ticket_pesagem;
+			$config->exibir_valores_ticket_pesagem_grid = $request->exibir_valores_ticket_pesagem_grid;
 
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';
@@ -321,6 +345,20 @@ class ConfigNotaController extends Controller
 			session()->flash('mensagem_erro', 'Erro ao configurar!');
 		}
 		return redirect('/configNF');
+	}
+
+
+	private function validarAtivacaoBalancaPadrao(Request $request)
+	{
+		$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)
+			->where('ativo', true)
+			->count();
+
+		if ($balancasAtivas <= 0) {
+			return 'Não é possível ativar o bloqueio de pesagem manual sem balança cadastrada/ativa.';
+		}
+
+		return true;
 	}
 
 	private function _validate(Request $request){
