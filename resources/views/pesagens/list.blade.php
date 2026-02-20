@@ -844,7 +844,8 @@
                         <button
                             type="button"
                             class="btn btn-secondary btn-sm btn-close-ticket ml-2"
-                            title="Fechar">
+                            title="Fechar"
+                            data-dismiss="modal">
                             <i class="fa fa-times"></i>Fechar
                         </button>
                     </div>
@@ -2470,9 +2471,10 @@
                         carregarTickets(pesagemId); // Atualiza dinamicamente a tabela
                         atualizarTotaisGrid(pesagemId); // Atualiza os totais na grid principal
                         resetForm(modalSelector); // Reseta o formulário
+                        $(modalSelector).modal('hide');
                     },
                     error: function (xhr) {
-                        abrirModalMensagem('Erro', xhr.responseJSON.error); // Exibe mensagem de erro
+                        abrirModalMensagem('Erro', extrairMensagemErroAjax(xhr));
                     }
                 });
             });
@@ -2567,24 +2569,49 @@
             $('#modalMensagem').modal('show');
         }
 
-        // Reseta o modal de tickets ao fechar
-        $('#modalTickets').on('hidden.bs.modal', function () {
-            // Reseta o formulário de tickets
-            $('#formTicket')[0].reset(); // Reseta todos os campos do formulário
-            $('#ticket_id').val(''); // Limpa o ID do ticket
-            $('#_method').val('POST'); // Retorna para método POST
-            $('#formTicket').attr('action', '{{ route("ticketsPesagem.save") }}'); // Reconfigura para criar novo ticket
-        });
+        function extrairMensagemErroAjax(xhr) {
+            if (!xhr) {
+                return 'Erro inesperado ao salvar ticket.';
+            }
+
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.errors && typeof xhr.responseJSON.errors === 'object') {
+                    const mensagens = Object.values(xhr.responseJSON.errors)
+                        .flat()
+                        .filter(Boolean);
+                    if (mensagens.length) {
+                        return mensagens.join(' | ');
+                    }
+                }
+
+                if (xhr.responseJSON.error) {
+                    return xhr.responseJSON.error;
+                }
+
+                if (xhr.responseJSON.message) {
+                    return xhr.responseJSON.message;
+                }
+            }
+
+            if (xhr.responseText) {
+                const texto = String(xhr.responseText).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                if (texto) {
+                    return texto.slice(0, 500);
+                }
+            }
+
+            return `Erro ao salvar ticket (HTTP ${xhr.status || 'desconhecido'}).`;
+        }
 
         // Ativa os eventos sempre que o modal de tickets for aberto
-        $(document).on('shown.bs.modal', '.modal', function () {
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function () {
             const modalId = $(this).attr('id'); // Identifica o modal atual
             const pesagemId = modalId.replace('modalTickets', ''); // Extrai o ID da pesagem
             ativarEventosTickets(`#${modalId}`, pesagemId); // Ativa eventos dinamicamente
         });
 
         // === Enhancement: Date-Time Fields in #formTicket ===
-        $(document).on('shown.bs.modal', '.modal', function(){
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function(){
             var $modal = $(this),
                 $form  = $modal.find('#formTicket');
             if (!$form.length) return;
@@ -2705,7 +2732,13 @@
         $(document).on('hidden.bs.modal','[id^=modalTickets]', function(){
             var $modal = $(this);
             _origReset($modal);
-            $modal.find('#balanca-select').prop('disabled', false);
+            $modal.find('#balanca-select').prop('disabled', false).val('');
+            $modal.find('#connect').prop('disabled', true);
+            $modal.find('#disconnect').prop('disabled', true);
+            $modal.find('#pesoAtual').text('----');
+            $modal.find('#pesoBruto, #pesoLiquido, #pesoTara').text('0.00');
+            $modal.find('#pesoEstabilidade').text('-');
+            $modal.find('#peso_origem').val('manual');
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
             $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
@@ -2805,7 +2838,7 @@
         }
 
         // Ativa os eventos sempre que o modal for aberto
-        $(document).on('shown.bs.modal', '.modal', function () {
+        $(document).on('shown.bs.modal', '[id^="modalTickets"]', function () {
             const modalId = '#' + $(this).attr('id'); // Identifica o modal atual
             ativarEventosBalança(modalId); // Chama a função para ativar eventos
 
