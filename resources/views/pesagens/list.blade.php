@@ -930,16 +930,16 @@
 
                                         <div class="form-group col-md-6 col-sm-12">
                                             <label for="peso_bag">Peso dos Recipientes (kg):</label>
-                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00">
+                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" readonly>
                                         </div>
                                         @if($configNota->usar_valores_ticket_pesagem ?? false)
                                             <div class="form-group col-md-6 col-sm-12">
                                                 <label for="valor_unitario">Valor Unitário (ticket):</label>
-                                                <input type="number" name="valor_unitario" id="valor_unitario" step="0.000001" class="form-control" value="0.00" readonly>
+                                                <input type="number" name="valor_unitario" id="valor_unitario" step="0.000001" class="form-control" value="0.00">
                                             </div>
                                             <div class="form-group col-md-6 col-sm-12">
                                                 <label for="valor_total">Valor Total (ticket):</label>
-                                                <input type="number" name="valor_total" id="valor_total" step="0.000001" class="form-control" value="0.00" readonly>
+                                                <input type="number" name="valor_total" id="valor_total" step="0.000001" class="form-control" value="0.00">
                                             </div>
                                         @endif
                                     </div>
@@ -1207,6 +1207,11 @@
         const USAR_VALORES_TICKET_PESAGEM = {{ (int) ($configNota->usar_valores_ticket_pesagem ?? 0) }};
         const EXIBIR_VALORES_TICKET_PESAGEM_GRID = {{ (int) ($configNota->exibir_valores_ticket_pesagem_grid ?? 0) }};
         const BALANCA_PADRAO_USUARIO_ID = {{ (int) ($balancaPadraoUsuarioId ?? 0) }};
+
+
+        $(document).on('keydown paste', '[id^=modalTickets] #peso_bag', function (e) {
+            e.preventDefault();
+        });
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso', function (e) {
             if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {

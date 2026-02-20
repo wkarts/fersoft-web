@@ -70,8 +70,8 @@ class TicketPesagemController extends BaseController
             $data['empresa_id'] = $this->empresa_id;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
-            $taraInformada = $request->input('peso_bag', $request->input('tara', 0));
-            $data['peso_bag'] = max(0, (float) $taraInformada); // valor default
+            $taraInformada = $request->input('tara', $request->input('peso_bag', 0));
+            $data['peso_bag'] = 0; // Tara somente por leitura da balança
 
             if ($config && $config->bloquear_pesagem_manual_balanca) {
                 $validacao = $this->validarPesagemSomenteBalanca($request);
@@ -87,6 +87,7 @@ class TicketPesagemController extends BaseController
 
                 $data['balanca_config_id'] = (int) $request->input('balanca_config_id');
                 $data['peso_origem'] = 'balanca';
+                $data['peso_bag'] = max(0, (float) $taraInformada);
 
                 if ($data['peso_bag'] <= 0) {
                     \Log::info('TicketPesagem sem tara explícita na leitura da balança; mantendo regra atual.', [
@@ -99,19 +100,14 @@ class TicketPesagemController extends BaseController
             }
 
             if ($config && $config->usar_valores_ticket_pesagem) {
-                if ($ticketExistente && ((float) $ticketExistente->valor_unitario > 0 || (float) $ticketExistente->valor_total > 0)) {
-                    $valores = [
-                        'valor_unitario' => (float) $ticketExistente->valor_unitario,
-                        'valor_total' => (float) $ticketExistente->valor_total,
-                        'valor_origem' => $ticketExistente->valor_origem ?: 'ticket',
-                    ];
-                } else {
-                    $valores = $this->resolverValoresTicket($request, $pesagem);
-                }
+                $valorUnitarioInput = $request->input('valor_unitario', $ticketExistente->valor_unitario ?? 0);
+                $valorTotalInput = $request->input('valor_total', $ticketExistente->valor_total ?? 0);
 
-                $data['valor_unitario'] = $valores['valor_unitario'];
-                $data['valor_total'] = $valores['valor_total'];
-                $data['valor_origem'] = $valores['valor_origem'];
+                $data['valor_unitario'] = max(0, (float) $valorUnitarioInput);
+                $data['valor_total'] = max(0, (float) $valorTotalInput);
+                $data['valor_origem'] = ($data['valor_unitario'] > 0 || $data['valor_total'] > 0)
+                    ? 'ticket'
+                    : 'manual';
 
                 \Log::info('TicketPesagem valor definido por regra de origem', [
                     'empresa_id' => $this->empresa_id,
