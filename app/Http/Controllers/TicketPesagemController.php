@@ -63,6 +63,9 @@ class TicketPesagemController extends BaseController
             $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
             $pesagem = Pesagem::where('empresa_id', $this->empresa_id)->findOrFail($request->pesagem_id);
             $usuario = Usuario::where('empresa_id', $this->empresa_id)->find($this->usuario_id);
+            $ticketExistente = $request->filled('id')
+                ? TicketPesagem::where('empresa_id', $this->empresa_id)->find($request->id)
+                : null;
 
             $data = $request->all();
             $data['peso_origem'] = $request->input('peso_origem', 'manual');
@@ -77,12 +80,27 @@ class TicketPesagemController extends BaseController
                     return response()->json(['error' => $validacao], 422);
                 }
 
+                if ((float) $request->input('peso', 0) <= 0) {
+                    return response()->json([
+                        'error' => 'Não foi possível obter pesagem da balança padrão. Verifique a leitura e tente novamente.'
+                    ], 422);
+                }
+
                 $data['balanca_config_id'] = (int) $usuario->balanca_padrao_id;
                 $data['peso_origem'] = 'balanca';
             }
 
             if ($config && $config->usar_valores_ticket_pesagem) {
-                $valores = $this->resolverValoresTicket($request, $pesagem);
+                if ($ticketExistente && ((float) $ticketExistente->valor_unitario > 0 || (float) $ticketExistente->valor_total > 0)) {
+                    $valores = [
+                        'valor_unitario' => (float) $ticketExistente->valor_unitario,
+                        'valor_total' => (float) $ticketExistente->valor_total,
+                        'valor_origem' => $ticketExistente->valor_origem ?: 'ticket',
+                    ];
+                } else {
+                    $valores = $this->resolverValoresTicket($request, $pesagem);
+                }
+
                 $data['valor_unitario'] = $valores['valor_unitario'];
                 $data['valor_total'] = $valores['valor_total'];
                 $data['valor_origem'] = $valores['valor_origem'];
