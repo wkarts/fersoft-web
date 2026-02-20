@@ -2725,12 +2725,19 @@
                     axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
                         .then(response => {
                             const dados = response.data.data;
-                            $(modalId).find('#pesoAtual').text(dados.peso_bruto || '----');
-                            $(modalId).find('#pesoBruto').text(dados.peso_bruto || '----');
-                            $(modalId).find('#pesoLiquido').text(dados.peso_liq || '----');
-                            $(modalId).find('#pesoTara').text(dados.tara || '----');
+                            const bruto = parseFloat(dados.peso_bruto ?? 0) || 0;
+                            const tara = parseFloat(dados.tara ?? dados.peso_tara ?? 0) || 0;
+                            const liquido = (dados.peso_liq !== undefined && dados.peso_liq !== null)
+                                ? (parseFloat(dados.peso_liq) || 0)
+                                : Math.max(0, bruto - tara);
+
+                            $(modalId).find('#pesoAtual').text(bruto.toFixed(2));
+                            $(modalId).find('#pesoBruto').text(bruto.toFixed(2));
+                            $(modalId).find('#pesoLiquido').text(liquido.toFixed(2));
+                            $(modalId).find('#pesoTara').text(tara.toFixed(2));
                             $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
-                            $(modalId).find('#peso').val(dados.peso_bruto || 0); // Atualiza automaticamente no campo
+                            $(modalId).find('#peso').val(bruto); // Bruto
+                            $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
                             $(modalId).find('#peso_origem').val('balanca');
                             if (dados.sobrecarga) {
                                 $(modalId).find('#pesoEstabilidade').text("Sobrecarga");

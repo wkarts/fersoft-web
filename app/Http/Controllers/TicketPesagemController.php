@@ -70,7 +70,8 @@ class TicketPesagemController extends BaseController
             $data['empresa_id'] = $this->empresa_id;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
-            $data['peso_bag'] = $request->input('peso_bag', 0); // valor default
+            $taraInformada = $request->input('peso_bag', $request->input('tara', 0));
+            $data['peso_bag'] = max(0, (float) $taraInformada); // valor default
 
             if ($config && $config->bloquear_pesagem_manual_balanca) {
                 $validacao = $this->validarPesagemSomenteBalanca($request);
@@ -86,6 +87,15 @@ class TicketPesagemController extends BaseController
 
                 $data['balanca_config_id'] = (int) $request->input('balanca_config_id');
                 $data['peso_origem'] = 'balanca';
+
+                if ($data['peso_bag'] <= 0) {
+                    \Log::info('TicketPesagem sem tara explícita na leitura da balança; mantendo regra atual.', [
+                        'empresa_id' => $this->empresa_id,
+                        'usuario_id' => $this->usuario_id,
+                        'pesagem_id' => $pesagem->id,
+                        'balanca_config_id' => $data['balanca_config_id'] ?? null,
+                    ]);
+                }
             }
 
             if ($config && $config->usar_valores_ticket_pesagem) {
