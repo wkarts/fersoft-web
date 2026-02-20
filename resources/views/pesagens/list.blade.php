@@ -964,8 +964,12 @@
                                         </div>
 
                                         <div class="form-group col-md-6 col-sm-12">
-                                            <label for="peso_bag">Peso dos Recipientes (kg):</label>
-                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" readonly>
+                                            <label for="peso_bag">Peso dos Recipientes (kg):
+                                                @if($configNota->desbloquear_campo_peso_bag_ticket ?? false)
+                                                    <button type="button" class="btn btn-xs btn-light-primary py-0 px-1 ml-1 btn-repetir-tara" title="Repetir tara da balança">↻</button>
+                                                @endif
+                                            </label>
+                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" {{ ($configNota->desbloquear_campo_peso_bag_ticket ?? false) ? "" : "readonly" }}>
                                         </div>
                                         @if($configNota->usar_valores_ticket_pesagem ?? false)
                                             <div class="form-group col-md-6 col-sm-12">
@@ -1242,10 +1246,23 @@
         const USAR_VALORES_TICKET_PESAGEM = {{ (int) ($configNota->usar_valores_ticket_pesagem ?? 0) }};
         const EXIBIR_VALORES_TICKET_PESAGEM_GRID = {{ (int) ($configNota->exibir_valores_ticket_pesagem_grid ?? 0) }};
         const BALANCA_PADRAO_USUARIO_ID = {{ (int) ($balancaPadraoUsuarioId ?? 0) }};
+        const DESBLOQUEAR_CAMPO_PESO_BAG_TICKET = {{ (int) ($configNota->desbloquear_campo_peso_bag_ticket ?? 0) }};
 
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso_bag', function (e) {
-            e.preventDefault();
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                e.preventDefault();
+            }
+        });
+
+        $(document).on('click', '[id^=modalTickets] .btn-repetir-tara', function () {
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                return;
+            }
+
+            const $modal = $(this).closest('[id^=modalTickets]');
+            const taraAtual = parseFloat($modal.find('#pesoTara').text().replace(',', '.')) || 0;
+            $modal.find('#peso_bag').val(taraAtual.toFixed(2)).trigger('input');
         });
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso', function (e) {
@@ -2848,7 +2865,9 @@
                             $(modalId).find('#pesoTara').text(tara.toFixed(2));
                             $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
                             $(modalId).find('#peso').val(bruto); // Bruto
-                            $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                                $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                            }
                             calcularValorTotalTicket(modalId);
                             $(modalId).find('#peso_origem').val('balanca');
                             if (dados.sobrecarga) {

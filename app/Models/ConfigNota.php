@@ -82,6 +82,7 @@ class ConfigNota extends Model
         'bloquear_pesagem_manual_balanca',
         'usar_valores_ticket_pesagem',
         'exibir_valores_ticket_pesagem_grid',
+        'desbloquear_campo_peso_bag_ticket',
     ];
 
     public static function configStatic(){

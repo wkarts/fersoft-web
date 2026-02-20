@@ -179,6 +179,17 @@
                                                                     </label>
                                                                 </div>
                                                             </div>
+
+                                                            <div class="form-group mt-3 mb-0"> 
+                                                                <div class="checkbox-inline"> 
+                                                                    <label class="checkbox"> 
+                                                                        <input type="checkbox" name="desbloquear_campo_peso_bag_ticket" value="1" {{ (old('desbloquear_campo_peso_bag_ticket', $config->desbloquear_campo_peso_bag_ticket ?? 0)) ? 'checked' : '' }}>
+                                                                        <span></span>
+                                                                        Desbloquear campo "Peso dos Recipientes" no ticket de pesagem
+                                                                    </label>
+                                                                </div>
+                                                                <small class="text-muted">Quando ativo, o campo de recipiente fica editável e a tara não é aplicada automaticamente.</small>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
