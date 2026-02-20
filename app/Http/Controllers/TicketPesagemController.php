@@ -101,10 +101,14 @@ class TicketPesagemController extends BaseController
 
             if ($config && $config->usar_valores_ticket_pesagem) {
                 $valorUnitarioInput = $request->input('valor_unitario', $ticketExistente->valor_unitario ?? 0);
-                $valorTotalInput = $request->input('valor_total', $ticketExistente->valor_total ?? 0);
 
                 $data['valor_unitario'] = max(0, (float) $valorUnitarioInput);
-                $data['valor_total'] = max(0, (float) $valorTotalInput);
+
+                $pesoBruto = max(0, (float) $request->input('peso', 0));
+                $pesoRecipiente = max(0, (float) ($data['peso_bag'] ?? $request->input('peso_bag', 0)));
+                $pesoLiquido = max(0, $pesoBruto - $pesoRecipiente);
+                $data['valor_total'] = max(0, $pesoLiquido * $data['valor_unitario']);
+
                 $data['valor_origem'] = ($data['valor_unitario'] > 0 || $data['valor_total'] > 0)
                     ? 'ticket'
                     : 'manual';

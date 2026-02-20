@@ -939,7 +939,7 @@
                                             </div>
                                             <div class="form-group col-md-6 col-sm-12">
                                                 <label for="valor_total">Valor Total (ticket):</label>
-                                                <input type="number" name="valor_total" id="valor_total" step="0.000001" class="form-control" value="0.00">
+                                                <input type="number" name="valor_total" id="valor_total" step="0.000001" class="form-control" value="0.00" readonly>
                                             </div>
                                         @endif
                                     </div>
@@ -1217,6 +1217,10 @@
             if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
                 e.preventDefault();
             }
+        });
+
+        $(document).on('keydown paste', '[id^=modalTickets] #valor_total', function (e) {
+            e.preventDefault();
         });
 
         //Controle Principal de Pesagens
@@ -2366,6 +2370,7 @@
             // Campos de dados
             $form.find('input[name="peso"]').val('0.00');
             $form.find('input[name="peso_bag"]').val('0.00');
+            calcularValorTotalTicket(modalSelector);
             $form.find('select[name="tipo"]').val('entrada');
             $form.find('select[name="status"]').val('em andamento');
             $form.find('input[name="inicio"]').val('');
@@ -2397,11 +2402,42 @@
             $(modalSelector).find('#peso_origem').val('manual');
             $(modalSelector).find('#valor_unitario').val('0.00');
             $(modalSelector).find('#valor_total').val('0.00');
+            calcularValorTotalTicket(modalSelector);
+        }
+
+
+        function calcularValorTotalTicket(modalSelector) {
+            if (!USAR_VALORES_TICKET_PESAGEM) {
+                return;
+            }
+
+            const $modal = $(modalSelector);
+            const peso = parseFloat($modal.find('#peso').val()) || 0;
+            const pesoBag = parseFloat($modal.find('#peso_bag').val()) || 0;
+            const valorUnitario = parseFloat($modal.find('#valor_unitario').val()) || 0;
+            const pesoLiquido = Math.max(0, peso - pesoBag);
+            const valorTotal = pesoLiquido * valorUnitario;
+
+            $modal.find('#valor_total').val(valorTotal.toFixed(6));
+        }
+
+        function bindCalculoValorTotalTicket(modalSelector) {
+            if (!USAR_VALORES_TICKET_PESAGEM) {
+                return;
+            }
+
+            const $modal = $(modalSelector);
+            $modal
+                .off('input.calculoTicket change.calculoTicket', '#peso, #peso_bag, #valor_unitario')
+                .on('input.calculoTicket change.calculoTicket', '#peso, #peso_bag, #valor_unitario', function () {
+                    calcularValorTotalTicket(modalSelector);
+                });
         }
 
         // Função para ativar eventos no modal
         function ativarEventosTickets(modalId, pesagemId) {
             const modalSelector = `#modalTickets${pesagemId}`;
+            bindCalculoValorTotalTicket(modalSelector);
 
             // Evento para salvar ou editar ticket
             $(modalSelector).find('#formTicket').off('submit').on('submit', function (e) {
@@ -2421,6 +2457,8 @@
                     abrirModalMensagem('Aviso', 'Pesagem manual bloqueada. Conecte uma balança ativa e capture o peso.');
                     return;
                 }
+
+                calcularValorTotalTicket(modalSelector);
 
                 // Envia requisição AJAX
                 $.ajax({
@@ -2453,6 +2491,7 @@
                     $(modalSelector).find('#peso_origem').val(data.peso_origem || 'manual');
                     $(modalSelector).find('#valor_unitario').val(parseFloat(data.valor_unitario || 0).toFixed(6));
                     $(modalSelector).find('#valor_total').val(parseFloat(data.valor_total || 0).toFixed(6));
+                    calcularValorTotalTicket(modalSelector);
                     $(modalSelector).find('#tipo').val(data.tipo); // Tipo
                     $(modalSelector).find('#status').val(data.status); // Status
                     $(modalSelector).find('#inicio').val(data.inicio ? data.inicio.replace(' ', 'T') : ''); // Início
@@ -2743,6 +2782,7 @@
                             $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
                             $(modalId).find('#peso').val(bruto); // Bruto
                             $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                            calcularValorTotalTicket(modalId);
                             $(modalId).find('#peso_origem').val('balanca');
                             if (dados.sobrecarga) {
                                 $(modalId).find('#pesoEstabilidade').text("Sobrecarga");
