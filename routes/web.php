@@ -1968,8 +1968,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/edit_xml/{id}', 'VendaController@editXml');
 		Route::get('/syncDataEmissaoRetroativa', 'VendaController@syncDataEmissaoRetroativa');
 		Route::post('/reforma/preview-item', 'VendaController@previewReformaItem')->name('vendas.reforma.previewItem');
-        Route::post('/{venda}/nfe/reforma/recalc-item/{item}', 'VendaNfeReformaController@recalcItem')->name('vendas.nfe.reforma.recalcItem');
-        Route::post('/{venda}/nfe/reforma/recalc-all', 'VendaNfeReformaController@recalcAll')->name('vendas.nfe.reforma.recalcAll');
+        Route::post('/{venda}/nfe/reforma/recalc-item/{item}', 'VendaController@recalcItem')->name('vendas.nfe.reforma.recalcItem');
+        Route::post('/{venda}/nfe/reforma/recalc-all', 'VendaController@recalcAll')->name('vendas.nfe.reforma.recalcAll');
     });
 
 	Route::group(['prefix' => 'compras'],function(){
