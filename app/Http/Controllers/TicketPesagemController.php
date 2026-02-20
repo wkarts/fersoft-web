@@ -6,6 +6,9 @@ use App\Models\TicketPesagem;
 use Illuminate\Http\Request;
 use App\Models\Pesagem;
 use App\Models\Produto;
+use App\Models\ConfigNota;
+use App\Models\BalancaConfig;
+use App\Models\Usuario;
 
 class TicketPesagemController extends BaseController
 {
@@ -29,6 +32,10 @@ class TicketPesagemController extends BaseController
             'veiculo_id' => 'required|exists:veiculos,id',
             'produto_id' => 'required|exists:produtos,id',
             'peso' => 'required|numeric|min:0',
+            'balanca_config_id' => 'nullable|exists:balanca_configs,id',
+            'peso_origem' => 'nullable|in:manual,balanca',
+            'valor_unitario' => 'nullable|numeric|min:0',
+            'valor_total' => 'nullable|numeric|min:0',
             'peso_bag' => 'nullable|numeric|min:0|max:10000',
             'tipo' => 'required|in:entrada,saida,avulsa',
             'status' => 'required|in:em andamento,concluído',
@@ -53,11 +60,42 @@ class TicketPesagemController extends BaseController
         $request->validate($this->rules(), $this->messages());
 
         try {
+            $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $pesagem = Pesagem::where('empresa_id', $this->empresa_id)->findOrFail($request->pesagem_id);
+            $usuario = Usuario::where('empresa_id', $this->empresa_id)->find($this->usuario_id);
+
             $data = $request->all();
+            $data['peso_origem'] = $request->input('peso_origem', 'manual');
             $data['empresa_id'] = $this->empresa_id;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
             $data['peso_bag'] = $request->input('peso_bag', 0); // valor default
+
+            if ($config && $config->bloquear_pesagem_manual_balanca) {
+                $validacao = $this->validarPesagemSomenteBalanca($request, $usuario);
+                if ($validacao !== true) {
+                    return response()->json(['error' => $validacao], 422);
+                }
+
+                $data['balanca_config_id'] = (int) $usuario->balanca_padrao_id;
+                $data['peso_origem'] = 'balanca';
+            }
+
+            if ($config && $config->usar_valores_ticket_pesagem) {
+                $valores = $this->resolverValoresTicket($request, $pesagem);
+                $data['valor_unitario'] = $valores['valor_unitario'];
+                $data['valor_total'] = $valores['valor_total'];
+                $data['valor_origem'] = $valores['valor_origem'];
+
+                \Log::info('TicketPesagem valor definido por regra de origem', [
+                    'empresa_id' => $this->empresa_id,
+                    'usuario_id' => $this->usuario_id,
+                    'pesagem_id' => $pesagem->id,
+                    'valor_origem' => $data['valor_origem'],
+                    'valor_unitario' => $data['valor_unitario'],
+                    'valor_total' => $data['valor_total'],
+                ]);
+            }
             $acao = 'create';
             $registroId = null;
             $dadosAnteriores = [];
@@ -104,8 +142,66 @@ class TicketPesagemController extends BaseController
                 'exception' => $e->getMessage(),
             ]);
 
-            return response()->json(['error' => 'Erro ao salvar ticket: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Erro ao salvar ticket. Verifique os dados informados e tente novamente.'], 500);
         }
+    }
+
+
+    private function validarPesagemSomenteBalanca(Request $request, ?Usuario $usuario)
+    {
+        if (!$usuario || !$usuario->balanca_padrao_id) {
+            return 'Não foi possível obter pesagem da balança padrão: defina uma balança padrão para o usuário.';
+        }
+
+        $balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->where('id', $usuario->balanca_padrao_id)
+            ->exists();
+
+        if (!$balancaValida) {
+            return 'Não foi possível obter pesagem da balança padrão: balança inexistente ou inativa.';
+        }
+
+        if ($request->input('peso_origem') !== 'balanca') {
+            return 'Pesagem manual bloqueada. Utilize a leitura da balança padrão.';
+        }
+
+        if ((int) $request->input('balanca_config_id') !== (int) $usuario->balanca_padrao_id) {
+            return 'Não foi possível obter pesagem da balança padrão selecionada para o usuário.';
+        }
+
+        return true;
+    }
+
+    private function resolverValoresTicket(Request $request, Pesagem $pesagem): array
+    {
+        $valorUnitarioInformado = (float) $request->input('valor_unitario', 0);
+        $valorTotalInformado = (float) $request->input('valor_total', 0);
+
+        if ($valorUnitarioInformado > 0 && $valorTotalInformado > 0) {
+            return [
+                'valor_unitario' => $valorUnitarioInformado,
+                'valor_total' => $valorTotalInformado,
+                'valor_origem' => 'ticket',
+            ];
+        }
+
+        $produto = Produto::where('empresa_id', $this->empresa_id)->find($request->produto_id);
+        $valorBase = 0.0;
+
+        if ($produto) {
+            $valorBase = $pesagem->tipo === 'compra'
+                ? (float) ($produto->valor_compra ?? 0)
+                : (float) ($produto->valor_venda ?? 0);
+        }
+
+        $pesoLiquido = max(0, ((float) $request->input('peso', 0)) - ((float) $request->input('peso_bag', 0)));
+
+        return [
+            'valor_unitario' => $valorBase,
+            'valor_total' => $pesoLiquido * $valorBase,
+            'valor_origem' => 'fallback_produto',
+        ];
     }
 
     public function delete($id)
