@@ -336,6 +336,8 @@ class ConfigNotaController extends Controller
 			$result = $config->save();
 		}
 
+		$this->atualizarBalancaPadraoUsuario($request);
+
 		$value = session('user_logged');
 
 		$value['ambiente'] = $request->ambiente == 1 ? 'Produção' : 'Homologação';

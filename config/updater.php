@@ -25,6 +25,7 @@ return [
         'ff_only' => (bool) env('UPDATER_GIT_FF_ONLY', true),
         'update_type' => env('UPDATER_GIT_UPDATE_TYPE', 'git_ff_only'),
         'tag' => env('UPDATER_GIT_TAG', ''),
+        'auto_stash' => env('UPDATER_GIT_AUTO_STASH', true),
         'auto_init' => (bool) env('UPDATER_GIT_AUTO_INIT', false),
         'default_update_mode' => env('UPDATER_GIT_DEFAULT_UPDATE_MODE', 'merge'),
         'first_run_assume_behind' => (bool) env('UPDATER_GIT_FIRST_RUN_ASSUME_BEHIND', true),
@@ -37,7 +38,29 @@ return [
         // porque é uma operação somente leitura. Se quiser bloquear também no check:
         // UPDATER_GIT_ALLOW_DIRTY_CHECK=false
         'allow_dirty_check' => (bool) env('UPDATER_GIT_ALLOW_DIRTY_CHECK', true),
+		// Otimizações para update por tag (evita baixar histórico completo e explodir o tamanho do .git)
+		'shallow_tag_fetch' => (bool) env('UPDATER_GIT_SHALLOW_TAG_FETCH', true),
+		'tag_fetch_depth' => (int) env('UPDATER_GIT_TAG_FETCH_DEPTH', 1),
     ],
+'git_maintenance' => [
+    // Ativa/desativa o recurso de manutenção automática do .git
+    'enabled' => (bool) env('UPDATER_GIT_MAINTENANCE_ENABLED', true),
+
+    // Agenda automática via Laravel Scheduler (se o projeto executar schedule:run)
+    'schedule_enabled' => (bool) env('UPDATER_GIT_MAINTENANCE_SCHEDULE_ENABLED', true),
+    // daily|weekly|hourly
+    'schedule_frequency' => env('UPDATER_GIT_MAINTENANCE_SCHEDULE_FREQUENCY', 'daily'),
+
+    // Thresholds (em MB)
+    'aggressive_threshold_mb' => (int) env('UPDATER_GIT_MAINTENANCE_AGGRESSIVE_THRESHOLD_MB', 512),
+    'max_size_mb' => (int) env('UPDATER_GIT_MAINTENANCE_MAX_SIZE_MB', 1024),
+
+    // Light mode: converte o repo para shallow quando exceder max_size_mb
+    'light_mode_enabled' => (bool) env('UPDATER_GIT_MAINTENANCE_LIGHT_MODE_ENABLED', true),
+    'shallow_depth' => (int) env('UPDATER_GIT_MAINTENANCE_SHALLOW_DEPTH', 50),
+    'light_mode_fetch_tags' => (bool) env('UPDATER_GIT_MAINTENANCE_LIGHT_MODE_FETCH_TAGS', true),
+],
+
 
     'composer' => [
         // Pode ser: "composer", "composer2", "/usr/bin/composer" ou "/caminho/composer.phar".
@@ -50,6 +73,9 @@ return [
         'pre_update' => (bool) env('UPDATER_BACKUP_PRE_UPDATE', true),
         // Tipos aceitos: full, snapshot, database, full+snapshot, full+database.
         'pre_update_type' => (string) env('UPDATER_BACKUP_TYPE', 'full'),
+        // Se true, cria também um arquivo "full" (DB + Snapshot) empacotado num único zip/tar.
+        // Por padrão é false para evitar duplicar artefatos e aumentar tempo/tamanho de backup.
+        'create_full_archive' => (bool) env('UPDATER_BACKUP_CREATE_FULL_ARCHIVE', false),
         'keep' => (int) env('UPDATER_BACKUP_KEEP', 10),
         'path' => env('UPDATER_BACKUP_PATH', storage_path('app/updater/backups')),
         'compress' => (bool) env('UPDATER_BACKUP_COMPRESS', true),
@@ -70,13 +96,13 @@ return [
         'include_vendor' => (bool) env('UPDATER_SNAPSHOT_INCLUDE_VENDOR', false),
         // Por padrão, snapshot é de "código" (evita travamentos e arquivos gigantes).
         // Se você realmente precisa incluir storage, defina UPDATER_SNAPSHOT_EXCLUDE_STORAGE=false
-        'exclude_storage' => (bool) env('UPDATER_SNAPSHOT_EXCLUDE_STORAGE', true),
+        'exclude_storage' => (bool) env('UPDATER_SNAPSHOT_EXCLUDE_STORAGE', false),
         'compression' => env('UPDATER_SNAPSHOT_COMPRESSION', 'zip'), // zip
     ],
 
     'paths' => [
         'exclude_snapshot' => [
-            '.env',
+            '.git',
             'bootstrap/cache',
             'node_modules',
             'public/uploads',
@@ -100,6 +126,9 @@ return [
     'lock' => [
         'driver' => env('UPDATER_LOCK_DRIVER', 'file'),
         'timeout' => (int) env('UPDATER_LOCK_TIMEOUT', 600),
+        // Quanto tempo (segundos) o updater deve aguardar o lock via cache antes de falhar.
+        // (file-lock já faz espera pelo próprio timeout)
+        'block_seconds' => (int) env('UPDATER_LOCK_BLOCK_SECONDS', 10),
     ],
 
     'trigger' => [
