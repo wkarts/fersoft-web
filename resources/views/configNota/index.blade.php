@@ -157,16 +157,7 @@
                                                             </div>
 
                                                             <div class="form-group"> 
-                                                                <label class="col-form-label">Balança padrão do usuário logado</label>
-                                                                <select class="form-control custom-select" name="balanca_padrao_id">
-                                                                    <option value="">Selecione</option>
-                                                                    @foreach($balancasAtivas as $balanca)
-                                                                        <option value="{{ $balanca->id }}" {{ (string) old('balanca_padrao_id', $usuarioLogado->balanca_padrao_id ?? '') === (string) $balanca->id ? 'selected' : '' }}>
-                                                                            {{ $balanca->descricao }} ({{ $balanca->modelo }})
-                                                                        </option>
-                                                                    @endforeach
-                                                                </select>
-                                                                <small class="text-muted">Sem balança ativa? <a href="/balancas">Cadastre uma balança</a> antes de ativar o bloqueio.</small>
+                                                                <small class="text-muted">Sem balança ativa? <a href="/balancas">Cadastre uma balança</a> para habilitar leitura obrigatória via balança.</small>
                                                             </div>
 
                                                             <div class="form-group mb-1"> 

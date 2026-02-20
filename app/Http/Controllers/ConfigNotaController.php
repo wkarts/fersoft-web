@@ -12,7 +12,6 @@ use App\Models\CashBackCliente;
 use App\Models\EscritorioContabil;
 use App\Models\NaturezaOperacao;
 use App\Models\BalancaConfig;
-use App\Models\Usuario;
 use App\Services\NFService;
 use NFePHP\Common\Certificate;
 use Mail;
@@ -75,7 +74,6 @@ class ConfigNotaController extends Controller
 			$empresa = Empresa::findOrFail($this->empresa_id);
 			$cnpj = $empresa->cnpj;
 			$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
-			$usuarioLogado = Usuario::find(session('user_logged')['id'] ?? 0);
 
 			return view('configNota/index')
 			->with('config', $config)
@@ -94,7 +92,6 @@ class ConfigNotaController extends Controller
 			->with('configJs', true)
 			->with('certificado', $certificado)
 			->with('balancasAtivas', $balancasAtivas)
-			->with('usuarioLogado', $usuarioLogado)
 			->with('title', 'Configurar Emitente');
 		}catch(\Exception $e){
 			echo $e->getMessage();
@@ -363,49 +360,7 @@ class ConfigNotaController extends Controller
 			return 'Não é possível ativar o bloqueio de pesagem manual sem balança cadastrada/ativa.';
 		}
 
-		if (!$request->filled('balanca_padrao_id')) {
-			return 'Selecione uma balança padrão do usuário antes de ativar o bloqueio de pesagem manual.';
-		}
-
-		$balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
-			->where('ativo', true)
-			->where('id', $request->balanca_padrao_id)
-			->exists();
-
-		if (!$balancaValida) {
-			return 'A balança padrão selecionada é inválida ou está inativa.';
-		}
-
 		return true;
-	}
-
-	private function atualizarBalancaPadraoUsuario(Request $request): void
-	{
-		$usuarioId = session('user_logged')['id'] ?? null;
-		if (!$usuarioId) {
-			return;
-		}
-
-		$usuario = Usuario::where('empresa_id', $this->empresa_id)->find($usuarioId);
-		if (!$usuario) {
-			return;
-		}
-
-		$balancaPadraoId = $request->filled('balanca_padrao_id') ? (int) $request->balanca_padrao_id : null;
-
-		if ($balancaPadraoId) {
-			$balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
-				->where('id', $balancaPadraoId)
-				->where('ativo', true)
-				->exists();
-
-			if (!$balancaValida) {
-				return;
-			}
-		}
-
-		$usuario->balanca_padrao_id = $balancaPadraoId;
-		$usuario->save();
 	}
 
 	private function _validate(Request $request){
