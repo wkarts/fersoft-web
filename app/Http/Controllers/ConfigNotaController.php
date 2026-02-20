@@ -350,6 +350,7 @@ class ConfigNotaController extends Controller
 	}
 
 
+
 	private function validarAtivacaoBalancaPadrao(Request $request)
 	{
 		$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)

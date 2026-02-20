@@ -413,6 +413,15 @@
                                             <small class="text-hover-dark">
                                                 - {{ number_format($desconto, 2, ',', '.') }} kg
                                             </small>
+
+                                            @if($mostrarLinhaValoresTicket)
+                                                <br>
+                                                <small class="text-muted" style="font-size: 11px;">
+                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
+                                                    &nbsp;|&nbsp;
+                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
+                                                </small>
+                                            @endif
                                         </td>
 
                                         <!-- Peso Bruto -->
