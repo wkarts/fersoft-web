@@ -1267,12 +1267,27 @@ class PesagemController extends BaseController
                 $quantidade = max(0, ($entrada + $avulsa) - $saida);
 
                 $pGrupo = Produto::findOrFail($prodId);
-                $somaValorTicket = collect($ticketsGrupo)->sum(fn($ticket) => (float) ($ticket->valor_total ?? 0));
-                $valorUnitarioTicket = $quantidade > 0 ? ($somaValorTicket / $quantidade) : 0;
+                $valorProdutoPadrao = (float) $pGrupo->valor_venda;
+
+                $valorTotalPrioritario = 0.0;
+                foreach ($ticketsGrupo as $ticketGrupo) {
+                    $pesoLiqTicket = max(0, ((float) $ticketGrupo->peso) - ((float) $ticketGrupo->peso_bag));
+                    $valorUnitarioPrioritario = (float) ($ticketGrupo->valor_unitario ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_unitario
+                        : $valorProdutoPadrao;
+
+                    $valorTotalPrioritario += (float) ($ticketGrupo->valor_total ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_total
+                        : ($pesoLiqTicket * $valorUnitarioPrioritario);
+                }
+
+                $valorUnitarioCalculado = $quantidade > 0
+                    ? ($valorTotalPrioritario / $quantidade)
+                    : $valorProdutoPadrao;
 
                 $valorItem = $usarValoresTicket
-                    ? ($valorUnitarioTicket > 0 ? $valorUnitarioTicket : (float) $pGrupo->valor_venda)
-                    : (float) $pGrupo->valor_venda;
+                    ? ($valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : $valorProdutoPadrao)
+                    : $valorProdutoPadrao;
 
                 ItemVenda::create([
                     'venda_id'     => $venda->id,
@@ -1407,12 +1422,27 @@ class PesagemController extends BaseController
                 $quantidade = max(0, ($entrada + $avulsa) - $saida);
 
                 $pGrupo = Produto::findOrFail($prodId);
-                $somaValorTicket = collect($ticketsGrupo)->sum(fn($ticket) => (float) ($ticket->valor_total ?? 0));
-                $valorUnitarioTicket = $quantidade > 0 ? ($somaValorTicket / $quantidade) : 0;
+                $valorProdutoPadrao = (float) $pGrupo->valor_compra;
+
+                $valorTotalPrioritario = 0.0;
+                foreach ($ticketsGrupo as $ticketGrupo) {
+                    $pesoLiqTicket = max(0, ((float) $ticketGrupo->peso) - ((float) $ticketGrupo->peso_bag));
+                    $valorUnitarioPrioritario = (float) ($ticketGrupo->valor_unitario ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_unitario
+                        : $valorProdutoPadrao;
+
+                    $valorTotalPrioritario += (float) ($ticketGrupo->valor_total ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_total
+                        : ($pesoLiqTicket * $valorUnitarioPrioritario);
+                }
+
+                $valorUnitarioCalculado = $quantidade > 0
+                    ? ($valorTotalPrioritario / $quantidade)
+                    : $valorProdutoPadrao;
 
                 $valorUnitario = $usarValoresTicket
-                    ? ($valorUnitarioTicket > 0 ? $valorUnitarioTicket : (float) $pGrupo->valor_compra)
-                    : (float) $pGrupo->valor_compra;
+                    ? ($valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : $valorProdutoPadrao)
+                    : $valorProdutoPadrao;
 
                 ItemCompra::create([
                     'compra_id'      => $compra->id,
