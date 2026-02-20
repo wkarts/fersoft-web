@@ -2413,7 +2413,7 @@
                 }
 
                 if (BLOQUEAR_PESAGEM_MANUAL_BALANCA && form.find('#peso_origem').val() !== 'balanca') {
-                    abrirModalMensagem('Aviso', 'Pesagem manual bloqueada. Conecte a balança padrão e capture o peso.');
+                    abrirModalMensagem('Aviso', 'Pesagem manual bloqueada. Conecte uma balança ativa e capture o peso.');
                     return;
                 }
 
@@ -2764,9 +2764,6 @@
 
                 if (BALANCA_PADRAO_USUARIO_ID > 0) {
                     $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');
-                    $modal.find('#balanca-select').prop('disabled', true);
-                } else {
-                    $modal.find('#balanca-select').prop('disabled', false);
                 }
             }
         });

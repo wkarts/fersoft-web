@@ -8,7 +8,6 @@ use App\Models\Pesagem;
 use App\Models\Produto;
 use App\Models\ConfigNota;
 use App\Models\BalancaConfig;
-use App\Models\Usuario;
 
 class TicketPesagemController extends BaseController
 {
@@ -62,7 +61,6 @@ class TicketPesagemController extends BaseController
         try {
             $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
             $pesagem = Pesagem::where('empresa_id', $this->empresa_id)->findOrFail($request->pesagem_id);
-            $usuario = Usuario::where('empresa_id', $this->empresa_id)->find($this->usuario_id);
             $ticketExistente = $request->filled('id')
                 ? TicketPesagem::where('empresa_id', $this->empresa_id)->find($request->id)
                 : null;
@@ -75,18 +73,18 @@ class TicketPesagemController extends BaseController
             $data['peso_bag'] = $request->input('peso_bag', 0); // valor default
 
             if ($config && $config->bloquear_pesagem_manual_balanca) {
-                $validacao = $this->validarPesagemSomenteBalanca($request, $usuario);
+                $validacao = $this->validarPesagemSomenteBalanca($request);
                 if ($validacao !== true) {
                     return response()->json(['error' => $validacao], 422);
                 }
 
                 if ((float) $request->input('peso', 0) <= 0) {
                     return response()->json([
-                        'error' => 'Não foi possível obter pesagem da balança padrão. Verifique a leitura e tente novamente.'
+                        'error' => 'Não foi possível obter pesagem da balança selecionada. Verifique a leitura e tente novamente.'
                     ], 422);
                 }
 
-                $data['balanca_config_id'] = (int) $usuario->balanca_padrao_id;
+                $data['balanca_config_id'] = (int) $request->input('balanca_config_id');
                 $data['peso_origem'] = 'balanca';
             }
 
@@ -165,27 +163,32 @@ class TicketPesagemController extends BaseController
     }
 
 
-    private function validarPesagemSomenteBalanca(Request $request, ?Usuario $usuario)
+    private function validarPesagemSomenteBalanca(Request $request)
     {
-        if (!$usuario || !$usuario->balanca_padrao_id) {
-            return 'Não foi possível obter pesagem da balança padrão: defina uma balança padrão para o usuário.';
+        $balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->count();
+
+        if ($balancasAtivas <= 0) {
+            return 'Pesagem manual bloqueada. Cadastre e ative ao menos uma balança para continuar.';
+        }
+
+        $balancaSelecionadaId = (int) $request->input('balanca_config_id');
+        if ($balancaSelecionadaId <= 0) {
+            return 'Pesagem manual bloqueada. Selecione uma balança ativa para capturar o peso.';
         }
 
         $balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
-            ->where('id', $usuario->balanca_padrao_id)
+            ->where('id', $balancaSelecionadaId)
             ->exists();
 
         if (!$balancaValida) {
-            return 'Não foi possível obter pesagem da balança padrão: balança inexistente ou inativa.';
+            return 'Pesagem manual bloqueada. A balança selecionada está inativa ou inválida.';
         }
 
         if ($request->input('peso_origem') !== 'balanca') {
-            return 'Pesagem manual bloqueada. Utilize a leitura da balança padrão.';
-        }
-
-        if ((int) $request->input('balanca_config_id') !== (int) $usuario->balanca_padrao_id) {
-            return 'Não foi possível obter pesagem da balança padrão selecionada para o usuário.';
+            return 'Pesagem manual bloqueada. Utilize a leitura da balança selecionada.';
         }
 
         return true;
