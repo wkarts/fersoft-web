@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Usuario;
 use App\Models\UsuarioAcesso;
 use App\Models\ConfigCaixa;
+use App\Models\BalancaConfig;
 use App\Helpers\Menu;
 use App\Services\LogService;
 use App\Services\OtpService;
@@ -209,12 +210,15 @@ class UsuarioController extends Controller
                 'dados_depois' => $dadosDepois,
             ]);
 
+            $balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
+
             return view('usuarios/register')
                 ->with('usuarioJs', true)
                 ->with('permissoesAtivas', $permissoesAtivas)
                 ->with('permissoesUsuario', $permissoesUsuario)
                 ->with('menuAux', $menu)
                 ->with('permissoesDoUsuario', $permissoesDoUsuario)
+                ->with('balancasAtivas', $balancasAtivas)
                 ->with('title', 'Cadastrar Usuário');
 
         } catch (\Exception $e) {
@@ -254,12 +258,15 @@ class UsuarioController extends Controller
 			$menu[$i]['ativo'] = $temp;
 		}
 
+		$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
+
 		return view('usuarios/register')
 		->with('usuarioJs', true)
 		->with('permissoesAtivas', $permissoesAtivas)
 		->with('permissoesUsuario', $permissoesUsuario)
 		->with('menuAux', $menu)
 		->with('permissoesDoUsuario', $permissoesDoUsuario)
+		->with('balancasAtivas', $balancasAtivas)
 		->with('title', 'Cadastrar Usuário');
 	}
 
@@ -307,12 +314,15 @@ class UsuarioController extends Controller
 				$menu[$i]['ativo'] = $temp;
 			}
 
+			$balancasAtivas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
+
 			return view('usuarios/register')
 			->with('usuarioJs', true)
 			->with('usuario', $usuario)
 			->with('permissoesAtivas', $permissoesAtivas)
 			->with('permissoesUsuario', $permissoesUsuario)
 			->with('menuAux', $menu)
+			->with('balancasAtivas', $balancasAtivas)
 			->with('title', 'Editar Usuários');
 		}else{
 			return redirect('/403');
@@ -368,6 +378,7 @@ class UsuarioController extends Controller
                 'ativo' => $request->ativo ? true : false,
                 'email' => $request->email,
                 'local_padrao' => $request->local_padrao,
+                'balanca_padrao_id' => $this->resolveBalancaPadraoId($request->balanca_padrao_id),
                 'locais' => $locais,
                 'menu_representante' => isset($request->menu_representante) ? ($request->menu_representante ? true : false) : false,
                 'rota_acesso' => $request->rota_acesso ?? '',
@@ -435,6 +446,7 @@ class UsuarioController extends Controller
 			'ativo' => $request->ativo ? true : false,
 			'email' => $request->email,
 			'local_padrao' => $request->local_padrao,
+			'balanca_padrao_id' => $this->resolveBalancaPadraoId($request->balanca_padrao_id),
 			'locais' => $locais,
 			'menu_representante' => isset($request->menu_representante) ? ($request->menu_representante ? true : false) : false,
 			'rota_acesso' => $request->rota_acesso ?? '',
@@ -506,6 +518,7 @@ class UsuarioController extends Controller
             $usr->locais = $locais;
             $usr->email = $request->email;
             $usr->local_padrao = $request->local_padrao;
+            $usr->balanca_padrao_id = $this->resolveBalancaPadraoId($request->balanca_padrao_id);
             $usr->rota_acesso = $request->rota_acesso ?? '';
 
             if ($request->senha) {
@@ -580,6 +593,7 @@ class UsuarioController extends Controller
 		$usr->locais = $locais;
 		$usr->email = $request->email;
 		$usr->local_padrao = $request->local_padrao;
+		$usr->balanca_padrao_id = $this->resolveBalancaPadraoId($request->balanca_padrao_id);
 		$usr->rota_acesso = $request->rota_acesso ?? '';
 		if($request->senha){
 			$usr->senha = md5($request->senha);
