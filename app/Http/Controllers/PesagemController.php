@@ -395,6 +395,7 @@ class PesagemController extends BaseController
             ->with('produto')->get();
 
         $usuarioLogado = \App\Models\Usuario::find(session('user_logged')['id']);
+        $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
         $hasOtp = $usuarioLogado ? $usuarioLogado->hasOtp() : false;
 
         // **Aqui passamos de volta cada filtro usado**
@@ -409,6 +410,8 @@ class PesagemController extends BaseController
             'balancas'     => $balancas,
             'tickets'      => $tickets,
             'hasOtp'       => $hasOtp,
+            'configNota'    => $configNota,
+            'balancaPadraoUsuarioId' => $usuarioLogado->balanca_padrao_id ?? null,
 
             // filtros
             'search'      => $request->input('search'),
@@ -1235,6 +1238,9 @@ class PesagemController extends BaseController
                 'natureza_id'   => 1,   // Substitua pelo ID da natureza padrão
             ]);
 
+            $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $usarValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+
             // —————————————————————————————————————————
             // Agrupar tickets por produto (usa produto_referenciado_id se houver)
             // e calcular peso líquido neto (entrada + avulsa – saída)
@@ -1261,12 +1267,34 @@ class PesagemController extends BaseController
                 $quantidade = max(0, ($entrada + $avulsa) - $saida);
 
                 $pGrupo = Produto::findOrFail($prodId);
+                $valorProdutoPadrao = (float) $pGrupo->valor_venda;
+
+                $valorTotalPrioritario = 0.0;
+                foreach ($ticketsGrupo as $ticketGrupo) {
+                    $pesoLiqTicket = max(0, ((float) $ticketGrupo->peso) - ((float) $ticketGrupo->peso_bag));
+                    $valorUnitarioPrioritario = (float) ($ticketGrupo->valor_unitario ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_unitario
+                        : $valorProdutoPadrao;
+
+                    $valorTotalPrioritario += (float) ($ticketGrupo->valor_total ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_total
+                        : ($pesoLiqTicket * $valorUnitarioPrioritario);
+                }
+
+                $valorUnitarioCalculado = $quantidade > 0
+                    ? ($valorTotalPrioritario / $quantidade)
+                    : $valorProdutoPadrao;
+
+                $valorItem = $usarValoresTicket
+                    ? ($valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : $valorProdutoPadrao)
+                    : $valorProdutoPadrao;
+
                 ItemVenda::create([
                     'venda_id'     => $venda->id,
                     'produto_id'   => $pGrupo->id,
                     'produto_nome' => $pGrupo->nome,
                     'quantidade'   => (float) $quantidade,
-                    'valor'        => (float) $pGrupo->valor_venda,
+                    'valor'        => (float) $valorItem,
                     'valor_custo'  => (float) $pGrupo->valor_compra,
                 ]);
             }
@@ -1366,6 +1394,9 @@ class PesagemController extends BaseController
                 'peso_bruto'    => $pesagem->peso,
             ]);
 
+            $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $usarValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+
             // —————————————————————————————————————————
             // Agrupar tickets por produto e calcular peso líquido neto
             // —————————————————————————————————————————
@@ -1391,11 +1422,33 @@ class PesagemController extends BaseController
                 $quantidade = max(0, ($entrada + $avulsa) - $saida);
 
                 $pGrupo = Produto::findOrFail($prodId);
+                $valorProdutoPadrao = (float) $pGrupo->valor_compra;
+
+                $valorTotalPrioritario = 0.0;
+                foreach ($ticketsGrupo as $ticketGrupo) {
+                    $pesoLiqTicket = max(0, ((float) $ticketGrupo->peso) - ((float) $ticketGrupo->peso_bag));
+                    $valorUnitarioPrioritario = (float) ($ticketGrupo->valor_unitario ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_unitario
+                        : $valorProdutoPadrao;
+
+                    $valorTotalPrioritario += (float) ($ticketGrupo->valor_total ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_total
+                        : ($pesoLiqTicket * $valorUnitarioPrioritario);
+                }
+
+                $valorUnitarioCalculado = $quantidade > 0
+                    ? ($valorTotalPrioritario / $quantidade)
+                    : $valorProdutoPadrao;
+
+                $valorUnitario = $usarValoresTicket
+                    ? ($valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : $valorProdutoPadrao)
+                    : $valorProdutoPadrao;
+
                 ItemCompra::create([
                     'compra_id'      => $compra->id,
                     'produto_id'     => $pGrupo->id,
                     'quantidade'     => (float) $quantidade,
-                    'valor_unitario' => (float) $pGrupo->valor_compra,
+                    'valor_unitario' => (float) $valorUnitario,
                     'unidade_compra' => $pGrupo->unidade_compra,
                 ]);
             }
