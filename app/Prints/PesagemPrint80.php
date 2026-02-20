@@ -62,6 +62,12 @@ class PesagemPrint80 extends Common
         return $value;
     }
 
+
+    private function moedaBr(float $valor): string
+    {
+        return 'R$ ' . number_format(max(0, $valor), 2, ',', '.');
+    }
+
     /**
      * Calcula a altura necessária para o PDF com base no conteúdo.
      *
@@ -100,6 +106,8 @@ class PesagemPrint80 extends Common
             $altura += ($linhasObs + 1) * 5;
         }
 
+        $exibirValoresTicket = (bool) ($this->config->usar_valores_ticket_pesagem ?? false);
+
         $ticketsAgrupados = $this->pesagem->tickets->groupBy('produto_id');
         foreach ($ticketsAgrupados as $produtoId => $tickets) {
             $altura += 10;
@@ -109,10 +117,13 @@ class PesagemPrint80 extends Common
                 $linhasProduto = ceil($larguraProduto / ($this->larg - 4));
                 $altura += $linhasProduto * 5;
             }
-            $altura += count($tickets) * 5;
+            $altura += count($tickets) * ($exibirValoresTicket ? 10 : 5);
+            if ($exibirValoresTicket) {
+                $altura += 8;
+            }
         }
 
-        $altura += 40; // cálculos gerais
+        $altura += $exibirValoresTicket ? 56 : 40; // cálculos gerais
         $altura += 50; // carimbo e assinatura
 
         return max($altura, $this->alturaBase);
@@ -279,14 +290,37 @@ class PesagemPrint80 extends Common
         // Para exibição adicional
         $pesoBrutoPorPesagem = $this->f($baseEntradas); // mantém sua métrica original (sem saídas)
 
+        $exibirValoresTicket = (bool) ($this->config->usar_valores_ticket_pesagem ?? false);
+        $valorUnitarioResumo = 0.0;
+        $valorTotalResumo = 0.0;
+
+        if ($exibirValoresTicket) {
+            $ticketValorUnitario = $this->pesagem->tickets->first(function ($ticket) {
+                return (float) ($ticket->valor_unitario ?? 0) > 0;
+            });
+
+            $valorUnitarioResumo = $this->f($ticketValorUnitario->valor_unitario ?? 0);
+            $valorTotalResumo = $this->pesagem->tickets->sum(function ($ticket) {
+                $pesoLiquidoTicket = max(0, $this->f($ticket->peso) - $this->f($ticket->peso_bag));
+                $valorUnitarioResolvido = (float) ($ticket->valor_unitario ?? 0) > 0
+                    ? (float) $ticket->valor_unitario
+                    : (float) ($ticket->produto->valor_venda ?? $ticket->produto->valor_compra ?? 0);
+
+                return (float) ($ticket->valor_total ?? 0) > 0
+                    ? (float) $ticket->valor_total
+                    : ($pesoLiquidoTicket * max(0, $valorUnitarioResolvido));
+            });
+        }
+
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 7, '---------------------------------------Resumo------------------------------------------', 0, 1, 'C');
 
         // Box resumo
-        $this->pdf->Cell(0, 30, '', 1, 1);
+        $resumoBoxAltura = $exibirValoresTicket ? 40 : 30;
+        $this->pdf->Cell(0, $resumoBoxAltura, '', 1, 1);
         $startX = $this->pdf->GetX() + 0;
-        $startY = $this->pdf->GetY() - 30;
+        $startY = $this->pdf->GetY() - $resumoBoxAltura;
         $this->pdf->SetXY($startX, $startY + 0);
 
         $this->pdf->Ln(0);
@@ -297,6 +331,10 @@ class PesagemPrint80 extends Common
         $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Líquido: '  . number_format($pesoLiquido, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
         $this->pdf->Cell(0, 5, mb_convert_encoding('Descontos: '     . number_format($descontos,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
         $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final: '    . number_format($pesoFinal,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        if ($exibirValoresTicket) {
+            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Unitário: ' . $this->moedaBr($valorUnitarioResumo), 'ISO-8859-1', 'UTF-8'), 0, 1);
+            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Total: '    . $this->moedaBr($valorTotalResumo), 'ISO-8859-1', 'UTF-8'), 0, 1);
+        }
 
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
@@ -327,9 +365,10 @@ class PesagemPrint80 extends Common
             $this->pdf->SetFont('Arial', 'I', 7);
             $this->pdf->Cell(0, 2, '', 0, 1, 'C');
 
-            $this->pdf->Cell(0, 25, '', 1, 1);
+            $produtoBoxAltura = $exibirValoresTicket ? 33 : 25;
+            $this->pdf->Cell(0, $produtoBoxAltura, '', 1, 1);
             $startX = $this->pdf->GetX() + 0;
-            $startY = $this->pdf->GetY() - 24;
+            $startY = $this->pdf->GetY() - ($produtoBoxAltura - 1);
             $this->pdf->SetXY($startX, $startY + 0);
 
             $this->pdf->Ln(0);
@@ -341,6 +380,29 @@ class PesagemPrint80 extends Common
             // “Recipiente” segue o total (não por produto), preservando seu layout
             $this->pdf->Cell(0, 4, mb_convert_encoding('Recipiente de Pesagem: ' . number_format($descontos, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Peso Líquido: ' . number_format($liqProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+
+            if ($exibirValoresTicket) {
+                $valorUnitarioProduto = 0.0;
+                $valorTotalProduto = 0.0;
+
+                foreach ($tickets as $ticketProduto) {
+                    $pesoLiquidoTicket = max(0, $this->f($ticketProduto->peso) - $this->f($ticketProduto->peso_bag));
+                    $valorUnitarioResolvido = (float) ($ticketProduto->valor_unitario ?? 0) > 0
+                        ? (float) $ticketProduto->valor_unitario
+                        : (float) ($ticketProduto->produto->valor_venda ?? $ticketProduto->produto->valor_compra ?? 0);
+
+                    if ($valorUnitarioProduto <= 0 && $valorUnitarioResolvido > 0) {
+                        $valorUnitarioProduto = $valorUnitarioResolvido;
+                    }
+
+                    $valorTotalProduto += (float) ($ticketProduto->valor_total ?? 0) > 0
+                        ? (float) $ticketProduto->valor_total
+                        : ($pesoLiquidoTicket * max(0, $valorUnitarioResolvido));
+                }
+
+                $this->pdf->Cell(0, 4, mb_convert_encoding('Valor Unitário: ' . $this->moedaBr($valorUnitarioProduto), 'ISO-8859-1', 'UTF-8'), 0, 1);
+                $this->pdf->Cell(0, 4, mb_convert_encoding('Valor Total: '    . $this->moedaBr($valorTotalProduto), 'ISO-8859-1', 'UTF-8'), 0, 1);
+            }
 
             // Tabela de tickets por produto
             $this->pdf->Cell(16, 4, mb_convert_encoding('ID', 'ISO-8859-1', 'UTF-8'), 1, 0);
@@ -355,6 +417,18 @@ class PesagemPrint80 extends Common
                 $this->pdf->Cell(17, 5, number_format($this->f($ticket->peso), 2, ',', '.'), 1, 0);
                 $this->pdf->Cell(17, 5, number_format($this->f($ticket->peso_bag), 2, ',', '.'), 1, 0);
                 $this->pdf->Cell(16, 5, $ticket->created_at->format('d/m/Y'), 1, 1);
+
+                if ($exibirValoresTicket) {
+                    $pesoLiquidoTicket = max(0, $this->f($ticket->peso) - $this->f($ticket->peso_bag));
+                    $valorUnitarioTicket = (float) ($ticket->valor_unitario ?? 0) > 0
+                        ? (float) $ticket->valor_unitario
+                        : (float) ($ticket->produto->valor_venda ?? $ticket->produto->valor_compra ?? 0);
+                    $valorTotalTicket = (float) ($ticket->valor_total ?? 0) > 0
+                        ? (float) $ticket->valor_total
+                        : ($pesoLiquidoTicket * max(0, $valorUnitarioTicket));
+
+                    $this->pdf->Cell(76, 4, mb_convert_encoding('  Valor Unitário: ' . $this->moedaBr($valorUnitarioTicket) . '  |  Valor Total: ' . $this->moedaBr($valorTotalTicket), 'ISO-8859-1', 'UTF-8'), 1, 1);
+                }
             }
         }
 

@@ -35,7 +35,7 @@ class TicketPesagemController extends BaseController
             'peso_origem' => 'nullable|in:manual,balanca',
             'valor_unitario' => 'nullable|numeric|min:0',
             'valor_total' => 'nullable|numeric|min:0',
-            //'peso_bag' => 'nullable|numeric|min:0|max:10000',
+            'peso_bag' => 'nullable|numeric|min:0|max:10000',
             'tipo' => 'required|in:entrada,saida,avulsa',
             'status' => 'required|in:em andamento,concluído',
         ];
