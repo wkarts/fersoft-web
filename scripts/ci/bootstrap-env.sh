@@ -56,7 +56,7 @@ fi
 # 2) Escreve o .env INTEGRAL (como você pediu)
 # -----------------------------
 cat > .env <<'ENVEOF'
-APP_NAME="DEVELOPMENT"
+APP_NAME="ARGWS"
 APP_SUFIX_NAME="WEB"
 APP_DESC=""
 APP_TIMEZONE=America/Bahia
@@ -194,8 +194,8 @@ MENSAGEM_PLANO="
 "
 
 CONTATO_SUPORTE="(75) 98844-9231"
-SITE_SUPORTE="portal.development.com.br"
-EMAIL_SUPORTE="suporte@development.com.br"
+SITE_SUPORTE="portal.wwsoftwares.com.br"
+EMAIL_SUPORTE="suporte@wwsoftwares.com.br"
 # Ambiente de demonstração/produção
 APP_ENV=production # local para rodar app ou demo para demonstracao de login
 # Logins de demonstração
@@ -211,8 +211,8 @@ APP_DEBUG=true
 APP_URL=http://localhost
 PATH_URL=http://127.0.0.1:8000 # URL Path do sistema
 SERVIDOR_WEB=http://127.0.0.1:8000
-PORTAL_URL=https://portal.development.com.br
-URL_PESAGEM_TOKEN=https://erp.development.com.br
+PORTAL_URL=https://portal.wwsoftwares.com.br
+URL_PESAGEM_TOKEN=https://argws.wwsoftwares.com.br
 IDLOG=0000000009
 
 LOG_CHANNEL=stack
@@ -233,8 +233,8 @@ CONTRATO_CERTIFICADO=1
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE="development-db"
-#DB_DATABASE="development-db-update"
+DB_DATABASE="wwsoftwares-argws"
+#DB_DATABASE="wwsoftwares-argws-update"
 DB_USERNAME="root"
 DB_PASSWORD="326533"
 
@@ -252,13 +252,13 @@ REDIS_PASSWORD=null
 REDIS_PORT=6379
 
 MAIL_MAILER=smtp
-MAIL_HOST=mail.development.com.br
+MAIL_HOST=mail.wwsoftwares.com.br
 MAIL_PORT=465
 MAIL_NAME=SYS_FAST
-MAIL_USERNAME="suporte@development.com.br"
+MAIL_USERNAME="suporte@wwsoftwares.com.br"
 MAIL_PASSWORD="YrKzzqo.VPVN"
 MAIL_ENCRYPTION=ssl
-MAIL_FROM_ADDRESS="suporte@development.com.br"
+MAIL_FROM_ADDRESS="suporte@wwsoftwares.com.br"
 MAIL_FROM_NAME="Suporte Sistema - ${APP_NAME}"
 
 AWS_ACCESS_KEY_ID=
@@ -281,7 +281,7 @@ MIX_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
 
 RESP_CNPJ=36518327000105
 RESP_NOME=WWSOFTWARE'S
-RESP_EMAIL=suporte@development.com.br
+RESP_EMAIL=suporte@wwsoftwares.com.br
 RESP_FONE=75988449231
 
 ##############
@@ -344,8 +344,8 @@ NFCE_SINCRONO=1
 CERTIFICADO_ARQUIVO=1
 VIDEO_AJUDA=1
 MINUTOS_ONLINE=5
-AVISO_EMAIL_NOVO_CADASTRO="wallace.almeida@development.com.br"
-AVISO_EMAIL_NOVO_CADASTRO_PARCEIRO="wallace.almeida@development.com.br"
+AVISO_EMAIL_NOVO_CADASTRO="wallace.almeida@wwsoftwares.com.br"
+AVISO_EMAIL_NOVO_CADASTRO_PARCEIRO="wallace.almeida@wwsoftwares.com.br"
 ALERTA_VENCIMENTO_CERTIFICADO=20
 
 LINK_DAS="http://www8.receita.fazenda.gov.br/SimplesNacional/Aplicacoes/ATSPO/pgmei.app/Identificacao"
@@ -364,14 +364,14 @@ APPVERSION="metronic"
 
 #WHATSAPP API ENVIOS
 TOKEN_PREFIX=WWSOFTWARES
-API_WHATSAPP_ATENDIMENTO=https://api.support.development.com.br/api/messages/send
-WHATSAPP_ATENDIMENTO=https://support.development.com.br
+API_WHATSAPP_ATENDIMENTO=https://api.support.wwsoftwares.com.br/api/messages/send
+WHATSAPP_ATENDIMENTO=https://support.wwsoftwares.com.br
 FORCE_PUBLIC_PATH=true #PARA ENVIO DE ANEXO CONSIDERANDO PUBLIC PATH true|false
 
 # Configuração do rodapé DANFE
 DANFE_RODAPE_ESQUERDA="Impresso em {DATA_HORA}"
 DANFE_RODAPE_DIREITA="Powered by WWSoftware's®"
-DANFE_RODAPE_SITE="https://development.com.br/"
+DANFE_RODAPE_SITE="https://wwsoftwares.com.br/"
 MENSAGEM_EVENTO_DINAMICO_110110="Este documento é uma representação gráfica da CC-e e foi impresso apenas para sua informação e não possui validade fiscal.\nA CC-e deve ser recebida e mantida em arquivo eletrônico XML e pode ser consultada através dos Portais das SEFAZ."
 MENSAGEM_EVENTO_DINAMICO_110111="Este documento é uma representação gráfica do evento de NFe e foi impresso apenas para sua informação e não possui validade fiscal.\nO Evento deve ser recebido e mantido em arquivo eletrônico XML e pode ser consultado através dos Portais das SEFAZ."
 
@@ -393,40 +393,40 @@ POSTHOG_SR_CAPTURE_CANVAS=false
 
 POSTHOG_IDENTIFY_ENABLED=true
 
-CHATWOOT_BASE_URL=https://hubsaas.development.com.br
+CHATWOOT_BASE_URL=https://hubsaas.wwsoftwares.com.br
 CHATWOOT_TOKEN=EsJkZ4nje1nxk9qzhu3wa6B8
 
 FOOTER_COMPANY_NAME=WWSoftware's
-FOOTER_COMPANY_URL=https://portal.development.com.br
+FOOTER_COMPANY_URL=https://portal.wwsoftwares.com.br
 
-APP_TEST_URL=https://teste.development.com.br/
-APP_TEST_PATH=https://teste.development.com.br
-IBPT_URL=https://ibpt.development.com.br/tabela/ibpt/
+APP_TEST_URL=https://teste.wwsoftwares.com.br/
+APP_TEST_PATH=https://teste.wwsoftwares.com.br
+IBPT_URL=https://ibpt.wwsoftwares.com.br/tabela/ibpt/
 
 LOJA_MODELO_ECOMMERCE="Minha Loja"
 LOJA_MODELO_ECOMMERCE_LINK="MinhaLoja"
 
 # EMPRESA PADRÃO
-EMPRESA_NOME="DEVELOPMENT"
-EMPRESA_RUA="DEVELOPMENT ADDRESS"
-EMPRESA_NUMERO="SN"
-EMPRESA_BAIRRO="CENTER"
-EMPRESA_CIDADE="CITY"
-EMPRESA_EMAIL="contato@development.com.br"
+EMPRESA_NOME="ARGWS"
+EMPRESA_RUA="Wallace Kleiton"
+EMPRESA_NUMERO="190"
+EMPRESA_BAIRRO="Centro"
+EMPRESA_CIDADE="Santo Antônio de Jesus"
+EMPRESA_EMAIL="wkarts@gmail.com"
 EMPRESA_TELEFONE="00000000000"
-EMPRESA_CNPJ="00.000.000/0000-00"
+EMPRESA_CNPJ="36.518.327/0001-05"
 EMPRESA_PERMISSAO=""
 
 # USUÁRIO PADRÃO
-USUARIO_NOME="DEVELOPMENT USER"
-USUARIO_LOGIN="development"
+USUARIO_NOME="Wallace Kleiton"
+USUARIO_LOGIN="wallace"
 USUARIO_SENHA_HASH="202cb962ac59075b964b07152d234b70"
 USUARIO_EMAIL=""
 
 #EVOAPI
 EVO_DDI=55
 EVO_DDD=75
-EVO_BASE_URL=https://connect.hub.development.com.br
+EVO_BASE_URL=https://connect.hub.argws.com.br
 EVO_GLOBAL_API=vz9u0Qhi2y6xS6HrkL3FigMbzQKsCZk2XzbAJBqwTYkbvHYhGQPMWVFbpqqCgKfb
 EVO_API_VERSION=V1
 EVO_QR_LOGO_BASE64=""
@@ -484,13 +484,13 @@ UPDATER_APP_SUFIX_NAME="Enterprise"
 UPDATER_APP_DESC="Gerenciador de Atualizações"
 
 UPDATER_NOTIFY_ENABLED=true
-UPDATER_NOTIFY_TO=nome.sobrenome@development.com.br
-UPDATER_GIT_PATH=/home/development-web/htdocs/web.development.com.br
+UPDATER_NOTIFY_TO=walace.alemida@wwsoftwares.com.br,agnaldo.borges@fersofterp.com.br
+UPDATER_GIT_PATH=/home/fersofterp-web/htdocs/web.fersofterp.com.br
 UPDATER_GIT_REMOTE=origin
 UPDATER_GIT_BRANCH=main
 UPDATER_GIT_FF_ONLY=flase
 UPDATER_GIT_AUTO_INIT=true
-UPDATER_GIT_REMOTE_URL=https://github.com/development/development-web.git
+UPDATER_GIT_REMOTE_URL=https://github.com/wkarts/fersoft-web.git
 UPDATER_GIT_DEFAULT_UPDATE_MODE=merge
 UPDATER_SOURCES_ALLOW_MULTIPLE=false
 
