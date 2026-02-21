@@ -1,39 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-write_env() {
-  local key="$1"
-  local val="$2"
-  if [[ -z "${!key:-}" && -n "${val}" ]]; then
-    echo "${key}=${val}" >> "${GITHUB_ENV}"
-    export "${key}=${val}"
+put() {
+  local k="$1"
+  local v="${2:-}"
+  if [[ -z "${!k:-}" && -n "$v" ]]; then
+    echo "$k=$v" >> "$GITHUB_ENV"
+    export "$k=$v"
   fi
 }
 
-# ENCRYPTION_KEY (gera no CI se não vier)
+# Laravel boot
+put APP_ENV "${APP_ENV:-testing}"
+put APP_DEBUG "${APP_DEBUG:-true}"
+
+# ENCRYPTION_KEY (gera no CI)
 if [[ -z "${ENCRYPTION_KEY:-}" ]]; then
   KEY="$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")"
-  write_env "ENCRYPTION_KEY" "${KEY}"
+  put ENCRYPTION_KEY "$KEY"
 fi
 
-# Garantir boot sem depender de serviços externos
-write_env "APP_ENV"   "${APP_ENV:-testing}"
-write_env "APP_DEBUG" "${APP_DEBUG:-true}"
+# Broadcast / Pusher (evitar null)
+put BROADCAST_DRIVER "${BROADCAST_DRIVER:-log}"
+put BROADCAST_CONNECTION "${BROADCAST_CONNECTION:-log}"
 
-# Broadcast/Pusher/Reverb - evitar null
-write_env "BROADCAST_CONNECTION" "${BROADCAST_CONNECTION:-log}"
-write_env "BROADCAST_DRIVER"     "${BROADCAST_DRIVER:-log}"
+put PUSHER_APP_ID "${PUSHER_APP_ID:-ci}"
+put PUSHER_APP_KEY "${PUSHER_APP_KEY:-ci}"
+put PUSHER_APP_SECRET "${PUSHER_APP_SECRET:-ci}"
+put PUSHER_APP_CLUSTER "${PUSHER_APP_CLUSTER:-mt1}"
 
-write_env "PUSHER_APP_ID"       "${PUSHER_APP_ID:-ci}"
-write_env "PUSHER_APP_KEY"      "${PUSHER_APP_KEY:-ci}"
-write_env "PUSHER_APP_SECRET"   "${PUSHER_APP_SECRET:-ci}"
-write_env "PUSHER_APP_CLUSTER"  "${PUSHER_APP_CLUSTER:-mt1}"
+# Reverb (se seu app usa)
+put REVERB_APP_ID "${REVERB_APP_ID:-ci}"
+put REVERB_APP_KEY "${REVERB_APP_KEY:-ci}"
+put REVERB_APP_SECRET "${REVERB_APP_SECRET:-ci}"
+put REVERB_HOST "${REVERB_HOST:-127.0.0.1}"
+put REVERB_PORT "${REVERB_PORT:-9000}"
+put REVERB_SCHEME "${REVERB_SCHEME:-http}"
 
-# EVO API - nomes iguais ao seu .env
-write_env "EVO_BASE_URL"     "${EVO_BASE_URL:-http://127.0.0.1}"
-write_env "EVO_GLOBAL_API"   "${EVO_GLOBAL_API:-ci}"
-write_env "EVO_API_VERSION"  "${EVO_API_VERSION:-V1}"
-write_env "EVO_DDI"          "${EVO_DDI:-55}"
-write_env "EVO_DDD"          "${EVO_DDD:-11}"
+# Evo (seu padrão)
+put EVO_BASE_URL "${EVO_BASE_URL:-http://127.0.0.1}"
+put EVO_GLOBAL_API "${EVO_GLOBAL_API:-ci}"
+put EVO_API_VERSION "${EVO_API_VERSION:-V1}"
+put EVO_DDI "${EVO_DDI:-55}"
+put EVO_DDD "${EVO_DDD:-11}"
 
-echo "CI bootstrap-env concluído."
+echo "bootstrap-env.sh OK"

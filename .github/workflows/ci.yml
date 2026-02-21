@@ -27,7 +27,6 @@ jobs:
           php -v
           composer -V
 
-      # PHPClasses Auth
       - name: Configure PHPClasses Auth (COMPOSER_AUTH)
         shell: bash
         run: |
@@ -35,17 +34,21 @@ jobs:
             echo "ERROR: Secret PHPCLASSES_TOKEN is missing/empty"
             exit 1
           fi
-
           echo 'COMPOSER_AUTH={"http-basic":{"www.phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"},"phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"}}}' >> $GITHUB_ENV
 
-      # (Opcional) Se você criar esses secrets/vars, eles entram aqui.
-      # Se não criar, fica vazio e o bootstrap coloca dummy.
       - name: Export optional repo vars/secrets
         run: |
           echo "PUSHER_APP_ID=${{ secrets.PUSHER_APP_ID }}" >> $GITHUB_ENV
           echo "PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }}" >> $GITHUB_ENV
           echo "PUSHER_APP_SECRET=${{ secrets.PUSHER_APP_SECRET }}" >> $GITHUB_ENV
           echo "PUSHER_APP_CLUSTER=${{ vars.PUSHER_APP_CLUSTER }}" >> $GITHUB_ENV
+
+          echo "REVERB_APP_ID=${{ secrets.REVERB_APP_ID }}" >> $GITHUB_ENV
+          echo "REVERB_APP_KEY=${{ secrets.REVERB_APP_KEY }}" >> $GITHUB_ENV
+          echo "REVERB_APP_SECRET=${{ secrets.REVERB_APP_SECRET }}" >> $GITHUB_ENV
+          echo "REVERB_HOST=${{ vars.REVERB_HOST }}" >> $GITHUB_ENV
+          echo "REVERB_PORT=${{ vars.REVERB_PORT }}" >> $GITHUB_ENV
+          echo "REVERB_SCHEME=${{ vars.REVERB_SCHEME }}" >> $GITHUB_ENV
 
           echo "EVO_BASE_URL=${{ vars.EVO_BASE_URL }}" >> $GITHUB_ENV
           echo "EVO_GLOBAL_API=${{ secrets.EVO_GLOBAL_API }}" >> $GITHUB_ENV
