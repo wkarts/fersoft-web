@@ -79,6 +79,12 @@ class ConfigNota extends Model
         'numero_serie_nfse',
         'token_sync',
         'whatsapp_technology',
+        'bloquear_pesagem_manual_balanca',
+        'usar_valores_ticket_pesagem',
+        'exibir_valores_ticket_pesagem_grid',
+        'desbloquear_campo_peso_bag_ticket',
+        'conectar_automaticamente_balanca_padrao_usuario',
+        'conectar_automaticamente_balanca_ao_selecionar',
     ];
 
     public static function configStatic(){

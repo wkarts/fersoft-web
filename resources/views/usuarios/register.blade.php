@@ -57,6 +57,22 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-10 col-lg-3">
+                                                <label class="col-form-label">Balança padrão (opcional)</label>
+                                                <div class="">
+                                                    <select name="balanca_padrao_id" class="form-select form-control">
+                                                        <option value="">--</option>
+                                                        @foreach($balancasAtivas ?? [] as $balanca)
+                                                            <option value="{{ $balanca->id }}"
+                                                                @if((string) old('balanca_padrao_id', $usuario->balanca_padrao_id ?? '') === (string) $balanca->id) selected @endif>
+                                                                {{ $balanca->descricao }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                    <small class="text-muted">Auto seleção inicial no ticket de pesagem. Você pode trocar para qualquer balança ativa. <a href="/balancas">Gerenciar balanças</a>.</small>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group validated col-sm-10 col-lg-3">
                                                 <label class="col-form-label">Login</label>
                                                 <div class="">
                                                     <input id="login" type="text" class="form-control @if($errors->has('login')) is-invalid @endif" name="login" value="{{{ isset($usuario) ? $usuario->login : old('login') }}}">
