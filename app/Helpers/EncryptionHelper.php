@@ -8,26 +8,25 @@ class EncryptionHelper
     private static $cipher = 'AES-256-CBC';
 
     /**
-     * Inicializa a chave de criptografia a partir do .env ou variáveis de ambiente.
+     * Inicializa a chave de criptografia a partir do .env ou variáveis de ambiente do processo.
      *
      * @return void
      * @throws \Exception
      */
     public static function initialize()
     {
-        // env() já lê do .env e também das variáveis de ambiente do processo (CI).
+        // Tenta por env() e depois cai para getenv()/$_ENV/$_SERVER (mais resiliente em CI)
         $key = env('ENCRYPTION_KEY');
 
-        // Fallback mínimo (sem mudar estrutura): caso o env() não resolva por algum motivo.
         if (!$key) {
-            $key = getenv('ENCRYPTION_KEY') ?: null;
+            $key = $_ENV['ENCRYPTION_KEY'] ?? $_SERVER['ENCRYPTION_KEY'] ?? getenv('ENCRYPTION_KEY') ?: null;
         }
 
         // Depuração: Verifica o valor bruto da chave
         //echo "Valor bruto da chave: $key\n";
 
         if (!$key) {
-            throw new \Exception('ENCRYPTION_KEY não definido nas variáveis de ambiente (.env ou Secrets do CI).');
+            throw new \Exception('ENCRYPTION_KEY não definido nas variáveis de ambiente (.env ou CI Secrets).');
         }
 
         // Depuração: Verifica se a chave começa com "base64:"
