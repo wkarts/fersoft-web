@@ -1247,6 +1247,8 @@
         const EXIBIR_VALORES_TICKET_PESAGEM_GRID = {{ (int) ($configNota->exibir_valores_ticket_pesagem_grid ?? 0) }};
         const BALANCA_PADRAO_USUARIO_ID = {{ (int) ($balancaPadraoUsuarioId ?? 0) }};
         const DESBLOQUEAR_CAMPO_PESO_BAG_TICKET = {{ (int) ($configNota->desbloquear_campo_peso_bag_ticket ?? 0) }};
+        const AUTO_CONNECT_BALANCA_PADRAO_USUARIO = {{ (int) ($configNota->conectar_automaticamente_balanca_padrao_usuario ?? 0) }};
+        const AUTO_CONNECT_BALANCA_AO_SELECIONAR = {{ (int) ($configNota->conectar_automaticamente_balanca_ao_selecionar ?? 0) }};
 
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso_bag', function (e) {
@@ -2793,6 +2795,9 @@
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
             $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
+            if (window._balancaAutoCtrl) {
+                delete window._balancaAutoCtrl['#' + $modal.attr('id')];
+            }
         });
 
     </script>
@@ -2803,9 +2808,33 @@
             let balancaSelecionada = null;
             let intervaloLeitura;
 
+            const autoStateMap = window._balancaAutoCtrl = window._balancaAutoCtrl || {};
+            autoStateMap[modalId] = autoStateMap[modalId] || {
+                desconexaoManual: false,
+                conectado: false,
+                balancaId: null,
+                trocando: false,
+            };
+            const autoState = autoStateMap[modalId];
+
+            function tentarAutoConectar() {
+                if (!AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
+                    return;
+                }
+                if (autoState.desconexaoManual || autoState.trocando) {
+                    return;
+                }
+                if (!balancaSelecionada || !balancaSelecionada.id || autoState.conectado) {
+                    return;
+                }
+                $(modalId).find('#connect').trigger('click');
+            }
+
             // Seleciona a balança
-            $(modalId).find('#balanca-select').on('change', function () {
+            $(modalId).find('#balanca-select').off('change').on('change', function () {
                 const select = $(this).find(':selected');
+                const balancaIdAnterior = autoState.balancaId;
+
                 balancaSelecionada = {
                     id: select.val(),
                     backend: select.data('backend'),
@@ -2814,18 +2843,35 @@
                 };
                 $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id);
                 $(modalId).find('#balanca_config_id').val(balancaSelecionada.id || '');
-                $(modalId).find('#disconnect').prop('disabled', true);
+                $(modalId).find('#disconnect').prop('disabled', !autoState.conectado);
+
+                const trocouBalancaConectada = !!balancaIdAnterior && !!balancaSelecionada.id && String(balancaIdAnterior) !== String(balancaSelecionada.id) && autoState.conectado;
+
+                if (trocouBalancaConectada && AUTO_CONNECT_BALANCA_AO_SELECIONAR && !autoState.desconexaoManual) {
+                    autoState.trocando = true;
+                    $(modalId).find('#disconnect').trigger('click');
+                    setTimeout(() => {
+                        autoState.trocando = false;
+                        tentarAutoConectar();
+                    }, 120);
+                    return;
+                }
+
+                tentarAutoConectar();
             });
 
             // Conectar
-            $(modalId).find('#connect').on('click', function () {
-                if (!balancaSelecionada) {
+            $(modalId).find('#connect').off('click').on('click', function () {
+                if (!balancaSelecionada || !balancaSelecionada.id) {
                     abrirModalMensagem('Aviso', 'Selecione uma balança!');
                     return;
                 }
 
                 axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
                     .then(() => {
+                        autoState.conectado = true;
+                        autoState.balancaId = String(balancaSelecionada.id);
+                        autoState.desconexaoManual = false;
                         $(modalId).find('#connect').prop('disabled', true);
                         $(modalId).find('#disconnect').prop('disabled', false);
                         iniciarLeitura(modalId, balancaSelecionada);
@@ -2834,11 +2880,16 @@
             });
 
             // Desconectar
-            $(modalId).find('#disconnect').on('click', function () {
+            $(modalId).find('#disconnect').off('click').on('click', function () {
                 if (!balancaSelecionada) return;
 
                 axios.get(`${balancaSelecionada.backend}/api/close`)
                     .then(() => {
+                        autoState.conectado = false;
+                        autoState.balancaId = null;
+                        if (!autoState.trocando) {
+                            autoState.desconexaoManual = true;
+                        }
                         $(modalId).find('#connect').prop('disabled', false);
                         $(modalId).find('#disconnect').prop('disabled', true);
                         clearInterval(intervaloLeitura);
@@ -2849,6 +2900,7 @@
 
             // Iniciar leitura contínua
             function iniciarLeitura(modalId, balancaSelecionada) {
+                clearInterval(intervaloLeitura);
                 intervaloLeitura = setInterval(() => {
                     axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
                         .then(response => {
@@ -2895,13 +2947,22 @@
             const modalId = '#' + $(this).attr('id'); // Identifica o modal atual
             ativarEventosBalança(modalId); // Chama a função para ativar eventos
 
-            if (BLOQUEAR_PESAGEM_MANUAL_BALANCA && modalId.startsWith('#modalTickets')) {
+            if (modalId.startsWith('#modalTickets')) {
                 const $modal = $(modalId);
-                $modal.find('#peso').prop('readonly', true);
-                $modal.find('#peso_origem').val('manual');
+                if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                    $modal.find('#peso').prop('readonly', true);
+                    $modal.find('#peso_origem').val('manual');
+                }
 
                 if (BALANCA_PADRAO_USUARIO_ID > 0) {
                     $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');
+                    if (AUTO_CONNECT_BALANCA_PADRAO_USUARIO) {
+                        const stateMap = window._balancaAutoCtrl || {};
+                        const state = stateMap[modalId];
+                        if (state && !state.desconexaoManual) {
+                            setTimeout(() => $modal.find('#connect').trigger('click'), 80);
+                        }
+                    }
                 }
             }
         });

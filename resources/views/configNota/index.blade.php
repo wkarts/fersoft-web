@@ -190,6 +190,27 @@
                                                                 </div>
                                                                 <small class="text-muted">Quando ativo, o campo de recipiente fica editável e a tara não é aplicada automaticamente.</small>
                                                             </div>
+
+                                                            <div class="form-group mt-3 mb-0"> 
+                                                                <div class="checkbox-inline"> 
+                                                                    <label class="checkbox"> 
+                                                                        <input type="checkbox" name="conectar_automaticamente_balanca_padrao_usuario" value="1" {{ (old('conectar_automaticamente_balanca_padrao_usuario', $config->conectar_automaticamente_balanca_padrao_usuario ?? 0)) ? 'checked' : '' }}>
+                                                                        <span></span>
+                                                                        Conectar automaticamente à balança padrão do usuário no abrir do modal
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="form-group mt-3 mb-0"> 
+                                                                <div class="checkbox-inline"> 
+                                                                    <label class="checkbox"> 
+                                                                        <input type="checkbox" name="conectar_automaticamente_balanca_ao_selecionar" value="1" {{ (old('conectar_automaticamente_balanca_ao_selecionar', $config->conectar_automaticamente_balanca_ao_selecionar ?? 0)) ? 'checked' : '' }}>
+                                                                        <span></span>
+                                                                        Conectar automaticamente ao selecionar/trocar balança
+                                                                    </label>
+                                                                </div>
+                                                                <small class="text-muted">Se desconectar manualmente, a reconexão automática é desativada até nova ação manual.</small>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
