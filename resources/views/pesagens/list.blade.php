@@ -2784,7 +2784,9 @@
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
             $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
-            $modal.removeData('balancaState');
+            if (window._balancaAutoCtrl) {
+                delete window._balancaAutoCtrl['#' + $modal.attr('id')];
+            }
         });
 
     </script>
@@ -2793,37 +2795,21 @@
     <script type="text/javascript">
         function ativarEventosBalança(modalId) {
             const $modal = $(modalId);
-            const state = $modal.data('balancaState') || {
-                balancaSelecionada: null,
-                balancaConectada: null,
+            const autoStateMap = window._balancaAutoCtrl = window._balancaAutoCtrl || {};
+            autoStateMap[modalId] = autoStateMap[modalId] || {
+                desconexaoManual: false,
                 conectado: false,
                 conectando: false,
-                intervaloLeitura: null,
-                desconexaoManual: false,
+                balancaId: null,
             };
-            $modal.data('balancaState', state);
 
-            function atualizarUIConexao() {
-                const temSelecao = !!(state.balancaSelecionada && state.balancaSelecionada.id);
-                $modal.find('#connect').prop('disabled', !temSelecao || state.conectado || state.conectando);
-                $modal.find('#disconnect').prop('disabled', !state.conectado && !state.conectando);
-            }
+            const autoState = autoStateMap[modalId];
+            let balancaSelecionada = null;
+            let intervaloLeitura;
 
-            function pararLeitura() {
-                if (state.intervaloLeitura) {
-                    clearInterval(state.intervaloLeitura);
-                    state.intervaloLeitura = null;
-                }
-            }
-
-            function iniciarLeitura() {
-                if (!state.balancaConectada) {
-                    return;
-                }
-
-                pararLeitura();
-                state.intervaloLeitura = setInterval(() => {
-                    axios.get(`${state.balancaConectada.backend}/api/data?equip=${state.balancaConectada.modelo}`)
+            function iniciarLeitura(modalId, balancaSelecionadaAtual) {
+                intervaloLeitura = setInterval(() => {
+                    axios.get(`${balancaSelecionadaAtual.backend}/api/data?equip=${balancaSelecionadaAtual.modelo}`)
                         .then(response => {
                             const dados = response.data.data;
                             const bruto = parseFloat(dados.peso_bruto ?? 0) || 0;
@@ -2851,40 +2837,42 @@
                 }, 200);
             }
 
-            function conectarBalanca(auto = false) {
-                if (!state.balancaSelecionada || !state.balancaSelecionada.id) {
+            function conectarSelecionada(auto = false) {
+                if (!balancaSelecionada || !balancaSelecionada.id) {
                     if (!auto) {
                         abrirModalMensagem('Aviso', 'Selecione uma balança!');
                     }
                     return Promise.resolve(false);
                 }
 
-                if (state.conectado || state.conectando) {
-                    return Promise.resolve(true);
-                }
-
-                if (auto && state.desconexaoManual) {
+                if (auto && autoState.desconexaoManual) {
                     return Promise.resolve(false);
                 }
 
-                state.conectando = true;
-                atualizarUIConexao();
+                if (autoState.conectado || autoState.conectando) {
+                    return Promise.resolve(true);
+                }
 
-                return axios.get(`${state.balancaSelecionada.backend}/api/open?port=${state.balancaSelecionada.porta}`)
+                autoState.conectando = true;
+                $modal.find('#connect').prop('disabled', true);
+                $modal.find('#disconnect').prop('disabled', false);
+
+                return axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
                     .then(() => {
-                        state.conectado = true;
-                        state.balancaConectada = { ...state.balancaSelecionada };
-                        state.conectando = false;
-                        atualizarUIConexao();
-                        iniciarLeitura();
+                        autoState.conectando = false;
+                        autoState.conectado = true;
+                        autoState.balancaId = String(balancaSelecionada.id);
+                        $modal.find('#connect').prop('disabled', true);
+                        $modal.find('#disconnect').prop('disabled', false);
+                        clearInterval(intervaloLeitura);
+                        iniciarLeitura(modalId, balancaSelecionada);
                         return true;
                     })
                     .catch(error => {
-                        state.conectado = false;
-                        state.conectando = false;
-                        state.balancaConectada = null;
-                        atualizarUIConexao();
-                        pararLeitura();
+                        autoState.conectando = false;
+                        autoState.conectado = false;
+                        $modal.find('#connect').prop('disabled', !balancaSelecionada?.id);
+                        $modal.find('#disconnect').prop('disabled', true);
                         if (!auto) {
                             abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message);
                         }
@@ -2892,23 +2880,20 @@
                     });
             }
 
-            function desconectarBalanca(auto = false) {
-                if (!state.balancaConectada) {
-                    state.conectado = false;
-                    state.conectando = false;
-                    pararLeitura();
-                    atualizarUIConexao();
+            function desconectarAtual(auto = false) {
+                if (!autoState.conectado && !autoState.conectando) {
                     return Promise.resolve(true);
                 }
 
-                return axios.get(`${state.balancaConectada.backend}/api/close`)
+                return axios.get(`${balancaSelecionada.backend}/api/close`)
                     .then(() => {
-                        state.conectado = false;
-                        state.conectando = false;
-                        state.balancaConectada = null;
-                        pararLeitura();
+                        autoState.conectando = false;
+                        autoState.conectado = false;
+                        autoState.balancaId = null;
+                        $modal.find('#connect').prop('disabled', !balancaSelecionada?.id);
+                        $modal.find('#disconnect').prop('disabled', true);
+                        clearInterval(intervaloLeitura);
                         $modal.find('#pesoAtual').text('----');
-                        atualizarUIConexao();
                         return true;
                     })
                     .catch(error => {
@@ -2919,47 +2904,42 @@
                     });
             }
 
-            $modal.find('#balanca-select').off('change.autoBalanca').on('change.autoBalanca', function () {
+            $modal.find('#balanca-select').off('change.balancaAuto').on('change.balancaAuto', function () {
                 const select = $(this).find(':selected');
-                const novaSelecao = {
+                const balancaAnteriorId = autoState.balancaId;
+
+                balancaSelecionada = {
                     id: select.val(),
                     backend: select.data('backend'),
                     modelo: select.data('modelo'),
                     porta: select.data('port')
                 };
-                const balancaAnteriorId = state.balancaSelecionada?.id || state.balancaConectada?.id || null;
-                state.balancaSelecionada = novaSelecao;
-                $modal.find('#balanca_config_id').val(novaSelecao.id || '');
 
-                const trocouBalanca = !!balancaAnteriorId && !!novaSelecao.id && String(balancaAnteriorId) !== String(novaSelecao.id);
+                $modal.find('#connect').prop('disabled', !balancaSelecionada.id);
+                $modal.find('#balanca_config_id').val(balancaSelecionada.id || '');
+                $modal.find('#disconnect').prop('disabled', !autoState.conectado);
 
-                if (trocouBalanca && state.conectado) {
-                    desconectarBalanca(true).finally(() => {
-                        if (AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
-                            conectarBalanca(true);
-                        }
-                    });
+                const trocouBalanca = !!balancaAnteriorId && !!balancaSelecionada.id && String(balancaAnteriorId) !== String(balancaSelecionada.id);
+
+                if (AUTO_CONNECT_BALANCA_AO_SELECIONAR && trocouBalanca && autoState.conectado) {
+                    desconectarAtual(true).finally(() => conectarSelecionada(true));
                     return;
                 }
 
-                atualizarUIConexao();
-
                 if (AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
-                    conectarBalanca(true);
+                    conectarSelecionada(true);
                 }
             });
 
-            $modal.find('#connect').off('click.autoBalanca').on('click.autoBalanca', function () {
-                state.desconexaoManual = false;
-                conectarBalanca(false);
+            $modal.find('#connect').off('click.balancaAuto').on('click.balancaAuto', function () {
+                autoState.desconexaoManual = false;
+                conectarSelecionada(false);
             });
 
-            $modal.find('#disconnect').off('click.autoBalanca').on('click.autoBalanca', function () {
-                state.desconexaoManual = true;
-                desconectarBalanca(false);
+            $modal.find('#disconnect').off('click.balancaAuto').on('click.balancaAuto', function () {
+                autoState.desconexaoManual = true;
+                desconectarAtual(false);
             });
-
-            atualizarUIConexao();
         }
 
         // Modal de Mensagem/Aviso
@@ -2988,9 +2968,10 @@
                 if (BALANCA_PADRAO_USUARIO_ID > 0) {
                     $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');
                     if (AUTO_CONNECT_BALANCA_PADRAO_USUARIO) {
-                        const state = $modal.data('balancaState');
+                        const stateMap = window._balancaAutoCtrl || {};
+                        const state = stateMap[modalId];
                         if (state && !state.desconexaoManual) {
-                            $modal.find('#connect').trigger('click');
+                            setTimeout(() => $modal.find('#connect').trigger('click'), 80);
                         }
                     }
                 }
