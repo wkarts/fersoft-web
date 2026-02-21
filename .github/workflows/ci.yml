@@ -19,7 +19,7 @@ jobs:
         with:
           php-version: "8.2"
           tools: composer:v2
-          extensions: mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          extensions: mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, sqlite, pdo_sqlite
           coverage: none
 
       - name: Versions
@@ -27,79 +27,15 @@ jobs:
           php -v
           composer -V
 
-      # Exporta Secrets -> ENV do job (se vier vazio, o bootstrap gera automaticamente)
-      - name: Export Secrets to ENV
-        shell: bash
+      # ✅ Exporta ENCRYPTION_KEY do Secret
+      - name: Export ENCRYPTION_KEY
+        run: echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> $GITHUB_ENV
+
+      # ✅ Configura SQLite
+      - name: Prepare SQLite database
         run: |
-          echo "APP_KEY=${{ secrets.APP_KEY }}" >> $GITHUB_ENV
-          echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> $GITHUB_ENV
-
-          echo "PHPCLASSES_TOKEN=${{ secrets.PHPCLASSES_TOKEN }}" >> $GITHUB_ENV
-          echo "REPOSITORY_PERSONAL_TOKEN=${{ secrets.REPOSITORY_PERSONAL_TOKEN }}" >> $GITHUB_ENV
-
-          echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> $GITHUB_ENV
-          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> $GITHUB_ENV
-          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> $GITHUB_ENV
-          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> $GITHUB_ENV
-          echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> $GITHUB_ENV
-          echo "SMTP_TO=${{ secrets.SMTP_TO }}" >> $GITHUB_ENV
-
-          echo "WEBHOOK_URL=${{ secrets.WEBHOOK_URL }}" >> $GITHUB_ENV
-          echo "WEBHOOK_TOKEN=${{ secrets.WEBHOOK_TOKEN }}" >> $GITHUB_ENV
-
-          echo "REVERB_APP=${{ secrets.REVERB_APP }}" >> $GITHUB_ENV
-          echo "REVERB_APP_ID=${{ secrets.REVERB_APP_ID }}" >> $GITHUB_ENV
-          echo "REVERB_APP_KEY=${{ secrets.REVERB_APP_KEY }}" >> $GITHUB_ENV
-          echo "REVERB_APP_SECRET=${{ secrets.REVERB_APP_SECRET }}" >> $GITHUB_ENV
-          echo "REVERB_HOST=${{ secrets.REVERB_HOST }}" >> $GITHUB_ENV
-          echo "REVERB_PORT=${{ secrets.REVERB_PORT }}" >> $GITHUB_ENV
-          echo "REVERB_SCHEME=${{ secrets.REVERB_SCHEME }}" >> $GITHUB_ENV
-          echo "REVERB_SERVER=${{ secrets.REVERB_SERVER }}" >> $GITHUB_ENV
-          echo "REVERB_SERVER_HOST=${{ secrets.REVERB_SERVER_HOST }}" >> $GITHUB_ENV
-          echo "REVERB_SERVER_PORT=${{ secrets.REVERB_SERVER_PORT }}" >> $GITHUB_ENV
-
-          echo "PUSHER_APP_ID=${{ secrets.PUSHER_APP_ID }}" >> $GITHUB_ENV
-          echo "PUSHER_APP_KEY=${{ secrets.PUSHER_APP_KEY }}" >> $GITHUB_ENV
-          echo "PUSHER_APP_SECRET=${{ secrets.PUSHER_APP_SECRET }}" >> $GITHUB_ENV
-          echo "VITE_PUSHER_APP_CLUSTER=${{ secrets.VITE_PUSHER_APP_CLUSTER }}" >> $GITHUB_ENV
-          echo "VITE_PUSHER_APP_KEY=${{ secrets.VITE_PUSHER_APP_KEY }}" >> $GITHUB_ENV
-          echo "VITE_PUSHER_HOST=${{ secrets.VITE_PUSHER_HOST }}" >> $GITHUB_ENV
-          echo "VITE_PUSHER_PORT=${{ secrets.VITE_PUSHER_PORT }}" >> $GITHUB_ENV
-          echo "VITE_PUSHER_SCHEME=${{ secrets.VITE_PUSHER_SCHEME }}" >> $GITHUB_ENV
-          echo "VITE_REVERB_APP_KEY=${{ secrets.VITE_REVERB_APP_KEY }}" >> $GITHUB_ENV
-          echo "VITE_REVERB_HOST=${{ secrets.VITE_REVERB_HOST }}" >> $GITHUB_ENV
-          echo "VITE_REVERB_PORT=${{ secrets.VITE_REVERB_PORT }}" >> $GITHUB_ENV
-          echo "VITE_REVERB_SCHEME=${{ secrets.VITE_REVERB_SCHEME }}" >> $GITHUB_ENV
-
-          echo "EVO_DDI=${{ secrets.EVO_DDI }}" >> $GITHUB_ENV
-          echo "EVO_DDD=${{ secrets.EVO_DDD }}" >> $GITHUB_ENV
-          echo "EVO_BASE_URL=${{ secrets.EVO_BASE_URL }}" >> $GITHUB_ENV
-          echo "EVO_GLOBAL_API=${{ secrets.EVO_GLOBAL_API }}" >> $GITHUB_ENV
-          echo "EVO_API_VERSION=${{ secrets.EVO_API_VERSION }}" >> $GITHUB_ENV
-          echo "EVO_QR_LOGO_BASE64=${{ secrets.EVO_QR_LOGO_BASE64 }}" >> $GITHUB_ENV
-          echo "EVO_QR_LOGO_SIZE=${{ secrets.EVO_QR_LOGO_SIZE }}" >> $GITHUB_ENV
-          echo "EVO_TOKEN_PREFIX=${{ secrets.EVO_TOKEN_PREFIX }}" >> $GITHUB_ENV
-          echo "EVO_TOKEN_ALPHABET=${{ secrets.EVO_TOKEN_ALPHABET }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_HINTBUTTON=${{ secrets.EVO_WHATSAPP_MODAL_HINTBUTTON }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_TITLE=${{ secrets.EVO_WHATSAPP_MODAL_TITLE }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_HINTFOOTER=${{ secrets.EVO_WHATSAPP_MODAL_HINTFOOTER }}" >> $GITHUB_ENV
-
-      # Gera .env COMPLETO e aplica overrides seguros pro CI
-      - name: Bootstrap .env (integral) for CI
-        shell: bash
-        run: |
-          chmod +x scripts/ci/bootstrap-env.sh
-          scripts/ci/bootstrap-env.sh
-
-      # Composer auth do PHPClasses (só se token existir)
-      - name: Configure PHPClasses Auth (COMPOSER_AUTH)
-        shell: bash
-        run: |
-          if [ -n "${PHPCLASSES_TOKEN:-}" ]; then
-            echo 'COMPOSER_AUTH={"http-basic":{"www.phpclasses.org":{"username":"wkarts","password":"'"${PHPCLASSES_TOKEN}"'"},"phpclasses.org":{"username":"wkarts","password":"'"${PHPCLASSES_TOKEN}"'"}}}' >> $GITHUB_ENV
-          else
-            echo "PHPCLASSES_TOKEN vazio. Seguindo sem COMPOSER_AUTH (ok para CI quando secrets não estiverem disponíveis)."
-          fi
+          mkdir -p database
+          touch database/database.sqlite
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -125,9 +61,16 @@ jobs:
           COMPOSER_NO_AUDIT: 1
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Run migrations (SQLite)
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: php artisan migrate --force
+
       - name: Run tests
         env:
           APP_ENV: testing
-          APP_DEBUG: true
-        run: |
-          ./vendor/bin/phpunit
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: ./vendor/bin/phpunit
