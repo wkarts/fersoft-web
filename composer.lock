@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "610ae1bd269ba289dea921f1956f56d8",
+    "content-hash": "b8109863336b2a7bcc7569547eac3167",
     "packages": [
         {
             "name": "argws/laravel-updater",
@@ -5421,24 +5421,21 @@
         },
         {
             "name": "phpclasses/php_serial",
-            "version": "1.10",
+            "version": "1.20",
             "dist": {
-                "type": "path",
-                "url": "./vendor/phpclasses/php_serial",
-                "reference": "e3de9fb994ee57326d842df0b36375fa9d1b5e9d"
-            },
-            "require": {
-                "php": ">=7.0"
+                "type": "zip",
+                "url": "https://www.phpclasses.org/install/package/php_serial.zip"
             },
             "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "PhpSerial\\": "src/"
+            "extra": {
+                "branch-alias": {
+                    "dev-develop": "1.0.x-dev"
                 }
             },
-            "description": "PHP Serial Port Communication",
-            "transport-options": {
-                "relative": true
+            "autoload": {
+                "classmap": [
+                    "src/"
+                ]
             }
         },
         {

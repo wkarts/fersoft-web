@@ -67,6 +67,7 @@
             "app/Helpers/BoletoHelper.php",
             "app/Helpers/ProdutoGrade.php",
             "app/Helpers/PedidoEcommerceHelper.php",
+            "app/Helpers/PedidoEcommerceHelper.php",
             "app/Helpers/UserOtpHelper.php"
         ]
     },
@@ -106,8 +107,8 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "./vendor/phpclasses/php_serial"
+            "type": "composer",
+            "url": "https://www.phpclasses.org/"
         }
     ],
     "minimum-stability": "dev",
