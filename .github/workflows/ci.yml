@@ -99,8 +99,8 @@ jobs:
           BROADCAST_DRIVER: log
           BROADCAST_CONNECTION: log
         run: |
-          chmod +x .github/scripts/bootstrap-env.sh
-          .github/scripts/bootstrap-env.sh
+          chmod +x scripts/ci/bootstrap-env.sh
+          scripts/ci/bootstrap-env.sh
 
       - name: Get Composer Cache Directory
         id: composer-cache
