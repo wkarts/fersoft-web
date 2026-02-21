@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "46269e4ab19c238e2cc249613164e156",
+    "content-hash": "610ae1bd269ba289dea921f1956f56d8",
     "packages": [
         {
             "name": "argws/laravel-updater",
-            "version": "v0.1.113",
+            "version": "v0.1.153",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/laravel-updater.git",
-                "reference": "2fbf144d424d163358403bf1d20814944d1bc3cd"
+                "reference": "34a92adba70ed7e8e4fc7fea763d8fd020916ff3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/2fbf144d424d163358403bf1d20814944d1bc3cd",
-                "reference": "2fbf144d424d163358403bf1d20814944d1bc3cd",
+                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/34a92adba70ed7e8e4fc7fea763d8fd020916ff3",
+                "reference": "34a92adba70ed7e8e4fc7fea763d8fd020916ff3",
                 "shasum": ""
             },
             "require": {
@@ -53,9 +53,9 @@
             "description": "Sistema genérico de autoatualização para aplicações Laravel.",
             "support": {
                 "issues": "https://github.com/wkarts/laravel-updater/issues",
-                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.113"
+                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.153"
             },
-            "time": "2026-02-18T01:31:12+00:00"
+            "time": "2026-02-20T11:22:19+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -3883,16 +3883,16 @@
         },
         {
             "name": "mercadopago/dx-php",
-            "version": "3.0.8",
+            "version": "3.8.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mercadopago/sdk-php.git",
-                "reference": "b03c3c789c7d4fedfcf7d54cf57993e77c95aabb"
+                "reference": "98a3f7da2f13d1e85b309441b2e45c07fa312bf4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/b03c3c789c7d4fedfcf7d54cf57993e77c95aabb",
-                "reference": "b03c3c789c7d4fedfcf7d54cf57993e77c95aabb",
+                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/98a3f7da2f13d1e85b309441b2e45c07fa312bf4",
+                "reference": "98a3f7da2f13d1e85b309441b2e45c07fa312bf4",
                 "shasum": ""
             },
             "require": {
@@ -3916,9 +3916,9 @@
             "description": "Mercado Pago PHP SDK",
             "homepage": "https://github.com/mercadopago/sdk-php",
             "support": {
-                "source": "https://github.com/mercadopago/sdk-php/tree/3.0.8"
+                "source": "https://github.com/mercadopago/sdk-php/tree/3.8.0"
             },
-            "time": "2024-09-03T12:26:16+00:00"
+            "time": "2025-11-28T14:17:27+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -11833,36 +11833,36 @@
         },
         {
             "name": "nunomaduro/collision",
-            "version": "v8.9.0",
+            "version": "v8.9.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nunomaduro/collision.git",
-                "reference": "f52cab234f37641bd759c0ad56de17f632851419"
+                "reference": "a1ed3fa530fd60bc515f9303e8520fcb7d4bd935"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nunomaduro/collision/zipball/f52cab234f37641bd759c0ad56de17f632851419",
-                "reference": "f52cab234f37641bd759c0ad56de17f632851419",
+                "url": "https://api.github.com/repos/nunomaduro/collision/zipball/a1ed3fa530fd60bc515f9303e8520fcb7d4bd935",
+                "reference": "a1ed3fa530fd60bc515f9303e8520fcb7d4bd935",
                 "shasum": ""
             },
             "require": {
                 "filp/whoops": "^2.18.4",
-                "nunomaduro/termwind": "^2.3.3",
+                "nunomaduro/termwind": "^2.4.0",
                 "php": "^8.2.0",
                 "symfony/console": "^7.4.4 || ^8.0.4"
             },
             "conflict": {
                 "laravel/framework": "<11.48.0 || >=14.0.0",
-                "phpunit/phpunit": "<11.5.50 || >=13.0.0"
+                "phpunit/phpunit": "<11.5.50 || >=14.0.0"
             },
             "require-dev": {
                 "brianium/paratest": "^7.8.5",
                 "larastan/larastan": "^3.9.2",
-                "laravel/framework": "^11.48.0 || ^12.51.0",
+                "laravel/framework": "^11.48.0 || ^12.52.0",
                 "laravel/pint": "^1.27.1",
                 "orchestra/testbench-core": "^9.12.0 || ^10.9.0",
-                "pestphp/pest": "^3.8.5 || ^4.3.2",
-                "sebastian/environment": "^7.2.1 || ^8.0.3"
+                "pestphp/pest": "^3.8.5 || ^4.4.1 || ^5.0.0",
+                "sebastian/environment": "^7.2.1 || ^8.0.3 || ^9.0.0"
             },
             "type": "library",
             "extra": {
@@ -11925,7 +11925,7 @@
                     "type": "patreon"
                 }
             ],
-            "time": "2026-02-16T23:05:52+00:00"
+            "time": "2026-02-17T17:33:08+00:00"
         },
         {
             "name": "phar-io/manifest",
@@ -12394,16 +12394,16 @@
         },
         {
             "name": "phpunit/phpunit",
-            "version": "11.5.53",
+            "version": "11.5.55",
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/phpunit.git",
-                "reference": "a997a653a82845f1240d73ee73a8a4e97e4b0607"
+                "reference": "adc7262fccc12de2b30f12a8aa0b33775d814f00"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/a997a653a82845f1240d73ee73a8a4e97e4b0607",
-                "reference": "a997a653a82845f1240d73ee73a8a4e97e4b0607",
+                "url": "https://api.github.com/repos/sebastianbergmann/phpunit/zipball/adc7262fccc12de2b30f12a8aa0b33775d814f00",
+                "reference": "adc7262fccc12de2b30f12a8aa0b33775d814f00",
                 "shasum": ""
             },
             "require": {
@@ -12476,7 +12476,7 @@
             "support": {
                 "issues": "https://github.com/sebastianbergmann/phpunit/issues",
                 "security": "https://github.com/sebastianbergmann/phpunit/security/policy",
-                "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.53"
+                "source": "https://github.com/sebastianbergmann/phpunit/tree/11.5.55"
             },
             "funding": [
                 {
@@ -12500,7 +12500,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-02-10T12:28:25+00:00"
+            "time": "2026-02-18T12:37:06+00:00"
         },
         {
             "name": "sebastian/cli-parser",

@@ -156,13 +156,13 @@
                                                                 <small class="text-muted">Quando ativo, o peso manual é bloqueado e o operador deve usar somente a balança padrão.</small>
                                                             </div>
 
-                                                            <div class="form-group"> 
+                                                            <div class="form-group">
                                                                 <small class="text-muted">Sem balança ativa? <a href="/balancas">Cadastre uma balança</a> para habilitar leitura obrigatória via balança.</small>
                                                             </div>
 
-                                                            <div class="form-group mb-1"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mb-1">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="usar_valores_ticket_pesagem" value="1" {{ (old('usar_valores_ticket_pesagem', $config->usar_valores_ticket_pesagem ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Usar valores (unitário/total) vindos do ticket de pesagem
@@ -199,11 +199,12 @@
                                                                         Conectar automaticamente à balança padrão do usuário no abrir do modal
                                                                     </label>
                                                                 </div>
+                                                                <small class="text-muted">Ao abrir o modal de ticket para lançamento das pesagens, o sistema deverá conectar-se automaticamente à balança padrão configurada para o usuário.</small>
                                                             </div>
 
-                                                            <div class="form-group mt-3 mb-0"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mt-3 mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="conectar_automaticamente_balanca_ao_selecionar" value="1" {{ (old('conectar_automaticamente_balanca_ao_selecionar', $config->conectar_automaticamente_balanca_ao_selecionar ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Conectar automaticamente ao selecionar/trocar balança
