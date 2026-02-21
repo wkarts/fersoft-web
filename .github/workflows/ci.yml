@@ -27,23 +27,7 @@ jobs:
           php -v
           composer -V
 
-      # ✅ Gera ENCRYPTION_KEY dinamicamente no CI (não depende de secret)
-      - name: Generate ENCRYPTION_KEY for CI
-        run: |
-          KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-          echo "ENCRYPTION_KEY=$KEY" >> $GITHUB_ENV
-
-      # ✅ Evita quebra no package:discover quando Broadcast/Pusher é carregado sem env
-      - name: Set minimal Broadcast/Pusher env for CI
-        run: |
-          echo "BROADCAST_CONNECTION=log" >> $GITHUB_ENV
-          echo "BROADCAST_DRIVER=log" >> $GITHUB_ENV
-          echo "PUSHER_APP_ID=ci" >> $GITHUB_ENV
-          echo "PUSHER_APP_KEY=ci" >> $GITHUB_ENV
-          echo "PUSHER_APP_SECRET=ci" >> $GITHUB_ENV
-          echo "PUSHER_APP_CLUSTER=mt1" >> $GITHUB_ENV
-
-      # ✅ Auth do PHPClasses via COMPOSER_AUTH (depende do Repository secret PHPCLASSES_TOKEN)
+      # ✅ Auth do PHPClasses via COMPOSER_AUTH (Repository secret PHPCLASSES_TOKEN)
       - name: Configure PHPClasses Auth (COMPOSER_AUTH)
         shell: bash
         run: |
@@ -53,6 +37,11 @@ jobs:
           fi
 
           echo 'COMPOSER_AUTH={"http-basic":{"www.phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"},"phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"}}}' >> $GITHUB_ENV
+
+      # ✅ Bootstrap genérico das variáveis (antes do composer)
+      - name: Bootstrap CI env
+        run: |
+          bash scripts/ci/bootstrap-env.sh
 
       - name: Get Composer Cache Directory
         id: composer-cache
@@ -79,8 +68,5 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run tests
-        env:
-          APP_ENV: testing
-          APP_DEBUG: true
         run: |
           ./vendor/bin/phpunit
