@@ -1,0 +1,9 @@
+- name: Set ENCRYPTION_KEY for CI
+  run: |
+    echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> $GITHUB_ENV
+
+- name: Validate composer
+  run: composer validate --no-check-publish --strict
+
+- name: Install dependencies
+  run: composer install --prefer-dist --no-interaction --no-progress
