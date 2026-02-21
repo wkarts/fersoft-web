@@ -4,70 +4,11 @@ on:
   push:
     branches: ["main", "master", "develop", "homolog", "staging"]
   pull_request:
-    branches: ["**"]
+    branches: ["*"]
 
 jobs:
   tests:
     runs-on: ubuntu-latest
-
-    # ✅ Declare tudo UMA vez aqui
-    env:
-      COMPOSER_PROCESS_TIMEOUT: 0
-      COMPOSER_NO_INTERACTION: 1
-      COMPOSER_NO_AUDIT: 1
-
-      # ✅ Laravel (CI/testing)
-      APP_ENV: testing
-      APP_DEBUG: true
-      APP_URL: http://localhost
-
-      # ✅ Blindagem para não quebrar no package:discover
-      # (o seu .env usa reverb; no CI a gente desliga pra não exigir credenciais reais)
-      BROADCAST_CONNECTION: log
-      BROADCAST_DRIVER: log
-
-      # ✅ Defaults (evitam null)
-      PUSHER_APP_ID: "ci"
-      PUSHER_APP_KEY: "ci"
-      PUSHER_APP_SECRET: "ci"
-      PUSHER_APP_CLUSTER: "mt1"
-
-      REVERB_APP: "default"
-      REVERB_APP_ID: "ci"
-      REVERB_APP_KEY: "ci"
-      REVERB_APP_SECRET: "ci"
-      REVERB_HOST: "127.0.0.1"
-      REVERB_PORT: "9000"
-      REVERB_SCHEME: "http"
-      REVERB_SERVER: "reverb"
-      REVERB_SERVER_HOST: "0.0.0.0"
-      REVERB_SERVER_PORT: "9000"
-
-      # ✅ Se seu app referencia VITE_* durante bootstrap/build
-      VITE_APP_NAME: "ARGWS"
-      VITE_PUSHER_APP_CLUSTER: "mt1"
-      VITE_PUSHER_APP_KEY: "ci"
-      VITE_REVERB_APP_KEY: "ci"
-      VITE_REVERB_HOST: "127.0.0.1"
-      VITE_REVERB_PORT: "9000"
-      VITE_REVERB_SCHEME: "http"
-
-      # ✅ Se seu AppServiceProvider exige ENCRYPTION_KEY (seu caso)
-      # (vai ser preenchido no step "Generate ENCRYPTION_KEY for CI")
-
-      # ✅ Secrets que você já criou (se existir, o workflow injeta no .env)
-      EVO_DDI: ${{ secrets.EVO_DDI }}
-      EVO_DDD: ${{ secrets.EVO_DDD }}
-      EVO_BASE_URL: ${{ secrets.EVO_BASE_URL }}
-      EVO_GLOBAL_API: ${{ secrets.EVO_GLOBAL_API }}
-      EVO_API_VERSION: ${{ secrets.EVO_API_VERSION }}
-      EVO_QR_LOGO_BASE64: ${{ secrets.EVO_QR_LOGO_BASE64 }}
-      EVO_QR_LOGO_SIZE: ${{ secrets.EVO_QR_LOGO_SIZE }}
-      EVO_TOKEN_PREFIX: ${{ secrets.EVO_TOKEN_PREFIX }}
-      EVO_TOKEN_ALPHABET: ${{ secrets.EVO_TOKEN_ALPHABET }}
-      EVO_WHATSAPP_MODAL_HINTBUTTON: ${{ secrets.EVO_WHATSAPP_MODAL_HINTBUTTON }}
-      EVO_WHATSAPP_MODAL_TITLE: ${{ secrets.EVO_WHATSAPP_MODAL_TITLE }}
-      EVO_WHATSAPP_MODAL_HINTFOOTER: ${{ secrets.EVO_WHATSAPP_MODAL_HINTFOOTER }}
 
     steps:
       - name: Checkout
@@ -86,93 +27,86 @@ jobs:
           php -v
           composer -V
 
-      # ✅ Gera ENCRYPTION_KEY dinamicamente no CI (não depende de secret)
-      - name: Generate ENCRYPTION_KEY for CI
-        run: |
-          KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-          echo "ENCRYPTION_KEY=$KEY" >> $GITHUB_ENV
-
-      # ✅ (Opcional) APP_KEY também pode ser gerada no CI se quiser isolar totalmente
-      - name: Generate APP_KEY for CI
-        run: |
-          KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
-          echo "APP_KEY=$KEY" >> $GITHUB_ENV
-
-      # ✅ Auth do PHPClasses via COMPOSER_AUTH
-      - name: Configure PHPClasses Auth (COMPOSER_AUTH)
+      # ======================================================
+      # BOOTSTRAP ÚNICO (para TODOS os workflows/jobs)
+      # - Cria .env a partir do .env.ci
+      # - Exporta variáveis pro runner ($GITHUB_ENV)
+      # - Gera ENCRYPTION_KEY / APP_KEY
+      # - Seta defaults para não quebrar package:discover
+      # - Configura COMPOSER_AUTH (PHPClasses)
+      # ======================================================
+      - name: Bootstrap env (CI)
         shell: bash
+        env:
+          # Secrets do repo (não precisa "environment: DEPLOYMENT")
+          PHPCLASSES_TOKEN: ${{ secrets.PHPCLASSES_TOKEN }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
+          # SMTP
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+
+          # Webhook / Repo token
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          REPOSITORY_PERSONAL_TOKEN: ${{ secrets.REPOSITORY_PERSONAL_TOKEN }}
+
+          # EVO
+          EVO_DDI: ${{ secrets.EVO_DDI }}
+          EVO_DDD: ${{ secrets.EVO_DDD }}
+          EVO_BASE_URL: ${{ secrets.EVO_BASE_URL }}
+          EVO_GLOBAL_API: ${{ secrets.EVO_GLOBAL_API }}
+          EVO_API_VERSION: ${{ secrets.EVO_API_VERSION }}
+          EVO_QR_LOGO_BASE64: ${{ secrets.EVO_QR_LOGO_BASE64 }}
+          EVO_QR_LOGO_SIZE: ${{ secrets.EVO_QR_LOGO_SIZE }}
+          EVO_TOKEN_PREFIX: ${{ secrets.EVO_TOKEN_PREFIX }}
+          EVO_TOKEN_ALPHABET: ${{ secrets.EVO_TOKEN_ALPHABET }}
+          EVO_WHATSAPP_MODAL_HINTBUTTON: ${{ secrets.EVO_WHATSAPP_MODAL_HINTBUTTON }}
+          EVO_WHATSAPP_MODAL_TITLE: ${{ secrets.EVO_WHATSAPP_MODAL_TITLE }}
+          EVO_WHATSAPP_MODAL_HINTFOOTER: ${{ secrets.EVO_WHATSAPP_MODAL_HINTFOOTER }}
+
+          # Reverb / Vite / Pusher (se você colocou em secrets)
+          REVERB_APP_ID: ${{ secrets.REVERB_APP_ID }}
+          REVERB_APP_KEY: ${{ secrets.REVERB_APP_KEY }}
+          REVERB_APP_SECRET: ${{ secrets.REVERB_APP_SECRET }}
+          REVERB_HOST: ${{ secrets.REVERB_HOST }}
+          REVERB_PORT: ${{ secrets.REVERB_PORT }}
+          REVERB_SCHEME: ${{ secrets.REVERB_SCHEME }}
+
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_APP_KEY: ${{ secrets.PUSHER_APP_KEY }}
+          PUSHER_APP_SECRET: ${{ secrets.PUSHER_APP_SECRET }}
+          PUSHER_APP_CLUSTER: ${{ secrets.PUSHER_APP_CLUSTER }}
+
+          VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+          VITE_REVERB_APP_KEY: ${{ secrets.VITE_REVERB_APP_KEY }}
+          VITE_REVERB_HOST: ${{ secrets.VITE_REVERB_HOST }}
+          VITE_REVERB_PORT: ${{ secrets.VITE_REVERB_PORT }}
+          VITE_REVERB_SCHEME: ${{ secrets.VITE_REVERB_SCHEME }}
+          VITE_PUSHER_APP_KEY: ${{ secrets.VITE_PUSHER_APP_KEY }}
+          VITE_PUSHER_HOST: ${{ secrets.VITE_PUSHER_HOST }}
+          VITE_PUSHER_PORT: ${{ secrets.VITE_PUSHER_PORT }}
+          VITE_PUSHER_SCHEME: ${{ secrets.VITE_PUSHER_SCHEME }}
+          VITE_PUSHER_APP_CLUSTER: ${{ secrets.VITE_PUSHER_APP_CLUSTER }}
+
+          # Defaults CI (pode deixar assim)
+          APP_ENV: testing
+          APP_DEBUG: "true"
+          BROADCAST_DRIVER: log
+          BROADCAST_CONNECTION: log
         run: |
-          if [ -z "${{ secrets.PHPCLASSES_TOKEN }}" ]; then
-            echo "ERROR: Secret PHPCLASSES_TOKEN is missing/empty"
-            exit 1
-          fi
-
-          echo 'COMPOSER_AUTH={"http-basic":{"www.phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"},"phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"}}}' >> $GITHUB_ENV
-
-      # ✅ Cria um .env real no runner, usando env + secrets já expostos acima
-      - name: Create .env for CI
-        shell: bash
-        run: |
-          cat > .env << 'EOF'
-          APP_NAME="${APP_NAME:-ARGWS}"
-          APP_ENV="${APP_ENV:-testing}"
-          APP_DEBUG="${APP_DEBUG:-true}"
-          APP_URL="${APP_URL:-http://localhost}"
-
-          APP_KEY="${APP_KEY}"
-          ENCRYPTION_KEY="${ENCRYPTION_KEY}"
-
-          # Blindagem Broadcast/Reverb/Pusher para CI
-          BROADCAST_CONNECTION="${BROADCAST_CONNECTION:-log}"
-          BROADCAST_DRIVER="${BROADCAST_DRIVER:-log}"
-
-          PUSHER_APP_ID="${PUSHER_APP_ID:-ci}"
-          PUSHER_APP_KEY="${PUSHER_APP_KEY:-ci}"
-          PUSHER_APP_SECRET="${PUSHER_APP_SECRET:-ci}"
-          PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER:-mt1}"
-
-          REVERB_APP="${REVERB_APP:-default}"
-          REVERB_APP_ID="${REVERB_APP_ID:-ci}"
-          REVERB_APP_KEY="${REVERB_APP_KEY:-ci}"
-          REVERB_APP_SECRET="${REVERB_APP_SECRET:-ci}"
-          REVERB_HOST="${REVERB_HOST:-127.0.0.1}"
-          REVERB_PORT="${REVERB_PORT:-9000}"
-          REVERB_SCHEME="${REVERB_SCHEME:-http}"
-          REVERB_SERVER="${REVERB_SERVER:-reverb}"
-          REVERB_SERVER_HOST="${REVERB_SERVER_HOST:-0.0.0.0}"
-          REVERB_SERVER_PORT="${REVERB_SERVER_PORT:-9000}"
-
-          VITE_APP_NAME="${VITE_APP_NAME:-ARGWS}"
-          VITE_PUSHER_APP_KEY="${VITE_PUSHER_APP_KEY:-ci}"
-          VITE_PUSHER_APP_CLUSTER="${VITE_PUSHER_APP_CLUSTER:-mt1}"
-          VITE_REVERB_APP_KEY="${VITE_REVERB_APP_KEY:-ci}"
-          VITE_REVERB_HOST="${VITE_REVERB_HOST:-127.0.0.1}"
-          VITE_REVERB_PORT="${VITE_REVERB_PORT:-9000}"
-          VITE_REVERB_SCHEME="${VITE_REVERB_SCHEME:-http}"
-
-          # EVO (secrets)
-          EVO_DDI="${EVO_DDI}"
-          EVO_DDD="${EVO_DDD}"
-          EVO_BASE_URL="${EVO_BASE_URL}"
-          EVO_GLOBAL_API="${EVO_GLOBAL_API}"
-          EVO_API_VERSION="${EVO_API_VERSION}"
-          EVO_QR_LOGO_BASE64="${EVO_QR_LOGO_BASE64}"
-          EVO_QR_LOGO_SIZE="${EVO_QR_LOGO_SIZE}"
-          EVO_TOKEN_PREFIX="${EVO_TOKEN_PREFIX}"
-          EVO_TOKEN_ALPHABET="${EVO_TOKEN_ALPHABET}"
-          EVO_WHATSAPP_MODAL_HINTBUTTON="${EVO_WHATSAPP_MODAL_HINTBUTTON}"
-          EVO_WHATSAPP_MODAL_TITLE="${EVO_WHATSAPP_MODAL_TITLE}"
-          EVO_WHATSAPP_MODAL_HINTFOOTER="${EVO_WHATSAPP_MODAL_HINTFOOTER}"
-          EOF
-
-      - name: Validate composer.json
-        run: composer validate --no-check-publish --strict
+          chmod +x .github/scripts/bootstrap-env.sh
+          .github/scripts/bootstrap-env.sh
 
       - name: Get Composer Cache Directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
-      - name: Cache Composer + vendor
+      - name: Cache Composer
         uses: actions/cache@v4
         with:
           path: |
@@ -182,7 +116,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-php82-composer-
 
+      - name: Validate composer.json
+        run: composer validate --no-check-publish --strict
+
       - name: Install dependencies
+        env:
+          COMPOSER_PROCESS_TIMEOUT: 0
+          COMPOSER_NO_INTERACTION: 1
+          COMPOSER_NO_AUDIT: 1
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run tests
