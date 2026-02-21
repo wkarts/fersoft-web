@@ -1,9 +1,88 @@
-- name: Set ENCRYPTION_KEY for CI
-  run: |
-    echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> $GITHUB_ENV
+name: CI
 
-- name: Validate composer
-  run: composer validate --no-check-publish --strict
+on:
+  push:
+    branches: ["main", "master", "develop", "homolog", "staging"]
+  pull_request:
+    branches: ["*"]
 
-- name: Install dependencies
-  run: composer install --prefer-dist --no-interaction --no-progress
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+          extensions: mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          coverage: none
+
+      # ✅ (Opcional) Mostra versões
+      - name: Versions
+        run: |
+          php -v
+          composer -V
+
+      # ✅ Cria env vars necessárias ANTES do composer install
+      - name: Configure CI Secrets (ENCRYPTION_KEY + PHPClasses)
+        shell: bash
+        run: |
+          # ENCRYPTION_KEY (obrigatória pro seu EncryptionHelper)
+          if [ -z "${{ secrets.ENCRYPTION_KEY }}" ]; then
+            echo "ERROR: Secret ENCRYPTION_KEY is missing/empty"
+            exit 1
+          fi
+          echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> $GITHUB_ENV
+
+          # COMPOSER_AUTH para PHPClasses (obrigatório pra baixar phpclasses/php_serial)
+          if [ -z "${{ secrets.PHPCLASSES_TOKEN }}" ]; then
+            echo "ERROR: Secret PHPCLASSES_TOKEN is missing/empty"
+            exit 1
+          fi
+
+          # Define COMPOSER_AUTH via env (não depende de auth.json no repo)
+          echo 'COMPOSER_AUTH={"http-basic":{"www.phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"},"phpclasses.org":{"username":"wkarts","password":"${{ secrets.PHPCLASSES_TOKEN }}"}}}' >> $GITHUB_ENV
+
+      # ✅ Cache do Composer (rápido e estável)
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.composer-cache.outputs.dir }}
+            vendor
+          key: ${{ runner.os }}-php82-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php82-composer-
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish --strict
+
+      - name: Install dependencies
+        env:
+          COMPOSER_PROCESS_TIMEOUT: 0
+          COMPOSER_NO_INTERACTION: 1
+          COMPOSER_NO_AUDIT: 1
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # ✅ Se seu PHPUnit precisar de APP_KEY/Laravel, você pode manter mínimo aqui.
+      # Seu erro era ENCRYPTION_KEY, que já resolvemos.
+      - name: Run tests
+        env:
+          APP_ENV: testing
+          APP_DEBUG: true
+        run: |
+          if [ -f "./vendor/bin/phpunit" ]; then
+            ./vendor/bin/phpunit
+          else
+            echo "phpunit not found"
+            exit 1
+          fi
