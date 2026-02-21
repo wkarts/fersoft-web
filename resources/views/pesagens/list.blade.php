@@ -2794,22 +2794,104 @@
 {{--    Controle da Balança     --}}
     <script type="text/javascript">
         function ativarEventosBalança(modalId) {
-            const $modal = $(modalId);
+            let balancaSelecionada = null;
+            let intervaloLeitura;
+
             const autoStateMap = window._balancaAutoCtrl = window._balancaAutoCtrl || {};
             autoStateMap[modalId] = autoStateMap[modalId] || {
                 desconexaoManual: false,
                 conectado: false,
-                conectando: false,
                 balancaId: null,
+                trocando: false,
             };
-
             const autoState = autoStateMap[modalId];
-            let balancaSelecionada = null;
-            let intervaloLeitura;
 
-            function iniciarLeitura(modalId, balancaSelecionadaAtual) {
+            function tentarAutoConectar() {
+                if (!AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
+                    return;
+                }
+                if (autoState.desconexaoManual || autoState.trocando) {
+                    return;
+                }
+                if (!balancaSelecionada || !balancaSelecionada.id || autoState.conectado) {
+                    return;
+                }
+                $(modalId).find('#connect').trigger('click');
+            }
+
+            // Seleciona a balança
+            $(modalId).find('#balanca-select').off('change').on('change', function () {
+                const select = $(this).find(':selected');
+                const balancaIdAnterior = autoState.balancaId;
+
+                balancaSelecionada = {
+                    id: select.val(),
+                    backend: select.data('backend'),
+                    modelo: select.data('modelo'),
+                    porta: select.data('port')
+                };
+                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id);
+                $(modalId).find('#balanca_config_id').val(balancaSelecionada.id || '');
+                $(modalId).find('#disconnect').prop('disabled', !autoState.conectado);
+
+                const trocouBalancaConectada = !!balancaIdAnterior && !!balancaSelecionada.id && String(balancaIdAnterior) !== String(balancaSelecionada.id) && autoState.conectado;
+
+                if (trocouBalancaConectada && AUTO_CONNECT_BALANCA_AO_SELECIONAR && !autoState.desconexaoManual) {
+                    autoState.trocando = true;
+                    $(modalId).find('#disconnect').trigger('click');
+                    setTimeout(() => {
+                        autoState.trocando = false;
+                        tentarAutoConectar();
+                    }, 120);
+                    return;
+                }
+
+                tentarAutoConectar();
+            });
+
+            // Conectar
+            $(modalId).find('#connect').off('click').on('click', function () {
+                if (!balancaSelecionada || !balancaSelecionada.id) {
+                    abrirModalMensagem('Aviso', 'Selecione uma balança!');
+                    return;
+                }
+
+                axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
+                    .then(() => {
+                        autoState.conectado = true;
+                        autoState.balancaId = String(balancaSelecionada.id);
+                        autoState.desconexaoManual = false;
+                        $(modalId).find('#connect').prop('disabled', true);
+                        $(modalId).find('#disconnect').prop('disabled', false);
+                        iniciarLeitura(modalId, balancaSelecionada);
+                    })
+                    .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message));
+            });
+
+            // Desconectar
+            $(modalId).find('#disconnect').off('click').on('click', function () {
+                if (!balancaSelecionada) return;
+
+                axios.get(`${balancaSelecionada.backend}/api/close`)
+                    .then(() => {
+                        autoState.conectado = false;
+                        autoState.balancaId = null;
+                        if (!autoState.trocando) {
+                            autoState.desconexaoManual = true;
+                        }
+                        $(modalId).find('#connect').prop('disabled', false);
+                        $(modalId).find('#disconnect').prop('disabled', true);
+                        clearInterval(intervaloLeitura);
+                        $(modalId).find('#pesoAtual').text('----');
+                    })
+                    .catch(error => abrirModalMensagem('Erro', 'Erro ao desconectar: ' + error.message));
+            });
+
+            // Iniciar leitura contínua
+            function iniciarLeitura(modalId, balancaSelecionada) {
+                clearInterval(intervaloLeitura);
                 intervaloLeitura = setInterval(() => {
-                    axios.get(`${balancaSelecionadaAtual.backend}/api/data?equip=${balancaSelecionadaAtual.modelo}`)
+                    axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
                         .then(response => {
                             const dados = response.data.data;
                             const bruto = parseFloat(dados.peso_bruto ?? 0) || 0;
@@ -2818,128 +2900,24 @@
                                 ? (parseFloat(dados.peso_liq) || 0)
                                 : Math.max(0, bruto - tara);
 
-                            $modal.find('#pesoAtual').text(bruto.toFixed(2));
-                            $modal.find('#pesoBruto').text(bruto.toFixed(2));
-                            $modal.find('#pesoLiquido').text(liquido.toFixed(2));
-                            $modal.find('#pesoTara').text(tara.toFixed(2));
-                            $modal.find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
-                            $modal.find('#peso').val(bruto);
+                            $(modalId).find('#pesoAtual').text(bruto.toFixed(2));
+                            $(modalId).find('#pesoBruto').text(bruto.toFixed(2));
+                            $(modalId).find('#pesoLiquido').text(liquido.toFixed(2));
+                            $(modalId).find('#pesoTara').text(tara.toFixed(2));
+                            $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
+                            $(modalId).find('#peso').val(bruto); // Bruto
                             if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
-                                $modal.find('#peso_bag').val(tara.toFixed(2));
+                                $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
                             }
                             calcularValorTotalTicket(modalId);
-                            $modal.find('#peso_origem').val('balanca');
+                            $(modalId).find('#peso_origem').val('balanca');
                             if (dados.sobrecarga) {
-                                $modal.find('#pesoEstabilidade').text("Sobrecarga");
+                                $(modalId).find('#pesoEstabilidade').text("Sobrecarga");
                             }
                         })
                         .catch(error => console.error('Erro ao ler peso:', error));
-                }, 200);
+                }, 200); // Atualiza a cada 500ms
             }
-
-            function conectarSelecionada(auto = false) {
-                if (!balancaSelecionada || !balancaSelecionada.id) {
-                    if (!auto) {
-                        abrirModalMensagem('Aviso', 'Selecione uma balança!');
-                    }
-                    return Promise.resolve(false);
-                }
-
-                if (auto && autoState.desconexaoManual) {
-                    return Promise.resolve(false);
-                }
-
-                if (autoState.conectado || autoState.conectando) {
-                    return Promise.resolve(true);
-                }
-
-                autoState.conectando = true;
-                $modal.find('#connect').prop('disabled', true);
-                $modal.find('#disconnect').prop('disabled', false);
-
-                return axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
-                    .then(() => {
-                        autoState.conectando = false;
-                        autoState.conectado = true;
-                        autoState.balancaId = String(balancaSelecionada.id);
-                        $modal.find('#connect').prop('disabled', true);
-                        $modal.find('#disconnect').prop('disabled', false);
-                        clearInterval(intervaloLeitura);
-                        iniciarLeitura(modalId, balancaSelecionada);
-                        return true;
-                    })
-                    .catch(error => {
-                        autoState.conectando = false;
-                        autoState.conectado = false;
-                        $modal.find('#connect').prop('disabled', !balancaSelecionada?.id);
-                        $modal.find('#disconnect').prop('disabled', true);
-                        if (!auto) {
-                            abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message);
-                        }
-                        return false;
-                    });
-            }
-
-            function desconectarAtual(auto = false) {
-                if (!autoState.conectado && !autoState.conectando) {
-                    return Promise.resolve(true);
-                }
-
-                return axios.get(`${balancaSelecionada.backend}/api/close`)
-                    .then(() => {
-                        autoState.conectando = false;
-                        autoState.conectado = false;
-                        autoState.balancaId = null;
-                        $modal.find('#connect').prop('disabled', !balancaSelecionada?.id);
-                        $modal.find('#disconnect').prop('disabled', true);
-                        clearInterval(intervaloLeitura);
-                        $modal.find('#pesoAtual').text('----');
-                        return true;
-                    })
-                    .catch(error => {
-                        if (!auto) {
-                            abrirModalMensagem('Erro', 'Erro ao desconectar: ' + error.message);
-                        }
-                        return false;
-                    });
-            }
-
-            $modal.find('#balanca-select').off('change.balancaAuto').on('change.balancaAuto', function () {
-                const select = $(this).find(':selected');
-                const balancaAnteriorId = autoState.balancaId;
-
-                balancaSelecionada = {
-                    id: select.val(),
-                    backend: select.data('backend'),
-                    modelo: select.data('modelo'),
-                    porta: select.data('port')
-                };
-
-                $modal.find('#connect').prop('disabled', !balancaSelecionada.id);
-                $modal.find('#balanca_config_id').val(balancaSelecionada.id || '');
-                $modal.find('#disconnect').prop('disabled', !autoState.conectado);
-
-                const trocouBalanca = !!balancaAnteriorId && !!balancaSelecionada.id && String(balancaAnteriorId) !== String(balancaSelecionada.id);
-
-                if (AUTO_CONNECT_BALANCA_AO_SELECIONAR && trocouBalanca && autoState.conectado) {
-                    desconectarAtual(true).finally(() => conectarSelecionada(true));
-                    return;
-                }
-
-                if (AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
-                    conectarSelecionada(true);
-                }
-            });
-
-            $modal.find('#connect').off('click.balancaAuto').on('click.balancaAuto', function () {
-                autoState.desconexaoManual = false;
-                conectarSelecionada(false);
-            });
-
-            $modal.find('#disconnect').off('click.balancaAuto').on('click.balancaAuto', function () {
-                autoState.desconexaoManual = true;
-                desconectarAtual(false);
-            });
         }
 
         // Modal de Mensagem/Aviso
