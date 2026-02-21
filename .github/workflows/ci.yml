@@ -33,6 +33,16 @@ jobs:
           KEY=$(php -r "echo 'base64:'.base64_encode(random_bytes(32));")
           echo "ENCRYPTION_KEY=$KEY" >> $GITHUB_ENV
 
+      # ✅ Evita quebra no package:discover quando Broadcast/Pusher é carregado sem env
+      - name: Set minimal Broadcast/Pusher env for CI
+        run: |
+          echo "BROADCAST_CONNECTION=log" >> $GITHUB_ENV
+          echo "BROADCAST_DRIVER=log" >> $GITHUB_ENV
+          echo "PUSHER_APP_ID=ci" >> $GITHUB_ENV
+          echo "PUSHER_APP_KEY=ci" >> $GITHUB_ENV
+          echo "PUSHER_APP_SECRET=ci" >> $GITHUB_ENV
+          echo "PUSHER_APP_CLUSTER=mt1" >> $GITHUB_ENV
+
       # ✅ Auth do PHPClasses via COMPOSER_AUTH (depende do Repository secret PHPCLASSES_TOKEN)
       - name: Configure PHPClasses Auth (COMPOSER_AUTH)
         shell: bash
