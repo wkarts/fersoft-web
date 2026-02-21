@@ -201,3 +201,6 @@ app/Http/Controllers/ConfigNotaController.php_20022026.bkp
 resources/views/pesagens/list.blade_21022026_bkp.zip
 resources/views/pesagens/list.blade_21022026_bkp_2.zip
 flow.zip
+scripts/ci/bootstrap-env - Copia.sh
+scripts/ci/bootstrap-env - Copia (2).sh
+flow_.zip
