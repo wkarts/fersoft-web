@@ -22,6 +22,7 @@ use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
 use App\Events\MovimentoRealtime;
 use App\Services\MonitorPesagemService;
+use App\Services\StockService;
 use Dompdf\Dompdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Http\Controllers\CompraManualController;
@@ -1323,6 +1324,14 @@ class PesagemController extends BaseController
                 'dados_depois' => $dadosDepois,
             ]);
 
+            if (config('stock_ledger.enabled')) {
+                $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_venda');
+
+                if (config('stock_ledger.transfer_pesagem_to_erp')) {
+                    $this->transferirPesagemParaErp($pesagem, 'pesagem_venda');
+                }
+            }
+
             $this->dispararMonitoramentoPesagem($pesagem->id, 'venda.created');
 
             // Adiciona mensagem de sucesso na sessão
@@ -1481,6 +1490,14 @@ class PesagemController extends BaseController
                 'dados_depois'    => $compra->toArray(),
             ]);
 
+            if (config('stock_ledger.enabled')) {
+                $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_compra');
+
+                if (config('stock_ledger.transfer_pesagem_to_erp')) {
+                    $this->transferirPesagemParaErp($pesagem, 'pesagem_compra');
+                }
+            }
+
             $this->dispararMonitoramentoPesagem($pesagem->id, 'compra.created');
 
             return response()->json([
@@ -1497,6 +1514,104 @@ class PesagemController extends BaseController
             session()->flash('mensagem_erro', "Erro ao criar compra a partir da pesagem");
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+
+    private function registrarMovimentosPesagem(Pesagem $pesagem, string $contexto, string $origemTipo): void
+    {
+        $stockService = app(StockService::class);
+
+        foreach ($pesagem->tickets as $ticket) {
+            if (empty($ticket->produto_id)) {
+                continue;
+            }
+
+            $pesoLiquido = max(0, ((float) $ticket->peso) - ((float) $ticket->peso_bag));
+            if ($pesoLiquido <= 0) {
+                continue;
+            }
+
+            if ($ticket->tipo === 'entrada' || $ticket->tipo === 'avulsa') {
+                $tipoMov = 'entrada';
+            } elseif ($ticket->tipo === 'saida') {
+                $tipoMov = 'saida';
+            } else {
+                continue;
+            }
+
+            $idempotencyKey = implode(':', [
+                'pesagem',
+                $pesagem->id,
+                'ticket',
+                $ticket->id,
+                $contexto,
+                $tipoMov,
+            ]);
+
+            $stockService->mover([
+                'empresa_id' => $pesagem->empresa_id,
+                'filial_id' => $pesagem->filial_id,
+                'produto_id' => $ticket->produto_id,
+                'contexto' => $contexto,
+                'tipo' => $tipoMov,
+                'quantidade' => $pesoLiquido,
+                'custo_unitario' => $ticket->valor_unitario ?? null,
+                'origem_tipo' => $origemTipo,
+                'origem_id' => $pesagem->id,
+                'movimentado_em' => now(),
+                'idempotency_key' => $idempotencyKey,
+                'metadata' => [
+                    'ticket_id' => $ticket->id,
+                    'tipo_ticket' => $ticket->tipo,
+                ],
+            ]);
+        }
+    }
+
+    private function transferirPesagemParaErp(Pesagem $pesagem, string $origemTipo): void
+    {
+        $stockService = app(StockService::class);
+
+        $agrupado = [];
+        foreach ($pesagem->tickets as $ticket) {
+            if (empty($ticket->produto_id)) {
+                continue;
+            }
+
+            $pesoLiquido = max(0, ((float) $ticket->peso) - ((float) $ticket->peso_bag));
+            if ($pesoLiquido <= 0) {
+                continue;
+            }
+
+            if ($ticket->tipo === 'entrada' || $ticket->tipo === 'avulsa') {
+                $agrupado[$ticket->produto_id] = ($agrupado[$ticket->produto_id] ?? 0) + $pesoLiquido;
+            } elseif ($ticket->tipo === 'saida') {
+                $agrupado[$ticket->produto_id] = ($agrupado[$ticket->produto_id] ?? 0) - $pesoLiquido;
+            }
+        }
+
+        foreach ($agrupado as $produtoId => $saldo) {
+            if ($saldo <= 0) {
+                continue;
+            }
+
+            $stockService->transferirEntreContextos([
+                'empresa_id' => $pesagem->empresa_id,
+                'filial_id' => $pesagem->filial_id,
+                'produto_id' => (int) $produtoId,
+                'quantidade' => (float) $saldo,
+                'custo_unitario' => null,
+                'origem_tipo' => $origemTipo . '_transfer',
+                'origem_id' => $pesagem->id,
+                'movimentado_em' => now(),
+                'contexto_origem' => 'PESAGEM',
+                'contexto_destino' => 'ERP',
+                'idempotency_key' => 'pesagem:' . $pesagem->id . ':produto:' . $produtoId . ':transferencia',
+                'metadata' => [
+                    'pesagem_id' => $pesagem->id,
+                ],
+            ]);
         }
     }
 
