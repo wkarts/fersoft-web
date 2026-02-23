@@ -22,6 +22,7 @@ use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
 use App\Events\MovimentoRealtime;
 use App\Services\MonitorPesagemService;
+use App\Services\StockService;
 use Dompdf\Dompdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Http\Controllers\CompraManualController;
@@ -1323,6 +1324,14 @@ class PesagemController extends BaseController
                 'dados_depois' => $dadosDepois,
             ]);
 
+            if (config('stock_ledger.enabled')) {
+                $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_venda');
+
+                if (config('stock_ledger.transfer_pesagem_to_erp')) {
+                    $this->transferirPesagemParaErp($pesagem, 'pesagem_venda');
+                }
+            }
+
             $this->dispararMonitoramentoPesagem($pesagem->id, 'venda.created');
 
             // Adiciona mensagem de sucesso na sessão
@@ -1481,6 +1490,14 @@ class PesagemController extends BaseController
                 'dados_depois'    => $compra->toArray(),
             ]);
 
+            if (config('stock_ledger.enabled')) {
+                $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_compra');
+
+                if (config('stock_ledger.transfer_pesagem_to_erp')) {
+                    $this->transferirPesagemParaErp($pesagem, 'pesagem_compra');
+                }
+            }
+
             $this->dispararMonitoramentoPesagem($pesagem->id, 'compra.created');
 
             return response()->json([
@@ -1497,6 +1514,180 @@ class PesagemController extends BaseController
             session()->flash('mensagem_erro', "Erro ao criar compra a partir da pesagem");
 
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
+
+
+    private function registrarMovimentosPesagem(Pesagem $pesagem, string $contexto, string $origemTipo): void
+    {
+        $stockService = app(StockService::class);
+
+        foreach ($pesagem->tickets as $ticket) {
+            if (empty($ticket->produto_id)) {
+                continue;
+            }
+
+            $pesoLiquido = max(0, ((float) $ticket->peso) - ((float) $ticket->peso_bag));
+            if ($pesoLiquido <= 0) {
+                continue;
+            }
+
+            if ($ticket->tipo === 'entrada' || $ticket->tipo === 'avulsa') {
+                $tipoMov = 'entrada';
+            } elseif ($ticket->tipo === 'saida') {
+                $tipoMov = 'saida';
+            } else {
+                continue;
+            }
+
+            $idempotencyKey = implode(':', [
+                'pesagem',
+                $pesagem->id,
+                'ticket',
+                $ticket->id,
+                $contexto,
+                $tipoMov,
+            ]);
+
+            $stockService->mover([
+                'empresa_id' => $pesagem->empresa_id,
+                'filial_id' => $pesagem->filial_id,
+                'usuario_id' => $this->usuario_id,
+                'produto_id' => $ticket->produto_id,
+                'contexto' => $contexto,
+                'tipo' => $tipoMov,
+                'quantidade' => $pesoLiquido,
+                'custo_unitario' => $ticket->valor_unitario ?? null,
+                'origem_tipo' => $origemTipo,
+                'origem_id' => $pesagem->id,
+                'movimentado_em' => now(),
+                'idempotency_key' => $idempotencyKey,
+                'metadata' => [
+                    'ticket_id' => $ticket->id,
+                    'tipo_ticket' => $ticket->tipo,
+                ],
+            ]);
+        }
+    }
+
+    private function transferirPesagemParaErp(Pesagem $pesagem, string $origemTipo): void
+    {
+        $stockService = app(StockService::class);
+
+        $configNota = ConfigNota::where('empresa_id', $pesagem->empresa_id)->first();
+        $usarProdutoReferenciado = (bool) ($configNota->usa_produto_referenciado_pesagem ?? false);
+
+        $agregados = [];
+
+        foreach ($pesagem->tickets as $ticket) {
+            if (empty($ticket->produto_id)) {
+                continue;
+            }
+
+            $pesoLiquido = max(0, ((float) $ticket->peso) - ((float) $ticket->peso_bag));
+            if ($pesoLiquido <= 0) {
+                continue;
+            }
+
+            $produtoOrigemId = (int) $ticket->produto_id;
+            $produtoDestinoId = $produtoOrigemId;
+            $regraAplicada = 'PESADO';
+            $fallbackReferenciado = false;
+
+            if ($usarProdutoReferenciado) {
+                $produtoPesado = Produto::find($produtoOrigemId);
+                $produtoReferenciadoId = (int) ($produtoPesado->produto_referenciado_id ?? 0);
+
+                if ($produtoReferenciadoId > 0) {
+                    $produtoDestinoId = $produtoReferenciadoId;
+                    $regraAplicada = 'REFERENCIADO';
+                } else {
+                    $fallbackReferenciado = true;
+                }
+            }
+
+            $ponteDirecao = null;
+            if ($ticket->tipo === 'entrada' || $ticket->tipo === 'avulsa') {
+                $ponteDirecao = 'PESAGEM_PARA_ERP';
+            } elseif ($ticket->tipo === 'saida') {
+                $ponteDirecao = 'ERP_PARA_PESAGEM';
+            }
+
+            if ($ponteDirecao === null) {
+                continue;
+            }
+
+            $key = implode(':', [
+                $ponteDirecao,
+                $produtoOrigemId,
+                $produtoDestinoId,
+                $regraAplicada,
+                $fallbackReferenciado ? 'fallback' : 'ok',
+            ]);
+
+            if (!isset($agregados[$key])) {
+                $agregados[$key] = [
+                    'quantidade' => 0.0,
+                    'produto_origem_id' => $produtoOrigemId,
+                    'produto_destino_id' => $produtoDestinoId,
+                    'regra_aplicada' => $regraAplicada,
+                    'fallback_referenciado' => $fallbackReferenciado,
+                    'ponte_direcao' => $ponteDirecao,
+                    'ticket_ids' => [],
+                ];
+            }
+
+            $agregados[$key]['quantidade'] += $pesoLiquido;
+            $agregados[$key]['ticket_ids'][] = (int) $ticket->id;
+        }
+
+        foreach ($agregados as $item) {
+            $quantidade = (float) $item['quantidade'];
+            if ($quantidade <= 0) {
+                continue;
+            }
+
+            $contextoOrigem = $item['ponte_direcao'] === 'PESAGEM_PARA_ERP' ? 'PESAGEM' : 'ERP';
+            $contextoDestino = $item['ponte_direcao'] === 'PESAGEM_PARA_ERP' ? 'ERP' : 'PESAGEM';
+
+            $idempotencyKey = implode(':', [
+                'pesagem',
+                $pesagem->id,
+                'ponte',
+                $item['ponte_direcao'],
+                'origem',
+                $item['produto_origem_id'],
+                'destino',
+                $item['produto_destino_id'],
+                'regra',
+                strtolower($item['regra_aplicada']),
+                $item['fallback_referenciado'] ? 'fallback' : 'ok',
+            ]);
+
+            $stockService->transferirEntreContextos([
+                'empresa_id' => $pesagem->empresa_id,
+                'filial_id' => $pesagem->filial_id,
+                'usuario_id' => $this->usuario_id,
+                'produto_origem_id' => (int) $item['produto_origem_id'],
+                'produto_destino_id' => (int) $item['produto_destino_id'],
+                'quantidade' => $quantidade,
+                'custo_unitario' => null,
+                'origem_tipo' => $origemTipo . '_transfer',
+                'origem_id' => $pesagem->id,
+                'movimentado_em' => now(),
+                'contexto_origem' => $contextoOrigem,
+                'contexto_destino' => $contextoDestino,
+                'idempotency_key' => $idempotencyKey,
+                'metadata' => [
+                    'pesagem_id' => $pesagem->id,
+                    'ticket_ids' => array_values(array_unique($item['ticket_ids'])),
+                    'produto_origem_id' => (int) $item['produto_origem_id'],
+                    'produto_destino_id' => (int) $item['produto_destino_id'],
+                    'regra_aplicada' => $item['regra_aplicada'],
+                    'fallback_referenciado' => (bool) $item['fallback_referenciado'],
+                    'ponte_direcao' => $item['ponte_direcao'],
+                ],
+            ]);
         }
     }
 
