@@ -1,0 +1,336 @@
+name: Release - Automático e Manual
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão manual (ex: 1.4.2 ou v1.4.2)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Gerar pre-release (rc)'
+        required: false
+        default: false
+        type: boolean
+      prerelease_number:
+        description: 'Número do RC (ex: 1 para rc.1)'
+        required: false
+        default: '1'
+        type: string
+      include_vendor:
+        description: 'Incluir pasta vendor no artifact zip'
+        required: false
+        default: false
+        type: boolean
+      notify_required:
+        description: 'Falhar se notificações falharem'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  full-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        if: hashFiles('composer.json') != ''
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Setup Node
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Validar Composer e dependências
+        if: hashFiles('composer.json') != ''
+        run: |
+          composer validate --no-check-publish --strict
+          composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Preparar ambiente Laravel para CI
+        if: hashFiles('composer.json') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          php -r 'echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
+          php -r 'echo "ENCRYPTION_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
+          {
+            echo "APP_ENV=testing"
+            echo "CACHE_DRIVER=array"
+            echo "QUEUE_CONNECTION=sync"
+            echo "SESSION_DRIVER=array"
+            echo "DB_CONNECTION=sqlite"
+            echo "DB_DATABASE=:memory:"
+          } >> .env
+
+      - name: Laravel package discover
+        if: hashFiles('composer.json') != ''
+        run: php artisan package:discover --ansi
+
+      - name: Testes PHP
+        if: hashFiles('composer.json') != ''
+        run: |
+          if [ -x vendor/bin/phpunit ]; then
+            if grep -q 'testsuite name="Unit"' phpunit.xml 2>/dev/null; then
+              vendor/bin/phpunit --testsuite=Unit --testdox
+            else
+              vendor/bin/phpunit --testdox
+            fi
+
+            if [ "${CI_RUN_FULL_TESTS:-false}" = "true" ]; then
+              vendor/bin/phpunit --testdox
+            else
+              echo "CI_RUN_FULL_TESTS=false: suíte completa de testes (incluindo cenários com DB real) foi ignorada para estabilidade do CI."
+            fi
+          elif [ -f artisan ]; then
+            php artisan test --testsuite=Unit
+          else
+            echo "Sem suite de testes PHP detectada; seguindo fluxo."
+          fi
+
+      - name: Validar Node
+        if: hashFiles('package.json') != ''
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          npm ci
+          if npm run | grep -q " build"; then
+            npm run build
+          else
+            echo "Sem script build; etapa ignorada."
+          fi
+
+  prepare-release:
+    runs-on: ubuntu-latest
+    needs: full-validation
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      bump: ${{ steps.bump.outputs.bump }}
+      previous_tag: ${{ steps.previous.outputs.previous_tag }}
+      merged_pr: ${{ steps.pr.outputs.pr_number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Obter tag anterior
+        id: previous
+        run: |
+          prev=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n1 || true)
+          echo "previous_tag=$prev" >> "$GITHUB_OUTPUT"
+
+      - name: Descobrir PR associado ao commit
+        id: pr
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const result = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+            const pr = result.data.find(item => item.merged_at) || result.data[0];
+            if (!pr) {
+              core.setOutput('pr_number', '');
+              core.setOutput('labels', '');
+              return;
+            }
+            const labels = (pr.labels || []).map(l => l.name).join(',');
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('labels', labels);
+
+      - name: Definir bump
+        id: bump
+        shell: bash
+        run: |
+          bump="patch"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            bump="patch"
+          else
+            labels="${{ steps.pr.outputs.labels }}"
+            if echo "$labels" | grep -qi 'release:major'; then
+              bump="major"
+            elif echo "$labels" | grep -qi 'release:minor'; then
+              bump="minor"
+            elif echo "$labels" | grep -qi 'release:patch'; then
+              bump="patch"
+            fi
+          fi
+          echo "bump=$bump" >> "$GITHUB_OUTPUT"
+
+      - name: Calcular versão
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          mode="auto"
+          manual_version=""
+          prerelease="false"
+          prerelease_number="1"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            mode="manual"
+            manual_version="${{ inputs.version }}"
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.prerelease }}" = "true" ]; then
+            prerelease="true"
+            prerelease_number="${{ inputs.prerelease_number }}"
+          fi
+
+          version=$(scripts/release/version.sh "$mode" "${{ steps.bump.outputs.bump }}" "$manual_version" "$prerelease" "$prerelease_number")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Versão definida: $version"
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: prepare-release
+    outputs:
+      release_url: ${{ steps.create_release.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Garantir idempotência de tag
+        id: tag_check
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.prepare-release.outputs.version }}"
+          git fetch --tags --force
+          if git rev-parse "$version" >/dev/null 2>&1; then
+            echo "Tag $version já existe. Abortando para manter idempotência."
+            exit 1
+          fi
+
+      - name: Garantir idempotência de release
+        id: release_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = `${{ needs.prepare-release.outputs.version }}`;
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              core.setFailed(`Release para ${tag} já existe. Atualize manualmente ou use nova versão.`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              core.info(`Release para ${tag} não existe; prosseguindo.`);
+            }
+
+      - name: Criar changelog auxiliar
+        id: changelog
+        shell: bash
+        run: |
+          changelog_file=$(scripts/release/changelog.sh "${{ needs.prepare-release.outputs.previous_tag }}" "${GITHUB_SHA}" "release-notes.md")
+          echo "file=$changelog_file" >> "$GITHUB_OUTPUT"
+
+      - name: Gerar artifact zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ needs.prepare-release.outputs.version }}"
+          artifact_name="release-${version#v}.zip"
+
+          excludes=(
+            ".git/*"
+            "node_modules/*"
+            "storage/framework/cache/*"
+            "storage/framework/views/*"
+            "storage/logs/*"
+            "bootstrap/cache/*"
+          )
+
+          include_vendor="${{ github.event_name == 'workflow_dispatch' && inputs.include_vendor || false }}"
+          if [ "$include_vendor" != "true" ]; then
+            excludes+=("vendor/*")
+          fi
+
+          zip_args=()
+          for item in "${excludes[@]}"; do
+            zip_args+=("-x" "$item")
+          done
+
+          zip -r "$artifact_name" . "${zip_args[@]}"
+          echo "Artifact gerado: $artifact_name"
+
+      - name: Publicar artifact do workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ needs.prepare-release.outputs.version }}
+          path: release-*.zip
+
+      - name: Criar GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare-release.outputs.version }}
+          name: Release ${{ needs.prepare-release.outputs.version }}
+          generate_release_notes: true
+          append_body: true
+          body_path: ${{ steps.changelog.outputs.file }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          files: release-*.zip
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Resumo da release"
+            echo "- Versão: ${{ needs.prepare-release.outputs.version }}"
+            echo "- Bump: ${{ needs.prepare-release.outputs.bump }}"
+            echo "- PR associado: #${{ needs.prepare-release.outputs.merged_pr }}"
+            echo "- URL da release: ${{ steps.create_release.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  notify-success:
+    if: ${{ needs.create-release.result == 'success' }}
+    needs: [prepare-release, create-release]
+    uses: ./.github/workflows/notify.yml
+    with:
+      status: success
+      version: ${{ needs.prepare-release.outputs.version }}
+      release_url: ${{ needs.create-release.outputs.release_url }}
+      commit_sha: ${{ github.sha }}
+      summary: "Release publicada com sucesso para ${{ needs.prepare-release.outputs.version }}"
+      notify_required: ${{ github.event_name == 'workflow_dispatch' && inputs.notify_required || false }}
+    secrets: inherit
+
+  notify-failure:
+    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure') }}
+    needs: [full-validation, prepare-release, create-release]
+    uses: ./.github/workflows/notify.yml
+    with:
+      status: failure
+      version: ${{ needs.prepare-release.outputs.version }}
+      release_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      commit_sha: ${{ github.sha }}
+      summary: "Falha no pipeline de release. Verificar logs do run ${{ github.run_id }}."
+      notify_required: false
+    secrets: inherit
