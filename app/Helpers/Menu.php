@@ -281,6 +281,21 @@ class Menu {
 					[
 						'nome' => 'Transferencia de estoque',
 						'rota' => '/transferencia'
+					],
+				]
+			],
+
+			[
+				'titulo' => 'Kardex (Beta)',
+				'icone' => $this->getIcone('Kardex (Beta)'),
+				'subs' => [
+					[
+						'nome' => 'Kardex (Ledger)',
+						'rota' => '/estoque/kardex'
+					],
+					[
+						'nome' => 'Ajustes (Ledger)',
+						'rota' => '/estoque/ajustes'
 					]
 				]
 			],
@@ -933,6 +948,10 @@ class Menu {
 			</g>
 			</svg>
 			</span>';
+		}
+
+		if($titulo == 'Controle de Estoque' || $titulo == 'Kardex (Beta)'){
+			$titulo = 'Estoque';
 		}
 
 		if($titulo == 'Entradas'){
