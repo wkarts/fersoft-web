@@ -15,7 +15,7 @@ Executa em `pull_request` (`opened`, `synchronize`, `reopened`, `ready_for_revie
 
 **Jobs**
 - `setup`: detecta presença de `composer.json`, `package.json`, runner de testes.
-- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `artisan package:discover`, `php -v`, lint (`php -l`) e testes.
+- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `php -v`, lint (`php -l`) e testes (sem disparar `package:discover` no CI para evitar bootstrap sensível a integrações externas).
 - `node`: `npm ci`, e roda `npm test`/`npm run build` apenas se scripts existirem.
 - `security`: `composer audit` e `npm audit` em modo warning-only (`continue-on-error`).
 - `summary`: publica resumo com status dos jobs.
@@ -118,6 +118,7 @@ Observações:
 - Notificações falham sem quebrar release por padrão (best effort).
 - Se precisar enforcement, use `notify_required=true` no dispatch.
 - O fluxo evita falha por ausência de `APP_KEY`/`ENCRYPTION_KEY` no CI gerando chaves efêmeras por execução.
+- Etapas Node são resilientes: se `npm ci` falhar por integridade/token/dependência remota, o pipeline segue com aviso e registra no summary.
 
 ## Como testar localmente
 ```bash
