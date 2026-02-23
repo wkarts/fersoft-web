@@ -2813,6 +2813,7 @@
                 desconexaoManual: false,
                 conectado: false,
                 balancaId: null,
+                balancaConectada: null,
                 trocando: false,
             };
             const autoState = autoStateMap[modalId];
@@ -2841,19 +2842,13 @@
                     modelo: select.data('modelo'),
                     porta: select.data('port')
                 };
-                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id);
+                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id || autoState.conectado);
                 $(modalId).find('#balanca_config_id').val(balancaSelecionada.id || '');
                 $(modalId).find('#disconnect').prop('disabled', !autoState.conectado);
 
-                const trocouBalancaConectada = !!balancaIdAnterior && !!balancaSelecionada.id && String(balancaIdAnterior) !== String(balancaSelecionada.id) && autoState.conectado;
-
-                if (trocouBalancaConectada && AUTO_CONNECT_BALANCA_AO_SELECIONAR && !autoState.desconexaoManual) {
-                    autoState.trocando = true;
-                    $(modalId).find('#disconnect').trigger('click');
-                    setTimeout(() => {
-                        autoState.trocando = false;
-                        tentarAutoConectar();
-                    }, 120);
+                if (autoState.conectado && autoState.balancaId && String(autoState.balancaId) !== String(balancaSelecionada.id)) {
+                    $(modalId).find('#balanca-select').val(String(autoState.balancaId));
+                    abrirModalMensagem('Aviso', 'Desconecte da balança atual antes de trocar para outra.');
                     return;
                 }
 
@@ -2871,9 +2866,11 @@
                     .then(() => {
                         autoState.conectado = true;
                         autoState.balancaId = String(balancaSelecionada.id);
+                        autoState.balancaConectada = { ...balancaSelecionada };
                         autoState.desconexaoManual = false;
                         $(modalId).find('#connect').prop('disabled', true);
                         $(modalId).find('#disconnect').prop('disabled', false);
+                        $(modalId).find('#balanca-select').prop('disabled', true);
                         iniciarLeitura(modalId, balancaSelecionada);
                     })
                     .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message));
@@ -2881,17 +2878,20 @@
 
             // Desconectar
             $(modalId).find('#disconnect').off('click').on('click', function () {
-                if (!balancaSelecionada) return;
+                const balancaParaDesconectar = autoState.balancaConectada || balancaSelecionada;
+                if (!balancaParaDesconectar) return;
 
-                axios.get(`${balancaSelecionada.backend}/api/close`)
+                axios.get(`${balancaParaDesconectar.backend}/api/close`)
                     .then(() => {
                         autoState.conectado = false;
                         autoState.balancaId = null;
+                        autoState.balancaConectada = null;
                         if (!autoState.trocando) {
                             autoState.desconexaoManual = true;
                         }
                         $(modalId).find('#connect').prop('disabled', false);
                         $(modalId).find('#disconnect').prop('disabled', true);
+                        $(modalId).find('#balanca-select').prop('disabled', false);
                         clearInterval(intervaloLeitura);
                         $(modalId).find('#pesoAtual').text('----');
                     })
@@ -2953,6 +2953,8 @@
                     $modal.find('#peso').prop('readonly', true);
                     $modal.find('#peso_origem').val('manual');
                 }
+
+                $modal.find('#balanca-select').prop('disabled', false);
 
                 if (BALANCA_PADRAO_USUARIO_ID > 0) {
                     $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');

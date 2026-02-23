@@ -15,7 +15,7 @@ Executa em `pull_request` (`opened`, `synchronize`, `reopened`, `ready_for_revie
 
 **Jobs**
 - `setup`: detecta presença de `composer.json`, `package.json`, runner de testes.
-- `php`: valida Composer, instala dependências, `php -v`, lint (`php -l`) e testes (`phpunit`/`artisan test`).
+- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `php -v`, lint (`php -l`) e testes (sem disparar `package:discover` no CI para evitar bootstrap sensível a integrações externas). O lint roda apenas no escopo da aplicação (`app/`, `bootstrap/`, `config/`, `database/`, `routes/`, `tests/`) para evitar arquivos legados de `public/` incompatíveis com PHP atual do runner.
 - `node`: `npm ci`, e roda `npm test`/`npm run build` apenas se scripts existirem.
 - `security`: `composer audit` e `npm audit` em modo warning-only (`continue-on-error`).
 - `summary`: publica resumo com status dos jobs.
@@ -107,11 +107,21 @@ Observações:
 - `include_vendor` (`true/false`)
 - `notify_required` (`true/false`)
 
+## Flags opcionais de execução
+- `CI_RUN_FULL_TESTS` (env de workflow/job):
+  - `false` (padrão): roda suíte `Unit` para estabilidade em CI sem DB externo.
+  - `true`: além da suíte Unit, executa suíte completa.
+
 ## Idempotência e segurança operacional
 - Se tag já existe: fluxo aborta com mensagem explícita.
 - Se release já existe para a tag: fluxo aborta com instrução.
 - Notificações falham sem quebrar release por padrão (best effort).
 - Se precisar enforcement, use `notify_required=true` no dispatch.
+- O fluxo evita falha por ausência de `APP_KEY`/`ENCRYPTION_KEY` no CI gerando chaves efêmeras por execução.
+- Migrações de VIEW sensíveis a dialeto SQL possuem fallback para SQLite no CI de testes, evitando falha de `migrate:fresh` quando o runner usa sqlite.
+- O `phpunit.xml` define `APP_KEY`/`ENCRYPTION_KEY` de teste para evitar `MissingAppKeyException` em suites que não carregam `.env` completo no runtime.
+- Migrações de VIEW sensíveis a dialeto SQL possuem fallback para SQLite no CI de testes, evitando falha de `migrate:fresh` quando o runner usa sqlite.
+- Etapas Node são resilientes: se `npm ci` falhar por integridade/token/dependência remota, o pipeline segue com aviso e registra no summary.
 
 ## Como testar localmente
 ```bash
