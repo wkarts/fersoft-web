@@ -20,6 +20,7 @@ class StockLedgerTest extends TestCase
         $service->mover([
             'empresa_id' => 1,
             'filial_id' => 1,
+            'usuario_id' => 99,
             'produto_id' => 10,
             'contexto' => 'PESAGEM',
             'tipo' => 'entrada',
@@ -54,7 +55,9 @@ class StockLedgerTest extends TestCase
         $service->transferirEntreContextos([
             'empresa_id' => 1,
             'filial_id' => 1,
-            'produto_id' => 20,
+            'usuario_id' => 99,
+            'produto_origem_id' => 20,
+            'produto_destino_id' => 25,
             'quantidade' => 50,
             'contexto_origem' => 'PESAGEM',
             'contexto_destino' => 'ERP',
@@ -62,8 +65,9 @@ class StockLedgerTest extends TestCase
             'movimentado_em' => now(),
         ]);
 
-        $this->assertDatabaseHas('stock_movements', ['contexto' => 'PESAGEM', 'tipo' => 'saida', 'produto_id' => 20]);
-        $this->assertDatabaseHas('stock_movements', ['contexto' => 'ERP', 'tipo' => 'entrada', 'produto_id' => 20]);
+        $this->assertDatabaseHas('stock_movements', ['contexto' => 'PESAGEM', 'tipo' => 'saida', 'produto_id' => 20, 'usuario_id' => 99]);
+        $this->assertDatabaseHas('stock_movements', ['contexto' => 'ERP', 'tipo' => 'entrada', 'produto_id' => 25, 'usuario_id' => 99]);
+        $this->assertDatabaseCount('stock_movements', 2);
     }
 
     public function test_evento_realtime_e_snapshot_agregado_conferem(): void

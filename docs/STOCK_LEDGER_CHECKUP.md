@@ -72,3 +72,29 @@
   - `STOCK_LEDGER_ENABLED=false`
   - `STOCK_LEDGER_TRANSFER_PESAGEM_TO_ERP=false`
 - Monitor continua funcional com dados legados, pois feed de pesagem permanece.
+
+## Patch incremental multi-tenant (emitente/ConfigNota)
+- A regra de conversão PESAGEM -> ERP deixou de depender de `.env` e passou a aceitar configuração por emitente (`config_notas.usa_produto_referenciado_pesagem`).
+- Default da flag é `false`, preservando comportamento legado (produto pesado também no ERP).
+
+### Cenário A (legado / padrão)
+- Flag desativada (`false`):
+  - PESAGEM usa produto pesado.
+  - ERP usa produto pesado.
+
+### Cenário B (opcional por emitente)
+- Flag ativada (`true`):
+  - PESAGEM continua usando produto pesado.
+  - ERP tenta usar `produto_referenciado_id` do produto pesado.
+  - Se não houver referenciado, aplica fallback silencioso para produto pesado (sem bloqueio do fluxo).
+
+### Auditoria e rastreabilidade
+- `stock_movements.usuario_id` passa a registrar o usuário de conversão quando disponível.
+- Metadata da ponte inclui:
+  - `pesagem_id`, `ticket_ids`, `produto_origem_id`, `produto_destino_id`, `regra_aplicada`, `fallback_referenciado`, `ponte_direcao`.
+
+### Idempotência e quantidades
+- Quantidade sempre positiva e direção definida por `tipo` (`entrada`/`saida`).
+- A ponte passou a tratar entradas e saídas separadamente (sem saldo assinado), evitando perda de movimentações.
+- `idempotency_key` da transferência inclui produto origem/destino e regra aplicada, mantendo consistência em retries.
+

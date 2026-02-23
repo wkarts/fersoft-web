@@ -45,6 +45,7 @@ class StockService
             $mov = StockMovement::create([
                 'empresa_id' => (int) $payload['empresa_id'],
                 'filial_id' => $payload['filial_id'] ?? null,
+                'usuario_id' => $payload['usuario_id'] ?? null,
                 'produto_id' => (int) $payload['produto_id'],
                 'contexto' => (string) $payload['contexto'],
                 'tipo' => $tipo,
@@ -72,16 +73,35 @@ class StockService
             throw new \InvalidArgumentException('idempotency_key é obrigatório para transferência.');
         }
 
+        $produtoOrigemId = (int) ($payload['produto_origem_id'] ?? $payload['produto_id'] ?? 0);
+        $produtoDestinoId = (int) ($payload['produto_destino_id'] ?? $payload['produto_id'] ?? 0);
+
+        if ($produtoOrigemId <= 0 || $produtoDestinoId <= 0) {
+            throw new \InvalidArgumentException('produto_origem_id/produto_destino_id inválidos para transferência.');
+        }
+
+        $metadataBase = (array) ($payload['metadata'] ?? []);
+
         $saida = $this->mover(array_merge($payload, [
+            'produto_id' => $produtoOrigemId,
             'contexto' => $payload['contexto_origem'],
             'tipo' => 'saida',
-            'idempotency_key' => $baseKey . ':saida',
+            'idempotency_key' => $baseKey . ':origem:' . $produtoOrigemId . ':saida',
+            'metadata' => array_merge($metadataBase, [
+                'produto_origem_id' => $produtoOrigemId,
+                'produto_destino_id' => $produtoDestinoId,
+            ]),
         ]));
 
         $entrada = $this->mover(array_merge($payload, [
+            'produto_id' => $produtoDestinoId,
             'contexto' => $payload['contexto_destino'],
             'tipo' => 'entrada',
-            'idempotency_key' => $baseKey . ':entrada',
+            'idempotency_key' => $baseKey . ':destino:' . $produtoDestinoId . ':entrada',
+            'metadata' => array_merge($metadataBase, [
+                'produto_origem_id' => $produtoOrigemId,
+                'produto_destino_id' => $produtoDestinoId,
+            ]),
         ]));
 
         return [$saida, $entrada];

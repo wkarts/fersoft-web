@@ -9,6 +9,7 @@ class StockMovement extends Model
     protected $fillable = [
         'empresa_id',
         'filial_id',
+        'usuario_id',
         'produto_id',
         'contexto',
         'tipo',
@@ -26,6 +27,7 @@ class StockMovement extends Model
         'quantidade' => 'decimal:4',
         'custo_unitario' => 'decimal:6',
         'valor_total' => 'decimal:2',
+        'usuario_id' => 'integer',
         'movimentado_em' => 'datetime',
         'metadata' => 'array',
     ];
