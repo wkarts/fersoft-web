@@ -11,7 +11,6 @@
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
-auth.json
 npm-debug.log
 yarn-error.log
 /.fleet
@@ -198,3 +197,10 @@ app/Services/ReformaTributariaService.php.bkp.7
 app/Http/Controllers/VendaController.php.bkp.7
 resources/views/pesagens/list.blade.php_
 app/Prints/PesagemPrint80.php.bkp.20022026
+app/Http/Controllers/ConfigNotaController.php_20022026.bkp
+resources/views/pesagens/list.blade_21022026_bkp.zip
+resources/views/pesagens/list.blade_21022026_bkp_2.zip
+flow.zip
+scripts/ci/bootstrap-env - Copia.sh
+scripts/ci/bootstrap-env - Copia (2).sh
+flow_.zip

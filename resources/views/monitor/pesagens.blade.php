@@ -109,6 +109,9 @@
                 </div>
             </div>
 
+
+            <div class="row g-3 mb-4" id="contextCards"></div>
+
             <form id="monitorFiltros" class="form mb-4">
                 <div class="form-row align-items-end">
                     <div class="form-group col-md-3">
@@ -314,6 +317,7 @@
         const monitorTotalPesagens = document.getElementById('monitorTotalPesagens');
         const monitorProdutosBody = document.getElementById('monitorProdutosBody');
         const monitorParceirosBody = document.getElementById('monitorParceirosBody');
+        const contextCards = document.getElementById('contextCards');
 
         const formatPeso = (valor) => `${Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
         const formatMoney = (valor, casas = 2) => `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}`;
@@ -354,11 +358,34 @@
             `;
         };
 
+        const totaisContextoInicial = @json($totaisContexto ?? []);
         const analiticoProdutosInicial = @json($analiticoProdutos);
         const analiticoParceirosInicial = @json($analiticoParceiros);
         const produtoState = new Map();
         const parceiroState = new Map();
         let refreshTimeout = null;
+
+
+        const renderContextCards = (totais) => {
+            if (!contextCards) return;
+            if (!Array.isArray(totais) || !totais.length) {
+                contextCards.innerHTML = '<div class="col-12"><div class="alert alert-light">Sem dados de contexto para o dia.</div></div>';
+                return;
+            }
+
+            contextCards.innerHTML = totais.map((item) => `
+                <div class="col-12 col-md-6">
+                    <div class="card card-custom bg-light h-100">
+                        <div class="card-body">
+                            <div class="font-weight-bold mb-2">Contexto: ${escapeHtml(item.contexto)}</div>
+                            <div>Entrada: <strong>${formatPeso(item.entrada)}</strong></div>
+                            <div>Saída: <strong>${formatPeso(item.saida)}</strong></div>
+                            <div>Saldo: <strong>${formatPeso(item.saldo)}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
 
         const atualizarResumo = (resumo) => {
             if (!resumo) {
@@ -479,6 +506,7 @@
             if (atualizarAnaliticos) {
                 atualizarResumo(data.resumo);
                 atualizarAnaliticos(data.analitico_produtos, data.analitico_parceiros);
+                renderContextCards(data.totais_contexto || []);
             }
         };
 
@@ -491,6 +519,7 @@
         });
 
         atualizarAnaliticos(analiticoProdutosInicial, analiticoParceirosInicial);
+        renderContextCards(totaisContextoInicial);
 
         const agendarAtualizacaoAnaliticos = () => {
             if (refreshTimeout) {

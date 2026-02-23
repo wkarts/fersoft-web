@@ -18,6 +18,7 @@ use App\Models\IBPT;
 use App\Models\Filial;
 use App\Models\Contigencia;
 use NFePHP\NFe\Factories\Contingency;
+use App\Services\ReformaTributariaService;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -66,6 +67,74 @@ class NFCeService{
         return preg_replace('/\D+/', '', (string)$value);
     }
 
+    private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
+    {
+        $rt = app(ReformaTributariaService::class);
+        if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+            return false;
+        }
+
+        $base = (float)($item->bc_ibs_cbs ?? 0);
+        $vIbs = (float)($item->valor_ibs ?? 0);
+        $vCbs = (float)($item->valor_cbs ?? 0);
+        $vIs  = (float)($item->is_valor ?? 0);
+        if ($base <= 0 && $vIbs <= 0 && $vCbs <= 0 && $vIs <= 0) {
+            return false;
+        }
+
+        $std = new \stdClass();
+        $std->item = $itemCont;
+        $std->CST = (string)($item->cst_ibs_cbs ?? '');
+        $std->cClassTrib = (string)($item->class_trib_ibs_cbs ?? '');
+        $std->vBC = $this->format($base);
+        $std->pIBSUF = $this->format((float)($item->aliq_ibs_uf ?? 0), 4);
+        $std->vIBSUF = $this->format((float)($item->valor_ibs_uf ?? 0));
+        $std->pIBSMun = $this->format((float)($item->aliq_ibs_mun ?? 0), 4);
+        $std->vIBSMun = $this->format((float)($item->valor_ibs_mun ?? 0));
+        $std->vIBS = $this->format($vIbs);
+        $std->pCBS = $this->format((float)($item->aliq_cbs ?? 0), 4);
+        $std->vCBS = $this->format($vCbs);
+        $std->vIS = $this->format($vIs);
+
+        $methods = ['tagIBSCBS', 'tagImpostoIBSCBS', 'tagIBS'];
+        foreach ($methods as $method) {
+            if (!method_exists($nfe, $method)) {
+                continue;
+            }
+            try {
+                $nfe->{$method}($std);
+                return true;
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        return false;
+    }
+
+    private function appendReformaObservacao(string $obs, $venda): string
+    {
+        $rt = app(ReformaTributariaService::class);
+        if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+            return $obs;
+        }
+
+        $tBase = (float)($venda->total_bc_ibs_cbs ?? 0);
+        $tIbs = (float)($venda->total_ibs ?? 0);
+        $tCbs = (float)($venda->total_cbs ?? 0);
+        $tIs = (float)($venda->total_is ?? 0);
+
+        if ($tBase <= 0 && $tIbs <= 0 && $tCbs <= 0 && $tIs <= 0) {
+            return $obs;
+        }
+
+        $obs .= " | RT IBS/CBS/IS: BC=" . number_format($tBase, 2, ',', '.')
+            . " IBS=" . number_format($tIbs, 2, ',', '.')
+            . " CBS=" . number_format($tCbs, 2, ',', '.')
+            . " IS=" . number_format($tIs, 2, ',', '.');
+
+        return $obs;
+    }
     private function getContigencia(){
         $active = Contigencia::
         where('empresa_id', $this->empresa_id)
@@ -518,6 +587,7 @@ class NFCeService{
             }
 
             $imposto = $nfe->tagimposto($stdImposto);
+            $this->tryAttachReformaItemTag($nfe, (int)$itemCont, $i);
 
             if($config->sobrescrita_csonn_consumidor_final != ""){
                 $i->produto->CST_CSOSN = $config->sobrescrita_csonn_consumidor_final;
@@ -798,6 +868,7 @@ class NFCeService{
             }
             $obs .= $obsIbpt;
         }
+        $obs = $this->appendReformaObservacao($obs, $venda);
         $stdInfoAdic->infCpl = $obs;
         $infoAdic = $nfe->taginfAdic($stdInfoAdic);
 
