@@ -18,6 +18,29 @@ function rtParseNumber(v){
 	return isFinite(n) ? n : 0;
 }
 
+function renderRtResumoDevolucao(){
+	let totalIbs = 0;
+	let totalCbs = 0;
+	let totalIs = 0;
+	ITENS.forEach((it) => {
+		totalIbs += rtParseNumber(it.valor_ibs);
+		totalCbs += rtParseNumber(it.valor_cbs);
+		totalIs += rtParseNumber(it.is_valor);
+	});
+
+	const html = '<strong class="text-info">RT</strong> - IBS: <strong>' + formatReal(totalIbs) + '</strong> | CBS: <strong>' + formatReal(totalCbs) + '</strong> | IS: <strong>' + formatReal(totalIs) + '</strong>';
+	if($('#rt-resumo-devolucao').length === 0){
+		$('#soma-itens').closest('h5').after('<h5 style="margin-left: 10px; margin-top: 10px;" id="rt-resumo-devolucao"></h5>');
+	}
+	$('#rt-resumo-devolucao').html(html);
+}
+
+function renderTabelaDevolucao(){
+	let t = montaTabela();
+	$('#tbl tbody').html(t);
+	renderRtResumoDevolucao();
+}
+
 function aplicarReformaDevolucaoItem(item, done){
 	if(!item || !item.codigo){ if(typeof done === 'function') done(); return; }
 	$.ajax({
@@ -51,10 +74,7 @@ function aplicarReformaDevolucaoItem(item, done){
 $(function () {
 
 	ITENS = JSON.parse($('#itens_nf').val());
-	prepara((res) => {
-		let t = montaTabela();
-		$('#tbl tbody').html(t)
-	});
+	prepara(() => renderTabelaDevolucao());
 	
 });
 
@@ -89,11 +109,25 @@ function prepara(call){
 			pRedBC: v.pRedBC,
 
 		}
-		aplicarReformaDevolucaoItem(js);
-		temp.push(js)
+		temp.push(js);
 	})
 	ITENS = temp;
-	call(true)
+
+	if(ITENS.length === 0){
+		call(true);
+		return;
+	}
+
+	let pendentes = ITENS.length;
+	ITENS.forEach((item) => {
+		aplicarReformaDevolucaoItem(item, () => {
+			pendentes--;
+			renderTabelaDevolucao();
+			if(pendentes === 0){
+				call(true);
+			}
+		});
+	});
 }
 
 function montaTabela(){
@@ -301,7 +335,10 @@ function percorreEdit(id, nome, quantidade, valor, valorFreteEdit, pRedBC, call)
 	});
 	ITENS = temp;
 	const itemAlterado = ITENS.find((x) => String(x.codigo) === String(id));
-	aplicarReformaDevolucaoItem(itemAlterado, () => call(true));
+	aplicarReformaDevolucaoItem(itemAlterado, () => {
+		renderTabelaDevolucao();
+		call(true);
+	});
 }
 
 function getItem(id, call){

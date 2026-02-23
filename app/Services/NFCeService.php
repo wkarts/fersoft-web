@@ -67,7 +67,50 @@ class NFCeService{
         return preg_replace('/\D+/', '', (string)$value);
     }
 
+    private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
+    {
+        $rt = app(ReformaTributariaService::class);
+        if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+            return false;
+        }
 
+        $base = (float)($item->bc_ibs_cbs ?? 0);
+        $vIbs = (float)($item->valor_ibs ?? 0);
+        $vCbs = (float)($item->valor_cbs ?? 0);
+        $vIs  = (float)($item->is_valor ?? 0);
+        if ($base <= 0 && $vIbs <= 0 && $vCbs <= 0 && $vIs <= 0) {
+            return false;
+        }
+
+        $std = new \stdClass();
+        $std->item = $itemCont;
+        $std->CST = (string)($item->cst_ibs_cbs ?? '');
+        $std->cClassTrib = (string)($item->class_trib_ibs_cbs ?? '');
+        $std->vBC = $this->format($base);
+        $std->pIBSUF = $this->format((float)($item->aliq_ibs_uf ?? 0), 4);
+        $std->vIBSUF = $this->format((float)($item->valor_ibs_uf ?? 0));
+        $std->pIBSMun = $this->format((float)($item->aliq_ibs_mun ?? 0), 4);
+        $std->vIBSMun = $this->format((float)($item->valor_ibs_mun ?? 0));
+        $std->vIBS = $this->format($vIbs);
+        $std->pCBS = $this->format((float)($item->aliq_cbs ?? 0), 4);
+        $std->vCBS = $this->format($vCbs);
+        $std->vIS = $this->format($vIs);
+
+        $methods = ['tagIBSCBS', 'tagImpostoIBSCBS', 'tagIBS'];
+        foreach ($methods as $method) {
+            if (!method_exists($nfe, $method)) {
+                continue;
+            }
+            try {
+                $nfe->{$method}($std);
+                return true;
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        return false;
+    }
 
     private function appendReformaObservacao(string $obs, $venda): string
     {
@@ -544,6 +587,7 @@ class NFCeService{
             }
 
             $imposto = $nfe->tagimposto($stdImposto);
+            $this->tryAttachReformaItemTag($nfe, (int)$itemCont, $i);
 
             if($config->sobrescrita_csonn_consumidor_final != ""){
                 $i->produto->CST_CSOSN = $config->sobrescrita_csonn_consumidor_final;
