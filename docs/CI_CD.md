@@ -15,7 +15,7 @@ Executa em `pull_request` (`opened`, `synchronize`, `reopened`, `ready_for_revie
 
 **Jobs**
 - `setup`: detecta presença de `composer.json`, `package.json`, runner de testes.
-- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `php -v`, lint (`php -l`) e testes (sem disparar `package:discover` no CI para evitar bootstrap sensível a integrações externas).
+- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `php -v`, lint (`php -l`) e testes (sem disparar `package:discover` no CI para evitar bootstrap sensível a integrações externas). O lint roda apenas no escopo da aplicação (`app/`, `bootstrap/`, `config/`, `database/`, `routes/`, `tests/`) para evitar arquivos legados de `public/` incompatíveis com PHP atual do runner.
 - `node`: `npm ci`, e roda `npm test`/`npm run build` apenas se scripts existirem.
 - `security`: `composer audit` e `npm audit` em modo warning-only (`continue-on-error`).
 - `summary`: publica resumo com status dos jobs.

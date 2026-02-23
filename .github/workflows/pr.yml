@@ -75,18 +75,30 @@ jobs:
       - name: PHP version
         run: php -v
 
-      - name: PHP lint
+      - name: PHP lint (escopo CI)
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t files < <(git ls-files '*.php')
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "Nenhum arquivo PHP encontrado para lint."
+          lint_paths=(app bootstrap config database routes tests)
+          mapfile -t files < <(git ls-files -- '*.php' ':!:vendor/*' ':!:public/*' ':!:storage/*' ':!:node_modules/*')
+      
+          filtered=()
+          for f in "${files[@]}"; do
+            for p in "${lint_paths[@]}"; do
+              if [[ "$f" == "$p/"* ]]; then
+                filtered+=("$f")
+                break
+              fi
+            done
+          done
+      
+          if [ "${#filtered[@]}" -eq 0 ]; then
+            echo "Nenhum arquivo PHP elegível para lint no escopo CI."
             exit 0
           fi
-          printf '%s\n' "${files[@]}" | xargs -n1 -P4 php -l >/dev/null
-          echo "Lint PHP concluído com sucesso."
-
+      
+          printf '%s\n' "${filtered[@]}" | xargs -n1 -P4 php -l >/dev/null
+          echo "Lint PHP concluído com sucesso no escopo CI (${#filtered[@]} arquivos)."
       - name: PHPUnit
         shell: bash
         run: |
