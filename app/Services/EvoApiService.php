@@ -24,8 +24,8 @@ class EvoApiService
     {
         $this->ddi           = config('evoapi.ddi');
         $this->ddd           = config('evoapi.ddd');
-        $this->baseUrl       = config('evoapi.base_url');
-        $this->globalApiKey  = config('evoapi.global_api');
+        $this->baseUrl       = (string) config('evoapi.base_url', '');
+        $this->globalApiKey  = (string) config('evoapi.global_api', '');
         $this->version       = config('evoapi.version', 'V1');
         $this->qrLogoBase64  = config('evoapi.qr_logo_base64');
         $this->qrLogoSize    = (float) config('evoapi.qr_logo_size', 0.2);

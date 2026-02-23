@@ -205,6 +205,29 @@ return new class extends Migration
 
     private function foreignKeyExists(string $table, string $foreignKey): bool
     {
+        if (! Schema::hasTable($table)) {
+            return false;
+        }
+
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            $rows = DB::select("PRAGMA foreign_key_list('{$table}')");
+            foreach ($rows as $row) {
+                $id = $row->id ?? null;
+                if ($id === null) {
+                    continue;
+                }
+
+                $candidate = strtolower($table . '_' . ($row->from ?? '') . '_foreign');
+                if ($candidate === strtolower($foreignKey)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         $database = Schema::getConnection()->getDatabaseName();
 
         return DB::table('information_schema.TABLE_CONSTRAINTS')
