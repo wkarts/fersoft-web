@@ -1,4 +1,4 @@
-@extends('LAYOUT_BASE')
+@extends('default.layout')
 
 @section('content')
 <div class="card card-custom gutter-b">
