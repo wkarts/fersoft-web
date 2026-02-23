@@ -94,7 +94,7 @@ return new class extends Migration
             });
         }
 
-        if ($this->columnExists('manutencoes', 'status')) {
+        if ($this->columnExists('manutencoes', 'status') && DB::connection()->getDriverName() !== 'sqlite') {
             DB::statement("ALTER TABLE manutencoes MODIFY status ENUM('Planejada','Em andamento','Concluída') DEFAULT 'Planejada'");
         }
     }
@@ -146,7 +146,7 @@ return new class extends Migration
             });
         }
 
-        if ($this->columnExists('manutencoes', 'status')) {
+        if ($this->columnExists('manutencoes', 'status') && DB::connection()->getDriverName() !== 'sqlite') {
             DB::statement("ALTER TABLE manutencoes MODIFY status ENUM('Planejada','Concluída') DEFAULT 'Planejada'");
         }
 

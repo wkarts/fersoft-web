@@ -120,7 +120,6 @@ Observações:
 - O fluxo evita falha por ausência de `APP_KEY`/`ENCRYPTION_KEY` no CI gerando chaves efêmeras por execução.
 - Migrações de VIEW sensíveis a dialeto SQL possuem fallback para SQLite no CI de testes, evitando falha de `migrate:fresh` quando o runner usa sqlite.
 - O `phpunit.xml` define `APP_KEY`/`ENCRYPTION_KEY` de teste para evitar `MissingAppKeyException` em suites que não carregam `.env` completo no runtime.
-- Migrações de VIEW sensíveis a dialeto SQL possuem fallback para SQLite no CI de testes, evitando falha de `migrate:fresh` quando o runner usa sqlite.
 - Etapas Node são resilientes: se `npm ci` falhar por integridade/token/dependência remota, o pipeline segue com aviso e registra no summary.
 
 ## Como testar localmente
