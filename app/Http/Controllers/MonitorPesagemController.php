@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Filial;
 use App\Models\Pesagem;
+use App\Models\StockDailyAggregate;
 use App\Services\MonitorPesagemService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -54,6 +55,7 @@ class MonitorPesagemController extends BaseController
             'filiais' => $filiais,
             'filtros' => $filtros,
             'empresaId' => $this->empresa_id,
+            'totaisContexto' => $this->totaisContexto($filtros),
         ]);
     }
 
@@ -78,6 +80,7 @@ class MonitorPesagemController extends BaseController
             'resumo' => $this->montarResumo($pesagens),
             'analitico_produtos' => $this->montarAnaliticoProdutos($pesagens),
             'analitico_parceiros' => $this->montarAnaliticoParceiros($pesagens),
+            'totais_contexto' => $this->totaisContexto($filtros),
         ]);
     }
 
@@ -237,6 +240,29 @@ class MonitorPesagemController extends BaseController
         usort($resultado, fn ($a, $b) => $b['total_final'] <=> $a['total_final']);
 
         return $resultado;
+    }
+
+    private function totaisContexto(array $filtros): array
+    {
+        $query = StockDailyAggregate::where('empresa_id', $this->empresa_id)
+            ->whereDate('data_ref', $filtros['data']->format('Y-m-d'));
+
+        if (!empty($filtros['filial_id'])) {
+            $query->where('filial_id', $filtros['filial_id']);
+        }
+
+        return $query->get()
+            ->groupBy('contexto')
+            ->map(function ($itens, $contexto) {
+                return [
+                    'contexto' => $contexto,
+                    'entrada' => (float) $itens->sum('entrada'),
+                    'saida' => (float) $itens->sum('saida'),
+                    'saldo' => (float) $itens->sum('saldo'),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function montarAnaliticoParceiros($pesagens): array

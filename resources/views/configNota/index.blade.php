@@ -180,9 +180,36 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div class="form-group mt-3 mb-0"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mt-3 mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
+                                                                        <input type="checkbox"
+                                                                               name="usa_produto_referenciado_pesagem"
+                                                                               value="1"
+                                                                               {{ (old('usa_produto_referenciado_pesagem', $config->usa_produto_referenciado_pesagem ?? 0)) ? 'checked' : '' }}
+                                                                               data-confirm-lock="1"
+                                                                               {{ ($config->usa_produto_referenciado_pesagem ?? 0) ? 'disabled' : '' }}>
+                                                                        <span></span>
+                                                                        Considerar o produto referenciado na conversão da pesagem para venda/compra no controle de estoque
+                                                                    </label>
+                                                                </div>
+                                                                @if($config->usa_produto_referenciado_pesagem ?? 0)
+                                                                    <input type="hidden" name="usa_produto_referenciado_pesagem" value="1">
+                                                                @endif
+                                                                <small class="text-muted">
+                                                                    Quando habilitado, no momento da conversão da pesagem para Venda ou Compra, o sistema considerará para movimentação de estoque
+                                                                    o <strong>produto referenciado</strong> vinculado ao item pesado.
+                                                                    Caso não exista produto referenciado, será utilizado automaticamente o produto original da pesagem como fallback.
+                                                                    <br><br>
+                                                                    ⚠ Após ativação, esta configuração não poderá ser desabilitada, pois altera a regra estrutural de controle de estoque
+                                                                    e a rastreabilidade das movimentações.
+                                                                </small>
+                                                            </div>
+
+
+                                                            <div class="form-group mt-3 mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="desbloquear_campo_peso_bag_ticket" value="1" {{ (old('desbloquear_campo_peso_bag_ticket', $config->desbloquear_campo_peso_bag_ticket ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Desbloquear campo "Peso dos Recipientes" no ticket de pesagem
@@ -1176,6 +1203,31 @@
 		</div>
 	</div>
 </div>
+
+    <!-- Modal Reutilizável -->
+    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <!-- Cabeçalho -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <!-- Corpo -->
+                <div class="modal-body" id="modalConfirmacaoMensagem">
+                    Deseja realmente continuar?
+                </div>
+                <!-- Rodapé -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Não</button>
+                    <button type="button" id="btnConfirmarAcao" class="btn btn-primary">Sim</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @section('javascript')
 <script type="text/javascript">
 	$(function(){
@@ -1206,6 +1258,55 @@
 		}
 	}
 	$('[data-toggle="popover"]').popover()
+
+
+	document.addEventListener('DOMContentLoaded', function () {
+		const chk = document.querySelector('input[name="usa_produto_referenciado_pesagem"][data-confirm-lock="1"]');
+		const modalEl = $('#modalConfirmacao');
+		const modalMsg = document.getElementById('modalConfirmacaoMensagem');
+		const btnConfirmar = document.getElementById('btnConfirmarAcao');
+
+		if (!chk || chk.disabled || !modalEl.length || !modalMsg || !btnConfirmar) return;
+
+		const initialChecked = chk.checked;
+
+		const abrirModalConfirmacao = (mensagem, onConfirm, onCancel) => {
+			modalMsg.innerHTML = mensagem;
+
+			const handleConfirm = () => {
+				btnConfirmar.removeEventListener('click', handleConfirm);
+				modalEl.off('hidden.bs.modal', handleHidden);
+				modalEl.modal('hide');
+				onConfirm();
+			};
+
+			const handleHidden = () => {
+				btnConfirmar.removeEventListener('click', handleConfirm);
+				modalEl.off('hidden.bs.modal', handleHidden);
+				onCancel();
+			};
+
+			btnConfirmar.addEventListener('click', handleConfirm);
+			modalEl.on('hidden.bs.modal', handleHidden);
+			modalEl.modal('show');
+		};
+
+		chk.addEventListener('click', function (e) {
+			if (!initialChecked && chk.checked) {
+				e.preventDefault();
+				chk.checked = false;
+
+				abrirModalConfirmacao(
+					'Ao habilitar esta configuração, a conversão da pesagem para Venda/Compra passará a considerar o produto referenciado para movimentação de estoque.<br><br>' +
+					'<strong>ATENÇÃO:</strong> Após ativação, não será possível desabilitar esta configuração.<br><br>' +
+					'Deseja continuar?',
+					() => { chk.checked = true; },
+					() => { chk.checked = false; }
+				);
+			}
+		});
+	});
+
 
 	$('#alerta_sonoro').change(() => {
 		let alerta_sonoro = $('#alerta_sonoro').val()

@@ -2810,6 +2810,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 	Route::group(['prefix' => 'monitor'], function () {
 		Route::get('/pesagens', 'MonitorPesagemController@index')->name('monitor.pesagens');
 		Route::get('/pesagens/data', 'MonitorPesagemController@data')->name('monitor.pesagens.data');
+		Route::get('/pesagens/snapshot', 'MonitorStockSnapshotController@snapshot')->name('monitor.pesagens.snapshot');
 	});
 
     Route::group(['prefix' => 'ticketsPesagem'], function () {
