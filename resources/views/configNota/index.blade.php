@@ -1203,6 +1203,31 @@
 		</div>
 	</div>
 </div>
+
+    <!-- Modal Reutilizável -->
+    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <!-- Cabeçalho -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <!-- Corpo -->
+                <div class="modal-body" id="modalConfirmacaoMensagem">
+                    Deseja realmente continuar?
+                </div>
+                <!-- Rodapé -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Não</button>
+                    <button type="button" id="btnConfirmarAcao" class="btn btn-primary">Sim</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @section('javascript')
 <script type="text/javascript">
 	$(function(){
@@ -1237,22 +1262,47 @@
 
 	document.addEventListener('DOMContentLoaded', function () {
 		const chk = document.querySelector('input[name="usa_produto_referenciado_pesagem"][data-confirm-lock="1"]');
-		if (!chk || chk.disabled) return;
+		const modalEl = $('#modalConfirmacao');
+		const modalMsg = document.getElementById('modalConfirmacaoMensagem');
+		const btnConfirmar = document.getElementById('btnConfirmarAcao');
+
+		if (!chk || chk.disabled || !modalEl.length || !modalMsg || !btnConfirmar) return;
 
 		const initialChecked = chk.checked;
 
+		const abrirModalConfirmacao = (mensagem, onConfirm, onCancel) => {
+			modalMsg.innerHTML = mensagem;
+
+			const handleConfirm = () => {
+				btnConfirmar.removeEventListener('click', handleConfirm);
+				modalEl.off('hidden.bs.modal', handleHidden);
+				modalEl.modal('hide');
+				onConfirm();
+			};
+
+			const handleHidden = () => {
+				btnConfirmar.removeEventListener('click', handleConfirm);
+				modalEl.off('hidden.bs.modal', handleHidden);
+				onCancel();
+			};
+
+			btnConfirmar.addEventListener('click', handleConfirm);
+			modalEl.on('hidden.bs.modal', handleHidden);
+			modalEl.modal('show');
+		};
+
 		chk.addEventListener('click', function (e) {
 			if (!initialChecked && chk.checked) {
-				const ok = confirm(
-					'Ao habilitar esta configuração, a conversão da pesagem para Venda/Compra passará a considerar o produto referenciado para movimentação de estoque.\n\n' +
-					'ATENÇÃO: Após ativação, não será possível desabilitar esta configuração.\n\n' +
-					'Deseja continuar?'
-				);
+				e.preventDefault();
+				chk.checked = false;
 
-				if (!ok) {
-					e.preventDefault();
-					chk.checked = false;
-				}
+				abrirModalConfirmacao(
+					'Ao habilitar esta configuração, a conversão da pesagem para Venda/Compra passará a considerar o produto referenciado para movimentação de estoque.<br><br>' +
+					'<strong>ATENÇÃO:</strong> Após ativação, não será possível desabilitar esta configuração.<br><br>' +
+					'Deseja continuar?',
+					() => { chk.checked = true; },
+					() => { chk.checked = false; }
+				);
 			}
 		});
 	});
