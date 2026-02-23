@@ -11,6 +11,18 @@ class StockKardexController extends BaseController
 {
     protected $redirectPage = '/estoque/kardex';
 
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
+
     public function index(Request $request)
     {
         $dataInicio = $request->input('data_inicio', now()->startOfMonth()->toDateString());

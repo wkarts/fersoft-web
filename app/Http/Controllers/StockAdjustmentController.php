@@ -13,6 +13,18 @@ class StockAdjustmentController extends BaseController
 {
     protected $redirectPage = '/estoque/ajustes';
 
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
+
     public function index(Request $request)
     {
         $dataInicio = $request->input('data_inicio', now()->toDateString());
