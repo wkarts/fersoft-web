@@ -123,6 +123,9 @@ class ConfigNotaController extends Controller
 			'bloquear_pesagem_manual_balanca' => $request->boolean('bloquear_pesagem_manual_balanca'),
 			'usar_valores_ticket_pesagem' => $request->boolean('usar_valores_ticket_pesagem'),
 			'exibir_valores_ticket_pesagem_grid' => $request->boolean('exibir_valores_ticket_pesagem_grid'),
+			'desbloquear_campo_peso_bag_ticket' => $request->boolean('desbloquear_campo_peso_bag_ticket'),
+			'conectar_automaticamente_balanca_padrao_usuario' => $request->boolean('conectar_automaticamente_balanca_padrao_usuario'),
+			'conectar_automaticamente_balanca_ao_selecionar' => $request->boolean('conectar_automaticamente_balanca_ao_selecionar'),
 		]);
 
 		if ($request->bloquear_pesagem_manual_balanca) {
@@ -246,6 +249,9 @@ class ConfigNotaController extends Controller
 				'bloquear_pesagem_manual_balanca' => $request->bloquear_pesagem_manual_balanca,
 				'usar_valores_ticket_pesagem' => $request->usar_valores_ticket_pesagem,
 				'exibir_valores_ticket_pesagem_grid' => $request->exibir_valores_ticket_pesagem_grid,
+				'desbloquear_campo_peso_bag_ticket' => $request->desbloquear_campo_peso_bag_ticket,
+				'conectar_automaticamente_balanca_padrao_usuario' => $request->conectar_automaticamente_balanca_padrao_usuario,
+				'conectar_automaticamente_balanca_ao_selecionar' => $request->conectar_automaticamente_balanca_ao_selecionar,
 			]);
 		}else{
 			$config = ConfigNota::
@@ -323,6 +329,9 @@ class ConfigNotaController extends Controller
 			$config->bloquear_pesagem_manual_balanca = $request->bloquear_pesagem_manual_balanca;
 			$config->usar_valores_ticket_pesagem = $request->usar_valores_ticket_pesagem;
 			$config->exibir_valores_ticket_pesagem_grid = $request->exibir_valores_ticket_pesagem_grid;
+			$config->desbloquear_campo_peso_bag_ticket = $request->desbloquear_campo_peso_bag_ticket;
+			$config->conectar_automaticamente_balanca_padrao_usuario = $request->conectar_automaticamente_balanca_padrao_usuario;
+			$config->conectar_automaticamente_balanca_ao_selecionar = $request->conectar_automaticamente_balanca_ao_selecionar;
 
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';
@@ -332,8 +341,6 @@ class ConfigNotaController extends Controller
 
 			$result = $config->save();
 		}
-
-		$this->atualizarBalancaPadraoUsuario($request);
 
 		$value = session('user_logged');
 
@@ -348,6 +355,7 @@ class ConfigNotaController extends Controller
 		}
 		return redirect('/configNF');
 	}
+
 
 
 	private function validarAtivacaoBalancaPadrao(Request $request)

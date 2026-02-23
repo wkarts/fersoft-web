@@ -389,7 +389,7 @@ class VendaController extends Controller
     private function applyRtToItemVendaArray(array $itemArr, $produto): array
     {
         $rt = app(ReformaTributariaService::class);
-        $empresaId = (int)($empresaId ?? 0);
+        $empresaId = (int)($this->empresa_id ?? 0);
         if ($empresaId <= 0) {
             $userLogged = session('user_logged');
             if (is_array($userLogged)) {

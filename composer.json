@@ -19,7 +19,7 @@
         "laravel/sanctum": "^v4.0.7",
         "laravel/tinker": "^v2.10.0",
         "maatwebsite/excel": "^3.1.62",
-        "mercadopago/dx-php": "3.0.8",
+        "mercadopago/dx-php": "^3.0.8",
         "mr-wolf-gb/traccar": "^1.0",
         "nfephp-org/posprint": "^v0.1.3",
         "nfephp-org/sped-common": "^v5.1.14",
@@ -29,7 +29,7 @@
         "nfephp-org/sped-ibpt": "^v2.0.1",
         "nfephp-org/sped-mdfe": "^v4.1.1",
         "nfephp-org/sped-nfe": "^v5.1.27",
-        "phpclasses/php_serial": "1.10",
+        "phpclasses/php_serial": "^1.10",
         "phpmailer/phpmailer": "^v6.9.3",
         "picqer/php-barcode-generator": "^v3.2.0",
         "pragmarx/google2fa-laravel": "^2.3",
@@ -106,8 +106,8 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "./vendor/phpclasses/php_serial"
+            "type": "composer",
+            "url": "https://www.phpclasses.org/"
         }
     ],
     "minimum-stability": "dev",

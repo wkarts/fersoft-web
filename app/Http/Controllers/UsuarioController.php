@@ -654,6 +654,22 @@ class UsuarioController extends Controller
 	}
 
 
+	private function resolveBalancaPadraoId($balancaPadraoId)
+	{
+		$balancaPadraoId = (int) $balancaPadraoId;
+		if ($balancaPadraoId <= 0) {
+			return null;
+		}
+
+		$balancaValida = BalancaConfig::where('empresa_id', $this->empresa_id)
+			->where('ativo', true)
+			->where('id', $balancaPadraoId)
+			->exists();
+
+		return $balancaValida ? $balancaPadraoId : null;
+	}
+
+
 	private function _validate(Request $request, $update = false){
 		$rules = [
 			'nome' => 'required',

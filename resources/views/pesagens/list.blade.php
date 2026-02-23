@@ -413,6 +413,17 @@
                                             <small class="text-hover-dark">
                                                 - {{ number_format($desconto, 2, ',', '.') }} kg
                                             </small>
+
+                                            <!--
+                                            @if($mostrarLinhaValoresTicket)
+                                                <br>
+                                                <small class="text-muted" style="font-size: 11px;">
+                                                    Vlr Unit.: R$ {{ number_format($valorUnitarioTicket, 2, ',', '.') }}
+                                                    &nbsp;|&nbsp;
+                                                    Vlr Total: R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}
+                                                </small>
+                                            @endif
+                                            -->
                                         </td>
 
                                         <!-- Peso Bruto -->
@@ -953,8 +964,12 @@
                                         </div>
 
                                         <div class="form-group col-md-6 col-sm-12">
-                                            <label for="peso_bag">Peso dos Recipientes (kg):</label>
-                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" readonly>
+                                            <label for="peso_bag">Peso dos Recipientes (kg):
+                                                @if($configNota->desbloquear_campo_peso_bag_ticket ?? false)
+                                                    <button type="button" class="btn btn-xs btn-light-primary py-0 px-1 ml-1 btn-repetir-tara" title="Repetir tara da balança">↻</button>
+                                                @endif
+                                            </label>
+                                            <input type="number" name="peso_bag" id="peso_bag" step="0.01" class="form-control" value="0.00" {{ ($configNota->desbloquear_campo_peso_bag_ticket ?? false) ? "" : "readonly" }}>
                                         </div>
                                         @if($configNota->usar_valores_ticket_pesagem ?? false)
                                             <div class="form-group col-md-6 col-sm-12">
@@ -1231,10 +1246,25 @@
         const USAR_VALORES_TICKET_PESAGEM = {{ (int) ($configNota->usar_valores_ticket_pesagem ?? 0) }};
         const EXIBIR_VALORES_TICKET_PESAGEM_GRID = {{ (int) ($configNota->exibir_valores_ticket_pesagem_grid ?? 0) }};
         const BALANCA_PADRAO_USUARIO_ID = {{ (int) ($balancaPadraoUsuarioId ?? 0) }};
+        const DESBLOQUEAR_CAMPO_PESO_BAG_TICKET = {{ (int) ($configNota->desbloquear_campo_peso_bag_ticket ?? 0) }};
+        const AUTO_CONNECT_BALANCA_PADRAO_USUARIO = {{ (int) ($configNota->conectar_automaticamente_balanca_padrao_usuario ?? 0) }};
+        const AUTO_CONNECT_BALANCA_AO_SELECIONAR = {{ (int) ($configNota->conectar_automaticamente_balanca_ao_selecionar ?? 0) }};
 
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso_bag', function (e) {
-            e.preventDefault();
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                e.preventDefault();
+            }
+        });
+
+        $(document).on('click', '[id^=modalTickets] .btn-repetir-tara', function () {
+            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                return;
+            }
+
+            const $modal = $(this).closest('[id^=modalTickets]');
+            const taraAtual = parseFloat($modal.find('#pesoTara').text().replace(',', '.')) || 0;
+            $modal.find('#peso_bag').val(taraAtual.toFixed(2)).trigger('input');
         });
 
         $(document).on('keydown paste', '[id^=modalTickets] #peso', function (e) {
@@ -2765,6 +2795,9 @@
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
             $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
+            if (window._balancaAutoCtrl) {
+                delete window._balancaAutoCtrl['#' + $modal.attr('id')];
+            }
         });
 
     </script>
@@ -2775,44 +2808,90 @@
             let balancaSelecionada = null;
             let intervaloLeitura;
 
+            const autoStateMap = window._balancaAutoCtrl = window._balancaAutoCtrl || {};
+            autoStateMap[modalId] = autoStateMap[modalId] || {
+                desconexaoManual: false,
+                conectado: false,
+                balancaId: null,
+                balancaConectada: null,
+                trocando: false,
+            };
+            const autoState = autoStateMap[modalId];
+
+            function tentarAutoConectar() {
+                if (!AUTO_CONNECT_BALANCA_AO_SELECIONAR) {
+                    return;
+                }
+                if (autoState.desconexaoManual || autoState.trocando) {
+                    return;
+                }
+                if (!balancaSelecionada || !balancaSelecionada.id || autoState.conectado) {
+                    return;
+                }
+                $(modalId).find('#connect').trigger('click');
+            }
+
             // Seleciona a balança
-            $(modalId).find('#balanca-select').on('change', function () {
+            $(modalId).find('#balanca-select').off('change').on('change', function () {
                 const select = $(this).find(':selected');
+                const balancaIdAnterior = autoState.balancaId;
+
                 balancaSelecionada = {
                     id: select.val(),
                     backend: select.data('backend'),
                     modelo: select.data('modelo'),
                     porta: select.data('port')
                 };
-                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id);
+                $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id || autoState.conectado);
                 $(modalId).find('#balanca_config_id').val(balancaSelecionada.id || '');
-                $(modalId).find('#disconnect').prop('disabled', true);
+                $(modalId).find('#disconnect').prop('disabled', !autoState.conectado);
+
+                if (autoState.conectado && autoState.balancaId && String(autoState.balancaId) !== String(balancaSelecionada.id)) {
+                    $(modalId).find('#balanca-select').val(String(autoState.balancaId));
+                    abrirModalMensagem('Aviso', 'Desconecte da balança atual antes de trocar para outra.');
+                    return;
+                }
+
+                tentarAutoConectar();
             });
 
             // Conectar
-            $(modalId).find('#connect').on('click', function () {
-                if (!balancaSelecionada) {
+            $(modalId).find('#connect').off('click').on('click', function () {
+                if (!balancaSelecionada || !balancaSelecionada.id) {
                     abrirModalMensagem('Aviso', 'Selecione uma balança!');
                     return;
                 }
 
                 axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
                     .then(() => {
+                        autoState.conectado = true;
+                        autoState.balancaId = String(balancaSelecionada.id);
+                        autoState.balancaConectada = { ...balancaSelecionada };
+                        autoState.desconexaoManual = false;
                         $(modalId).find('#connect').prop('disabled', true);
                         $(modalId).find('#disconnect').prop('disabled', false);
+                        $(modalId).find('#balanca-select').prop('disabled', true);
                         iniciarLeitura(modalId, balancaSelecionada);
                     })
                     .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message));
             });
 
             // Desconectar
-            $(modalId).find('#disconnect').on('click', function () {
-                if (!balancaSelecionada) return;
+            $(modalId).find('#disconnect').off('click').on('click', function () {
+                const balancaParaDesconectar = autoState.balancaConectada || balancaSelecionada;
+                if (!balancaParaDesconectar) return;
 
-                axios.get(`${balancaSelecionada.backend}/api/close`)
+                axios.get(`${balancaParaDesconectar.backend}/api/close`)
                     .then(() => {
+                        autoState.conectado = false;
+                        autoState.balancaId = null;
+                        autoState.balancaConectada = null;
+                        if (!autoState.trocando) {
+                            autoState.desconexaoManual = true;
+                        }
                         $(modalId).find('#connect').prop('disabled', false);
                         $(modalId).find('#disconnect').prop('disabled', true);
+                        $(modalId).find('#balanca-select').prop('disabled', false);
                         clearInterval(intervaloLeitura);
                         $(modalId).find('#pesoAtual').text('----');
                     })
@@ -2821,6 +2900,7 @@
 
             // Iniciar leitura contínua
             function iniciarLeitura(modalId, balancaSelecionada) {
+                clearInterval(intervaloLeitura);
                 intervaloLeitura = setInterval(() => {
                     axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
                         .then(response => {
@@ -2837,7 +2917,9 @@
                             $(modalId).find('#pesoTara').text(tara.toFixed(2));
                             $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
                             $(modalId).find('#peso').val(bruto); // Bruto
-                            $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                            if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
+                                $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                            }
                             calcularValorTotalTicket(modalId);
                             $(modalId).find('#peso_origem').val('balanca');
                             if (dados.sobrecarga) {
@@ -2865,13 +2947,24 @@
             const modalId = '#' + $(this).attr('id'); // Identifica o modal atual
             ativarEventosBalança(modalId); // Chama a função para ativar eventos
 
-            if (BLOQUEAR_PESAGEM_MANUAL_BALANCA && modalId.startsWith('#modalTickets')) {
+            if (modalId.startsWith('#modalTickets')) {
                 const $modal = $(modalId);
-                $modal.find('#peso').prop('readonly', true);
-                $modal.find('#peso_origem').val('manual');
+                if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                    $modal.find('#peso').prop('readonly', true);
+                    $modal.find('#peso_origem').val('manual');
+                }
+
+                $modal.find('#balanca-select').prop('disabled', false);
 
                 if (BALANCA_PADRAO_USUARIO_ID > 0) {
                     $modal.find('#balanca-select').val(String(BALANCA_PADRAO_USUARIO_ID)).trigger('change');
+                    if (AUTO_CONNECT_BALANCA_PADRAO_USUARIO) {
+                        const stateMap = window._balancaAutoCtrl || {};
+                        const state = stateMap[modalId];
+                        if (state && !state.desconexaoManual) {
+                            setTimeout(() => $modal.find('#connect').trigger('click'), 80);
+                        }
+                    }
                 }
             }
         });
