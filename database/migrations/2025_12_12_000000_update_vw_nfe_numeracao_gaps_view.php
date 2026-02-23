@@ -7,6 +7,37 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement('DROP VIEW IF EXISTS vw_nfe_numeracao_gaps');
+            DB::statement(<<<'SQL'
+CREATE VIEW vw_nfe_numeracao_gaps AS
+SELECT
+    NULL AS empresa_id,
+    NULL AS filial_id,
+    NULL AS filial_label,
+    NULL AS serie,
+    NULL AS numero_usado_anterior,
+    NULL AS origem_usado_anterior,
+    NULL AS origem_id_anterior,
+    NULL AS data_doc_anterior,
+    NULL AS chave_nfe_anterior,
+    NULL AS status_nfe_anterior,
+    NULL AS anterior_sem_chave,
+    NULL AS numero_usado_atual,
+    NULL AS origem_usado_atual,
+    NULL AS origem_id_atual,
+    NULL AS data_doc_atual,
+    NULL AS chave_nfe_atual,
+    NULL AS status_nfe_atual,
+    NULL AS atual_sem_chave,
+    NULL AS numero_inicial_pulado,
+    NULL AS numero_final_pulado,
+    NULL AS quantidade_pulada
+WHERE 1 = 0;
+SQL);
+            return;
+        }
+
         DB::statement(<<<'SQL'
 CREATE OR REPLACE VIEW `vw_nfe_numeracao_gaps` AS
 WITH `docs` AS
@@ -146,6 +177,11 @@ SQL
 
     public function down(): void
     {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            DB::statement('DROP VIEW IF EXISTS vw_nfe_numeracao_gaps');
+            return;
+        }
+
         // Volta a VIEW para a versão ORIGINAL (sem ignorar_gaps / status),
         // exatamente como estava antes desta migration.
         DB::statement(<<<'SQL'
