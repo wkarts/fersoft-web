@@ -281,6 +281,14 @@ class Menu {
 					[
 						'nome' => 'Transferencia de estoque',
 						'rota' => '/transferencia'
+					],
+					[
+						'nome' => 'Kardex (Ledger)',
+						'rota' => '/estoque/kardex'
+					],
+					[
+						'nome' => 'Ajustes (Ledger)',
+						'rota' => '/estoque/ajustes'
 					]
 				]
 			],
@@ -933,6 +941,10 @@ class Menu {
 			</g>
 			</svg>
 			</span>';
+		}
+
+		if($titulo == 'Controle de Estoque'){
+			$titulo = 'Estoque';
 		}
 
 		if($titulo == 'Entradas'){

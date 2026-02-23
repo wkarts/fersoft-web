@@ -2073,6 +2073,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
 	Route::group(['prefix' => 'estoque'],function(){
 		Route::get('/', 'StockController@index');
+		Route::get('/kardex', 'StockKardexController@index');
+		Route::get('/kardex/{produto}', 'StockKardexController@show');
+		Route::get('/ajustes', 'StockAdjustmentController@index');
+		Route::get('/ajustes/novo', 'StockAdjustmentController@create');
+		Route::post('/ajustes', 'StockAdjustmentController@store');
+		Route::get('/ajustes/{id}', 'StockAdjustmentController@show');
 		Route::get('/pesquisa', 'StockController@pesquisa');
 		Route::get('/su', 'StockController@su');
 		Route::get('/view/{id}', 'StockController@view');
@@ -2810,6 +2816,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 	Route::group(['prefix' => 'monitor'], function () {
 		Route::get('/pesagens', 'MonitorPesagemController@index')->name('monitor.pesagens');
 		Route::get('/pesagens/data', 'MonitorPesagemController@data')->name('monitor.pesagens.data');
+		Route::get('/pesagens/snapshot', 'MonitorStockSnapshotController@snapshot')->name('monitor.pesagens.snapshot');
 	});
 
     Route::group(['prefix' => 'ticketsPesagem'], function () {
