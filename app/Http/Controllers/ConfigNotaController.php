@@ -119,6 +119,9 @@ class ConfigNotaController extends Controller
 
 	public function save(Request $request){
 		$this->_validate($request);
+
+		$tentouDesabilitarProdutoReferenciado = false;
+
 		$request->merge([
 			'bloquear_pesagem_manual_balanca' => $request->boolean('bloquear_pesagem_manual_balanca'),
 			'usar_valores_ticket_pesagem' => $request->boolean('usar_valores_ticket_pesagem'),
@@ -128,6 +131,15 @@ class ConfigNotaController extends Controller
 			'conectar_automaticamente_balanca_padrao_usuario' => $request->boolean('conectar_automaticamente_balanca_padrao_usuario'),
 			'conectar_automaticamente_balanca_ao_selecionar' => $request->boolean('conectar_automaticamente_balanca_ao_selecionar'),
 		]);
+
+		if ((int) $request->id > 0) {
+			$tentouDesabilitarProdutoReferenciado = !$request->boolean('usa_produto_referenciado_pesagem');
+			$configExistente = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+			if ($configExistente && (bool) ($configExistente->usa_produto_referenciado_pesagem ?? false)) {
+				$request->merge(['usa_produto_referenciado_pesagem' => true]);
+			}
+		}
 
 		if ($request->bloquear_pesagem_manual_balanca) {
 			$validacaoBalanca = $this->validarAtivacaoBalancaPadrao($request);
@@ -164,6 +176,7 @@ class ConfigNotaController extends Controller
 		$uf = $cidade->uf;
 		$cUF = ConfigNota::getCodUF($uf);
 		$municipio = $cidade->nome;
+
 
 		$request->merge([
 			'senha_remover' => trim($request->senha_remover)
@@ -343,6 +356,10 @@ class ConfigNotaController extends Controller
 			}
 
 			$result = $config->save();
+
+			if ($result && (bool) ($config->usa_produto_referenciado_pesagem ?? false) && $tentouDesabilitarProdutoReferenciado) {
+				session()->flash('mensagem_erro', 'A configuração de produto referenciado da pesagem já está ativa e permanece bloqueada para desativação.');
+			}
 		}
 
 		$value = session('user_logged');

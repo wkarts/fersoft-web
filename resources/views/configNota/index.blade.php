@@ -183,12 +183,27 @@
                                                             <div class="form-group mt-3 mb-0">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">
-                                                                        <input type="checkbox" name="usa_produto_referenciado_pesagem" value="1" {{ (old('usa_produto_referenciado_pesagem', $config->usa_produto_referenciado_pesagem ?? 0)) ? 'checked' : '' }}>
+                                                                        <input type="checkbox"
+                                                                               name="usa_produto_referenciado_pesagem"
+                                                                               value="1"
+                                                                               {{ (old('usa_produto_referenciado_pesagem', $config->usa_produto_referenciado_pesagem ?? 0)) ? 'checked' : '' }}
+                                                                               data-confirm-lock="1"
+                                                                               {{ ($config->usa_produto_referenciado_pesagem ?? 0) ? 'disabled' : '' }}>
                                                                         <span></span>
-                                                                        No ledger ERP da conversão da pesagem, usar produto referenciado quando existir
+                                                                        Considerar o produto referenciado na conversão da pesagem para venda/compra no controle de estoque
                                                                     </label>
                                                                 </div>
-                                                                <small class="text-muted">Se ativo, a ponte PESAGEM→ERP usa produto referenciado do item pesado; sem referenciado, mantém fallback automático para o produto pesado.</small>
+                                                                @if($config->usa_produto_referenciado_pesagem ?? 0)
+                                                                    <input type="hidden" name="usa_produto_referenciado_pesagem" value="1">
+                                                                @endif
+                                                                <small class="text-muted">
+                                                                    Quando habilitado, no momento da conversão da pesagem para Venda ou Compra, o sistema considerará para movimentação de estoque
+                                                                    o <strong>produto referenciado</strong> vinculado ao item pesado.
+                                                                    Caso não exista produto referenciado, será utilizado automaticamente o produto original da pesagem como fallback.
+                                                                    <br><br>
+                                                                    ⚠ Após ativação, esta configuração não poderá ser desabilitada, pois altera a regra estrutural de controle de estoque
+                                                                    e a rastreabilidade das movimentações.
+                                                                </small>
                                                             </div>
 
 
@@ -1218,6 +1233,30 @@
 		}
 	}
 	$('[data-toggle="popover"]').popover()
+
+
+	document.addEventListener('DOMContentLoaded', function () {
+		const chk = document.querySelector('input[name="usa_produto_referenciado_pesagem"][data-confirm-lock="1"]');
+		if (!chk || chk.disabled) return;
+
+		const initialChecked = chk.checked;
+
+		chk.addEventListener('click', function (e) {
+			if (!initialChecked && chk.checked) {
+				const ok = confirm(
+					'Ao habilitar esta configuração, a conversão da pesagem para Venda/Compra passará a considerar o produto referenciado para movimentação de estoque.\n\n' +
+					'ATENÇÃO: Após ativação, não será possível desabilitar esta configuração.\n\n' +
+					'Deseja continuar?'
+				);
+
+				if (!ok) {
+					e.preventDefault();
+					chk.checked = false;
+				}
+			}
+		});
+	});
+
 
 	$('#alerta_sonoro').change(() => {
 		let alerta_sonoro = $('#alerta_sonoro').val()
