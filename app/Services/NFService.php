@@ -24,6 +24,7 @@ use App\Services\Fiscal\EmissionLogger;
 use App\Services\Fiscal\TransmissaoResult;
 use Illuminate\Support\Facades\DB;
 use NFePHP\NFe\Factories\Contingency;
+use App\Services\ReformaTributariaService;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -67,6 +68,31 @@ class NFService{
 		$this->tools->model(55);
 	}
 
+
+
+	private function appendReformaObservacao(string $obs, $venda): string
+	{
+		$rt = app(ReformaTributariaService::class);
+		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+			return $obs;
+		}
+
+		$tBase = (float)($venda->total_bc_ibs_cbs ?? 0);
+		$tIbs = (float)($venda->total_ibs ?? 0);
+		$tCbs = (float)($venda->total_cbs ?? 0);
+		$tIs = (float)($venda->total_is ?? 0);
+
+		if ($tBase <= 0 && $tIbs <= 0 && $tCbs <= 0 && $tIs <= 0) {
+			return $obs;
+		}
+
+		$obs .= " | RT IBS/CBS/IS: BC=" . number_format($tBase, 2, ',', '.')
+			. " IBS=" . number_format($tIbs, 2, ',', '.')
+			. " CBS=" . number_format($tCbs, 2, ',', '.')
+			. " IS=" . number_format($tIs, 2, ',', '.');
+
+		return $obs;
+	}
 	private function getContigencia(){
 		$active = Contigencia::
 		where('empresa_id', $this->empresa_id)
@@ -1322,6 +1348,7 @@ class NFService{
 			$obs .= "Inf. adicional de pagamento: " . $venda->getFormaPagamento($venda->empresa_id)->infos;
 		}
 
+		$obs = $this->appendReformaObservacao($obs, $venda);
 		$stdInfoAdic->infCpl = $this->retiraAcentos($obs);
 
 		$infoAdic = $nfe->taginfAdic($stdInfoAdic);

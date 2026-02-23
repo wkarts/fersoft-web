@@ -1,6 +1,53 @@
 var ITENS = [];
 var SOMAITENS = 0;
 
+
+function rtParseNumber(v){
+	if(v === null || v === undefined) return 0;
+	if(typeof v === 'number') return isFinite(v) ? v : 0;
+	v = String(v).trim();
+	if(!v) return 0;
+	v = v.replace(/\s+/g,'').replace(/[R$ ]/g,'');
+	v = v.replace(/[^0-9\-,.]/g,'');
+	if(v.indexOf(',') !== -1 && v.indexOf('.') !== -1){
+		v = v.replace(/\./g,'').replace(',', '.');
+	}else if(v.indexOf(',') !== -1){
+		v = v.replace(',', '.');
+	}
+	var n = parseFloat(v);
+	return isFinite(n) ? n : 0;
+}
+
+function aplicarReformaDevolucaoItem(item, done){
+	if(!item || !item.codigo){ if(typeof done === 'function') done(); return; }
+	$.ajax({
+		type: 'POST',
+		url: path + 'vendas/reforma/preview-item',
+		dataType: 'json',
+		data: {
+			produto_id: item.codigo,
+			quantidade: item.qCom,
+			valor: item.vUnCom,
+			valor_total: rtParseNumber(item.vUnCom) * rtParseNumber(item.qCom),
+			_token: $('#_token').val()
+		}
+	}).done((res) => {
+		const data = res && res.data ? res.data : null;
+		if(data){
+			item.bc_ibs_cbs = data.bc_ibs_cbs || 0;
+			item.valor_ibs = data.valor_ibs || 0;
+			item.valor_cbs = data.valor_cbs || 0;
+			item.is_valor = data.is_valor || 0;
+			item.cst_ibs_cbs = data.cst_ibs_cbs || item.cst_ibs_cbs || '';
+			item.class_trib_ibs_cbs = data.class_trib_ibs_cbs || item.class_trib_ibs_cbs || '';
+		}
+	}).fail((err) => {
+		console.error('[RT][devolucao-edit][preview-item] erro', err && err.status, err && err.responseJSON);
+	}).always(() => {
+		if(typeof done === 'function') done();
+	});
+}
+
 $(function () {
 
 	ITENS = JSON.parse($('#itens_nf').val());
@@ -42,6 +89,7 @@ function prepara(call){
 			pRedBC: v.pRedBC,
 
 		}
+		aplicarReformaDevolucaoItem(js);
 		temp.push(js)
 	})
 	ITENS = temp;
@@ -252,8 +300,8 @@ function percorreEdit(id, nome, quantidade, valor, valorFreteEdit, pRedBC, call)
 		temp.push(v);
 	});
 	ITENS = temp;
-
-	call(true);
+	const itemAlterado = ITENS.find((x) => String(x.codigo) === String(id));
+	aplicarReformaDevolucaoItem(itemAlterado, () => call(true));
 }
 
 function getItem(id, call){
