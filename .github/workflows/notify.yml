@@ -1,0 +1,132 @@
+name: Notify - Email e Webhook
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: Status da operação (success/failure)
+        required: true
+        type: string
+      version:
+        description: Versão/tag da release
+        required: false
+        type: string
+      release_url:
+        description: URL da release
+        required: false
+        type: string
+      commit_sha:
+        description: SHA do commit
+        required: false
+        type: string
+      summary:
+        description: Texto de resumo para notificações
+        required: false
+        type: string
+      notify_required:
+        description: Falhar quando notificação falhar
+        required: false
+        default: false
+        type: boolean
+    secrets:
+      WEBHOOK_URL:
+        required: false
+      WEBHOOK_TOKEN:
+        required: false
+      SMTP_HOST:
+        required: false
+      SMTP_PORT:
+        required: false
+      SMTP_USER:
+        required: false
+      SMTP_PASS:
+        required: false
+      SMTP_FROM:
+        required: false
+      SMTP_TO:
+        required: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Preparar payload de notificação
+        id: payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          payload_file="notify_payload.json"
+
+          cat > "$payload_file" <<JSON
+          {
+            "status": "${{ inputs.status }}",
+            "version": "${{ inputs.version }}",
+            "tag": "${{ inputs.version }}",
+            "release_url": "${{ inputs.release_url }}",
+            "repository": "${{ github.repository }}",
+            "commit": "${{ inputs.commit_sha }}",
+            "run_id": "${{ github.run_id }}",
+            "date": "$now"
+          }
+          JSON
+
+          email_body="notify_email.txt"
+          cp scripts/notify/email.md "$email_body"
+          sed -i "s|{{status}}|${{ inputs.status }}|g" "$email_body"
+          sed -i "s|{{version}}|${{ inputs.version }}|g" "$email_body"
+          sed -i "s|{{repository}}|${{ github.repository }}|g" "$email_body"
+          sed -i "s|{{commit}}|${{ inputs.commit_sha }}|g" "$email_body"
+          sed -i "s|{{url}}|${{ inputs.release_url }}|g" "$email_body"
+          sed -i "s|{{date}}|$now|g" "$email_body"
+          sed -i "s|{{summary}}|${{ inputs.summary }}|g" "$email_body"
+
+          echo "payload_file=$payload_file" >> "$GITHUB_OUTPUT"
+          echo "email_body=$email_body" >> "$GITHUB_OUTPUT"
+
+      - name: Enviar webhook
+        id: webhook
+        continue-on-error: true
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          WEBHOOK_MAX_RETRIES: "3"
+          WEBHOOK_BACKOFF_SECONDS: "2"
+        run: scripts/notify/webhook.sh "${{ steps.payload.outputs.payload_file }}"
+
+      - name: Enviar e-mail
+        id: email
+        continue-on-error: true
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+          EMAIL_SUBJECT: "[${{ inputs.status }}] Release ${{ inputs.version }} - ${{ github.repository }}"
+          EMAIL_BODY_FILE: ${{ steps.payload.outputs.email_body }}
+        run: scripts/notify/send_email.sh "${{ steps.payload.outputs.email_body }}"
+
+      - name: Validar política de notificação
+        if: inputs.notify_required == true
+        shell: bash
+        run: |
+          if [ "${{ steps.webhook.outcome }}" != "success" ] || [ "${{ steps.email.outcome }}" != "success" ]; then
+            echo "Notificação marcada como obrigatória e houve falhas."
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Resultado das notificações"
+            echo "- Status: ${{ inputs.status }}"
+            echo "- Webhook: ${{ steps.webhook.outcome }}"
+            echo "- E-mail: ${{ steps.email.outcome }}"
+            echo "- notify_required: ${{ inputs.notify_required }}"
+          } >> "$GITHUB_STEP_SUMMARY"
