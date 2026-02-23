@@ -67,10 +67,6 @@ class NFCeService{
         return preg_replace('/\D+/', '', (string)$value);
     }
 
-
-
-
-
     private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
     {
         $rt = app(ReformaTributariaService::class);

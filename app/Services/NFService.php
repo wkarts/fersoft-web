@@ -68,11 +68,7 @@ class NFService{
 		$this->tools->model(55);
 	}
 
-
-
-
-
-	private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
+  private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
 	{
 		$rt = app(ReformaTributariaService::class);
 		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
