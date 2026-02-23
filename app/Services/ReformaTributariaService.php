@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Referencias\Anp;
 use App\Models\ReformaTributaria\ClassTribIbsCbs;
 

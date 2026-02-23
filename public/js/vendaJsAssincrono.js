@@ -44,6 +44,7 @@ function aplicarReformaItem(item){
 			produto_id: item.codigo,
 			quantidade: item.quantidade,
 			valor: item.valor,
+			valor_total: rtParseNumber(item.valor) * rtParseNumber(item.quantidade),
 			_token: $('#_token').val()
 		}
 	}).done((res) => {
@@ -83,7 +84,9 @@ function aplicarReformaItem(item){
 		item.is_vlr = data.is_valor;
 		item.is_aliq = data.is_aliq;
 	}).fail((err) => {
-		console.log(err)
+		const status = err && err.status ? err.status : 'sem_status';
+		const body = err && err.responseJSON ? err.responseJSON : null;
+		console.error('[RT][preview-item] erro', { status, body });
 	});
 }
 
