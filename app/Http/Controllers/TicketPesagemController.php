@@ -35,7 +35,7 @@ class TicketPesagemController extends BaseController
             'peso_origem' => 'nullable|in:manual,balanca',
             'valor_unitario' => 'nullable|numeric|min:0',
             'valor_total' => 'nullable|numeric|min:0',
-            'peso_bag' => 'nullable|numeric|min:0|max:10000',
+            //'peso_bag' => 'nullable|numeric|min:0|max:10000',
             'tipo' => 'required|in:entrada,saida,avulsa',
             'status' => 'required|in:em andamento,concluído',
         ];
@@ -71,7 +71,10 @@ class TicketPesagemController extends BaseController
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
             $taraInformada = $request->input('tara', $request->input('peso_bag', 0));
-            $data['peso_bag'] = 0; // Tara somente por leitura da balança
+            $permiteEditarPesoBag = (bool) ($config->desbloquear_campo_peso_bag_ticket ?? false);
+            $data['peso_bag'] = $permiteEditarPesoBag
+                ? max(0, (float) $request->input('peso_bag', 0))
+                : 0;
 
             if ($config && $config->bloquear_pesagem_manual_balanca) {
                 $validacao = $this->validarPesagemSomenteBalanca($request);
@@ -87,7 +90,9 @@ class TicketPesagemController extends BaseController
 
                 $data['balanca_config_id'] = (int) $request->input('balanca_config_id');
                 $data['peso_origem'] = 'balanca';
-                $data['peso_bag'] = max(0, (float) $taraInformada);
+                $data['peso_bag'] = $permiteEditarPesoBag
+                    ? max(0, (float) $request->input('peso_bag', $taraInformada))
+                    : max(0, (float) $taraInformada);
 
                 if ($data['peso_bag'] <= 0) {
                     \Log::info('TicketPesagem sem tara explícita na leitura da balança; mantendo regra atual.', [

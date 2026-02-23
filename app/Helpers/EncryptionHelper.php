@@ -8,20 +8,30 @@ class EncryptionHelper
     private static $cipher = 'AES-256-CBC';
 
     /**
-     * Inicializa a chave de criptografia a partir do .env.
+     * Inicializa a chave de criptografia a partir do ENV.
      *
      * @return void
      * @throws \Exception
      */
     public static function initialize()
     {
-        $key = env('ENCRYPTION_KEY');
+        // ✅ IMPORTANTE:
+        // Durante "composer install", o Laravel roda package:discover e ainda NÃO carregou .env.
+        // Então precisamos priorizar getenv/$_ENV para CI funcionar.
+        $key =
+            getenv('ENCRYPTION_KEY')
+                ?: ($_ENV['ENCRYPTION_KEY'] ?? null)
+                ?: env('ENCRYPTION_KEY');
+
+        if (!$key) {
+            throw new \Exception('ENCRYPTION_KEY não definido nas variáveis de ambiente (.env ou Secrets do CI).');
+        }
 
         // Depuração: Verifica o valor bruto da chave
         //echo "Valor bruto da chave: $key\n";
 
         if (!$key) {
-            throw new \Exception('ENCRYPTION_KEY não definido no arquivo .env.');
+            throw new \Exception('ENCRYPTION_KEY não definido nas variáveis de ambiente (.env ou CI Secrets).');
         }
 
         // Depuração: Verifica se a chave começa com "base64:"
@@ -50,7 +60,6 @@ class EncryptionHelper
         if ($keyLength !== 32) {
             throw new \Exception('ENCRYPTION_KEY deve ser uma string base64 válida com 32 bytes.');
         }
-
 
         self::$key = $decodedKey;
     }
@@ -107,4 +116,3 @@ class EncryptionHelper
         return $decrypted;
     }
 }
-
