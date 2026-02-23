@@ -183,6 +183,18 @@
                                                             <div class="form-group mt-3 mb-0">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">
+                                                                        <input type="checkbox" name="usa_produto_referenciado_pesagem" value="1" {{ (old('usa_produto_referenciado_pesagem', $config->usa_produto_referenciado_pesagem ?? 0)) ? 'checked' : '' }}>
+                                                                        <span></span>
+                                                                        No ledger ERP da conversão da pesagem, usar produto referenciado quando existir
+                                                                    </label>
+                                                                </div>
+                                                                <small class="text-muted">Se ativo, a ponte PESAGEM→ERP usa produto referenciado do item pesado; sem referenciado, mantém fallback automático para o produto pesado.</small>
+                                                            </div>
+
+
+                                                            <div class="form-group mt-3 mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="desbloquear_campo_peso_bag_ticket" value="1" {{ (old('desbloquear_campo_peso_bag_ticket', $config->desbloquear_campo_peso_bag_ticket ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Desbloquear campo "Peso dos Recipientes" no ticket de pesagem

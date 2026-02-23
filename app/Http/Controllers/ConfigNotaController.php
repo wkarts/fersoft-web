@@ -122,6 +122,7 @@ class ConfigNotaController extends Controller
 		$request->merge([
 			'bloquear_pesagem_manual_balanca' => $request->boolean('bloquear_pesagem_manual_balanca'),
 			'usar_valores_ticket_pesagem' => $request->boolean('usar_valores_ticket_pesagem'),
+			'usa_produto_referenciado_pesagem' => $request->boolean('usa_produto_referenciado_pesagem'),
 			'exibir_valores_ticket_pesagem_grid' => $request->boolean('exibir_valores_ticket_pesagem_grid'),
 			'desbloquear_campo_peso_bag_ticket' => $request->boolean('desbloquear_campo_peso_bag_ticket'),
 			'conectar_automaticamente_balanca_padrao_usuario' => $request->boolean('conectar_automaticamente_balanca_padrao_usuario'),
@@ -248,6 +249,7 @@ class ConfigNotaController extends Controller
 				'senha_remover' => trim($request->senha_remover) != '' ? md5($request->senha_remover) : '',
 				'bloquear_pesagem_manual_balanca' => $request->bloquear_pesagem_manual_balanca,
 				'usar_valores_ticket_pesagem' => $request->usar_valores_ticket_pesagem,
+				'usa_produto_referenciado_pesagem' => $request->usa_produto_referenciado_pesagem,
 				'exibir_valores_ticket_pesagem_grid' => $request->exibir_valores_ticket_pesagem_grid,
 				'desbloquear_campo_peso_bag_ticket' => $request->desbloquear_campo_peso_bag_ticket,
 				'conectar_automaticamente_balanca_padrao_usuario' => $request->conectar_automaticamente_balanca_padrao_usuario,
@@ -328,6 +330,7 @@ class ConfigNotaController extends Controller
 			$config->graficos_dash = $request->graficos_dash;
 			$config->bloquear_pesagem_manual_balanca = $request->bloquear_pesagem_manual_balanca;
 			$config->usar_valores_ticket_pesagem = $request->usar_valores_ticket_pesagem;
+			$config->usa_produto_referenciado_pesagem = $request->usa_produto_referenciado_pesagem;
 			$config->exibir_valores_ticket_pesagem_grid = $request->exibir_valores_ticket_pesagem_grid;
 			$config->desbloquear_campo_peso_bag_ticket = $request->desbloquear_campo_peso_bag_ticket;
 			$config->conectar_automaticamente_balanca_padrao_usuario = $request->conectar_automaticamente_balanca_padrao_usuario;
