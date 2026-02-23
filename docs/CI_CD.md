@@ -15,7 +15,7 @@ Executa em `pull_request` (`opened`, `synchronize`, `reopened`, `ready_for_revie
 
 **Jobs**
 - `setup`: detecta presença de `composer.json`, `package.json`, runner de testes.
-- `php`: valida Composer, instala dependências, `php -v`, lint (`php -l`) e testes (`phpunit`/`artisan test`).
+- `php`: valida Composer, instala dependências com `--no-scripts`, prepara `.env` de CI (incluindo `APP_KEY` e `ENCRYPTION_KEY` efêmeras), executa `artisan package:discover`, `php -v`, lint (`php -l`) e testes.
 - `node`: `npm ci`, e roda `npm test`/`npm run build` apenas se scripts existirem.
 - `security`: `composer audit` e `npm audit` em modo warning-only (`continue-on-error`).
 - `summary`: publica resumo com status dos jobs.
@@ -107,11 +107,17 @@ Observações:
 - `include_vendor` (`true/false`)
 - `notify_required` (`true/false`)
 
+## Flags opcionais de execução
+- `CI_RUN_FULL_TESTS` (env de workflow/job):
+  - `false` (padrão): roda suíte `Unit` para estabilidade em CI sem DB externo.
+  - `true`: além da suíte Unit, executa suíte completa.
+
 ## Idempotência e segurança operacional
 - Se tag já existe: fluxo aborta com mensagem explícita.
 - Se release já existe para a tag: fluxo aborta com instrução.
 - Notificações falham sem quebrar release por padrão (best effort).
 - Se precisar enforcement, use `notify_required=true` no dispatch.
+- O fluxo evita falha por ausência de `APP_KEY`/`ENCRYPTION_KEY` no CI gerando chaves efêmeras por execução.
 
 ## Como testar localmente
 ```bash
