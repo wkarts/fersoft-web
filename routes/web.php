@@ -1770,8 +1770,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'ponto'], function(){
         Route::get('/', 'PontoController@dashboard');
-        Route::get('/relogios', 'PontoController@relogios');
-        Route::get('/importacao-afd', 'PontoController@importacaoAfd');
+
+        Route::group(['prefix' => 'relogios'], function(){
+            Route::get('/', 'PontoRelogioController@index');
+            Route::get('/new', 'PontoRelogioController@new');
+            Route::get('/edit/{id}', 'PontoRelogioController@edit');
+            Route::get('/delete/{id}', 'PontoRelogioController@delete');
+            Route::post('/save', 'PontoRelogioController@save');
+            Route::put('/update/{id}', 'PontoRelogioController@update');
+        });
+
+        Route::get('/importacao-afd', 'PontoAfdController@index');
+        Route::post('/importacao-afd', 'PontoAfdController@store');
+        Route::get('/importacao-afd/{id}', 'PontoAfdController@show');
+
         Route::get('/marcacoes', 'PontoController@marcacoes');
         Route::get('/jornadas', 'PontoController@jornadas');
         Route::get('/ajustes', 'PontoController@ajustes');
