@@ -262,6 +262,47 @@ class Menu {
 
 				]
 			],
+
+
+            [
+                'titulo' => 'Controle de Ponto',
+                'icone' => $this->getIcone('ControleDePonto'),
+                'subs' => [
+                    [
+                        'nome' => 'Dashboard',
+                        'rota' => '/ponto'
+                    ],
+                    [
+                        'nome' => 'Relógios',
+                        'rota' => '/ponto/relogios'
+                    ],
+                    [
+                        'nome' => 'Importação AFD',
+                        'rota' => '/ponto/importacao-afd'
+                    ],
+                    [
+                        'nome' => 'Marcações',
+                        'rota' => '/ponto/marcacoes'
+                    ],
+                    [
+                        'nome' => 'Jornadas e Escalas',
+                        'rota' => '/ponto/jornadas'
+                    ],
+                    [
+                        'nome' => 'Ajustes',
+                        'rota' => '/ponto/ajustes'
+                    ],
+                    [
+                        'nome' => 'Fechamentos',
+                        'rota' => '/ponto/fechamentos'
+                    ],
+                    [
+                        'nome' => 'Relatórios',
+                        'rota' => '/ponto/relatorios'
+                    ]
+                ]
+            ],
+
 			[
 				'titulo' => 'Estoque',
 				'icone' => $this->getIcone('Estoque'),
@@ -979,6 +1020,21 @@ class Menu {
 			</svg>
 			</span>';
 		}
+
+        if($titulo == 'ControleDePonto'){
+            return '<span class="svg-icon menu-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                <g fill="none" fill-rule="evenodd">
+                    <rect x="0" y="0" width="24" height="24"/>
+                    <rect x="3" y="5" width="18" height="14" rx="2" fill="currentColor" opacity="0.15"/>
+                    <rect x="6" y="8" width="4" height="8" rx="1" fill="currentColor" opacity="0.85"/>
+                    <path d="M13 9h5a1 1 0 1 1 0 2h-5a1 1 0 1 1 0-2Zm0 4h5a1 1 0 1 1 0 2h-5a1 1 0 1 1 0-2Z" fill="currentColor"/>
+                    <circle cx="8" cy="12" r="1" fill="#FFFFFF"/>
+                </g>
+            </svg>
+            </span>';
+        }
+
 		if($titulo == 'Estoque'){
 			return '<span class="svg-icon menu-icon">
 			<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">

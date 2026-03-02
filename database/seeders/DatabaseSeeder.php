@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             UsuarioSeed::class,
             CategoriaSeed::class,
             CidadeSeed::class,
+            PontoPermissoesSeeder::class,
         ]);
     }
 }

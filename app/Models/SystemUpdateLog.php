@@ -21,7 +21,7 @@ class SystemUpdateLog extends Model
         'context' => 'array',
     ];
 
-    public function update(): BelongsTo
+    public function systemUpdate(): BelongsTo
     {
         return $this->belongsTo(SystemUpdate::class, 'system_update_id');
     }
