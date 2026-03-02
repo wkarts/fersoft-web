@@ -4,12 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class PontoTurno extends Model
+class PontoOcorrencia extends Model
 {
     protected $guarded = [];
 
     protected $casts = [
-        'cruza_meia_noite' => 'boolean',
-        'ativo' => 'boolean',
+        'dados' => 'array',
+        'data_referencia' => 'date',
     ];
 }

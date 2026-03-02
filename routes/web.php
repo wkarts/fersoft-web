@@ -1784,8 +1784,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/importacao-afd', 'PontoAfdController@store');
         Route::get('/importacao-afd/{id}', 'PontoAfdController@show');
 
-        Route::get('/marcacoes', 'PontoController@marcacoes');
-        Route::get('/jornadas', 'PontoController@jornadas');
+        Route::get('/marcacoes', 'PontoMarcacaoController@index');
+        Route::post('/marcacoes/tratar', 'PontoMarcacaoController@tratar');
+
+        Route::get('/jornadas', 'PontoJornadaController@index');
+        Route::post('/jornadas/save', 'PontoJornadaController@storeJornada');
+        Route::post('/turnos/save', 'PontoJornadaController@storeTurno');
+        Route::post('/escalas/save', 'PontoJornadaController@storeEscala');
         Route::get('/ajustes', 'PontoController@ajustes');
         Route::get('/fechamentos', 'PontoController@fechamentos');
         Route::get('/relatorios', 'PontoController@relatorios');
