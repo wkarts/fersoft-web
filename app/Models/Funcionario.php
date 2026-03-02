@@ -30,6 +30,16 @@ class Funcionario extends Model
         'tipo_sanguineo',
         'status_funcionario',
         'numero_registro',
+        'matricula',
+        'pis',
+        'data_demissao',
+        'jornada_padrao_id',
+        'escala_padrao_id',
+        'gestor_id',
+        'centro_custo_id',
+        'ativo_ponto_mobile',
+        'codigo_relogio',
+        'observacao_ponto',
         'observacoes',
         'foto_funcionario'
     ];
