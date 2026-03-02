@@ -1766,6 +1766,19 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     });
 
+
+
+    Route::group(['prefix' => 'ponto'], function(){
+        Route::get('/', 'PontoController@dashboard');
+        Route::get('/relogios', 'PontoController@relogios');
+        Route::get('/importacao-afd', 'PontoController@importacaoAfd');
+        Route::get('/marcacoes', 'PontoController@marcacoes');
+        Route::get('/jornadas', 'PontoController@jornadas');
+        Route::get('/ajustes', 'PontoController@ajustes');
+        Route::get('/fechamentos', 'PontoController@fechamentos');
+        Route::get('/relatorios', 'PontoController@relatorios');
+    });
+
 	Route::group(['prefix' => 'funcionarios'],function(){
 		Route::get('/calcComissao', 'FuncionarioController@calcComissao');
 		Route::get('/', 'FuncionarioController@index');
