@@ -1791,8 +1791,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/jornadas/save', 'PontoJornadaController@storeJornada');
         Route::post('/turnos/save', 'PontoJornadaController@storeTurno');
         Route::post('/escalas/save', 'PontoJornadaController@storeEscala');
-        Route::get('/ajustes', 'PontoController@ajustes');
-        Route::get('/fechamentos', 'PontoController@fechamentos');
+        Route::get('/ajustes', 'PontoAjusteController@index');
+        Route::post('/ajustes', 'PontoAjusteController@store');
+        Route::post('/ajustes/aprovar', 'PontoAjusteController@aprovar');
+
+        Route::get('/fechamentos', 'PontoFechamentoController@index');
+        Route::post('/fechamentos/fechar', 'PontoFechamentoController@fechar');
+        Route::post('/fechamentos/reabrir', 'PontoFechamentoController@reabrir');
+
+        Route::get('/banco-horas', 'PontoBancoHorasController@index');
+        Route::post('/banco-horas/recalcular', 'PontoBancoHorasController@recalcular');
+
         Route::get('/relatorios', 'PontoController@relatorios');
     });
 

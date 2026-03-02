@@ -297,6 +297,10 @@ class Menu {
                         'rota' => '/ponto/fechamentos'
                     ],
                     [
+                        'nome' => 'Banco de Horas',
+                        'rota' => '/ponto/banco-horas'
+                    ],
+                    [
                         'nome' => 'Relatórios',
                         'rota' => '/ponto/relatorios'
                     ]
