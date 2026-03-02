@@ -24,7 +24,7 @@ class SystemUpdateNode extends Model
         'finished_at',
     ];
 
-    public function update(): BelongsTo
+    public function systemUpdate(): BelongsTo
     {
         return $this->belongsTo(SystemUpdate::class, 'system_update_id');
     }
