@@ -520,3 +520,8 @@ Route::group(['prefix' => 'updates'], function () {
     Route::get('/history', 'Updates\UpdateApiController@history')->name('api.updates.history');
     Route::get('/{version}/logs/{log}', 'Updates\UpdateApiController@log')->name('api.updates.log');
 });
+
+
+Route::group(['prefix' => 'ponto-mobile', 'middleware' => 'authApp'], function(){
+	Route::post('/marcacoes', 'PontoMobileController@registrarMarcacao');
+});

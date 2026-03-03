@@ -2,7 +2,7 @@
 set -euo pipefail
 
 log() {
-  echo "[version] $*"
+  echo "[version] $*" >&2
 }
 
 normalize_version() {
