@@ -8,6 +8,8 @@ class PontoMarcacao extends Model
 {
     protected $guarded = [];
 
+    protected $table = 'ponto_marcacoes';
+
     protected $casts = [
         'dados_brutos' => 'array',
         'inconsistente' => 'boolean',
