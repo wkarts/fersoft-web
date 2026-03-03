@@ -118,6 +118,32 @@
                                                    value="{{ isset($funcionario->numero_registro) ? $funcionario->numero_registro : old('numero_registro') }}">
                                         </div>
 
+
+
+                                        <div class="form-group col-lg-3 col-md-6 col-sm-12">
+                                            <label class="col-form-label">Matrícula (Ponto/AFD)</label>
+                                            <input type="text" name="matricula" class="form-control"
+                                                   value="{{ isset($funcionario->matricula) ? $funcionario->matricula : old('matricula') }}"
+                                                   placeholder="Código de vínculo com AFD">
+                                        </div>
+
+                                        <div class="form-group col-lg-3 col-md-6 col-sm-12">
+                                            <label class="col-form-label">PIS (somente números)</label>
+                                            <input type="text" name="pis" class="form-control"
+                                                   value="{{ isset($funcionario->pis) ? $funcionario->pis : old('pis') }}">
+                                        </div>
+
+                                        <div class="form-group col-lg-3 col-md-6 col-sm-12">
+                                            <label class="col-form-label">Código no Relógio</label>
+                                            <input type="text" name="codigo_relogio" class="form-control"
+                                                   value="{{ isset($funcionario->codigo_relogio) ? $funcionario->codigo_relogio : old('codigo_relogio') }}">
+                                        </div>
+
+                                        <div class="form-group col-lg-12">
+                                            <label class="col-form-label">Observação do Ponto</label>
+                                            <textarea class="form-control" name="observacao_ponto">{{ isset($funcionario->observacao_ponto) ? $funcionario->observacao_ponto : old('observacao_ponto') }}</textarea>
+                                        </div>
+
                                         <div class="form-group col-lg-12">
                                             <label class="col-form-label">Observações</label>
                                             <textarea class="form-control" name="observacoes">{{ isset($funcionario->observacoes) ? $funcionario->observacoes : old('observacoes') }}</textarea>

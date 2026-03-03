@@ -77,6 +77,9 @@ class FuncionarioController extends Controller
             'categoria_cnh' => $request->categoria_cnh ?? null,
             'status_motorista' => $request->status_motorista ?? 'Ativo',
             'status_funcionario' => $request->status_funcionario ?? 'Ativo',
+            'matricula' => $request->matricula ? trim($request->matricula) : null,
+            'pis' => $request->pis ? preg_replace('/\D/', '', $request->pis) : null,
+            'codigo_relogio' => $request->codigo_relogio ? trim($request->codigo_relogio) : null,
         ]);
 
         $request->merge([
@@ -219,6 +222,10 @@ class FuncionarioController extends Controller
         $resp->tipo_sanguineo = $request->input('tipo_sanguineo');
         $resp->status_funcionario = $request->input('status_funcionario');
         $resp->numero_registro = $request->input('numero_registro');
+        $resp->matricula = $request->input('matricula');
+        $resp->pis = $request->pis ? preg_replace('/\D/', '', $request->pis) : null;
+        $resp->codigo_relogio = $request->input('codigo_relogio');
+        $resp->observacao_ponto = $request->input('observacao_ponto');
         $resp->observacoes = $request->input('observacoes');
 
         $funcionario->fill($request->all());
@@ -275,6 +282,10 @@ class FuncionarioController extends Controller
             'data_admissao' => 'nullable|date_format:d/m/Y',
             'tipo_sanguineo' => 'nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
             'status_funcionario' => 'required|in:Ativo,Desligado',
+            'matricula' => 'nullable|max:60',
+            'pis' => 'nullable|max:20',
+            'codigo_relogio' => 'nullable|max:30',
+            'observacao_ponto' => 'nullable|max:500',
             'foto_funcionario' => 'nullable|image|max:2048',
         ];
 
