@@ -33,7 +33,7 @@
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>ID</th><th>Nome</th><th>Status</th><th>Linhas</th><th>Processado em</th><th>Ações</th>
+                    <th>ID</th><th>Nome</th><th>Hash</th><th>Status</th><th>Linhas</th><th>Processado em</th><th>Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -41,13 +41,14 @@
                 <tr>
                     <td>{{ $a->id }}</td>
                     <td>{{ $a->nome_original }}</td>
+                    <td><small>{{ $a->hash_arquivo }}</small></td>
                     <td>{{ $a->status }}</td>
-                    <td>{{ $a->linhas_validas }}/{{ $a->total_linhas }}</td>
+                    <td>{{ $a->linhas_validas }}/{{ $a->total_linhas }} <small class="text-danger">(inv: {{ $a->linhas_invalidas }})</small></td>
                     <td>{{ $a->processado_em }}</td>
                     <td><a class="btn btn-sm btn-info" href="/ponto/importacao-afd/{{ $a->id }}">Visualizar</a></td>
                 </tr>
             @empty
-                <tr><td colspan="6">Nenhum arquivo importado.</td></tr>
+                <tr><td colspan="7">Nenhum arquivo importado.</td></tr>
             @endforelse
             </tbody>
         </table>
