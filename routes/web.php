@@ -1802,7 +1802,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/banco-horas', 'PontoBancoHorasController@index');
         Route::post('/banco-horas/recalcular', 'PontoBancoHorasController@recalcular');
 
-        Route::get('/relatorios', 'PontoController@relatorios');
+        Route::get('/relatorios', 'PontoRelatorioController@index');
+        Route::get('/relatorios/csv', 'PontoRelatorioController@csv');
     });
 
 	Route::group(['prefix' => 'funcionarios'],function(){
