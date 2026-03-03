@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PontoJornada extends Model
 {
+    protected $table = 'ponto_jornadas';
+
     protected $guarded = [];
 
     protected $casts = [

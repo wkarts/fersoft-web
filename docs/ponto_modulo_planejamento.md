@@ -50,5 +50,9 @@
   - `ponto:reprocessar-periodo`
 - Comando operacional para validação de inconsistências:
   - `ponto:validar-inconsistencias`
+- Comando operacional para recalcular banco de horas:
+  - `ponto:recalcular-banco-horas`
+- Comando operacional para fechamento de competência:
+  - `ponto:fechar-competencia`
 
 Esses comandos reforçam o fluxo incremental entre FASE 3 (tratamento) e FASE 4 (auditoria/fechamento), sem alterar arquitetura da base.
