@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b8109863336b2a7bcc7569547eac3167",
+    "content-hash": "50ac9389c72826223d4e0a34f0c90134",
     "packages": [
         {
             "name": "argws/laravel-updater",
@@ -2383,16 +2383,16 @@
         },
         {
             "name": "justinrainbow/json-schema",
-            "version": "5.3.1",
+            "version": "5.3.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jsonrainbow/json-schema.git",
-                "reference": "b5a44b6391a3bbb75c9f2b73e1ef03d6045e1e20"
+                "reference": "2f7abf648939847a789c55c206d4cb9dd0d53e2c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jsonrainbow/json-schema/zipball/b5a44b6391a3bbb75c9f2b73e1ef03d6045e1e20",
-                "reference": "b5a44b6391a3bbb75c9f2b73e1ef03d6045e1e20",
+                "url": "https://api.github.com/repos/jsonrainbow/json-schema/zipball/2f7abf648939847a789c55c206d4cb9dd0d53e2c",
+                "reference": "2f7abf648939847a789c55c206d4cb9dd0d53e2c",
                 "shasum": ""
             },
             "require": {
@@ -2442,9 +2442,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jsonrainbow/json-schema/issues",
-                "source": "https://github.com/jsonrainbow/json-schema/tree/5.3.1"
+                "source": "https://github.com/jsonrainbow/json-schema/tree/5.3.2"
             },
-            "time": "2025-12-12T08:56:22+00:00"
+            "time": "2026-02-27T12:33:19+00:00"
         },
         {
             "name": "laravel/framework",
@@ -5421,21 +5421,22 @@
         },
         {
             "name": "phpclasses/php_serial",
-            "version": "1.20",
+            "version": "1.20.0",
             "dist": {
-                "type": "zip",
-                "url": "https://www.phpclasses.org/install/package/php_serial.zip"
+                "type": "path",
+                "url": "packages/phpclasses_php_serial",
+                "reference": "3e6fe99198a015b590aa0d9ffb81842e1ee3831f"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-develop": "1.0.x-dev"
-                }
-            },
             "autoload": {
                 "classmap": [
                     "src/"
                 ]
+            },
+            "description": "Local mirror for phpclasses/php_serial to avoid external download instability",
+            "transport-options": {
+                "symlink": false,
+                "relative": true
             }
         },
         {
@@ -14186,5 +14187,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

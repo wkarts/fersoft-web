@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class PontoAfdRegistro extends Model
 {
+    protected $table = 'ponto_afd_registros';
+
     protected $guarded = [];
 
     protected $casts = [
