@@ -2,7 +2,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -105,6 +108,13 @@
         }
     },
     "repositories": [
+        {
+            "type": "path",
+            "url": "packages/phpclasses_php_serial",
+            "options": {
+                "symlink": false
+            }
+        },
         {
             "type": "composer",
             "url": "https://www.phpclasses.org/"

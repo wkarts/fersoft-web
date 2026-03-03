@@ -7,6 +7,7 @@ use App\Models\PontoAfdArquivo;
 use App\Models\PontoAfdRegistro;
 use App\Models\PontoRelogio;
 use App\Services\Ponto\PontoAfdImportService;
+use Throwable;
 
 class PontoAfdController extends Controller
 {
@@ -39,20 +40,25 @@ class PontoAfdController extends Controller
     {
         $value = session('user_logged');
 
-        $result = $this->importService->importar(
-            $request->file('arquivo_afd'),
-            (int)$this->empresa_id,
-            $value['id'] ?? null,
-            $request->input('ponto_relogio_id')
-        );
+        try {
+            $result = $this->importService->importar(
+                $request->file('arquivo_afd'),
+                (int) $this->empresa_id,
+                $value['id'] ?? null,
+                $request->input('ponto_relogio_id')
+            );
 
-        if ($result['duplicado']) {
-            session()->flash('mensagem_erro', 'Arquivo já importado para esta empresa.');
+            if ($result['duplicado']) {
+                session()->flash('mensagem_erro', 'Arquivo já importado para esta empresa. Run-ID: ' . ($result['run_id'] ?? '-'));
+                return redirect('/ponto/importacao-afd');
+            }
+
+            session()->flash('mensagem_sucesso', 'Arquivo AFD importado com sucesso! Run-ID: ' . ($result['run_id'] ?? '-'));
+            return redirect('/ponto/importacao-afd/' . $result['arquivo']->id);
+        } catch (Throwable $e) {
+            session()->flash('mensagem_erro', 'Falha ao importar arquivo AFD: ' . $e->getMessage());
             return redirect('/ponto/importacao-afd');
         }
-
-        session()->flash('mensagem_sucesso', 'Arquivo AFD importado com sucesso!');
-        return redirect('/ponto/importacao-afd/' . $result['arquivo']->id);
     }
 
     public function show($id)

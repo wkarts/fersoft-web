@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b8109863336b2a7bcc7569547eac3167",
+    "content-hash": "ad4d66d1dc2a1d11ff3c810e9253c2ca",
     "packages": [
         {
             "name": "argws/laravel-updater",
@@ -5421,21 +5421,22 @@
         },
         {
             "name": "phpclasses/php_serial",
-            "version": "1.20",
+            "version": "1.20.0",
             "dist": {
-                "type": "zip",
-                "url": "https://www.phpclasses.org/install/package/php_serial.zip"
+                "type": "path",
+                "url": "packages/phpclasses_php_serial",
+                "reference": "3e6fe99198a015b590aa0d9ffb81842e1ee3831f"
             },
             "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-develop": "1.0.x-dev"
-                }
-            },
             "autoload": {
                 "classmap": [
                     "src/"
                 ]
+            },
+            "description": "Local mirror for phpclasses/php_serial to avoid external download instability",
+            "transport-options": {
+                "symlink": false,
+                "relative": true
             }
         },
         {
@@ -14186,5 +14187,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }

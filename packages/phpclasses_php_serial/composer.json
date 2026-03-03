@@ -1,0 +1,11 @@
+{
+    "name": "phpclasses/php_serial",
+    "description": "Local mirror for phpclasses/php_serial to avoid external download instability",
+    "version": "1.20.0",
+    "type": "library",
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    }
+}
