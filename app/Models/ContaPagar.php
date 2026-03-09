@@ -10,29 +10,30 @@ class ContaPagar extends BaseModel
 {
     use FilialInjectable;
 
-	protected $fillable = [
-		'compra_id',
+    protected $fillable = [
+        'compra_id',
         'data_vencimento',
+        'data_emissao',
         'data_pagamento',
         'valor_integral',
         'valor_original',
         'valor_pago',
-		'referencia',
+        'referencia',
         'categoria_id',
         'status',
         'empresa_id',
         'fornecedor_id',
         'tipo_pagamento',
-		'numero_nota_fiscal',
+        'numero_nota_fiscal',
         'filial_id',
         'observacao',
         'valor_inss',
         'valor_iss',
         'valor_pis',
-		'valor_cofins',
+        'valor_cofins',
         'valor_ir',
         'outras_retencoes'
-	];
+    ];
 
     // Atributo virtual para retornar valor líquido
     public function getValorLiquidoAttribute()
@@ -56,159 +57,179 @@ class ContaPagar extends BaseModel
         $this->attributes['filial_id'] = ((int) $value === -1 ? null : $value);
     }
 
-	public function filial(){
+    public function filial(){
         return $this->belongsTo(Filial::class, 'filial_id');
     }
 
-	public function compra(){
-		return $this->belongsTo(Compra::class, 'compra_id');
-	}
+    public function compra(){
+        return $this->belongsTo(Compra::class, 'compra_id');
+    }
 
-	public function categoria(){
-		return $this->belongsTo(CategoriaConta::class, 'categoria_id');
-	}
+    public function categoria(){
+        return $this->belongsTo(CategoriaConta::class, 'categoria_id');
+    }
 
-	public function fornecedor(){
-		return $this->belongsTo(Fornecedor::class, 'fornecedor_id');
-	}
+    public function fornecedor(){
+        return $this->belongsTo(Fornecedor::class, 'fornecedor_id');
+    }
 
-	public function diasAtraso(){
-		$d = date('Y-m-d');
-		$d2 = $this->data_vencimento;
-		$dif = strtotime($d2) - strtotime($d);
-		$dias = floor($dif / (60 * 60 * 24));
+    public function diasAtraso(){
+        $d = date('Y-m-d');
+        $d2 = $this->data_vencimento;
+        $dif = strtotime($d2) - strtotime($d);
+        $dias = floor($dif / (60 * 60 * 24));
 
-		if($dias == 0){
-			return "conta vence hoje";
-		}
+        if($dias == 0){
+            return "conta vence hoje";
+        }
 
-		if($dias > 0){
-			return "$dias dia(s) para o vencimento";
-		}else{
-			return "conta vencida à " . ($dias*-1) . " dia(s)";
-		}
-	}
+        if($dias > 0){
+            return "$dias dia(s) para o vencimento";
+        }else{
+            return "conta vencida à " . ($dias*-1) . " dia(s)";
+        }
+    }
 
-	public static function filtroData($dataInicial, $dataFinal, $status){
-		$value = session('user_logged');
+    public static function filtroData($dataInicial, $dataFinal, $status, $tipoFiltro = 'data_vencimento'){
+        $value = session('user_logged');
         $empresa_id = $value['empresa'];
-		$c = ContaPagar::
-		select('conta_pagars.*')
-		->orderBy('data_vencimento', 'asc')
-		->where('empresa_id', $empresa_id)
-		->whereBetween('data_vencimento', [$dataInicial,
-			$dataFinal]);
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
-		return $c->get();
-	}
-	public static function filtroDataFornecedor($fornecedor, $dataInicial, $dataFinal, $status){
-		$value = session('user_logged');
-        $empresa_id = $value['empresa'];
-        $contas = [];
-		$c = ContaPagar::
-		orderBy('conta_pagars.data_vencimento', 'asc')
-		->join('compras', 'compras.id' , '=', 'conta_pagars.compra_id')
-		->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
-		->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%")
-		->where('conta_pagars.empresa_id', $empresa_id)
-		->whereBetween('data_vencimento', [$dataInicial,
-			$dataFinal]);
+        // Mapeia o que vem da tela para o nome correto da coluna no banco
+        $coluna = 'data_vencimento';
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
-		$temp = $c->get();
-		foreach($temp as $t){
-			array_push($contas, $t);
-		}
+        if($tipoFiltro == 'emissao'){
+            $coluna = 'data_emissao';
+        }
 
-		$c = ContaPagar::
-		select('conta_pagars.*')
-		->orderBy('conta_pagars.data_vencimento', 'asc')
-		->join('fornecedors', 'fornecedors.id' , '=', 'conta_pagars.fornecedor_id')
-		->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%")
-		->where('conta_pagars.empresa_id', $empresa_id)
-		->whereBetween('data_vencimento', [$dataInicial,
-			$dataFinal]);
+        if($tipoFiltro == 'registro'){
+            $coluna = 'created_at';
+        }
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
-		$temp = $c->get();
-		foreach($temp as $t){
-			array_push($contas, $t);
-		}
-		return $contas;
-	}
+        $c = ContaPagar::
+        select('conta_pagars.*')
+            ->orderBy($coluna, 'asc')
+            ->where('empresa_id', $empresa_id)
+            ->whereBetween($coluna, [
+                $dataInicial . " 00:00:00",
+                $dataFinal . " 23:59:59"
+            ]);
 
-	public static function filtroFornecedor($fornecedor, $status){
-		$value = session('user_logged');
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
+
+        return $c->get();
+    }
+
+    public static function filtroDataFornecedor($fornecedor, $dataInicial, $dataFinal, $status){
+        $value = session('user_logged');
         $empresa_id = $value['empresa'];
         $contas = [];
-		$c = ContaPagar::
-		select('conta_pagars.*')
-		->orderBy('conta_pagars.data_vencimento', 'asc')
-		->join('compras', 'compras.id' , '=', 'conta_pagars.compra_id')
-		->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
-		->where('conta_pagars.empresa_id', $empresa_id)
-		->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
+        $c = ContaPagar::
+        orderBy('conta_pagars.data_vencimento', 'asc')
+            ->join('compras', 'compras.id' , '=', 'conta_pagars.compra_id')
+            ->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
+            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%")
+            ->where('conta_pagars.empresa_id', $empresa_id)
+            ->whereBetween('data_vencimento', [$dataInicial, $dataFinal]);
 
-		$temp = $c->get();
-		foreach($temp as $t){
-			array_push($contas, $t);
-		}
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
 
-		$c = ContaPagar::
-		select('conta_pagars.*')
-		->orderBy('conta_pagars.data_vencimento', 'asc')
-		->join('fornecedors', 'fornecedors.id' , '=', 'conta_pagars.fornecedor_id')
-		->where('conta_pagars.empresa_id', $empresa_id)
-		->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
+        $temp = $c->get();
+        foreach($temp as $t){
+            array_push($contas, $t);
+        }
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
+        $c = ContaPagar::
+        select('conta_pagars.*')
+            ->orderBy('conta_pagars.data_vencimento', 'asc')
+            ->join('fornecedors', 'fornecedors.id' , '=', 'conta_pagars.fornecedor_id')
+            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%")
+            ->where('conta_pagars.empresa_id', $empresa_id)
+            ->whereBetween('data_vencimento', [$dataInicial, $dataFinal]);
 
-		$temp = $c->get();
-		foreach($temp as $t){
-			array_push($contas, $t);
-		}
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
 
-		return $contas;
-	}
+        $temp = $c->get();
+        foreach($temp as $t){
+            array_push($contas, $t);
+        }
 
-	public static function filtroStatus($status){
-		$value = session('user_logged');
+        return $contas;
+    }
+
+    public static function filtroFornecedor($fornecedor, $status){
+        $value = session('user_logged');
         $empresa_id = $value['empresa'];
-		$c = ContaPagar::
-		where('empresa_id', $empresa_id)
-		->orderBy('conta_pagars.data_vencimento', 'asc');
+        $contas = [];
 
-		if($status == 'pago'){
-			$c->where('status', true);
-		} else if($status == 'pendente'){
-			$c->where('status', false);
-		}
+        $c = ContaPagar::
+        select('conta_pagars.*')
+            ->orderBy('conta_pagars.data_vencimento', 'asc')
+            ->join('compras', 'compras.id' , '=', 'conta_pagars.compra_id')
+            ->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
+            ->where('conta_pagars.empresa_id', $empresa_id)
+            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
 
-		return $c->get();
-	}
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
+
+        $temp = $c->get();
+        foreach($temp as $t){
+            array_push($contas, $t);
+        }
+
+        $c = ContaPagar::
+        select('conta_pagars.*')
+            ->orderBy('conta_pagars.data_vencimento', 'asc')
+            ->join('fornecedors', 'fornecedors.id' , '=', 'conta_pagars.fornecedor_id')
+            ->where('conta_pagars.empresa_id', $empresa_id)
+            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
+
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
+
+        $temp = $c->get();
+        foreach($temp as $t){
+            array_push($contas, $t);
+        }
+
+        return $contas;
+    }
+
+    public static function filtroStatus($status){
+        $value = session('user_logged');
+        $empresa_id = $value['empresa'];
+
+        $c = ContaPagar::
+        where('empresa_id', $empresa_id)
+            ->orderBy('conta_pagars.data_vencimento', 'asc');
+
+        if($status == 'pago'){
+            $c->where('status', true);
+        } else if($status == 'pendente'){
+            $c->where('status', false);
+        }
+
+        return $c->get();
+    }
 
     public static function tiposPagamento(){
         return [
@@ -220,7 +241,7 @@ class ContaPagar extends BaseModel
             'Banco Bradesco',
             'Banco do Brasil',
             'Banco Inter',
-			'C6Bank',
+            'C6Bank',
             'Cora',
             'Caixa 01',
             'Caixa 02',
@@ -237,5 +258,4 @@ class ContaPagar extends BaseModel
             'Outros'
         ];
     }
-
 }

@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
         botaoConectar.addEventListener('click', async function () {
             const modal = botaoConectar.closest('.modal');
             const portaSelect = modal.querySelector('.porta-select');
-            const portaSelecionada = portaSelect.value || modal.querySelector('.custom-port').value;N
+            const portaSelecionada = portaSelect.value || modal.querySelector('.custom-port').value;
 
             if (!portaSelecionada) {
                 alert('Selecione ou digite uma porta antes de conectar!');

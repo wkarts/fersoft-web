@@ -50,6 +50,7 @@
 							<option @if(isset($tipo_filtro_data) && $tipo_filtro_data == 1) selected @endif value="1">Vencimento</option>
 							<option @if(isset($tipo_filtro_data) && $tipo_filtro_data == 2) selected @endif value="2">Data de registro</option>
 							<option @if(isset($tipo_filtro_data) && $tipo_filtro_data == 3) selected @endif value="3">Data de pagamento</option>
+                            <option @if(isset($tipo_filtro_data) && $tipo_filtro_data == 4) selected @endif value="3">Data de Emissão</option>
 						</select>
 					</div>
 
@@ -262,6 +263,7 @@
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">REFERÊNCIA</span></th>
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">VALOR INTEGRAL</span></th>
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">VALOR PAGO</span></th>
+                                                    <th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">DATA EMISSÃO</span></th>
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">DATA VENCIMENTO</span></th>
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">DATA DE REGISTRO</span></th>
 													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">DATA DE PAGAMENTO</span></th>
@@ -318,7 +320,13 @@
 														<span class="codigo" style="width: 120px;" id="id">
 															R$ {{number_format($c->valor_pago, $casasDecimais, ',', '.')}}
 														</span>
-													</td>
+                                                      
+                                                    <td class="datatable-cell">
+                                                      <span class="codigo" style="width: 120px;">
+                                                    {{ $c->data_emissao ? \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y') : '--' }}
+                                                   </span>
+                                                   </td>
+													
 													<td class="datatable-cell">
 														<span class="codigo" style="width: 120px;" id="id">
 															{{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y')}}
@@ -518,6 +526,12 @@
 													@endif
 												</a>
 											</div>
+                                          <div class="kt-widget__info">
+                                               <span class="kt-widget__label">Data de emissão:</span>
+                                               <a class="kt-widget__data text-success">
+                                           {{ $c->data_emissao ? \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y') : '--' }}
+                                             </a>
+                                              </div>
 
 											@if(empresaComFilial())
 											<div class="kt-widget__info">

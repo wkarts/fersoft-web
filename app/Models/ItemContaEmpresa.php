@@ -10,7 +10,14 @@ class ItemContaEmpresa extends Model
     use HasFactory;
 
     protected $fillable = [
-        'conta_id', 'descricao', 'tipo_pagamento', 'valor', 'caixa_id', 'tipo', 'saldo_atual'
+        'conta_id',
+        'descricao',
+        'tipo_pagamento',
+        'valor',
+        'caixa_id',
+        'tipo',
+        'saldo_atual',
+        'data_pagamento'
     ];
 
     public function conta(){

@@ -1,87 +1,104 @@
 @extends('default.layout', ['title' => 'Movimentações conta ' . $item->nome])
+
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
-		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-			<div class="col-12">
-				<div class="card-body">
-					<h3 class="">Conta: <strong></strong>{{ $item->nome }}</h3>
+    <div class="card card-custom gutter-b">
+        <div class="card-body">
+            <div class="table-responsive">
+                <form class="row mb-5" method="get" action="{{ route('contas-empresa.show', [$item->id]) }}">
+                    <div class="col-md-2">
+                        <label>Data inicial</label>
+                        <input value="{{ $data_inicio ?? '' }}" type="date" name="data_inicio" class="form-control">
+                    </div>
 
-					<form class="row" method="get" action="{{ route('contas-empresa.show', [$item->id]) }}">
-						<div class="col-md-2">
-							<label>Data inicial</label>
-							<input value="{{ $data_inicio }}" type="date" name="data_inicio" class="form-control">
-						</div>
+                    <div class="col-md-2">
+                        <label>Data final</label>
+                        <input value="{{ $data_final ?? '' }}" type="date" name="data_final" class="form-control">
+                    </div>
 
-						<div class="col-md-2">
-							<label>Data final</label>
-							<input value="{{ $data_final }}" type="date" name="data_final" class="form-control">
-						</div>
+                    <div class="col-md-2">
+                        <label>Tipo</label>
+                        <select name="tipo" class="form-control custom-select">
+                            <option value="">Selecione</option>
+                            <option @if(isset($tipo) && $tipo == 'entrada') selected @endif value="entrada">Entrada</option>
+                            <option @if(isset($tipo) && $tipo == 'saida') selected @endif value="saida">Saída</option>
+                        </select>
+                    </div>
 
-						<div class="col-md-2">
-							<label>Tipo</label>
-							<select name="tipo" class="form-control custom-select">
-								<option value="">Selecione</option>
-								<option @if($tipo ==  'entrada') selected @endif value="entrada">Entrada</option>
-								<option @if($tipo ==  'saida') selected @endif value="saida">Saída</option>
-							</select>
-						</div>
+                    <div class="col-md-4">
+                        <br>
+                        <button class="btn btn-light-primary px-6 font-weight-bold mt-1">
+                            <i class="la la-search"></i> Filtrar
+                        </button>
+                        <a class="btn btn-warning px-6 font-weight-bold mt-1" href="{{ route('contas-empresa.show', [$item->id]) }}">
+                            <i class="la la-eraser"></i> Limpar
+                        </a>
+                    </div>
+                </form>
 
-						<div class="col-md-4">
-							<br>
-							<button class="btn btn-light-primary px-6 font-weight-bold mt-1">
-								<i class="la la-search"></i>
-								Filtrar
-							</button>
-							<a class="btn btn-warning px-6 font-weight-bold mt-1" href="{{ route('contas-empresa.show', [$item->id]) }}">
-								<i class="la la-eraser"></i>
-								Limpar
-							</a>
-						</div>
-					</form>
-					<br>
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th class="text-right">Entrada (+)</th>
+                        <th class="text-right">Saída (-)</th>
+                        <th class="text-right">Saldo</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{-- Linha de Saldo Inicial --}}
+                    <tr class="bg-light">
+                        <td colspan="4"><strong>SALDO ANTERIOR AO PERÍODO</strong></td>
+                        <td class="text-right"><strong>R$ {{ moeda($saldo_anterior) }}</strong></td>
+                    </tr>
 
-					@forelse($data as $m)
-					<div class="row">
-						<div class="col-md-2">
-							{{ __date($m->created_at) }}
-						</div>
+                    {{-- 1. Defina a variável antes do loop --}}
+                    @php
+                        $saldo_acumulado = $saldo_anterior;
+                    @endphp
 
-						<div class="col-md-6 col-12">
-							{{ $m->descricao }}
-							@if($m->caixa_id)
-							<br>
-							Fechamento caixa abertura {{ __date($m->caixa->created_at) }}
-							@endif
-						</div>
+                    @forelse($data as $m)
+                        @php
+                            // 2. Calcula o saldo atual dinamicamente conforme o tipo
+                            if($m->tipo == 'entrada') {
+                                $saldo_acumulado += $m->valor;
+                            } else {
+                                $saldo_acumulado -= $m->valor;
+                            }
+                        @endphp
 
-						<div class="col-md-2 col-12 @if($m->tipo == 'entrada') text-success @else text-danger @endif">
-							<label class="float-right">{{ $m->tipo_pagamento ? App\Models\Venda::getTipo($m->tipo_pagamento) : '' }}</label>
-						</div>
+                        <tr>
+                            {{-- 3. Data de pagamento ou criação --}}
+                            <td>{{ __date($m->data_pagamento ?? $m->created_at) }}</td>
 
-						<div class="col-md-2 col-12 @if($m->tipo == 'entrada') text-success @else text-danger @endif">
-							<label class="float-right">@if($m->tipo == 'entrada')+@else-@endif R$ {{ moeda($m->valor) }}</label>
-						</div>
-					</div>
-					<div class="row">
-						<div class="col-md-10">
-						</div>
-						<div class="col-md-2">
-							<label class="float-right @if($m->saldo_atual <= 0) text-danger @else text-info @endif">
-								Saldo: R$ {{ moeda($m->saldo_atual) }}
-							</label>
-						</div>
-					</div>
-					<hr>
-					@empty
-					<h4 class="text-center">Nenhuma movimentação encontrada!</h4>
-					@endforelse
-				</div>
-			</div>
-			<div class="col-12 m-5">
-				{{$data->links()}}	
-			</div>
-		</div>
-	</div>
-</div>
+                            <td>{{ $m->descricao }}</td>
+
+                            <td class="text-right text-success">
+                                {{ $m->tipo == 'entrada' ? '+ R$ ' . moeda($m->valor) : '-' }}
+                            </td>
+
+                            <td class="text-right text-danger">
+                                {{ $m->tipo == 'saida' ? '- R$ ' . moeda($m->valor) : '-' }}
+                            </td>
+
+                            <td class="text-right">
+                                <span class="{{ $saldo_acumulado < 0 ? 'text-danger' : 'text-info' }}">
+                                    R$ {{ moeda($saldo_acumulado) }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhuma movimentação!</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="col-12 mt-5">
+                {{ $data->appends(request()->all())->links() }}
+            </div>
+        </div>
+    </div>
 @endsection

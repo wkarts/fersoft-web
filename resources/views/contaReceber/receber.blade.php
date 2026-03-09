@@ -62,7 +62,20 @@
 												@endif
 											</div>
 										</div>
-
+<div class="row">
+    <div class="form-group col-lg-4">
+        <label>Juros cobrados (R$)</label>
+        <input type="text" name="juros" id="juros" class="form-control money" value="0,00">
+    </div>
+    <div class="form-group col-lg-4">
+        <label>Multa cobrada (R$)</label>
+        <input type="text" name="multa" id="multa" class="form-control money" value="0,00">
+    </div>
+    <div class="form-group col-lg-4">
+        <label>Desconto concedido (R$)</label>
+        <input type="text" name="desconto" id="desconto" class="form-control money" value="0,00">
+    </div>
+</div>
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label" id="">Tipo de Pagamento</label>
 											<select required class="custom-select form-control" id="forma" name="tipo_pagamento">
@@ -118,3 +131,39 @@
 </div>
 
 @endsection
+
+<script>
+    // Função para converter o valor formatado (1.200,00) em número real (1200.00)
+    function parseMoeda(valor) {
+        if (!valor) return 0;
+        // Remove pontos de milhar e troca a vírgula decimal por ponto
+        let limpo = valor.replace(/\./g, '').replace(',', '.');
+        return parseFloat(limpo) || 0;
+    }
+
+    // Função para formatar o número de volta para o padrão brasileiro (1.200,00)
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-br', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Executa o cálculo
+    function calcularTotal() {
+        let integral = parseMoeda($('#valor_integral').val());
+        let juros    = parseMoeda($('#juros').val());
+        let multa    = parseMoeda($('#multa').val());
+        let desconto = parseMoeda($('#desconto').val());
+
+        // A lógica que você pediu: valor + juros + multa - desconto
+        let total = (integral + juros + multa) - desconto;
+
+        // Atualiza o campo "Valor Recebido" na tela
+        $('#valor_recebido').val(formatarMoeda(total));
+    }
+
+    // Monitora os campos para disparar o cálculo automaticamente
+    $(document).ready(function() {
+        $('#juros, #multa, #desconto').on('keyup blur', function() {
+            calcularTotal();
+        });
+    });
+</script>

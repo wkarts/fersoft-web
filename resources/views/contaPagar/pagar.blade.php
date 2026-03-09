@@ -37,27 +37,28 @@
 								<div class="kt-section__body">
 									<br><br>
 									<div class="row">
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Valor Pago</label>
-											<div class="">
-												<input required type="text" class="form-control @if($errors->has('valor')) is-invalid @endif money" name="valor" value="">
-												@if($errors->has('valor'))
-												<div class="invalid-feedback">
-													{{ $errors->first('valor') }}
-												</div>
-												@endif
-											</div>
-										</div>
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Data de pagamento</label>
-											<div class="">
-												<input required type="text" name="data_pagamento" class="form-control @if($errors->has('vencimento')) is-invalid @endif date-input" value="{{ date('d/m/Y') }}" id="kt_datepicker_3" />
-												@if($errors->has('data_pagamento'))
-												<div class="invalid-feedback">
-													{{ $errors->first('data_pagamento') }}
-												</div>
-												@endif
-											</div>
+									    <div class="form-group validated col-sm-6 col-lg-2">
+									        <label class="col-form-label">Valor Pago</label>
+									        <input required type="text" class="form-control money" name="valor" value="{{ number_format($conta->valor_integral, 2, ',', '.') }}">
+									    </div>
+									
+									    <div class="form-group validated col-sm-6 col-lg-2">
+									        <label class="col-form-label">Juros (+)</label>
+									        <input type="text" class="form-control money" name="juros" value="0,00">
+									    </div>
+									
+									    <div class="form-group validated col-sm-6 col-lg-2">
+									        <label class="col-form-label">Multa (+)</label>
+									        <input type="text" class="form-control money" name="multa" value="0,00">
+									    </div>
+									
+									    <div class="form-group validated col-sm-6 col-lg-2">
+									        <label class="col-form-label">Data de pagamento</label>
+									        <input required type="text" name="data_pagamento" class="form-control date-input" value="{{ date('d/m/Y') }}" id="kt_datepicker_3" />
+									    </div>
+                                   </div>
+									
+								</div>
 										</div>
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label" id="">Tipo de Pagamento</label>
@@ -114,4 +115,35 @@
 	</div>
 </div>
 
+@endsection
+
+@section('javascript')
+<script type="text/javascript">
+    $(function () {
+        // Monitora a digitação nos campos
+        $('input[name="juros"], input[name="multa"]').on('keyup', function () {
+            calcularTotal();
+        });
+
+        function calcularTotal() {
+            // Valor original da conta (pegando do que já veio carregado)
+            // Substitua 'valor_integral' pelo valor que vem do banco se necessário
+            let valorBase = parseMoeda("{{ number_format($conta->valor_integral, 2, ',', '.') }}");
+            let juros = parseMoeda($('input[name="juros"]').val());
+            let multa = parseMoeda($('input[name="multa"]').val());
+
+            let total = valorBase + juros + multa;
+
+            // Atualiza o campo "Valor Pago" com o novo total formatado
+            $('input[name="valor"]').val(total.toLocaleString('pt-br', {minimumFractionDigits: 2}));
+        }
+
+        function parseMoeda(valor) {
+            if(!valor) return 0;
+            // Remove pontos de milhar e troca vírgula por ponto
+            let limpador = valor.replace(/\./g, '').replace(',', '.');
+            return parseFloat(limpador) || 0;
+        }
+    });
+</script>
 @endsection

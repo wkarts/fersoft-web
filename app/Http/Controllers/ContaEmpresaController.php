@@ -10,6 +10,7 @@ use App\Models\ItemContaEmpresa;
 class ContaEmpresaController extends Controller
 {
     protected $empresa_id = null;
+
     public function __construct(){
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
@@ -24,7 +25,7 @@ class ContaEmpresaController extends Controller
     public function index(Request $request){
         $data = ContaEmpresa::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         return view('conta_empresa/index', compact('data'));
     }
@@ -32,7 +33,7 @@ class ContaEmpresaController extends Controller
     public function create(){
 
         $planos = PlanoConta::where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         if(sizeof($planos) == 0){
             session()->flash("mensagem_erro", "Defina o plano de contas");
@@ -45,7 +46,7 @@ class ContaEmpresaController extends Controller
 
         $item = ContaEmpresa::findOrFail($id);
         $planos = PlanoConta::where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         if(sizeof($planos) == 0){
             session()->flash("mensagem_erro", "Defina o plano de contas");
@@ -115,26 +116,46 @@ class ContaEmpresaController extends Controller
     }
 
     public function show(Request $request, $id){
-
         $data_inicio = $request->data_inicio;
         $data_final = $request->data_final;
         $tipo = $request->tipo;
 
         $item = ContaEmpresa::findOrFail($id);
-        $data = ItemContaEmpresa::where('conta_id', $id)
-        ->orderBy('id', 'desc')
-        ->when($data_inicio, function ($q) use ($data_inicio) {
-            return $q->whereDate('created_at', '>=', $data_inicio);
-        })
-        ->when($data_final, function ($q) use ($data_final) {
-            return $q->whereDate('created_at', '<=', $data_final);
-        })
-        ->when($tipo, function ($q) use ($tipo) {
-            return $q->where('tipo', $tipo);
-        })
-        ->paginate(50);
-       
-        return view('conta_empresa/show', compact('data', 'item', 'data_inicio', 'data_final', 'tipo'));
 
+        // 1. Cálculo do Saldo Anterior (Soma o que ocorreu antes da data_inicio)
+        $saldo_anterior = $item->saldo_inicial;
+
+        if($data_inicio){
+            // Usamos COALESCE para filtrar o passado com o mesmo critério da listagem
+            $entradas = ItemContaEmpresa::where('conta_id', $id)
+                ->where('tipo', 'entrada')
+                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
+                ->sum('valor');
+
+            $saidas = ItemContaEmpresa::where('conta_id', $id)
+                ->where('tipo', 'saida')
+                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
+                ->sum('valor');
+
+            $saldo_anterior += ($entradas - $saidas);
+        }
+
+        // No seu Controller, dentro do método show
+        $data = ItemContaEmpresa::where('conta_id', $id)
+            // O orderByRaw abaixo ordena pela data_pagamento,
+            // e se for nula, usa a created_at como critério de desempate
+            ->orderByRaw('COALESCE(data_pagamento, created_at) ASC')
+            ->when($data_inicio, function ($q) use ($data_inicio) {
+                return $q->whereRaw('COALESCE(data_pagamento, created_at) >= ?', [$data_inicio]);
+            })
+            ->when($data_final, function ($q) use ($data_final) {
+                return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]);
+            })
+            ->when($tipo, function ($q) use ($tipo) {
+                return $q->where('tipo', $tipo);
+            })
+            ->paginate(50);
+
+        return view('conta_empresa/show', compact('data', 'item', 'data_inicio', 'data_final', 'tipo', 'saldo_anterior'));
     }
 }

@@ -37,7 +37,27 @@
                                                     @endif
                                                 </div>
                                             </div>
+											
+                                            <div class="form-group col-lg-2 col-md-9 col-sm-12">
+                                                <label class="col-form-label">Data de Emissão</label>
+                                                <div class="">
+                                                    <div class="input-group date">
+                                                        <input type="text" name="data_emissao" class="form-control @if($errors->has('data_emissao')) is-invalid @endif date-input" value="{{{ isset($conta) ? \Carbon\Carbon::parse($conta->data_emissao)->format('d/m/Y') : old('emissao') }}}" id="kt_datepicker_3" />
+                                                        <div class="input-group-append">
+														<span class="input-group-text">
+															<i class="la la-calendar"></i>
+														</span>
+                                                        </div>
+                                                        @if($errors->has('data_emissao'))
+                                                            <div class="invalid-feedback">
+                                                                {{ $errors->first('data_emissao') }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
 
+
+                                                </div>
+                                            </div>
                                             @if(!isset($conta) || $conta->compra_id == null)
                                                 <div class="form-group validated col-sm-9 col-lg-4 col-12">
                                                     <label class="col-form-label" id="">Fornecedor</label>
