@@ -207,6 +207,8 @@ class MDFeService{
 		}
 		$mdfex->taginfContratante($infContratante);
 
+		$this->montarGrupoPagamento($mdfex, $mdfe);
+
 		/* Grupo veicTracao */
 		$veicTracao = new \stdClass();
 		$veicTracao->cInt = '01';
@@ -608,6 +610,67 @@ class MDFeService{
 			return ['erros_xml' => $mdfex->getErrors()];
 		}
 
+	}
+
+	private function montarGrupoPagamento($mdfex, $mdfe){
+		$pagamentos = $mdfe->relationLoaded('pagamentos') ? $mdfe->pagamentos : $mdfe->pagamentos()->with(['componentes', 'parcelas'])->get();
+		if($pagamentos->count() == 0){
+			return;
+		}
+
+		foreach($pagamentos as $pag){
+			$stdPag = new \stdClass();
+			$stdPag->xNome = $pag->nome_pagador;
+			$doc = preg_replace('/\D/', '', $pag->cpf_cnpj_pagador ?? '');
+			if(strlen($doc) == 11){
+				$stdPag->CPF = $doc;
+			}else if(strlen($doc) == 14){
+				$stdPag->CNPJ = $doc;
+			}
+			$stdPag->vContrato = $this->format($mdfe->valor_contrato_pagamento ?: $pag->valor_pagamento);
+			$stdPag->indPag = $mdfe->ind_pagamento ?? '0';
+			$stdPag->tpPag = $pag->forma_pagamento ?? '99';
+			$stdPag->Comp = [];
+			$stdPag->comp = [];
+			$stdPag->dup = [];
+			$stdPag->infPrazo = [];
+
+			if(method_exists($mdfex, 'taginfPag')){
+				$mdfex->taginfPag($stdPag);
+			}else if(method_exists($mdfex, 'tagpag')){
+				$mdfex->tagpag($stdPag);
+			}else{
+				continue;
+			}
+
+			foreach($pag->componentes as $componente){
+				$stdComp = new \stdClass();
+				$stdComp->tpComp = $componente->tipo_componente;
+				$stdComp->xComp = $componente->descricao;
+				$stdComp->vComp = $this->format($componente->valor);
+
+				if(method_exists($mdfex, 'tagComp')){
+					$mdfex->tagComp($stdComp);
+				}else if(method_exists($mdfex, 'tagcomp')){
+					$mdfex->tagcomp($stdComp);
+				}
+			}
+
+			if(($mdfe->ind_pagamento ?? '0') === '1'){
+				foreach($pag->parcelas as $parcela){
+					$stdParcela = new \stdClass();
+					$stdParcela->nDup = $parcela->numero_parcela;
+					$stdParcela->dVenc = $parcela->data_vencimento;
+					$stdParcela->vDup = $this->format($parcela->valor);
+
+					if(method_exists($mdfex, 'tagdup')){
+						$mdfex->tagdup($stdParcela);
+					}else if(method_exists($mdfex, 'tagDup')){
+						$mdfex->tagDup($stdParcela);
+					}
+				}
+			}
+		}
 	}
 
 	private function preparaCordenada($cordenada){

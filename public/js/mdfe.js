@@ -15,8 +15,13 @@ var INFODESCARGA = [];
 var LACRESTRANSP = [];
 var LACRESUNIDCARGA = [];
 var MDFEID = 0;
+var PAGAMENTO_COMPONENTES = [];
+var PAGAMENTO_PARCELAS = [];
 
 $('#file').change(function() {
+	if($('#pagamento_atual').length){
+		$('#pagamento_atual').val(JSON.stringify(getPagamentoPayload()));
+	}
 	$('#form-import').submit();
 });
 
@@ -57,6 +62,7 @@ $(function () {
 			INFODESCARGA = JSON.parse(infos);
 			montaTabelaInfosDescargaEdit();
 
+			carregaPagamentoEdicao();
 			habilitaBtnSalvar();
 		}
 	}
@@ -69,7 +75,13 @@ $(function () {
 		montaTabelaMunicipioCarregamento();
 
 		montaTabelaInfosDescargaNfe(docs)
+		if(docs.pagamento){
+			aplicaPagamento(docs.pagamento, true);
+		}else{
+			carregaPagamentoEdicao();
+		}
 	}
+	atualizaVisibilidadeParcelas();
 });
 
 function getCidades(data){
@@ -1002,7 +1014,8 @@ function salvarMDFe(){
 				latitude_descarrega: $('#latitude_descarrega').val(),
 				longitude_descarrega: $('#longitude_descarrega').val(),
 
-				tp_carga: $('#tp_carga').val()
+				tp_carga: $('#tp_carga').val(),
+				pagamento: getPagamentoPayload()
 			}
 
 
@@ -1037,7 +1050,18 @@ function sucesso(){
 
 function validaMDFe(call){
 	let msgErro = "";
+	let docPagador = ($('#cpf_cnpj_pagador').val() || '').replace(/\D/g, '');
+	if(docPagador.length > 0 && docPagador.length !== 11 && docPagador.length !== 14){
+		msgErro = 'CPF/CNPJ do pagador inválido';
+	}
 
+	if(!msgErro && $('#valor_contrato').val() && parseFloat(($('#valor_contrato').val() || '0').replace(',', '.')) <= 0){
+		msgErro = 'Valor do contrato deve ser maior que zero';
+	}
+
+	if(!msgErro && $('#ind_pagamento').val() == '1' && PAGAMENTO_PARCELAS.length === 0 && docPagador.length > 0){
+		msgErro = 'Pagamento a prazo exige parcelas';
+	}
 
 	call(msgErro);
 }
@@ -1074,3 +1098,132 @@ $('#chave_cte').on('keyup', () => {
 
 
 
+
+
+function getPagamentoPayload(){
+	return {
+		ind_pagamento: $('#ind_pagamento').val(),
+		forma_pagamento: $('#forma_pagamento').val(),
+		tipo_doc_pagador: $('#tipo_doc_pagador').val(),
+		cpf_cnpj_pagador: $('#cpf_cnpj_pagador').val(),
+		nome_pagador: $('#nome_pagador').val(),
+		valor_contrato: $('#valor_contrato').val(),
+		valor_pagamento: $('#valor_pagamento').val(),
+		componentes: PAGAMENTO_COMPONENTES,
+		parcelas: PAGAMENTO_PARCELAS
+	};
+}
+
+function aplicaPagamento(pagamento, sobrescreverListas = false){
+	if(!pagamento){
+		return;
+	}
+	$('#ind_pagamento').val(pagamento.ind_pagamento || $('#ind_pagamento').val() || '0');
+	$('#forma_pagamento').val(pagamento.forma_pagamento || $('#forma_pagamento').val() || '99');
+	$('#tipo_doc_pagador').val(pagamento.tipo_doc_pagador || $('#tipo_doc_pagador').val() || 'CNPJ');
+	if(pagamento.cpf_cnpj_pagador){
+		$('#cpf_cnpj_pagador').val(pagamento.cpf_cnpj_pagador);
+	}
+	if(pagamento.nome_pagador){
+		$('#nome_pagador').val(pagamento.nome_pagador);
+	}
+	if(pagamento.valor_contrato){
+		$('#valor_contrato').val(pagamento.valor_contrato);
+	}
+	if(pagamento.valor_pagamento){
+		$('#valor_pagamento').val(pagamento.valor_pagamento);
+	}
+
+	if(sobrescreverListas){
+		PAGAMENTO_COMPONENTES = pagamento.componentes || [];
+		PAGAMENTO_PARCELAS = pagamento.parcelas || [];
+		montaTabelaComponentesPagamento();
+		montaTabelaParcelasPagamento();
+	}
+	atualizaVisibilidadeParcelas();
+}
+
+function carregaPagamentoEdicao(){
+	if(!$('#pagamento_hidden').length){
+		return;
+	}
+	let hidden = $('#pagamento_hidden').val();
+	if(!hidden){
+		return;
+	}
+	let pagamento = null;
+	try { pagamento = JSON.parse(hidden); } catch (e) { pagamento = null; }
+	if(!pagamento){
+		return;
+	}
+	aplicaPagamento(pagamento, true);
+}
+
+$('#btn-add-componente').click(() => {
+	let valor = parseFloat(($('#comp_valor').val() || '0').replace(',', '.'));
+	if(valor < 0){
+		return;
+	}
+	PAGAMENTO_COMPONENTES.push({
+		tipo_componente: $('#comp_tipo').val(),
+		descricao: $('#comp_descricao').val(),
+		valor: valor
+	});
+	$('#comp_descricao').val('');
+	$('#comp_valor').val('');
+	montaTabelaComponentesPagamento();
+});
+
+$('body').on('click', '.btn-remove-componente', function(){
+	PAGAMENTO_COMPONENTES.splice(parseInt($(this).data('index')), 1);
+	montaTabelaComponentesPagamento();
+});
+
+function montaTabelaComponentesPagamento(){
+	let html = '';
+	PAGAMENTO_COMPONENTES.map((item, i) => {
+		html += `<tr><td>${item.tipo_componente}</td><td>${item.descricao || ''}</td><td>${item.valor}</td><td><button type="button" class="btn btn-sm btn-danger btn-remove-componente" data-index="${i}">x</button></td></tr>`;
+	});
+	$('#tbody-componentes-pagamento').html(html);
+}
+
+$('#btn-add-parcela').click(() => {
+	let valor = parseFloat(($('#parcela_valor').val() || '0').replace(',', '.'));
+	if(valor <= 0 || !$('#parcela_numero').val() || !$('#parcela_vencimento').val()){
+		return;
+	}
+	PAGAMENTO_PARCELAS.push({
+		numero_parcela: $('#parcela_numero').val(),
+		data_vencimento: $('#parcela_vencimento').val(),
+		valor: valor
+	});
+	$('#parcela_numero').val('');
+	$('#parcela_vencimento').val('');
+	$('#parcela_valor').val('');
+	montaTabelaParcelasPagamento();
+});
+
+$('body').on('click', '.btn-remove-parcela', function(){
+	PAGAMENTO_PARCELAS.splice(parseInt($(this).data('index')), 1);
+	montaTabelaParcelasPagamento();
+});
+
+function montaTabelaParcelasPagamento(){
+	let html = '';
+	PAGAMENTO_PARCELAS.map((item, i) => {
+		html += `<tr><td>${item.numero_parcela}</td><td>${item.data_vencimento}</td><td>${item.valor}</td><td><button type="button" class="btn btn-sm btn-danger btn-remove-parcela" data-index="${i}">x</button></td></tr>`;
+	});
+	$('#tbody-parcelas-pagamento').html(html);
+}
+
+$('#ind_pagamento').change(() => {
+	atualizaVisibilidadeParcelas();
+});
+
+function atualizaVisibilidadeParcelas(){
+	if($('#ind_pagamento').val() == '1'){
+		$('.parcelas-wrapper').show();
+	}else{
+		$('.parcelas-wrapper').hide();
+	}
+}

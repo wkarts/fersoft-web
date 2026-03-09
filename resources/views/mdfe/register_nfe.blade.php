@@ -43,6 +43,7 @@
 				</div>	
 				<input type="hidden" value="{{json_encode($cidades)}}" id="cidades">
 				<input type="hidden" value="{{json_encode($docs)}}" id="docs">
+				<input type="hidden" value='@json($docs["pagamento"] ?? null)' id="pagamento_hidden">
 
 				<!--  -->
 				<!--  -->
@@ -174,6 +175,52 @@
 						<div class="">
 							<div class="input-group">
 								<input type="text" name="valor_carga" class="form-control type-ref" value="{{ $docs['valorCarga'] }}" id="valor_carga"/>
+							</div>
+						</div>
+					</div>
+
+					<div class="col-12">
+						<div class="card card-custom gutter-b">
+							<div class="card-body">
+								<h5>Informações de Pagamento (MDF-e)</h5>
+								<div class="row">
+									<div class="form-group col-lg-2 col-md-3 col-sm-6 col-12">
+										<label>Pagamento</label>
+										<select class="custom-select form-control" id="ind_pagamento">
+											<option value="0">0 - À vista</option>
+											<option value="1">1 - A prazo</option>
+										</select>
+									</div>
+									<div class="form-group col-lg-2 col-md-3 col-sm-6 col-12">
+										<label>Forma pag.</label>
+										<select class="custom-select form-control" id="forma_pagamento">
+											<option value="01">01 - Dinheiro</option>
+											<option value="03">03 - Cartão</option>
+											<option value="17">17 - PIX</option>
+											<option value="16">16 - Transferência</option>
+											<option value="99">99 - Outros</option>
+										</select>
+									</div>
+									<div class="form-group col-lg-2 col-md-3 col-sm-6 col-12"><label>Tipo doc.</label><select class="custom-select form-control" id="tipo_doc_pagador"><option value="CPF">CPF</option><option value="CNPJ">CNPJ</option></select></div>
+									<div class="form-group col-lg-3 col-md-6 col-sm-6 col-12"><label>CPF/CNPJ pagador</label><input type="text" class="form-control" id="cpf_cnpj_pagador"></div>
+									<div class="form-group col-lg-3 col-md-6 col-sm-6 col-12"><label>Nome do pagador</label><input type="text" class="form-control" id="nome_pagador"></div>
+									<div class="form-group col-lg-2 col-md-3 col-sm-6 col-12"><label>Vlr contrato</label><input type="text" class="form-control" id="valor_contrato"></div>
+									<div class="form-group col-lg-2 col-md-3 col-sm-6 col-12"><label>Vlr pagamento</label><input type="text" class="form-control" id="valor_pagamento"></div>
+								</div>
+								<div class="row">
+									<div class="form-group col-lg-3"><label>Componente</label><select id="comp_tipo" class="custom-select form-control"><option value="01">01 - Frete</option><option value="02">02 - Pedágio</option><option value="99">99 - Outros</option></select></div>
+									<div class="form-group col-lg-4"><label>Descrição componente</label><input type="text" class="form-control" id="comp_descricao"></div>
+									<div class="form-group col-lg-3"><label>Valor componente</label><input type="text" class="form-control" id="comp_valor"></div>
+									<div class="form-group col-lg-2"><label>&nbsp;</label><a class="btn btn-success form-control" id="btn-add-componente">Adicionar</a></div>
+								</div>
+								<table class="table table-sm"><thead><tr><th>Tipo</th><th>Descrição</th><th>Valor</th><th></th></tr></thead><tbody id="tbody-componentes-pagamento"></tbody></table>
+								<div class="row parcelas-wrapper">
+									<div class="form-group col-lg-3"><label>Número parcela</label><input type="text" class="form-control" id="parcela_numero"></div>
+									<div class="form-group col-lg-3"><label>Vencimento</label><input type="text" class="form-control" id="parcela_vencimento" placeholder="dd/mm/aaaa"></div>
+									<div class="form-group col-lg-3"><label>Valor</label><input type="text" class="form-control" id="parcela_valor"></div>
+									<div class="form-group col-lg-3"><label>&nbsp;</label><a class="btn btn-info form-control" id="btn-add-parcela">Adicionar parcela</a></div>
+								</div>
+								<table class="table table-sm"><thead><tr><th>Número</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead><tbody id="tbody-parcelas-pagamento"></tbody></table>
 							</div>
 						</div>
 					</div>
