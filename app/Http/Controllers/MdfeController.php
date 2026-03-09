@@ -959,6 +959,10 @@ public function delete($id){
 public function importarXml(Request $request){
 	$xml = simplexml_load_file($request->file);
 	$docs = $this->preparaNfe($xml);
+	$pagamentoAtual = $this->parsePagamentoAtual($request->pagamento_atual);
+	if((!isset($docs['pagamento']) || empty($docs['pagamento'])) && $pagamentoAtual){
+		$docs['pagamento'] = $pagamentoAtual;
+	}
 
 	$lastMdfe = Mdfe::lastMdfe();
 
@@ -1111,6 +1115,7 @@ private function preparaNfe($xml){
 	$data['qtdCarga'] = $qtdCarga;
 	$data['veiculoTracao'] = $veiculoTracao;
 	$data['munCarregamento'] = $municipiosCarregamento;
+	$data['pagamento'] = $this->extrairPagamentoNfe($xml);
 	return $data;
 
 }
@@ -1193,8 +1198,71 @@ private function preparaNfes($ids){
 	$data['qtdCarga'] = $qtdCarga;
 	$data['veiculoTracao'] = $veiculoTracao;
 	$data['munCarregamento'] = $municipiosCarregamento;
+	$data['pagamento'] = [];
 	return $data;
 
+}
+
+
+private function parsePagamentoAtual($pagamentoAtual){
+	if(!$pagamentoAtual){
+		return null;
+	}
+
+	if(is_string($pagamentoAtual)){
+		$decoded = json_decode($pagamentoAtual, true);
+		if(json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)){
+			return null;
+		}
+		$pagamentoAtual = $decoded;
+	}
+
+	$doc = preg_replace('/\D/', '', $pagamentoAtual['cpf_cnpj_pagador'] ?? '');
+	if($doc === ''){
+		return null;
+	}
+
+	$pagamentoAtual['cpf_cnpj_pagador'] = $doc;
+	$pagamentoAtual['tipo_doc_pagador'] = strlen($doc) == 11 ? 'CPF' : 'CNPJ';
+	$pagamentoAtual['componentes'] = $pagamentoAtual['componentes'] ?? [];
+	$pagamentoAtual['parcelas'] = $pagamentoAtual['parcelas'] ?? [];
+
+	return $pagamentoAtual;
+}
+
+private function extrairPagamentoNfe($xml){
+	$retorno = [];
+	$detPag = $xml->NFe->infNFe->pag->detPag ?? null;
+	if(!$detPag){
+		return $retorno;
+	}
+
+	$tpPag = (string)($detPag->tPag ?? '99');
+	$vPag = (float)($detPag->vPag ?? 0);
+	if($vPag <= 0){
+		$vPag = (float)($xml->NFe->infNFe->total->ICMSTot->vNF ?? 0);
+	}
+
+	$doc = isset($xml->NFe->infNFe->emit->CNPJ) ? (string)$xml->NFe->infNFe->emit->CNPJ : (string)$xml->NFe->infNFe->emit->CPF;
+	$doc = preg_replace('/\D/', '', $doc);
+
+	$retorno = [
+		'ind_pagamento' => '0',
+		'forma_pagamento' => $tpPag ?: '99',
+		'tipo_doc_pagador' => strlen($doc) == 11 ? 'CPF' : 'CNPJ',
+		'cpf_cnpj_pagador' => $doc,
+		'nome_pagador' => (string)($xml->NFe->infNFe->emit->xNome ?? ''),
+		'valor_contrato' => $vPag,
+		'valor_pagamento' => $vPag,
+		'componentes' => [[
+			'tipo_componente' => '01',
+			'descricao' => 'Frete',
+			'valor' => $vPag
+		]],
+		'parcelas' => []
+	];
+
+	return $retorno;
 }
 
 private function validaArrayCidade($municipiosCarregamento, $mun){

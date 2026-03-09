@@ -19,6 +19,9 @@ var PAGAMENTO_COMPONENTES = [];
 var PAGAMENTO_PARCELAS = [];
 
 $('#file').change(function() {
+	if($('#pagamento_atual').length){
+		$('#pagamento_atual').val(JSON.stringify(getPagamentoPayload()));
+	}
 	$('#form-import').submit();
 });
 
@@ -72,6 +75,11 @@ $(function () {
 		montaTabelaMunicipioCarregamento();
 
 		montaTabelaInfosDescargaNfe(docs)
+		if(docs.pagamento){
+			aplicaPagamento(docs.pagamento, true);
+		}else{
+			carregaPagamentoEdicao();
+		}
 	}
 	atualizaVisibilidadeParcelas();
 });
@@ -1007,17 +1015,7 @@ function salvarMDFe(){
 				longitude_descarrega: $('#longitude_descarrega').val(),
 
 				tp_carga: $('#tp_carga').val(),
-				pagamento: {
-					ind_pagamento: $('#ind_pagamento').val(),
-					forma_pagamento: $('#forma_pagamento').val(),
-					tipo_doc_pagador: $('#tipo_doc_pagador').val(),
-					cpf_cnpj_pagador: $('#cpf_cnpj_pagador').val(),
-					nome_pagador: $('#nome_pagador').val(),
-					valor_contrato: $('#valor_contrato').val(),
-					valor_pagamento: $('#valor_pagamento').val(),
-					componentes: PAGAMENTO_COMPONENTES,
-					parcelas: PAGAMENTO_PARCELAS
-				}
+				pagamento: getPagamentoPayload()
 			}
 
 
@@ -1101,6 +1099,50 @@ $('#chave_cte').on('keyup', () => {
 
 
 
+
+function getPagamentoPayload(){
+	return {
+		ind_pagamento: $('#ind_pagamento').val(),
+		forma_pagamento: $('#forma_pagamento').val(),
+		tipo_doc_pagador: $('#tipo_doc_pagador').val(),
+		cpf_cnpj_pagador: $('#cpf_cnpj_pagador').val(),
+		nome_pagador: $('#nome_pagador').val(),
+		valor_contrato: $('#valor_contrato').val(),
+		valor_pagamento: $('#valor_pagamento').val(),
+		componentes: PAGAMENTO_COMPONENTES,
+		parcelas: PAGAMENTO_PARCELAS
+	};
+}
+
+function aplicaPagamento(pagamento, sobrescreverListas = false){
+	if(!pagamento){
+		return;
+	}
+	$('#ind_pagamento').val(pagamento.ind_pagamento || $('#ind_pagamento').val() || '0');
+	$('#forma_pagamento').val(pagamento.forma_pagamento || $('#forma_pagamento').val() || '99');
+	$('#tipo_doc_pagador').val(pagamento.tipo_doc_pagador || $('#tipo_doc_pagador').val() || 'CNPJ');
+	if(pagamento.cpf_cnpj_pagador){
+		$('#cpf_cnpj_pagador').val(pagamento.cpf_cnpj_pagador);
+	}
+	if(pagamento.nome_pagador){
+		$('#nome_pagador').val(pagamento.nome_pagador);
+	}
+	if(pagamento.valor_contrato){
+		$('#valor_contrato').val(pagamento.valor_contrato);
+	}
+	if(pagamento.valor_pagamento){
+		$('#valor_pagamento').val(pagamento.valor_pagamento);
+	}
+
+	if(sobrescreverListas){
+		PAGAMENTO_COMPONENTES = pagamento.componentes || [];
+		PAGAMENTO_PARCELAS = pagamento.parcelas || [];
+		montaTabelaComponentesPagamento();
+		montaTabelaParcelasPagamento();
+	}
+	atualizaVisibilidadeParcelas();
+}
+
 function carregaPagamentoEdicao(){
 	if(!$('#pagamento_hidden').length){
 		return;
@@ -1114,18 +1156,7 @@ function carregaPagamentoEdicao(){
 	if(!pagamento){
 		return;
 	}
-	$('#ind_pagamento').val(pagamento.ind_pagamento || '0');
-	$('#forma_pagamento').val(pagamento.forma_pagamento || '99');
-	$('#tipo_doc_pagador').val(pagamento.tipo_doc_pagador || 'CNPJ');
-	$('#cpf_cnpj_pagador').val(pagamento.cpf_cnpj_pagador || '');
-	$('#nome_pagador').val(pagamento.nome_pagador || '');
-	$('#valor_contrato').val(pagamento.valor_contrato || '');
-	$('#valor_pagamento').val(pagamento.valor_pagamento || '');
-	PAGAMENTO_COMPONENTES = pagamento.componentes || [];
-	PAGAMENTO_PARCELAS = pagamento.parcelas || [];
-	montaTabelaComponentesPagamento();
-	montaTabelaParcelasPagamento();
-	atualizaVisibilidadeParcelas();
+	aplicaPagamento(pagamento, true);
 }
 
 $('#btn-add-componente').click(() => {

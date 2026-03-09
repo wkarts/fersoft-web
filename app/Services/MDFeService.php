@@ -630,6 +630,10 @@ class MDFeService{
 			$stdPag->vContrato = $this->format($mdfe->valor_contrato_pagamento ?: $pag->valor_pagamento);
 			$stdPag->indPag = $mdfe->ind_pagamento ?? '0';
 			$stdPag->tpPag = $pag->forma_pagamento ?? '99';
+			$stdPag->Comp = [];
+			$stdPag->comp = [];
+			$stdPag->dup = [];
+			$stdPag->infPrazo = [];
 
 			if(method_exists($mdfex, 'taginfPag')){
 				$mdfex->taginfPag($stdPag);

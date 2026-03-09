@@ -44,6 +44,7 @@
 				<div class="row">
 					<form id="form-import" method="post" action="/mdfe/importarXml" enctype="multipart/form-data">
 						@csrf
+						<input type="hidden" name="pagamento_atual" id="pagamento_atual" value="">
 						<div class="form-group validated col-lg-12">
 							<div class="">
 								<span style="width: 100%" class="btn btn-info btn-file">
