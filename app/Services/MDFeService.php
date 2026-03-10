@@ -632,8 +632,41 @@ class MDFeService{
 			$stdPag->tpPag = $pag->forma_pagamento ?? '99';
 			$stdPag->Comp = [];
 			$stdPag->comp = [];
-			$stdPag->dup = [];
 			$stdPag->infPrazo = [];
+			$stdPag->infBanc = $this->montarInfoBancariaPagamento($stdPag->tpPag, $doc);
+
+			if($stdPag->indPag == '1'){
+				$stdPag->vAdiant = null;
+			}
+			$stdPag->indAltoDesemp = null;
+			$stdPag->indAntecipaAdiant = null;
+			$stdPag->tpAntecip = null;
+
+			if($pag->componentes->count() > 0){
+				foreach($pag->componentes as $componente){
+					$stdComp = new \stdClass();
+					$stdComp->tpComp = $componente->tipo_componente ?: '99';
+					$stdComp->xComp = $componente->descricao;
+					$stdComp->vComp = $this->format($componente->valor);
+					$stdPag->Comp[] = $stdComp;
+				}
+			}else{
+				$stdComp = new \stdClass();
+				$stdComp->tpComp = '01';
+				$stdComp->xComp = 'Frete';
+				$stdComp->vComp = $this->format($mdfe->valor_contrato_pagamento ?: $pag->valor_pagamento ?: 0);
+				$stdPag->Comp[] = $stdComp;
+			}
+
+			if($stdPag->indPag == '1'){
+				foreach($pag->parcelas as $parcela){
+					$stdPrazo = new \stdClass();
+					$stdPrazo->nParcela = $parcela->numero_parcela;
+					$stdPrazo->dVenc = $parcela->data_vencimento;
+					$stdPrazo->vParcela = $this->format($parcela->valor);
+					$stdPag->infPrazo[] = $stdPrazo;
+				}
+			}
 
 			if(method_exists($mdfex, 'taginfPag')){
 				$mdfex->taginfPag($stdPag);
@@ -642,35 +675,25 @@ class MDFeService{
 			}else{
 				continue;
 			}
-
-			foreach($pag->componentes as $componente){
-				$stdComp = new \stdClass();
-				$stdComp->tpComp = $componente->tipo_componente;
-				$stdComp->xComp = $componente->descricao;
-				$stdComp->vComp = $this->format($componente->valor);
-
-				if(method_exists($mdfex, 'tagComp')){
-					$mdfex->tagComp($stdComp);
-				}else if(method_exists($mdfex, 'tagcomp')){
-					$mdfex->tagcomp($stdComp);
-				}
-			}
-
-			if(($mdfe->ind_pagamento ?? '0') === '1'){
-				foreach($pag->parcelas as $parcela){
-					$stdParcela = new \stdClass();
-					$stdParcela->nDup = $parcela->numero_parcela;
-					$stdParcela->dVenc = $parcela->data_vencimento;
-					$stdParcela->vDup = $this->format($parcela->valor);
-
-					if(method_exists($mdfex, 'tagdup')){
-						$mdfex->tagdup($stdParcela);
-					}else if(method_exists($mdfex, 'tagDup')){
-						$mdfex->tagDup($stdParcela);
-					}
-				}
-			}
 		}
+	}
+
+	private function montarInfoBancariaPagamento($tpPag, $documento){
+		$infBanc = new \stdClass();
+
+		if($tpPag == '17'){
+			$infBanc->PIX = $documento ?: 'SEMCHAVEPIX';
+			return $infBanc;
+		}
+
+		if($tpPag == '16'){
+			$infBanc->codBanco = '000';
+			$infBanc->codAgencia = '0000';
+			return $infBanc;
+		}
+
+		$infBanc->PIX = $documento ?: 'SEMCHAVEPIX';
+		return $infBanc;
 	}
 
 	private function preparaCordenada($cordenada){
