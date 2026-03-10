@@ -2826,9 +2826,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
 	Route::group(['prefix' => 'pesagens'], function () {
 		Route::get('/', 'PesagemController@list')->name('pesagens.list');
-		Route::get('/list', 'PesagemController@list')->name('pesagens.list');
+		Route::get('/list', 'PesagemController@list')->name('pesagens.list.alias');
 		Route::get('/new', 'PesagemController@register')->name('pesagens.register');
-        Route::get('/register', 'PesagemController@register')->name('pesagens.register');
+        Route::get('/register', 'PesagemController@register')->name('pesagens.register.alias');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
         Route::put('/update/{id}', 'PesagemController@update')->name('pesagens.update');
@@ -2836,7 +2836,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::delete('/delete/{id}', 'PesagemController@delete')->name('pesagens.delete');
         Route::get('/getTotais/{id}', 'PesagemController@getTotais');
         Route::get('/getDados/{id}', 'PesagemController@getDados');
-        Route::get('/getPesagemInfo/{id}', 'PesagemController@edit')->name('pesagens.edit');
+        Route::get('/getPesagemInfo/{id}', 'PesagemController@edit')->name('pesagens.edit.info');
         Route::get('/search/veiculo', 'PesagemController@searchVeiculo')->name('pesagens.search.veiculo');
         Route::get('/search/cliente', 'PesagemController@searchCliente')->name('pesagens.search.cliente');
         Route::get('/search/fornecedor', 'PesagemController@searchFornecedor')->name('pesagens.search.fornecedor');
@@ -2844,7 +2844,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/search/produto', 'PesagemController@searchProduto')->name('pesagens.search.produto');
         Route::post('/enviar-relatorio-whats/{id}', 'PesagemController@enviarRelatorioWhatsApp')->name('pesagens.enviarWhatsApp');
         Route::post('/toggle-publicacao/{id}/', 'PesagemController@togglePublicacao')->name('pesagens.togglePublicacao');
-        Route::post('/togglePublicacao/{id}', 'PesagemController@togglePublicacao')->name('pesagens.togglePublicacao');
+        Route::post('/togglePublicacao/{id}', 'PesagemController@togglePublicacao')->name('pesagens.togglePublicacao.legacy');
         Route::get('/gen/qrcode/{token}', 'PesagemController@gerarQRCode')->name('pesagens.qrcode');
         Route::get('/gen/criarVenda/{id}', 'PesagemController@criarVendaDePesagem')->name('pesagens.criarVenda');
         Route::get('/gen/criarCompra/{id}', 'PesagemController@criarCompraDePesagem')->name('pesagens.criarCompra');
@@ -3002,7 +3002,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'PesagemController@list')->name('pesagens.list'); // Nomeando a rota
         Route::get('/list', 'PesagemController@list')->name('pesagens.list'); // Nomeando a rota
         Route::get('/new', 'PesagemController@register')->name('pesagens.register');
-        Route::get('/register', 'PesagemController@register')->name('pesagens.register');
+        Route::get('/register', 'PesagemController@register')->name('pesagens.register.alias');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
         Route::post('/update/{id}', 'PesagemController@update')->name('pesagens.update');

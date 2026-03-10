@@ -21,6 +21,9 @@ use App\Models\Veiculo;
 use App\Models\Empresa;
 use App\Models\Venda;
 use App\Models\ConfigNota;
+use App\Models\MdfePagamento;
+use App\Models\MdfePagamentoComponente;
+use App\Models\MdfePagamentoParcela;
 use Illuminate\Support\Facades\DB;
 use App\Services\MDFeService;
 
@@ -264,6 +267,8 @@ class MdfeController extends Controller
 				$infoComplementar = $data['info_complementar'] ?? '';
 				$infoFisco = $data['info_fisco'] ?? '';
 
+				$pagamento = $data['pagamento'] ?? null;
+
 				$condutorNome = $data['condutor_nome'];
 				$condutorCpf = $data['condutor_cpf'];
 
@@ -344,6 +349,8 @@ class MdfeController extends Controller
 					'filial_id' => (!isset($data['filial_id']) || $data['filial_id'] == -1) ? null : $data['filial_id']
 
 				]);
+
+				$this->salvarPagamentoMdfe($mdfe, $pagamento);
 
 				foreach($municipiosCarregamento as $m){
 					MunicipioCarregamento::create([
@@ -466,6 +473,7 @@ public function edit($id){
 	$ciots = $this->getCiots($mdfe);
 	$valesPedagio = $this->getValesPedagio($mdfe);
 	$infoDescarga = $this->getInfoDescarga($mdfe);
+	$pagamento = $this->getPagamento($mdfe);
 	$cidades = Cidade::all();
 
 	return view("mdfe/register")
@@ -481,6 +489,7 @@ public function edit($id){
 	->with('ciots', $ciots)
 	->with('valesPedagio', $valesPedagio)
 	->with('infoDescarga', $infoDescarga)
+	->with('pagamento', $pagamento)
 	->with('title', "Editar MDF-e");
 
 }
@@ -573,6 +582,126 @@ private function getLacresUnidCarga($info){
 	return $temp;
 }
 
+private function getPagamento($mdfe){
+	$pagamento = $mdfe->pagamentos()->with(['componentes', 'parcelas'])->first();
+	if(!$pagamento){
+		return null;
+	}
+
+	return [
+		'ind_pagamento' => $mdfe->ind_pagamento,
+		'valor_contrato' => $mdfe->valor_contrato_pagamento,
+		'tipo_doc_pagador' => $pagamento->tipo_doc_pagador,
+		'cpf_cnpj_pagador' => $pagamento->cpf_cnpj_pagador,
+		'nome_pagador' => $pagamento->nome_pagador,
+		'forma_pagamento' => $pagamento->forma_pagamento,
+		'valor_pagamento' => $pagamento->valor_pagamento,
+		'componentes' => $pagamento->componentes->map(function($item){
+			return [
+				'tipo_componente' => $item->tipo_componente,
+				'descricao' => $item->descricao,
+				'valor' => $item->valor
+			];
+		}),
+		'parcelas' => $pagamento->parcelas->map(function($item){
+			return [
+				'numero_parcela' => $item->numero_parcela,
+				'data_vencimento' => $item->data_vencimento,
+				'valor' => $item->valor
+			];
+		})
+	];
+}
+
+private function salvarPagamentoMdfe($mdfe, $pagamentoData){
+	$mdfe->ind_pagamento = null;
+	$mdfe->valor_contrato_pagamento = null;
+
+	$existentes = MdfePagamento::where('mdfe_id', $mdfe->id)->get();
+	foreach($existentes as $pag){
+		$pag->delete();
+	}
+
+	if(!$pagamentoData || !isset($pagamentoData['cpf_cnpj_pagador']) || trim($pagamentoData['cpf_cnpj_pagador']) === ''){
+		$mdfe->save();
+		return;
+	}
+
+	$documento = preg_replace('/\D/', '', $pagamentoData['cpf_cnpj_pagador']);
+	if(strlen($documento) !== 11 && strlen($documento) !== 14){
+		throw new \Exception('Documento do pagador inválido. Informe CPF ou CNPJ válido.');
+	}
+
+	$indPagamento = $pagamentoData['ind_pagamento'] ?? '0';
+	if(!in_array($indPagamento, ['0', '1'])){
+		throw new \Exception('Indicador de pagamento inválido. Use 0 (à vista) ou 1 (a prazo).');
+	}
+
+	$valorContrato = isset($pagamentoData['valor_contrato']) ? (float)str_replace(',', '.', $pagamentoData['valor_contrato']) : 0;
+	if($valorContrato <= 0){
+		throw new \Exception('Valor de contrato do pagamento deve ser maior que zero.');
+	}
+
+	$mdfe->ind_pagamento = $indPagamento;
+	$mdfe->valor_contrato_pagamento = $valorContrato;
+	$mdfe->save();
+
+	$pagamento = MdfePagamento::create([
+		'mdfe_id' => $mdfe->id,
+		'tipo_doc_pagador' => strlen($documento) === 11 ? 'CPF' : 'CNPJ',
+		'cpf_cnpj_pagador' => $documento,
+		'nome_pagador' => $pagamentoData['nome_pagador'] ?? null,
+		'forma_pagamento' => $pagamentoData['forma_pagamento'] ?? null,
+		'valor_pagamento' => isset($pagamentoData['valor_pagamento']) ? (float)str_replace(',', '.', $pagamentoData['valor_pagamento']) : $valorContrato
+	]);
+
+	$componentes = $pagamentoData['componentes'] ?? [];
+	if(count($componentes) === 0){
+		MdfePagamentoComponente::create([
+			'mdfe_pagamento_id' => $pagamento->id,
+			'tipo_componente' => '01',
+			'descricao' => 'Frete',
+			'valor' => $valorContrato
+		]);
+	}else{
+		foreach($componentes as $comp){
+			$valorComp = (float)str_replace(',', '.', $comp['valor'] ?? 0);
+			if($valorComp < 0){
+				continue;
+			}
+			MdfePagamentoComponente::create([
+				'mdfe_pagamento_id' => $pagamento->id,
+				'tipo_componente' => $comp['tipo_componente'] ?? '99',
+				'descricao' => $comp['descricao'] ?? null,
+				'valor' => $valorComp
+			]);
+		}
+	}
+
+	$parcelas = $pagamentoData['parcelas'] ?? [];
+	if($indPagamento === '1' && count($parcelas) === 0){
+		throw new \Exception('Pagamento a prazo exige ao menos uma parcela.');
+	}
+
+	foreach($parcelas as $parcela){
+		if(empty($parcela['numero_parcela']) || empty($parcela['data_vencimento'])){
+			continue;
+		}
+
+		$valorParcela = (float)str_replace(',', '.', $parcela['valor'] ?? 0);
+		if($valorParcela <= 0){
+			continue;
+		}
+
+		MdfePagamentoParcela::create([
+			'mdfe_pagamento_id' => $pagamento->id,
+			'numero_parcela' => $parcela['numero_parcela'],
+			'data_vencimento' => date('Y-m-d', strtotime(str_replace('/', '-', $parcela['data_vencimento']))),
+			'valor' => $valorParcela
+		]);
+	}
+}
+
 public function update(Request $request){
 	try{
 		$result = DB::transaction(function () use ($request) {
@@ -599,6 +728,8 @@ public function update(Request $request){
 			$qtdCarga = str_replace(",", ".", $data['qtd_carga']);
 			$infoComplementar = $data['info_complementar'] ?? '';
 			$infoFisco = $data['info_fisco'] ?? '';
+
+				$pagamento = $data['pagamento'] ?? null;
 
 			$condutorNome = $data['condutor_nome'];
 			$condutorCpf = $data['condutor_cpf'];
@@ -663,6 +794,8 @@ public function update(Request $request){
 			$mdfe->longitude_descarregamento = $longitude_descarrega ?? '';
 
 			$mdfe->save();
+
+				$this->salvarPagamentoMdfe($mdfe, $pagamento);
 
 			$municipiosTemp = MunicipioCarregamento::
 			where('mdfe_id', $mdfe->id)
@@ -826,6 +959,10 @@ public function delete($id){
 public function importarXml(Request $request){
 	$xml = simplexml_load_file($request->file);
 	$docs = $this->preparaNfe($xml);
+	$pagamentoAtual = $this->parsePagamentoAtual($request->pagamento_atual);
+	if((!isset($docs['pagamento']) || empty($docs['pagamento'])) && $pagamentoAtual){
+		$docs['pagamento'] = $pagamentoAtual;
+	}
 
 	$lastMdfe = Mdfe::lastMdfe();
 
@@ -978,6 +1115,7 @@ private function preparaNfe($xml){
 	$data['qtdCarga'] = $qtdCarga;
 	$data['veiculoTracao'] = $veiculoTracao;
 	$data['munCarregamento'] = $municipiosCarregamento;
+	$data['pagamento'] = $this->extrairPagamentoNfe($xml);
 	return $data;
 
 }
@@ -1060,8 +1198,71 @@ private function preparaNfes($ids){
 	$data['qtdCarga'] = $qtdCarga;
 	$data['veiculoTracao'] = $veiculoTracao;
 	$data['munCarregamento'] = $municipiosCarregamento;
+	$data['pagamento'] = [];
 	return $data;
 
+}
+
+
+private function parsePagamentoAtual($pagamentoAtual){
+	if(!$pagamentoAtual){
+		return null;
+	}
+
+	if(is_string($pagamentoAtual)){
+		$decoded = json_decode($pagamentoAtual, true);
+		if(json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)){
+			return null;
+		}
+		$pagamentoAtual = $decoded;
+	}
+
+	$doc = preg_replace('/\D/', '', $pagamentoAtual['cpf_cnpj_pagador'] ?? '');
+	if($doc === ''){
+		return null;
+	}
+
+	$pagamentoAtual['cpf_cnpj_pagador'] = $doc;
+	$pagamentoAtual['tipo_doc_pagador'] = strlen($doc) == 11 ? 'CPF' : 'CNPJ';
+	$pagamentoAtual['componentes'] = $pagamentoAtual['componentes'] ?? [];
+	$pagamentoAtual['parcelas'] = $pagamentoAtual['parcelas'] ?? [];
+
+	return $pagamentoAtual;
+}
+
+private function extrairPagamentoNfe($xml){
+	$retorno = [];
+	$detPag = $xml->NFe->infNFe->pag->detPag ?? null;
+	if(!$detPag){
+		return $retorno;
+	}
+
+	$tpPag = (string)($detPag->tPag ?? '99');
+	$vPag = (float)($detPag->vPag ?? 0);
+	if($vPag <= 0){
+		$vPag = (float)($xml->NFe->infNFe->total->ICMSTot->vNF ?? 0);
+	}
+
+	$doc = isset($xml->NFe->infNFe->emit->CNPJ) ? (string)$xml->NFe->infNFe->emit->CNPJ : (string)$xml->NFe->infNFe->emit->CPF;
+	$doc = preg_replace('/\D/', '', $doc);
+
+	$retorno = [
+		'ind_pagamento' => '0',
+		'forma_pagamento' => $tpPag ?: '99',
+		'tipo_doc_pagador' => strlen($doc) == 11 ? 'CPF' : 'CNPJ',
+		'cpf_cnpj_pagador' => $doc,
+		'nome_pagador' => (string)($xml->NFe->infNFe->emit->xNome ?? ''),
+		'valor_contrato' => $vPag,
+		'valor_pagamento' => $vPag,
+		'componentes' => [[
+			'tipo_componente' => '01',
+			'descricao' => 'Frete',
+			'valor' => $vPag
+		]],
+		'parcelas' => []
+	];
+
+	return $retorno;
 }
 
 private function validaArrayCidade($municipiosCarregamento, $mun){

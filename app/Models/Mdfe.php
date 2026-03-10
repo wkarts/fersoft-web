@@ -17,8 +17,12 @@ class Mdfe extends Model
 		'chave', 'protocolo', 'empresa_id', 'produto_pred_nome', 'produto_pred_ncm', 
 		'produto_pred_cod_barras', 'cep_carrega', 'cep_descarrega', 'tp_carga', 
 		'latitude_carregamento', 'longitude_carregamento', 'latitude_descarregamento', 
-		'longitude_descarregamento', 'filial_id'
+		'longitude_descarregamento', 'filial_id', 'ind_pagamento', 'valor_contrato_pagamento'
 	];
+
+	public function pagamentos(){
+		return $this->hasMany(MdfePagamento::class, 'mdfe_id', 'id');
+	}
 
 	public function filial(){
         return $this->belongsTo(Filial::class, 'filial_id');

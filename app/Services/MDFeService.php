@@ -207,6 +207,8 @@ class MDFeService{
 		}
 		$mdfex->taginfContratante($infContratante);
 
+		$this->montarGrupoPagamento($mdfex, $mdfe);
+
 		/* Grupo veicTracao */
 		$veicTracao = new \stdClass();
 		$veicTracao->cInt = '01';
@@ -610,6 +612,90 @@ class MDFeService{
 
 	}
 
+	private function montarGrupoPagamento($mdfex, $mdfe){
+		$pagamentos = $mdfe->relationLoaded('pagamentos') ? $mdfe->pagamentos : $mdfe->pagamentos()->with(['componentes', 'parcelas'])->get();
+		if($pagamentos->count() == 0){
+			return;
+		}
+
+		foreach($pagamentos as $pag){
+			$stdPag = new \stdClass();
+			$stdPag->xNome = $pag->nome_pagador;
+			$doc = preg_replace('/\D/', '', $pag->cpf_cnpj_pagador ?? '');
+			if(strlen($doc) == 11){
+				$stdPag->CPF = $doc;
+			}else if(strlen($doc) == 14){
+				$stdPag->CNPJ = $doc;
+			}
+			$stdPag->vContrato = $this->format($mdfe->valor_contrato_pagamento ?: $pag->valor_pagamento);
+			$stdPag->indPag = $mdfe->ind_pagamento ?? '0';
+			$stdPag->tpPag = $pag->forma_pagamento ?? '99';
+			$stdPag->Comp = [];
+			$stdPag->comp = [];
+			$stdPag->infPrazo = [];
+			$stdPag->infBanc = $this->montarInfoBancariaPagamento($stdPag->tpPag, $doc);
+
+			if($stdPag->indPag == '1'){
+				$stdPag->vAdiant = null;
+			}
+			$stdPag->indAltoDesemp = null;
+			$stdPag->indAntecipaAdiant = null;
+			$stdPag->tpAntecip = null;
+
+			if($pag->componentes->count() > 0){
+				foreach($pag->componentes as $componente){
+					$stdComp = new \stdClass();
+					$stdComp->tpComp = $componente->tipo_componente ?: '99';
+					$stdComp->xComp = $componente->descricao;
+					$stdComp->vComp = $this->format($componente->valor);
+					$stdPag->Comp[] = $stdComp;
+				}
+			}else{
+				$stdComp = new \stdClass();
+				$stdComp->tpComp = '01';
+				$stdComp->xComp = 'Frete';
+				$stdComp->vComp = $this->format($mdfe->valor_contrato_pagamento ?: $pag->valor_pagamento ?: 0);
+				$stdPag->Comp[] = $stdComp;
+			}
+
+			if($stdPag->indPag == '1'){
+				foreach($pag->parcelas as $parcela){
+					$stdPrazo = new \stdClass();
+					$stdPrazo->nParcela = $parcela->numero_parcela;
+					$stdPrazo->dVenc = $parcela->data_vencimento;
+					$stdPrazo->vParcela = $this->format($parcela->valor);
+					$stdPag->infPrazo[] = $stdPrazo;
+				}
+			}
+
+			if(method_exists($mdfex, 'taginfPag')){
+				$mdfex->taginfPag($stdPag);
+			}else if(method_exists($mdfex, 'tagpag')){
+				$mdfex->tagpag($stdPag);
+			}else{
+				continue;
+			}
+		}
+	}
+
+	private function montarInfoBancariaPagamento($tpPag, $documento){
+		$infBanc = new \stdClass();
+
+		if($tpPag == '17'){
+			$infBanc->PIX = $documento ?: 'SEMCHAVEPIX';
+			return $infBanc;
+		}
+
+		if($tpPag == '16'){
+			$infBanc->codBanco = '000';
+			$infBanc->codAgencia = '0000';
+			return $infBanc;
+		}
+
+		$infBanc->PIX = $documento ?: 'SEMCHAVEPIX';
+		return $infBanc;
+	}
+
 	private function preparaCordenada($cordenada){
 		if(strlen($cordenada) == 10) return $cordenada;
 
@@ -780,7 +866,7 @@ class MDFeService{
 			if($cStat == '100'){
 
 				$xml = Complements::toAuthorize($signXml, $resp);
-				file_put_contents(public_path('xml_mdfe/').$chave.'.xml', $xml);
+				$this->salvarXmlNoDiretorioPublico('xml_mdfe', $chave, $xml);
 				return [
 					'chave' => $chave, 
 					'protocolo' => $std->protMDFe->infProt->nProt, 
@@ -877,11 +963,28 @@ class MDFeService{
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $resp);
-				file_put_contents(public_path('xml_mdfe_cancelada/').$chave.'.xml',$xml);
+				$this->salvarXmlNoDiretorioPublico('xml_mdfe_cancelada', $chave, $xml);
 			}
 			return $std;
 		} catch (Exception $e) {
 			echo $e->getMessage();
+		}
+	}
+
+	private function salvarXmlNoDiretorioPublico($diretorio, $chave, $xml){
+		$pathDiretorio = public_path(trim($diretorio, '/'));
+
+		if(!is_dir($pathDiretorio)){
+			@mkdir($pathDiretorio, 0755, true);
+		}
+
+		if(!is_dir($pathDiretorio)){
+			throw new \Exception("Não foi possível criar o diretório de XML do MDFe: " . $pathDiretorio);
+		}
+
+		$arquivo = $pathDiretorio . DIRECTORY_SEPARATOR . $chave . '.xml';
+		if(@file_put_contents($arquivo, $xml) === false){
+			throw new \Exception("Falha ao salvar XML do MDFe em: " . $arquivo);
 		}
 	}
 
