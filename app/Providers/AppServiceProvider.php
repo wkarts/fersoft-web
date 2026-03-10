@@ -21,6 +21,7 @@ use App\Models\IfoodConfig;
 use App\Models\ConfigCatraca;
 use App\Models\ConfigSystem;
 use App\Models\PedidoEcommerce;
+use App\Models\AppVersion;
 use Illuminate\Http\Request;
 use App\Helpers\Menu;
 use Illuminate\Pagination\Paginator;
@@ -29,6 +30,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Config;
 use App\Helpers\EncryptionHelper;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Utils\WhatsAppUtil;
 
 class AppServiceProvider extends ServiceProvider
@@ -315,6 +317,23 @@ class AppServiceProvider extends ServiceProvider
                 $tema_menu = 1;
             }
 
+            $appVersionCurrent = null;
+            $appVersionHistory = collect();
+
+            if (Schema::hasTable('app_versions')) {
+                $appVersionCurrent = AppVersion::query()
+                    ->where('is_current', true)
+                    ->orderByDesc('installed_at')
+                    ->orderByDesc('id')
+                    ->first();
+
+                $appVersionHistory = AppVersion::query()
+                    ->orderByDesc('installed_at')
+                    ->orderByDesc('id')
+                    ->limit(15)
+                    ->get();
+            }
+
             $configCatraca = null;
 
             try{
@@ -347,6 +366,8 @@ class AppServiceProvider extends ServiceProvider
             $view->with('casasDecimais', $casasDecimais);
             $view->with('casasDecimaisQtd', $casasDecimaisQtd);
             $view->with('contrato', $contrato);
+            $view->with('appVersionCurrent', $appVersionCurrent);
+            $view->with('appVersionHistory', $appVersionHistory);
         });
 
     }

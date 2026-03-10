@@ -146,18 +146,6 @@
 		</div>
 	</div>
 
-	@php
-		$currentInstalledVersion = \App\Models\Updates\UpdateVersion::query()
-			->where('status', 'completed')
-			->orderByDesc('applied_at')
-			->first();
-
-		$releaseHistory = \App\Models\Updates\UpdateVersion::query()
-			->where('status', 'completed')
-			->orderByDesc('applied_at')
-			->limit(30)
-			->get();
-	@endphp
 
 	<div class="d-flex flex-column flex-root" >
 		<div class="d-flex flex-row flex-column-fluid page">
@@ -399,8 +387,8 @@
 							</li>
 
 								<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-									<a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes (Laravel Updater)">
-										Versão: {{ optional($currentInstalledVersion)->version ?? (env(config('updates.env_version_key', 'VERSION')) ?? env('APP_VERSION') ?? 'N/A') }}
+									<a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
+										Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
 									</a>
 								</li>
 
@@ -1855,79 +1843,62 @@
 		<div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h5 class="modal-title" id="releaseNotesLabel">Release Notes (baseado no Laravel Updater)</h5>
+					<h5 class="modal-title" id="releaseNotesLabel">Release Notes da Aplicação</h5>
 					<button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
 						<span aria-hidden="true">&times;</span>
 					</button>
 				</div>
 				<div class="modal-body">
-					@php
-						$installedVersion = optional($currentInstalledVersion)->version ?? (env(config('updates.env_version_key', 'VERSION')) ?? env('APP_VERSION') ?? '0.0.0');
-						$installedNormalized = ltrim((string) $installedVersion, 'vV');
-						$installedParts = explode('.', $installedNormalized);
-					@endphp
+					@if($appVersionCurrent)
 					<div class="alert alert-light-info mb-4">
-						<div><strong>Versão instalada:</strong> {{ $installedVersion }}</div>
-						<div><strong>SemVer:</strong> Major {{ $installedParts[0] ?? 0 }} | Minor {{ $installedParts[1] ?? 0 }} | Patch {{ preg_replace('/\D.*/', '', (string)($installedParts[2] ?? 0)) }}</div>
-						<div><strong>Data da release instalada:</strong> {{ optional($currentInstalledVersion?->released_at)->format('d/m/Y H:i') ?? optional($currentInstalledVersion?->applied_at)->format('d/m/Y H:i') ?? '-' }}</div>
-						<div><strong>CPF:</strong> {{ data_get($currentInstalledVersion?->metadata, 'cpf', data_get($currentInstalledVersion?->metadata, 'author_cpf', 'Não informado no updater')) }}</div>
-						<div><strong>Local:</strong> {{ data_get($currentInstalledVersion?->metadata, 'location', data_get($currentInstalledVersion?->metadata, 'environment', 'Não informado no updater')) }}</div>
+						<div><strong>Versão instalada:</strong> {{ $appVersionCurrent->version }}</div>
+						<div><strong>SemVer:</strong> {{ $appVersionCurrent->version_major }}.{{ $appVersionCurrent->version_minor }}.{{ $appVersionCurrent->version_patch }}</div>
+						<div><strong>Release:</strong> {{ optional($appVersionCurrent->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
+						<div><strong>Instalada em:</strong> {{ optional($appVersionCurrent->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
 					</div>
+					@endif
 
 					<div class="table-responsive">
 						<table class="table table-bordered table-hover">
 							<thead>
 								<tr>
 									<th>Versão</th>
-									<th>Data da release</th>
+									<th>Título</th>
 									<th>SemVer</th>
-									<th>CPF</th>
-									<th>Local</th>
-									<th>Melhorias / Release Notes</th>
+									<th>Release</th>
+									<th>Instalação</th>
+									<th>Notas</th>
 								</tr>
 							</thead>
 							<tbody>
-								@forelse($releaseHistory as $item)
-									@php
-										$normalized = ltrim((string)$item->version, 'vV');
-										$parts = explode('.', $normalized);
-										$notes = data_get($item->metadata, 'release_notes', data_get($item->metadata, 'highlights', []));
-										if (is_string($notes) && strlen(trim($notes)) > 0) {
-											$notes = [trim($notes)];
-										}
-										if (!is_array($notes)) {
-											$notes = [];
-										}
-									@endphp
-									<tr>
-										<td><strong>{{ $item->version }}</strong></td>
-										<td>{{ optional($item->released_at)->format('d/m/Y H:i') ?? optional($item->applied_at)->format('d/m/Y H:i') ?? '-' }}</td>
-										<td>Major {{ $parts[0] ?? 0 }} | Minor {{ $parts[1] ?? 0 }} | Patch {{ preg_replace('/\D.*/', '', (string)($parts[2] ?? 0)) }}</td>
-										<td>{{ data_get($item->metadata, 'cpf', data_get($item->metadata, 'author_cpf', 'Não informado')) }}</td>
-										<td>{{ data_get($item->metadata, 'location', data_get($item->metadata, 'environment', 'Não informado')) }}</td>
-										<td>
-											@if(count($notes) > 0)
-												<ul class="mb-0 pl-4">
-													@foreach($notes as $note)
-														<li>{{ $note }}</li>
-													@endforeach
-												</ul>
-											@else
-												{{ $item->observations ?: 'Sem notas registradas no updater' }}
-											@endif
-										</td>
-									</tr>
+								@forelse($appVersionHistory as $item)
+								<tr>
+									<td><strong>{{ $item->version }}</strong> @if($item->is_current)<span class="badge badge-success">Atual</span>@endif</td>
+									<td>{{ $item->title ?: '-' }}</td>
+									<td>{{ $item->version_major }}.{{ $item->version_minor }}.{{ $item->version_patch }}</td>
+									<td>{{ optional($item->released_at)->format('d/m/Y H:i') ?: '-' }}</td>
+									<td>{{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</td>
+									<td>
+										@if($item->release_notes_html)
+											<span class="badge badge-light-primary">HTML</span>
+										@endif
+										@if($item->release_notes_pdf_path)
+											<a class="btn btn-sm btn-light-info" target="_blank" href="{{ asset($item->release_notes_pdf_path) }}">PDF</a>
+										@endif
+										@if(!$item->release_notes_html && !$item->release_notes_pdf_path)
+											{{ $item->observations ?: 'Sem conteúdo' }}
+										@endif
+									</td>
+								</tr>
 								@empty
-									<tr><td colspan="6" class="text-center text-muted">Nenhum patch/release aplicado ainda.</td></tr>
+								<tr><td colspan="6" class="text-center text-muted">Nenhuma versão interna registrada.</td></tr>
 								@endforelse
 							</tbody>
 						</table>
 					</div>
 				</div>
 				<div class="modal-footer">
-					@if((bool) env('UPDATER_UI_ENABLED', false))
-						<a href="/{{ trim(env('UPDATER_UI_PREFIX', '_updater'), '/') }}" class="btn btn-light-primary" target="_blank">Abrir Laravel Updater</a>
-					@endif
+					<a href="/app-versions" class="btn btn-light-primary">Abrir histórico completo</a>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
 				</div>
 			</div>
