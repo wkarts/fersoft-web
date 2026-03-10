@@ -32,6 +32,7 @@ use App\Helpers\EncryptionHelper;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Utils\WhatsAppUtil;
+use App\Services\AppVersionService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -319,19 +320,13 @@ class AppServiceProvider extends ServiceProvider
 
             $appVersionCurrent = null;
             $appVersionHistory = collect();
+            $appVersionHistoryGrouped = collect();
 
             if (Schema::hasTable('app_versions')) {
-                $appVersionCurrent = AppVersion::query()
-                    ->where('is_current', true)
-                    ->orderByDesc('installed_at')
-                    ->orderByDesc('id')
-                    ->first();
-
-                $appVersionHistory = AppVersion::query()
-                    ->orderByDesc('installed_at')
-                    ->orderByDesc('id')
-                    ->limit(15)
-                    ->get();
+                $appVersionService = app(AppVersionService::class);
+                $appVersionCurrent = $appVersionService->current();
+                $appVersionHistory = $appVersionService->history(30);
+                $appVersionHistoryGrouped = $appVersionService->groupedHistoryByMajor(120);
             }
 
             $configCatraca = null;
@@ -368,6 +363,7 @@ class AppServiceProvider extends ServiceProvider
             $view->with('contrato', $contrato);
             $view->with('appVersionCurrent', $appVersionCurrent);
             $view->with('appVersionHistory', $appVersionHistory);
+            $view->with('appVersionHistoryGrouped', $appVersionHistoryGrouped);
         });
 
     }

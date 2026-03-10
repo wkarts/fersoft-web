@@ -23,69 +23,91 @@
             @endif
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover">
-                <thead>
-                    <tr>
-                        <th>Versão</th>
-                        <th>Título</th>
-                        <th>Canal</th>
-                        <th>Release</th>
-                        <th>Instalação</th>
-                        <th>Notas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($versions as $version)
-                    <tr>
-                        <td>
-                            <strong>{{ $version->version }}</strong>
-                            @if($version->is_current)
-                                <span class="badge badge-success ml-2">Atual</span>
-                            @endif
-                        </td>
-                        <td>{{ $version->title ?: '-' }}</td>
-                        <td>{{ $version->release_channel ?: '-' }}</td>
-                        <td>{{ optional($version->released_at)->format('d/m/Y H:i') ?: '-' }}</td>
-                        <td>{{ optional($version->installed_at)->format('d/m/Y H:i') ?: '-' }}</td>
-                        <td>
-                            @if($version->release_notes_html)
-                                <button class="btn btn-sm btn-light-primary" data-toggle="modal" data-target="#release-modal-{{ $version->id }}">Ver HTML</button>
-                            @endif
-                            @if($version->release_notes_pdf_path)
-                                <a class="btn btn-sm btn-light-info" target="_blank" href="{{ asset($version->release_notes_pdf_path) }}">Abrir PDF</a>
-                            @endif
-                            @if(!$version->release_notes_html && !$version->release_notes_pdf_path)
-                                <span class="text-muted">Sem conteúdo</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @if($version->release_notes_html)
-                    <div class="modal fade" id="release-modal-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Release Notes - {{ $version->version }}</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <div class="modal-body">
-                                    {!! $version->release_notes_html !!}
-                                </div>
+        <div class="accordion accordion-toggle-arrow" id="accordion-major-versions">
+            @forelse($groupedVersions as $major => $items)
+                @php($majorId = 'major-'.$major)
+                <div class="card">
+                    <div class="card-header" id="heading-{{ $majorId }}">
+                        <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}" aria-expanded="false" aria-controls="collapse-{{ $majorId }}">
+                            Versão {{ $major }}
+                            <span class="label label-light-info label-inline ml-3">{{ $items->count() }} releases</span>
+                        </div>
+                    </div>
+                    <div id="collapse-{{ $majorId }}" class="collapse" aria-labelledby="heading-{{ $majorId }}" data-parent="#accordion-major-versions">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Versão</th>
+                                            <th>Título</th>
+                                            <th>Release</th>
+                                            <th>Instalação</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($items as $version)
+                                            <tr>
+                                                <td>
+                                                    <strong>{{ $version->version }}</strong>
+                                                    @if($version->is_current)
+                                                        <span class="badge badge-success ml-2">Atual</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $version->title ?: '-' }}</td>
+                                                <td>{{ optional($version->released_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                                                <td>{{ optional($version->installed_at)->format('d/m/Y H:i') ?: '-' }}</td>
+                                                <td class="d-flex flex-wrap" style="gap: .5rem;">
+                                                    @if($version->release_notes_current_html)
+                                                        <button class="btn btn-sm btn-light-primary" data-toggle="modal" data-target="#release-current-{{ $version->id }}">Ver release</button>
+                                                    @endif
+                                                    @if($version->release_notes_cumulative_html)
+                                                        <button class="btn btn-sm btn-light-warning" data-toggle="modal" data-target="#release-cumulative-{{ $version->id }}">Ver cumulativa</button>
+                                                    @endif
+                                                    @if($version->release_notes_cumulative_pdf_path)
+                                                        <a class="btn btn-sm btn-light-info" target="_blank" href="/app-versions/{{ $version->id }}/pdf/cumulative">PDF cumulativo</a>
+                                                    @endif
+                                                </td>
+                                            </tr>
+
+                                            @if($version->release_notes_current_html)
+                                                <div class="modal fade" id="release-current-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Release atual - {{ $version->version }}</h5>
+                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                                                            </div>
+                                                            <div class="modal-body">{!! $version->release_notes_current_html !!}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            @if($version->release_notes_cumulative_html)
+                                                <div class="modal fade" id="release-cumulative-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Release cumulativa - {{ $version->version }}</h5>
+                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                                                            </div>
+                                                            <div class="modal-body">{!! $version->release_notes_cumulative_html !!}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
-                    @endif
-                    @empty
-                    <tr><td colspan="6" class="text-center text-muted">Nenhuma versão registrada.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4">
-            {{ $versions->links() }}
+                </div>
+            @empty
+                <div class="text-center text-muted">Nenhuma versão registrada.</div>
+            @endforelse
         </div>
     </div>
 </div>

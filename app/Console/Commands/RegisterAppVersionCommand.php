@@ -12,9 +12,10 @@ class RegisterAppVersionCommand extends Command
     protected $signature = 'app-version:register
         {version : Versão semântica (ex.: 2.4.1)}
         {--title= : Título da release}
-        {--notes-html= : Conteúdo HTML de release notes}
-        {--notes-html-file= : Arquivo .html com release notes}
-        {--notes-pdf= : Caminho do PDF de release notes}
+        {--notes-html= : [LEGADO] Conteúdo HTML da release atual}
+        {--notes-html-file= : [LEGADO] Arquivo HTML da release atual}
+        {--notes-current-html= : Conteúdo HTML da release atual}
+        {--notes-current-html-file= : Arquivo HTML da release atual}
         {--released-at= : Data de release (Y-m-d H:i:s)}
         {--installed-at= : Data de instalação (Y-m-d H:i:s)}
         {--build-number= : Build number}
@@ -23,22 +24,17 @@ class RegisterAppVersionCommand extends Command
         {--author=Wallace Kleiton <wkarts@gmail.com> : Autor da release}
         {--observations= : Observações}
         {--metadata= : JSON com metadados extras}
+        {--skip-pdf : Não tenta gerar PDF de release notes}
         {--no-current : Não marca esta versão como atual}';
 
-    protected $description = 'Registra uma nova versão no controle interno da aplicação';
+    protected $description = 'Registra versão interna e gera release notes atual + cumulativa (HTML/PDF)';
 
     public function handle(AppVersionService $service): int
     {
         $version = (string) $this->argument('version');
-        $html = $this->option('notes-html');
-        $htmlFile = $this->option('notes-html-file');
-
-        if ($htmlFile) {
-            if (!File::exists($htmlFile)) {
-                $this->error("Arquivo HTML não encontrado: {$htmlFile}");
-                return self::FAILURE;
-            }
-            $html = File::get($htmlFile);
+        $currentHtml = $this->resolveCurrentHtml();
+        if ($currentHtml === false) {
+            return self::FAILURE;
         }
 
         $metadata = $this->parseMetadata((string) $this->option('metadata'));
@@ -46,8 +42,8 @@ class RegisterAppVersionCommand extends Command
         $payload = [
             'version' => $version,
             'title' => $this->option('title'),
-            'release_notes_html' => $html,
-            'release_notes_pdf_path' => $this->option('notes-pdf'),
+            'release_notes_current_html' => $currentHtml,
+            'release_notes_html' => $currentHtml,
             'released_at' => $this->option('released-at') ?: null,
             'installed_at' => $this->option('installed-at') ?: now(),
             'build_number' => $this->option('build-number'),
@@ -57,6 +53,7 @@ class RegisterAppVersionCommand extends Command
             'observations' => $this->option('observations'),
             'metadata' => $metadata,
             'is_current' => !$this->option('no-current'),
+            'skip_pdf' => (bool) $this->option('skip-pdf'),
         ];
 
         $record = $service->register($payload);
@@ -65,8 +62,31 @@ class RegisterAppVersionCommand extends Command
         $this->line('ID: '.$record->id);
         $this->line('Atual instalada: '.($record->is_current ? 'sim' : 'não'));
         $this->line('Formato release notes: '.$record->release_notes_format);
+        $this->line('HTML atual: '.($record->release_notes_current_html_path ?: '-'));
+        $this->line('HTML cumulativo: '.($record->release_notes_cumulative_html_path ?: '-'));
+        $this->line('PDF cumulativo: '.($record->release_notes_cumulative_pdf_path ?: '-'));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @return string|false
+     */
+    private function resolveCurrentHtml()
+    {
+        $inline = $this->option('notes-current-html') ?? $this->option('notes-html');
+        $file = $this->option('notes-current-html-file') ?? $this->option('notes-html-file');
+
+        if ($file) {
+            if (!File::exists($file)) {
+                $this->error("Arquivo HTML não encontrado: {$file}");
+                return false;
+            }
+
+            return File::get($file);
+        }
+
+        return $inline;
     }
 
     private function parseMetadata(string $metadata): array

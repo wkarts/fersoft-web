@@ -1844,9 +1844,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="releaseNotesLabel">Release Notes da Aplicação</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-						<span aria-hidden="true">&times;</span>
-					</button>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
 				</div>
 				<div class="modal-body">
 					@if($appVersionCurrent)
@@ -1858,43 +1856,43 @@
 					</div>
 					@endif
 
-					<div class="table-responsive">
-						<table class="table table-bordered table-hover">
-							<thead>
-								<tr>
-									<th>Versão</th>
-									<th>Título</th>
-									<th>SemVer</th>
-									<th>Release</th>
-									<th>Instalação</th>
-									<th>Notas</th>
-								</tr>
-							</thead>
-							<tbody>
-								@forelse($appVersionHistory as $item)
-								<tr>
-									<td><strong>{{ $item->version }}</strong> @if($item->is_current)<span class="badge badge-success">Atual</span>@endif</td>
-									<td>{{ $item->title ?: '-' }}</td>
-									<td>{{ $item->version_major }}.{{ $item->version_minor }}.{{ $item->version_patch }}</td>
-									<td>{{ optional($item->released_at)->format('d/m/Y H:i') ?: '-' }}</td>
-									<td>{{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</td>
-									<td>
-										@if($item->release_notes_html)
-											<span class="badge badge-light-primary">HTML</span>
-										@endif
-										@if($item->release_notes_pdf_path)
-											<a class="btn btn-sm btn-light-info" target="_blank" href="{{ asset($item->release_notes_pdf_path) }}">PDF</a>
-										@endif
-										@if(!$item->release_notes_html && !$item->release_notes_pdf_path)
-											{{ $item->observations ?: 'Sem conteúdo' }}
-										@endif
-									</td>
-								</tr>
-								@empty
-								<tr><td colspan="6" class="text-center text-muted">Nenhuma versão interna registrada.</td></tr>
-								@endforelse
-							</tbody>
-						</table>
+					<div class="accordion accordion-toggle-arrow" id="top-major-accordion">
+						@forelse($appVersionHistoryGrouped as $major => $items)
+						@php($majorId = 'top-major-'.$major)
+						<div class="card">
+							<div class="card-header" id="head-{{ $majorId }}">
+								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
+									Versão {{ $major }}
+									<span class="label label-light-info label-inline ml-2">{{ $items->count() }}</span>
+								</div>
+							</div>
+							<div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
+								<div class="card-body p-2">
+									<ul class="list-group">
+										@foreach($items as $item)
+										<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
+											<div>
+												<strong>{{ $item->version }}</strong>
+												@if($item->is_current)<span class="badge badge-success ml-1">Atual</span>@endif
+												<div class="text-muted small">{{ $item->title ?: '-' }} | {{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+											</div>
+											<div class="d-flex flex-wrap" style="gap:.4rem;">
+												@if($item->release_notes_current_html)
+												<button class="btn btn-xs btn-light-primary" data-toggle="modal" data-target="#release-current-{{ $item->id }}">Atual</button>
+												@endif
+												@if($item->release_notes_cumulative_html)
+												<button class="btn btn-xs btn-light-warning" data-toggle="modal" data-target="#release-cumulative-{{ $item->id }}">Cumulativa</button>
+												@endif
+											</div>
+										</li>
+										@endforeach
+									</ul>
+								</div>
+							</div>
+						</div>
+						@empty
+						<div class="text-center text-muted">Nenhuma versão interna registrada.</div>
+						@endforelse
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -1904,6 +1902,35 @@
 			</div>
 		</div>
 	</div>
+
+	@foreach($appVersionHistory as $item)
+		@if($item->release_notes_current_html)
+		<div class="modal fade" id="release-current-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Release atual - {{ $item->version }}</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+					</div>
+					<div class="modal-body">{!! $item->release_notes_current_html !!}</div>
+				</div>
+			</div>
+		</div>
+		@endif
+		@if($item->release_notes_cumulative_html)
+		<div class="modal fade" id="release-cumulative-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Release cumulativa - {{ $item->version }}</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+					</div>
+					<div class="modal-body">{!! $item->release_notes_cumulative_html !!}</div>
+				</div>
+			</div>
+		</div>
+		@endif
+	@endforeach
 
 	</body>
 	<!-- end::Body -->
