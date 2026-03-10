@@ -365,11 +365,7 @@ class EmiteMdfeController extends Controller
 				where('empresa_id', $this->empresa_id)
 				->first();
 
-				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
-				}else{
-					$logo = null;
-				}
+				$logo = $this->buildLogoDataUri($config->logo);
 
 				try {
 					$damdfe = new Damdfe($xml);
@@ -538,6 +534,26 @@ class EmiteMdfeController extends Controller
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
 		}  
+	}
+
+
+	private function buildLogoDataUri($logoFile)
+	{
+		if (!$logoFile) {
+			return null;
+		}
+
+		$logoPath = public_path('logos/' . $logoFile);
+		$normalizedPath = str_replace('/public/public/', '/public/', $logoPath);
+		if (file_exists($normalizedPath)) {
+			return 'data://text/plain;base64,' . base64_encode(file_get_contents($normalizedPath));
+		}
+
+		if (file_exists($logoPath)) {
+			return 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+		}
+
+		return null;
 	}
 
 	// public function imprimirCancela($id){
