@@ -169,6 +169,7 @@ Route::group(['prefix' => '/payment', 'middleware' => 'verificaEmpresa'], functi
 });
 
 Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'])->group(function () {
+	Route::get('/release-notes', 'ReleaseNotesController@index');
 
 		// Route::get('/backup', 'BackupController@index');
 	Route::get('/backupSql', 'BackupController@sql');

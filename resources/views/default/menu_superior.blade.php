@@ -146,6 +146,10 @@
 		</div>
 	</div>
 
+	@php
+		$installedRelease = app(\App\Services\Updates\ReleaseNotesService::class)->installedRelease();
+	@endphp
+
 	<div class="d-flex flex-column flex-root" >
 		<div class="d-flex flex-row flex-column-fluid page">
 
@@ -384,6 +388,12 @@
 									Ambiente: {{session('user_logged')['ambiente']}}
 								</a>
 							</li>
+
+								<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+									<a href="/release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release notes instaladas">
+										Versão: {{ $installedRelease['version'] ?? (config('app.version') ?? 'N/A') }}
+									</a>
+								</li>
 
 							@if(!$upgrade)
 							<li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">

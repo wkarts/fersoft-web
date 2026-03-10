@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "owner": "@wkarts",
+    "maintainer": {
+      "name": "Wallace Kleiton",
+      "email": "wkarts@gmail.com",
+      "github": "@wkarts",
+      "whatsapp": "+55 75 98844-9231"
+    }
+  },
+  "releases": [
+    {
+      "version": "1.0.0",
+      "release_date": "2026-03-10",
+      "cpf": "Não informado",
+      "location": "Produção",
+      "author": {
+        "name": "Wallace Kleiton",
+        "email": "wkarts@gmail.com",
+        "github": "@wkarts"
+      },
+      "highlights": [
+        "Criação do controle central de release notes em JSON.",
+        "Exibição da versão instalada no menu superior do dashboard.",
+        "Tela de consulta com versão, data da release, SemVer, CPF, local e melhorias."
+      ]
+    }
+  ]
+}
