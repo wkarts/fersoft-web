@@ -28,7 +28,7 @@ class EmiteMdfeController extends Controller
 
 	public function enviar(Request $request){
 
-		$mdfe = Mdfe::where('id', $request->id)
+		$mdfe = Mdfe::with(['pagamentos.componentes', 'pagamentos.parcelas'])->where('id', $request->id)
 		->first();
 
 		$config = ConfigNota::
@@ -103,7 +103,7 @@ class EmiteMdfeController extends Controller
 
 	public function xmlTemp($id){
 
-		$mdfe = Mdfe::where('id', $id)
+		$mdfe = Mdfe::with(['pagamentos.componentes', 'pagamentos.parcelas'])->where('id', $id)
 		->first();
 
 		if($mdfe == null){
