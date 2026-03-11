@@ -8,6 +8,7 @@ use Dompdf\Options;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
 class AppVersionService
@@ -47,6 +48,36 @@ class AppVersionService
                     })
                     ->values();
             });
+    }
+
+    public function isSemanticVersion(string $version): bool
+    {
+        return $this->normalizeSemanticVersion($version) !== null;
+    }
+
+    public function writeComposerVersion(string $version): bool
+    {
+        $normalizedVersion = $this->normalizeSemanticVersion($version);
+        if ($normalizedVersion === null) {
+            return false;
+        }
+
+        $composerPath = base_path('composer.json');
+        if (!File::exists($composerPath)) {
+            return false;
+        }
+
+        $raw = File::get($composerPath);
+        $data = json_decode($raw, true);
+
+        if (!is_array($data)) {
+            return false;
+        }
+
+        $data['version'] = $normalizedVersion;
+        File::put($composerPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+
+        return true;
     }
 
     public function currentOrFallback(): AppVersion

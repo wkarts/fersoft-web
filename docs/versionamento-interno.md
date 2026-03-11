@@ -77,6 +77,31 @@ Internamente, elas alimentam a nota **current**.
 - A versão atual permanece visível no menu superior (mobile) e na base da sidebar (desktop), com ajuste de espaçamento para não ser coberta pelo balão flutuante de suporte.
 
 
+
+## Flow recomendado (release -> deploy)
+
+Para manter **sempre a mesma versão** em release, `composer.json` e UI:
+
+1. O flow de release define a versão (ex.: `5.0.23`).
+2. O flow de deploy executa no servidor:
+
+```bash
+php artisan app-version:apply-release 5.0.23 \
+  --manifest=storage/app/releases/manifest.json \
+  --notes-current-html-file=storage/app/releases/5.0.23/current.html \
+  --title="Release 5.0.23" \
+  --release-channel=stable \
+  --build-number=build-20260311.1 \
+  --commit-hash=$(git rev-parse --short HEAD)
+```
+
+Esse comando é idempotente:
+- atualiza `composer.json` com a versão informada;
+- sincroniza manifest + artifacts;
+- registra/atualiza a release atual em `app_versions` e marca como `is_current=true`.
+
+Se quiser apenas alinhar `composer.json` + sync sem registrar nota atual, use `--skip-register`.
+
 ## Fluxo recomendado no deploy
 
 1. Atualizar `composer.json` com a versão da release (ex.: `"version": "5.0.21"`).

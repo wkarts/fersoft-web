@@ -35,6 +35,11 @@ class RegisterAppVersionCommand extends Command
     public function handle(AppVersionService $service): int
     {
         $version = $this->resolveVersion($service);
+        if (!$service->isSemanticVersion($version)) {
+            $this->error("Versão inválida: {$version}. Use formato semântico x.y.z.");
+            return self::FAILURE;
+        }
+
         $currentHtml = $this->resolveCurrentHtml();
         if ($currentHtml === false) {
             return self::FAILURE;
@@ -64,7 +69,11 @@ class RegisterAppVersionCommand extends Command
         $record = $service->register($payload);
 
         if ((bool) $this->option('write-composer-version')) {
-            $this->writeComposerVersion($record->version);
+            if (!$service->writeComposerVersion($record->version)) {
+                $this->warn('Falha ao atualizar composer.json com a versão registrada.');
+            } else {
+                $this->line('composer.json atualizado para versão: '.$record->version);
+            }
         }
 
         $this->info("Versão {$record->version} registrada com sucesso.");
@@ -110,28 +119,6 @@ class RegisterAppVersionCommand extends Command
         return $inline;
     }
 
-
-    private function writeComposerVersion(string $version): void
-    {
-        $composerPath = base_path('composer.json');
-
-        if (!File::exists($composerPath)) {
-            $this->warn('composer.json não encontrado para atualização de versão.');
-            return;
-        }
-
-        $raw = File::get($composerPath);
-        $data = json_decode($raw, true);
-
-        if (!is_array($data)) {
-            $this->warn('composer.json inválido. Versão não atualizada.');
-            return;
-        }
-
-        $data['version'] = $version;
-        File::put($composerPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
-        $this->line('composer.json atualizado para versão: '.$version);
-    }
 
     private function parseMetadata(string $metadata): array
     {
