@@ -146,6 +146,7 @@
 		</div>
 	</div>
 
+
 	<div class="d-flex flex-column flex-root" >
 		<div class="d-flex flex-row flex-column-fluid page">
 
@@ -384,6 +385,12 @@
 									Ambiente: {{session('user_logged')['ambiente']}}
 								</a>
 							</li>
+
+								<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+									<a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
+										Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+									</a>
+								</li>
 
 							@if(!$upgrade)
 							<li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
@@ -1831,6 +1838,100 @@
 		<script type="text/javascript">
 
 		</script>
+
+	<div class="modal fade" id="modal-release-notes" tabindex="-1" role="dialog" aria-labelledby="releaseNotesLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="releaseNotesLabel">Release Notes da Aplicação</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+				</div>
+				<div class="modal-body">
+					@if($appVersionCurrent)
+					<div class="alert alert-light-info mb-4">
+						<div><strong>Versão instalada:</strong> {{ $appVersionCurrent->version }}</div>
+						<div><strong>SemVer:</strong> {{ $appVersionCurrent->version_major }}.{{ $appVersionCurrent->version_minor }}.{{ $appVersionCurrent->version_patch }}</div>
+						<div><strong>Release:</strong> {{ optional($appVersionCurrent->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
+						<div><strong>Instalada em:</strong> {{ optional($appVersionCurrent->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+					</div>
+					@endif
+
+					<div class="accordion accordion-toggle-arrow" id="top-major-accordion">
+						@forelse($appVersionHistoryGrouped as $major => $items)
+						@php($majorId = 'top-major-'.$major)
+						<div class="card">
+							<div class="card-header" id="head-{{ $majorId }}">
+								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
+									Versão {{ $major }}
+									<span class="label label-light-info label-inline ml-2">{{ $items->count() }}</span>
+								</div>
+							</div>
+							<div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
+								<div class="card-body p-2">
+									<ul class="list-group">
+										@foreach($items as $item)
+										<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
+											<div>
+												<strong>{{ $item->version }}</strong>
+												@if($item->is_current)<span class="badge badge-success ml-1">Atual</span>@endif
+												<div class="text-muted small">{{ $item->title ?: '-' }} | {{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+											</div>
+											<div class="d-flex flex-wrap" style="gap:.4rem;">
+												@if($item->release_notes_current_html)
+												<button class="btn btn-xs btn-light-primary" data-toggle="modal" data-target="#release-current-{{ $item->id }}">Atual</button>
+												@endif
+												@if($item->release_notes_cumulative_html)
+												<button class="btn btn-xs btn-light-warning" data-toggle="modal" data-target="#release-cumulative-{{ $item->id }}">Cumulativa</button>
+												@endif
+											</div>
+										</li>
+										@endforeach
+									</ul>
+								</div>
+							</div>
+						</div>
+						@empty
+						<div class="text-center text-muted">Nenhuma versão interna registrada.</div>
+						@endforelse
+					</div>
+				</div>
+				<div class="modal-footer">
+					<a href="/app-versions" class="btn btn-light-primary">Abrir histórico completo</a>
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	@foreach($appVersionHistory as $item)
+		@if($item->release_notes_current_html)
+		<div class="modal fade" id="release-current-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Release atual - {{ $item->version }}</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+					</div>
+					<div class="modal-body">{!! $item->release_notes_current_html !!}</div>
+				</div>
+			</div>
+		</div>
+		@endif
+		@if($item->release_notes_cumulative_html)
+		<div class="modal fade" id="release-cumulative-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">Release cumulativa - {{ $item->version }}</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+					</div>
+					<div class="modal-body">{!! $item->release_notes_cumulative_html !!}</div>
+				</div>
+			</div>
+		</div>
+		@endif
+	@endforeach
+
 	</body>
 	<!-- end::Body -->
 
