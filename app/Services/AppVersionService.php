@@ -82,9 +82,9 @@ class AppVersionService
         if (is_file($composerPath)) {
             $raw = file_get_contents($composerPath);
             $json = json_decode((string) $raw, true);
-            $composerVersion = trim((string) data_get($json, 'version', ''));
-            if ($composerVersion !== '') {
-                return ltrim($composerVersion, 'vV');
+            $composerVersion = $this->normalizeSemanticVersion((string) data_get($json, 'version', ''));
+            if ($composerVersion !== null) {
+                return $composerVersion;
             }
         }
 
@@ -93,9 +93,9 @@ class AppVersionService
             return $latestArtifactVersion;
         }
 
-        $envVersion = trim((string) (env('APPVERSION') ?: env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
-        if ($envVersion !== '') {
-            return ltrim($envVersion, 'vV');
+        $envVersion = $this->normalizeSemanticVersion((string) (env('APPVERSION') ?: env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
+        if ($envVersion !== null) {
+            return $envVersion;
         }
 
         return '0.0.0';
@@ -189,6 +189,7 @@ class AppVersionService
         }
 
         $currentVersion = ltrim((string) Arr::get($manifest, 'current_version', ''), 'vV');
+        $currentVersion = $this->normalizeSemanticVersion($currentVersion) ?? '';
         $upserts = 0;
 
         foreach ($releases as $release) {
@@ -197,7 +198,8 @@ class AppVersionService
             }
 
             $version = ltrim((string) Arr::get($release, 'version', ''), 'vV');
-            if ($version === '') {
+            $version = $this->normalizeSemanticVersion($version);
+            if ($version === null) {
                 continue;
             }
 
@@ -350,6 +352,17 @@ class AppVersionService
             (int) ($parts[1] ?? 0),
             (int) preg_replace('/\D.*/', '', (string) ($parts[2] ?? '0')),
         ];
+    }
+
+    private function normalizeSemanticVersion(string $version): ?string
+    {
+        $normalized = ltrim(trim($version), 'vV');
+
+        if ($normalized === '' || !preg_match('/^\d+\.\d+\.\d+$/', $normalized)) {
+            return null;
+        }
+
+        return $normalized;
     }
 
     private function normalizeReleaseCurrentHtml(?string $html, string $title, string $version, ?string $observations): string
