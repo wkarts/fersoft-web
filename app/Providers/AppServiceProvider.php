@@ -324,9 +324,9 @@ class AppServiceProvider extends ServiceProvider
 
             if (Schema::hasTable('app_versions')) {
                 $appVersionService = app(AppVersionService::class);
-                $appVersionCurrent = $appVersionService->current();
-                $appVersionHistory = $appVersionService->history(30);
-                $appVersionHistoryGrouped = $appVersionService->groupedHistoryByMajor(120);
+                $appVersionCurrent = $appVersionService->currentOrFallback();
+                $appVersionHistory = $appVersionService->history();
+                $appVersionHistoryGrouped = $appVersionService->groupedHistoryByMajor();
             }
 
             $configCatraca = null;

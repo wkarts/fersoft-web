@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\File;
 class RegisterAppVersionCommand extends Command
 {
     protected $signature = 'app-version:register
-        {version : Versão semântica (ex.: 2.4.1)}
+        {version? : Versão semântica (ex.: 2.4.1). Se omitida, tenta composer.json/env}
         {--title= : Título da release}
         {--notes-html= : [LEGADO] Conteúdo HTML da release atual}
         {--notes-html-file= : [LEGADO] Arquivo HTML da release atual}
@@ -25,13 +25,14 @@ class RegisterAppVersionCommand extends Command
         {--observations= : Observações}
         {--metadata= : JSON com metadados extras}
         {--skip-pdf : Não tenta gerar PDF de release notes}
+        {--use-composer-version : Força uso da versão do composer/env}
         {--no-current : Não marca esta versão como atual}';
 
     protected $description = 'Registra versão interna e gera release notes atual + cumulativa (HTML/PDF)';
 
     public function handle(AppVersionService $service): int
     {
-        $version = (string) $this->argument('version');
+        $version = $this->resolveVersion($service);
         $currentHtml = $this->resolveCurrentHtml();
         if ($currentHtml === false) {
             return self::FAILURE;
@@ -67,6 +68,18 @@ class RegisterAppVersionCommand extends Command
         $this->line('PDF cumulativo: '.($record->release_notes_cumulative_pdf_path ?: '-'));
 
         return self::SUCCESS;
+    }
+
+
+    private function resolveVersion(AppVersionService $service): string
+    {
+        $inputVersion = trim((string) $this->argument('version'));
+
+        if ($inputVersion !== '' && !$this->option('use-composer-version')) {
+            return $inputVersion;
+        }
+
+        return $service->resolveInstalledVersion();
     }
 
     /**

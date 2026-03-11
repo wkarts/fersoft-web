@@ -21,7 +21,7 @@ class AppVersionService
             ->first();
     }
 
-    public function history(int $limit = 50): Collection
+    public function history(?int $limit = null): Collection
     {
         return AppVersion::query()
             ->orderByDesc('version_major')
@@ -29,11 +29,11 @@ class AppVersionService
             ->orderByDesc('version_patch')
             ->orderByDesc('installed_at')
             ->orderByDesc('id')
-            ->limit($limit)
+            ->when($limit, fn ($q) => $q->limit($limit))
             ->get();
     }
 
-    public function groupedHistoryByMajor(int $limit = 200): Collection
+    public function groupedHistoryByMajor(?int $limit = null): Collection
     {
         return $this->history($limit)
             ->groupBy('version_major')
@@ -47,6 +47,47 @@ class AppVersionService
                     })
                     ->values();
             });
+    }
+
+
+    public function currentOrFallback(): AppVersion
+    {
+        $current = $this->current();
+        if ($current) {
+            return $current;
+        }
+
+        $version = $this->resolveInstalledVersion();
+        [$major, $minor, $patch] = $this->splitVersion($version);
+
+        return new AppVersion([
+            'version' => $version,
+            'version_major' => $major,
+            'version_minor' => $minor,
+            'version_patch' => $patch,
+            'title' => 'Versão instalada (fallback)',
+            'is_current' => true,
+        ]);
+    }
+
+    public function resolveInstalledVersion(): string
+    {
+        $composerPath = base_path('composer.json');
+        if (is_file($composerPath)) {
+            $raw = file_get_contents($composerPath);
+            $json = json_decode((string) $raw, true);
+            $composerVersion = trim((string) data_get($json, 'version', ''));
+            if ($composerVersion !== '') {
+                return ltrim($composerVersion, 'vV');
+            }
+        }
+
+        $envVersion = trim((string) (env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
+        if ($envVersion !== '') {
+            return ltrim($envVersion, 'vV');
+        }
+
+        return '0.0.0';
     }
 
     public function register(array $data): AppVersion

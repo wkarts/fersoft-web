@@ -14,8 +14,8 @@ class AppVersionController extends Controller
 
     public function index()
     {
-        $currentVersion = $this->appVersionService->current();
-        $groupedVersions = $this->appVersionService->groupedHistoryByMajor(500);
+        $currentVersion = $this->appVersionService->currentOrFallback();
+        $groupedVersions = $this->appVersionService->groupedHistoryByMajor();
 
         return view('app_versions.index', compact('currentVersion', 'groupedVersions'))
             ->with('title', 'Controle Interno de Versões');

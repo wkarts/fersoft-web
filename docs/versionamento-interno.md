@@ -35,6 +35,12 @@ php artisan app-version:register 1.3.0 \
   --metadata='{"ticket":"REL-130"}'
 ```
 
+Opcionalmente, para usar automaticamente a versão definida no `composer.json`/ENV:
+
+```bash
+php artisan app-version:register --use-composer-version --notes-current-html="Melhorias gerais"
+```
+
 ### Compatibilidade com flags antigas
 
 As opções antigas ainda funcionam:
@@ -63,3 +69,9 @@ Internamente, elas alimentam a nota **current**.
 - Mobile: versão atual no menu superior.
 - Desktop: versão atual na base da sidebar.
 - Histórico: agrupado por `version_major` com expand/collapse na página e no modal do topo.
+
+
+## Visibilidade da versão atual
+
+- Se não houver registro `is_current` no banco, o sistema usa fallback da versão em `composer.json` (`version`) e, em seguida, `VERSION`/`APP_VERSION` para evitar exibição `N/A`.
+- A versão atual permanece visível no menu superior (mobile) e na base da sidebar (desktop), com ajuste de espaçamento para não ser coberta pelo balão flutuante de suporte.

@@ -156,6 +156,14 @@
     <link rel="stylesheet" href="/css/animate.min.css"/>
 
     @yield('css')
+
+	<style>
+		.app-version-desktop-anchor {
+			margin-bottom: 120px;
+			position: relative;
+			z-index: 2;
+		}
+	</style>
 </head>
 
 <!-- end::Head -->
@@ -665,7 +673,7 @@
                 </div>
             </div>
 
-            <div class="d-none d-lg-block px-4 pb-4">
+            <div class="d-none d-lg-block px-4 pb-4 app-version-desktop-anchor">
                 <a href="/app-versions" class="btn btn-sm btn-light-primary btn-block" title="Versão instalada e histórico de release notes">
                     <i class="la la-code-branch"></i>
                     Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}
