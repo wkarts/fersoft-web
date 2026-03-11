@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "argws/laravel-updater",
-            "version": "v0.1.173",
+            "version": "v0.1.174",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/laravel-updater.git",
-                "reference": "00ee741221fdb0af219e292db7dfbcc26601faa7"
+                "reference": "9b0f4e602b2425e2811d94d1f75b826b1be0e664"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/00ee741221fdb0af219e292db7dfbcc26601faa7",
-                "reference": "00ee741221fdb0af219e292db7dfbcc26601faa7",
+                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/9b0f4e602b2425e2811d94d1f75b826b1be0e664",
+                "reference": "9b0f4e602b2425e2811d94d1f75b826b1be0e664",
                 "shasum": ""
             },
             "require": {
@@ -53,9 +53,9 @@
             "description": "Sistema genérico de autoatualização para aplicações Laravel.",
             "support": {
                 "issues": "https://github.com/wkarts/laravel-updater/issues",
-                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.173"
+                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.174"
             },
-            "time": "2026-03-11T01:56:26+00:00"
+            "time": "2026-03-11T06:38:01+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
