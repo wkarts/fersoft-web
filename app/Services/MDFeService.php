@@ -866,7 +866,12 @@ class MDFeService{
 			if($cStat == '100'){
 
 				$xml = Complements::toAuthorize($signXml, $resp);
-				file_put_contents(public_path('xml_mdfe/').$chave.'.xml', $xml);
+				$xmlMdfePath = $this->resolveMdfeXmlPath('xml_mdfe');
+				if (!is_dir($xmlMdfePath)) {
+					mkdir($xmlMdfePath, 0755, true);
+				}
+				$fileName = $chave.'.xml';
+				file_put_contents($xmlMdfePath.DIRECTORY_SEPARATOR.$fileName, $xml);
 				return [
 					'chave' => $chave, 
 					'protocolo' => $std->protMDFe->infProt->nProt, 
@@ -963,12 +968,30 @@ class MDFeService{
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $resp);
-				file_put_contents(public_path('xml_mdfe_cancelada/').$chave.'.xml',$xml);
+				$xmlMdfeCanceladaPath = $this->resolveMdfeXmlPath('xml_mdfe_cancelada');
+				if (!is_dir($xmlMdfeCanceladaPath)) {
+					mkdir($xmlMdfeCanceladaPath, 0755, true);
+				}
+				$fileName = $chave.'.xml';
+				file_put_contents($xmlMdfeCanceladaPath.DIRECTORY_SEPARATOR.$fileName, $xml);
 			}
 			return $std;
 		} catch (Exception $e) {
 			echo $e->getMessage();
 		}
+	}
+
+	private function resolveMdfeXmlPath($folder)
+	{
+		$folder = trim($folder, '/\\');
+		$path = public_path($folder);
+
+		$normalizedPath = str_replace('/public/public/', '/public/', $path);
+		if ($normalizedPath !== $path) {
+			$path = $normalizedPath;
+		}
+
+		return rtrim($path, '/\\');
 	}
 
 
