@@ -153,35 +153,53 @@
         }
 
         .app-version-desktop-btn {
-            font-size: .78rem;
+            font-size: .86rem;
             line-height: 1.2;
             white-space: normal;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .28);
+            color: inherit;
+            box-shadow: none;
+            transition: all .2s ease;
+        }
+
+        .app-version-desktop-btn i,
+        .app-version-desktop-text {
+            color: inherit;
+        }
+
+        .app-version-desktop-btn:hover,
+        .app-version-desktop-btn:focus {
+            background: rgba(54, 153, 255, .22);
+            border-color: rgba(54, 153, 255, .45);
+            color: inherit;
         }
 
         body.aside-minimize .app-version-desktop-wrapper {
-            padding-left: .25rem !important;
-            padding-right: .25rem !important;
+            padding-left: .2rem !important;
+            padding-right: .2rem !important;
         }
 
         body.aside-minimize .app-version-desktop-btn {
-            font-size: .62rem;
-            padding: .3rem .15rem;
-            min-height: 52px;
+            font-size: .56rem;
+            padding: .28rem .12rem;
+            min-height: 50px;
         }
 
         body.aside-minimize .app-version-desktop-btn i {
             margin-right: 0;
             display: block;
-            font-size: .85rem;
+            font-size: .8rem;
             line-height: 1;
         }
 
         body.aside-minimize .app-version-desktop-text {
             display: block;
-            margin-top: .15rem;
+            margin-top: .12rem;
             word-break: break-word;
-            line-height: 1.05;
+            line-height: 1.02;
         }
+
 
     </style>
 
@@ -269,7 +287,7 @@
             </div>
 
             <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
-                <a href="/app-versions" class="btn btn-sm btn-light-primary btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
+                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
                     <i class="la la-code-branch"></i>
                     <span class="app-version-desktop-text">Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
                 </a>
