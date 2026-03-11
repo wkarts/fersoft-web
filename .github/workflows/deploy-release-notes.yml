@@ -75,6 +75,8 @@ jobs:
 
               composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
+              export RELEASE_VERSION="$VERSION"
+
               php artisan app-version:apply-release "$VERSION" \
                 --manifest=storage/app/releases/manifest.json \
                 --notes-current-html-file="storage/app/releases/$VERSION/current.html" \
@@ -83,4 +85,6 @@ jobs:
                 --build-number="${{ github.run_id }}" \
                 --commit-hash="${{ github.sha }}" \
                 --author="Wallace Kleiton <wkarts@gmail.com>"
+
+              php -r '$v=json_decode(file_get_contents("composer.json"), true)["version"] ?? ""; if($v !== getenv("RELEASE_VERSION")){fwrite(STDERR, "composer.json fora de sincronia\n"); exit(1);} echo "composer.json sincronizado: {$v}\n";'
             } 9>/tmp/fersoft-release-notes.lock

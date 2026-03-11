@@ -73,7 +73,7 @@ Internamente, elas alimentam a nota **current**.
 
 ## Visibilidade da versão atual
 
-- Se não houver registro `is_current` no banco, o sistema usa fallback da versão em `composer.json` (`version`), depois artifacts em `storage/app/releases`, e por fim `APPVERSION`/`VERSION`/`APP_VERSION` apenas quando o valor é semântico (`x.y.z`). Valores inválidos (ex.: `metronic`) são ignorados para evitar versão incorreta na UI.
+- Se não houver registro `is_current` no banco, o sistema usa fallback da versão em `composer.json` (`version`), depois artifacts em `storage/app/releases`, e por fim `APPVERSION`/`VERSION`/`APP_VERSION`/`RELEASE_VERSION` apenas quando o valor é semântico (`x.y.z`). Se ainda não houver valor, tenta tag git (`vX.Y.Z`) do checkout atual. Valores inválidos (ex.: `metronic`) são ignorados para evitar versão incorreta na UI.
 - A versão atual permanece visível no menu superior (mobile) e na base da sidebar (desktop), com ajuste de espaçamento para não ser coberta pelo balão flutuante de suporte.
 
 

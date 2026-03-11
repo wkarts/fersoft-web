@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 class AppVersionService
 {
@@ -124,9 +125,14 @@ class AppVersionService
             return $latestArtifactVersion;
         }
 
-        $envVersion = $this->normalizeSemanticVersion((string) (env('APPVERSION') ?: env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
+        $envVersion = $this->normalizeSemanticVersion((string) (env('APPVERSION') ?: env('VERSION') ?: env('APP_VERSION') ?: env('RELEASE_VERSION') ?: config('app.version')));
         if ($envVersion !== null) {
             return $envVersion;
+        }
+
+        $gitVersion = $this->detectGitVersion();
+        if ($gitVersion !== null) {
+            return $gitVersion;
         }
 
         return '0.0.0';
@@ -198,6 +204,42 @@ class AppVersionService
     private function detectLatestArtifactVersion(): ?string
     {
         return $this->artifactVersions()->first();
+    }
+
+
+    private function detectGitVersion(): ?string
+    {
+        if (!is_dir(base_path('.git'))) {
+            return null;
+        }
+
+        $commands = [
+            ['git', 'describe', '--tags', '--exact-match'],
+            ['git', 'tag', '--list', 'v[0-9]*.[0-9]*.[0-9]*', '--sort=-version:refname'],
+        ];
+
+        foreach ($commands as $command) {
+            $process = new Process($command, base_path());
+            $process->setTimeout(3);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                continue;
+            }
+
+            $output = trim($process->getOutput());
+            if ($output === '') {
+                continue;
+            }
+
+            $firstLine = trim(strtok($output, "\n") ?: '');
+            $version = $this->normalizeSemanticVersion($firstLine);
+            if ($version !== null) {
+                return $version;
+            }
+        }
+
+        return null;
     }
 
 
