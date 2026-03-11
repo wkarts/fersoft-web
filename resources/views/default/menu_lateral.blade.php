@@ -156,6 +156,14 @@
     <link rel="stylesheet" href="/css/animate.min.css"/>
 
     @yield('css')
+
+	<style>
+		.app-version-desktop-anchor {
+			margin-bottom: 120px;
+			position: relative;
+			z-index: 2;
+		}
+	</style>
 </head>
 
 <!-- end::Head -->
@@ -664,6 +672,13 @@
                     </ul>
                 </div>
             </div>
+
+            <div class="d-none d-lg-block px-4 pb-4 app-version-desktop-anchor">
+                <a href="/app-versions" class="btn btn-sm btn-light-primary btn-block" title="Versão instalada e histórico de release notes">
+                    <i class="la la-code-branch"></i>
+                    Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                </a>
+            </div>
         </div>
         <div class="d-flex flex-column flex-row-fluid wrapper" id="kt_wrapper">
             <div id="kt_header" class="header header-fixed">
@@ -704,6 +719,12 @@
                                         <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-info @else label-info @endif">
                                                 Ambiente: {{session('user_logged')['ambiente']}}
+                                            </a>
+                                        </li>
+
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active d-lg-none" data-menu-toggle="click" aria-haspopup="true">
+                                            <a href="/app-versions" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif">
+                                                Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
                                             </a>
                                         </li>
                                     @endif
