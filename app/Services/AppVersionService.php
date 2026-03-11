@@ -93,7 +93,7 @@ class AppVersionService
             return $latestArtifactVersion;
         }
 
-        $envVersion = trim((string) (env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
+        $envVersion = trim((string) (env('APPVERSION') ?: env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
         if ($envVersion !== '') {
             return ltrim($envVersion, 'vV');
         }
@@ -167,6 +167,79 @@ class AppVersionService
     private function detectLatestArtifactVersion(): ?string
     {
         return $this->artifactVersions()->first();
+    }
+
+
+    public function syncFromManifest(?string $manifestPath = null): int
+    {
+        $manifestPath = $manifestPath ?: storage_path('app/releases/manifest.json');
+        if (!is_file($manifestPath)) {
+            return 0;
+        }
+
+        $raw = file_get_contents($manifestPath);
+        $manifest = json_decode((string) $raw, true);
+        if (!is_array($manifest)) {
+            return 0;
+        }
+
+        $releases = collect(Arr::get($manifest, 'releases', []));
+        if ($releases->isEmpty()) {
+            return 0;
+        }
+
+        $currentVersion = ltrim((string) Arr::get($manifest, 'current_version', ''), 'vV');
+        $upserts = 0;
+
+        foreach ($releases as $release) {
+            if (!is_array($release)) {
+                continue;
+            }
+
+            $version = ltrim((string) Arr::get($release, 'version', ''), 'vV');
+            if ($version === '') {
+                continue;
+            }
+
+            [$major, $minor, $patch] = $this->splitVersion($version);
+
+            $record = AppVersion::query()->updateOrCreate(
+                ['version' => $version],
+                [
+                    'version_major' => $major,
+                    'version_minor' => $minor,
+                    'version_patch' => $patch,
+                    'title' => Arr::get($release, 'title', 'Release '.$version),
+                    'release_notes_current_html' => Arr::get($release, 'current_html'),
+                    'release_notes_cumulative_html' => Arr::get($release, 'cumulative_html'),
+                    'release_notes_current_html_path' => Arr::get($release, 'current_html_path'),
+                    'release_notes_cumulative_html_path' => Arr::get($release, 'cumulative_html_path'),
+                    'release_notes_current_pdf_path' => Arr::get($release, 'current_pdf_path'),
+                    'release_notes_cumulative_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
+                    'release_notes_html' => Arr::get($release, 'current_html'),
+                    'release_notes_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
+                    'release_notes_format' => Arr::get($release, 'format', $this->resolveFormat(Arr::get($release, 'current_html'), Arr::get($release, 'cumulative_pdf_path'))),
+                    'released_at' => Arr::get($release, 'released_at'),
+                    'installed_at' => Arr::get($release, 'installed_at', now()),
+                    'build_number' => Arr::get($release, 'build_number'),
+                    'commit_hash' => Arr::get($release, 'commit_hash'),
+                    'release_channel' => Arr::get($release, 'release_channel'),
+                    'author' => Arr::get($release, 'author'),
+                    'observations' => Arr::get($release, 'observations'),
+                    'metadata' => Arr::get($release, 'metadata', []),
+                    'is_current' => false,
+                ]
+            );
+
+            $upserts += $record->wasRecentlyCreated ? 1 : 0;
+        }
+
+        if ($currentVersion !== '') {
+            AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
+            AppVersion::query()->where('version', $currentVersion)->update(['is_current' => true]);
+        }
+
+        return $upserts;
     }
 
     public function register(array $data): AppVersion

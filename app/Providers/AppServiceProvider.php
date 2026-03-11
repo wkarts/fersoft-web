@@ -330,6 +330,7 @@ class AppServiceProvider extends ServiceProvider
                 $needsSync = $currentDbVersion === null || $currentDbVersion->version !== $installedVersion;
 
                 if ($needsSync) {
+                    $appVersionService->syncFromManifest();
                     $appVersionService->syncFromArtifacts($installedVersion);
                 }
 

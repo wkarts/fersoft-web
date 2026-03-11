@@ -38,7 +38,7 @@ php artisan app-version:register 1.3.0 \
 Opcionalmente, para usar automaticamente a versão definida no `composer.json`/ENV:
 
 ```bash
-php artisan app-version:register --use-composer-version --notes-current-html="Melhorias gerais"
+php artisan app-version:register --use-composer-version --write-composer-version --notes-current-html="Melhorias gerais"
 ```
 
 ### Compatibilidade com flags antigas
@@ -113,3 +113,34 @@ Resultado esperado para `5.0.22`:
 - nota **cumulativa**: 5.0.22 + todas as versões anteriores encontradas em `storage/app/releases`.
 
 Para desativar esse bootstrap em um caso específico, use `--no-bootstrap-artifacts`.
+
+
+## Manifest de releases (opcional, recomendado no flow)
+
+O flow pode publicar um arquivo em `storage/app/releases/manifest.json` com todas as releases já lançadas.
+
+Estrutura mínima:
+
+```json
+{
+  "current_version": "5.0.22",
+  "releases": [
+    {
+      "version": "5.0.22",
+      "title": "Release 5.0.22",
+      "current_html": "<h2>...</h2>",
+      "cumulative_html": "<h1>...</h1>",
+      "current_html_path": "releases/5.0.22/current.html",
+      "cumulative_html_path": "releases/5.0.22/cumulative.html",
+      "current_pdf_path": "releases/5.0.22/current.pdf",
+      "cumulative_pdf_path": "releases/5.0.22/cumulative.pdf"
+    }
+  ]
+}
+```
+
+Sincronização manual:
+
+```bash
+php artisan app-version:sync --version=5.0.22 --manifest=storage/app/releases/manifest.json
+```

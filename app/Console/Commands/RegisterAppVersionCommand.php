@@ -27,6 +27,7 @@ class RegisterAppVersionCommand extends Command
         {--skip-pdf : Não tenta gerar PDF de release notes}
         {--use-composer-version : Força uso da versão do composer/env}
         {--no-bootstrap-artifacts : Não sincroniza artifacts antigos antes de gerar cumulativa}
+        {--write-composer-version : Atualiza composer.json com a versão registrada}
         {--no-current : Não marca esta versão como atual}';
 
     protected $description = 'Registra versão interna e gera release notes atual + cumulativa (HTML/PDF)';
@@ -61,6 +62,10 @@ class RegisterAppVersionCommand extends Command
         ];
 
         $record = $service->register($payload);
+
+        if ((bool) $this->option('write-composer-version')) {
+            $this->writeComposerVersion($record->version);
+        }
 
         $this->info("Versão {$record->version} registrada com sucesso.");
         $this->line('ID: '.$record->id);
@@ -103,6 +108,29 @@ class RegisterAppVersionCommand extends Command
         }
 
         return $inline;
+    }
+
+
+    private function writeComposerVersion(string $version): void
+    {
+        $composerPath = base_path('composer.json');
+
+        if (!File::exists($composerPath)) {
+            $this->warn('composer.json não encontrado para atualização de versão.');
+            return;
+        }
+
+        $raw = File::get($composerPath);
+        $data = json_decode($raw, true);
+
+        if (!is_array($data)) {
+            $this->warn('composer.json inválido. Versão não atualizada.');
+            return;
+        }
+
+        $data['version'] = $version;
+        File::put($composerPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+        $this->line('composer.json atualizado para versão: '.$version);
     }
 
     private function parseMetadata(string $metadata): array
