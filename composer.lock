@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "argws/laravel-updater",
-            "version": "v0.1.176",
+            "version": "v0.1.177",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/laravel-updater.git",
-                "reference": "d634a6de1680781371cd62d7b5cf380ddca00179"
+                "reference": "e8fe7b420b2794942914b8c8b7b4291e47800a71"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/d634a6de1680781371cd62d7b5cf380ddca00179",
-                "reference": "d634a6de1680781371cd62d7b5cf380ddca00179",
+                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/e8fe7b420b2794942914b8c8b7b4291e47800a71",
+                "reference": "e8fe7b420b2794942914b8c8b7b4291e47800a71",
                 "shasum": ""
             },
             "require": {
@@ -53,9 +53,9 @@
             "description": "Sistema genérico de autoatualização para aplicações Laravel.",
             "support": {
                 "issues": "https://github.com/wkarts/laravel-updater/issues",
-                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.176"
+                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.177"
             },
-            "time": "2026-03-11T08:07:57+00:00"
+            "time": "2026-03-11T08:36:06+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -7626,27 +7626,27 @@
         },
         {
             "name": "setasign/fpdi",
-            "version": "v2.6.4",
+            "version": "v2.6.5",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Setasign/FPDI.git",
-                "reference": "4b53852fde2734ec6a07e458a085db627c60eada"
+                "reference": "fe203627e68a6c794d2434dee32d83a7bf78ed32"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Setasign/FPDI/zipball/4b53852fde2734ec6a07e458a085db627c60eada",
-                "reference": "4b53852fde2734ec6a07e458a085db627c60eada",
+                "url": "https://api.github.com/repos/Setasign/FPDI/zipball/fe203627e68a6c794d2434dee32d83a7bf78ed32",
+                "reference": "fe203627e68a6c794d2434dee32d83a7bf78ed32",
                 "shasum": ""
             },
             "require": {
                 "ext-zlib": "*",
-                "php": "^7.1 || ^8.0"
+                "php": ">=7.2 <=8.5.99999"
             },
             "conflict": {
                 "setasign/tfpdf": "<1.31"
             },
             "require-dev": {
-                "phpunit/phpunit": "^7",
+                "phpunit/phpunit": "^8.5.52",
                 "setasign/fpdf": "~1.8.6",
                 "setasign/tfpdf": "~1.33",
                 "squizlabs/php_codesniffer": "^3.5",
@@ -7686,7 +7686,7 @@
             ],
             "support": {
                 "issues": "https://github.com/Setasign/FPDI/issues",
-                "source": "https://github.com/Setasign/FPDI/tree/v2.6.4"
+                "source": "https://github.com/Setasign/FPDI/tree/v2.6.5"
             },
             "funding": [
                 {
@@ -7694,7 +7694,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-05T09:57:14+00:00"
+            "time": "2026-03-11T08:36:14+00:00"
         },
         {
             "name": "simplesoftwareio/simple-qrcode",
