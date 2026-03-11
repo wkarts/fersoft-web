@@ -26,6 +26,7 @@ class RegisterAppVersionCommand extends Command
         {--metadata= : JSON com metadados extras}
         {--skip-pdf : Não tenta gerar PDF de release notes}
         {--use-composer-version : Força uso da versão do composer/env}
+        {--no-bootstrap-artifacts : Não sincroniza artifacts antigos antes de gerar cumulativa}
         {--no-current : Não marca esta versão como atual}';
 
     protected $description = 'Registra versão interna e gera release notes atual + cumulativa (HTML/PDF)';
@@ -55,6 +56,8 @@ class RegisterAppVersionCommand extends Command
             'metadata' => $metadata,
             'is_current' => !$this->option('no-current'),
             'skip_pdf' => (bool) $this->option('skip-pdf'),
+            'bootstrap_from_artifacts' => !(bool) $this->option('no-bootstrap-artifacts'),
+            'installed_version_for_sync' => $version,
         ];
 
         $record = $service->register($payload);

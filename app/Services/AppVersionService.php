@@ -49,9 +49,15 @@ class AppVersionService
             });
     }
 
-
     public function currentOrFallback(): AppVersion
     {
+        $current = $this->current();
+        if ($current) {
+            return $current;
+        }
+
+        $this->syncFromArtifacts();
+
         $current = $this->current();
         if ($current) {
             return $current;
@@ -82,6 +88,11 @@ class AppVersionService
             }
         }
 
+        $latestArtifactVersion = $this->detectLatestArtifactVersion();
+        if ($latestArtifactVersion !== null) {
+            return $latestArtifactVersion;
+        }
+
         $envVersion = trim((string) (env('VERSION') ?: env('APP_VERSION') ?: config('app.version')));
         if ($envVersion !== '') {
             return ltrim($envVersion, 'vV');
@@ -90,8 +101,80 @@ class AppVersionService
         return '0.0.0';
     }
 
+    public function syncFromArtifacts(?string $installedVersion = null): int
+    {
+        $installedVersion = $installedVersion ?: $this->resolveInstalledVersion();
+        $versions = $this->artifactVersions();
+        $upserts = 0;
+
+        foreach ($versions as $version) {
+            [$major, $minor, $patch] = $this->splitVersion($version);
+            $base = 'releases/'.$version;
+
+            $currentHtmlPath = Storage::disk('local')->exists($base.'/current.html') ? $base.'/current.html' : null;
+            $cumulativeHtmlPath = Storage::disk('local')->exists($base.'/cumulative.html') ? $base.'/cumulative.html' : null;
+            $currentPdfPath = Storage::disk('local')->exists($base.'/current.pdf') ? $base.'/current.pdf' : null;
+            $cumulativePdfPath = Storage::disk('local')->exists($base.'/cumulative.pdf') ? $base.'/cumulative.pdf' : null;
+
+            $currentHtml = $currentHtmlPath ? Storage::disk('local')->get($currentHtmlPath) : null;
+            $cumulativeHtml = $cumulativeHtmlPath ? Storage::disk('local')->get($cumulativeHtmlPath) : null;
+
+            $record = AppVersion::query()->updateOrCreate(
+                ['version' => $version],
+                [
+                    'version_major' => $major,
+                    'version_minor' => $minor,
+                    'version_patch' => $patch,
+                    'title' => 'Release '.$version,
+                    'release_notes_current_html' => $currentHtml,
+                    'release_notes_cumulative_html' => $cumulativeHtml,
+                    'release_notes_current_html_path' => $currentHtmlPath,
+                    'release_notes_cumulative_html_path' => $cumulativeHtmlPath,
+                    'release_notes_current_pdf_path' => $currentPdfPath,
+                    'release_notes_cumulative_pdf_path' => $cumulativePdfPath,
+                    'release_notes_html' => $currentHtml,
+                    'release_notes_pdf_path' => $cumulativePdfPath,
+                    'release_notes_format' => $this->resolveFormat($currentHtml, $cumulativePdfPath),
+                    'installed_at' => now(),
+                ]
+            );
+
+            $upserts += $record->wasRecentlyCreated ? 1 : 0;
+        }
+
+        if ($installedVersion !== '') {
+            AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
+            AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
+        }
+
+        return $upserts;
+    }
+
+    private function artifactVersions(): Collection
+    {
+        $dirs = collect(Storage::disk('local')->directories('releases'))
+            ->map(fn (string $dir) => basename($dir))
+            ->filter(fn (string $version) => preg_match('/^v?\d+\.\d+\.\d+$/', $version))
+            ->map(fn (string $version) => ltrim($version, 'vV'));
+
+        return $dirs
+            ->sort(function ($a, $b) {
+                return version_compare($b, $a);
+            })
+            ->values();
+    }
+
+    private function detectLatestArtifactVersion(): ?string
+    {
+        return $this->artifactVersions()->first();
+    }
+
     public function register(array $data): AppVersion
     {
+        if ((bool) Arr::get($data, 'bootstrap_from_artifacts', true)) {
+            $this->syncFromArtifacts(Arr::get($data, 'installed_version_for_sync'));
+        }
+
         return DB::transaction(function () use ($data) {
             $version = (string) Arr::get($data, 'version');
             [$major, $minor, $patch] = $this->splitVersion($version);

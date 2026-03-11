@@ -75,3 +75,41 @@ Internamente, elas alimentam a nota **current**.
 
 - Se não houver registro `is_current` no banco, o sistema usa fallback da versão em `composer.json` (`version`) e, em seguida, `VERSION`/`APP_VERSION` para evitar exibição `N/A`.
 - A versão atual permanece visível no menu superior (mobile) e na base da sidebar (desktop), com ajuste de espaçamento para não ser coberta pelo balão flutuante de suporte.
+
+
+## Fluxo recomendado no deploy
+
+1. Atualizar `composer.json` com a versão da release (ex.: `"version": "5.0.21"`).
+2. Publicar artefatos de release em `storage/app/releases/{versao}/`.
+3. Executar sincronização:
+
+```bash
+php artisan app-version:sync --version=5.0.21
+```
+
+4. (Opcional) registrar release atual e regenerar cumulativo/artefatos:
+
+```bash
+php artisan app-version:register --use-composer-version --notes-current-html-file="storage/app/releases/5.0.21/current.html"
+```
+
+
+## Estratégia para a primeira release consolidada (ex.: 5.0.22)
+
+Para a próxima release (5.0.22), use o comando padrão `app-version:register`.
+Ele já faz bootstrap automático dos artifacts antigos antes de gerar a cumulativa.
+
+Exemplo:
+
+```bash
+php artisan app-version:register 5.0.22 \
+  --title="Release 5.0.22" \
+  --notes-current-html-file="storage/app/releases/5.0.22/current.html" \
+  --use-composer-version
+```
+
+Resultado esperado para `5.0.22`:
+- nota **atual**: conteúdo da 5.0.22;
+- nota **cumulativa**: 5.0.22 + todas as versões anteriores encontradas em `storage/app/releases`.
+
+Para desativar esse bootstrap em um caso específico, use `--no-bootstrap-artifacts`.

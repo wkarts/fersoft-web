@@ -324,6 +324,15 @@ class AppServiceProvider extends ServiceProvider
 
             if (Schema::hasTable('app_versions')) {
                 $appVersionService = app(AppVersionService::class);
+                $installedVersion = $appVersionService->resolveInstalledVersion();
+
+                $currentDbVersion = $appVersionService->current();
+                $needsSync = $currentDbVersion === null || $currentDbVersion->version !== $installedVersion;
+
+                if ($needsSync) {
+                    $appVersionService->syncFromArtifacts($installedVersion);
+                }
+
                 $appVersionCurrent = $appVersionService->currentOrFallback();
                 $appVersionHistory = $appVersionService->history();
                 $appVersionHistoryGrouped = $appVersionService->groupedHistoryByMajor();
