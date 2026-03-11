@@ -147,6 +147,42 @@
          left:-6px;
         }
 
+
+        .app-version-desktop-wrapper {
+            transition: all .2s ease;
+        }
+
+        .app-version-desktop-btn {
+            font-size: .78rem;
+            line-height: 1.2;
+            white-space: normal;
+        }
+
+        body.aside-minimize .app-version-desktop-wrapper {
+            padding-left: .25rem !important;
+            padding-right: .25rem !important;
+        }
+
+        body.aside-minimize .app-version-desktop-btn {
+            font-size: .62rem;
+            padding: .3rem .15rem;
+            min-height: 52px;
+        }
+
+        body.aside-minimize .app-version-desktop-btn i {
+            margin-right: 0;
+            display: block;
+            font-size: .85rem;
+            line-height: 1;
+        }
+
+        body.aside-minimize .app-version-desktop-text {
+            display: block;
+            margin-top: .15rem;
+            word-break: break-word;
+            line-height: 1.05;
+        }
+
     </style>
 
     @if($tema == 2)
@@ -232,10 +268,10 @@
 
             </div>
 
-            <div class="d-none d-lg-block px-4 pt-3 pb-2">
-                <a href="/app-versions" class="btn btn-sm btn-light-primary btn-block" title="Versão instalada e histórico de release notes">
+            <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
+                <a href="/app-versions" class="btn btn-sm btn-light-primary btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
                     <i class="la la-code-branch"></i>
-                    Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                    <span class="app-version-desktop-text">Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
                 </a>
             </div>
 
