@@ -2828,7 +2828,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
 	Route::group(['prefix' => 'pesagens'], function () {
 		Route::get('/', 'PesagemController@list')->name('pesagens.list');
-		Route::get('/list', 'PesagemController@list')->name('pesagens.list');
+		Route::get('/list', 'PesagemController@list');
 		Route::get('/new', 'PesagemController@register')->name('pesagens.register');
         Route::get('/register', 'PesagemController@register')->name('pesagens.register');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
