@@ -153,26 +153,51 @@
         }
 
         .app-version-desktop-btn {
-            font-size: .86rem;
+            font-size: .72rem;
             line-height: 1.2;
             white-space: normal;
             background: transparent;
             border: 1px solid rgba(255, 255, 255, .28);
-            color: inherit;
+            color: rgba(255, 255, 255, .92);
             box-shadow: none;
             transition: all .2s ease;
         }
 
         .app-version-desktop-btn i,
-        .app-version-desktop-text {
-            color: inherit;
+        .app-version-desktop-line,
+        .app-version-desktop-value {
+            color: rgba(255, 255, 255, .92);
         }
 
         .app-version-desktop-btn:hover,
         .app-version-desktop-btn:focus {
-            background: rgba(54, 153, 255, .22);
-            border-color: rgba(54, 153, 255, .45);
-            color: inherit;
+            background: rgba(54, 153, 255, .26);
+            border-color: rgba(54, 153, 255, .55);
+            color: #ffffff;
+        }
+
+        .app-version-desktop-btn:hover i,
+        .app-version-desktop-btn:hover .app-version-desktop-line,
+        .app-version-desktop-btn:hover .app-version-desktop-value,
+        .app-version-desktop-btn:focus i,
+        .app-version-desktop-btn:focus .app-version-desktop-line,
+        .app-version-desktop-btn:focus .app-version-desktop-value {
+            color: #ffffff;
+        }
+
+        .app-version-desktop-line {
+            display: block;
+            font-size: .58rem;
+            line-height: 1;
+            letter-spacing: .02em;
+            margin-top: .1rem;
+        }
+
+        .app-version-desktop-value {
+            display: block;
+            font-size: .53rem;
+            line-height: 1.05;
+            white-space: nowrap;
         }
 
         body.aside-minimize .app-version-desktop-wrapper {
@@ -181,7 +206,7 @@
         }
 
         body.aside-minimize .app-version-desktop-btn {
-            font-size: .56rem;
+            font-size: .48rem;
             padding: .28rem .12rem;
             min-height: 50px;
         }
@@ -189,15 +214,18 @@
         body.aside-minimize .app-version-desktop-btn i {
             margin-right: 0;
             display: block;
-            font-size: .8rem;
+            font-size: .68rem;
             line-height: 1;
         }
 
-        body.aside-minimize .app-version-desktop-text {
-            display: block;
-            margin-top: .12rem;
-            word-break: break-word;
-            line-height: 1.02;
+        body.aside-minimize .app-version-desktop-line {
+            font-size: .45rem;
+            margin-top: .08rem;
+        }
+
+        body.aside-minimize .app-version-desktop-value {
+            font-size: .41rem;
+            line-height: 1;
         }
 
 
@@ -287,9 +315,10 @@
             </div>
 
             <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
-                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
+                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Revisão instalada e histórico de release notes">
                     <i class="la la-code-branch"></i>
-                    <span class="app-version-desktop-text">Versão {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                    <span class="app-version-desktop-line">Versão</span>
+                    <span class="app-version-desktop-value">{{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
                 </a>
             </div>
 
