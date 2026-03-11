@@ -147,6 +147,88 @@
          left:-6px;
         }
 
+
+        .app-version-desktop-wrapper {
+            transition: all .2s ease;
+        }
+
+        .app-version-desktop-btn {
+            font-size: .72rem;
+            line-height: 1.2;
+            white-space: normal;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .28);
+            color: rgba(255, 255, 255, .92);
+            box-shadow: none;
+            transition: all .2s ease;
+        }
+
+        .app-version-desktop-btn i,
+        .app-version-desktop-line,
+        .app-version-desktop-value {
+            color: rgba(255, 255, 255, .92);
+        }
+
+        .app-version-desktop-btn:hover,
+        .app-version-desktop-btn:focus {
+            background: rgba(54, 153, 255, .26);
+            border-color: rgba(54, 153, 255, .55);
+            color: #ffffff;
+        }
+
+        .app-version-desktop-btn:hover i,
+        .app-version-desktop-btn:hover .app-version-desktop-line,
+        .app-version-desktop-btn:hover .app-version-desktop-value,
+        .app-version-desktop-btn:focus i,
+        .app-version-desktop-btn:focus .app-version-desktop-line,
+        .app-version-desktop-btn:focus .app-version-desktop-value {
+            color: #ffffff;
+        }
+
+        .app-version-desktop-line {
+            display: block;
+            font-size: .58rem;
+            line-height: 1;
+            letter-spacing: .02em;
+            margin-top: .1rem;
+        }
+
+        .app-version-desktop-value {
+            display: block;
+            font-size: .53rem;
+            line-height: 1.05;
+            white-space: nowrap;
+        }
+
+        body.aside-minimize .app-version-desktop-wrapper {
+            padding-left: .2rem !important;
+            padding-right: .2rem !important;
+        }
+
+        body.aside-minimize .app-version-desktop-btn {
+            font-size: .48rem;
+            padding: .28rem .12rem;
+            min-height: 50px;
+        }
+
+        body.aside-minimize .app-version-desktop-btn i {
+            margin-right: 0;
+            display: block;
+            font-size: .68rem;
+            line-height: 1;
+        }
+
+        body.aside-minimize .app-version-desktop-line {
+            font-size: .45rem;
+            margin-top: .08rem;
+        }
+
+        body.aside-minimize .app-version-desktop-value {
+            font-size: .41rem;
+            line-height: 1;
+        }
+
+
     </style>
 
     @if($tema == 2)
@@ -156,6 +238,7 @@
     <link rel="stylesheet" href="/css/animate.min.css"/>
 
     @yield('css')
+
 </head>
 
 <!-- end::Head -->
@@ -229,6 +312,14 @@
 						</span>
                 </button>
 
+            </div>
+
+            <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
+                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Revisão instalada e histórico de release notes">
+                    <i class="la la-code-branch"></i>
+                    <span class="app-version-desktop-line">Versão</span>
+                    <span class="app-version-desktop-value">{{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                </a>
             </div>
 
             <div class="aside-menu-wrapper flex-column-fluid" id="kt_aside_menu_wrapper">
@@ -664,6 +755,7 @@
                     </ul>
                 </div>
             </div>
+
         </div>
         <div class="d-flex flex-column flex-row-fluid wrapper" id="kt_wrapper">
             <div id="kt_header" class="header header-fixed">
@@ -704,6 +796,12 @@
                                         <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-info @else label-info @endif">
                                                 Ambiente: {{session('user_logged')['ambiente']}}
+                                            </a>
+                                        </li>
+
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active d-lg-none" data-menu-toggle="click" aria-haspopup="true">
+                                            <a href="/app-versions" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif">
+                                                Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
                                             </a>
                                         </li>
                                     @endif
