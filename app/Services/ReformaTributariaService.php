@@ -1054,18 +1054,14 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($codigo, $cache)) return $cache[$codigo];
 
-        $table = Schema::hasTable('ANP') ? 'ANP' : (Schema::hasTable('anp') ? 'anp' : null);
-        if ($table === null) return $cache[$codigo] = 0.0;
+        if (!Schema::hasTable('anp')) return $cache[$codigo] = 0.0;
 
-        $colCodigo = Schema::hasColumn($table, 'CODIGO') ? 'CODIGO' : (Schema::hasColumn($table, 'codigo') ? 'codigo' : null);
-        if ($colCodigo === null) return $cache[$codigo] = 0.0;
+        if (!Schema::hasColumn('anp', 'codigo')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasColumn('anp', 'adremicms')) return $cache[$codigo] = 0.0;
 
-        $colAliquota = Schema::hasColumn($table, 'ADREMICMS') ? 'ADREMICMS' : (Schema::hasColumn($table, 'adremicms') ? 'adremicms' : null);
-        if ($colAliquota === null) return $cache[$codigo] = 0.0;
-
-        $val = DB::table($table)
-            ->where($colCodigo, $codigo)
-            ->value($colAliquota);
+        $val = DB::table('anp')
+            ->where('codigo', $codigo)
+            ->value('adremicms');
 
         $cache[$codigo] = $this->toFloat($val, 0.0);
         return $cache[$codigo];
@@ -1076,28 +1072,21 @@ class ReformaTributariaService
         $codigo = $this->toInt($cProdAnp, 0);
         if ($codigo <= 0) return '';
 
-        $campo = strtoupper(trim((string)$campo));
+        $campo = trim((string)$campo);
         if ($campo === '') return '';
 
-        if (!Schema::hasTable('ANP') && !Schema::hasTable('anp')) return '';
+        if (!Schema::hasTable('anp')) return '';
 
-        $table = Schema::hasTable('ANP') ? 'ANP' : 'anp';
-
-        $col = $campo;
-        if (!Schema::hasColumn($table, $col)) {
-            $col2 = strtolower($campo);
-            if (!Schema::hasColumn($table, $col2)) return '';
-            $col = $col2;
-        }
+        $col = strtolower($campo);
+        if (!Schema::hasColumn('anp', $col)) return '';
 
         static $cache = [];
-        $key = $codigo . '|' . $table . '|' . $col;
+        $key = $codigo . '|anp|' . $col;
         if (array_key_exists($key, $cache)) return $cache[$key];
 
-        $colCodigo = Schema::hasColumn($table, 'CODIGO') ? 'CODIGO' : (Schema::hasColumn($table, 'codigo') ? 'codigo' : null);
-        if ($colCodigo === null) return '';
+        if (!Schema::hasColumn('anp', 'codigo')) return '';
 
-        $val = DB::table($table)->where($colCodigo, $codigo)->value($col);
+        $val = DB::table('anp')->where('codigo', $codigo)->value($col);
         if ($val === null) $val = '';
 
         $cache[$key] = trim((string)$val);
