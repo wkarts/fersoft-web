@@ -325,9 +325,16 @@ class AppServiceProvider extends ServiceProvider
             if (Schema::hasTable('app_versions')) {
                 $appVersionService = app(AppVersionService::class);
                 $installedVersion = $appVersionService->resolveInstalledVersion();
+                $installedRevision = $appVersionService->resolveInstalledRevision();
 
                 $currentDbVersion = $appVersionService->current();
-                $needsSync = $currentDbVersion === null || $currentDbVersion->version !== $installedVersion;
+
+                $needsSync = $currentDbVersion === null
+                    || $currentDbVersion->version !== $installedVersion
+                    || (
+                        !empty($installedRevision)
+                        && empty(trim((string) optional($currentDbVersion)->commit_hash))
+                    );
 
                 if ($needsSync) {
                     $appVersionService->syncFromManifest();
@@ -335,6 +342,11 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $appVersionCurrent = $appVersionService->currentOrFallback();
+
+                if ($appVersionCurrent && empty(trim((string) $appVersionCurrent->commit_hash)) && !empty($installedRevision)) {
+                    $appVersionCurrent->commit_hash = $installedRevision;
+                }
+
                 $appVersionHistory = $appVersionService->history();
                 $appVersionHistoryGrouped = $appVersionService->groupedHistoryByMajor();
             }

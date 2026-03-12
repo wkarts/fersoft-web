@@ -85,6 +85,9 @@ class AppVersionService
     {
         $current = $this->current();
         if ($current) {
+            if (empty(trim((string) $current->commit_hash))) {
+                $current->commit_hash = $this->resolveInstalledRevision();
+            }
             return $current;
         }
 
@@ -92,6 +95,9 @@ class AppVersionService
 
         $current = $this->current();
         if ($current) {
+            if (empty(trim((string) $current->commit_hash))) {
+                $current->commit_hash = $this->resolveInstalledRevision();
+            }
             return $current;
         }
 
@@ -105,6 +111,7 @@ class AppVersionService
             'version_patch' => $patch,
             'title' => 'Versão instalada (fallback)',
             'is_current' => true,
+            'commit_hash' => $this->resolveInstalledRevision(),
         ]);
     }
 
@@ -138,9 +145,40 @@ class AppVersionService
         return '0.0.0';
     }
 
+    public function resolveInstalledRevision(): ?string
+    {
+        $envRevision = $this->normalizeRevision((string) (
+        env('APPREVISION')
+            ?: env('APP_REVISION')
+            ?: env('RELEASE_REVISION')
+                ?: env('COMMIT_HASH')
+                    ?: env('GIT_COMMIT')
+                        ?: env('GITHUB_SHA')
+                            ?: config('app.revision')
+        ));
+
+        if ($envRevision !== null) {
+            return $envRevision;
+        }
+
+        $manifestRevision = $this->detectManifestCurrentRevision();
+        if ($manifestRevision !== null) {
+            return $manifestRevision;
+        }
+
+        $gitRevision = $this->detectGitCommitHash();
+        if ($gitRevision !== null) {
+            return $gitRevision;
+        }
+
+        return null;
+    }
+
     public function syncFromArtifacts(?string $installedVersion = null): int
     {
         $installedVersion = $installedVersion ?: $this->resolveInstalledVersion();
+        $installedRevision = $this->resolveInstalledRevision();
+
         $versions = $this->artifactVersions();
         $upserts = 0;
 
@@ -156,24 +194,30 @@ class AppVersionService
             $currentHtml = $currentHtmlPath ? Storage::disk('local')->get($currentHtmlPath) : null;
             $cumulativeHtml = $cumulativeHtmlPath ? Storage::disk('local')->get($cumulativeHtmlPath) : null;
 
+            $payload = [
+                'version_major' => $major,
+                'version_minor' => $minor,
+                'version_patch' => $patch,
+                'title' => 'Release '.$version,
+                'release_notes_current_html' => $currentHtml,
+                'release_notes_cumulative_html' => $cumulativeHtml,
+                'release_notes_current_html_path' => $currentHtmlPath,
+                'release_notes_cumulative_html_path' => $cumulativeHtmlPath,
+                'release_notes_current_pdf_path' => $currentPdfPath,
+                'release_notes_cumulative_pdf_path' => $cumulativePdfPath,
+                'release_notes_html' => $currentHtml,
+                'release_notes_pdf_path' => $cumulativePdfPath,
+                'release_notes_format' => $this->resolveFormat($currentHtml, $cumulativePdfPath),
+                'installed_at' => now(),
+            ];
+
+            if ($version === $installedVersion && $installedRevision !== null) {
+                $payload['commit_hash'] = $installedRevision;
+            }
+
             $record = AppVersion::query()->updateOrCreate(
                 ['version' => $version],
-                [
-                    'version_major' => $major,
-                    'version_minor' => $minor,
-                    'version_patch' => $patch,
-                    'title' => 'Release '.$version,
-                    'release_notes_current_html' => $currentHtml,
-                    'release_notes_cumulative_html' => $cumulativeHtml,
-                    'release_notes_current_html_path' => $currentHtmlPath,
-                    'release_notes_cumulative_html_path' => $cumulativeHtmlPath,
-                    'release_notes_current_pdf_path' => $currentPdfPath,
-                    'release_notes_cumulative_pdf_path' => $cumulativePdfPath,
-                    'release_notes_html' => $currentHtml,
-                    'release_notes_pdf_path' => $cumulativePdfPath,
-                    'release_notes_format' => $this->resolveFormat($currentHtml, $cumulativePdfPath),
-                    'installed_at' => now(),
-                ]
+                $payload
             );
 
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
@@ -182,6 +226,12 @@ class AppVersionService
         if ($installedVersion !== '') {
             AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
             AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
+
+            if ($installedRevision !== null) {
+                AppVersion::query()
+                    ->where('version', $installedVersion)
+                    ->update(['commit_hash' => $installedRevision]);
+            }
         }
 
         return $upserts;
@@ -205,7 +255,6 @@ class AppVersionService
     {
         return $this->artifactVersions()->first();
     }
-
 
     private function detectGitVersion(): ?string
     {
@@ -242,6 +291,76 @@ class AppVersionService
         return null;
     }
 
+    private function detectGitCommitHash(): ?string
+    {
+        if (!is_dir(base_path('.git'))) {
+            return null;
+        }
+
+        $commands = [
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            ['git', 'rev-parse', 'HEAD'],
+        ];
+
+        foreach ($commands as $command) {
+            $process = new Process($command, base_path());
+            $process->setTimeout(3);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                continue;
+            }
+
+            $output = trim($process->getOutput());
+            $revision = $this->normalizeRevision($output);
+
+            if ($revision !== null) {
+                return $revision;
+            }
+        }
+
+        return null;
+    }
+
+    private function detectManifestCurrentRevision(): ?string
+    {
+        $manifestPath = storage_path('app/releases/manifest.json');
+        if (!is_file($manifestPath)) {
+            return null;
+        }
+
+        $raw = file_get_contents($manifestPath);
+        $manifest = json_decode((string) $raw, true);
+
+        if (!is_array($manifest)) {
+            return null;
+        }
+
+        $currentVersion = ltrim((string) Arr::get($manifest, 'current_version', ''), 'vV');
+        $currentVersion = $this->normalizeSemanticVersion($currentVersion);
+
+        $releases = collect(Arr::get($manifest, 'releases', []));
+        if ($currentVersion === null || $releases->isEmpty()) {
+            return null;
+        }
+
+        $release = $releases->first(function ($item) use ($currentVersion) {
+            if (!is_array($item)) {
+                return false;
+            }
+
+            $version = ltrim((string) Arr::get($item, 'version', ''), 'vV');
+            $version = $this->normalizeSemanticVersion($version);
+
+            return $version === $currentVersion;
+        });
+
+        if (!is_array($release)) {
+            return null;
+        }
+
+        return $this->normalizeRevision((string) Arr::get($release, 'commit_hash'));
+    }
 
     public function syncFromManifest(?string $manifestPath = null): int
     {
@@ -297,7 +416,7 @@ class AppVersionService
                     'released_at' => Arr::get($release, 'released_at'),
                     'installed_at' => Arr::get($release, 'installed_at', now()),
                     'build_number' => Arr::get($release, 'build_number'),
-                    'commit_hash' => Arr::get($release, 'commit_hash'),
+                    'commit_hash' => $this->normalizeRevision((string) Arr::get($release, 'commit_hash')),
                     'release_channel' => Arr::get($release, 'release_channel'),
                     'author' => Arr::get($release, 'author'),
                     'observations' => Arr::get($release, 'observations'),
@@ -357,7 +476,7 @@ class AppVersionService
                     'released_at' => Arr::get($data, 'released_at'),
                     'installed_at' => Arr::get($data, 'installed_at', now()),
                     'build_number' => Arr::get($data, 'build_number'),
-                    'commit_hash' => Arr::get($data, 'commit_hash'),
+                    'commit_hash' => $this->normalizeRevision((string) Arr::get($data, 'commit_hash')) ?: $this->resolveInstalledRevision(),
                     'release_channel' => Arr::get($data, 'release_channel'),
                     'author' => Arr::get($data, 'author'),
                     'observations' => Arr::get($data, 'observations'),
@@ -438,6 +557,17 @@ class AppVersionService
         return $normalized;
     }
 
+    private function normalizeRevision(string $revision): ?string
+    {
+        $revision = trim($revision);
+
+        if ($revision === '' || $revision === '-') {
+            return null;
+        }
+
+        return preg_replace('/\s+/', '', $revision);
+    }
+
     private function normalizeReleaseCurrentHtml(?string $html, string $title, string $version, ?string $observations): string
     {
         $html = trim((string) $html);
@@ -466,7 +596,7 @@ class AppVersionService
         $sections = $history->map(function (AppVersion $version) {
             $notes = $version->release_notes_current_html
                 ?: $version->release_notes_html
-                ?: '<p>'. $this->escapeHtml((string) ($version->observations ?: 'Sem conteúdo de release notes.')) .'</p>';
+                    ?: '<p>'.$this->escapeHtml((string) ($version->observations ?: 'Sem conteúdo de release notes.')).'</p>';
 
             return '<hr>'
                 .'<h2>Versão '.$this->escapeHtml($version->version).'</h2>'

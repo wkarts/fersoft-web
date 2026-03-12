@@ -147,7 +147,6 @@
          left:-6px;
         }
 
-
         .app-version-desktop-wrapper {
             transition: all .2s ease;
         }
@@ -160,8 +159,8 @@
             box-shadow: none;
             transition: all .2s ease;
             text-align: center;
-            padding: .34rem .2rem;
-            min-height: 56px;
+            padding: .40rem .30rem;
+            min-height: auto;
         }
 
         .app-version-desktop-btn:hover,
@@ -182,21 +181,21 @@
         }
 
         .app-version-desktop-head i {
-            font-size: .78rem;
             line-height: 1;
             color: inherit;
         }
 
         .app-version-desktop-main {
-            font-size: .72rem;
-            font-weight: 600;
+            font-size: .90rem;
+            font-weight: 700;
+            line-height: 1;
             color: inherit;
         }
 
         .app-version-desktop-revision {
             display: block;
-            margin-top: .1rem;
-            font-size: .49rem;
+            margin-top: .18rem;
+            font-size: .58rem;
             line-height: 1.05;
             white-space: nowrap;
             overflow: hidden;
@@ -213,31 +212,78 @@
             color: #ffffff;
         }
 
+        /* =========================
+           MENU COLAPSADO
+           ========================= */
         body.aside-minimize .app-version-desktop-wrapper {
             padding-left: .22rem !important;
             padding-right: .22rem !important;
         }
 
         body.aside-minimize .app-version-desktop-btn {
-            min-height: 38px;
-            padding: .2rem .08rem;
+            padding: .24rem .10rem;
         }
 
         body.aside-minimize .app-version-desktop-head {
             gap: .14rem;
         }
 
-        body.aside-minimize .app-version-desktop-head i {
-            font-size: .6rem;
+        body.aside-minimize:not(.aside-minimize-hover) .app-version-desktop-head i {
+            font-size: .72rem !important;
         }
 
         body.aside-minimize .app-version-desktop-main {
-            font-size: .5rem;
-            font-weight: 500;
+            font-size: .72rem;
+            font-weight: 600;
         }
 
-        body.aside-minimize .app-version-desktop-revision {
+        body.aside-minimize:not(.aside-minimize-hover) .app-version-desktop-revision {
             display: none;
+        }
+
+        /* =========================
+           MENU EXPANDIDO DINÂMICO (hover)
+           ========================= */
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-wrapper {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-btn {
+            padding: .40rem .30rem;
+        }
+
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-head {
+            gap: .26rem;
+        }
+
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-head i {
+            font-size: .92rem !important;
+        }
+
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-main {
+            font-size: .90rem;
+            font-weight: 700;
+        }
+
+        body.aside-minimize.aside-minimize-hover .app-version-desktop-revision {
+            display: block;
+        }
+
+        /* =========================
+           MENU EXPANDIDO FIXO
+           ========================= */
+        body:not(.aside-minimize) .app-version-desktop-head i {
+            font-size: .92rem !important;
+        }
+
+        body:not(.aside-minimize) .app-version-desktop-main {
+            font-size: .90rem;
+            font-weight: 700;
+        }
+
+        body:not(.aside-minimize) .app-version-desktop-revision {
+            display: block;
         }
 
     </style>
@@ -325,13 +371,25 @@
 
             </div>
 
+            @php
+                $appVersionValue = trim((string) (optional($appVersionCurrent)->version ?? ''));
+                $appRevisionValue = trim((string) (optional($appVersionCurrent)->commit_hash ?? ''));
+            @endphp
+
             <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
                 <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
                     <span class="app-version-desktop-head">
                         <i class="la la-code-branch"></i>
-                        <span class="app-version-desktop-main">V. {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                        <span class="app-version-desktop-main">
+                            V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}
+                        </span>
                     </span>
-                    <span class="app-version-desktop-revision" title="{{ optional($appVersionCurrent)->commit_hash ?? '-' }}">{{ optional($appVersionCurrent)->commit_hash ?? '-' }}</span>
+
+                    @if($appRevisionValue !== '')
+                        <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
+                            {{ $appRevisionValue }}
+                        </span>
+                    @endif
                 </a>
             </div>
 
