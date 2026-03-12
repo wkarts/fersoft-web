@@ -43,6 +43,7 @@ use App\Helpers\BoletoHelper;
 use File;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\Schema;
 use App\Services\ReformaTributariaService;
@@ -1045,6 +1046,8 @@ class VendaController extends Controller
     }
 
     public function salvar(Request $request){
+        $requestId = $request->header('X-Request-Id') ?: (string) Str::uuid();
+
         try{
             $result = DB::transaction(function () use ($request) {
                 $venda = $request->venda;
@@ -1481,10 +1484,35 @@ class VendaController extends Controller
                     return $mensagem;
                 }
             });
-            return response()->json($result, 200);
-        }catch(\Exception $e){
-            // __saveError($e, $this->empresa_id);
-            return response()->json($e->getMessage(), 400);
+            return response()->json($result, 200)
+                ->header('X-Request-Id', $requestId);
+        }catch(\Throwable $e){
+            __saveError($e, $this->empresa_id);
+
+            $vendaPayload = $request->input('venda', []);
+            Log::error('Falha ao salvar venda', [
+                'request_id' => $requestId,
+                'empresa_id' => $this->empresa_id,
+                'cliente_id' => $vendaPayload['cliente'] ?? null,
+                'usuario_id' => get_id_user(),
+                'itens_count' => isset($vendaPayload['itens']) && is_array($vendaPayload['itens']) ? count($vendaPayload['itens']) : null,
+                'forma_pagamento' => $vendaPayload['formaPagamento'] ?? null,
+                'tipo_pagamento' => $vendaPayload['tipoPagamento'] ?? null,
+                'total' => $vendaPayload['total'] ?? null,
+                'url' => $request->fullUrl(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => $e->getMessage(),
+                'message' => 'Falha ao salvar venda. Informe o código para suporte.',
+                'request_id' => $requestId
+            ], 400);
         }
     }
 

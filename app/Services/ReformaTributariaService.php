@@ -5,8 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Referencias\Anp;
-use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
 {
@@ -353,9 +351,7 @@ class ReformaTributariaService
     protected function resolveEmpresaWhereColumn(string $table): ?string
     {
         if (Schema::hasColumn($table, 'empresa_id')) return 'empresa_id';
-        if (Schema::hasColumn($table, 'EMPRESA_ID')) return 'EMPRESA_ID';
         if (Schema::hasColumn($table, 'id')) return 'id';
-        if (Schema::hasColumn($table, 'ID')) return 'ID';
         return null;
     }
 
@@ -374,14 +370,7 @@ class ReformaTributariaService
                 continue;
             }
 
-            $col = null;
-            if (Schema::hasColumn($c['table'], $c['col'])) {
-                $col = $c['col'];
-            } else if (Schema::hasColumn($c['table'], strtoupper($c['col']))) {
-                $col = strtoupper($c['col']);
-            }
-
-            if ($col === null) {
+            if (!Schema::hasColumn($c['table'], $c['col'])) {
                 continue;
             }
 
@@ -390,7 +379,7 @@ class ReformaTributariaService
                 continue;
             }
 
-            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($col);
+            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($c['col']);
             if ($val === null) {
                 continue;
             }
@@ -439,15 +428,12 @@ class ReformaTributariaService
     {
         if (!Schema::hasTable('config_notas')) return 1;
 
-        $col = Schema::hasColumn('config_notas', 'ambiente') ? 'ambiente'
-            : (Schema::hasColumn('config_notas', 'AMBIENTE') ? 'AMBIENTE' : null);
-
-        if ($col === null) return 1;
+        if (!Schema::hasColumn('config_notas', 'ambiente')) return 1;
 
         $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
         if ($whereCol === null) return 1;
 
-        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
+        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value('ambiente');
         $amb = (int)$val;
 
         return ($amb === 2) ? 2 : 1; // só 1 ou 2
@@ -457,15 +443,12 @@ class ReformaTributariaService
     {
         if (!Schema::hasTable('tributacaos')) return null;
 
-        $col = Schema::hasColumn('tributacaos', 'regime') ? 'regime'
-            : (Schema::hasColumn('tributacaos', 'REGIME') ? 'REGIME' : null);
-
-        if ($col === null) return null;
+        if (!Schema::hasColumn('tributacaos', 'regime')) return null;
 
         $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
         if ($whereCol === null) return null;
 
-        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($col);
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value('regime');
         if ($val === null) return null;
 
         $s = trim((string)$val);
@@ -501,7 +484,6 @@ class ReformaTributariaService
         $select = [];
         foreach ($cols as $c) {
             if (Schema::hasColumn('tributacaos', $c)) $select[] = $c;
-            else if (Schema::hasColumn('tributacaos', strtoupper($c))) $select[] = strtoupper($c);
         }
 
         if (!$select) return false;
@@ -512,12 +494,12 @@ class ReformaTributariaService
         $arr = (array)$row;
 
         // precisa estar preenchido de forma consistente
-        $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? ($arr['ALIQ_CBS'] ?? null), 0.0);
-        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? ($arr['ALIQ_IBS_UF'] ?? null), 0.0);
-        $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? ($arr['ALIQ_IBS_MUN'] ?? null), 0.0);
+        $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? null, 0.0);
+        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? null, 0.0);
+        $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? null, 0.0);
 
-        $cst = trim((string)($arr['cst_ibs_cbs'] ?? ($arr['CST_IBS_CBS'] ?? '')));
-        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ($arr['CLASS_TRIB_IBS_CBS'] ?? '')));
+        $cst = trim((string)($arr['cst_ibs_cbs'] ?? ''));
+        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ''));
 
         return ($aliqCbs > 0 || $aliqUf > 0 || $aliqMun > 0) && ($cst !== '' || $ct !== '');
     }
@@ -543,15 +525,12 @@ class ReformaTributariaService
         $map = [
             'CBS' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_cbs'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_CBS'],
             ],
             'IBS_UF' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_ibs_uf'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_UF'],
             ],
             'IBS_MUN' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_ibs_mun'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_MUN'],
             ],
         ];
 
@@ -1055,12 +1034,14 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($codigo, $cache)) return $cache[$codigo];
 
-        if (!Schema::hasTable('anp') && !Schema::hasTable('ANP')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasTable('anp')) return $cache[$codigo] = 0.0;
 
-        // tenta tabela/model do jeito que você já usa
-        $val = Anp::query()
-            ->where('CODIGO', $codigo)
-            ->value('ADREMICMS');
+        if (!Schema::hasColumn('anp', 'codigo')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasColumn('anp', 'adremicms')) return $cache[$codigo] = 0.0;
+
+        $val = DB::table('anp')
+            ->where('codigo', $codigo)
+            ->value('adremicms');
 
         $cache[$codigo] = $this->toFloat($val, 0.0);
         return $cache[$codigo];
@@ -1071,25 +1052,21 @@ class ReformaTributariaService
         $codigo = $this->toInt($cProdAnp, 0);
         if ($codigo <= 0) return '';
 
-        $campo = strtoupper(trim((string)$campo));
+        $campo = trim((string)$campo);
         if ($campo === '') return '';
 
-        if (!Schema::hasTable('ANP') && !Schema::hasTable('anp')) return '';
+        if (!Schema::hasTable('anp')) return '';
 
-        $table = Schema::hasTable('ANP') ? 'ANP' : 'anp';
-
-        $col = $campo;
-        if (!Schema::hasColumn($table, $col)) {
-            $col2 = strtolower($campo);
-            if (!Schema::hasColumn($table, $col2)) return '';
-            $col = $col2;
-        }
+        $col = strtolower($campo);
+        if (!Schema::hasColumn('anp', $col)) return '';
 
         static $cache = [];
-        $key = $codigo . '|' . $table . '|' . $col;
+        $key = $codigo . '|anp|' . $col;
         if (array_key_exists($key, $cache)) return $cache[$key];
 
-        $val = DB::table($table)->where('CODIGO', $codigo)->value($col);
+        if (!Schema::hasColumn('anp', 'codigo')) return '';
+
+        $val = DB::table('anp')->where('codigo', $codigo)->value($col);
         if ($val === null) $val = '';
 
         $cache[$key] = trim((string)$val);
@@ -1104,42 +1081,38 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($classTrib, $cache)) return $cache[$classTrib];
 
-        if (!Schema::hasTable('CLASS_TRIB_IBS_CBS') && !Schema::hasTable('class_trib_ibs_cbs')) {
+        if (!Schema::hasTable('class_trib_ibs_cbs')) {
+            return $cache[$classTrib] = 'S';
+        }
+
+        if (!Schema::hasColumn('class_trib_ibs_cbs', 'cclasstrib')) {
             return $cache[$classTrib] = 'S';
         }
 
         $today = now()->toDateString();
 
-        $q = ClassTribIbsCbs::query()->where('CCLASSTRIB', $classTrib);
+        $q = DB::table('class_trib_ibs_cbs')->where('cclasstrib', $classTrib);
 
-        $table = 'CLASS_TRIB_IBS_CBS';
-        if (!Schema::hasTable($table) && Schema::hasTable('class_trib_ibs_cbs')) $table = 'class_trib_ibs_cbs';
-
-        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dinivig')) {
             $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DINIVIG')->orWhere('DINIVIG', '<=', $today)
-                    ->orWhereNull('dinivig')->orWhere('dinivig', '<=', $today);
+                $qq->whereNull('dinivig')->orWhere('dinivig', '<=', $today);
+            });
+            $q->orderByDesc('dinivig');
+        }
+
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dfimvig')) {
+            $q->where(function ($qq) use ($today) {
+                $qq->whereNull('dfimvig')->orWhere('dfimvig', '>=', $today);
             });
         }
 
-        if (Schema::hasColumn($table, 'DFIMVIG') || Schema::hasColumn($table, 'dfimvig')) {
-            $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DFIMVIG')->orWhere('DFIMVIG', '>=', $today)
-                    ->orWhereNull('dfimvig')->orWhere('dfimvig', '>=', $today);
-            });
-        }
-
-        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
-            $q->orderByRaw("COALESCE(DINIVIG, dinivig, '1900-01-01') DESC");
-        }
-
-        if (Schema::hasColumn($table, 'DATAATUALIZACAO') || Schema::hasColumn($table, 'dataatualizacao')) {
-            $q->orderByDesc(Schema::hasColumn($table, 'DATAATUALIZACAO') ? 'DATAATUALIZACAO' : 'dataatualizacao');
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dataatualizacao')) {
+            $q->orderByDesc('dataatualizacao');
         }
 
         $row = $q->first();
 
-        $ind = $row ? (string)($row->INDMONO ?? '') : '';
+        $ind = $row ? (string)($row->indmono ?? '') : '';
         $ind = strtoupper(trim($ind));
         if ($ind === '') $ind = 'S';
 
