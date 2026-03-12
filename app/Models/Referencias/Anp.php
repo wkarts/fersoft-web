@@ -6,33 +6,36 @@ use App\Models\Support\LookupModel;
 
 class Anp extends LookupModel
 {
-    protected $table = 'ANP';
-    protected $primaryKey = 'CODIGO';
+    public const CREATED_AT = 'created_at';
+    public const UPDATED_AT = 'updated_at';
+    public const DELETED_AT = 'deleted_at';
+    protected $table = 'anp';
+    protected $primaryKey = 'codigo';
     public $incrementing = false;
     protected $keyType = 'int';
 
     protected $fillable = [
-        'CODIGO',
-        'DESCRICAO',
-        'ADREMICMS',
-        'MONOFASICO',
-        'PBIO',
-        'ORIGCOMB',
-        'UTRIB',
-        'ELOQUENT_UUID',
-        'CREATED_AT',
-        'UPDATED_AT',
-        'DELETED_AT',
+        'codigo',
+        'descricao',
+        'adremicms',
+        'monofasico',
+        'pbio',
+        'origcomb',
+        'utrib',
+        'eloquent_uuid',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected $casts = [
-        'CODIGO' => 'integer',
-        'ADREMICMS' => 'decimal:4',
-        'PBIO' => 'integer',
-        'ORIGCOMB' => 'integer',
-        'CREATED_AT' => 'datetime',
-        'UPDATED_AT' => 'datetime',
-        'DELETED_AT' => 'datetime',
-        'ELOQUENT_UUID' => 'string',
+        'codigo' => 'integer',
+        'adremicms' => 'decimal:4',
+        'pbio' => 'integer',
+        'origcomb' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+        'eloquent_uuid' => 'string',
     ];
 }

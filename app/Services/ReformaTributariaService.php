@@ -352,9 +352,7 @@ class ReformaTributariaService
     protected function resolveEmpresaWhereColumn(string $table): ?string
     {
         if (Schema::hasColumn($table, 'empresa_id')) return 'empresa_id';
-        if (Schema::hasColumn($table, 'EMPRESA_ID')) return 'EMPRESA_ID';
         if (Schema::hasColumn($table, 'id')) return 'id';
-        if (Schema::hasColumn($table, 'ID')) return 'ID';
         return null;
     }
 
@@ -373,14 +371,7 @@ class ReformaTributariaService
                 continue;
             }
 
-            $col = null;
-            if (Schema::hasColumn($c['table'], $c['col'])) {
-                $col = $c['col'];
-            } else if (Schema::hasColumn($c['table'], strtoupper($c['col']))) {
-                $col = strtoupper($c['col']);
-            }
-
-            if ($col === null) {
+            if (!Schema::hasColumn($c['table'], $c['col'])) {
                 continue;
             }
 
@@ -389,7 +380,7 @@ class ReformaTributariaService
                 continue;
             }
 
-            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($col);
+            $val = DB::table($c['table'])->where($whereCol, $empresaId)->value($c['col']);
             if ($val === null) {
                 continue;
             }
@@ -438,15 +429,12 @@ class ReformaTributariaService
     {
         if (!Schema::hasTable('config_notas')) return 1;
 
-        $col = Schema::hasColumn('config_notas', 'ambiente') ? 'ambiente'
-            : (Schema::hasColumn('config_notas', 'AMBIENTE') ? 'AMBIENTE' : null);
-
-        if ($col === null) return 1;
+        if (!Schema::hasColumn('config_notas', 'ambiente')) return 1;
 
         $whereCol = $this->resolveEmpresaWhereColumn('config_notas');
         if ($whereCol === null) return 1;
 
-        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value($col);
+        $val = DB::table('config_notas')->where($whereCol, $empresaId)->value('ambiente');
         $amb = (int)$val;
 
         return ($amb === 2) ? 2 : 1; // só 1 ou 2
@@ -456,15 +444,12 @@ class ReformaTributariaService
     {
         if (!Schema::hasTable('tributacaos')) return null;
 
-        $col = Schema::hasColumn('tributacaos', 'regime') ? 'regime'
-            : (Schema::hasColumn('tributacaos', 'REGIME') ? 'REGIME' : null);
-
-        if ($col === null) return null;
+        if (!Schema::hasColumn('tributacaos', 'regime')) return null;
 
         $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
         if ($whereCol === null) return null;
 
-        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value($col);
+        $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value('regime');
         if ($val === null) return null;
 
         $s = trim((string)$val);
@@ -500,7 +485,6 @@ class ReformaTributariaService
         $select = [];
         foreach ($cols as $c) {
             if (Schema::hasColumn('tributacaos', $c)) $select[] = $c;
-            else if (Schema::hasColumn('tributacaos', strtoupper($c))) $select[] = strtoupper($c);
         }
 
         if (!$select) return false;
@@ -511,12 +495,12 @@ class ReformaTributariaService
         $arr = (array)$row;
 
         // precisa estar preenchido de forma consistente
-        $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? ($arr['ALIQ_CBS'] ?? null), 0.0);
-        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? ($arr['ALIQ_IBS_UF'] ?? null), 0.0);
-        $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? ($arr['ALIQ_IBS_MUN'] ?? null), 0.0);
+        $aliqCbs = $this->toFloat($arr['aliq_cbs'] ?? null, 0.0);
+        $aliqUf  = $this->toFloat($arr['aliq_ibs_uf'] ?? null, 0.0);
+        $aliqMun = $this->toFloat($arr['aliq_ibs_mun'] ?? null, 0.0);
 
-        $cst = trim((string)($arr['cst_ibs_cbs'] ?? ($arr['CST_IBS_CBS'] ?? '')));
-        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ($arr['CLASS_TRIB_IBS_CBS'] ?? '')));
+        $cst = trim((string)($arr['cst_ibs_cbs'] ?? ''));
+        $ct  = trim((string)($arr['class_trib_ibs_cbs'] ?? ''));
 
         return ($aliqCbs > 0 || $aliqUf > 0 || $aliqMun > 0) && ($cst !== '' || $ct !== '');
     }
@@ -527,30 +511,27 @@ class ReformaTributariaService
 
     protected function aliquotaPadrao(int $empresaId, string $tipo): float
     {
-        $tipo = strtoupper(trim($tipo));
+        $tipo = strtolower(trim($tipo));
 
         // defaults corretos conforme pedido
         $defaultsEnv = [
-            'CBS'     => $this->toFloat(env('REFORMA_ALIQ_CBS', 0.9000), 0.9000),
-            'IBS_UF'  => $this->toFloat(env('REFORMA_ALIQ_IBS_UF', 0.1000), 0.1000),
-            'IBS_MUN' => $this->toFloat(env('REFORMA_ALIQ_IBS_MUN', 0.0500), 0.0500),
+            'cbs'     => $this->toFloat(env('REFORMA_ALIQ_CBS', 0.9000), 0.9000),
+            'ibs_uf'  => $this->toFloat(env('REFORMA_ALIQ_IBS_UF', 0.1000), 0.1000),
+            'ibs_mun' => $this->toFloat(env('REFORMA_ALIQ_IBS_MUN', 0.0500), 0.0500),
         ];
 
         $default = $defaultsEnv[$tipo] ?? 0.0;
 
         // Prioridade: tributacaos (conforme sua regra)
         $map = [
-            'CBS' => [
+            'cbs' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_cbs'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_CBS'],
             ],
-            'IBS_UF' => [
+            'ibs_uf' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_ibs_uf'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_UF'],
             ],
-            'IBS_MUN' => [
+            'ibs_mun' => [
                 ['table' => 'tributacaos', 'col' => 'aliq_ibs_mun'],
-                ['table' => 'tributacaos', 'col' => 'ALIQ_IBS_MUN'],
             ],
         ];
 
@@ -597,66 +578,66 @@ class ReformaTributariaService
 
         if (!$row) return;
 
-        $cst       = $this->rowVal($row, ['CST_IBS_CBS','cst_ibs_cbs']);
-        $classTrib = $this->rowVal($row, ['CLASS_TRIB_IBS_CBS','class_trib_ibs_cbs']);
+        $cst       = $this->rowVal($row, ['cst_ibs_cbs']);
+        $classTrib = $this->rowVal($row, ['class_trib_ibs_cbs']);
 
         // reduções (aceita também perc_red_ibs/perc_red_cbs)
-        $redIbs = $this->rowVal($row, ['perc_red_ibs','PERC_RED_IBS','REDUCAO_IBS','reducao_ibs']);
-        $redCbs = $this->rowVal($row, ['perc_red_cbs','PERC_RED_CBS','REDUCAO_CBS','reducao_cbs']);
+        $redIbs = $this->rowVal($row, ['perc_red_ibs','reducao_ibs']);
+        $redCbs = $this->rowVal($row, ['perc_red_cbs','reducao_cbs']);
 
-        $flagIs = $this->rowVal($row, ['FLAG_IS','flag_is']);
-        $aliqIs = $this->rowVal($row, ['ALIQ_IS','aliq_is']);
+        $flagIs = $this->rowVal($row, ['flag_is']);
+        $aliqIs = $this->rowVal($row, ['aliq_is']);
 
-        $anp = $this->rowVal($row, ['codigo_anp','CODIGO_ANP','PROD_CPRODANP','cProdAnp','ANP']);
+        $anp = $this->rowVal($row, ['codigo_anp']);
 
         // mantém seus nomes atuais (setIfExists resolve o case)
-        $this->setIfExists($item, 'IS_ALIQ', $this->toFloat($aliqIs, 0.0));
-        $this->setIfExists($item, 'CST_IBS_CBS', $this->fmtCst3($cst ?? ''));
-        $this->setIfExists($item, 'CLASS_TRIB_IBS_CBS', $this->fmtClassTrib6($classTrib ?? ''));
+        $this->setIfExists($item, 'is_aliq', $this->toFloat($aliqIs, 0.0));
+        $this->setIfExists($item, 'cst_ibs_cbs', $this->fmtCst3($cst ?? ''));
+        $this->setIfExists($item, 'class_trib_ibs_cbs', $this->fmtClassTrib6($classTrib ?? ''));
 
-        $this->setIfExists($item, 'PERC_RED_ALIQ_UF',      $this->toFloat($redIbs, 0.0));
-        $this->setIfExists($item, 'PERC_RED_ALIQ_IBS_MUN', $this->toFloat($redIbs, 0.0));
-        $this->setIfExists($item, 'PERC_RED_ALIQ_CBS',     $this->toFloat($redCbs, 0.0));
+        $this->setIfExists($item, 'perc_red_aliq_uf',      $this->toFloat($redIbs, 0.0));
+        $this->setIfExists($item, 'perc_red_aliq_ibs_mun', $this->toFloat($redIbs, 0.0));
+        $this->setIfExists($item, 'perc_red_aliq_cbs',     $this->toFloat($redCbs, 0.0));
 
-        $this->setIfExists($item, 'FLAG_IS', strtoupper(trim((string)($flagIs ?? 'N'))));
+        $this->setIfExists($item, 'flag_is', strtoupper(trim((string)($flagIs ?? 'N'))));
 
         $anp = trim((string)($anp ?? ''));
-        $this->setIfExists($item, 'ANP', $anp);
+        $this->setIfExists($item, 'anp', $anp);
 
         if ($anp !== '') {
-            $this->setIfExists($item, 'FLAG_COMBUSTIVEL', 'S');
+            $this->setIfExists($item, 'flag_combustivel', 'S');
         }
 
         // >>> DEFAULTS <<<
-        $this->setIfExists($item, 'ALIQ_CBS',     $this->aliquotaPadrao($empresaId, 'CBS'));     // 0.9000
-        $this->setIfExists($item, 'ALIQ_IBS_UF',  $this->aliquotaPadrao($empresaId, 'IBS_UF'));  // 0.1000
-        $this->setIfExists($item, 'ALIQ_IBS_MUN', $this->aliquotaPadrao($empresaId, 'IBS_MUN')); // 0.0500
+        $this->setIfExists($item, 'aliq_cbs',     $this->aliquotaPadrao($empresaId, 'cbs'));     // 0.9000
+        $this->setIfExists($item, 'aliq_ibs_uf',  $this->aliquotaPadrao($empresaId, 'ibs_uf'));  // 0.1000
+        $this->setIfExists($item, 'aliq_ibs_mun', $this->aliquotaPadrao($empresaId, 'ibs_mun')); // 0.0500
 
         // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
         $zeroFloat = [
-            'IS_BC','IS_ALIQ_ESPEC','IS_QTD_TRIB','IS_VALOR',
-            'BC_IBS_CBS','VALOR_IBS','VALOR_IBS_UF','PERC_DIF_IBS_UF','VALOR_DIF_IBS_UF','VALOR_DIF_IBS_UF_DEVTRIB','ALIQ_EFET_IBS_UF',
-            'VALOR_IBS_MUN','PERC_DIF_IBS_MUN','VALOR_DIF_IBS_MUN','VALOR_DIF_IBS_MUN_TRIB','ALIQ_EFET_IBS_MUN',
-            'VALOR_CBS','PERC_DIF_CBS','VALOR_DIF_CBS','VALOR_DIF_CBS_DEVTRIB','ALIQ_EFET_CBS',
-            'TRIB_REG_ALIQ_EFET_IBS_UF','TRIB_REG_VALOR_IBS_UF',
-            'TRIB_REG_ALIQ_EFET_IBS_MUN','TRIB_REG_VALOR_IBS_MUN',
-            'TRIB_REG_ALIQ_EFET_CBS','TRIB_REG_VALOR_CBS',
-            'PERC_CRED_PRES_IBS','VALOR_CRED_PRES_IBS','VALOR_CRED_PRES_COND_SUS_IBS',
-            'PERC_CRED_PRES_CBS','VALOR_CRED_PRES_CBS','VALOR_CRED_PRES_COND_SUS_CBS',
-            'QBCMONO_IBS_CBS','VALOR_IBS_MONO','VALOR_CBS_MONO',
-            'QBCMONORETEN_IBS_CBS','ADREM_IBS_RETEN','ADREM_CBS_RETEN','VALOR_IBS_RETEN','VALOR_CBS_RETEN',
-            'QBCMONORET_IBS_CBS','ADREM_IBS_RET','ADREM_CBS_RET','VALOR_IBS_RET','VALOR_CBS_RET',
-            'ADREM_IBS','ADREM_CBS'
+            'is_bc','is_aliq_espec','is_qtd_trib','is_valor',
+            'bc_ibs_cbs','valor_ibs','valor_ibs_uf','perc_dif_ibs_uf','valor_dif_ibs_uf','valor_dif_ibs_uf_devtrib','aliq_efet_ibs_uf',
+            'valor_ibs_mun','perc_dif_ibs_mun','valor_dif_ibs_mun','valor_dif_ibs_mun_trib','aliq_efet_ibs_mun',
+            'valor_cbs','perc_dif_cbs','valor_dif_cbs','valor_dif_cbs_devtrib','aliq_efet_cbs',
+            'trib_reg_aliq_efet_ibs_uf','trib_reg_valor_ibs_uf',
+            'trib_reg_aliq_efet_ibs_mun','trib_reg_valor_ibs_mun',
+            'trib_reg_aliq_efet_cbs','trib_reg_valor_cbs',
+            'perc_cred_pres_ibs','valor_cred_pres_ibs','valor_cred_pres_cond_sus_ibs',
+            'perc_cred_pres_cbs','valor_cred_pres_cbs','valor_cred_pres_cond_sus_cbs',
+            'qbcmono_ibs_cbs','valor_ibs_mono','valor_cbs_mono',
+            'qbcmonoreten_ibs_cbs','adrem_ibs_reten','adrem_cbs_reten','valor_ibs_reten','valor_cbs_reten',
+            'qbcmonoret_ibs_cbs','adrem_ibs_ret','adrem_cbs_ret','valor_ibs_ret','valor_cbs_ret',
+            'adrem_ibs','adrem_cbs'
         ];
         foreach ($zeroFloat as $f) $this->setIfExists($item, $f, 0.0);
 
-        $zeroInt = ['CRED_PRES_COD_IBS','CRED_PRES_COD_CBS'];
+        $zeroInt = ['cred_pres_cod_ibs','cred_pres_cod_cbs'];
         foreach ($zeroInt as $f) $this->setIfExists($item, $f, 0);
 
         if ($anp !== '') {
             $adrem = $this->aliquotaAnp($anp);
-            $this->setIfExists($item, 'ADREM_IBS', $adrem);
-            $this->setIfExists($item, 'ADREM_CBS', $adrem);
+            $this->setIfExists($item, 'adrem_ibs', $adrem);
+            $this->setIfExists($item, 'adrem_cbs', $adrem);
         }
     }
 
@@ -666,9 +647,9 @@ class ReformaTributariaService
 
     public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
     {
-        $vProdTotal = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor_total_item'], 0.0);
+        $vProdTotal = $this->getNum($item, ['nfsi_vlrtotal','vlr_total','valor_total','valor_total_item'], 0.0);
 
-        $qtd = $this->getNum($item, ['NFSI_QUANTIDADE','quantidade','qtd'], 0.0);
+        $qtd = $this->getNum($item, ['nfsi_quantidade','quantidade','qtd'], 0.0);
 
         $vUnit = $this->getNum($item, ['valor_unitario','valor_unit','vlr_unitario'], 0.0);
         if ($vUnit <= 0) {
@@ -681,24 +662,24 @@ class ReformaTributariaService
         }
 
         if ($vProd <= 0) {
-            $vProd = $this->getNum($item, ['NFSI_VLRTOTAL','vlr_total','valor_total','valor'], 0.0);
+            $vProd = $this->getNum($item, ['nfsi_vlrtotal','vlr_total','valor_total','valor'], 0.0);
         }
 
-        $vSeg    = $this->getNum($item, ['NFSI_SEGURO','seguro']);
-        $vFrete  = $this->getNum($item, ['NFSI_FRETE','frete']);
-        $vOutro  = $this->getNum($item, ['NFSI_DESPESAS','despesas','outros']);
-        $vDesc   = $this->getNum($item, ['NFSI_VLRDESCONTO','vlr_desconto','desconto']);
-        $vPis    = $this->getNum($item, ['NFSI_PIS_VLRIMPOSTO','pis_valor','pis_vlr_imposto']);
-        $vCof    = $this->getNum($item, ['NFSI_COFINS_VLRIMPOSTO','cofins_valor','cofins_vlr_imposto']);
-        $vIcms   = $this->getNum($item, ['NFSI_VLRICMS','icms_valor','valor_icms']);
-        $vUFDest = $this->getNum($item, ['NFSI_VALOR_ICMS_DESTINO','icms_ufdest_valor']);
-        $vFcp    = $this->getNum($item, ['NSFI_VALOR_ICMS_FCP','valor_fcp']);
-        $vFcpSt  = $this->getNum($item, ['NSFI_VALOR_FCP_ST','valor_fcp_st']);
-        $vMono   = $this->getNum($item, ['NFSI_VICMSMONO','icms_mono_valor']);
-        $vIS     = $this->getNum($item, ['IS_VALOR','is_valor']);
+        $vSeg    = $this->getNum($item, ['nfsi_seguro','seguro']);
+        $vFrete  = $this->getNum($item, ['nfsi_frete','frete']);
+        $vOutro  = $this->getNum($item, ['nfsi_despesas','despesas','outros']);
+        $vDesc   = $this->getNum($item, ['nfsi_vlrdesconto','vlr_desconto','desconto']);
+        $vPis    = $this->getNum($item, ['nfsi_pis_vlrimposto','pis_valor','pis_vlr_imposto']);
+        $vCof    = $this->getNum($item, ['nfsi_cofins_vlrimposto','cofins_valor','cofins_vlr_imposto']);
+        $vIcms   = $this->getNum($item, ['nfsi_vlricms','icms_valor','valor_icms']);
+        $vUFDest = $this->getNum($item, ['nfsi_valor_icms_destino','icms_ufdest_valor']);
+        $vFcp    = $this->getNum($item, ['nsfi_valor_icms_fcp','valor_fcp']);
+        $vFcpSt  = $this->getNum($item, ['nsfi_valor_fcp_st','valor_fcp_st']);
+        $vMono   = $this->getNum($item, ['nfsi_vicmsmono','icms_mono_valor']);
+        $vIS     = $this->getNum($item, ['is_valor']);
 
         $bc = $this->round2(($vProd + $vSeg + $vFrete + $vOutro - $vDesc - $vPis - $vCof - $vIcms - $vUFDest - $vFcp - $vFcpSt - $vMono + $vIS));
-        $this->setIfExists($item, 'BC_IBS_CBS', $bc);
+        $this->setIfExists($item, 'bc_ibs_cbs', $bc);
 
         $desc = strtoupper((string)($cfopDescricao ?? ''));
         if ($desc !== '' && (str_contains($desc, 'REMESSA') || str_contains($desc, 'RETORNO'))) {
@@ -708,18 +689,18 @@ class ReformaTributariaService
             return;
         }
 
-        $flagIs = strtoupper(trim((string)($this->readField($item, 'FLAG_IS') ?? '')));
+        $flagIs = strtoupper(trim((string)($this->readField($item, 'flag_is') ?? '')));
         if ($flagIs === 'S') {
-            $this->setIfExists($item, 'IS_BC', $vProd);
-            $aliqIs = $this->getNum($item, ['IS_ALIQ','is_aliq'], 0);
-            $this->setIfExists($item, 'IS_VALOR', $this->round2(($vProd * $aliqIs) / 100));
+            $this->setIfExists($item, 'is_bc', $vProd);
+            $aliqIs = $this->getNum($item, ['is_aliq','is_aliq'], 0);
+            $this->setIfExists($item, 'is_valor', $this->round2(($vProd * $aliqIs) / 100));
         } else {
-            $this->setIfExists($item, 'IS_BC', 0.0);
-            $this->setIfExists($item, 'IS_VALOR', 0.0);
-            $this->setIfExists($item, 'IS_ALIQ', 0.0);
+            $this->setIfExists($item, 'is_bc', 0.0);
+            $this->setIfExists($item, 'is_valor', 0.0);
+            $this->setIfExists($item, 'is_aliq', 0.0);
         }
 
-        $cst = trim((string)($this->readField($item, 'CST_IBS_CBS') ?? ''));
+        $cst = trim((string)($this->readField($item, 'cst_ibs_cbs') ?? ''));
         $cst = $this->fmtCst3($cst);
 
         if (in_array($cst, ['000','200','220','510'], true)) {
@@ -739,137 +720,137 @@ class ReformaTributariaService
     protected function zeroCamposReforma($item): void
     {
         $zeroFloat = [
-            'BC_IBS_CBS','VALOR_IBS','VALOR_IBS_UF','ALIQ_EFET_IBS_UF','PERC_DIF_IBS_UF','VALOR_DIF_IBS_UF','VALOR_DIF_IBS_UF_DEVTRIB',
-            'VALOR_IBS_MUN','PERC_DIF_IBS_MUN','VALOR_DIF_IBS_MUN','VALOR_DIF_IBS_MUN_TRIB','ALIQ_EFET_IBS_MUN',
-            'VALOR_CBS','PERC_DIF_CBS','VALOR_DIF_CBS','VALOR_DIF_CBS_DEVTRIB','ALIQ_EFET_CBS',
-            'TRIB_REG_ALIQ_EFET_IBS_UF','TRIB_REG_VALOR_IBS_UF',
-            'TRIB_REG_ALIQ_EFET_IBS_MUN','TRIB_REG_VALOR_IBS_MUN',
-            'TRIB_REG_ALIQ_EFET_CBS','TRIB_REG_VALOR_CBS',
-            'PERC_CRED_PRES_IBS','VALOR_CRED_PRES_IBS','VALOR_CRED_PRES_COND_SUS_IBS',
-            'PERC_CRED_PRES_CBS','VALOR_CRED_PRES_CBS','VALOR_CRED_PRES_COND_SUS_CBS',
+            'bc_ibs_cbs','valor_ibs','valor_ibs_uf','aliq_efet_ibs_uf','perc_dif_ibs_uf','valor_dif_ibs_uf','valor_dif_ibs_uf_devtrib',
+            'valor_ibs_mun','perc_dif_ibs_mun','valor_dif_ibs_mun','valor_dif_ibs_mun_trib','aliq_efet_ibs_mun',
+            'valor_cbs','perc_dif_cbs','valor_dif_cbs','valor_dif_cbs_devtrib','aliq_efet_cbs',
+            'trib_reg_aliq_efet_ibs_uf','trib_reg_valor_ibs_uf',
+            'trib_reg_aliq_efet_ibs_mun','trib_reg_valor_ibs_mun',
+            'trib_reg_aliq_efet_cbs','trib_reg_valor_cbs',
+            'perc_cred_pres_ibs','valor_cred_pres_ibs','valor_cred_pres_cond_sus_ibs',
+            'perc_cred_pres_cbs','valor_cred_pres_cbs','valor_cred_pres_cond_sus_cbs',
         ];
         foreach ($zeroFloat as $f) $this->setIfExists($item, $f, 0.0);
 
-        $zeroInt = ['CRED_PRES_COD_IBS','CRED_PRES_COD_CBS'];
+        $zeroInt = ['cred_pres_cod_ibs','cred_pres_cod_cbs'];
         foreach ($zeroInt as $f) $this->setIfExists($item, $f, 0);
     }
 
     protected function calcAliqEfetivasSeCst200($item): void
     {
-        $cst = $this->fmtCst3($this->readField($item, 'CST_IBS_CBS') ?? '');
+        $cst = $this->fmtCst3($this->readField($item, 'cst_ibs_cbs') ?? '');
         if ($cst !== '200') return;
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
+        $aUf  = $this->getNum($item, ['aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['aliq_cbs'], 0);
 
-        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF','perc_red_aliq_uf'], 0);
-        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN','perc_red_aliq_ibs_mun'], 0);
-        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS','perc_red_aliq_cbs'], 0);
+        $rUf  = $this->getNum($item, ['perc_red_aliq_uf'], 0);
+        $rMun = $this->getNum($item, ['perc_red_aliq_ibs_mun'], 0);
+        $rCbs = $this->getNum($item, ['perc_red_aliq_cbs'], 0);
 
-        if ($rUf > 0)  $this->setIfExists($item, 'ALIQ_EFET_IBS_UF',  $aUf  * (1 - ($rUf/100)));
-        if ($rMun > 0) $this->setIfExists($item, 'ALIQ_EFET_IBS_MUN', $aMun * (1 - ($rMun/100)));
-        if ($rCbs > 0) $this->setIfExists($item, 'ALIQ_EFET_CBS',     $aCbs * (1 - ($rCbs/100)));
+        if ($rUf > 0)  $this->setIfExists($item, 'aliq_efet_ibs_uf',  $aUf  * (1 - ($rUf/100)));
+        if ($rMun > 0) $this->setIfExists($item, 'aliq_efet_ibs_mun', $aMun * (1 - ($rMun/100)));
+        if ($rCbs > 0) $this->setIfExists($item, 'aliq_efet_cbs',     $aCbs * (1 - ($rCbs/100)));
     }
 
     protected function calcIntegral($item): void
     {
-        $bc = $this->getNum($item, ['BC_IBS_CBS','bc_ibs_cbs'], 0);
+        $bc = $this->getNum($item, ['bc_ibs_cbs'], 0);
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
+        $aUf  = $this->getNum($item, ['aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['aliq_cbs'], 0);
 
-        $this->setIfExists($item, 'ALIQ_EFET_IBS_UF', $aUf);
-        $this->setIfExists($item, 'VALOR_IBS_UF', $this->round2(($bc * $aUf) / 100));
+        $this->setIfExists($item, 'aliq_efet_ibs_uf', $aUf);
+        $this->setIfExists($item, 'valor_ibs_uf', $this->round2(($bc * $aUf) / 100));
 
-        $this->setIfExists($item, 'ALIQ_EFET_IBS_MUN', $aMun);
-        $this->setIfExists($item, 'VALOR_IBS_MUN', $this->round2(($bc * $aMun) / 100));
+        $this->setIfExists($item, 'aliq_efet_ibs_mun', $aMun);
+        $this->setIfExists($item, 'valor_ibs_mun', $this->round2(($bc * $aMun) / 100));
 
-        $this->setIfExists($item, 'ALIQ_EFET_CBS', $aCbs);
-        $this->setIfExists($item, 'VALOR_CBS', $this->round2(($bc * $aCbs) / 100));
+        $this->setIfExists($item, 'aliq_efet_cbs', $aCbs);
+        $this->setIfExists($item, 'valor_cbs', $this->round2(($bc * $aCbs) / 100));
     }
 
     protected function calcReduzido($item): void
     {
-        $bc = $this->getNum($item, ['BC_IBS_CBS','bc_ibs_cbs'], 0);
+        $bc = $this->getNum($item, ['bc_ibs_cbs'], 0);
 
-        $aUf  = $this->getNum($item, ['ALIQ_IBS_UF','aliq_ibs_uf'], 0);
-        $aMun = $this->getNum($item, ['ALIQ_IBS_MUN','aliq_ibs_mun'], 0);
-        $aCbs = $this->getNum($item, ['ALIQ_CBS','aliq_cbs'], 0);
+        $aUf  = $this->getNum($item, ['aliq_ibs_uf'], 0);
+        $aMun = $this->getNum($item, ['aliq_ibs_mun'], 0);
+        $aCbs = $this->getNum($item, ['aliq_cbs'], 0);
 
-        $rUf  = $this->getNum($item, ['PERC_RED_ALIQ_UF','perc_red_aliq_uf'], 0);
-        $rMun = $this->getNum($item, ['PERC_RED_ALIQ_IBS_MUN','perc_red_aliq_ibs_mun'], 0);
-        $rCbs = $this->getNum($item, ['PERC_RED_ALIQ_CBS','perc_red_aliq_cbs'], 0);
+        $rUf  = $this->getNum($item, ['perc_red_aliq_uf'], 0);
+        $rMun = $this->getNum($item, ['perc_red_aliq_ibs_mun'], 0);
+        $rCbs = $this->getNum($item, ['perc_red_aliq_cbs'], 0);
 
         $efUf = ($rUf > 0) ? $aUf * (1 - ($rUf/100)) : $aUf;
-        $this->setIfExists($item, 'ALIQ_EFET_IBS_UF', $efUf);
-        $this->setIfExists($item, 'VALOR_IBS_UF', $this->round2(($bc * $efUf) / 100));
+        $this->setIfExists($item, 'aliq_efet_ibs_uf', $efUf);
+        $this->setIfExists($item, 'valor_ibs_uf', $this->round2(($bc * $efUf) / 100));
 
         $efMun = ($rMun > 0) ? $aMun * (1 - ($rMun/100)) : $aMun;
-        $this->setIfExists($item, 'ALIQ_EFET_IBS_MUN', $efMun);
-        $this->setIfExists($item, 'VALOR_IBS_MUN', $this->round2(($bc * $efMun) / 100));
+        $this->setIfExists($item, 'aliq_efet_ibs_mun', $efMun);
+        $this->setIfExists($item, 'valor_ibs_mun', $this->round2(($bc * $efMun) / 100));
 
         $efCbs = ($rCbs > 0) ? $aCbs * (1 - ($rCbs/100)) : $aCbs;
-        $this->setIfExists($item, 'ALIQ_EFET_CBS', $efCbs);
-        $this->setIfExists($item, 'VALOR_CBS', $this->round2(($bc * $efCbs) / 100));
+        $this->setIfExists($item, 'aliq_efet_cbs', $efCbs);
+        $this->setIfExists($item, 'valor_cbs', $this->round2(($bc * $efCbs) / 100));
     }
 
     protected function calcMono($item): void
     {
-        $this->setIfExists($item, 'BC_IBS_CBS', 0.0);
+        $this->setIfExists($item, 'bc_ibs_cbs', 0.0);
 
         $this->calcIntegral($item);
 
-        $flagComb = strtoupper(trim((string)($this->readField($item, 'FLAG_COMBUSTIVEL') ?? '')));
-        $anp = trim((string)($this->readField($item, 'ANP') ?? ''));
+        $flagComb = strtoupper(trim((string)($this->readField($item, 'flag_combustivel') ?? '')));
+        $anp = trim((string)($this->readField($item, 'anp') ?? ''));
 
         if ($flagComb !== 'S' || $anp === '') return;
-        if (strtoupper((string)$this->consultaAnp($anp, 'MONOFASICO')) !== 'S') return;
+        if (strtoupper((string)$this->consultaAnp($anp, 'monofasico')) !== 'S') return;
 
-        $classTrib = trim((string)($this->readField($item, 'CLASS_TRIB_IBS_CBS') ?? ''));
+        $classTrib = trim((string)($this->readField($item, 'class_trib_ibs_cbs') ?? ''));
         $indMono = $this->buscarIndMonoClassTrib($classTrib);
         if (strtoupper($indMono) === 'N') {
-            $this->setIfExists($item, 'ADREM_IBS', 0.0);
-            $this->setIfExists($item, 'ADREM_CBS', 0.0);
-            $this->setIfExists($item, 'VALOR_IBS_MONO', 0.0);
-            $this->setIfExists($item, 'VALOR_CBS_MONO', 0.0);
+            $this->setIfExists($item, 'adrem_ibs', 0.0);
+            $this->setIfExists($item, 'adrem_cbs', 0.0);
+            $this->setIfExists($item, 'valor_ibs_mono', 0.0);
+            $this->setIfExists($item, 'valor_cbs_mono', 0.0);
             return;
         }
 
-        $qtd = $this->getNum($item, ['NFSI_QUANTIDADE','quantidade'], 0);
+        $qtd = $this->getNum($item, ['nfsi_quantidade','quantidade'], 0);
         $adrem = $this->aliquotaAnp($anp);
 
         if ($classTrib === '620001') {
-            $this->setIfExists($item, 'QBCMONO_IBS_CBS', $qtd);
-            $this->setIfExists($item, 'VALOR_IBS_MONO', $this->round2($qtd * $this->getNum($item, ['ADREM_IBS'], $adrem)));
-            $this->setIfExists($item, 'VALOR_CBS_MONO', $this->round2($qtd * $this->getNum($item, ['ADREM_CBS'], $adrem)));
+            $this->setIfExists($item, 'qbcmono_ibs_cbs', $qtd);
+            $this->setIfExists($item, 'valor_ibs_mono', $this->round2($qtd * $this->getNum($item, ['adrem_ibs'], $adrem)));
+            $this->setIfExists($item, 'valor_cbs_mono', $this->round2($qtd * $this->getNum($item, ['adrem_cbs'], $adrem)));
         }
 
         if ($classTrib === '620002') {
-            $this->setIfExists($item, 'QBCMONO_IBS_CBS', $qtd);
-            $this->setIfExists($item, 'QBCMONORETEN_IBS_CBS', $qtd);
-            $this->setIfExists($item, 'ADREM_IBS_RETEN', $adrem);
-            $this->setIfExists($item, 'ADREM_CBS_RETEN', $adrem);
-            $this->setIfExists($item, 'VALOR_IBS_MONO', $this->round2($qtd * $adrem));
-            $this->setIfExists($item, 'VALOR_CBS_MONO', $this->round2($qtd * $adrem));
+            $this->setIfExists($item, 'qbcmono_ibs_cbs', $qtd);
+            $this->setIfExists($item, 'qbcmonoreten_ibs_cbs', $qtd);
+            $this->setIfExists($item, 'adrem_ibs_reten', $adrem);
+            $this->setIfExists($item, 'adrem_cbs_reten', $adrem);
+            $this->setIfExists($item, 'valor_ibs_mono', $this->round2($qtd * $adrem));
+            $this->setIfExists($item, 'valor_cbs_mono', $this->round2($qtd * $adrem));
         }
 
         if ($classTrib === '620006') {
-            $this->setIfExists($item, 'QBCMONO_IBS_CBS', $qtd);
-            $this->setIfExists($item, 'QBCMONORET_IBS_CBS', $qtd);
-            $this->setIfExists($item, 'ADREM_IBS_RET', $adrem);
-            $this->setIfExists($item, 'ADREM_CBS_RET', $adrem);
-            $this->setIfExists($item, 'VALOR_IBS_RET', $this->round2($qtd * $adrem));
-            $this->setIfExists($item, 'VALOR_CBS_RET', $this->round2($qtd * $adrem));
+            $this->setIfExists($item, 'qbcmono_ibs_cbs', $qtd);
+            $this->setIfExists($item, 'qbcmonoret_ibs_cbs', $qtd);
+            $this->setIfExists($item, 'adrem_ibs_ret', $adrem);
+            $this->setIfExists($item, 'adrem_cbs_ret', $adrem);
+            $this->setIfExists($item, 'valor_ibs_ret', $this->round2($qtd * $adrem));
+            $this->setIfExists($item, 'valor_cbs_ret', $this->round2($qtd * $adrem));
         }
     }
 
     protected function calcValorIbsTotal($item): void
     {
-        $uf  = $this->getNum($item, ['VALOR_IBS_UF','valor_ibs_uf'], 0);
-        $mun = $this->getNum($item, ['VALOR_IBS_MUN','valor_ibs_mun'], 0);
-        $this->setIfExists($item, 'VALOR_IBS', $this->round2($uf + $mun));
+        $uf  = $this->getNum($item, ['valor_ibs_uf','valor_ibs_uf'], 0);
+        $mun = $this->getNum($item, ['valor_ibs_mun','valor_ibs_mun'], 0);
+        $this->setIfExists($item, 'valor_ibs', $this->round2($uf + $mun));
     }
 
     // ---------------------------------------------------------------------
@@ -882,45 +863,34 @@ class ReformaTributariaService
         if (!Schema::hasTable($itensTable)) return [];
 
         $sumCols = [
-            'BC_IBS_CBS'               => 'TOTAL_BC_IBS_CBS',
-            'VALOR_DIF_IBS_UF'         => 'TOTAL_IBS_UF_DIF',
-            'VALOR_DIF_IBS_UF_DEVTRIB' => 'TOTAL_IBS_UF_DEV_TRIB',
-            'VALOR_IBS_UF'             => 'TOTAL_IBS_UF',
-            'VALOR_DIF_IBS_MUN'        => 'TOTAL_IBS_MUN_DIF',
-            'VALOR_DIF_IBS_MUN_TRIB'   => 'TOTAL_IBS_MUN_DEV_TRIB',
-            'VALOR_IBS_MUN'            => 'TOTAL_IBS_MUN',
-            'VALOR_DIF_CBS'            => 'TOTAL_CBS_DIF',
-            'VALOR_DIF_CBS_DEVTRIB'    => 'TOTAL_CBS_DEV_TRIB',
-            'VALOR_CBS'                => 'TOTAL_CBS',
-            'VALOR_CRED_PRES_IBS'      => 'TOTAL_IBS_CRED_PRES',
-            'VALOR_CRED_PRES_COND_SUS_IBS' => 'TOTAL_IBS_CRED_PRES_COND_SUS',
-            'VALOR_CRED_PRES_CBS'      => 'TOTAL_CBS_CRED_PRES',
-            'VALOR_CRED_PRES_COND_SUS_CBS' => 'TOTAL_CBS_CRED_PRES_COND_SUS',
-            'IS_VALOR'                 => 'TOTAL_IS',
-            'VALOR_IBS_MONO'           => 'TOTAL_IBS_MONO',
-            'VALOR_CBS_MONO'           => 'TOTAL_CBS_MONO',
-            'VALOR_IBS_RETEN'          => 'TOTAL_IBS_MONO_RETEN',
-            'VALOR_CBS_RETEN'          => 'TOTAL_CBS_MONO_RETEN',
-            'VALOR_IBS_RET'            => 'TOTAL_IBS_MONO_RET',
-            'VALOR_CBS_RET'            => 'TOTAL_CBS_MONO_RET',
+            'bc_ibs_cbs'               => 'total_bc_ibs_cbs',
+            'valor_dif_ibs_uf'         => 'total_ibs_uf_dif',
+            'valor_dif_ibs_uf_devtrib' => 'total_ibs_uf_dev_trib',
+            'valor_ibs_uf'             => 'total_ibs_uf',
+            'valor_dif_ibs_mun'        => 'total_ibs_mun_dif',
+            'valor_dif_ibs_mun_trib'   => 'total_ibs_mun_dev_trib',
+            'valor_ibs_mun'            => 'total_ibs_mun',
+            'valor_dif_cbs'            => 'total_cbs_dif',
+            'valor_dif_cbs_devtrib'    => 'total_cbs_dev_trib',
+            'valor_cbs'                => 'total_cbs',
+            'valor_cred_pres_ibs'      => 'total_ibs_cred_pres',
+            'valor_cred_pres_cond_sus_ibs' => 'total_ibs_cred_pres_cond_sus',
+            'valor_cred_pres_cbs'      => 'total_cbs_cred_pres',
+            'valor_cred_pres_cond_sus_cbs' => 'total_cbs_cred_pres_cond_sus',
+            'is_valor'                 => 'total_is',
+            'valor_ibs_mono'           => 'total_ibs_mono',
+            'valor_cbs_mono'           => 'total_cbs_mono',
+            'valor_ibs_reten'          => 'total_ibs_mono_reten',
+            'valor_cbs_reten'          => 'total_cbs_mono_reten',
+            'valor_ibs_ret'            => 'total_ibs_mono_ret',
+            'valor_cbs_ret'            => 'total_cbs_mono_ret',
         ];
 
         $selects = [];
         foreach ($sumCols as $col => $alias) {
 
-            $realCol = null;
-
             if (Schema::hasColumn($itensTable, $col)) {
-                $realCol = $col;
-            } else {
-                $lc = strtolower($col);
-                if (Schema::hasColumn($itensTable, $lc)) {
-                    $realCol = $lc;
-                }
-            }
-
-            if ($realCol) {
-                $selects[] = "COALESCE(SUM($realCol),0) as $alias";
+                $selects[] = "COALESCE(SUM($col),0) as $alias";
             }
         }
 
@@ -935,13 +905,13 @@ class ReformaTributariaService
 
         $t = (array)$row;
 
-        $totalIbs = (float)($t['TOTAL_IBS_UF'] ?? 0) + (float)($t['TOTAL_IBS_MUN'] ?? 0);
-        $totalIbsCbs = $totalIbs + (float)($t['TOTAL_CBS'] ?? 0);
-        $totalNfIbcCbsIs = (float)($t['TOTAL_BC_IBS_CBS'] ?? 0) + (float)($t['TOTAL_IS'] ?? 0);
+        $totalIbs = (float)($t['total_ibs_uf'] ?? 0) + (float)($t['total_ibs_mun'] ?? 0);
+        $totalIbsCbs = $totalIbs + (float)($t['total_cbs'] ?? 0);
+        $totalNfIbcCbsIs = (float)($t['total_bc_ibs_cbs'] ?? 0) + (float)($t['total_is'] ?? 0);
 
-        $t['TOTAL_IBS'] = $this->round2($totalIbs);
-        $t['TOTAL_IBS_CBS'] = $this->round2($totalIbsCbs);
-        $t['TOTAL_NF_IBC_CBS_IS'] = $this->round2($totalNfIbcCbsIs);
+        $t['total_ibs'] = $this->round2($totalIbs);
+        $t['total_ibs_cbs'] = $this->round2($totalIbsCbs);
+        $t['total_nf_ibc_cbs_is'] = $this->round2($totalNfIbcCbsIs);
 
         return $t;
     }
@@ -954,8 +924,8 @@ class ReformaTributariaService
             $this->setIfExists($vendaModel, $k, $v);
         }
 
-        if (isset($totais['TOTAL_IBS'])) $this->setIfExists($vendaModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
-        if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($vendaModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
+        if (isset($totais['total_ibs'])) $this->setIfExists($vendaModel, 'total_ibs', $totais['total_ibs']);
+        if (isset($totais['total_ibs_cbs'])) $this->setIfExists($vendaModel, 'total_ibs_cbs', $totais['total_ibs_cbs']);
 
         try { $vendaModel->save(); } catch (\Throwable $e) {}
     }
@@ -970,41 +940,30 @@ class ReformaTributariaService
         if (!Schema::hasTable($itensTable)) return [];
 
         $sumCols = [
-            'BC_IBS_CBS'               => 'TOTAL_BC_IBS_CBS',
-            'VALOR_DIF_IBS_UF'         => 'TOTAL_IBS_UF_DIF',
-            'VALOR_DIF_IBS_UF_DEVTRIB' => 'TOTAL_IBS_UF_DEV_TRIB',
-            'VALOR_IBS_UF'             => 'TOTAL_IBS_UF',
-            'VALOR_DIF_IBS_MUN'        => 'TOTAL_IBS_MUN_DIF',
-            'VALOR_DIF_IBS_MUN_TRIB'   => 'TOTAL_IBS_MUN_DEV_TRIB',
-            'VALOR_IBS_MUN'            => 'TOTAL_IBS_MUN',
-            'VALOR_DIF_CBS'            => 'TOTAL_CBS_DIF',
-            'VALOR_DIF_CBS_DEVTRIB'    => 'TOTAL_CBS_DEV_TRIB',
-            'VALOR_CBS'                => 'TOTAL_CBS',
-            'IS_VALOR'                 => 'TOTAL_IS',
-            'VALOR_IBS_MONO'           => 'TOTAL_IBS_MONO',
-            'VALOR_CBS_MONO'           => 'TOTAL_CBS_MONO',
-            'VALOR_IBS_RETEN'          => 'TOTAL_IBS_MONO_RETEN',
-            'VALOR_CBS_RETEN'          => 'TOTAL_CBS_MONO_RETEN',
-            'VALOR_IBS_RET'            => 'TOTAL_IBS_MONO_RET',
-            'VALOR_CBS_RET'            => 'TOTAL_CBS_MONO_RET',
+            'bc_ibs_cbs'               => 'total_bc_ibs_cbs',
+            'valor_dif_ibs_uf'         => 'total_ibs_uf_dif',
+            'valor_dif_ibs_uf_devtrib' => 'total_ibs_uf_dev_trib',
+            'valor_ibs_uf'             => 'total_ibs_uf',
+            'valor_dif_ibs_mun'        => 'total_ibs_mun_dif',
+            'valor_dif_ibs_mun_trib'   => 'total_ibs_mun_dev_trib',
+            'valor_ibs_mun'            => 'total_ibs_mun',
+            'valor_dif_cbs'            => 'total_cbs_dif',
+            'valor_dif_cbs_devtrib'    => 'total_cbs_dev_trib',
+            'valor_cbs'                => 'total_cbs',
+            'is_valor'                 => 'total_is',
+            'valor_ibs_mono'           => 'total_ibs_mono',
+            'valor_cbs_mono'           => 'total_cbs_mono',
+            'valor_ibs_reten'          => 'total_ibs_mono_reten',
+            'valor_cbs_reten'          => 'total_cbs_mono_reten',
+            'valor_ibs_ret'            => 'total_ibs_mono_ret',
+            'valor_cbs_ret'            => 'total_cbs_mono_ret',
         ];
 
         $selects = [];
         foreach ($sumCols as $col => $alias) {
 
-            $realCol = null;
-
             if (Schema::hasColumn($itensTable, $col)) {
-                $realCol = $col;
-            } else {
-                $lc = strtolower($col);
-                if (Schema::hasColumn($itensTable, $lc)) {
-                    $realCol = $lc;
-                }
-            }
-
-            if ($realCol) {
-                $selects[] = "COALESCE(SUM($realCol),0) as $alias";
+                $selects[] = "COALESCE(SUM($col),0) as $alias";
             }
         }
 
@@ -1019,11 +978,11 @@ class ReformaTributariaService
 
         $t = (array)$row;
 
-        $totalIbs = (float)($t['TOTAL_IBS_UF'] ?? 0) + (float)($t['TOTAL_IBS_MUN'] ?? 0);
-        $totalIbsCbs = $totalIbs + (float)($t['TOTAL_CBS'] ?? 0);
+        $totalIbs = (float)($t['total_ibs_uf'] ?? 0) + (float)($t['total_ibs_mun'] ?? 0);
+        $totalIbsCbs = $totalIbs + (float)($t['total_cbs'] ?? 0);
 
-        $t['TOTAL_IBS'] = $this->round2($totalIbs);
-        $t['TOTAL_IBS_CBS'] = $this->round2($totalIbsCbs);
+        $t['total_ibs'] = $this->round2($totalIbs);
+        $t['total_ibs_cbs'] = $this->round2($totalIbsCbs);
 
         return $t;
     }
@@ -1036,8 +995,8 @@ class ReformaTributariaService
             $this->setIfExists($compraModel, $k, $v);
         }
 
-        if (isset($totais['TOTAL_IBS'])) $this->setIfExists($compraModel, 'TOTAL_IBS', $totais['TOTAL_IBS']);
-        if (isset($totais['TOTAL_IBS_CBS'])) $this->setIfExists($compraModel, 'TOTAL_IBS_CBS', $totais['TOTAL_IBS_CBS']);
+        if (isset($totais['total_ibs'])) $this->setIfExists($compraModel, 'total_ibs', $totais['total_ibs']);
+        if (isset($totais['total_ibs_cbs'])) $this->setIfExists($compraModel, 'total_ibs_cbs', $totais['total_ibs_cbs']);
 
         try { $compraModel->save(); } catch (\Throwable $e) {}
     }
@@ -1059,7 +1018,7 @@ class ReformaTributariaService
         if (!Schema::hasColumn('anp', 'codigo')) return $cache[$codigo] = 0.0;
         if (!Schema::hasColumn('anp', 'adremicms')) return $cache[$codigo] = 0.0;
 
-        $val = DB::table('anp')
+        $val = Anp::query()
             ->where('codigo', $codigo)
             ->value('adremicms');
 
@@ -1101,42 +1060,38 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($classTrib, $cache)) return $cache[$classTrib];
 
-        if (!Schema::hasTable('CLASS_TRIB_IBS_CBS') && !Schema::hasTable('class_trib_ibs_cbs')) {
+        if (!Schema::hasTable('class_trib_ibs_cbs')) {
+            return $cache[$classTrib] = 'S';
+        }
+
+        if (!Schema::hasColumn('class_trib_ibs_cbs', 'cclasstrib')) {
             return $cache[$classTrib] = 'S';
         }
 
         $today = now()->toDateString();
 
-        $q = ClassTribIbsCbs::query()->where('CCLASSTRIB', $classTrib);
+        $q = ClassTribIbsCbs::query()->where('cclasstrib', $classTrib);
 
-        $table = 'CLASS_TRIB_IBS_CBS';
-        if (!Schema::hasTable($table) && Schema::hasTable('class_trib_ibs_cbs')) $table = 'class_trib_ibs_cbs';
-
-        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dinivig')) {
             $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DINIVIG')->orWhere('DINIVIG', '<=', $today)
-                    ->orWhereNull('dinivig')->orWhere('dinivig', '<=', $today);
+                $qq->whereNull('dinivig')->orWhere('dinivig', '<=', $today);
+            });
+            $q->orderByDesc('dinivig');
+        }
+
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dfimvig')) {
+            $q->where(function ($qq) use ($today) {
+                $qq->whereNull('dfimvig')->orWhere('dfimvig', '>=', $today);
             });
         }
 
-        if (Schema::hasColumn($table, 'DFIMVIG') || Schema::hasColumn($table, 'dfimvig')) {
-            $q->where(function ($qq) use ($today) {
-                $qq->whereNull('DFIMVIG')->orWhere('DFIMVIG', '>=', $today)
-                    ->orWhereNull('dfimvig')->orWhere('dfimvig', '>=', $today);
-            });
-        }
-
-        if (Schema::hasColumn($table, 'DINIVIG') || Schema::hasColumn($table, 'dinivig')) {
-            $q->orderByRaw("COALESCE(DINIVIG, dinivig, '1900-01-01') DESC");
-        }
-
-        if (Schema::hasColumn($table, 'DATAATUALIZACAO') || Schema::hasColumn($table, 'dataatualizacao')) {
-            $q->orderByDesc(Schema::hasColumn($table, 'DATAATUALIZACAO') ? 'DATAATUALIZACAO' : 'dataatualizacao');
+        if (Schema::hasColumn('class_trib_ibs_cbs', 'dataatualizacao')) {
+            $q->orderByDesc('dataatualizacao');
         }
 
         $row = $q->first();
 
-        $ind = $row ? (string)($row->INDMONO ?? '') : '';
+        $ind = $row ? (string)($row->indmono ?? '') : '';
         $ind = strtoupper(trim($ind));
         if ($ind === '') $ind = 'S';
 
