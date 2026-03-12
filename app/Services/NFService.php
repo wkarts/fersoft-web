@@ -78,6 +78,16 @@ class NFService{
 		return '90';
 	}
 
+	private function normalizeTwoDigitCst($cst): string
+	{
+		$cst = preg_replace('/\D+/', '', (string)$cst);
+		if ($cst === '' || $cst === null) {
+			return '99';
+		}
+
+		return str_pad(substr($cst, -2), 2, '0', STR_PAD_LEFT);
+	}
+
 	public function __construct($config, $empresa_id = null){
 
 		if($empresa_id == null){
@@ -1020,7 +1030,7 @@ class NFService{
 			}
 			$stdPIS = new \stdClass();
 			$stdPIS->item = $itemCont;
-			$stdPIS->CST = $i->produto->CST_PIS;
+			$stdPIS->CST = $this->normalizeTwoDigitCst($i->produto->CST_PIS);
 			$stdPIS->vBC = $this->format($i->produto->perc_pis) > 0 ? $vbcPis : 0.00;
 			$stdPIS->pPIS = $this->format($i->produto->perc_pis);
                         $stdPIS->vPIS = $this->format(($vbcPis) *
@@ -1035,7 +1045,7 @@ class NFService{
 			}
 			$stdCOFINS = new \stdClass();
 			$stdCOFINS->item = $itemCont;
-			$stdCOFINS->CST = $i->produto->CST_COFINS;
+			$stdCOFINS->CST = $this->normalizeTwoDigitCst($i->produto->CST_COFINS);
 			$stdCOFINS->vBC = $this->format($i->produto->perc_cofins) > 0 ? $vbcCofins : 0.00;
                         $stdCOFINS->pCOFINS = $this->format($i->produto->perc_cofins);
                         $stdCOFINS->vCOFINS = $this->format(($vbcCofins) *
@@ -1049,7 +1059,7 @@ class NFService{
 			$std->item = $itemCont;
 				//999 – para tributação normal IPI
 			$std->cEnq = $i->produto->cenq_ipi ?? '999';
-			$std->CST = $i->produto->CST_IPI;
+			$std->CST = $this->normalizeTwoDigitCst($i->produto->CST_IPI);
 			$std->vBC = $this->format($i->produto->perc_ipi) > 0 ? $stdProd->vProd : 0.00;
 			$std->pIPI = $this->format($i->produto->perc_ipi);
 			$somaIPI += $std->vIPI = $this->format($std->vBC * ($std->pIPI/100));
