@@ -147,6 +147,99 @@
          left:-6px;
         }
 
+
+        .app-version-desktop-wrapper {
+            transition: all .2s ease;
+        }
+
+        .app-version-desktop-btn {
+            white-space: normal;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, .3);
+            color: rgba(255, 255, 255, .94);
+            box-shadow: none;
+            transition: all .2s ease;
+            text-align: center;
+            padding: .34rem .2rem;
+            min-height: 56px;
+        }
+
+        .app-version-desktop-btn:hover,
+        .app-version-desktop-btn:focus {
+            background: rgba(54, 153, 255, .28);
+            border-color: rgba(54, 153, 255, .58);
+            color: #ffffff;
+        }
+
+        .app-version-desktop-head {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .26rem;
+            line-height: 1;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, .96);
+        }
+
+        .app-version-desktop-head i {
+            font-size: .78rem;
+            line-height: 1;
+            color: inherit;
+        }
+
+        .app-version-desktop-main {
+            font-size: .72rem;
+            font-weight: 600;
+            color: inherit;
+        }
+
+        .app-version-desktop-revision {
+            display: block;
+            margin-top: .1rem;
+            font-size: .49rem;
+            line-height: 1.05;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: rgba(255, 255, 255, .84);
+        }
+
+        .app-version-desktop-btn:hover .app-version-desktop-head,
+        .app-version-desktop-btn:hover .app-version-desktop-main,
+        .app-version-desktop-btn:hover .app-version-desktop-revision,
+        .app-version-desktop-btn:focus .app-version-desktop-head,
+        .app-version-desktop-btn:focus .app-version-desktop-main,
+        .app-version-desktop-btn:focus .app-version-desktop-revision {
+            color: #ffffff;
+        }
+
+        body.aside-minimize .app-version-desktop-wrapper {
+            padding-left: .22rem !important;
+            padding-right: .22rem !important;
+        }
+
+        body.aside-minimize .app-version-desktop-btn {
+            min-height: 38px;
+            padding: .2rem .08rem;
+        }
+
+        body.aside-minimize .app-version-desktop-head {
+            gap: .14rem;
+        }
+
+        body.aside-minimize .app-version-desktop-head i {
+            font-size: .6rem;
+        }
+
+        body.aside-minimize .app-version-desktop-main {
+            font-size: .5rem;
+            font-weight: 500;
+        }
+
+        body.aside-minimize .app-version-desktop-revision {
+            display: none;
+        }
+
     </style>
 
     @if($tema == 2)
@@ -156,6 +249,7 @@
     <link rel="stylesheet" href="/css/animate.min.css"/>
 
     @yield('css')
+
 </head>
 
 <!-- end::Head -->
@@ -229,6 +323,16 @@
 						</span>
                 </button>
 
+            </div>
+
+            <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
+                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
+                    <span class="app-version-desktop-head">
+                        <i class="la la-code-branch"></i>
+                        <span class="app-version-desktop-main">V. {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                    </span>
+                    <span class="app-version-desktop-revision" title="{{ optional($appVersionCurrent)->commit_hash ?? '-' }}">{{ optional($appVersionCurrent)->commit_hash ?? '-' }}</span>
+                </a>
             </div>
 
             <div class="aside-menu-wrapper flex-column-fluid" id="kt_aside_menu_wrapper">
@@ -664,6 +768,7 @@
                     </ul>
                 </div>
             </div>
+
         </div>
         <div class="d-flex flex-column flex-row-fluid wrapper" id="kt_wrapper">
             <div id="kt_header" class="header header-fixed">
@@ -704,6 +809,12 @@
                                         <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-info @else label-info @endif">
                                                 Ambiente: {{session('user_logged')['ambiente']}}
+                                            </a>
+                                        </li>
+
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active d-lg-none" data-menu-toggle="click" aria-haspopup="true">
+                                            <a href="/app-versions" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif">
+                                                Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
                                             </a>
                                         </li>
                                     @endif
