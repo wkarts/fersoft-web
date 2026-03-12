@@ -153,7 +153,7 @@
         }
 
         .app-version-desktop-btn {
-            font-size: .72rem;
+            font-size: .74rem;
             line-height: 1.2;
             white-space: normal;
             background: transparent;
@@ -161,11 +161,14 @@
             color: rgba(255, 255, 255, .92);
             box-shadow: none;
             transition: all .2s ease;
+            text-align: center;
+            padding: .36rem .2rem;
+            min-height: 54px;
         }
 
         .app-version-desktop-btn i,
-        .app-version-desktop-line,
-        .app-version-desktop-value {
+        .app-version-desktop-main,
+        .app-version-desktop-revision {
             color: rgba(255, 255, 255, .92);
         }
 
@@ -177,27 +180,31 @@
         }
 
         .app-version-desktop-btn:hover i,
-        .app-version-desktop-btn:hover .app-version-desktop-line,
-        .app-version-desktop-btn:hover .app-version-desktop-value,
+        .app-version-desktop-btn:hover .app-version-desktop-main,
+        .app-version-desktop-btn:hover .app-version-desktop-revision,
         .app-version-desktop-btn:focus i,
-        .app-version-desktop-btn:focus .app-version-desktop-line,
-        .app-version-desktop-btn:focus .app-version-desktop-value {
+        .app-version-desktop-btn:focus .app-version-desktop-main,
+        .app-version-desktop-btn:focus .app-version-desktop-revision {
             color: #ffffff;
         }
 
-        .app-version-desktop-line {
+        .app-version-desktop-main {
             display: block;
-            font-size: .58rem;
-            line-height: 1;
-            letter-spacing: .02em;
-            margin-top: .1rem;
+            font-size: .68rem;
+            line-height: 1.05;
+            margin-top: .12rem;
+            white-space: nowrap;
         }
 
-        .app-version-desktop-value {
+        .app-version-desktop-revision {
             display: block;
-            font-size: .53rem;
-            line-height: 1.05;
+            font-size: .48rem;
+            line-height: 1.02;
+            margin-top: .1rem;
+            opacity: .95;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         body.aside-minimize .app-version-desktop-wrapper {
@@ -206,28 +213,28 @@
         }
 
         body.aside-minimize .app-version-desktop-btn {
-            font-size: .48rem;
-            padding: .28rem .12rem;
-            min-height: 50px;
+            font-size: .5rem;
+            padding: .24rem .1rem;
+            min-height: 40px;
         }
 
         body.aside-minimize .app-version-desktop-btn i {
             margin-right: 0;
             display: block;
-            font-size: .68rem;
+            font-size: .62rem;
             line-height: 1;
         }
 
-        body.aside-minimize .app-version-desktop-line {
-            font-size: .45rem;
+        body.aside-minimize .app-version-desktop-main {
+            font-size: .49rem;
             margin-top: .08rem;
-        }
-
-        body.aside-minimize .app-version-desktop-value {
-            font-size: .41rem;
             line-height: 1;
+            white-space: nowrap;
         }
 
+        body.aside-minimize .app-version-desktop-revision {
+            display: none;
+        }
 
     </style>
 
@@ -317,8 +324,8 @@
             <div class="d-none d-lg-block px-4 pt-3 pb-2 app-version-desktop-wrapper">
                 <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Revisão instalada e histórico de release notes">
                     <i class="la la-code-branch"></i>
-                    <span class="app-version-desktop-line">Versão</span>
-                    <span class="app-version-desktop-value">{{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                    <span class="app-version-desktop-main">V. {{ optional($appVersionCurrent)->version ?? 'N/A' }}</span>
+                    <span class="app-version-desktop-revision">{{ optional($appVersionCurrent)->commit_hash ? 'rev'.substr(optional($appVersionCurrent)->commit_hash, 0, 8) : 'rev00000000' }}</span>
                 </a>
             </div>
 
