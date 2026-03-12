@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Referencias\Anp;
 use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
@@ -1055,12 +1054,14 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($codigo, $cache)) return $cache[$codigo];
 
-        if (!Schema::hasTable('anp') && !Schema::hasTable('ANP')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasTable('anp')) return $cache[$codigo] = 0.0;
 
-        // tenta tabela/model do jeito que você já usa
-        $val = Anp::query()
-            ->where('CODIGO', $codigo)
-            ->value('ADREMICMS');
+        if (!Schema::hasColumn('anp', 'codigo')) return $cache[$codigo] = 0.0;
+        if (!Schema::hasColumn('anp', 'adremicms')) return $cache[$codigo] = 0.0;
+
+        $val = DB::table('anp')
+            ->where('codigo', $codigo)
+            ->value('adremicms');
 
         $cache[$codigo] = $this->toFloat($val, 0.0);
         return $cache[$codigo];
@@ -1071,25 +1072,21 @@ class ReformaTributariaService
         $codigo = $this->toInt($cProdAnp, 0);
         if ($codigo <= 0) return '';
 
-        $campo = strtoupper(trim((string)$campo));
+        $campo = trim((string)$campo);
         if ($campo === '') return '';
 
-        if (!Schema::hasTable('ANP') && !Schema::hasTable('anp')) return '';
+        if (!Schema::hasTable('anp')) return '';
 
-        $table = Schema::hasTable('ANP') ? 'ANP' : 'anp';
-
-        $col = $campo;
-        if (!Schema::hasColumn($table, $col)) {
-            $col2 = strtolower($campo);
-            if (!Schema::hasColumn($table, $col2)) return '';
-            $col = $col2;
-        }
+        $col = strtolower($campo);
+        if (!Schema::hasColumn('anp', $col)) return '';
 
         static $cache = [];
-        $key = $codigo . '|' . $table . '|' . $col;
+        $key = $codigo . '|anp|' . $col;
         if (array_key_exists($key, $cache)) return $cache[$key];
 
-        $val = DB::table($table)->where('CODIGO', $codigo)->value($col);
+        if (!Schema::hasColumn('anp', 'codigo')) return '';
+
+        $val = DB::table('anp')->where('codigo', $codigo)->value($col);
         if ($val === null) $val = '';
 
         $cache[$key] = trim((string)$val);
