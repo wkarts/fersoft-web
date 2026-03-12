@@ -5,6 +5,8 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Referencias\Anp;
+use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
 {
@@ -1039,7 +1041,7 @@ class ReformaTributariaService
         if (!Schema::hasColumn('anp', 'codigo')) return $cache[$codigo] = 0.0;
         if (!Schema::hasColumn('anp', 'adremicms')) return $cache[$codigo] = 0.0;
 
-        $val = DB::table('anp')
+        $val = Anp::query()
             ->where('codigo', $codigo)
             ->value('adremicms');
 
@@ -1091,7 +1093,7 @@ class ReformaTributariaService
 
         $today = now()->toDateString();
 
-        $q = DB::table('class_trib_ibs_cbs')->where('cclasstrib', $classTrib);
+        $q = ClassTribIbsCbs::query()->where('cclasstrib', $classTrib);
 
         if (Schema::hasColumn('class_trib_ibs_cbs', 'dinivig')) {
             $q->where(function ($qq) use ($today) {
