@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Schema;
 class ProdutoIbsCbsUpdater
 {
     /** @var string[] */
-    private array $produtoTableCandidates = ['produtos', 'TBPRODUTO', 'tbproduto'];
+    private array $produtoTableCandidates = ['produtos', 'tbproduto'];
     /** @var string[] */
-    private array $tipiTableCandidates    = ['tbtipi_import', 'TBTIPI_IMPORT', 'tbtipi_imports'];
+    private array $tipiTableCandidates    = ['tbtipi_import', 'tbtipi_imports'];
 
     /**
      * Execução principal.
@@ -41,37 +41,37 @@ class ProdutoIbsCbsUpdater
         $tipiTable    = $this->resolveTable($this->tipiTableCandidates, 'tbtipi_import');
 
         // Resolve colunas (produtos)
-        $produtoPk   = $this->resolveRequiredColumn($produtoTable, ['id', 'ID', 'PROD_IDPRODUTO', 'prod_idproduto']);
-        $produtoNcm  = $this->resolveRequiredColumn($produtoTable, ['ncm', 'NCM', 'PROD_CODNCM', 'prod_codncm']);
+        $produtoPk   = $this->resolveRequiredColumn($produtoTable, ['id', 'prod_idproduto']);
+        $produtoNcm  = $this->resolveRequiredColumn($produtoTable, ['ncm', 'prod_codncm']);
 
         // colunas usuais para relatório (opcionais)
-        $colCodigo    = $this->resolveOptionalColumn($produtoTable, ['codigo', 'CODIGO', 'PROD_CODIGO', 'prod_codigo']);
-        $colReferencia= $this->resolveOptionalColumn($produtoTable, ['referencia', 'REFERENCIA', 'PROD_REFERENCIA', 'prod_referencia']);
-        $colDescricao = $this->resolveOptionalColumn($produtoTable, ['nome', 'NOME', 'descricao', 'DESCRICAO', 'PROD_DESCRICAO', 'prod_descricao']);
+        $colCodigo    = $this->resolveOptionalColumn($produtoTable, ['codigo', 'prod_codigo']);
+        $colReferencia= $this->resolveOptionalColumn($produtoTable, ['referencia', 'prod_referencia']);
+        $colDescricao = $this->resolveOptionalColumn($produtoTable, ['nome', 'descricao', 'prod_descricao']);
 
-        $colCstIbs    = $this->resolveRequiredColumn($produtoTable, ['cst_ibs_cbs', 'CST_IBS_CBS']);
-        $colClassTrib = $this->resolveRequiredColumn($produtoTable, ['class_trib_ibs_cbs', 'CLASS_TRIB_IBS_CBS']);
-        $colRedIbs    = $this->resolveRequiredColumn($produtoTable, ['reducao_ibs', 'REDUCAO_IBS']);
-        $colRedCbs    = $this->resolveRequiredColumn($produtoTable, ['reducao_cbs', 'REDUCAO_CBS']);
-        $colFlagIs    = $this->resolveRequiredColumn($produtoTable, ['flag_is', 'FLAG_IS']);
-        $colCstIs     = $this->resolveRequiredColumn($produtoTable, ['cst_is', 'CST_IS']);
-        $colAliqIs    = $this->resolveRequiredColumn($produtoTable, ['aliq_is', 'ALIQ_IS']);
+        $colCstIbs    = $this->resolveRequiredColumn($produtoTable, ['cst_ibs_cbs']);
+        $colClassTrib = $this->resolveRequiredColumn($produtoTable, ['class_trib_ibs_cbs']);
+        $colRedIbs    = $this->resolveRequiredColumn($produtoTable, ['reducao_ibs']);
+        $colRedCbs    = $this->resolveRequiredColumn($produtoTable, ['reducao_cbs']);
+        $colFlagIs    = $this->resolveRequiredColumn($produtoTable, ['flag_is']);
+        $colCstIs     = $this->resolveRequiredColumn($produtoTable, ['cst_is']);
+        $colAliqIs    = $this->resolveRequiredColumn($produtoTable, ['aliq_is']);
 
-        $colProdutoEmpresa = $this->resolveOptionalColumn($produtoTable, ['empresa_id', 'EMPRESA_ID']);
-        $colProdutoDeleted = $this->resolveOptionalColumn($produtoTable, ['deleted_at', 'DELETED_AT']);
-        $colProdutoUpdated = $this->resolveOptionalColumn($produtoTable, ['updated_at', 'UPDATED_AT']);
+        $colProdutoEmpresa = $this->resolveOptionalColumn($produtoTable, ['empresa_id']);
+        $colProdutoDeleted = $this->resolveOptionalColumn($produtoTable, ['deleted_at']);
+        $colProdutoUpdated = $this->resolveOptionalColumn($produtoTable, ['updated_at']);
 
         // Resolve colunas (TIPI)
-        $tipiNcm     = $this->resolveRequiredColumn($tipiTable, ['ncm', 'NCM']);
-        $tipiCst     = $this->resolveOptionalColumn($tipiTable, ['cst_ibs_cbs', 'CST_IBS_CBS']);
-        $tipiClass   = $this->resolveOptionalColumn($tipiTable, ['cclasstrib', 'CCLASSTRIB']);
-        $tipiTipoRed = $this->resolveOptionalColumn($tipiTable, ['tipo_reducao', 'TIPO_REDUCAO']);
+        $tipiNcm     = $this->resolveRequiredColumn($tipiTable, ['ncm']);
+        $tipiCst     = $this->resolveOptionalColumn($tipiTable, ['cst_ibs_cbs']);
+        $tipiClass   = $this->resolveOptionalColumn($tipiTable, ['cclasstrib']);
+        $tipiTipoRed = $this->resolveOptionalColumn($tipiTable, ['tipo_reducao']);
 
-        $tipiId      = $this->resolveRequiredColumn($tipiTable, ['id', 'ID']);
-        $tipiUpd     = $this->resolveOptionalColumn($tipiTable, ['updated_at', 'UPDATED_AT']);
-        $tipiCre     = $this->resolveOptionalColumn($tipiTable, ['created_at', 'CREATED_AT']);
-        $tipiDeleted = $this->resolveOptionalColumn($tipiTable, ['deleted_at', 'DELETED_AT']);
-        $tipiEmpresa = $this->resolveOptionalColumn($tipiTable, ['empresa_id', 'EMPRESA_ID']);
+        $tipiId      = $this->resolveRequiredColumn($tipiTable, ['id']);
+        $tipiUpd     = $this->resolveOptionalColumn($tipiTable, ['updated_at']);
+        $tipiCre     = $this->resolveOptionalColumn($tipiTable, ['created_at']);
+        $tipiDeleted = $this->resolveOptionalColumn($tipiTable, ['deleted_at']);
+        $tipiEmpresa = $this->resolveOptionalColumn($tipiTable, ['empresa_id']);
 
         // Carrega TIPI em memória (map por NCM normalizado, pegando a linha mais "recente")
         $tipiMap = $this->loadTipiMap(
