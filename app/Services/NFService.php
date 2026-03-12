@@ -23,6 +23,7 @@ use App\Models\FiscalEmissionLog;
 use App\Services\Fiscal\EmissionLogger;
 use App\Services\Fiscal\TransmissaoResult;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use NFePHP\NFe\Factories\Contingency;
 use App\Services\ReformaTributariaService;
 
@@ -34,6 +35,58 @@ class NFService{
 	private $config;
 	private $tools;
 	protected $empresa_id = null;
+
+	private function normalizeIcmsCst(?string $cst, int $vendaId, int $itemId): string
+	{
+		$cst = trim((string)$cst);
+		$validCst = ['00', '10', '20', '30', '40', '41', '50', '51', '60', '61', '70', '90'];
+
+		if (in_array($cst, $validCst, true)) {
+			return $cst;
+		}
+
+		$mapCsosnToCst = [
+			'101' => '00',
+			'102' => '00',
+			'103' => '40',
+			'201' => '10',
+			'202' => '10',
+			'203' => '30',
+			'300' => '40',
+			'400' => '41',
+			'500' => '60',
+			'900' => '90',
+		];
+
+		if (isset($mapCsosnToCst[$cst])) {
+			Log::warning('NF-e: CSOSN informado em emissor de regime normal. Aplicado fallback para CST.', [
+				'venda_id' => $vendaId,
+				'item' => $itemId,
+				'origem' => $cst,
+				'cst_aplicado' => $mapCsosnToCst[$cst],
+			]);
+
+			return $mapCsosnToCst[$cst];
+		}
+
+		Log::warning('NF-e: CST/CSOSN inválido para regime normal. Aplicado CST 90 para evitar falha na geração do XML.', [
+			'venda_id' => $vendaId,
+			'item' => $itemId,
+			'origem' => $cst,
+		]);
+
+		return '90';
+	}
+
+	private function normalizeTwoDigitCst($cst): string
+	{
+		$cst = preg_replace('/\D+/', '', (string)$cst);
+		if ($cst === '' || $cst === null) {
+			return '99';
+		}
+
+		return str_pad(substr($cst, -2), 2, '0', STR_PAD_LEFT);
+	}
 
 	public function __construct($config, $empresa_id = null){
 
@@ -785,6 +838,12 @@ class NFService{
 							$stdICMS->CST = $i->produto->CST_CSOSN_EXP;
 						}
 					}
+
+					$stdICMS->CST = $this->normalizeIcmsCst(
+						$stdICMS->CST ?? null,
+						(int)($venda->id ?? 0),
+						$itemCont
+					);
 					// $stdICMS->modBC = 0;
 					$stdICMS->modBC = $i->produto->modBC;
                                         $baseIcms = (float) $this->format(
@@ -971,7 +1030,7 @@ class NFService{
 			}
 			$stdPIS = new \stdClass();
 			$stdPIS->item = $itemCont;
-			$stdPIS->CST = $i->produto->CST_PIS;
+			$stdPIS->CST = $this->normalizeTwoDigitCst($i->produto->CST_PIS);
 			$stdPIS->vBC = $this->format($i->produto->perc_pis) > 0 ? $vbcPis : 0.00;
 			$stdPIS->pPIS = $this->format($i->produto->perc_pis);
                         $stdPIS->vPIS = $this->format(($vbcPis) *
@@ -986,7 +1045,7 @@ class NFService{
 			}
 			$stdCOFINS = new \stdClass();
 			$stdCOFINS->item = $itemCont;
-			$stdCOFINS->CST = $i->produto->CST_COFINS;
+			$stdCOFINS->CST = $this->normalizeTwoDigitCst($i->produto->CST_COFINS);
 			$stdCOFINS->vBC = $this->format($i->produto->perc_cofins) > 0 ? $vbcCofins : 0.00;
                         $stdCOFINS->pCOFINS = $this->format($i->produto->perc_cofins);
                         $stdCOFINS->vCOFINS = $this->format(($vbcCofins) *
@@ -1000,7 +1059,7 @@ class NFService{
 			$std->item = $itemCont;
 				//999 – para tributação normal IPI
 			$std->cEnq = $i->produto->cenq_ipi ?? '999';
-			$std->CST = $i->produto->CST_IPI;
+			$std->CST = $this->normalizeTwoDigitCst($i->produto->CST_IPI);
 			$std->vBC = $this->format($i->produto->perc_ipi) > 0 ? $stdProd->vProd : 0.00;
 			$std->pIPI = $this->format($i->produto->perc_ipi);
 			$somaIPI += $std->vIPI = $this->format($std->vBC * ($std->pIPI/100));
