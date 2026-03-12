@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Referencias\Anp;
 use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
@@ -1055,12 +1054,18 @@ class ReformaTributariaService
         static $cache = [];
         if (array_key_exists($codigo, $cache)) return $cache[$codigo];
 
-        if (!Schema::hasTable('anp') && !Schema::hasTable('ANP')) return $cache[$codigo] = 0.0;
+        $table = Schema::hasTable('ANP') ? 'ANP' : (Schema::hasTable('anp') ? 'anp' : null);
+        if ($table === null) return $cache[$codigo] = 0.0;
 
-        // tenta tabela/model do jeito que você já usa
-        $val = Anp::query()
-            ->where('CODIGO', $codigo)
-            ->value('ADREMICMS');
+        $colCodigo = Schema::hasColumn($table, 'CODIGO') ? 'CODIGO' : (Schema::hasColumn($table, 'codigo') ? 'codigo' : null);
+        if ($colCodigo === null) return $cache[$codigo] = 0.0;
+
+        $colAliquota = Schema::hasColumn($table, 'ADREMICMS') ? 'ADREMICMS' : (Schema::hasColumn($table, 'adremicms') ? 'adremicms' : null);
+        if ($colAliquota === null) return $cache[$codigo] = 0.0;
+
+        $val = DB::table($table)
+            ->where($colCodigo, $codigo)
+            ->value($colAliquota);
 
         $cache[$codigo] = $this->toFloat($val, 0.0);
         return $cache[$codigo];
@@ -1089,7 +1094,10 @@ class ReformaTributariaService
         $key = $codigo . '|' . $table . '|' . $col;
         if (array_key_exists($key, $cache)) return $cache[$key];
 
-        $val = DB::table($table)->where('CODIGO', $codigo)->value($col);
+        $colCodigo = Schema::hasColumn($table, 'CODIGO') ? 'CODIGO' : (Schema::hasColumn($table, 'codigo') ? 'codigo' : null);
+        if ($colCodigo === null) return '';
+
+        $val = DB::table($table)->where($colCodigo, $codigo)->value($col);
         if ($val === null) $val = '';
 
         $cache[$key] = trim((string)$val);
