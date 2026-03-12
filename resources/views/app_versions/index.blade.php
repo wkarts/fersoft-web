@@ -1,43 +1,43 @@
 @extends('default.layout')
 
 @section('content')
-<div class="card card-custom gutter-b">
-    <div class="card-header py-3">
-        <div class="card-title">
-            <span class="card-icon"><i class="la la-code-branch text-primary"></i></span>
-            <h3 class="card-label">Controle Interno de Versões</h3>
+    <div class="card card-custom gutter-b">
+        <div class="card-header py-3">
+            <div class="card-title">
+                <span class="card-icon"><i class="la la-code-branch text-primary"></i></span>
+                <h3 class="card-label">Controle Interno de Versões</h3>
+            </div>
         </div>
-    </div>
-    <div class="card-body">
-        <div class="alert alert-light-info mb-5">
-            <h5 class="mb-3">Versão atualmente instalada</h5>
-            @if($currentVersion)
-                <div><strong>Versão:</strong> {{ $currentVersion->version }}</div>
-                <div><strong>SemVer:</strong> {{ $currentVersion->version_major }}.{{ $currentVersion->version_minor }}.{{ $currentVersion->version_patch }}</div>
-                <div><strong>Título:</strong> {{ $currentVersion->title ?: '-' }}</div>
-                <div><strong>Release:</strong> {{ optional($currentVersion->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
-                <div><strong>Instalada em:</strong> {{ optional($currentVersion->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
-                <div><strong>Formato:</strong> {{ strtoupper($currentVersion->release_notes_format) }}</div>
-            @else
-                <div class="text-muted">Nenhuma versão interna registrada.</div>
-            @endif
-        </div>
+        <div class="card-body">
+            <div class="alert alert-light-info mb-5">
+                <h5 class="mb-3">Versão atualmente instalada</h5>
+                @if($currentVersion)
+                    <div><strong>Versão:</strong> {{ $currentVersion->version }}</div>
+                    <div><strong>SemVer:</strong> {{ $currentVersion->version_major }}.{{ $currentVersion->version_minor }}.{{ $currentVersion->version_patch }}</div>
+                    <div><strong>Título:</strong> {{ $currentVersion->title ?: '-' }}</div>
+                    <div><strong>Release:</strong> {{ optional($currentVersion->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                    <div><strong>Instalada em:</strong> {{ optional($currentVersion->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                    <div><strong>Formato:</strong> {{ strtoupper($currentVersion->release_notes_format) }}</div>
+                @else
+                    <div class="text-muted">Nenhuma versão interna registrada.</div>
+                @endif
+            </div>
 
-        <div class="accordion accordion-toggle-arrow" id="accordion-major-versions">
-            @forelse($groupedVersions as $major => $items)
-                @php($majorId = 'major-'.$major)
-                <div class="card">
-                    <div class="card-header" id="heading-{{ $majorId }}">
-                        <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}" aria-expanded="false" aria-controls="collapse-{{ $majorId }}">
-                            Versão {{ $major }}
-                            <span class="label label-light-info label-inline ml-3">{{ $items->count() }} releases</span>
+            <div class="accordion accordion-toggle-arrow" id="accordion-major-versions">
+                @forelse($groupedVersions as $major => $items)
+                    @php($majorId = 'major-'.$major)
+                    <div class="card">
+                        <div class="card-header" id="heading-{{ $majorId }}">
+                            <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}" aria-expanded="false" aria-controls="collapse-{{ $majorId }}">
+                                Versão {{ $major }}
+                                <span class="label label-light-info label-inline ml-3">{{ $items->count() }} releases</span>
+                            </div>
                         </div>
-                    </div>
-                    <div id="collapse-{{ $majorId }}" class="collapse" aria-labelledby="heading-{{ $majorId }}" data-parent="#accordion-major-versions">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead>
+                        <div id="collapse-{{ $majorId }}" class="collapse" aria-labelledby="heading-{{ $majorId }}" data-parent="#accordion-major-versions">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead>
                                         <tr>
                                             <th>Versão</th>
                                             <th>Título</th>
@@ -45,8 +45,8 @@
                                             <th>Instalação</th>
                                             <th>Ações</th>
                                         </tr>
-                                    </thead>
-                                    <tbody>
+                                        </thead>
+                                        <tbody>
                                         @foreach($items as $version)
                                             <tr>
                                                 <td>
@@ -99,16 +99,16 @@
                                                 </div>
                                             @endif
                                         @endforeach
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            @empty
-                <div class="text-center text-muted">Nenhuma versão registrada.</div>
-            @endforelse
+                @empty
+                    <div class="text-center text-muted">Nenhuma versão registrada.</div>
+                @endforelse
+            </div>
         </div>
     </div>
-</div>
 @endsection

@@ -355,8 +355,8 @@ class AppServiceProvider extends ServiceProvider
 
             try{
                 $configCatraca = ConfigCatraca::where('empresa_id', $empresa_id)
-                ->where('usuario_id', $value['id'])
-                ->first();
+                    ->where('usuario_id', $value['id'])
+                    ->first();
 
             }catch(\Exception $e){
             }
@@ -403,312 +403,312 @@ class AppServiceProvider extends ServiceProvider
 
 // }
 
-private function getUsersLogin(){
-    $empresas = Empresa::
-    orderBy('id', 'desc')
-    ->where('status', 1)
-    ->get();
+    private function getUsersLogin(){
+        $empresas = Empresa::
+        orderBy('id', 'desc')
+            ->where('status', 1)
+            ->get();
 
-    $total = 0;
-    $minutos = env("MINUTOS_ONLINE");
+        $total = 0;
+        $minutos = env("MINUTOS_ONLINE");
 
-    foreach($empresas as $e){
-        $ult = $e->ultimoLogin2($e->id);
-        if($ult != null){
-            $strValidade = strtotime($ult->updated_at);
-            $strHoje = strtotime(date('Y-m-d H:i:s'));
-            $dif = $strHoje - $strValidade;
-            $dif = $dif/60;
+        foreach($empresas as $e){
+            $ult = $e->ultimoLogin2($e->id);
+            if($ult != null){
+                $strValidade = strtotime($ult->updated_at);
+                $strHoje = strtotime(date('Y-m-d H:i:s'));
+                $dif = $strHoje - $strValidade;
+                $dif = $dif/60;
 
-            if((int) $dif <= $minutos && $e->usuarios[0]->login != env("USERMASTER")){
-                $total++;
-            }
-        }
-    }
-
-    EmpresaLogada::create(['total' => $total]);
-}
-
-private function getUpgrade($empresa){
-    $empresa = Empresa::find($empresa->id);
-
-    $expiracao = $empresa->planoEmpresa->expiracao;
-
-    $alertaDias = env('ALERTA_PAGAMENTO_DIAS');
-
-    $strValidade = strtotime($expiracao);
-    $strHoje = strtotime(date('Y-m-d'));
-    $dif = $strValidade - $strHoje;
-    $dif = $dif/24/60/60;
-
-    if($dif <= $alertaDias) return true;
-    return false;
-}
-
-private function getVideoUrl(){
-    if (url()->full()){
-        $url = url()->full();
-        try{
-
-            $video = VideoAjuda::where('url_sistema', $url)->first();
-            if($video == null) return "";
-            return $video->url_video;
-        }catch(\Exception $e){
-            return "";
-        }
-    }
-}
-
-private function rotaAtiva(){
-    if (isset($_SERVER['REQUEST_URI'])){
-        $uri = $_SERVER['REQUEST_URI'];
-        $uri = explode("/", $uri);
-        $uri = $uri[1];
-
-        $rotaSuper = [
-            'empresas', 'planos', 'ibpt', 'contrato', 'financeiro', 'cidades', 'representantes',
-            'online', 'etiquetas', 'relatorioSuper', 'ticketsSuper', 'cidadeDelivery',
-            'categoriaMasterDelivery', 'produtosDestaque', 'planosPendentes', 'pesquisa', 'alertas',
-            'errosLog', 'config', 'appUpdate'
-        ];
-
-        $rotaDeCadastros = [
-            'categorias', 'produtos', 'clientes', 'fornecedores', 'transportadoras', 'categoriasServico', 'servicos',
-            'categoriasConta', 'veiculos', 'usuarios', 'marcas', 'contaBancaria', 'acessores', 'gruposCliente',
-            'listaDePrecos', 'formasPagamento', 'taxas-pagamento'
-        ];
-
-        $rotaDeEntradas = [
-            'compraFiscal', 'compraManual', 'compras', 'cotacao', 'dfe'
-        ];
-
-        $rotaDeGestaoPessoal = [
-            'funcionarios', 'eventosFuncionario', 'funcionarioEventos', 'apuracaoMensal'
-        ];
-
-        $rotaDeEstoque = [
-            'estoque', 'inventario', 'transferencia'
-        ];
-
-        $rotaFinanceiro = [
-            'contasPagar', 'contasReceber', 'fluxoCaixa', 'graficos', 'contas-empresa', 'plano-contas'
-        ];
-
-        $rotaConfig = [
-            'configNF', 'escritorio', 'naturezaOperacao', 'tributos', 'enviarXml', 'tickets', 'configEmail',
-            'filial'
-        ];
-
-        $rotaPedidos = [
-            'pedidos', 'deliveryComplemento', 'telasPedido', 'controleCozinha', 'mesas'
-        ];
-
-        $rotaVenda = [
-            'caixa', 'vendas', 'frenteCaixa', 'orcamentoVenda', 'ordemServico', 'vendasEmCredito', 'devolucao',
-            'agendamentos', 'trocas', 'nferemessa'
-        ];
-
-        $rotaBalcao = [
-            'vendas-balcao'
-        ];
-
-        $rotaCTe = [
-            'cte', 'categoriaDespesa'
-        ];
-
-        $rotaCTeOs = [
-            'cteos'
-        ];
-
-        $rotaMDFe = [
-            'mdfe'
-        ];
-
-        $rotaEvento = [
-            'eventos'
-        ];
-
-        $rotaLocacao = [
-            'locacao'
-        ];
-
-        $rotaRelatorio = [
-            'relatorios',
-            'dre'
-        ];
-
-        $rotaNfse = [
-            'nfse',
-            'nfse-config'
-        ];
-
-        $rotaEcommerce = [
-            'categoriaEcommerce', 'produtoEcommerce', 'configEcommerce',
-            'carrosselEcommerce', 'pedidosEcommerce', 'autorPost', 'categoriaPosts',
-            'postBlog', 'contatoEcommerce', 'clienteEcommerce', 'informativoEcommerce',
-            'cuponsEcommerce'
-        ];
-
-        $rotaNuvemShop = [
-            'nuvemshop'
-        ];
-
-        $rotaIfood = [
-            'ifood'
-        ];
-
-        $rotaDelivery = [
-            'deliveryCategoria', 'configDelivery', 'deliveryProduto', 'deliveryComplemento',
-            'funcionamentoDelivery', 'push', 'tamanhosPizza', 'clientesDelivery', 'categoriaDeLoja',
-            'pedidosDelivery', 'bairrosDeliveryLoja', 'codigoDesconto', 'carrosselDelivery',
-            'motoboys', 'pedidosMesa', 'mesas'
-        ];
-
-        if(in_array($uri, $rotaSuper)) return 'SUPER';
-        if(in_array($uri, $rotaDeCadastros)) return 'Cadastros';
-        if(in_array($uri, $rotaDeEntradas)) return 'Entradas';
-        if(in_array($uri, $rotaDeGestaoPessoal)) return 'Gestão Pessoal';
-        if(in_array($uri, $rotaDeEstoque)) return 'Estoque';
-        if(in_array($uri, $rotaFinanceiro)) return 'Financeiro';
-        if(in_array($uri, $rotaConfig)) return 'Configurações';
-        if(in_array($uri, $rotaVenda)) return 'Vendas';
-        if(in_array($uri, $rotaCTe)) return 'CTe';
-        if(in_array($uri, $rotaBalcao)) return 'Vendas Balcão';
-        if(in_array($uri, $rotaCTeOs)) return 'CTe Os';
-        if(in_array($uri, $rotaMDFe)) return 'MDFe';
-        if(in_array($uri, $rotaEvento)) return 'Eventos';
-        if(in_array($uri, $rotaRelatorio)) return 'Relatórios';
-        if(in_array($uri, $rotaLocacao)) return 'Locação';
-        if(in_array($uri, $rotaPedidos)) return 'Pedidos';
-        if(in_array($uri, $rotaEcommerce)) return 'Ecommerce';
-        if(in_array($uri, $rotaNfse)) return 'Emissão de NFSe';
-        if(in_array($uri, $rotaNuvemShop)) return 'Nuvem Shop';
-        if(in_array($uri, $rotaIfood)) return 'iFood';
-        if(in_array($uri, $rotaDelivery)) return 'Delivery';
-
-    }else{
-        return "";
-    }
-}
-
-private function verificaItensSemValidade($empresa_id){
-    if (\Schema::hasTable('produtos')){
-        $produtos = Produto::select('id')
-        ->where('alerta_vencimento', '>', 0)
-        ->where('empresa_id', $empresa_id)
-        ->get();
-
-        $itensCompra = ItemCompra::
-        select('item_compras.*')
-        ->where('validade', NULL)
-        ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-        ->where('compras.empresa_id', $empresa_id)
-        ->limit(100)->get();
-
-        foreach($itensCompra as $i){
-            foreach($produtos as $p){
-                if($p->id == $i->produto_id){
-                    return true;
+                if((int) $dif <= $minutos && $e->usuarios[0]->login != env("USERMASTER")){
+                    $total++;
                 }
             }
         }
+
+        EmpresaLogada::create(['total' => $total]);
+    }
+
+    private function getUpgrade($empresa){
+        $empresa = Empresa::find($empresa->id);
+
+        $expiracao = $empresa->planoEmpresa->expiracao;
+
+        $alertaDias = env('ALERTA_PAGAMENTO_DIAS');
+
+        $strValidade = strtotime($expiracao);
+        $strHoje = strtotime(date('Y-m-d'));
+        $dif = $strValidade - $strHoje;
+        $dif = $dif/24/60/60;
+
+        if($dif <= $alertaDias) return true;
         return false;
     }
-}
 
-private function verificaValidadeProdutos($empresa_id){
-    if (\Schema::hasTable('item_compras')){
+    private function getVideoUrl(){
+        if (url()->full()){
+            $url = url()->full();
+            try{
 
-        $dataHoje = date('Y-m-d', strtotime("-30 days",strtotime(date('Y-m-d'))));
-        $dataFutura = date('Y-m-d', strtotime("+30 days",strtotime(date('Y-m-d'))));
-
-        $itens = ItemCompra::
-        select('item_compras.*')
-        ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-        ->whereBetween('validade', [$dataHoje, $dataFutura])
-        ->where('compras.empresa_id', $empresa_id)
-        ->limit(300)->get();
-
-
-        foreach($itens as $i){
-            $strValidade = strtotime($i->validade);
-            $strHoje = strtotime(date('Y-m-d'));
-            $dif = $strValidade - $strHoje;
-            $dif = $dif/24/60/60;
-            if($dif <= $i->produto->alerta_vencimento) return true;
-        }
-
-        return false;
-    }
-}
-
-private function verificaContasPagar($empresa_id){
-
-    if (\Schema::hasTable('conta_pagars')){
-        $dataHoje = date('Y-m-d', strtotime("-". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
-        $dataFutura = date('Y-m-d', strtotime("+". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
-
-        $somaContas = ContaPagar::
-        selectRaw('sum(valor_integral) as valor')
-        ->whereBetween('data_vencimento', [$dataHoje, $dataFutura])
-        ->where('status', 0)
-        ->where('empresa_id', $empresa_id)
-        ->first();
-
-        return $somaContas->valor ?? 0;
-    }
-}
-
-private function verificaContasReceber($empresa_id){
-    if (\Schema::hasTable('conta_recebers')){
-        $dataHoje = date('Y-m-d', strtotime("-". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
-        $dataFutura = date('Y-m-d', strtotime("+". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
-
-        $somaContas = ContaReceber::
-        selectRaw('sum(valor_integral) as valor')
-        ->whereBetween('data_vencimento', [$dataHoje, $dataFutura])
-        ->where('status', 0)
-        ->where('empresa_id', $empresa_id)
-        ->first();
-
-        return $somaContas->valor ?? 0;
-    }
-}
-
-private function verificaPedidosEcommerce($empresa_id){
-    if (\Schema::hasTable('pedido_ecommerces')){
-
-        $pedidos = PedidoEcommerce::
-        where('status_preparacao', 0)
-        ->where('valor_total', '>', 0)
-        ->where('empresa_id', $empresa_id)
-        ->get();
-
-        return sizeof($pedidos);
-    }
-    return 0;
-}
-
-private function totalArmazenamento($empresa){
-    $armazenamento = $empresa->planoEmpresa->plano->armazenamento;
-    $tabelasArmazenamento = tabelasArmazenamento();
-
-    $soma = 0;
-    foreach($tabelasArmazenamento as $key => $t){
-        try{
-            $res = DB::table($key)
-            ->select(DB::raw('count(*) as linhas'))
-            ->where('empresa_id', $empresa->id)
-            ->first();
-
-            $soma += $res->linhas * $t;
-        }catch(\Exception $e){
-
+                $video = VideoAjuda::where('url_sistema', $url)->first();
+                if($video == null) return "";
+                return $video->url_video;
+            }catch(\Exception $e){
+                return "";
+            }
         }
     }
 
-    return $soma;
-}
+    private function rotaAtiva(){
+        if (isset($_SERVER['REQUEST_URI'])){
+            $uri = $_SERVER['REQUEST_URI'];
+            $uri = explode("/", $uri);
+            $uri = $uri[1];
+
+            $rotaSuper = [
+                'empresas', 'planos', 'ibpt', 'contrato', 'financeiro', 'cidades', 'representantes',
+                'online', 'etiquetas', 'relatorioSuper', 'ticketsSuper', 'cidadeDelivery',
+                'categoriaMasterDelivery', 'produtosDestaque', 'planosPendentes', 'pesquisa', 'alertas',
+                'errosLog', 'config', 'appUpdate'
+            ];
+
+            $rotaDeCadastros = [
+                'categorias', 'produtos', 'clientes', 'fornecedores', 'transportadoras', 'categoriasServico', 'servicos',
+                'categoriasConta', 'veiculos', 'usuarios', 'marcas', 'contaBancaria', 'acessores', 'gruposCliente',
+                'listaDePrecos', 'formasPagamento', 'taxas-pagamento'
+            ];
+
+            $rotaDeEntradas = [
+                'compraFiscal', 'compraManual', 'compras', 'cotacao', 'dfe'
+            ];
+
+            $rotaDeGestaoPessoal = [
+                'funcionarios', 'eventosFuncionario', 'funcionarioEventos', 'apuracaoMensal'
+            ];
+
+            $rotaDeEstoque = [
+                'estoque', 'inventario', 'transferencia'
+            ];
+
+            $rotaFinanceiro = [
+                'contasPagar', 'contasReceber', 'fluxoCaixa', 'graficos', 'contas-empresa', 'plano-contas'
+            ];
+
+            $rotaConfig = [
+                'configNF', 'escritorio', 'naturezaOperacao', 'tributos', 'enviarXml', 'tickets', 'configEmail',
+                'filial'
+            ];
+
+            $rotaPedidos = [
+                'pedidos', 'deliveryComplemento', 'telasPedido', 'controleCozinha', 'mesas'
+            ];
+
+            $rotaVenda = [
+                'caixa', 'vendas', 'frenteCaixa', 'orcamentoVenda', 'ordemServico', 'vendasEmCredito', 'devolucao',
+                'agendamentos', 'trocas', 'nferemessa'
+            ];
+
+            $rotaBalcao = [
+                'vendas-balcao'
+            ];
+
+            $rotaCTe = [
+                'cte', 'categoriaDespesa'
+            ];
+
+            $rotaCTeOs = [
+                'cteos'
+            ];
+
+            $rotaMDFe = [
+                'mdfe'
+            ];
+
+            $rotaEvento = [
+                'eventos'
+            ];
+
+            $rotaLocacao = [
+                'locacao'
+            ];
+
+            $rotaRelatorio = [
+                'relatorios',
+                'dre'
+            ];
+
+            $rotaNfse = [
+                'nfse',
+                'nfse-config'
+            ];
+
+            $rotaEcommerce = [
+                'categoriaEcommerce', 'produtoEcommerce', 'configEcommerce',
+                'carrosselEcommerce', 'pedidosEcommerce', 'autorPost', 'categoriaPosts',
+                'postBlog', 'contatoEcommerce', 'clienteEcommerce', 'informativoEcommerce',
+                'cuponsEcommerce'
+            ];
+
+            $rotaNuvemShop = [
+                'nuvemshop'
+            ];
+
+            $rotaIfood = [
+                'ifood'
+            ];
+
+            $rotaDelivery = [
+                'deliveryCategoria', 'configDelivery', 'deliveryProduto', 'deliveryComplemento',
+                'funcionamentoDelivery', 'push', 'tamanhosPizza', 'clientesDelivery', 'categoriaDeLoja',
+                'pedidosDelivery', 'bairrosDeliveryLoja', 'codigoDesconto', 'carrosselDelivery',
+                'motoboys', 'pedidosMesa', 'mesas'
+            ];
+
+            if(in_array($uri, $rotaSuper)) return 'SUPER';
+            if(in_array($uri, $rotaDeCadastros)) return 'Cadastros';
+            if(in_array($uri, $rotaDeEntradas)) return 'Entradas';
+            if(in_array($uri, $rotaDeGestaoPessoal)) return 'Gestão Pessoal';
+            if(in_array($uri, $rotaDeEstoque)) return 'Estoque';
+            if(in_array($uri, $rotaFinanceiro)) return 'Financeiro';
+            if(in_array($uri, $rotaConfig)) return 'Configurações';
+            if(in_array($uri, $rotaVenda)) return 'Vendas';
+            if(in_array($uri, $rotaCTe)) return 'CTe';
+            if(in_array($uri, $rotaBalcao)) return 'Vendas Balcão';
+            if(in_array($uri, $rotaCTeOs)) return 'CTe Os';
+            if(in_array($uri, $rotaMDFe)) return 'MDFe';
+            if(in_array($uri, $rotaEvento)) return 'Eventos';
+            if(in_array($uri, $rotaRelatorio)) return 'Relatórios';
+            if(in_array($uri, $rotaLocacao)) return 'Locação';
+            if(in_array($uri, $rotaPedidos)) return 'Pedidos';
+            if(in_array($uri, $rotaEcommerce)) return 'Ecommerce';
+            if(in_array($uri, $rotaNfse)) return 'Emissão de NFSe';
+            if(in_array($uri, $rotaNuvemShop)) return 'Nuvem Shop';
+            if(in_array($uri, $rotaIfood)) return 'iFood';
+            if(in_array($uri, $rotaDelivery)) return 'Delivery';
+
+        }else{
+            return "";
+        }
+    }
+
+    private function verificaItensSemValidade($empresa_id){
+        if (\Schema::hasTable('produtos')){
+            $produtos = Produto::select('id')
+                ->where('alerta_vencimento', '>', 0)
+                ->where('empresa_id', $empresa_id)
+                ->get();
+
+            $itensCompra = ItemCompra::
+            select('item_compras.*')
+                ->where('validade', NULL)
+                ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
+                ->where('compras.empresa_id', $empresa_id)
+                ->limit(100)->get();
+
+            foreach($itensCompra as $i){
+                foreach($produtos as $p){
+                    if($p->id == $i->produto_id){
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
+    private function verificaValidadeProdutos($empresa_id){
+        if (\Schema::hasTable('item_compras')){
+
+            $dataHoje = date('Y-m-d', strtotime("-30 days",strtotime(date('Y-m-d'))));
+            $dataFutura = date('Y-m-d', strtotime("+30 days",strtotime(date('Y-m-d'))));
+
+            $itens = ItemCompra::
+            select('item_compras.*')
+                ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
+                ->whereBetween('validade', [$dataHoje, $dataFutura])
+                ->where('compras.empresa_id', $empresa_id)
+                ->limit(300)->get();
+
+
+            foreach($itens as $i){
+                $strValidade = strtotime($i->validade);
+                $strHoje = strtotime(date('Y-m-d'));
+                $dif = $strValidade - $strHoje;
+                $dif = $dif/24/60/60;
+                if($dif <= $i->produto->alerta_vencimento) return true;
+            }
+
+            return false;
+        }
+    }
+
+    private function verificaContasPagar($empresa_id){
+
+        if (\Schema::hasTable('conta_pagars')){
+            $dataHoje = date('Y-m-d', strtotime("-". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
+            $dataFutura = date('Y-m-d', strtotime("+". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
+
+            $somaContas = ContaPagar::
+            selectRaw('sum(valor_integral) as valor')
+                ->whereBetween('data_vencimento', [$dataHoje, $dataFutura])
+                ->where('status', 0)
+                ->where('empresa_id', $empresa_id)
+                ->first();
+
+            return $somaContas->valor ?? 0;
+        }
+    }
+
+    private function verificaContasReceber($empresa_id){
+        if (\Schema::hasTable('conta_recebers')){
+            $dataHoje = date('Y-m-d', strtotime("-". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
+            $dataFutura = date('Y-m-d', strtotime("+". env('ALERTA_CONTAS_DIAS') ." days",strtotime(date('Y-m-d'))));
+
+            $somaContas = ContaReceber::
+            selectRaw('sum(valor_integral) as valor')
+                ->whereBetween('data_vencimento', [$dataHoje, $dataFutura])
+                ->where('status', 0)
+                ->where('empresa_id', $empresa_id)
+                ->first();
+
+            return $somaContas->valor ?? 0;
+        }
+    }
+
+    private function verificaPedidosEcommerce($empresa_id){
+        if (\Schema::hasTable('pedido_ecommerces')){
+
+            $pedidos = PedidoEcommerce::
+            where('status_preparacao', 0)
+                ->where('valor_total', '>', 0)
+                ->where('empresa_id', $empresa_id)
+                ->get();
+
+            return sizeof($pedidos);
+        }
+        return 0;
+    }
+
+    private function totalArmazenamento($empresa){
+        $armazenamento = $empresa->planoEmpresa->plano->armazenamento;
+        $tabelasArmazenamento = tabelasArmazenamento();
+
+        $soma = 0;
+        foreach($tabelasArmazenamento as $key => $t){
+            try{
+                $res = DB::table($key)
+                    ->select(DB::raw('count(*) as linhas'))
+                    ->where('empresa_id', $empresa->id)
+                    ->first();
+
+                $soma += $res->linhas * $t;
+            }catch(\Exception $e){
+
+            }
+        }
+
+        return $soma;
+    }
 
 
 }

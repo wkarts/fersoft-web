@@ -186,20 +186,29 @@
         }
 
         .app-version-desktop-main {
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: .16rem;
+            min-width: 0;
+            max-width: 100%;
             font-size: .90rem;
             font-weight: 700;
             line-height: 1;
             color: inherit;
+            white-space: nowrap;
         }
 
         .app-version-desktop-revision {
-            display: block;
-            margin-top: .18rem;
+            display: inline-block;
+            margin-top: 0;
             font-size: .58rem;
-            line-height: 1.05;
+            line-height: 1;
+            max-width: 110px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            vertical-align: baseline;
             color: rgba(255, 255, 255, .84);
         }
 
@@ -267,7 +276,7 @@
         }
 
         body.aside-minimize.aside-minimize-hover .app-version-desktop-revision {
-            display: block;
+            display: inline-block;
         }
 
         /* =========================
@@ -283,7 +292,7 @@
         }
 
         body:not(.aside-minimize) .app-version-desktop-revision {
-            display: block;
+            display: inline-block;
         }
 
     </style>
@@ -382,14 +391,14 @@
                         <i class="la la-code-branch"></i>
                         <span class="app-version-desktop-main">
                             V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}
+
+                            @if($appRevisionValue !== '')
+                                <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
+                                    ({{ $appRevisionValue }})
+                                </span>
+                            @endif
                         </span>
                     </span>
-
-                    @if($appRevisionValue !== '')
-                        <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
-                            {{ $appRevisionValue }}
-                        </span>
-                    @endif
                 </a>
             </div>
 
