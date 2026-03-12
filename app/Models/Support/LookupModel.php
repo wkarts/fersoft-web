@@ -10,9 +10,9 @@ abstract class LookupModel extends Model
     use SoftDeletes;
 
     // Colunas padrão do seu padrão
-    public const CREATED_AT = 'CREATED_AT';
-    public const UPDATED_AT = 'UPDATED_AT';
-    public const DELETED_AT = 'DELETED_AT';
+    public const CREATED_AT = 'created_at';
+    public const UPDATED_AT = 'updated_at';
+    public const DELETED_AT = 'deleted_at';
 
     /**
      * Como essas tabelas são de consulta e geralmente são populadas via seed/import,
@@ -24,10 +24,10 @@ abstract class LookupModel extends Model
      * Cast comum (pode ser sobrescrito em cada model).
      */
     protected $casts = [
-        'CREATED_AT' => 'datetime',
-        'UPDATED_AT' => 'datetime',
-        'DELETED_AT' => 'datetime',
-        'ELOQUENT_UUID' => 'string',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+        'eloquent_uuid' => 'string',
     ];
 
     /**
