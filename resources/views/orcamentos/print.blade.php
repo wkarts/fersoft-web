@@ -26,30 +26,17 @@
 
 </head>
 <body>
-	@php
-		$toBase64Image = function ($relativePath) {
-			if (empty($relativePath)) return null;
-			$fullPath = public_path($relativePath);
-			if (!is_file($fullPath) || !is_readable($fullPath)) return null;
-			$content = @file_get_contents($fullPath);
-			if ($content === false) return null;
-			$mime = @mime_content_type($fullPath) ?: 'image/png';
-			return 'data:' . $mime . ';base64,' . base64_encode($content);
-		};
-
-		$logoSrc = $toBase64Image('logos/' . $config->logo) ?: $toBase64Image('imgs/slym.png');
-	@endphp
 	<div class="content">
 		<table>
 			<tr>
 
-				@if($logoSrc)
+				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{$logoSrc}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<span>SEM LOGO</span>
+					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -209,13 +196,10 @@
 			@foreach($orcamento->itens as $i)
 			<tr>
 				<th class="b-top">
-					@php
-						$produtoImgSrc = $toBase64Image('imgs_produtos/' . $i->produto->imagem) ?: $toBase64Image('imgs/no_image.png');
-					@endphp
-					@if($produtoImgSrc)
-					<img style="width: 40px; border-radius: 5px" src="{{$produtoImgSrc}}">
+					@if($i->produto->imagem != '')
+					<img style="width: 40px; border-radius: 5px" src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs_produtos/' .$i->produto->imagem)))}}">
 					@else
-					-
+					<img style="width: 40px; border-radius: 5px" src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/no_image.png')))}}">
 					@endif
 				</th>
 				<th class="b-top">{{$i->produto->id}}</th>
@@ -586,13 +570,13 @@
 	<table>
 		<tr>
 
-			@if($logoSrc)
+			@if($config->logo != "")
 			<td class="" style="width: 150px;">
-				<img src="{{$logoSrc}}" width="100px;">
+				<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 			</td>
 			@else
 			<td class="" style="width: 150px;">
-				<span>SEM LOGO</span>
+				<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 			</td>
 			@endif
 		</tr>
