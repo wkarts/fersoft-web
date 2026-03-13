@@ -88,6 +88,23 @@ class NFService{
 		return str_pad(substr($cst, -2), 2, '0', STR_PAD_LEFT);
 	}
 
+	private function calculaBasePisCofinsItem($stdProd, ?float $baseIcmsItem): float
+	{
+		$baseItem = (float) ($baseIcmsItem ?? 0);
+		if ($baseItem <= 0) {
+			$baseItem = ((float) ($stdProd->vProd ?? 0))
+				+ ((float) ($stdProd->vFrete ?? 0))
+				+ ((float) ($stdProd->vOutro ?? 0))
+				- ((float) ($stdProd->vDesc ?? 0));
+		}
+
+		if ($baseItem < 0) {
+			$baseItem = 0;
+		}
+
+		return (float) $this->format($baseItem);
+	}
+
 	public function __construct($config, $empresa_id = null){
 
 		if($empresa_id == null){
@@ -1024,10 +1041,12 @@ class NFService{
 			}
 
 				//PIS
-			$vbcPis = $stdICMS->vBC;
+			$basePisCofinsItem = $this->calculaBasePisCofinsItem($stdProd, isset($stdICMS) ? (float) ($stdICMS->vBC ?? 0) : null);
+			$vbcPis = $basePisCofinsItem;
 			if($tributacao->exclusao_icms_pis_cofins){
-				$vbcPis -= $stdICMS->vICMS;
+				$vbcPis -= (float) ($stdICMS->vICMS ?? 0);
 			}
+			$vbcPis = max(0, (float) $this->format($vbcPis));
 			$stdPIS = new \stdClass();
 			$stdPIS->item = $itemCont;
 			$stdPIS->CST = $this->normalizeTwoDigitCst($i->produto->CST_PIS);
@@ -1039,10 +1058,11 @@ class NFService{
                         $somaPIS += (float) ($stdPIS->vPIS ?? 0);
 
 				//COFINS
-			$vbcCofins = $stdICMS->vBC;
+			$vbcCofins = $basePisCofinsItem;
 			if($tributacao->exclusao_icms_pis_cofins){
-				$vbcCofins -= $stdICMS->vICMS;
+				$vbcCofins -= (float) ($stdICMS->vICMS ?? 0);
 			}
+			$vbcCofins = max(0, (float) $this->format($vbcCofins));
 			$stdCOFINS = new \stdClass();
 			$stdCOFINS->item = $itemCont;
 			$stdCOFINS->CST = $this->normalizeTwoDigitCst($i->produto->CST_COFINS);
