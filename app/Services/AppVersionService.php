@@ -119,7 +119,7 @@ class AppVersionService
     {
         $composerPath = base_path('composer.json');
         if (is_file($composerPath)) {
-            $raw = file_get_contents($composerPath);
+            $raw = safe_file_get_contents($composerPath);
             $json = json_decode((string) $raw, true);
             $composerVersion = $this->normalizeSemanticVersion((string) data_get($json, 'version', ''));
             if ($composerVersion !== null) {
@@ -329,7 +329,7 @@ class AppVersionService
             return null;
         }
 
-        $raw = file_get_contents($manifestPath);
+        $raw = safe_file_get_contents($manifestPath);
         $manifest = json_decode((string) $raw, true);
 
         if (!is_array($manifest)) {
@@ -369,7 +369,7 @@ class AppVersionService
             return 0;
         }
 
-        $raw = file_get_contents($manifestPath);
+        $raw = safe_file_get_contents($manifestPath);
         $manifest = json_decode((string) $raw, true);
         if (!is_array($manifest)) {
             return 0;

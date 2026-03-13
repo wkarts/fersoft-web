@@ -1137,7 +1137,7 @@ private function preparaNfes($ids){
 	foreach($ids as $key => $id){
 		$venda = Venda::find($id);
 		if(file_exists(public_path('xml_nfe/').$venda->chave.'.xml')){
-			$xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+			$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 			$xml = simplexml_load_string($xml);
 
 

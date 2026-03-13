@@ -260,7 +260,7 @@ class NfseConfigController extends Controller
 
             if($item->logo != null){
                 if(file_exists(public_path('logos/').$item->logo)){
-                    $file = file_get_contents(public_path('logos/').$item->logo);
+                    $file = safe_file_get_contents(public_path('logos/').$item->logo);
                     $payload['logo'] = base64_encode($file);
                 }
             }
@@ -314,7 +314,7 @@ class NfseConfigController extends Controller
             return redirect()->back();
         }
 
-        $file = base64_encode(file_get_contents($request->file('file')->path()));
+        $file = base64_encode(safe_file_get_contents($request->file('file')->path()));
         // dd($file);
         $senha = $request->senha;
         try {

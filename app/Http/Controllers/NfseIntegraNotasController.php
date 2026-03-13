@@ -136,11 +136,11 @@ class NfseIntegraNotasController extends Controller
                             $config->ultimo_numero_nfse = (int)$resp->numero;
                             $config->save();
                             $xml = $resp->xml;
-                            file_put_contents(public_path('nfse_doc/')."$resp->chave.xml", $xml);
+                            safe_file_put_contents(public_path('nfse_doc/')."$resp->chave.xml", $xml);
 
                             if($resp->pdf){
                                 $pdf = base64_decode($resp->pdf);
-                                file_put_contents(public_path('nfse_pdf/')."$resp->chave.pdf", $pdf);
+                                safe_file_put_contents(public_path('nfse_pdf/')."$resp->chave.pdf", $pdf);
                             }
                             return response()->json($resp, 200);
                         } else {
@@ -208,11 +208,11 @@ class NfseIntegraNotasController extends Controller
 
                     if($resp->pdf){
                         $pdf = base64_decode($resp->pdf);
-                        file_put_contents(public_path('nfse_pdf/')."$item->chave.pdf", $pdf);
+                        safe_file_put_contents(public_path('nfse_pdf/')."$item->chave.pdf", $pdf);
                     }
 
                     $xml = $resp->xml;
-                    file_put_contents(public_path('nfse_doc/')."$item->chave.xml", $xml);
+                    safe_file_put_contents(public_path('nfse_doc/')."$item->chave.xml", $xml);
                 }
                 return response()->json($resp, 200);
             }
@@ -350,7 +350,7 @@ class NfseIntegraNotasController extends Controller
             if(isset($resp->pdf)){
                 $pdf_b64 = base64_decode($resp->pdf);
 
-                if(file_put_contents($rute, $pdf_b64)){
+                if(safe_file_put_contents($rute, $pdf_b64)){
                     header("Content-type: application/pdf");
                     echo $pdf_b64;
                 }

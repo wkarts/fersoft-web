@@ -228,7 +228,7 @@ class ProdutoController extends Controller
 
 			$produto->imagem = $nome.'.jpg';
 			$produto->save();
-			file_put_contents($public.'imgs_produtos/'.$nome.'.jpg', $imgData);
+			safe_file_put_contents($public.'imgs_produtos/'.$nome.'.jpg', $imgData);
 
 			return response()->json($nome.'.jpg', 201);
 		}catch(\Exception $e){

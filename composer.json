@@ -65,6 +65,7 @@
             "stock": "app/Helpers/StockMove.php"
         },
         "files": [
+            "app/Helpers/FileHelper.php",
             "app/Helpers/User.php",
             "app/Helpers/Menu.php",
             "app/Helpers/BoletoHelper.php",

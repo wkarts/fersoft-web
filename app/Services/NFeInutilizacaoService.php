@@ -306,7 +306,7 @@ class NFeInutilizacaoService
                 $numeroFinal
             );
 
-            @file_put_contents($dir . DIRECTORY_SEPARATOR . $fileName, $xml);
+            @safe_file_put_contents($dir . DIRECTORY_SEPARATOR . $fileName, $xml);
         } catch (\Throwable $e) {
             Log::warning('Falha ao salvar XML de inutilização em disco', [
                 'empresa_id' => $empresaId,

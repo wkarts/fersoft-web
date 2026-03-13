@@ -963,7 +963,7 @@ class TransferenciaService{
 						$config->ultimo_numero_nfe = $config->ultimo_numero_nfe+1;
 						$config->save();
 						$xml = Complements::toAuthorize($item->signed_xml, $protocolo);
-						file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
+						safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
 						// return $xml;
 					}
 				}
@@ -1052,7 +1052,7 @@ class TransferenciaService{
                     mkdir($pathCancelada, 0777, true);
                 }
 
-                file_put_contents($pathCancelada . $chave . '.xml', $xml);
+                safe_file_put_contents($pathCancelada . $chave . '.xml', $xml);
 
                 $item->estado = 'cancelado';
                 $item->motivo_cancelamento = $justificativa;
@@ -1108,7 +1108,7 @@ class TransferenciaService{
                     }
 
                     // Salvar XML da correção
-                    file_put_contents($path . $chave . '.xml', $xml);
+                    safe_file_put_contents($path . $chave . '.xml', $xml);
 
                     // Atualizar número da sequência da correção
                     $item->carta_correcao_xml = $xml;
@@ -1210,7 +1210,7 @@ class TransferenciaService{
 
                 // Gera e salva o XML autorizado
                 $xmlAutorizado = Complements::toAuthorize($signXml, $protocolo);
-                file_put_contents(public_path('xml_nfe/') . $chave . '.xml', $xmlAutorizado);
+                safe_file_put_contents(public_path('xml_nfe/') . $chave . '.xml', $xmlAutorizado);
 
                 return "Sucesso: NF-e transmitida e autorizada!";
             } else {
@@ -1281,7 +1281,7 @@ class TransferenciaService{
                         $response
                     );
 
-                    file_put_contents($path . $item->chave . '.xml', $xmlFinal);
+                    safe_file_put_contents($path . $item->chave . '.xml', $xmlFinal);
                 }
 
                 return [

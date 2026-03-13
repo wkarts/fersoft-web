@@ -437,7 +437,7 @@ class EvoApiService
         $basename = basename($filePath);                            // ex: foto.png
         $filename = pathinfo($basename, PATHINFO_FILENAME);         // ex: foto
         $caption  = $caption ?: $filename;                          // sem extensão
-        $content  = file_get_contents($filePath) ?: '';
+        $content  = safe_file_get_contents($filePath) ?: '';
         $mimeType = $this->detectMime($filePath);                   // usa helper
         $mediaType= $this->detectMediaType($mimeType);              // image/audio/video/document
 
@@ -780,7 +780,7 @@ class EvoApiService
         if ($res->successful()) {
             $j = $res->json();
             if ($saveToDisk && $diskPath && isset($j['profilePictureUrl'])) {
-                file_put_contents($diskPath, Http::get($j['profilePictureUrl'])->body());
+                safe_file_put_contents($diskPath, Http::get($j['profilePictureUrl'])->body());
                 return ['success'=>true,'path'=>$diskPath,'data'=>$j];
             }
             return ['success'=>true,'data'=>$j];
@@ -855,7 +855,7 @@ class EvoApiService
         if ($this->qrLogoBase64) {
             // cria arquivo temporário do logo
             $tmp = tempnam(sys_get_temp_dir(), 'qr_logo_').'.png';
-            file_put_contents($tmp, base64_decode($this->qrLogoBase64));
+            safe_file_put_contents($tmp, base64_decode($this->qrLogoBase64));
             $builder->merge($tmp, $this->qrLogoSize, true);
         }
 

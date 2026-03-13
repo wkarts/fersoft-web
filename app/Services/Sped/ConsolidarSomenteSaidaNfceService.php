@@ -40,7 +40,7 @@ final class ConsolidarSomenteSaidaNfceService
         // 5) Gravar consolidado
         $outputFilename = "{$prefix}_consolidado.txt";
         $outputFullPath = $folder . DIRECTORY_SEPARATOR . $outputFilename;
-        file_put_contents($outputFullPath, $result['txt']);
+        safe_file_put_contents($outputFullPath, $result['txt']);
 
         return [
             'empresa_id' => $ctx['empresa_id'],

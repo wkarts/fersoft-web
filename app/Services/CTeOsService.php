@@ -360,7 +360,7 @@ class CTeOsService{
 				try {
 					$xml = Complements::toAuthorize($signXml, $resp);
 
-					file_put_contents(public_path('xml_cte_os/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_cte_os/').$chave.'.xml',$xml);
 					return $std->protCTe->infProt->nProt;
 				// $this->printDanfe($xml);
 				} catch (\Exception $e) {
@@ -457,7 +457,7 @@ class CTeOsService{
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
 				// header('Content-type: text/xml; charset=UTF-8');
-				file_put_contents(public_path('xml_cte_os_cancelada/').$chave.'.xml',$xml);
+				safe_file_put_contents(public_path('xml_cte_os_cancelada/').$chave.'.xml',$xml);
 				return $json;
 			}else{
 				return $json;
@@ -546,7 +546,7 @@ class CTeOsService{
 			}
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-				file_put_contents(public_path('xml_cte_os_correcao/').$chave.'.xml',$xml);
+				safe_file_put_contents(public_path('xml_cte_os_correcao/').$chave.'.xml',$xml);
 				$cte->sequencia_cce = $cte->sequencia_cce + 1;
 				$cte->save();
 				return $json;
@@ -561,10 +561,10 @@ class CTeOsService{
 	}
 
 	public function getXml($chave){
-		// $resp = file_get_contents('ctes.xml');
+		// $resp = safe_file_get_contents('ctes.xml');
 		try{
 			$resp = $this->tools->sefazDistDFe(0,0);
-			// file_put_contents("ctes.xml", $resp);
+			// safe_file_put_contents("ctes.xml", $resp);
 
 			$dom = new \DOMDocument();
 			$dom->loadXML($resp);
@@ -616,8 +616,8 @@ class CTeOsService{
 
 	public function consultaDocumentos(){
 		$resp = $this->tools->sefazDistDFe(0,0);
-		// file_put_contents("ctes.xml", $resp);
-		// $resp = file_get_contents('ctes.xml');
+		// safe_file_put_contents("ctes.xml", $resp);
+		// $resp = safe_file_get_contents('ctes.xml');
 		$dom = new \DOMDocument();
 		$dom->loadXML($resp);
 		$xMotivo = $dom->getElementsByTagName('xMotivo')->item(0)->nodeValue;

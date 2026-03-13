@@ -45,7 +45,7 @@ class NfceAppController extends Controller
 
 				$public = env('SERVIDOR_WEB') ? 'public/' : '';
 				$signed = $nfe_service->sign($nfce['xml']);
-			// file_put_contents($public.'xml_nfce/'.$venda->id.'.xml',$signed);
+			// safe_file_put_contents($public.'xml_nfce/'.$venda->id.'.xml',$signed);
 				$resultado = $nfe_service->transmitirNfce($signed, $nfce['chave']);
 
 				if(substr($resultado, 0, 4) != 'Erro'){
@@ -81,8 +81,8 @@ class NfceAppController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		$xml = file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
-		// $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'imgs/logo.jpg'));
+		$xml = safe_file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
+		// $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'imgs/logo.jpg'));
 		// $docxml = FilesFolders::readFile($xml);
 
 		$config = ConfigNota::
@@ -90,7 +90,7 @@ class NfceAppController extends Controller
 		->first();
 		
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
 		}else{
 			$logo = null;
 		}
@@ -187,7 +187,7 @@ class NfceAppController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 		try {
 
-			$xml = file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
+			$xml = safe_file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
 			
 			return response($xml)
 			->header('Content-Type', 'application/xml');

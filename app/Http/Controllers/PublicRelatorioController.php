@@ -238,7 +238,7 @@ class PublicRelatorioController extends Controller
 
         // Cria um arquivo temporário para o QR Code
         $tempPath = sys_get_temp_dir() . '/qrcode_' . uniqid() . '.png';
-        file_put_contents($tempPath, $qrCodeImage);
+        safe_file_put_contents($tempPath, $qrCodeImage);
 
         // Adiciona a imagem do QR Code no PDF
         $this->pdf->Image($tempPath, $x, $y ?? $this->pdf->GetY(), $largura, $altura);

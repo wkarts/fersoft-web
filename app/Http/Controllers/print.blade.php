@@ -73,11 +73,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 

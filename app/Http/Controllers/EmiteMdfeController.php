@@ -359,7 +359,7 @@ class EmiteMdfeController extends Controller
 		$mdfe = Mdfe::find($id);
 		if(valida_objeto($mdfe)){
 			if(file_exists(public_path('xml_mdfe/').$mdfe->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_mdfe/').$mdfe->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_mdfe/').$mdfe->chave.'.xml');
 
 				$config = ConfigNota::
 				where('empresa_id', $this->empresa_id)
@@ -518,8 +518,8 @@ class EmiteMdfeController extends Controller
 
 	private function criarPdfParaEnvio($mdfe){
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
-		$xml = file_get_contents($public.'xml_mdfe/'.$mdfe->chave.'.xml');
-		$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'imgs/logo.jpg'));
+		$xml = safe_file_get_contents($public.'xml_mdfe/'.$mdfe->chave.'.xml');
+		$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'imgs/logo.jpg'));
 		// $docxml = FilesFolders::readFile($xml);
 
 		try {
@@ -529,7 +529,7 @@ class EmiteMdfeController extends Controller
 			$damdfe->creditsIntegratorFooter('WEBNFe Sistemas - http://www.webenf.com.br');
 			$pdf = $damdfe->render($logo);
 			header('Content-Type: application/pdf');
-			file_put_contents($public.'pdf/MDFe.pdf',$pdf);
+			safe_file_put_contents($public.'pdf/MDFe.pdf',$pdf);
 
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
@@ -546,11 +546,11 @@ class EmiteMdfeController extends Controller
 		$logoPath = public_path('logos/' . $logoFile);
 		$normalizedPath = str_replace('/public/public/', '/public/', $logoPath);
 		if (file_exists($normalizedPath)) {
-			return 'data://text/plain;base64,' . base64_encode(file_get_contents($normalizedPath));
+			return 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($normalizedPath));
 		}
 
 		if (file_exists($logoPath)) {
-			return 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+			return 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
 		}
 
 		return null;

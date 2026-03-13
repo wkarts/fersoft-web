@@ -982,7 +982,7 @@ class NFeEntradaService {
                     // autorizado (100/150)
                     if (in_array($cStatProt, ['100','150'], true)) {
                         $xml = Complements::toAuthorize($signXml, $resp);
-                        if (file_put_contents($full, $xml) === false) {
+                        if (safe_file_put_contents($full, $xml) === false) {
                             return "Erro ao salvar XML em: {$full}";
                         }
                         return $infProt->nProt ?? 'OK';
@@ -997,7 +997,7 @@ class NFeEntradaService {
                         if (isset($stdChave->protNFe->infProt->cStat) &&
                             (string)$stdChave->protNFe->infProt->cStat === '100') {
                             $xml = Complements::toAuthorize($signXml, $respChave);
-                            if (file_put_contents($full, $xml) === false) {
+                            if (safe_file_put_contents($full, $xml) === false) {
                                 return "Erro ao salvar XML em: {$full}";
                             }
                             return $stdChave->protNFe->infProt->nProt ?? 'OK';
@@ -1035,7 +1035,7 @@ class NFeEntradaService {
 
             if (in_array($cStatProt, ['100','150'], true)) {
                 $xml = Complements::toAuthorize($signXml, $protocolo);
-                if (file_put_contents($full, $xml) === false) {
+                if (safe_file_put_contents($full, $xml) === false) {
                     return "Erro ao salvar XML em: {$full}";
                 }
                 return $infProt->nProt ?? $recibo;
@@ -1092,7 +1092,7 @@ class NFeEntradaService {
                     @mkdir($dir, 0775, true);
                 }
                 $full = $dir . DIRECTORY_SEPARATOR . $chave . '.xml';
-                file_put_contents($full, $xml);
+                safe_file_put_contents($full, $xml);
                 $xmlSalvo = $full;
             }
 
@@ -1154,7 +1154,7 @@ class NFeEntradaService {
                 if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
 
                 $file = $dir . DIRECTORY_SEPARATOR . "{$chave}-cce-{$nSeqEvento}.xml";
-                if (file_put_contents($file, $xmlProc) === false) {
+                if (safe_file_put_contents($file, $xmlProc) === false) {
                     return ['erro' => true, 'mensagem' => "Erro ao salvar XML em: {$file}", 'status' => 500];
                 }
 
@@ -1210,7 +1210,7 @@ class NFeEntradaService {
 					$public = env('SERVIDOR_WEB') ? 'public/' : '';
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents($public.'xml_nfe_entrada_correcao/'.$chave.'.xml',$xml);
+					safe_file_put_contents($public.'xml_nfe_entrada_correcao/'.$chave.'.xml',$xml);
 
 					$compra->sequencia_cce = $compra->sequencia_cce + 1;
 					$compra->save();

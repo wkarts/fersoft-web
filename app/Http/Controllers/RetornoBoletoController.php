@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 class RetornoBoletoController extends Controller
 {
     public function index(){
-        $file = file_get_contents('retorno.ret');
+        $file = safe_file_get_contents('retorno.ret');
         $return = new \Eduardokum\LaravelBoleto\Cnab\Retorno\Cnab400\Banco\Bancoob($file);
         dd($return);
 

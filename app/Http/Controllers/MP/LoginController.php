@@ -207,7 +207,7 @@ class LoginController extends Controller
 
             $cliente->img = $fileName.'.jpg';
             $cliente->save();
-            file_put_contents($public.'fotos_cliente_delivery/'.$cliente->img, $imgData);
+            safe_file_put_contents($public.'fotos_cliente_delivery/'.$cliente->img, $imgData);
 
             return response()->json($fileName.'.jpg', 201);
         }catch(\Exception $e){

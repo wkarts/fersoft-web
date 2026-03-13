@@ -106,7 +106,7 @@ class ContratoController extends Controller
 			if(!is_dir(public_path('contratos'))){
 				mkdir(public_path('contratos'), 0777, true);
 			}
-			file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
+			safe_file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
 
 			EmpresaContrato::where('empresa_id', $empresa->id)->delete();
 
@@ -141,7 +141,7 @@ class ContratoController extends Controller
 
 		$cnpj = preg_replace('/[^0-9]/', '', $empresa->cnpj);
 
-		$pdf = file_get_contents(public_path('contratos/').$cnpj.'.pdf');
+		$pdf = safe_file_get_contents(public_path('contratos/').$cnpj.'.pdf');
 		if($pdf){
 			header("Content-Disposition: ; filename=Contrato.pdf");
 			return response($pdf)

@@ -56,7 +56,7 @@ class UsuarioController extends Controller
 
 			$usuario->img = $nome.'.jpg';
 			$usuario->save();
-			file_put_contents($public.'foto_usuario/'.$nome.'.jpg', $imgData);
+			safe_file_put_contents($public.'foto_usuario/'.$nome.'.jpg', $imgData);
 
 			return response()->json($nome.'.jpg', 201);
 		}catch(\Exception $e){

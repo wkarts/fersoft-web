@@ -652,7 +652,7 @@ class RepController extends Controller
 			if(!is_dir(public_path('contratos'))){
 				mkdir(public_path('contratos'), 0777, true);
 			}
-			file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
+			safe_file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
 
 			EmpresaContrato::create(
 				[
@@ -1444,7 +1444,7 @@ class RepController extends Controller
 
 		if($request->hasFile('file') && strlen($request->senha) > 0){
 			$file = $request->file('file');
-			$temp = file_get_contents($file);
+			$temp = safe_file_get_contents($file);
 
 			$extensao = $file->getClientOriginalExtension();
 

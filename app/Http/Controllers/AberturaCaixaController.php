@@ -860,7 +860,7 @@ class AberturaCaixaController extends Controller
         // logo base64
         $logoData = $logoMime = null;
         if (!empty($config->logo) && file_exists($path = public_path("logos/{$config->logo}"))) {
-            $logoData = base64_encode(file_get_contents($path));
+            $logoData = base64_encode(safe_file_get_contents($path));
             $logoMime = mime_content_type($path);
         }
 
@@ -937,7 +937,7 @@ class AberturaCaixaController extends Controller
         // Logo em base64, se houver
         $logoData = $logoMime = null;
         if (!empty($config->logo) && file_exists($path = public_path("logos/{$config->logo}"))) {
-            $logoData = base64_encode(file_get_contents($path));
+            $logoData = base64_encode(safe_file_get_contents($path));
             $logoMime = mime_content_type($path);
         }
 
@@ -1033,7 +1033,7 @@ class AberturaCaixaController extends Controller
         if (!empty($config->logo)
             && file_exists($path = public_path("logos/{$config->logo}"))
         ) {
-            $logoData = base64_encode(file_get_contents($path));
+            $logoData = base64_encode(safe_file_get_contents($path));
             $logoMime = mime_content_type($path);
         }
 
