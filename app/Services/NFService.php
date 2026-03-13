@@ -88,6 +88,33 @@ class NFService{
 		return str_pad(substr($cst, -2), 2, '0', STR_PAD_LEFT);
 	}
 
+	private function calculaBasePisCofinsItem($stdProd, ?float $baseIcmsItem): float
+	{
+		$baseItem = (float) ($baseIcmsItem ?? 0);
+		if ($baseItem <= 0) {
+			$baseItem = ((float) ($stdProd->vProd ?? 0))
+				+ ((float) ($stdProd->vFrete ?? 0))
+				+ ((float) ($stdProd->vOutro ?? 0))
+				- ((float) ($stdProd->vDesc ?? 0));
+		}
+
+		if ($baseItem < 0) {
+			$baseItem = 0;
+		}
+
+		return (float) $this->format($baseItem);
+	}
+
+	private function isPisCofinsCstSemIncidencia(string $cst): bool
+	{
+		return in_array($cst, ['04', '05', '06', '07', '08', '09'], true);
+	}
+
+	private function deveCalcularPisCofins(string $cst, $aliquota): bool
+	{
+		return !$this->isPisCofinsCstSemIncidencia($cst) && (float) $aliquota > 0;
+	}
+
 	public function __construct($config, $empresa_id = null){
 
 		if($empresa_id == null){
@@ -166,7 +193,7 @@ class NFService{
 		return false;
 	}
 
-	private function appendReformaObservacao(string $obs, $venda): string
+	private function appendReformaObservacao(string $obs, $venda, bool $reformaEstruturadaNoXml = false): string
 	{
 		$rt = app(ReformaTributariaService::class);
 		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
@@ -179,6 +206,18 @@ class NFService{
 		$tIs = (float)($venda->total_is ?? 0);
 
 		if ($tBase <= 0 && $tIbs <= 0 && $tCbs <= 0 && $tIs <= 0) {
+			return $obs;
+		}
+
+		if (!$reformaEstruturadaNoXml) {
+			Log::warning('NF-e: totais de Reforma Tributária calculados, mas grupo estruturado não foi anexado ao XML. Texto complementar suprimido para evitar divergência DANFE x XML.', [
+				'empresa_id' => $this->empresa_id,
+				'venda_id' => (int)($venda->id ?? 0),
+				'total_bc_ibs_cbs' => $tBase,
+				'total_ibs' => $tIbs,
+				'total_cbs' => $tCbs,
+				'total_is' => $tIs,
+			]);
 			return $obs;
 		}
 
@@ -469,6 +508,7 @@ class NFService{
                 $somaIPI = 0;
                 $somaPIS = 0;
                 $somaCOFINS = 0;
+                $reformaEstruturadaNoXml = false;
 		//PRODUTOS
 		$itemCont = 0;
 
@@ -778,7 +818,9 @@ class NFService{
 			}
 
 			$imposto = $nfe->tagimposto($stdImposto);
-			$this->tryAttachReformaItemTag($nfe, (int)$itemCont, $i);
+			if ($this->tryAttachReformaItemTag($nfe, (int)$itemCont, $i)) {
+				$reformaEstruturadaNoXml = true;
+			}
 
 			if($venda->natureza->CST_CSOSN){
 				$i->produto->CST_CSOSN = $venda->natureza->CST_CSOSN;
@@ -1024,32 +1066,41 @@ class NFService{
 			}
 
 				//PIS
-			$vbcPis = $stdICMS->vBC;
+			$basePisCofinsItem = $this->calculaBasePisCofinsItem($stdProd, isset($stdICMS) ? (float) ($stdICMS->vBC ?? 0) : null);
+			$vbcPis = $basePisCofinsItem;
 			if($tributacao->exclusao_icms_pis_cofins){
-				$vbcPis -= $stdICMS->vICMS;
+				$vbcPis -= (float) ($stdICMS->vICMS ?? 0);
 			}
+			$vbcPis = max(0, (float) $this->format($vbcPis));
+			$cstPis = $this->normalizeTwoDigitCst($i->produto->CST_PIS);
+			$calculaPis = $this->deveCalcularPisCofins($cstPis, $i->produto->perc_pis);
 			$stdPIS = new \stdClass();
 			$stdPIS->item = $itemCont;
-			$stdPIS->CST = $this->normalizeTwoDigitCst($i->produto->CST_PIS);
-			$stdPIS->vBC = $this->format($i->produto->perc_pis) > 0 ? $vbcPis : 0.00;
+			$stdPIS->CST = $cstPis;
+			$stdPIS->vBC = $calculaPis ? $vbcPis : 0.00;
 			$stdPIS->pPIS = $this->format($i->produto->perc_pis);
-                        $stdPIS->vPIS = $this->format(($vbcPis) *
-                                ($i->produto->perc_pis/100));
+                        $stdPIS->vPIS = $calculaPis
+                                ? $this->format(($vbcPis) * ($i->produto->perc_pis/100))
+                                : 0.00;
                         $PIS = $nfe->tagPIS($stdPIS);
                         $somaPIS += (float) ($stdPIS->vPIS ?? 0);
 
 				//COFINS
-			$vbcCofins = $stdICMS->vBC;
+			$vbcCofins = $basePisCofinsItem;
 			if($tributacao->exclusao_icms_pis_cofins){
-				$vbcCofins -= $stdICMS->vICMS;
+				$vbcCofins -= (float) ($stdICMS->vICMS ?? 0);
 			}
+			$vbcCofins = max(0, (float) $this->format($vbcCofins));
+			$cstCofins = $this->normalizeTwoDigitCst($i->produto->CST_COFINS);
+			$calculaCofins = $this->deveCalcularPisCofins($cstCofins, $i->produto->perc_cofins);
 			$stdCOFINS = new \stdClass();
 			$stdCOFINS->item = $itemCont;
-			$stdCOFINS->CST = $this->normalizeTwoDigitCst($i->produto->CST_COFINS);
-			$stdCOFINS->vBC = $this->format($i->produto->perc_cofins) > 0 ? $vbcCofins : 0.00;
+			$stdCOFINS->CST = $cstCofins;
+			$stdCOFINS->vBC = $calculaCofins ? $vbcCofins : 0.00;
                         $stdCOFINS->pCOFINS = $this->format($i->produto->perc_cofins);
-                        $stdCOFINS->vCOFINS = $this->format(($vbcCofins) *
-                                ($i->produto->perc_cofins/100));
+                        $stdCOFINS->vCOFINS = $calculaCofins
+                                ? $this->format(($vbcCofins) * ($i->produto->perc_cofins/100))
+                                : 0.00;
 
                         $COFINS = $nfe->tagCOFINS($stdCOFINS);
                         $somaCOFINS += (float) ($stdCOFINS->vCOFINS ?? 0);
@@ -1451,7 +1502,7 @@ class NFService{
 			$obs .= "Inf. adicional de pagamento: " . $venda->getFormaPagamento($venda->empresa_id)->infos;
 		}
 
-		$obs = $this->appendReformaObservacao($obs, $venda);
+		$obs = $this->appendReformaObservacao($obs, $venda, $reformaEstruturadaNoXml);
 		$stdInfoAdic->infCpl = $this->retiraAcentos($obs);
 
 		$infoAdic = $nfe->taginfAdic($stdInfoAdic);
