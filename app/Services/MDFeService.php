@@ -871,7 +871,7 @@ class MDFeService{
 					mkdir($xmlMdfePath, 0755, true);
 				}
 				$fileName = $chave.'.xml';
-				file_put_contents($xmlMdfePath.DIRECTORY_SEPARATOR.$fileName, $xml);
+				safe_file_put_contents($xmlMdfePath.DIRECTORY_SEPARATOR.$fileName, $xml);
 				return [
 					'chave' => $chave, 
 					'protocolo' => $std->protMDFe->infProt->nProt, 
@@ -973,7 +973,7 @@ class MDFeService{
 					mkdir($xmlMdfeCanceladaPath, 0755, true);
 				}
 				$fileName = $chave.'.xml';
-				file_put_contents($xmlMdfeCanceladaPath.DIRECTORY_SEPARATOR.$fileName, $xml);
+				safe_file_put_contents($xmlMdfeCanceladaPath.DIRECTORY_SEPARATOR.$fileName, $xml);
 			}
 			return $std;
 		} catch (Exception $e) {

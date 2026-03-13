@@ -162,7 +162,7 @@ class AssinarContratoController extends Controller
 
 				$pdf->Output(public_path('contratos/'.$cnpj.'.pdf'), 'F');
 
-				$file = file_get_contents(public_path('contratos/'.$cnpj.'.pdf'));
+				$file = safe_file_get_contents(public_path('contratos/'.$cnpj.'.pdf'));
 				// return response($file)
 				// ->header('Content-Type', 'application/pdf');
 
@@ -241,7 +241,7 @@ class AssinarContratoController extends Controller
 				mkdir(public_path('contratos'), 0777, true);
 			}
 
-			file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
+			safe_file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
 
 			EmpresaContrato::where('empresa_id', $empresa->id)->delete();
 

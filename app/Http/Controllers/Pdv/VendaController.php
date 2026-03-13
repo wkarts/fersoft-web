@@ -79,7 +79,7 @@ class VendaController extends Controller
 
             if($xml != ""){
                 $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                file_put_contents($public.'xml_nfce/'.$venda['chave'].'.xml', $xml);
+                safe_file_put_contents($public.'xml_nfce/'.$venda['chave'].'.xml', $xml);
             }
 
             $stockMove = new StockMove();

@@ -1628,7 +1628,7 @@ class EnviarXmlController extends Controller
 						$fileStr = $fileStr[1];
 						$fileStr = str_replace("/", "", $fileStr);
 
-						$f = file_get_contents($filename);
+						$f = safe_file_get_contents($filename);
 						// $zip->addFile(public_path('zips'), $f);
 						$zip->addFile($filename, $fileStr);
 
@@ -1662,7 +1662,7 @@ class EnviarXmlController extends Controller
 						$fileStr = $fileStr[1];
 						$fileStr = str_replace("/", "", $fileStr);
 
-						$f = file_get_contents($filename);
+						$f = safe_file_get_contents($filename);
 						// $zip->addFile(public_path('zips'), $f);
 						$zip->addFile($filename, $fileStr);
 

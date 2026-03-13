@@ -483,7 +483,7 @@ class CarrinhoController extends Controller
 
 		$url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
 
-		$unparsedResult = file_get_contents($url);
+		$unparsedResult = safe_file_get_contents($url);
 		$parsedResult = simplexml_load_string($unparsedResult);
 
 		$stringUrl = "&sCepOrigem=$cepOrigem&sCepDestino=$cepDestino&nVlPeso=$somaPeso";
@@ -492,7 +492,7 @@ class CarrinhoController extends Controller
 
 		$url = "http://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?nCdEmpresa=&sDsSenha=&sCdAvisoRecebimento=n&sCdMaoPropria=n&nVlValorDeclarado=0&nVlDiametro=0&StrRetorno=xml&nIndicaCalculo=3&nCdFormato=1" . $stringUrl;
 
-		$unparsedResultSedex = file_get_contents($url);
+		$unparsedResultSedex = safe_file_get_contents($url);
 		$parsedResultSedex = simplexml_load_string($unparsedResultSedex);
 
 		$retorno = array(

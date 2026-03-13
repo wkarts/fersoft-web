@@ -273,7 +273,7 @@ class ClienteController extends Controller
                     $img = str_replace('data:image/png;base64,', '', $blob);
                     $img = str_replace(' ', '+', $img);
                     $data = base64_decode($img);
-                    file_put_contents(public_path('imgs_clientes/'). $fileName, $data);
+                    safe_file_put_contents(public_path('imgs_clientes/'). $fileName, $data);
 
                 }
 
@@ -459,7 +459,7 @@ public function edit($id){
                 $img = str_replace('data:image/png;base64,', '', $blob);
                 $img = str_replace(' ', '+', $img);
                 $data = base64_decode($img);
-                file_put_contents(public_path('imgs_clientes/'). $fileName, $data);
+                safe_file_put_contents(public_path('imgs_clientes/'). $fileName, $data);
 
             }
 

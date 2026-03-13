@@ -729,7 +729,7 @@ class PedidoController extends Controller{
       $cupom = new CupomPedido($pedido, $pathLogo);
       $cupom->monta();
       $pdf = $cupom->render();
-  // file_put_contents($public.'pdf/CUPOM_PEDIDO.pdf',$pdf);
+  // safe_file_put_contents($public.'pdf/CUPOM_PEDIDO.pdf',$pdf);
   // return redirect($public.'pdf/CUPOM_PEDIDO.pdf');
 
       return response($pdf)

@@ -38,7 +38,7 @@ class MigradorController extends Controller
 		if ($request->hasFile('file')) {
 
 			$empresa_id = $request->empresa_id;
-			$data = file_get_contents($request->file);
+			$data = safe_file_get_contents($request->file);
 			$collection = explode("\n", $data);
 
 			if(str_contains($data, 'MySQL-Front 6.0')){

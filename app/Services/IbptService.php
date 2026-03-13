@@ -31,7 +31,7 @@ class IbptService
                 $csrfToken = md5(uniqid(rand(), true)) . session()->token();
                 $filePath = public_path("tmp_files/RL{$csrfToken}_{$uf}.csv");
 
-                file_put_contents($filePath, $response->body());
+                safe_file_put_contents($filePath, $response->body());
                 return $filePath;
             }
         } catch (\Exception $e) {

@@ -41,7 +41,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $fileHelperPath = app_path('Helpers/FileHelper.php');
+        if (is_file($fileHelperPath)) {
+            require_once $fileHelperPath;
+        }
 
         /**
          * Register WhatsAppUtil services.

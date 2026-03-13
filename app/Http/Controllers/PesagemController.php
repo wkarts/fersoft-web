@@ -1045,7 +1045,7 @@ class PesagemController extends BaseController
             if ($request->has('relatorio_80mm')) {
                 $relatorio80mm = $relatorioController->imprimirPesagem80mmWhats($id, $this->empresa_id);
                 $path80mm = public_path("tmp_files/RL{$csrfToken}80MM.pdf");
-                file_put_contents($path80mm, $relatorio80mm->getContent());
+                safe_file_put_contents($path80mm, $relatorio80mm->getContent());
                 if (file_exists($path80mm)) {
                     $arquivos[] = $path80mm; // Usa caminho absoluto
                 } else {
@@ -1056,7 +1056,7 @@ class PesagemController extends BaseController
             if ($request->has('relatorio_a4')) {
                 $relatorioA4 = $relatorioController->imprimirPesagemA4Whats($id, $this->empresa_id);
                 $pathA4 = public_path("tmp_files/RL{$csrfToken}A4.pdf");
-                file_put_contents($pathA4, $relatorioA4->getContent());
+                safe_file_put_contents($pathA4, $relatorioA4->getContent());
                 if (file_exists($pathA4)) {
                     $arquivos[] = $pathA4; // Usa caminho absoluto
                 } else {

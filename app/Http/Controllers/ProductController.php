@@ -3696,7 +3696,7 @@ class ProductController extends Controller
         //     $generatorPNG = new \Picqer\Barcode\BarcodeGeneratorPNG();
 
         //     $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
-        //     file_put_contents("etiqueta.png", $bar_code);
+        //     safe_file_put_contents("etiqueta.png", $bar_code);
         //     $pdf = new TcpdfFpdi('P', 'mm', 'A4');
         //     $pdf->AddPage('L', [30, 50]);
         //     $pdf->SetMargins(0,0,0, false);
@@ -3783,7 +3783,7 @@ class ProductController extends Controller
             $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
 
             $rand = rand(1000, 9999);
-            file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
+            safe_file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
             $qtdLinhas = $request->qtd_linhas;
             $qtdTotal = $request->qtd_etiquetas;
 

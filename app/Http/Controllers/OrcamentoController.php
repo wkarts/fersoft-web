@@ -110,6 +110,33 @@ class OrcamentoController extends Controller
 			date('Y-m-d')))));
 	}
 
+	private function publicFileExists($relativePath){
+		if($relativePath == null || trim($relativePath) == ''){
+			return false;
+		}
+		$fullPath = public_path(ltrim($relativePath, '/'));
+		return file_exists($fullPath) && is_file($fullPath) && is_readable($fullPath);
+	}
+
+	private function prepararAssetsOrcamento($orcamento, $config){
+		if($config != null){
+			$logoRelativo = 'logos/' . ($config->logo ?? '');
+			if(!$this->publicFileExists($logoRelativo)){
+				$config->logo = '';
+			}
+		}
+
+		if($orcamento != null){
+			foreach($orcamento->itens as $item){
+				$imagem = $item->produto->imagem ?? '';
+				if(!$this->publicFileExists('imgs_produtos/' . $imagem)) {
+					$item->produto->imagem = '';
+				}
+			}
+		}
+		return [$orcamento, $config];
+	}
+
 	public function salvar(Request $request){
 		try{
 			$result = DB::transaction(function () use ($request) {
@@ -342,6 +369,8 @@ class OrcamentoController extends Controller
                 $config = $orcamento->filial;
             }
 
+            [$orcamento, $config] = $this->prepararAssetsOrcamento($orcamento, $config);
+
             $p = view('orcamentos/print')
             ->with('orcamento', $orcamento)
             ->with('config', $config);
@@ -430,14 +459,9 @@ class OrcamentoController extends Controller
             if(!isset($nfe['erros_xml'])){
                 $xml = $nfe['xml'];
 
-                $public = env('SERVIDOR_WEB') ? 'public/' : '';
-
-                if($config->logo){
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
-
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
-                }else{
-                    $logo = null;
+                $logo = null;
+                if($config->logo && $this->publicFileExists('logos/' . $config->logo)){
+                    $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
                 }
 
                 try {
@@ -479,6 +503,12 @@ class OrcamentoController extends Controller
                 return redirect('/orcamentoVenda/detalhar/' . $orcamento->id);
             }
 
+            if($orcamento->filial_id != null){
+                $config = $orcamento->filial;
+            }
+
+            [$orcamento, $config] = $this->prepararAssetsOrcamento($orcamento, $config);
+
             $p = view('orcamentos/print')
             ->with('config', $config)
             ->with('orcamento', $orcamento);
@@ -493,8 +523,12 @@ class OrcamentoController extends Controller
             $domPdf->render();
 
             $public = env('SERVIDOR_WEB') ? 'public/' : '';
-
-            file_put_contents($public.'orcamento/ORCAMENTO_'.$id.'.pdf', $domPdf->output());
+            $pdfPath = $public.'orcamento/ORCAMENTO_'.$id.'.pdf';
+            $saved = safe_file_put_contents($pdfPath, $domPdf->output());
+            if($saved === false){
+                session()->flash("mensagem_erro", "Erro ao gerar arquivo PDF do orçamento para envio de email.");
+                return redirect()->back();
+            }
 
             $value = session('user_logged');
 
@@ -510,7 +544,7 @@ class OrcamentoController extends Controller
             }else{
                 try{
                     Mail::send('mail.orcamento_send', ['emissao' => $orcamento->created_at,
-                        'valor' => $orcamento->valor_total, 'usuario' => $value['nome'], 'config' => $config], function($m) use ($orcamento, $email, $pdf){
+                        'valor' => $orcamento->valor_total, 'usuario' => $value['nome'], 'config' => $config], function($m) use ($orcamento, $email, $pdfPath){
 
                             $public = env('SERVIDOR_WEB') ? 'public/' : '';
                             $nomeEmpresa = env('MAIL_NAME');
@@ -520,7 +554,9 @@ class OrcamentoController extends Controller
 
                             $m->from($emailEnvio, $nomeEmpresa);
                             $m->subject('Envio de Oçamento ' . $orcamento->id);
-                            $m->attach($public.'orcamento/ORCAMENTO_'.$orcamento->id.'.pdf');
+                            if(file_exists($pdfPath)){
+                                $m->attach($pdfPath);
+                            }
                             $m->to($email);
                             return response()->json("ok", 200);
 

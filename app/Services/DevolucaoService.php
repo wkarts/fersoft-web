@@ -929,13 +929,13 @@ class DevolucaoService{
             // monta e salva o XML já autorizado (já temos protocolo dentro de $resp)
             $xml = Complements::toAuthorize($signXml, $resp);
             //$public = env('SERVIDOR_WEB') ? 'public/' : '';
-            //file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
+            //safe_file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
 
             $folder = public_path('xml_devolucao');
             if (! is_dir($folder)) {
                 mkdir($folder, 0755, true);
             }
-            file_put_contents($folder . DIRECTORY_SEPARATOR . $chave . '.xml', $xml);
+            safe_file_put_contents($folder . DIRECTORY_SEPARATOR . $chave . '.xml', $xml);
 
 
             // retorno = número do protocolo
@@ -972,8 +972,8 @@ class DevolucaoService{
 			try {
 				$xml = Complements::toAuthorize($signXml, $protocolo);
 				header('Content-type: text/xml; charset=UTF-8');
-				//file_put_contents($public.'xml_devolucao/'.$chave.'.xml',$xml);
-                file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
+				//safe_file_put_contents($public.'xml_devolucao/'.$chave.'.xml',$xml);
+                safe_file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
 				return $recibo;
 				// $this->printDanfe($xml);
 			} catch (\Exception $e) {
@@ -1002,7 +1002,7 @@ class DevolucaoService{
                 if ($std->protNFe->infProt->cStat == 100) {
                     $xml = Complements::toAuthorize($devolucao->signed_xml, $response);
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                    file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
+                    safe_file_put_contents( public_path('xml_devolucao/').$chave.'.xml', $xml);
                     // opcional: marcar $devolucao->estado = 'aprovado' e salvar
                 }
             }
@@ -1065,7 +1065,7 @@ class DevolucaoService{
 				if ($cStat == '101' || $cStat == '135' || $cStat == '155' ) {
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents(public_path('xml_devolucao_cancelada/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_devolucao_cancelada/').$chave.'.xml',$xml);
 
 					return $json;
 				} else {
@@ -1106,7 +1106,7 @@ class DevolucaoService{
 					$public = env('SERVIDOR_WEB') ? 'public/' : '';
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents( public_path('xml_devolucao_correcao/').$chave.'.xml',$xml);
+					safe_file_put_contents( public_path('xml_devolucao_correcao/').$chave.'.xml',$xml);
 
 					$devolucao->sequencia_cce = $devolucao->sequencia_cce + 1;
 					$devolucao->save();

@@ -973,7 +973,7 @@ class NFCeService{
                 try {
 
                     $xml = Complements::toAuthorize($signXml, $resp);
-                    file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
+                    safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
                     return $std->protNFe->infProt->nProt;
                 } catch (\Exception $e) {
                     return "Erro: " . $st->toJson($resp);
@@ -1014,7 +1014,7 @@ class NFCeService{
                     $config->save();
                     try{
                         $xml = Complements::toAuthorize($venda->signed_xml, $nRec);
-                        file_put_contents(public_path('xml_nfce/').$chave.'.xml',$xml);
+                        safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml',$xml);
                     }catch(\Exception $e){
 
                     }
@@ -1059,7 +1059,7 @@ class NFCeService{
                 $cStat = $std->retEvento->infEvento->cStat;
                 if ($cStat == '101' || $cStat == '135' || $cStat == '155' ) {
                     $xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-                    file_put_contents(public_path('xml_nfce_cancelada/').$chave.'.xml',$xml);
+                    safe_file_put_contents(public_path('xml_nfce_cancelada/').$chave.'.xml',$xml);
 
                     return $arr;
                 } else {
