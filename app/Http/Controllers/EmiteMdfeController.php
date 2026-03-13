@@ -529,7 +529,7 @@ class EmiteMdfeController extends Controller
 			$damdfe->creditsIntegratorFooter('WEBNFe Sistemas - http://www.webenf.com.br');
 			$pdf = $damdfe->render($logo);
 			header('Content-Type: application/pdf');
-			file_put_contents($public.'pdf/MDFe.pdf',$pdf);
+			safe_file_put_contents($public.'pdf/MDFe.pdf',$pdf);
 
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();

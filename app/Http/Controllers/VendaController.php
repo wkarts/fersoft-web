@@ -2266,7 +2266,7 @@ class VendaController extends Controller
                 // $id = $danfe->monta($logo);
                 $pdf = $danfe->render($logo);
 
-                file_put_contents(public_path('vendas_temp/').'DANFE_'.$venda->id.'.pdf',$pdf);
+                safe_file_put_contents(public_path('vendas_temp/').'DANFE_'.$venda->id.'.pdf',$pdf);
 
                 return env("PATH_URL").'/vendas_temp/DANFE_'.$venda->id.'.pdf';
             } catch (InvalidArgumentException $e) {
@@ -2298,7 +2298,7 @@ class VendaController extends Controller
 
         $public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-        file_put_contents(public_path('vendas_temp/').'PEDIDO_'.$venda->id.'.pdf', $domPdf->output());
+        safe_file_put_contents(public_path('vendas_temp/').'PEDIDO_'.$venda->id.'.pdf', $domPdf->output());
         return env("PATH_URL").'/vendas_temp/PEDIDO_'.$venda->id.'.pdf';
     }
 

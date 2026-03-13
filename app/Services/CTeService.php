@@ -551,7 +551,7 @@ class CTeService{
 				// $xml = Complements::toAuthorize($this->tools->lastRequest, $std->protCTe->infProt);
 				$xml = Complements::toAuthorize($signXml, $resp);
 
-				file_put_contents(public_path('xml_cte/') . $chave . '.xml', $xml);
+				safe_file_put_contents(public_path('xml_cte/') . $chave . '.xml', $xml);
 
 				return $recibo;
 				// return [
@@ -653,7 +653,7 @@ class CTeService{
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
 				// header('Content-type: text/xml; charset=UTF-8');
-				file_put_contents(public_path('xml_cte_cancelada/').$chave.'.xml',$xml);
+				safe_file_put_contents(public_path('xml_cte_cancelada/').$chave.'.xml',$xml);
 				return $json;
 			}else{
 				return $json;
@@ -738,7 +738,7 @@ class CTeService{
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if ($cStat == '101' || $cStat == '135' || $cStat == '155') {
 				$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-				file_put_contents(public_path('xml_cte_correcao/').$chave.'.xml',$xml);
+				safe_file_put_contents(public_path('xml_cte_correcao/').$chave.'.xml',$xml);
 				$cte->sequencia_cce = $cte->sequencia_cce + 1;
 				$cte->save();
 				return $json;
@@ -756,7 +756,7 @@ class CTeService{
 		// $resp = safe_file_get_contents('ctes.xml');
 		try{
 			$resp = $this->tools->sefazDistDFe(0,0);
-			// file_put_contents("ctes.xml", $resp);
+			// safe_file_put_contents("ctes.xml", $resp);
 
 			$dom = new \DOMDocument();
 			$dom->loadXML($resp);
@@ -808,7 +808,7 @@ class CTeService{
 
 	public function consultaDocumentos(){
 		$resp = $this->tools->sefazDistDFe(0,0);
-		// file_put_contents("ctes.xml", $resp);
+		// safe_file_put_contents("ctes.xml", $resp);
 		// $resp = safe_file_get_contents('ctes.xml');
 		$dom = new \DOMDocument();
 		$dom->loadXML($resp);

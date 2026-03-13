@@ -108,7 +108,7 @@ class NFCeController extends Controller
 						$config->ultimo_numero_nfce = $nfce['nNf'];
 						$config->save();
 
-						file_put_contents(public_path('xml_nfce_contigencia/').$nfce['chave'].'.xml', $signed);
+						safe_file_put_contents(public_path('xml_nfce_contigencia/').$nfce['chave'].'.xml', $signed);
 
 						echo json_encode('OFFL');
 

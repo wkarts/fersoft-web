@@ -1823,7 +1823,7 @@ class DevolucaoController extends Controller
 
             $dev = $nfe_dev->gerarDevolucao($devolucao);
             if(!isset($dev['erros_xml'])){
-                // file_put_contents('xml/teste2.xml', $nfe['xml']);
+                // safe_file_put_contents('xml/teste2.xml', $nfe['xml']);
 
                 $signed = $nfe_dev->sign($dev['xml']);
                 $resultado = $nfe_dev->transmitir($signed, $dev['chave']);
@@ -2954,7 +2954,7 @@ class DevolucaoController extends Controller
             $pdf   = $danfe->render($logo);
 
             header('Content-Type: application/pdf');
-            file_put_contents(public_path('pdf/') . 'DANFE_DEVOLUCAO.pdf', $pdf);
+            safe_file_put_contents(public_path('pdf/') . 'DANFE_DEVOLUCAO.pdf', $pdf);
         } catch (InvalidArgumentException $e) {
             echo "Ocorreu um erro durante o processamento: " . $e->getMessage();
         }

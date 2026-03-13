@@ -1719,7 +1719,7 @@ class PurchaseController extends Controller
 
                     $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
 
-                    file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
+                    safe_file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
 
                     for($i=0; $i<$it->quantidade; $i++){
                         array_push($data, $item);

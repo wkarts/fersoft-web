@@ -1681,7 +1681,7 @@ class NFService{
 				if ($cStat == '101' || $cStat == '135' || $cStat == '155' ) {
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents(public_path('xml_nfe_cancelada/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_nfe_cancelada/').$chave.'.xml',$xml);
 
 					return $json;
 				} else {
@@ -1725,7 +1725,7 @@ class NFService{
 					// $public = env('SERVIDOR_WEB') ? 'public/' : '';
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents(public_path('xml_nfe_correcao/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_nfe_correcao/').$chave.'.xml',$xml);
 
 					$venda->sequencia_cce = $venda->sequencia_cce + 1;
 					$venda->save();
@@ -1964,7 +1964,7 @@ class NFService{
 
                 if (in_array($cStat, [100, 150], true)) {
                         $xml = Complements::toAuthorize($signXml, $rawResponse ?? json_encode($infProt));
-                        file_put_contents(public_path('xml_nfe/') . $chave . '.xml', $xml);
+                        safe_file_put_contents(public_path('xml_nfe/') . $chave . '.xml', $xml);
 
                         $attributes['status'] = 'autorizado';
 
@@ -2163,7 +2163,7 @@ class NFService{
                                                 $venda->save();
 
                                                 $xml = Complements::toAuthorize($venda->signed_xml, $protocolo);
-                                                file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
+                                                safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
                                                 // return $xml;
                                         }
                                 }

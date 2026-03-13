@@ -523,8 +523,12 @@ class OrcamentoController extends Controller
             $domPdf->render();
 
             $public = env('SERVIDOR_WEB') ? 'public/' : '';
-
-            file_put_contents($public.'orcamento/ORCAMENTO_'.$id.'.pdf', $domPdf->output());
+            $pdfPath = $public.'orcamento/ORCAMENTO_'.$id.'.pdf';
+            $saved = safe_file_put_contents($pdfPath, $domPdf->output());
+            if($saved === false){
+                session()->flash("mensagem_erro", "Erro ao gerar arquivo PDF do orçamento para envio de email.");
+                return redirect()->back();
+            }
 
             $value = session('user_logged');
 
@@ -540,7 +544,7 @@ class OrcamentoController extends Controller
             }else{
                 try{
                     Mail::send('mail.orcamento_send', ['emissao' => $orcamento->created_at,
-                        'valor' => $orcamento->valor_total, 'usuario' => $value['nome'], 'config' => $config], function($m) use ($orcamento, $email, $pdf){
+                        'valor' => $orcamento->valor_total, 'usuario' => $value['nome'], 'config' => $config], function($m) use ($orcamento, $email, $pdfPath){
 
                             $public = env('SERVIDOR_WEB') ? 'public/' : '';
                             $nomeEmpresa = env('MAIL_NAME');
@@ -550,7 +554,9 @@ class OrcamentoController extends Controller
 
                             $m->from($emailEnvio, $nomeEmpresa);
                             $m->subject('Envio de Oçamento ' . $orcamento->id);
-                            $m->attach($public.'orcamento/ORCAMENTO_'.$orcamento->id.'.pdf');
+                            if(file_exists($pdfPath)){
+                                $m->attach($pdfPath);
+                            }
                             $m->to($email);
                             return response()->json("ok", 200);
 

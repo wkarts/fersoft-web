@@ -944,7 +944,7 @@ class UserController extends Controller
             if(!is_dir(public_path('contratos'))){
                 mkdir(public_path('contratos'), 0777, true);
             }
-            file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
+            safe_file_put_contents(public_path('contratos/'.$cnpj.'.pdf'), $output);
 
             EmpresaContrato::create(
                 [

@@ -679,7 +679,7 @@ class EmiteCteController extends Controller
 			// $dacte->monta();
 			$pdf = $dacte->render();
 			header('Content-Type: application/pdf');
-			file_put_contents(public_path('pdf/').'CTe.pdf', $pdf);
+			safe_file_put_contents(public_path('pdf/').'CTe.pdf', $pdf);
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
 		}  

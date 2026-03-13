@@ -484,7 +484,7 @@ class ConfigNotaController extends Controller
 		->first();
 		// echo "Senha: " . $certificado->senha;
 		try{
-			file_put_contents(public_path('cd.bin'), $certificado->arquivo);
+			safe_file_put_contents(public_path('cd.bin'), $certificado->arquivo);
 			return response()->download(public_path('cd.bin'));
 		}catch(\Exception $e){
 			echo $e->getMessage();

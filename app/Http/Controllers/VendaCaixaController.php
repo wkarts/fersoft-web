@@ -1768,7 +1768,7 @@ public function saveTroca(Request $request){
     }
 
 
-    file_put_contents(public_path('vendas_caixa_temp/').'CUPOM_'.$venda->id.'.pdf', $pdf);
+    safe_file_put_contents(public_path('vendas_caixa_temp/').'CUPOM_'.$venda->id.'.pdf', $pdf);
     return env("PATH_URL").'/vendas_caixa_temp/CUPOM_'.$venda->id.'.pdf';
   }
 
@@ -1800,7 +1800,7 @@ public function saveTroca(Request $request){
         $pdf = $danfce->render($logo);
 
 
-        file_put_contents(public_path('vendas_caixa_temp/').'DANFCE_'.$venda->id.'.pdf',$pdf);
+        safe_file_put_contents(public_path('vendas_caixa_temp/').'DANFCE_'.$venda->id.'.pdf',$pdf);
 
         return env("PATH_URL").'/vendas_caixa_temp/DANFCE_'.$venda->id.'.pdf';
       } catch (InvalidArgumentException $e) {

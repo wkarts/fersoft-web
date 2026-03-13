@@ -45,7 +45,7 @@ class NfceAppController extends Controller
 
 				$public = env('SERVIDOR_WEB') ? 'public/' : '';
 				$signed = $nfe_service->sign($nfce['xml']);
-			// file_put_contents($public.'xml_nfce/'.$venda->id.'.xml',$signed);
+			// safe_file_put_contents($public.'xml_nfce/'.$venda->id.'.xml',$signed);
 				$resultado = $nfe_service->transmitirNfce($signed, $nfce['chave']);
 
 				if(substr($resultado, 0, 4) != 'Erro'){

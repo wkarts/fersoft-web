@@ -349,7 +349,7 @@ class DFeController extends Controller
 					$zip = $std->loteDistDFeInt->docZip;
 					$xml = gzdecode(base64_decode($zip));
 
-					file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
+					safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
 				}else{
 					$xml = safe_file_get_contents(public_path('xml_dfe/').$chave.'.xml');
 				}
@@ -487,7 +487,7 @@ class DFeController extends Controller
 				$zip = $std->loteDistDFeInt->docZip;
 				$xml = gzdecode(base64_decode($zip));
 
-				file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
+				safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
 			}else{
 				$xml = safe_file_get_contents(public_path('xml_dfe/').$chave.'.xml');
 			}
@@ -504,7 +504,7 @@ class DFeController extends Controller
 
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-			file_put_contents(public_path('xml_dfe/').$chave.'.xml',$xml);
+			safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml',$xml);
 
 			$danfe = new Danfe($xml);
 			// $id = $danfe->monta();

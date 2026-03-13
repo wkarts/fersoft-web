@@ -137,7 +137,7 @@ class NotaFiscalAppController extends Controller
 			header('Content-Type: application/pdf');
 			return response($pdf)
 			->header('Content-Type', 'application/pdf');
-			// file_put_contents($public.'pdf/DANFE.pdf',$pdf);
+			// safe_file_put_contents($public.'pdf/DANFE.pdf',$pdf);
 			// return response()->json($public.'pdf/DANFE.pdf', 200);
 		} catch (InvalidArgumentException $e) {
 			return response()->json("erro", 401);
@@ -265,7 +265,7 @@ class NotaFiscalAppController extends Controller
 			// $id = $danfe->monta($logo);
 			$pdf = $danfe->render($logo);
 			header('Content-Type: application/pdf');
-			// file_put_contents($public.'pdf/DANFE.pdf',$pdf);
+			// safe_file_put_contents($public.'pdf/DANFE.pdf',$pdf);
 			// return response()->json($public.'pdf/DANFE.pdf', 200);
 			return response($pdf)
 			->header('Content-Type', 'application/pdf');
@@ -299,7 +299,7 @@ class NotaFiscalAppController extends Controller
 			$daevento->debugMode(true);
 			$pdf = $daevento->render($logo);
 			header('Content-Type: application/pdf');
-			// file_put_contents($public.'pdf/DANFE.pdf',$pdf);
+			// safe_file_put_contents($public.'pdf/DANFE.pdf',$pdf);
 			// return response()->json($public.'pdf/DANFE.pdf', 200);
 			return response($pdf)
 			->header('Content-Type', 'application/pdf');
@@ -332,7 +332,7 @@ class NotaFiscalAppController extends Controller
 			$daevento->debugMode(true);
 			$pdf = $daevento->render($logo);
 			header('Content-Type: application/pdf');
-			// file_put_contents($public.'pdf/DANFE.pdf',$pdf);
+			// safe_file_put_contents($public.'pdf/DANFE.pdf',$pdf);
 			// return response()->json($public.'pdf/DANFE.pdf', 200);
 			return response($pdf)
 			->header('Content-Type', 'application/pdf');

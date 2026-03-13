@@ -644,7 +644,7 @@ class NfseController extends Controller
 					$item->save();
 
 					$xml = safe_file_get_contents($item->url_xml);
-					file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
+					safe_file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 					return response()->json($object, 200);
 				}elseif($object->status == 'processando'){
 					
@@ -666,7 +666,7 @@ class NfseController extends Controller
 					$item->save();
 
 					$xml = safe_file_get_contents($item->url_xml);
-					file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
+					safe_file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 					return response()->json($object, 200);
 				}
 				// dd($object);
@@ -756,7 +756,7 @@ class NfseController extends Controller
 				$item->estado = 'aprovado';
 				$item->save();
 				$xml = safe_file_get_contents($item->url_xml);
-				file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
+				safe_file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 			}
 
 			if($object->status == "reprovado"){

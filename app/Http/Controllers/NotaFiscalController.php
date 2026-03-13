@@ -147,7 +147,7 @@ class NotaFiscalController extends Controller
 
 			$nfe = $nfe_service->gerarNFe($vendaId);
 			if(!isset($nfe['erros_xml'])){
-			// file_put_contents('xml/teste2.xml', $nfe['xml']);
+			// safe_file_put_contents('xml/teste2.xml', $nfe['xml']);
 			// return response()->json($nfe, 200);
                                 $signed = $nfe_service->sign($nfe['xml']);
                                 $resultado = $nfe_service->transmitir($signed, $nfe['chave'], [
@@ -855,7 +855,7 @@ class NotaFiscalController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		file_put_contents(public_path('vendas_temp/').'PEDIDO_'.$venda->id.'.pdf', $domPdf->output());
+		safe_file_put_contents(public_path('vendas_temp/').'PEDIDO_'.$venda->id.'.pdf', $domPdf->output());
 
 		if($venda->chave != ""){
 			$this->criarPdfParaEnvio($venda);
@@ -972,7 +972,7 @@ class NotaFiscalController extends Controller
 			// $id = $danfe->monta($logo);
 			$pdf = $danfe->render($logo);
 			header('Content-Type: application/pdf');
-			file_put_contents(public_path('pdf/').'DANFE.pdf',$pdf);
+			safe_file_put_contents(public_path('pdf/').'DANFE.pdf',$pdf);
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
 		}

@@ -1175,7 +1175,7 @@ class NFeRemessaService{
 
                         // autoriza usando o XML assinado e o próprio $response da consulta
                         $xml = Complements::toAuthorize($item->signed_xml, $response);
-                        file_put_contents(public_path('xml_nfe/').$chave.'.xml', $xml);
+                        safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml', $xml);
                     }
                 }
             }
@@ -1219,7 +1219,7 @@ class NFeRemessaService{
 						$config->ultimo_numero_nfe = $config->ultimo_numero_nfe+1;
 						$config->save();
 						$xml = Complements::toAuthorize($item->signed_xml, $protocolo);
-						file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
+						safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
 						// return $xml;
 					}
 				}
@@ -1280,7 +1280,7 @@ class NFeRemessaService{
 				if ($cStat == '101' || $cStat == '135' || $cStat == '155' ) {
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents(public_path('xml_nfe_cancelada/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_nfe_cancelada/').$chave.'.xml',$xml);
 
 					return $json;
 				} else {
@@ -1320,7 +1320,7 @@ class NFeRemessaService{
 					$public = env('SERVIDOR_WEB') ? 'public/' : '';
             //SUCESSO PROTOCOLAR A SOLICITAÇÂO ANTES DE GUARDAR
 					$xml = Complements::toAuthorize($this->tools->lastRequest, $response);
-					file_put_contents(public_path('xml_nfe_correcao/').$chave.'.xml',$xml);
+					safe_file_put_contents(public_path('xml_nfe_correcao/').$chave.'.xml',$xml);
 
 					$item->sequencia_cce = $item->sequencia_cce + 1;
 					$item->save();
@@ -1359,7 +1359,7 @@ class NFeRemessaService{
 
             // monta e salva o XML já autorizado (já temos o protocolo em $resp)
             $xml = Complements::toAuthorize($signXml, $resp);
-            file_put_contents(public_path('xml_nfe/').$chave.'.xml', $xml);
+            safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml', $xml);
 
             // retorna o número do protocolo
             return $std->protNFe->infProt->nProt;
@@ -1400,7 +1400,7 @@ class NFeRemessaService{
 			//return $protocolo;
 			try {
 				$xml = Complements::toAuthorize($signXml, $protocolo);
-				file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
+				safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
 				return $recibo;
 				// $this->printDanfe($xml);
 			} catch (\Exception $e) {

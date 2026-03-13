@@ -79,7 +79,7 @@ final class ConsolidarNfceFromSpedService
         // 6) Grava consolidado
         $outputFilename = "{$prefix}_consolidado.txt";
         $outputFullPath = $folder . DIRECTORY_SEPARATOR . $outputFilename;
-        file_put_contents($outputFullPath, $result['txt']);
+        safe_file_put_contents($outputFullPath, $result['txt']);
 
         // 7) Métricas e hashes
         $inputSize  = @filesize($inputFullPath) ?: null;
