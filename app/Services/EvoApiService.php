@@ -437,7 +437,7 @@ class EvoApiService
         $basename = basename($filePath);                            // ex: foto.png
         $filename = pathinfo($basename, PATHINFO_FILENAME);         // ex: foto
         $caption  = $caption ?: $filename;                          // sem extensão
-        $content  = file_get_contents($filePath) ?: '';
+        $content  = safe_file_get_contents($filePath) ?: '';
         $mimeType = $this->detectMime($filePath);                   // usa helper
         $mediaType= $this->detectMediaType($mimeType);              // image/audio/video/document
 

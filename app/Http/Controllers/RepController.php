@@ -1444,7 +1444,7 @@ class RepController extends Controller
 
 		if($request->hasFile('file') && strlen($request->senha) > 0){
 			$file = $request->file('file');
-			$temp = file_get_contents($file);
+			$temp = safe_file_get_contents($file);
 
 			$extensao = $file->getClientOriginalExtension();
 

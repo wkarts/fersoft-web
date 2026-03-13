@@ -1265,7 +1265,7 @@ class DevolucaoController extends Controller
         ->first();
 
         if(valida_objeto($devolucao)){
-            // $xml = file_get_contents('xml_devolucao/'.$devolucao->chave_gerada.'.xml');
+            // $xml = safe_file_get_contents('xml_devolucao/'.$devolucao->chave_gerada.'.xml');
             if(!file_exists(public_path('xml_devolucao/').$devolucao->chave_gerada.'.xml')){
                 session()->flash("mensagem_erro", "XML não encontrado!");
                 return redirect()->back();
@@ -1370,13 +1370,13 @@ class DevolucaoController extends Controller
                 $xmlPath = public_path('xml_devolucao/') . $devolucao->chave_gerada . '.xml';
 
                 if (file_exists($xmlPath)) {
-                    $xml = file_get_contents($xmlPath);
+                    $xml = safe_file_get_contents($xmlPath);
 
                     $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
                     if ($config->logo) {
                         $logo = 'data://text/plain;base64,'. base64_encode(
-                                file_get_contents(public_path('logos/') . $config->logo)
+                                safe_file_get_contents(public_path('logos/') . $config->logo)
                             );
                     } else {
                         $logo = null;
@@ -1399,7 +1399,7 @@ class DevolucaoController extends Controller
                 $xmlPath = public_path('xml_devolucao_cancelada/') . $devolucao->chave_gerada . '.xml';
 
                 if (file_exists($xmlPath)) {
-                    $xml = file_get_contents($xmlPath);
+                    $xml = safe_file_get_contents($xmlPath);
 
                     $dadosEmitente = $this->getEmitente();
                     try {
@@ -1510,7 +1510,7 @@ class DevolucaoController extends Controller
                 $devolucao->estado        = 1;
                 $this->enviarEmailAutomatico($devolucao);
 
-                $xml = file_get_contents(
+                $xml = safe_file_get_contents(
                     public_path("xml_devolucao/{$devolucao->chave_gerada}.xml")
                 );
                 importaXmlSieg($xml, $this->empresa_id);
@@ -1603,7 +1603,7 @@ class DevolucaoController extends Controller
 
                 // aqui o XML já foi escrito em public/xml_devolucao/…
                 $path = public_path("xml_devolucao/{$devolucao->chave_gerada}.xml");
-                $xml  = file_get_contents($path);
+                $xml  = safe_file_get_contents($path);
                 importaXmlSieg($xml, $this->empresa_id);
 
                 $devolucao->save();
@@ -1684,7 +1684,7 @@ class DevolucaoController extends Controller
                     $this->enviarEmailAutomatico($devolucao);
 
                     // só aqui vai ler o XML gerado lá dentro de DevolucaoService::transmitir()
-                    $file = file_get_contents(
+                    $file = safe_file_get_contents(
                         public_path('xml_devolucao/') .
                         $devolucao->chave_gerada . '.xml'
                     );
@@ -1775,7 +1775,7 @@ class DevolucaoController extends Controller
 
                 // 9) Importa no Sieg
                 $path = $xmlDir . DIRECTORY_SEPARATOR . $devolucao->chave_gerada . '.xml';
-                $file = file_get_contents($path);
+                $file = safe_file_get_contents($path);
                 importaXmlSieg($file, $this->empresa_id);
 
             } else {
@@ -1835,7 +1835,7 @@ class DevolucaoController extends Controller
                     $devolucao->numero_gerado = $dev['nNf'];
                     $this->enviarEmailAutomatico($devolucao);
 
-                    $file = file_get_contents(public_path('xml_devolucao/').$devolucao->chave_gerada.'.xml');
+                    $file = safe_file_get_contents(public_path('xml_devolucao/').$devolucao->chave_gerada.'.xml');
                     importaXmlSieg($file, $this->empresa_id);
 
                     $devolucao->save();
@@ -1916,7 +1916,7 @@ class DevolucaoController extends Controller
             $devolucao->estado = 3;
             $devolucao->save();
 
-            $file = file_get_contents(public_path('xml_devolucao_cancelada/').$devolucao->chave_gerada.'.xml');
+            $file = safe_file_get_contents(public_path('xml_devolucao_cancelada/').$devolucao->chave_gerada.'.xml');
             importaXmlSieg($file, $this->empresa_id);
 
             return response()->json($resultado, 200);
@@ -2048,7 +2048,7 @@ class DevolucaoController extends Controller
             // monta a URL do logo via public_path
             if ($config->logo) {
                 $logoFile = public_path('logos/') . $config->logo;
-                $logo     = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoFile));
+                $logo     = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoFile));
             } else {
                 $logo = null;
             }
@@ -2118,12 +2118,12 @@ class DevolucaoController extends Controller
             return redirect()->back();
         }
 
-        $xml = file_get_contents($xmlPath);
+        $xml = safe_file_get_contents($xmlPath);
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         if ($config->logo) {
             $logo = 'data://text/plain;base64,'.base64_encode(
-                    file_get_contents(public_path('logos/') . $config->logo)
+                    safe_file_get_contents(public_path('logos/') . $config->logo)
                 );
         } else {
             $logo = null;
@@ -2163,12 +2163,12 @@ class DevolucaoController extends Controller
             return redirect()->back();
         }
 
-        $xml = file_get_contents($xmlPath);
+        $xml = safe_file_get_contents($xmlPath);
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         if ($config->logo) {
             $logo = 'data://text/plain;base64,'.base64_encode(
-                    file_get_contents(public_path('logos/') . $config->logo)
+                    safe_file_get_contents(public_path('logos/') . $config->logo)
                 );
         } else {
             $logo = null;
@@ -2936,14 +2936,14 @@ class DevolucaoController extends Controller
 
     private function criarPdfParaEnvio($devolucao){
         // carrega o XML diretamente a partir do caminho público
-        $xml = file_get_contents(public_path('xml_devolucao/') . $devolucao->chave_gerada . '.xml');
+        $xml = safe_file_get_contents(public_path('xml_devolucao/') . $devolucao->chave_gerada . '.xml');
 
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         if ($config->logo) {
             $logo = 'data://text/plain;base64,' .
                 base64_encode(
-                    file_get_contents(public_path('logos/') . $config->logo)
+                    safe_file_get_contents(public_path('logos/') . $config->logo)
                 );
         } else {
             $logo = null;

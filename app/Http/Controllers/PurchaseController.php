@@ -512,7 +512,7 @@ class PurchaseController extends Controller
                 // Importa no SIEG e envia e-mail (best-effort)
                 try {
                     if (is_file($xmlAutPath)) {
-                        $file = file_get_contents($xmlAutPath);
+                        $file = safe_file_get_contents($xmlAutPath);
                         importaXmlSieg($file, $this->empresa_id);
                     }
                 } catch (\Throwable $t) {}
@@ -727,7 +727,7 @@ class PurchaseController extends Controller
                     $config->save();
                     $this->enviarEmailAutomatico($compra);
 
-                    $file = file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
+                    $file = safe_file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
                     importaXmlSieg($file, $this->empresa_id);
 
                     return response()->json($resultado, 200);
@@ -763,7 +763,7 @@ class PurchaseController extends Controller
                 $config->save();
                 $this->enviarEmailAutomatico($compra);
 
-                $file = file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
+                $file = safe_file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
                 importaXmlSieg($file, $this->empresa_id);
 
                 return response()->json($resultado, 200);
@@ -786,9 +786,9 @@ class PurchaseController extends Controller
             $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
             $xml = null;
             if(file_exists(public_path('xml_entrada_emitida/').$compra->chave.'.xml')){
-                $xml = file_get_contents(public_path('xml_entrada_emitida/').$compra->chave.'.xml');
+                $xml = safe_file_get_contents(public_path('xml_entrada_emitida/').$compra->chave.'.xml');
             }else if(file_exists(public_path('xml_entrada/').$compra->chave.'.xml')){
-                $xml = file_get_contents($public.'xml_entrada/'.$compra->chave.'.xml');
+                $xml = safe_file_get_contents($public.'xml_entrada/'.$compra->chave.'.xml');
             }else{
                 session()->flash('mensagem_erro', 'Xml não encontrado!');
                 return redirect('/compras');
@@ -798,7 +798,7 @@ class PurchaseController extends Controller
             ->first();
 
             if($config->logo){
-                $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
             }else{
                 $logo = null;
             }
@@ -880,7 +880,7 @@ class PurchaseController extends Controller
             return response("Arquivo XML não encontrado!!", 404);
         }
 
-        $xml = @file_get_contents($arquivo);
+        $xml = @safe_file_get_contents($arquivo);
         if ($xml === false) {
             return response("Falha ao ler o XML em: {$arquivo}", 500);
         }
@@ -890,7 +890,7 @@ class PurchaseController extends Controller
         if ($config && $config->logo) {
             $logoPath = rtrim(public_path('logos'), '/\\') . DIRECTORY_SEPARATOR . $config->logo;
             if (is_file($logoPath)) {
-                $logo = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+                $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
             }
         }
 
@@ -1006,7 +1006,7 @@ class PurchaseController extends Controller
                 }
                 if (is_string($xmlPath) && file_exists($xmlPath)) {
                     try {
-                        $file = file_get_contents($xmlPath);
+                        $file = safe_file_get_contents($xmlPath);
                         importaXmlSieg($file, $this->empresa_id);
                     } catch (\Throwable $e) {
                         \Log::warning('Falha ao importar XML de cancelamento no SIEG', [
@@ -1331,7 +1331,7 @@ class PurchaseController extends Controller
                 //$public = env('SERVIDOR_WEB') ? 'public/' : '';
                 $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
                 if($config->logo){
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+                    $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
                 }else{
                     $logo = null;
                 }
@@ -1394,7 +1394,7 @@ class PurchaseController extends Controller
                 $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
 
                 if($config->logo){
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                    $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
                 }else{
                     $logo = null;
                 }

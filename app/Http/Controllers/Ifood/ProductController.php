@@ -449,7 +449,7 @@ class ProductController extends Controller
 
             $file = $request->file('file');
             $mimeType = $file->getClientOriginalExtension();
-            $image = "data:image/$mimeType;base64,".base64_encode(file_get_contents($request->file('file')));
+            $image = "data:image/$mimeType;base64,".base64_encode(safe_file_get_contents($request->file('file')));
 
             $data['image'] = $image;
         }
@@ -598,7 +598,7 @@ class ProductController extends Controller
 
                 $file = $request->file('file');
                 $mimeType = $file->getClientOriginalExtension();
-                $image = "data:image/$mimeType;base64,".base64_encode(file_get_contents($request->file('file')));
+                $image = "data:image/$mimeType;base64,".base64_encode(safe_file_get_contents($request->file('file')));
 
                 $data['image'] = $image;
             }

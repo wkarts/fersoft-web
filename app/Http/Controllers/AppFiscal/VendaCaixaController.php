@@ -433,7 +433,7 @@ class VendaCaixaController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
 		}else{
 			$logo = null;
 		}

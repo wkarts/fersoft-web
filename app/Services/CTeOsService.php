@@ -561,7 +561,7 @@ class CTeOsService{
 	}
 
 	public function getXml($chave){
-		// $resp = file_get_contents('ctes.xml');
+		// $resp = safe_file_get_contents('ctes.xml');
 		try{
 			$resp = $this->tools->sefazDistDFe(0,0);
 			// file_put_contents("ctes.xml", $resp);
@@ -617,7 +617,7 @@ class CTeOsService{
 	public function consultaDocumentos(){
 		$resp = $this->tools->sefazDistDFe(0,0);
 		// file_put_contents("ctes.xml", $resp);
-		// $resp = file_get_contents('ctes.xml');
+		// $resp = safe_file_get_contents('ctes.xml');
 		$dom = new \DOMDocument();
 		$dom->loadXML($resp);
 		$xMotivo = $dom->getElementsByTagName('xMotivo')->item(0)->nodeValue;

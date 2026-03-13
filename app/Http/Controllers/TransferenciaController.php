@@ -367,7 +367,7 @@ class TransferenciaController extends Controller
                     }
                     */
 
-                    importaXmlSieg(file_get_contents(public_path('xml_nfe/' . $nfe['chave'] . '.xml')), $this->empresa_id);
+                    importaXmlSieg(safe_file_get_contents(public_path('xml_nfe/' . $nfe['chave'] . '.xml')), $this->empresa_id);
 
                 } else {
                     // 🔴 REJEITADO
@@ -441,7 +441,7 @@ class TransferenciaController extends Controller
             if (!empty($emitente['logo'])) {
                 $logoPath = public_path('logos/') . $emitente['logo'];
                 if (file_exists($logoPath)) {
-                    $logo = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+                    $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
                 } else {
                     $logo = null;
                 }
@@ -491,12 +491,12 @@ class TransferenciaController extends Controller
         }
 
         if (file_exists(public_path('xml_nfe/') . $item->chave . '.xml')) {
-            $xml = file_get_contents(public_path('xml_nfe/') . $item->chave . '.xml');
+            $xml = safe_file_get_contents(public_path('xml_nfe/') . $item->chave . '.xml');
 
             if (!empty($emitente['logo'])) {
                 $logoPath = public_path('logos/') . $emitente['logo'];
                 if (file_exists($logoPath)) {
-                    $logo = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+                    $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
                 } else {
                     $logo = null;
                 }
@@ -603,7 +603,7 @@ class TransferenciaController extends Controller
             }
 
             if (file_exists($pathXml)) {
-                importaXmlSieg(file_get_contents($pathXml), $this->empresa_id);
+                importaXmlSieg(safe_file_get_contents($pathXml), $this->empresa_id);
             }
 
             return response()->json([
@@ -618,7 +618,7 @@ class TransferenciaController extends Controller
             }
 
             if (file_exists($pathXml)) {
-                importaXmlSieg(file_get_contents($pathXml), $this->empresa_id);
+                importaXmlSieg(safe_file_get_contents($pathXml), $this->empresa_id);
 
                 return response()->json([
                     'success' => true,
@@ -650,14 +650,14 @@ class TransferenciaController extends Controller
         }
 
         if (file_exists(public_path('xml_nfe_correcao/') . $item->chave . '.xml')) {
-            $xml = file_get_contents(public_path('xml_nfe_correcao/') . $item->chave . '.xml');
+            $xml = safe_file_get_contents(public_path('xml_nfe_correcao/') . $item->chave . '.xml');
 
             $emitente = $this->__loadMatriz($item);
 
             if (!empty($emitente['logo'])) {
                 $logoPath = public_path('logos/') . $emitente['logo'];
                 if (file_exists($logoPath)) {
-                    $logo = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+                    $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
                 } else {
                     $logo = null;
                 }
@@ -704,14 +704,14 @@ class TransferenciaController extends Controller
         }
 
         if (file_exists(public_path('xml_nfe_cancelada/') . $item->chave . '.xml')) {
-            $xml = file_get_contents(public_path('xml_nfe_cancelada/') . $item->chave . '.xml');
+            $xml = safe_file_get_contents(public_path('xml_nfe_cancelada/') . $item->chave . '.xml');
 
             $emitente = $this->__loadMatriz($item);
 
             if (!empty($emitente['logo'])) {
                 $logoPath = public_path('logos/') . $emitente['logo'];
                 if (file_exists($logoPath)) {
-                    $logo = 'data://text/plain;base64,' . base64_encode(file_get_contents($logoPath));
+                    $logo = 'data://text/plain;base64,' . base64_encode(safe_file_get_contents($logoPath));
                 } else {
                     $logo = null;
                 }

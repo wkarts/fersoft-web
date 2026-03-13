@@ -107,7 +107,7 @@ class FilialController extends Controller
         $certificado = null;
         if($request->hasFile('certificado')){
             $file = $request->file('certificado');
-            $certificado = file_get_contents($file);
+            $certificado = safe_file_get_contents($file);
         }
 
         $cidade = Cidade::find($request->cidade);
@@ -170,7 +170,7 @@ class FilialController extends Controller
         $certificado = null;
         if($request->hasFile('certificado')){
             $file = $request->file('certificado');
-            $certificado = file_get_contents($file);
+            $certificado = safe_file_get_contents($file);
             $request->merge([
                 'arquivo_certificado' => $certificado
             ]);

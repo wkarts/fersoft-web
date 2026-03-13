@@ -141,7 +141,7 @@ class ContratoController extends Controller
 
 		$cnpj = preg_replace('/[^0-9]/', '', $empresa->cnpj);
 
-		$pdf = file_get_contents(public_path('contratos/').$cnpj.'.pdf');
+		$pdf = safe_file_get_contents(public_path('contratos/').$cnpj.'.pdf');
 		if($pdf){
 			header("Content-Disposition: ; filename=Contrato.pdf");
 			return response($pdf)

@@ -1743,7 +1743,7 @@ public function saveTroca(Request $request){
     ->first();
 
     if($config->logo){
-      $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+      $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
     }else{
       $logo = null;
     }
@@ -1777,7 +1777,7 @@ public function saveTroca(Request $request){
       mkdir(public_path('vendas_caixa_temp'), 0777, true);
     }
     if(file_exists(public_path('xml_nfce/'.$venda->chave.'.xml'))){
-      $xml = file_get_contents(public_path('xml_nfce/').$venda->chave.'.xml');
+      $xml = safe_file_get_contents(public_path('xml_nfce/').$venda->chave.'.xml');
 
       $config = ConfigNota::
       where('empresa_id', $this->empresa_id)
@@ -1787,7 +1787,7 @@ public function saveTroca(Request $request){
 
         if($config->logo){
           $public = env('SERVIDOR_WEB') ? 'public/' : '';
-          $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+          $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
         }else{
           $logo = null;
         }

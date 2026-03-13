@@ -169,13 +169,13 @@ class EmpresaController extends Controller
 			file_put_contents(app()->environmentFilePath(), str_replace(
 				"APP_DEBUG=false",
 				"APP_DEBUG=true",
-				file_get_contents(app()->environmentFilePath())
+				safe_file_get_contents(app()->environmentFilePath())
 			));
 		}else{
 			file_put_contents(app()->environmentFilePath(), str_replace(
 				"APP_DEBUG=true",
 				"APP_DEBUG=false",
-				file_get_contents(app()->environmentFilePath())
+				safe_file_get_contents(app()->environmentFilePath())
 			));
 		}
 	}
@@ -2085,7 +2085,7 @@ class EmpresaController extends Controller
 
             Certificado::create([
                 'senha' => bcrypt($request->senha),
-                'arquivo' => file_get_contents($file),
+                'arquivo' => safe_file_get_contents($file),
                 'empresa_id' => $empresaId,
             ]);
 
@@ -2104,7 +2104,7 @@ class EmpresaController extends Controller
 
 		if($request->hasFile('file') && strlen($request->senha) > 0){
 			$file = $request->file('file');
-			$temp = file_get_contents($file);
+			$temp = safe_file_get_contents($file);
 
 			$extensao = $file->getClientOriginalExtension();
 

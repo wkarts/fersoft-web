@@ -119,7 +119,7 @@ class NfeRemessaXmlController extends Controller
             $xml = $nfe['xml'];
 
             if($config->logo){
-                $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
             }else{
                 $logo = null;
             }
@@ -200,7 +200,7 @@ class NfeRemessaXmlController extends Controller
 
                     $this->enviarEmailAutomatico($item);
 
-                    $file = file_get_contents(public_path('xml_nfe/'.$nfe['chave'].'.xml'));
+                    $file = safe_file_get_contents(public_path('xml_nfe/'.$nfe['chave'].'.xml'));
                     importaXmlSieg($file, $this->empresa_id);
 
                 }else{
@@ -283,7 +283,7 @@ class NfeRemessaXmlController extends Controller
 
                 $this->enviarEmailAutomatico($venda);
 
-                $file = file_get_contents(public_path('xml_nfe/'.$chave.'.xml'));
+                $file = safe_file_get_contents(public_path('xml_nfe/'.$chave.'.xml'));
                 importaXmlSieg($file, $this->empresa_id);
 
             }else{
@@ -334,9 +334,9 @@ class NfeRemessaXmlController extends Controller
             ->first();
 
             if(file_exists(public_path('xml_nfe/').$item->chave.'.xml')){
-                $xml = file_get_contents(public_path('xml_nfe/').$item->chave.'.xml');
+                $xml = safe_file_get_contents(public_path('xml_nfe/').$item->chave.'.xml');
                 if($config->logo){
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                    $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
                 }else{
                     $logo = null;
                 }
@@ -434,14 +434,14 @@ class NfeRemessaXmlController extends Controller
         if($item->sequencia_cce > 0){
 
             if(file_exists(public_path('xml_nfe_correcao/').$item->chave.'.xml')){
-                $xml = file_get_contents(public_path('xml_nfe_correcao/').$item->chave.'.xml');
+                $xml = safe_file_get_contents(public_path('xml_nfe_correcao/').$item->chave.'.xml');
 
                 $config = ConfigNota::
                 where('empresa_id', $this->empresa_id)
                 ->first();
 
                 if($config->logo){
-                    $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                    $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
                 }else{
                     $logo = null;
                 }
@@ -475,14 +475,14 @@ class NfeRemessaXmlController extends Controller
         if($item->estado == 'cancelado'){
             try {
                 if(file_exists(public_path('xml_nfe_cancelada/').$item->chave.'.xml')){
-                    $xml = file_get_contents(public_path('xml_nfe_cancelada/').$item->chave.'.xml');
+                    $xml = safe_file_get_contents(public_path('xml_nfe_cancelada/').$item->chave.'.xml');
 
                     $config = ConfigNota::
                     where('empresa_id', $this->empresa_id)
                     ->first();
 
                     if($config->logo){
-                        $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+                        $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
                     }else{
                         $logo = null;
                     }
@@ -563,7 +563,7 @@ class NfeRemessaXmlController extends Controller
             $item->estado = 'cancelado';
             $item->save();
 
-            $file = file_get_contents(public_path('xml_nfe_cancelada/'.$item->chave.'.xml'));
+            $file = safe_file_get_contents(public_path('xml_nfe_cancelada/'.$item->chave.'.xml'));
             importaXmlSieg($file, $this->empresa_id);
 
             return response()->json($nfe, 200);
@@ -699,14 +699,14 @@ class NfeRemessaXmlController extends Controller
 
     private function criarPdfParaEnvio($venda){
 
-        $xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+        $xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
         ->first();
 
         if($config->logo){
-            $logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+            $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
         }else{
             $logo = null;
         }

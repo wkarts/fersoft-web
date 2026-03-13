@@ -125,7 +125,7 @@ class NFCeController extends Controller
 							$config->save();
 							$this->enviarEmailAutomatico($venda);
 						// $this->importaXmlSieg($venda);
-							$file = file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
+							$file = safe_file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
 							importaXmlSieg($file, $this->empresa_id);
 						}else{
 							$venda->estado = 'REJEITADO';
@@ -159,7 +159,7 @@ class NFCeController extends Controller
 		where('id', $vendaId)
 		->first();
 		if(file_exists(public_path('xml_nfce_contigencia/'.$venda->chave.'.xml'))){
-			$xml = file_get_contents(public_path('xml_nfce_contigencia/'.$venda->chave.'.xml'));
+			$xml = safe_file_get_contents(public_path('xml_nfce_contigencia/'.$venda->chave.'.xml'));
 
 			$config = ConfigNota::
 			where('empresa_id', $this->empresa_id)
@@ -346,7 +346,7 @@ class NFCeController extends Controller
 			}
 			if(file_exists(public_path('/').$public.$venda->chave.'.xml')){
 				try {
-					$xml = file_get_contents(public_path('/').$public.$venda->chave.'.xml');
+					$xml = safe_file_get_contents(public_path('/').$public.$venda->chave.'.xml');
 
 					$config = ConfigNota::
 					where('empresa_id', $this->empresa_id)
@@ -358,7 +358,7 @@ class NFCeController extends Controller
 
 					if($config->logo){
 						$public = env('SERVIDOR_WEB') ? 'public/' : '';
-						$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 					}else{
 						$logo = null;
 					}
@@ -444,7 +444,7 @@ class NFCeController extends Controller
 			->first();
 
 			if($config->logo){
-				$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+				$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 			}else{
 				$logo = null;
 			}
@@ -505,7 +505,7 @@ class NFCeController extends Controller
 			->first();
 
 			if($config->logo){
-				$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+				$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 			}else{
 				$logo = null;
 			}
@@ -670,7 +670,7 @@ class NFCeController extends Controller
 			$venda->valor_total = 0;
 			$venda->save();
 
-			$file = file_get_contents(public_path('xml_nfce_cancelada/'.$venda->chave.'.xml'));
+			$file = safe_file_get_contents(public_path('xml_nfce_cancelada/'.$venda->chave.'.xml'));
 			importaXmlSieg($file, $this->empresa_id);
 
 			// if($venda){
@@ -877,7 +877,7 @@ class NFCeController extends Controller
 
 	// 		$headers = [];
 
-	// 		$data = file_get_contents(public_path('xml_nfce/'.$venda->chave.'.xml'));
+	// 		$data = safe_file_get_contents(public_path('xml_nfce/'.$venda->chave.'.xml'));
 	// 		curl_setopt($curl, CURLOPT_URL, $url . "?apikey=".$escritorio->token_sieg."&email=".$escritorio->email);
 	// 		curl_setopt($curl, CURLOPT_POST, true);
 	// 		curl_setopt($curl,CURLOPT_HTTPHEADER, $headers);

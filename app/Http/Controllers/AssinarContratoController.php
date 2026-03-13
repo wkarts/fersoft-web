@@ -162,7 +162,7 @@ class AssinarContratoController extends Controller
 
 				$pdf->Output(public_path('contratos/'.$cnpj.'.pdf'), 'F');
 
-				$file = file_get_contents(public_path('contratos/'.$cnpj.'.pdf'));
+				$file = safe_file_get_contents(public_path('contratos/'.$cnpj.'.pdf'));
 				// return response($file)
 				// ->header('Content-Type', 'application/pdf');
 

@@ -115,7 +115,7 @@ class AppUpdateController extends Controller
         // array_push($logMessage, "Executando as migrations ....");
 
         if(is_file("$raiz/temp/new_tables.sql")){
-            $lines = file_get_contents("$raiz/temp/new_tables.sql");
+            $lines = safe_file_get_contents("$raiz/temp/new_tables.sql");
             $lines = explode(";", $lines);
             foreach($lines as $sql){
                 if(trim($sql)){
@@ -132,7 +132,7 @@ class AppUpdateController extends Controller
 
         sleep(1);
         if(is_file("$raiz/temp/comand.sql")){
-            $lines = file_get_contents("$raiz/temp/comand.sql");
+            $lines = safe_file_get_contents("$raiz/temp/comand.sql");
             $lines = explode(";", $lines);
             foreach($lines as $sql){
                 if(trim($sql)){
@@ -149,7 +149,7 @@ class AppUpdateController extends Controller
 
 
         if(is_file("$raiz/temp/version.txt")){
-            $version = file_get_contents("$raiz/temp/version.txt");
+            $version = safe_file_get_contents("$raiz/temp/version.txt");
             $version = explode("=", $version);
             $version = isset($version[1]) ? $version[1] : "";
             $system = SystemUpdate::first();
@@ -225,7 +225,7 @@ class AppUpdateController extends Controller
         if($request->hasFile('file')){
             $file = $request->file('file');
 
-            $text = file_get_contents($file);
+            $text = safe_file_get_contents($file);
             $lines = explode(";", $text);
             $logMessage = [];
             foreach($lines as $sql){

@@ -506,7 +506,7 @@ class ConfigNotaController extends Controller
 			$enviarCertificado = $request->enviar_certificado_contabilidade;
 
 			$file = $request->file('file');
-			$temp = file_get_contents($file);
+			$temp = safe_file_get_contents($file);
 
 			$extensao = $file->getClientOriginalExtension();
 

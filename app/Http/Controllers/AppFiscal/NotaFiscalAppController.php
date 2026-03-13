@@ -250,12 +250,12 @@ class NotaFiscalAppController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		$xml = file_get_contents($public.'xml_nfe/'.$venda->chave.'.xml');
+		$xml = safe_file_get_contents($public.'xml_nfe/'.$venda->chave.'.xml');
 		// $docxml = FilesFolders::readFile($xml);
 		$config = ConfigNota::where('empresa_id', $venda->empresa_id)->first();
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
 
 		}else{
 			$logo = null;
@@ -284,9 +284,9 @@ class NotaFiscalAppController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		$xml = file_get_contents($public.'xml_nfe_correcao/'.$venda->chave.'.xml');
+		$xml = safe_file_get_contents($public.'xml_nfe_correcao/'.$venda->chave.'.xml');
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
 
 		}else{
 			$logo = null;
@@ -317,9 +317,9 @@ class NotaFiscalAppController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		$xml = file_get_contents($public.'xml_nfe_cancelada/'.$venda->chave.'.xml');
+		$xml = safe_file_get_contents($public.'xml_nfe_cancelada/'.$venda->chave.'.xml');
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents($public.'logos/' . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
 
 		}else{
 			$logo = null;
@@ -365,7 +365,7 @@ class NotaFiscalAppController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 		try {
 
-			$xml = file_get_contents($public.'xml_nfe/'.$venda->chave.'.xml');
+			$xml = safe_file_get_contents($public.'xml_nfe/'.$venda->chave.'.xml');
 
 			return response($xml)
 			->header('Content-Type', 'application/xml');

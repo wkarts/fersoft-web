@@ -643,7 +643,7 @@ class NfseController extends Controller
 
 					$item->save();
 
-					$xml = file_get_contents($item->url_xml);
+					$xml = safe_file_get_contents($item->url_xml);
 					file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 					return response()->json($object, 200);
 				}elseif($object->status == 'processando'){
@@ -665,7 +665,7 @@ class NfseController extends Controller
 					
 					$item->save();
 
-					$xml = file_get_contents($item->url_xml);
+					$xml = safe_file_get_contents($item->url_xml);
 					file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 					return response()->json($object, 200);
 				}
@@ -718,7 +718,7 @@ class NfseController extends Controller
 				return redirect($item->url_pdf_nfse);
 			}else{
 				if(file_exists(public_path('nfse_pdf/').$item->chave.".pdf")){
-					$pdf = file_get_contents(public_path('nfse_pdf/').$item->chave.".pdf");
+					$pdf = safe_file_get_contents(public_path('nfse_pdf/').$item->chave.".pdf");
 					return response($pdf)
 					->header('Content-Type', 'application/pdf');
 				}
@@ -755,7 +755,7 @@ class NfseController extends Controller
 				$item->uuid = $object->uuid;
 				$item->estado = 'aprovado';
 				$item->save();
-				$xml = file_get_contents($item->url_xml);
+				$xml = safe_file_get_contents($item->url_xml);
 				file_put_contents(public_path('nfse_doc/')."$item->uuid.xml", $xml);
 			}
 

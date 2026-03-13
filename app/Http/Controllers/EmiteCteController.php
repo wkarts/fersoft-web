@@ -334,7 +334,7 @@ class EmiteCteController extends Controller
 
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists(public_path('xml_cte/').$cte->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_cte/').$cte->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_cte/').$cte->chave.'.xml');
 		// $docxml = FilesFolders::readFile($xml);
 
 				try {
@@ -344,7 +344,7 @@ class EmiteCteController extends Controller
 					->first();
 
 					if($config->logo){
-						$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 					}else{
 						$logo = null;
 					}
@@ -393,14 +393,14 @@ class EmiteCteController extends Controller
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists(public_path('xml_cte_correcao/').$cte->chave.'.xml')){
 
-				$xml = file_get_contents(public_path('xml_cte_correcao/').$cte->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_cte_correcao/').$cte->chave.'.xml');
 
 				$config = ConfigNota::
 				where('empresa_id', $this->empresa_id)
 				->first();
 
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 				}else{
 					$logo = null;
 				}
@@ -434,13 +434,13 @@ class EmiteCteController extends Controller
 		if(valida_objeto($cte)){
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists(public_path('xml_cte_cancelada/').$cte->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_cte_cancelada/').$cte->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_cte_cancelada/').$cte->chave.'.xml');
 				$config = ConfigNota::
 				where('empresa_id', $this->empresa_id)
 				->first();
 
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 				}else{
 					$logo = null;
 				}
@@ -667,8 +667,8 @@ class EmiteCteController extends Controller
 
 	private function criarPdfParaEnvio($cte){
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
-		$xml = file_get_contents(public_path('xml_cte/').$cte->chave.'.xml');
-		$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('imgs/') . 'logo.jpg'));
+		$xml = safe_file_get_contents(public_path('xml_cte/').$cte->chave.'.xml');
+		$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('imgs/') . 'logo.jpg'));
 		// $docxml = FilesFolders::readFile($xml);
 
 		try {
@@ -930,7 +930,7 @@ class EmiteCteController extends Controller
 		$xml = $cte_service->getXml($chave);
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 		}else{
 			$logo = null;
 		}

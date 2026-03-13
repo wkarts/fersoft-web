@@ -195,7 +195,7 @@ class NotaFiscalController extends Controller
 
                                                 }
 
-                                                $file = file_get_contents(public_path('xml_nfe/'.$nfe['chave'].'.xml'));
+                                                $file = safe_file_get_contents(public_path('xml_nfe/'.$nfe['chave'].'.xml'));
                                                 importaXmlSieg($file, $this->empresa_id);
                                         } elseif ($resultado->isDenegado()) {
                                                 $venda->chave = $nfe['chave'];
@@ -305,7 +305,7 @@ class NotaFiscalController extends Controller
 
                                         $this->enviarEmailAutomatico($venda);
 
-                                        $file = file_get_contents(public_path('xml_nfe/'.$chave.'.xml'));
+                                        $file = safe_file_get_contents(public_path('xml_nfe/'.$chave.'.xml'));
                                         importaXmlSieg($file, $this->empresa_id);
                                 } elseif ($resultado->isDenegado()) {
                                         $venda->chave = $chave;
@@ -456,9 +456,9 @@ class NotaFiscalController extends Controller
 
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists(public_path('xml_nfe/').$venda->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 				}else{
 					$logo = null;
 				}
@@ -466,7 +466,7 @@ class NotaFiscalController extends Controller
 				if($venda->filial_id != null){
 					$filial = Filial::findOrFail($venda->filial_id);
 					if($filial->logo){
-						$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $filial->logo));
+						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $filial->logo));
 					}
 				}
 
@@ -505,9 +505,9 @@ class NotaFiscalController extends Controller
 
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists($public.'xml_nfe/'.$venda->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 				}else{
 					$logo = null;
 				}
@@ -538,8 +538,8 @@ class NotaFiscalController extends Controller
 
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
-		$xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
-		$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('imgs/logo.jpg')));
+		$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+		$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('imgs/logo.jpg')));
 
 		$connector = new NetworkPrintConnector('127.0.0.1', 9100);
 		$danfcepos = new DanfcePos($connector);
@@ -556,14 +556,14 @@ class NotaFiscalController extends Controller
 
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';
 			if(file_exists(public_path('xml_nfe_correcao/').$venda->chave.'.xml')){
-				$xml = file_get_contents(public_path('xml_nfe_correcao/').$venda->chave.'.xml');
+				$xml = safe_file_get_contents(public_path('xml_nfe_correcao/').$venda->chave.'.xml');
 
 				$config = ConfigNota::
 				where('empresa_id', $this->empresa_id)
 				->first();
 
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 				}else{
 					$logo = null;
 				}
@@ -598,14 +598,14 @@ class NotaFiscalController extends Controller
 			try {
 				$public = env('SERVIDOR_WEB') ? 'public/' : '';
 				if(file_exists(public_path('xml_nfe_cancelada/').$venda->chave.'.xml')){
-					$xml = file_get_contents(public_path('xml_nfe_cancelada/').$venda->chave.'.xml');
+					$xml = safe_file_get_contents(public_path('xml_nfe_cancelada/').$venda->chave.'.xml');
 
 					$config = ConfigNota::
 					where('empresa_id', $this->empresa_id)
 					->first();
 
 					if($config->logo){
-						$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 					}else{
 						$logo = null;
 					}
@@ -697,7 +697,7 @@ class NotaFiscalController extends Controller
 			$this->reverteEstoque($venda->itens);
 			//devolve estoque
 
-			$file = file_get_contents(public_path('xml_nfe_cancelada/'.$venda->chave.'.xml'));
+			$file = safe_file_get_contents(public_path('xml_nfe_cancelada/'.$venda->chave.'.xml'));
 			importaXmlSieg($file, $this->empresa_id);
 
 			$this->removerDuplicadas($venda);
@@ -954,14 +954,14 @@ class NotaFiscalController extends Controller
 
 	private function criarPdfParaEnvio($venda){
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
-		$xml = file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
+		$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 
 		$config = ConfigNota::
 		where('empresa_id', $this->empresa_id)
 		->first();
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(file_get_contents(public_path('logos/') . $config->logo));
+			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
 		}else{
 			$logo = null;
 		}
@@ -1003,7 +1003,7 @@ class NotaFiscalController extends Controller
 	public function testeVenda($id){
 		$venda = Venda::find($id);
 
-		$file = file_get_contents(public_path('xml_nfe/'.$venda->chave.'.xml'));
+		$file = safe_file_get_contents(public_path('xml_nfe/'.$venda->chave.'.xml'));
 		$msg = importaXmlSieg($file, $this->empresa_id);
 		echo $msg;
 	}
@@ -1019,7 +1019,7 @@ class NotaFiscalController extends Controller
 
 	// 		$headers = [];
 
-	// 		$data = file_get_contents(public_path('xml_nfe/'.$venda->chave.'.xml'));
+	// 		$data = safe_file_get_contents(public_path('xml_nfe/'.$venda->chave.'.xml'));
 	// 		curl_setopt($curl, CURLOPT_URL, $url . "?apikey=".$escritorio->token_sieg."&email=".$escritorio->email);
 	// 		curl_setopt($curl, CURLOPT_POST, true);
 	// 		curl_setopt($curl,CURLOPT_HTTPHEADER, $headers);

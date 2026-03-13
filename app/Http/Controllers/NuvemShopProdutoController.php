@@ -381,7 +381,7 @@ class NuvemShopProdutoController extends Controller
             $store_info = session('store_info');
             $api = new \TiendaNube\API($store_info['store_id'], $store_info['access_token'], 'Awesome App ('.$store_info['email'].')');
 
-            $image = base64_encode(file_get_contents($request->file('file')->path()));
+            $image = base64_encode(safe_file_get_contents($request->file('file')->path()));
 
             $ext = $request->file('file')->getClientOriginalExtension();
             $response = $api->post("products/$request->id/images",[
