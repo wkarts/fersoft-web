@@ -135,24 +135,24 @@ return new class extends Migration
 
         Schema::table('vendas', function (Blueprint $table) {
             $cols = [
-                'TOTAL_QBCMONO','TOTAL_ICMSMONO','TOTAL_QBCMONORETEN','TOTAL_ICMSMONORETEN','TOTAL_QBCMONORET','TOTAL_ICMSMONORET',
-                'DESTINO_OPERACAO',
-                'RET_BC_IRRF','RET_ALIQ_IRRF','RET_VIRRF',
-                'RET_BC_PIS','RET_ALIQ_PIS','RET_VPIS',
-                'RET_BC_COFINS','RET_ALIQ_COFINS','RET_VCOFINS',
-                'RET_BC_CSLL','RET_ALIQ_CSLL','RET_VCSLL',
-                'FLAG_NORMATIVA_IRRF',
-                'TOTAL_IPI_DEVOLVIDO','FK_PES_RETIRADA','FLAG_END_ENTREGA','TOTAL_II',
-                'NRECEITUARIO','CPFRESPTEC',
-                'TIPO_GUIA_TRANSITO','UF_GUIA_TRANSITO','SERIE_GUIA_TRANSITO','NUM_GUIA_TRANSITO',
-                'TOTAL_IS','TOTAL_BC_IBS_CBS','TOTAL_IBS','TOTAL_IBS_CRED_PRES','TOTAL_IBS_CRED_PRES_COND_SUS',
-                'TOTAL_IBS_UF_DIF','TOTAL_IBS_UF_DEV_TRIB','TOTAL_IBS_UF',
-                'TOTAL_IBS_MUN_DIF','TOTAL_IBS_MUN_DEV_TRIB','TOTAL_IBS_MUN',
-                'TOTAL_CBS_DIF','TOTAL_CBS_DEV_TRIB','TOTAL_CBS','TOTAL_CBS_CRED_PRES','TOTAL_CBS_CRED_PRES_COND_SUS',
-                'TOTAL_IBS_MONO','TOTAL_CBS_MONO','TOTAL_IBS_MONO_RETEN','TOTAL_CBS_MONO_RETEN','TOTAL_IBS_MONO_RET','TOTAL_CBS_MONO_RET',
-                'TOTAL_NF_IBC_CBS_IS','TOTAL_IBS_CBS',
-                'TIPO_NFCREDITO','TIPO_NFDEBITO','TIPO_ENTEGOV','PERC_REDUTOR_GOV','TIPO_OPERGOV',
-                'ELOQUENT_UUID','CREATED_AT','UPDATED_AT','DELETED_AT'
+                'total_qbcmono','total_icmsmono','total_qbcmonoreten','total_icmsmonoreten','total_qbcmonoret','total_icmsmonoret',
+                'destino_operacao',
+                'ret_bc_irrf','ret_aliq_irrf','ret_virrf',
+                'ret_bc_pis','ret_aliq_pis','ret_vpis',
+                'ret_bc_cofins','ret_aliq_cofins','ret_vcofins',
+                'ret_bc_csll','ret_aliq_csll','ret_vcsll',
+                'flag_normativa_irrf',
+                'total_ipi_devolvido','fk_pes_retirada','flag_end_entrega','total_ii',
+                'nreceituario','cpfresptec',
+                'tipo_guia_transito','uf_guia_transito','serie_guia_transito','num_guia_transito',
+                'total_is','total_bc_ibs_cbs','total_ibs','total_ibs_cred_pres','total_ibs_cred_pres_cond_sus',
+                'total_ibs_uf_dif','total_ibs_uf_dev_trib','total_ibs_uf',
+                'total_ibs_mun_dif','total_ibs_mun_dev_trib','total_ibs_mun',
+                'total_cbs_dif','total_cbs_dev_trib','total_cbs','total_cbs_cred_pres','total_cbs_cred_pres_cond_sus',
+                'total_ibs_mono','total_cbs_mono','total_ibs_mono_reten','total_cbs_mono_reten','total_ibs_mono_ret','total_cbs_mono_ret',
+                'total_nf_ibc_cbs_is','total_ibs_cbs',
+                'tipo_nfcredito','tipo_nfdebito','tipo_entegov','perc_redutor_gov','tipo_opergov',
+                'eloquent_uuid','created_at','updated_at','deleted_at'
             ];
 
             foreach ($cols as $c) {
