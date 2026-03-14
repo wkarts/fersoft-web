@@ -82,6 +82,7 @@ class NFService{
 	{
 		$cst = preg_replace('/\D+/', '', (string)$cst);
 		if ($cst === '' || $cst === null) {
+			Log::warning('NF-e: CST PIS/COFINS inválido. Aplicado CST 99.', ['origem' => (string)$cst]);
 			return '99';
 		}
 
@@ -113,6 +114,76 @@ class NFService{
 	private function deveCalcularPisCofins(string $cst, $aliquota): bool
 	{
 		return !$this->isPisCofinsCstSemIncidencia($cst) && (float) $aliquota > 0;
+	}
+
+	private function getNumericFromAny($source, array $fields, float $default = 0.0): float
+	{
+		foreach ($fields as $field) {
+			if (is_object($source) && isset($source->{$field}) && $source->{$field} !== null && $source->{$field} !== '') {
+				return (float) $source->{$field};
+			}
+			if (is_array($source) && array_key_exists($field, $source) && $source[$field] !== null && $source[$field] !== '') {
+				return (float) $source[$field];
+			}
+		}
+		return $default;
+	}
+
+	private function persistTotaisDefensivo($documento, array $totais, string $documentoTipo): void
+	{
+		if (!$documento || !method_exists($documento, 'getAttributes')) {
+			return;
+		}
+
+		$attributes = $documento->getAttributes();
+		$changed = false;
+		$persistidos = [];
+		foreach ($totais as $campo => $valor) {
+			if (!array_key_exists($campo, $attributes)) {
+				continue;
+			}
+			$valorFormatado = $this->format((float) $valor);
+			if ((float) ($documento->{$campo} ?? 0) !== (float) $valorFormatado) {
+				$documento->{$campo} = $valorFormatado;
+				$changed = true;
+				$persistidos[$campo] = $valorFormatado;
+			}
+		}
+
+		if ($changed) {
+			$documento->save();
+			Log::info('NF-e: totais fiscais persistidos defensivamente.', [
+				'empresa_id' => $this->empresa_id,
+				'documento_tipo' => $documentoTipo,
+				'documento_id' => (int) ($documento->id ?? 0),
+				'campos' => $persistidos,
+			]);
+		}
+	}
+
+	private function montarResumoPisCofinsObservacao(float $somaBasePIS, float $somaPIS, float $somaBaseCOFINS, float $somaCOFINS): string
+	{
+		if ($somaPIS <= 0 && $somaCOFINS <= 0) {
+			Log::info('NF-e: resumo PIS/COFINS não adicionado em infCpl por ausência de valores positivos.', [
+				'empresa_id' => $this->empresa_id,
+				'soma_pis' => $somaPIS,
+				'soma_cofins' => $somaCOFINS,
+			]);
+			return '';
+		}
+
+		$resumo = ' | PIS: BC=' . number_format($somaBasePIS, 2, ',', '.') . ' Valor=' . number_format($somaPIS, 2, ',', '.');
+		$resumo .= ' | COFINS: BC=' . number_format($somaBaseCOFINS, 2, ',', '.') . ' Valor=' . number_format($somaCOFINS, 2, ',', '.');
+
+		Log::info('NF-e: resumo PIS/COFINS adicionado em infCpl.', [
+			'empresa_id' => $this->empresa_id,
+			'soma_base_pis' => $somaBasePIS,
+			'soma_pis' => $somaPIS,
+			'soma_base_cofins' => $somaBaseCOFINS,
+			'soma_cofins' => $somaCOFINS,
+		]);
+
+		return $resumo;
 	}
 
 	public function __construct($config, $empresa_id = null){
@@ -155,18 +226,18 @@ class NFService{
 			return false;
 		}
 
-		$base = (float)($item->bc_ibs_cbs ?? 0);
-		$vIbs = (float)($item->valor_ibs ?? 0);
-		$vCbs = (float)($item->valor_cbs ?? 0);
-		$vIs  = (float)($item->is_valor ?? 0);
+		$base = $this->getNumericFromAny($item, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']);
+		$vIbs = $this->getNumericFromAny($item, ['valor_ibs', 'ibs_valor']);
+		$vCbs = $this->getNumericFromAny($item, ['valor_cbs', 'cbs_valor']);
+		$vIs  = $this->getNumericFromAny($item, ['valor_is', 'is_valor']);
 		if ($base <= 0 && $vIbs <= 0 && $vCbs <= 0 && $vIs <= 0) {
 			return false;
 		}
 
 		$std = new \stdClass();
 		$std->item = $itemCont;
-		$std->CST = (string)($item->cst_ibs_cbs ?? '');
-		$std->cClassTrib = (string)($item->class_trib_ibs_cbs ?? '');
+		$std->CST = (string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '');
+		$std->cClassTrib = (string)($item->class_trib_ibs_cbs ?? $item->class_trib_rt ?? '');
 		$std->vBC = $this->format($base);
 		$std->pIBSUF = $this->format((float)($item->aliq_ibs_uf ?? 0), 4);
 		$std->vIBSUF = $this->format((float)($item->valor_ibs_uf ?? 0));
@@ -186,10 +257,19 @@ class NFService{
 				$nfe->{$method}($std);
 				return true;
 			} catch (\Throwable $e) {
+				Log::warning('NF-e: falha ao anexar grupo estruturado de Reforma Tributária.', [
+					'metodo' => $method,
+					'venda_item_id' => (int)($item->id ?? 0),
+					'mensagem' => $e->getMessage(),
+				]);
 				continue;
 			}
 		}
 
+		Log::warning('NF-e: nenhum método disponível conseguiu anexar grupo estruturado de Reforma Tributária.', [
+			'venda_item_id' => (int)($item->id ?? 0),
+			'empresa_id' => $this->empresa_id,
+		]);
 		return false;
 	}
 
@@ -508,6 +588,12 @@ class NFService{
                 $somaIPI = 0;
                 $somaPIS = 0;
                 $somaCOFINS = 0;
+                $somaBasePIS = 0;
+                $somaBaseCOFINS = 0;
+                $somaBaseRT = 0;
+                $somaValorIBS = 0;
+                $somaValorCBS = 0;
+                $somaValorIS = 0;
                 $reformaEstruturadaNoXml = false;
 		//PRODUTOS
 		$itemCont = 0;
@@ -821,6 +907,10 @@ class NFService{
 			if ($this->tryAttachReformaItemTag($nfe, (int)$itemCont, $i)) {
 				$reformaEstruturadaNoXml = true;
 			}
+			$somaBaseRT += $this->getNumericFromAny($i, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']);
+			$somaValorIBS += $this->getNumericFromAny($i, ['valor_ibs', 'ibs_valor']);
+			$somaValorCBS += $this->getNumericFromAny($i, ['valor_cbs', 'cbs_valor']);
+			$somaValorIS += $this->getNumericFromAny($i, ['valor_is', 'is_valor']);
 
 			if($venda->natureza->CST_CSOSN){
 				$i->produto->CST_CSOSN = $venda->natureza->CST_CSOSN;
@@ -1078,6 +1168,7 @@ class NFService{
 			$stdPIS->item = $itemCont;
 			$stdPIS->CST = $cstPis;
 			$stdPIS->vBC = $calculaPis ? $vbcPis : 0.00;
+			$somaBasePIS += (float) ($stdPIS->vBC ?? 0);
 			$stdPIS->pPIS = $this->format($i->produto->perc_pis);
                         $stdPIS->vPIS = $calculaPis
                                 ? $this->format(($vbcPis) * ($i->produto->perc_pis/100))
@@ -1097,6 +1188,7 @@ class NFService{
 			$stdCOFINS->item = $itemCont;
 			$stdCOFINS->CST = $cstCofins;
 			$stdCOFINS->vBC = $calculaCofins ? $vbcCofins : 0.00;
+			$somaBaseCOFINS += (float) ($stdCOFINS->vBC ?? 0);
                         $stdCOFINS->pCOFINS = $this->format($i->produto->perc_cofins);
                         $stdCOFINS->vCOFINS = $calculaCofins
                                 ? $this->format(($vbcCofins) * ($i->produto->perc_cofins/100))
@@ -1244,6 +1336,18 @@ class NFService{
 
 		$stdICMSTot->vTotTrib = 0.00;
 		$ICMSTot = $nfe->tagICMSTot($stdICMSTot);
+		$this->persistTotaisDefensivo($venda, [
+			'total_bc_pis' => $somaBasePIS,
+			'total_pis' => $somaPIS,
+			'total_bc_cofins' => $somaBaseCOFINS,
+			'total_cofins' => $somaCOFINS,
+		], 'venda');
+		$this->persistTotaisDefensivo($venda, [
+			'total_bc_ibs_cbs' => $somaBaseRT,
+			'total_ibs' => $somaValorIBS,
+			'total_cbs' => $somaValorCBS,
+			'total_is' => $somaValorIS,
+		], 'venda');
 
 		//inicio totalizao issqn
 
@@ -1502,6 +1606,7 @@ class NFService{
 			$obs .= "Inf. adicional de pagamento: " . $venda->getFormaPagamento($venda->empresa_id)->infos;
 		}
 
+		$obs .= $this->montarResumoPisCofinsObservacao($somaBasePIS, $somaPIS, $somaBaseCOFINS, $somaCOFINS);
 		$obs = $this->appendReformaObservacao($obs, $venda, $reformaEstruturadaNoXml);
 		$stdInfoAdic->infCpl = $this->retiraAcentos($obs);
 
