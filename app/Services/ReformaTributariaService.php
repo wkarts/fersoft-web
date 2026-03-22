@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Referencias\Anp;
 use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
@@ -177,20 +178,40 @@ class ReformaTributariaService
     public function shouldApply(?int $empresaId = null): bool
     {
         $empresaId = $this->ctxEmpresaId($empresaId);
+        if ($empresaId <= 0) {
+            return false;
+        }
+
+        // 1) Sinalização explícita no banco tem prioridade.
+        $enabled = $this->readRtEnableFlag($empresaId);
+        if ($enabled === true) {
+            return true;
+        }
+        if ($enabled === false) {
+            return false;
+        }
+
+        // 2) Fallback operacional: se os campos da RT já estiverem parametrizados,
+        // considera habilitado para não zerar cálculo nem XML por regra excessiva.
+        $hasRtFields = $this->hasRtFieldsFilled($empresaId);
+        if ($hasRtFields) {
+            return true;
+        }
+
+        // 3) Compatibilidade com a regra ambiente/regime.
         $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
         $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
-        // Homologação: sempre aplica
         if ((int)$ambiente === 2) {
             return true;
         }
 
-        // Produção: apenas regime NORMAL (1)
-        if ((int)$ambiente === 1) {
-            return ((int)($regime ?? -1) === 1);
+        if ((int)$ambiente === 1 && (int)($regime ?? -1) === 1) {
+            return true;
         }
 
-        return false;
+        // 4) Último fallback por ENV, preservando versões anteriores.
+        return (int) env('REFORMA_TRIBUTARIA', 0) === 1;
     }
 
     // ---------------------------------------------------------------------

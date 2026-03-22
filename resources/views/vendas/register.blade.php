@@ -2878,19 +2878,19 @@
             _rtSet('rt_item_obs', _rtFirst(item, ['obs_tributaria','observacao_tributaria','obs','observacao']) || '');
 
             _rtSet('rt_item_ibs_aliq', _rtFirst(item, ['ibs_aliq','aliq_ibs','pIbs','pIBS']) || '');
-            _rtSetMoney('rt_item_ibs_bc', _rtFirst(item, ['ibs_bc','bc_ibs','vBcIbs','vBCIBS']) || '');
+            _rtSetMoney('rt_item_ibs_bc', _rtFirst(item, ['ibs_bc','bc_ibs_cbs','bc_ibs','vBcIbs','vBCIBS']) || '');
             _rtSetMoney('rt_item_ibs_vlr', _rtFirst(item, ['ibs_vlr','vlr_ibs','vIbs','vIBS','valor_ibs']) || '');
 
             _rtSet('rt_item_cbs_aliq', _rtFirst(item, ['cbs_aliq','aliq_cbs','pCbs','pCBS']) || '');
-            _rtSetMoney('rt_item_cbs_bc', _rtFirst(item, ['cbs_bc','bc_cbs','vBcCbs','vBCCBS']) || '');
+            _rtSetMoney('rt_item_cbs_bc', _rtFirst(item, ['cbs_bc','bc_ibs_cbs','bc_cbs','vBcCbs','vBCCBS']) || '');
             _rtSetMoney('rt_item_cbs_vlr', _rtFirst(item, ['cbs_vlr','vlr_cbs','vCbs','vCBS','valor_cbs']) || '');
 
             _rtSet('rt_item_is_aliq', _rtFirst(item, ['is_aliq','aliq_is','pIs','pIS']) || '');
             _rtSetMoney('rt_item_is_bc', _rtFirst(item, ['is_bc','bc_is','vBcIs','vBCIS']) || '');
             _rtSetMoney('rt_item_is_vlr', _rtFirst(item, ['is_vlr','vlr_is','vIs','vIS','valor_is']) || '');
 
-            _rtSet('rt_item_cred_pres', _rtFirst(item, ['credito_presumido','cred_pres','credito','vCredPres']) || '');
-            _rtSet('rt_item_aliq_efetiva', _rtFirst(item, ['aliq_efetiva','carga_efetiva','aliquota_efetiva']) || '');
+            _rtSet('rt_item_cred_pres', _rtFirst(item, ['credito_presumido','cred_pres','credito','vCredPres','valor_cred_pres_ibs','valor_cred_pres_cbs']) || '');
+            _rtSet('rt_item_aliq_efetiva', _rtFirst(item, ['aliq_efetiva','carga_efetiva','aliquota_efetiva','aliq_efet_cbs','aliq_efet_ibs_uf','aliq_efet_ibs_mun']) || '');
         }
 
         function _rtUpdateTotals(){
@@ -2902,9 +2902,9 @@
             if (itens && Array.isArray(itens) && itens.length){
                 for (var i=0;i<itens.length;i++){
                     var it = itens[i] || {};
-                    t_ibs_bc += _rtToNumber(_rtFirst(it, ['ibs_bc','bc_ibs','vBcIbs','vBCIBS']));
+                    t_ibs_bc += _rtToNumber(_rtFirst(it, ['ibs_bc','bc_ibs_cbs','bc_ibs','vBcIbs','vBCIBS']));
                     t_ibs_vlr += _rtToNumber(_rtFirst(it, ['ibs_vlr','vlr_ibs','vIbs','vIBS','valor_ibs']));
-                    t_cbs_bc += _rtToNumber(_rtFirst(it, ['cbs_bc','bc_cbs','vBcCbs','vBCCBS']));
+                    t_cbs_bc += _rtToNumber(_rtFirst(it, ['cbs_bc','bc_ibs_cbs','bc_cbs','vBcCbs','vBCCBS']));
                     t_cbs_vlr += _rtToNumber(_rtFirst(it, ['cbs_vlr','vlr_cbs','vCbs','vCBS','valor_cbs']));
                     t_is_bc  += _rtToNumber(_rtFirst(it, ['is_bc','bc_is','vBcIs','vBCIS']));
                     t_is_vlr += _rtToNumber(_rtFirst(it, ['is_vlr','vlr_is','vIs','vIS','valor_is']));

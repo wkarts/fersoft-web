@@ -250,6 +250,7 @@ class VendaController extends Controller
                     $itemOut[strtolower((string)$k)] = $v;
                 }
             }
+            $itemOut = $this->withRtAliases($itemOut);
 
             return response()->json(array_merge([
                 'success'    => true,
@@ -271,6 +272,33 @@ class VendaController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+
+    private function withRtAliases(array $data): array
+    {
+        $aliqIbsUf = (float)($data['aliq_ibs_uf'] ?? 0);
+        $aliqIbsMun = (float)($data['aliq_ibs_mun'] ?? 0);
+        $aliqCbs = (float)($data['aliq_cbs'] ?? 0);
+        $aliqEfetIbsUf = (float)($data['aliq_efet_ibs_uf'] ?? 0);
+        $aliqEfetIbsMun = (float)($data['aliq_efet_ibs_mun'] ?? 0);
+        $aliqEfetCbs = (float)($data['aliq_efet_cbs'] ?? 0);
+
+        $data['classificacao_ibs_cbs'] = (string)($data['class_trib_ibs_cbs'] ?? '');
+        $data['aliq_ibs_total'] = round($aliqIbsUf + $aliqIbsMun, 4);
+        $data['aliq_efetiva'] = round($aliqEfetIbsUf + $aliqEfetIbsMun + $aliqEfetCbs, 4);
+
+        $data['ibs_bc'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['ibs_vlr'] = (float)($data['valor_ibs'] ?? 0);
+        $data['ibs_aliq'] = (float)($data['aliq_ibs_total'] ?? 0);
+
+        $data['cbs_bc'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['cbs_vlr'] = (float)($data['valor_cbs'] ?? 0);
+        $data['cbs_aliq'] = $aliqCbs;
+
+        $data['is_vlr'] = (float)($data['is_valor'] ?? 0);
+
+        return $data;
     }
 
 
@@ -374,7 +402,7 @@ class VendaController extends Controller
             $data[$field] = (float)($item->getAttribute($field) ?? 0);
         }
 
-        return $data;
+        return $this->withRtAliases($data);
     }
 
     private function rtResetTotals(): void
