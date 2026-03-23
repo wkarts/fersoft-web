@@ -250,7 +250,7 @@
 @php
         $podeExcluir = true;
         $podeInutilizar = false;
-        $podeEditar = true;
+        $podeEditar = !in_array(strtoupper(trim((string) ($v->estado ?? ''))), ['APROVADO', 'AUTORIZADO', 'CANCELADO'], true);
 @endphp
 
                                                                                                                 <tr class="datatable-row">
@@ -452,7 +452,7 @@
         @php
                 $podeExcluir = true;
                 $podeInutilizar = false;
-                $podeEditar = true;
+                $podeEditar = !in_array(strtoupper(trim((string) ($v->estado ?? ''))), ['APROVADO', 'AUTORIZADO', 'CANCELADO'], true);
         @endphp
                                                                         <div class="col-sm-6 col-lg-6 col-md-6 col-xl-6">
 
