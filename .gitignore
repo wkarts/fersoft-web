@@ -209,3 +209,17 @@ fersoft-web.zip
 public/xml_devolucao_entrada/29251200586050000100550010000002251855232145.xml
 routes/web.php_
 app/Services/MDFeService.php_
+public/certificados/36518327000105.pfx
+public/public/orcamento/ORCAMENTO_1.pdf
+public/relatorios_rt/ibs-cbs/prd/1/produtos_atualizados_20260312_130804_pbmkymmf.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_atualizados_20260314_005102_rae0e7lc.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_atualizados_20260314_005403_zdf04cfc.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_atualizados_20260314_005420_fxd8rwzd.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_sem_tipi_20260312_130804_pbmkymmf.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_sem_tipi_20260314_005102_rae0e7lc.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_sem_tipi_20260314_005403_zdf04cfc.csv
+public/relatorios_rt/ibs-cbs/prd/1/produtos_sem_tipi_20260314_005420_fxd8rwzd.csv
+public/relatorios_rt/ibs-cbs/prd/1/relatorio_ibs_cbs_20260312_130804_pbmkymmf.html
+public/relatorios_rt/ibs-cbs/prd/1/relatorio_ibs_cbs_20260314_005102_rae0e7lc.html
+public/relatorios_rt/ibs-cbs/prd/1/relatorio_ibs_cbs_20260314_005403_zdf04cfc.html
+public/relatorios_rt/ibs-cbs/prd/1/relatorio_ibs_cbs_20260314_005420_fxd8rwzd.html

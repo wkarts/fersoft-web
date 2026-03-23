@@ -2213,9 +2213,9 @@
         var nbsSet = {};
         for(var i=0;i<itens.length;i++){
             var it = itens[i] || {};
-            sumIbsBc  += rtParseNumber(rtFirst(it, ['rt_ibs_bc','ibs_bc','vbcibs','bc_ibs','ibsBase'], 0));
+            sumIbsBc  += rtParseNumber(rtFirst(it, ['rt_ibs_bc','ibs_bc','bc_ibs_cbs','vbcibs','bc_ibs','ibsBase'], 0));
             sumIbsVlr += rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','vibs','valor_ibs','ibs'], 0));
-            sumCbsBc  += rtParseNumber(rtFirst(it, ['rt_cbs_bc','cbs_bc','vbccbs','bc_cbs','cbsBase'], 0));
+            sumCbsBc  += rtParseNumber(rtFirst(it, ['rt_cbs_bc','cbs_bc','bc_ibs_cbs','vbccbs','bc_cbs','cbsBase'], 0));
             sumCbsVlr += rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','vcbs','valor_cbs','cbs'], 0));
             sumIsBc   += rtParseNumber(rtFirst(it, ['rt_is_bc','is_bc','vbcis','bc_is','isBase'], 0));
             sumIsVlr  += rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','vis','valor_is','is'], 0));

@@ -222,9 +222,6 @@ class NFService{
   private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
 	{
 		$rt = app(ReformaTributariaService::class);
-		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-			return false;
-		}
 
 		$base = $this->getNumericFromAny($item, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']);
 		$vIbs = $this->getNumericFromAny($item, ['valor_ibs', 'ibs_valor']);
@@ -232,6 +229,17 @@ class NFService{
 		$vIs  = $this->getNumericFromAny($item, ['valor_is', 'is_valor']);
 		if ($base <= 0 && $vIbs <= 0 && $vCbs <= 0 && $vIs <= 0) {
 			return false;
+		}
+
+		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+			Log::warning('RT: grupo IBS/CBS será mantido no XML porque os valores do item já estão calculados, embora shouldApply() tenha retornado false.', [
+				'empresa_id' => (int)($this->empresa_id ?? 0),
+				'item_id' => (int)($item->id ?? 0),
+				'base' => $base,
+				'valor_ibs' => $vIbs,
+				'valor_cbs' => $vCbs,
+				'valor_is' => $vIs,
+			]);
 		}
 
 		$std = new \stdClass();
@@ -276,9 +284,6 @@ class NFService{
 	private function appendReformaObservacao(string $obs, $venda, bool $reformaEstruturadaNoXml = false): string
 	{
 		$rt = app(ReformaTributariaService::class);
-		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-			return $obs;
-		}
 
 		$tBase = (float)($venda->total_bc_ibs_cbs ?? 0);
 		$tIbs = (float)($venda->total_ibs ?? 0);
