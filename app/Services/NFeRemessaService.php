@@ -1106,7 +1106,7 @@ class NFeRemessaService{
 	}
 
 	public function format($number, $dec = 2){
-		return number_format((float) $number, $dec, ".", "");
+		return __truncateDecimal($number, (int)$dec);
 	}
 
 	public function consultaCadastro($cnpj, $uf){

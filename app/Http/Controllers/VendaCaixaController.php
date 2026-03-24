@@ -220,7 +220,11 @@ class VendaCaixaController extends Controller
         $pag_multi = isset($venda['pag_multi']) ? $venda['pag_multi'] : [];
     // return response()->json($pag_multi, 401);
 
-        $totalVenda = str_replace(",", ".", $venda['valor_total']) + str_replace(",", ".", $venda['acrescimo']) - str_replace(",", ".", $venda['desconto']);
+        $casasDecimais = max((int)($config->casas_decimais ?? 2), 2);
+        $valorTotalBase = (float)__replace($venda['valor_total'] ?? 0);
+        $valorAcrescimo = (float)__replace($venda['acrescimo'] ?? 0);
+        $valorDesconto = (float)__replace($venda['desconto'] ?? 0);
+        $totalVenda = __truncateDecimal($valorTotalBase + $valorAcrescimo - $valorDesconto, $casasDecimais);
 
         $func = null;
         $usr = null;
@@ -263,9 +267,9 @@ class VendaCaixaController extends Controller
             'vendedor_id' => $vendedor_id,
             'natureza_id' => $config->nat_op_padrao,
             'valor_total' => $totalVenda,
-            'acrescimo' => str_replace(",", ".", $venda['acrescimo']),
-            'troco' => str_replace(",", ".", $venda['troco']),
-            'dinheiro_recebido' => str_replace(",", ".", $venda['dinheiro_recebido']),
+            'acrescimo' => __truncateDecimal($venda['acrescimo'] ?? 0, $casasDecimais),
+            'troco' => __truncateDecimal($venda['troco'] ?? 0, $casasDecimais),
+            'dinheiro_recebido' => __truncateDecimal($venda['dinheiro_recebido'] ?? 0, $casasDecimais),
             'forma_pagamento' => $venda['acao'] == 'credito' ? 'credito' : " ",
             'tipo_pagamento' => sizeof($pag_multi) > 0 ? '99' : $venda['tipo_pagamento'],
             'estado' => 'DISPONIVEL',
@@ -279,7 +283,7 @@ class VendaCaixaController extends Controller
             'consignado' => $venda['consignado'],
             'cpf' => $venda['cpf'] ?? '',
             'observacao' => $venda['observacao'] ?? '',
-            'desconto' => $venda['desconto'],
+            'desconto' => __truncateDecimal($venda['desconto'] ?? 0, $casasDecimais),
             'pedido_delivery_id' => isset($venda['delivery_id']) ? $venda['delivery_id'] : 0,
             'pedido_ifood_id' => isset($venda['pedido_ifood']) ? $venda['pedido_ifood'] : null,
             'tipo_pagamento_1' => $venda['tipo_pagamento_1'] ?? '',
@@ -315,9 +319,9 @@ class VendaCaixaController extends Controller
           $result->usuario_id = get_id_user();
           $result->natureza_id = $config->nat_op_padrao;
           $result->valor_total = $totalVenda;
-          $result->acrescimo = str_replace(",", ".", $venda['acrescimo']);
-          $result->troco = str_replace(",", ".", $venda['troco']);
-          $result->dinheiro_recebido = str_replace(",", ".", $venda['dinheiro_recebido']);
+          $result->acrescimo = __truncateDecimal($venda['acrescimo'] ?? 0, $casasDecimais);
+          $result->troco = __truncateDecimal($venda['troco'] ?? 0, $casasDecimais);
+          $result->dinheiro_recebido = __truncateDecimal($venda['dinheiro_recebido'] ?? 0, $casasDecimais);
           $result->forma_pagamento = $venda['acao'] == 'credito' ? 'credito' : " ";
           $result->tipo_pagamento = sizeof($pag_multi) > 0 ? '99' : $venda['tipo_pagamento'];
           $result->estado = 'DISPONIVEL';
@@ -331,7 +335,7 @@ class VendaCaixaController extends Controller
           }
           $result->cpf = $venda['cpf'] ?? '';
           $result->observacao = $venda['observacao'] ?? '';
-          $result->desconto = $venda['desconto'];
+          $result->desconto = __truncateDecimal($venda['desconto'] ?? 0, $casasDecimais);
           $result->pedido_delivery_id = isset($venda['delivery_id']) ? $venda['delivery_id'] : 0;
           $result->bandeira_cartao = $venda['bandeira_cartao'];
           $result->cAut_cartao = $venda['cAut_cartao'] ?? '';
@@ -1092,7 +1096,7 @@ public function gerarQrCode(Request $request){
   $config = ConfigNota::
   where('empresa_id', $this->empresa_id)
   ->first();
-  $total = (float)number_format($request->valor, 2);
+  $total = (float)__truncateDecimal($request->valor, 2);
   $result = $this->gerarPix($config, $total);
   if(!isset($result['erro'])){
     return response()->json($result, $result['status']);

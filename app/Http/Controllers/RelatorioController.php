@@ -201,7 +201,7 @@ class RelatorioController extends Controller
 		}
 
 		$vendas = Venda
-		::select(\DB::raw('DATE_FORMAT(vendas.data_registro, "%d-%m-%Y") as data, sum(vendas.valor_total-vendas.desconto-vendas.acrescimo) as total'))
+		::select(\DB::raw('DATE_FORMAT(vendas.data_registro, "%d-%m-%Y") as data, sum(vendas.valor_total-vendas.desconto-vendas.acrescimo) as total, sum(vendas.itens) as quantidade_vendida'))
 
 		->orWhere(function($q) use ($data_inicial, $data_final){
 			if($data_inicial && $data_final){
@@ -223,7 +223,7 @@ class RelatorioController extends Controller
 		->get();
 
 		$vendasCaixa = VendaCaixa
-		::select(\DB::raw('DATE_FORMAT(venda_caixas.data_registro, "%d-%m-%Y") as data, sum(venda_caixas.valor_total) as total'))
+		::select(\DB::raw('DATE_FORMAT(venda_caixas.data_registro, "%d-%m-%Y") as data, sum(venda_caixas.valor_total) as total, sum(venda_caixas.itens) as quantidade_vendida'))
 
 		->orWhere(function($q) use ($data_inicial, $data_final){
 			if($data_inicial && $data_final){
@@ -323,7 +323,7 @@ class RelatorioController extends Controller
 			$vendas->where('vendedor_id', $funcionario->usuario_id);
 		}
 
-		$vendas = $vendas->get();
+		$vendas = $vendas->with('itens')->get();
 
 		if($numero_nfce){
 			$vendas = [];
@@ -361,7 +361,7 @@ class RelatorioController extends Controller
 			$vendasCaixa->where('vendedor_id', $funcionario->usuario_id);
 		}
 
-		$vendasCaixa = $vendasCaixa->get();
+		$vendasCaixa = $vendasCaixa->with('itens')->get();
 
 		$arr = $this->uneArrayVendas2($vendas, $vendasCaixa);
 		if($total_resultados){
@@ -1003,7 +1003,7 @@ class RelatorioController extends Controller
 			$temp = [
 				'data' => $v->data,
 				'total' => $v->total,
-				// 'itens' => $v->itens
+				'quantidade_vendida' => (float)$v->quantidade_vendida
 			];
 			array_push($adicionados, $v->data);
 			array_push($arr, $temp);
@@ -1019,7 +1019,7 @@ class RelatorioController extends Controller
 				$temp = [
 					'data' => $v->data,
 					'total' => $v->total,
-					// 'itens' => $v->itens
+					'quantidade_vendida' => (float)$v->quantidade_vendida
 				];
 				array_push($adicionados, $v->data);
 				array_push($arr, $temp);
@@ -1027,7 +1027,7 @@ class RelatorioController extends Controller
 				for($aux = 0; $aux < count($arr); $aux++){
 					if($arr[$aux]['data'] == $v->data){
 						$arr[$aux]['total'] += $v->total;
-						// $arr[$aux]['itens'] += $i->itens;
+						$arr[$aux]['quantidade_vendida'] += (float)$v->quantidade_vendida;
 					}
 				}
 			}
