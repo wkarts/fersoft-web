@@ -775,7 +775,8 @@ class NFCeService{
 
                     $v += $stdProd->vFrete;
                     if($i->produto->CST_CSOSN != '61'){
-                        $VBC += $stdICMS->vBC = number_format($v,2,'.','');
+                        $stdICMS->vBC = $this->format($v, $config->casas_decimais);
+                        $VBC += (float)$stdICMS->vBC;
                         $stdICMS->pICMS = $this->format($i->produto->perc_icms);
                         $somaICMS += $stdICMS->vICMS = ($stdProd->vProd * ($tempB/100)) * ($stdICMS->pICMS/100);
                         $stdICMS->pRedBC = $this->format($i->produto->pRedBC);
@@ -1255,7 +1256,7 @@ class NFCeService{
     }
 
     public function format($number, $dec = 2){
-        return number_format((float) $number, $dec, ".", "");
+        return __truncateDecimal($number, (int)$dec);
     }
 
     public function inutilizar($config, $nInicio, $nFinal, $justificativa, $nSerie){

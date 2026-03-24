@@ -1116,18 +1116,17 @@ class VendaController extends Controller
                     ]);
                 }
 
-                $totalVenda = str_replace(",", ".", $venda['total']);
+                $casasDecimais = max((int)($config->casas_decimais ?? 2), 2);
+                $totalVenda = __truncateDecimal($venda['total'] ?? 0, $casasDecimais);
 
                 $desconto = 0;
                 if($venda['desconto']){
-                    $desconto = str_replace(".", "", $venda['desconto']);
-                    $desconto = str_replace(",", ".", $desconto);
+                    $desconto = __truncateDecimal($venda['desconto'], $casasDecimais);
                 }
 
                 $acrescimo = 0;
                 if($venda['acrescimo']){
-                    $acrescimo = str_replace(".", "", $venda['acrescimo']);
-                    $acrescimo = str_replace(",", ".", $acrescimo);
+                    $acrescimo = __truncateDecimal($venda['acrescimo'], $casasDecimais);
                 }
 
                 $numero_sequencial = 0;
@@ -1674,18 +1673,17 @@ class VendaController extends Controller
                     ]);
                 }
 
-                $totalVenda = str_replace(",", ".", $request['total']);
+                $casasDecimais = max((int)($config->casas_decimais ?? 2), 2);
+                $totalVenda = __truncateDecimal($request['total'] ?? 0, $casasDecimais);
 
                 $desconto = 0;
                 if($request['desconto']){
-                    $desconto = str_replace(".", "", $request['desconto']);
-                    $desconto = str_replace(",", ".", $desconto);
+                    $desconto = __truncateDecimal($request['desconto'], $casasDecimais);
                 }
 
                 $acrescimo = 0;
                 if($request['acrescimo']){
-                    $acrescimo = str_replace(".", "", $request['acrescimo']);
-                    $acrescimo = str_replace(",", ".", $acrescimo);
+                    $acrescimo = __truncateDecimal($request['acrescimo'], $casasDecimais);
                 }
 
                 $fatura = $request['fatura'];
@@ -1958,7 +1956,7 @@ class VendaController extends Controller
         $venda = $request->venda;
         $valorFrete = 0;
 
-        $totalVenda = str_replace(",", ".", $venda['valor_total']);
+        $totalVenda = __truncateDecimal($venda['valor_total'] ?? 0, 7);
 
         $desconto = 0;
         $acrescimo = 0;

@@ -12,10 +12,12 @@ style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 
 		<th width="15%" class="text-left">Vendedor</th>
 		<th width="15%" class="text-left">Cliente</th>
 		<th width="10%" class="text-left">Forma de pagamento</th>
-		<th width="10%" class="text-left">Despesas operacionais</th>
-		<th width="10%" class="text-left">Desconto</th>
-		<th width="10%" class="text-left">Valor venda liq.</th>
-		<th width="10%" class="text-left">Valor total</th>
+		<th width="8%" class="text-left">Qtd. vendida</th>
+		<th width="8%" class="text-left">Valor unitário</th>
+		<th width="8%" class="text-left">Despesas operacionais</th>
+		<th width="8%" class="text-left">Desconto</th>
+		<th width="8%" class="text-left">Valor venda liq.</th>
+		<th width="8%" class="text-left">Valor total</th>
 	</tr>
 </thead>
 
@@ -29,6 +31,10 @@ $somaDesconto = 0;
 <tbody>
 	@foreach($vendas as $key => $v)
 	<tr class="@if($key%2 == 0) pure-table-odd @endif">
+		@php
+		$quantidadeVendida = $v->itens ? $v->itens->sum('quantidade') : 0;
+		$valorUnitario = $quantidadeVendida > 0 ? ($v->valor_total/$quantidadeVendida) : 0;
+		@endphp
 		<td>{{\Carbon\Carbon::parse($v->created_at)->format('d/m/Y H:i')}}</td>
 		<td>{{$v->id}}</td>
 		<td>
@@ -49,6 +55,8 @@ $somaDesconto = 0;
 		@else
 		<td>{{$v->getTipoPagamento()}}</td>
 		@endif
+		<td>{{number_format($quantidadeVendida, 2, ',', '.')}}</td>
+		<td>R$ {{number_format($valorUnitario, 2, ',', '.')}}</td>
 		@if($v->tbl == 'pdv')
 		<td>R$ 0,00</td>
 
