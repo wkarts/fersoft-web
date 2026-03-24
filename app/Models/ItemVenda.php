@@ -66,8 +66,8 @@ class ItemVenda extends Model
 
     protected $casts = [
         'quantidade' => 'decimal:4',
-        'valor' => 'decimal:2',
-        'valor_custo' => 'decimal:2',
+        'valor' => 'decimal:7',
+        'valor_custo' => 'decimal:7',
 
         'is_bc' => 'decimal:2',
         'is_aliq' => 'decimal:6',
