@@ -1620,6 +1620,12 @@ class VendaController extends Controller
                 return redirect('/403');
             }
 
+            if($this->vendaTravadaParaEdicao($venda)){
+                return response()->json([
+                    'message' => 'Edição bloqueada: a NF-e desta venda já foi autorizada/transmitida ou cancelada.'
+                ], 422);
+            }
+
             $result = DB::transaction(function () use ($payload, $venda, $vendaAnterior) {
                 $request = $payload;
 
@@ -2381,6 +2387,11 @@ class VendaController extends Controller
             return redirect('/403');
         }
 
+        if($this->vendaTravadaParaEdicao($venda)){
+            session()->flash("mensagem_erro", "Edição bloqueada: a NF-e desta venda já foi autorizada/transmitida ou cancelada.");
+            return redirect('/vendas');
+        }
+
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
             ->where('inativo', false)
@@ -2503,6 +2514,14 @@ class VendaController extends Controller
             }
         }
 
+    }
+
+    private function vendaTravadaParaEdicao(Venda $venda): bool
+    {
+        $estado = strtoupper(trim((string) ($venda->estado ?? '')));
+        $estadosBloqueados = ['APROVADO', 'AUTORIZADO', 'CANCELADO'];
+
+        return in_array($estado, $estadosBloqueados, true);
     }
 
     protected function vendaAssincronaEdit($venda){
