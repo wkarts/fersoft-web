@@ -557,14 +557,19 @@ class NFService{
 
 		if($venda->cliente->rua_entrega != ""){
 			$stdEnderDestEntrega = new \stdClass();
+			$cidadeEntrega = $venda->cliente->cidadeEntrega ?? $venda->cliente->cidade;
 
 			$stdEnderDestEntrega->xLgr = $this->retiraAcentos($venda->cliente->rua_entrega);
 			$stdEnderDestEntrega->nro = $this->retiraAcentos($venda->cliente->numero_entrega);
 			$stdEnderDestEntrega->xBairro = $this->retiraAcentos($venda->cliente->bairro_entrega);
 
-			$stdEnderDestEntrega->cMun = $venda->cliente->cidadeEntrega->codigo;
-			$stdEnderDestEntrega->xMun = strtoupper($this->retiraAcentos($venda->cliente->cidadeEntrega->nome));
-			$stdEnderDestEntrega->UF = $venda->cliente->cidade->uf;
+			if($cidadeEntrega == null){
+				throw new \Exception("Cliente sem cidade cadastrada para entrega e endereço principal.");
+			}
+
+			$stdEnderDestEntrega->cMun = $cidadeEntrega->codigo;
+			$stdEnderDestEntrega->xMun = strtoupper($this->retiraAcentos($cidadeEntrega->nome));
+			$stdEnderDestEntrega->UF = $cidadeEntrega->uf;
 
 			$cep = preg_replace('/[^0-9]/', '', $venda->cliente->cep_entrega);
 
