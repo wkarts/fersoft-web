@@ -1741,7 +1741,23 @@ class NFService{
         }
 
         public function format($number, $dec = 2){
-                return __truncateDecimal($number, (int)$dec);
+                $casas = max(0, (int)$dec);
+
+                if (function_exists('\\__truncateDecimal')) {
+                        return \__truncateDecimal($number, $casas);
+                }
+
+                if (!is_numeric($number)) {
+                        $number = 0;
+                }
+
+                $valor = (float) $number;
+                $fator = 10 ** $casas;
+                $truncado = $valor >= 0
+                        ? floor($valor * $fator) / $fator
+                        : ceil($valor * $fator) / $fator;
+
+                return number_format($truncado, $casas, '.', '');
     }
 
 	public function consultaCadastro($cnpj, $uf){
