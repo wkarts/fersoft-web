@@ -374,17 +374,11 @@ class NFService{
                 // trava a série correta e reserva o número antes de prosseguir
                 $stdIde->nNF = $this->reservarNumeroNFe($venda, $config);
                 $stdIde->serie = $venda->serie ?? $config->numero_serie_nfe;
-                if($venda->data_retroativa){
-                        $stdIde->dhEmi = $venda->data_retroativa.date("\TH:i:sP");
-		}else{
-			$stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-		}
+                $emiYmd = $this->normalizeDateYmd($venda->data_retroativa) ?? date('Y-m-d');
+                $stdIde->dhEmi = $this->toIso8601($emiYmd);
 
-		if($venda->data_saida){
-			$stdIde->dhSaiEnt = $venda->data_saida.date("\TH:i:sP");
-		}else{
-			$stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
-		}
+		$saiYmd = $this->normalizeDateYmd($venda->data_saida) ?? date('Y-m-d');
+		$stdIde->dhSaiEnt = $this->toIso8601($saiYmd);
 		// $stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
 		$stdIde->tpNF = 1;
 
@@ -2238,6 +2232,47 @@ class NFService{
 
                         return (int) $numero;
                 }, 3);
+        }
+
+        private function normalizeDateYmd(?string $date): ?string
+        {
+                if (!$date) {
+                        return null;
+                }
+
+                $date = trim($date);
+                if ($date === '0000-00-00' || $date === '0000-00-00 00:00:00') {
+                        return null;
+                }
+
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
+                        [$d, $m, $y] = explode('/', $date);
+                        return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
+                }
+
+                if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date)) {
+                        return substr($date, 0, 10);
+                }
+
+                return null;
+        }
+
+        private function toIso8601(string $ymd, ?string $time = null): string
+        {
+                $tz = new \DateTimeZone(date_default_timezone_get() ?: 'America/Bahia');
+                $hhmmss = $time ?: date('H:i:s');
+
+                $dt = \DateTime::createFromFormat('Y-m-d H:i:s', "$ymd $hhmmss", $tz);
+                if (!$dt) {
+                        $dt = new \DateTime('now', $tz);
+                }
+
+                $year = (int)$dt->format('Y');
+                if ($year < 2000 || $year > 2099) {
+                        $dt = new \DateTime('now', $tz);
+                }
+
+                return $dt->format('Y-m-d\TH:i:sP');
         }
 
         private function normalizeContext($context): array
