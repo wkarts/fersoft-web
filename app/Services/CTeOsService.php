@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Services;
+
+use App\Support\FiscalDateHelper;
 use NFePHP\CTe\Make;
 use NFePHP\CTe\Tools;
 use NFePHP\CTe\Complements;
@@ -43,7 +45,7 @@ class CTeOsService{
 		// ->first();
 
 		$cte = new MakeCTeOS();
-		$dhEmi = date("Y-m-d\TH:i:sP");
+		$dhEmi = FiscalDateHelper::nowXml();
 		$lastCte = Cte::lastCTe();
 		$numeroCTE = $lastCte;
 		$numeroCTE++;

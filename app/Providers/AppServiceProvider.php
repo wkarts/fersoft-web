@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Utils\WhatsAppUtil;
 use App\Services\AppVersionService;
+use App\Support\FiscalDateHelper;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -67,6 +68,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        FiscalDateHelper::applyDefaultTimezone();
+        $this->applyDatabaseTimezone();
+
         Paginator::useBootstrap();
 
         EncryptionHelper::initialize();
@@ -713,5 +717,26 @@ class AppServiceProvider extends ServiceProvider
         return $soma;
     }
 
+
+
+
+    private function applyDatabaseTimezone(): void
+    {
+        try {
+            $timezone = FiscalDateHelper::timezone();
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'mysql') {
+                DB::statement("SET time_zone = '-03:00'");
+            } elseif ($driver === 'pgsql') {
+                DB::statement("SET TIME ZONE '{$timezone}'");
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Falha ao aplicar timezone na conexão do banco.', [
+                'timezone' => FiscalDateHelper::timezone(),
+                'mensagem' => $e->getMessage(),
+            ]);
+        }
+    }
 
 }

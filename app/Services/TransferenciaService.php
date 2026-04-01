@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\FiscalDateHelper;
+
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -129,8 +131,8 @@ class TransferenciaService{
         //$stdIde->nNF = (int) $lastNumero + 1;
         $stdIde->serie = (int) $transferencia->serie;
         $stdIde->nNF = (int) $transferencia->numero_nfe;
-        $stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-        $stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
+        $stdIde->dhEmi = FiscalDateHelper::nowXml();
+        $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = $transferencia->tpNF;
         $stdIde->idDest = $config->UF != $destinatario->UF ? 2 : 1;
         $stdIde->cMunFG = $config->codMun;

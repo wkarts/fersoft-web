@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Services;
+
+use App\Support\FiscalDateHelper;
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -102,13 +104,8 @@ class NFeEntradaService {
         }
         */
 
-        $emiYmd = $this->normalizeDateYmd($compra->data_retroativa) ?? date('Y-m-d');
-        $stdIde->dhEmi = $this->toIso8601($emiYmd);
-
-        $saiYmd = $this->normalizeDateYmd($compra->data_saida);
-        if ($saiYmd) {
-            $stdIde->dhSaiEnt = $this->toIso8601($saiYmd);
-        }
+        $stdIde->dhEmi = FiscalDateHelper::toXmlDateTime($compra->data_retroativa);
+        $stdIde->dhSaiEnt = FiscalDateHelper::toXmlDateTime($compra->data_saida, true) ?? $stdIde->dhEmi;
 
 		$stdIde->tpNF = 0; // 0 Entrada;
 
@@ -1301,46 +1298,16 @@ class NFeEntradaService {
 
     private function normalizeDateYmd(?string $date): ?string
     {
-        if (!$date) return null;
-        $date = trim($date);
+        $xmlDate = FiscalDateHelper::toXmlDateTime($date, true);
 
-        // Trata 0000-00-00 e strings zoadas
-        if ($date === '0000-00-00' || $date === '0000-00-00 00:00:00') return null;
-
-        // dd/mm/yyyy -> yyyy-mm-dd
-        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $date)) {
-            [$d, $m, $y] = explode('/', $date);
-            return sprintf('%04d-%02d-%02d', (int)$y, (int)$m, (int)$d);
-        }
-
-        // yyyy-mm-dd[ hh:mm:ss] -> yyyy-mm-dd
-        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date)) {
-            return substr($date, 0, 10);
-        }
-
-        return null; // qualquer outro formato, ignore
+        return $xmlDate ? substr($xmlDate, 0, 10) : null;
     }
 
     private function toIso8601(string $ymd, ?string $time = null): string
     {
-        // define o timezone da app; ajuste se preferir 'America/Sao_Paulo'
-        $tz = new \DateTimeZone(date_default_timezone_get() ?: 'America/Bahia');
+        $dateTime = $time ? ($ymd . ' ' . $time) : $ymd;
 
-        // usa horário atual se não informado
-        $hhmmss = $time ?: date('H:i:s');
-
-        $dt = \DateTime::createFromFormat('Y-m-d H:i:s', "$ymd $hhmmss", $tz);
-        if (!$dt) {
-            $dt = new \DateTime('now', $tz); // fallback seguro
-        }
-
-        // garante faixa de ano aceita pelo XSD (2000-2099)
-        $y = (int)$dt->format('Y');
-        if ($y < 2000 || $y > 2099) {
-            $dt = new \DateTime('now', $tz);
-        }
-
-        return $dt->format('Y-m-d\TH:i:sP');
+        return FiscalDateHelper::toXmlDateTime($dateTime);
     }
 
 }

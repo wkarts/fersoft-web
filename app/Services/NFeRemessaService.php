@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\FiscalDateHelper;
+
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -109,17 +111,8 @@ class NFeRemessaService{
 		$stdIde->mod = 55;
 		$stdIde->serie = $config->numero_serie_nfe;
 		$stdIde->nNF = (int)$lastNumero+1;
-		if($venda->data_retroativa){
-			$stdIde->dhEmi = $venda->data_retroativa.date("\TH:i:sP");
-		}else{
-			$stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-		}
-
-		if($venda->data_saida){
-			$stdIde->dhSaiEnt = $venda->data_saida.date("\TH:i:sP");
-		}else{
-			$stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
-		}
+		$stdIde->dhEmi = FiscalDateHelper::toXmlDateTime($venda->data_retroativa);
+		$stdIde->dhSaiEnt = FiscalDateHelper::toXmlDateTime($venda->data_saida, true) ?? $stdIde->dhEmi;
 
 		$stdIde->tpNF = 1;
 		if($venda->tipo_nfe == 'estorno'){
@@ -159,7 +152,7 @@ class NFeRemessaService{
 		$stdIde->verProc = '3.10.31';
 
 		if($stdIde->tpEmis == 5){
-			$stdIde->dhCont = date("Y-m-d\TH:i:sP");
+			$stdIde->dhCont = FiscalDateHelper::nowXml();
 			$stdIde->xJust = "teste para contigencia";
 		}
 
@@ -1106,7 +1099,7 @@ class NFeRemessaService{
 	}
 
 	public function format($number, $dec = 2){
-		return __truncateDecimal($number, (int)$dec);
+		return number_format((float) $number, $dec, ".", "");
 	}
 
 	public function consultaCadastro($cnpj, $uf){

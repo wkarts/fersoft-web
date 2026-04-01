@@ -23,46 +23,7 @@ function get_id_user(){
 }
 
 function __replace($valor){
-    if ($valor === null) {
-        return '0';
-    }
-
-    $valor = trim((string)$valor);
-    if ($valor === '') {
-        return '0';
-    }
-
-    // remove separadores de milhar e normaliza decimal para ponto
-    $valor = str_replace([' ', "\xc2\xa0"], '', $valor);
-    $valor = str_replace('.', '', $valor);
-    $valor = str_replace(',', '.', $valor);
-
-    // preserva apenas sinal, dígitos e separador decimal
-    $valor = preg_replace('/[^0-9\.\-]/', '', $valor);
-    if ($valor === '' || $valor === '-' || $valor === '.' || $valor === '-.') {
-        return '0';
-    }
-
-    return $valor;
-}
-
-function __truncateDecimal($valor, int $casas = 2): string
-{
-    $casas = $casas < 0 ? 0 : $casas;
-    $normalizado = __replace($valor);
-    $negativo = str_starts_with($normalizado, '-');
-    $normalizado = ltrim($normalizado, '-');
-
-    [$inteiro, $decimal] = array_pad(explode('.', $normalizado, 2), 2, '');
-    $inteiro = $inteiro === '' ? '0' : preg_replace('/\D/', '', $inteiro);
-    $decimal = preg_replace('/\D/', '', $decimal);
-
-    if ($casas === 0) {
-        return ($negativo ? '-' : '') . $inteiro;
-    }
-
-    $decimal = substr(str_pad($decimal, $casas, '0'), 0, $casas);
-    return ($negativo ? '-' : '') . $inteiro . '.' . $decimal;
+    return str_replace(",", ".", $valor);
 }
 
 function moeda($valor){

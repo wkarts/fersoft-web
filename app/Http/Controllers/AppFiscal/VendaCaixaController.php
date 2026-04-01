@@ -36,14 +36,14 @@ class VendaCaixaController extends Controller
 		foreach($vendas as $v){
 			foreach($v->itens as $i){
 				$i->produto;
-				$i->valor = __truncateDecimal($i->valor, (int)$config->casas_decimais);
+				$i->valor = number_format($i->valor, $config->casas_decimais);
 
 			}
 			$v->tpPag = VendaCaixa::getTipoPagamento($v->tipo_pagamento);
 			$v->cliente;
 			$v->natureza;
 			$v->config = $config;
-			$v->valor_total = __truncateDecimal($v->valor_total, (int)$config->casas_decimais);
+			$v->valor_total = number_format($v->valor_total, $config->casas_decimais);
 
 			$v->urlChave = '';
 			if($v->chave != ''){
@@ -256,13 +256,13 @@ class VendaCaixaController extends Controller
 			$v = VendaCaixa::find($result->id);
 			foreach($v->itens as $i){
 				$i->produto;
-				$i->valor = __truncateDecimal($i->valor, (int)$config->casas_decimais);
+				$i->valor = number_format($i->valor, $config->casas_decimais);
 
 			}
 			$v->cliente;
 			$v->natureza;
 			$v->tpPag = VendaCaixa::getTipoPagamento($v->tipo_pagamento);
-			$v->valor_total = __truncateDecimal($v->valor_total, (int)$config->casas_decimais);
+			$v->valor_total = number_format($v->valor_total, $config->casas_decimais);
 			$v->config = $config;
 			$v->urlChave = '';
 			$public = env('SERVIDOR_WEB') ? 'public/' : '';

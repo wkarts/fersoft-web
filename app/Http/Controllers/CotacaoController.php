@@ -26,7 +26,7 @@ class CotacaoController extends Controller
 
 	public function index(){
 
-		date_default_timezone_set('America/Sao_Paulo');
+		\App\Support\FiscalDateHelper::applyDefaultTimezone();
 		$dataCurrent = date("Y-m-d");
 		$dataBefore = date('Y-m-d', strtotime($dataCurrent. ' - 15 days'));
 
@@ -180,7 +180,7 @@ class CotacaoController extends Controller
 			all();
 			$search = $request->input('search');
 
-			date_default_timezone_set('America/Sao_Paulo');
+			\App\Support\FiscalDateHelper::applyDefaultTimezone();
 			$quotes = Price::
             //whereRaw("DATE_FORMAT(date_register, '%Y-%m-%d') BETWEEN '$dataBefore' AND '$dataCurrent'")
 			selectRaw('prices.*')

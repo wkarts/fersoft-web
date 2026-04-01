@@ -121,9 +121,9 @@ class Venda extends Model
      * Ajuste se algum campo for INT/BOOLEAN no seu banco.
      */
     protected $casts = [
-        'valor_total' => 'decimal:7',
-        'desconto' => 'decimal:7',
-        'acrescimo' => 'decimal:7',
+        'valor_total' => 'decimal:2',
+        'desconto' => 'decimal:2',
+        'acrescimo' => 'decimal:2',
 
         'total_is' => 'decimal:2',
         'total_bc_ibs_cbs' => 'decimal:2',

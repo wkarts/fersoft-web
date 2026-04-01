@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\FiscalDateHelper;
+
 use NFePHP\MDFe\Make;
 use NFePHP\DA\Legacy\FilesFolders;
 use NFePHP\Common\Soap\SoapCurl;
@@ -95,7 +97,7 @@ class MDFeService{
 		$std->cMDF = rand(11111111, 99999999);
 		$std->cDV = '0';
 		$std->modal = '1';
-		$std->dhEmi = date("Y-m-d\TH:i:sP");
+		$std->dhEmi = FiscalDateHelper::nowXml();
 		$std->tpEmis = '1';
 		$std->procEmi = '0';
 		$std->verProc = '3.0';

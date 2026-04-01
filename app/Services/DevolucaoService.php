@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Services;
+
+use App\Support\FiscalDateHelper;
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -165,8 +167,8 @@ class DevolucaoService{
 		$stdIde->nNF = (int)$lastNumero+1;
         $config->ultimo_numero_nfe = $stdIde->nNF;
         $config->save();
-		$stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-		$stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
+		$stdIde->dhEmi = FiscalDateHelper::nowXml();
+		$stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
 		$stdIde->tpNF = $devolucao->tipo;
 		$stdIde->idDest = $config->UF != $devolucao->fornecedor->cidade->uf ? 2 : 1;
 		$stdIde->cMunFG = $config->codMun;

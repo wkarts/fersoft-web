@@ -158,7 +158,7 @@ class SangriaCaixaController extends Controller
 		->first();
 		// $ab = AberturaCaixa::where('ultima_venda', 0)->orderBy('id', 'desc')->first();
 
-		date_default_timezone_set('America/Sao_Paulo');
+		\App\Support\FiscalDateHelper::applyDefaultTimezone();
 		$hoje = date("Y-m-d") . " 00:00:00";
 		$amanha = date('Y-m-d', strtotime('+1 days')). " 00:00:00";
 		$sangrias = SangriaCaixa::

@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\FiscalDateHelper;
+
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -374,17 +376,8 @@ class NFService{
                 // trava a série correta e reserva o número antes de prosseguir
                 $stdIde->nNF = $this->reservarNumeroNFe($venda, $config);
                 $stdIde->serie = $venda->serie ?? $config->numero_serie_nfe;
-                if($venda->data_retroativa){
-                        $stdIde->dhEmi = $venda->data_retroativa.date("\TH:i:sP");
-		}else{
-			$stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-		}
-
-		if($venda->data_saida){
-			$stdIde->dhSaiEnt = $venda->data_saida.date("\TH:i:sP");
-		}else{
-			$stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
-		}
+                $stdIde->dhEmi = FiscalDateHelper::toXmlDateTime($venda->data_retroativa);
+                $stdIde->dhSaiEnt = FiscalDateHelper::toXmlDateTime($venda->data_saida, true) ?? $stdIde->dhEmi;
 		// $stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
 		$stdIde->tpNF = 1;
 
@@ -1747,8 +1740,8 @@ class NFService{
         }
 
         public function format($number, $dec = 2){
-                return __truncateDecimal($number, (int)$dec);
-    }
+                return number_format((float) $number, $dec, ".", "");
+        }
 
 	public function consultaCadastro($cnpj, $uf){
 		try {

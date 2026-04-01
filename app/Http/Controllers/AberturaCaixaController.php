@@ -72,7 +72,7 @@ class AberturaCaixaController extends Controller
 	}
 
 	public function diaria(){
-		date_default_timezone_set('America/Sao_Paulo');
+		\App\Support\FiscalDateHelper::applyDefaultTimezone();
 		$hoje = date("Y-m-d") . " 00:00:00";
 		$amanha = date('Y-m-d', strtotime('+1 days')). " 00:00:00";
 		$abertura = AberturaCaixa::

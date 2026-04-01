@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Support\FiscalDateHelper;
+
 use NFePHP\NFe\Make;
 use NFePHP\NFe\Tools;
 use NFePHP\Common\Certificate;
@@ -378,8 +380,8 @@ class NFCeService{
         $stdIde->mod = 65;
         $stdIde->serie = $config->numero_serie_nfce;
         $stdIde->nNF = (int)$lastNumero+1;
-        $stdIde->dhEmi = date("Y-m-d\TH:i:sP");
-        $stdIde->dhSaiEnt = date("Y-m-d\TH:i:sP");
+        $stdIde->dhEmi = FiscalDateHelper::nowXml();
+        $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = 1;
         $stdIde->idDest = 1;
         $stdIde->cMunFG = $config->codMun;
@@ -775,8 +777,7 @@ class NFCeService{
 
                     $v += $stdProd->vFrete;
                     if($i->produto->CST_CSOSN != '61'){
-                        $stdICMS->vBC = $this->format($v, $config->casas_decimais);
-                        $VBC += (float)$stdICMS->vBC;
+                        $VBC += $stdICMS->vBC = number_format($v,2,'.','');
                         $stdICMS->pICMS = $this->format($i->produto->perc_icms);
                         $somaICMS += $stdICMS->vICMS = ($stdProd->vProd * ($tempB/100)) * ($stdICMS->pICMS/100);
                         $stdICMS->pRedBC = $this->format($i->produto->pRedBC);
@@ -1256,7 +1257,7 @@ class NFCeService{
     }
 
     public function format($number, $dec = 2){
-        return __truncateDecimal($number, (int)$dec);
+        return number_format((float) $number, $dec, ".", "");
     }
 
     public function inutilizar($config, $nInicio, $nFinal, $justificativa, $nSerie){
