@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Utils\WhatsAppUtil;
 use App\Services\AppVersionService;
 use App\Support\FiscalDateHelper;
+use App\Support\EnsureApplicationDirectories;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -60,7 +61,6 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(\App\Services\EvoApiService::class)
             );
         });
-
     }
 
     /**
@@ -68,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        EnsureApplicationDirectories::handle();
+
         FiscalDateHelper::applyDefaultTimezone();
         $this->applyDatabaseTimezone();
 
@@ -397,18 +399,18 @@ class AppServiceProvider extends ServiceProvider
 
     }
 
-// private function registerScheduleCommands(){
-//     // file_put_contents("aaaa.txt", "e ai bro");
-
-//     $this->app->booted(function () {
-//         $schedule = $this->app->make(Schedule::class);
-//         $schedule->call(function () {
-//             file_put_contents("aaaa.txt", "e ai bro");
-//             $this->getUsersLogin();
-//         })->everyMinute();
-//     });
-
-// }
+    // private function registerScheduleCommands(){
+    //     // file_put_contents("aaaa.txt", "e ai bro");
+    //
+    //     $this->app->booted(function () {
+    //         $schedule = $this->app->make(Schedule::class);
+    //         $schedule->call(function () {
+    //             file_put_contents("aaaa.txt", "e ai bro");
+    //             $this->getUsersLogin();
+    //         })->everyMinute();
+    //     });
+    //
+    // }
 
     private function getUsersLogin(){
         $empresas = Empresa::
@@ -717,9 +719,6 @@ class AppServiceProvider extends ServiceProvider
         return $soma;
     }
 
-
-
-
     private function applyDatabaseTimezone(): void
     {
         try {
@@ -738,5 +737,4 @@ class AppServiceProvider extends ServiceProvider
             ]);
         }
     }
-
 }
