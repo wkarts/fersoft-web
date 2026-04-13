@@ -101,6 +101,10 @@ class CreateFechamentosMensaisTable extends Migration
             return false;
         }
 
+        if ($this->isSqlite()) {
+            return false;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.STATISTICS')
@@ -130,6 +134,10 @@ class CreateFechamentosMensaisTable extends Migration
             return;
         }
 
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.STATISTICS')
@@ -144,4 +152,10 @@ class CreateFechamentosMensaisTable extends Migration
             });
         }
     }
+
+    private function isSqlite(): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite';
+    }
+
 }

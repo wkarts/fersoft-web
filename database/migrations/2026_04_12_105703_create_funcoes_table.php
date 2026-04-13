@@ -58,6 +58,10 @@ class CreateFuncoesTable extends Migration
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.STATISTICS')
@@ -75,6 +79,10 @@ class CreateFuncoesTable extends Migration
 
     private function dropForeignIfExists(string $table, string $foreignName): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.TABLE_CONSTRAINTS')
@@ -90,4 +98,10 @@ class CreateFuncoesTable extends Migration
             });
         }
     }
+
+    private function isSqlite(): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite';
+    }
+
 }

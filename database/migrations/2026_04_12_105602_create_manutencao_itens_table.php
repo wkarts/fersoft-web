@@ -120,6 +120,10 @@ class CreateManutencaoItensTable extends Migration
 
     private function getPrimaryKeyColumn(string $table): ?string
     {
+        if ($this->isSqlite()) {
+            return 'id';
+        }
+
         $database = DB::getDatabaseName();
 
         $pk = DB::table('information_schema.KEY_COLUMN_USAGE as kcu')
@@ -139,6 +143,15 @@ class CreateManutencaoItensTable extends Migration
 
     private function getColumnMeta(string $table, string $column): ?object
     {
+        if ($this->isSqlite()) {
+            return (object) [
+                'COLUMN_NAME' => $column,
+                'DATA_TYPE' => 'integer',
+                'COLUMN_TYPE' => 'integer',
+                'IS_NULLABLE' => 'YES',
+            ];
+        }
+
         $database = DB::getDatabaseName();
 
         return DB::table('information_schema.COLUMNS')
@@ -198,6 +211,10 @@ class CreateManutencaoItensTable extends Migration
         string $referencesColumn = 'id',
         string $onDelete = 'cascade'
     ): void {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         if (!Schema::hasColumn($table, $column) || !Schema::hasColumn($referencesTable, $referencesColumn)) {
@@ -229,6 +246,10 @@ class CreateManutencaoItensTable extends Migration
 
     private function dropForeignIfExists(string $table, string $foreignName): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.TABLE_CONSTRAINTS')
@@ -244,4 +265,10 @@ class CreateManutencaoItensTable extends Migration
             });
         }
     }
+
+    private function isSqlite(): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite';
+    }
+
 }

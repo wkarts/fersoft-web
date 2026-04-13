@@ -359,6 +359,10 @@ class MergeMovimentacoesVeiculosPreservingOriginalBase extends Migration
 
     private function addIndexIfNotExists(string $table, string $indexName, array $columns): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.STATISTICS')
@@ -382,6 +386,10 @@ class MergeMovimentacoesVeiculosPreservingOriginalBase extends Migration
         string $referencesColumn = 'id',
         string $onDelete = 'cascade'
     ): void {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         if (!Schema::hasColumn($table, $column) || !Schema::hasColumn($referencesTable, $referencesColumn)) {
@@ -413,6 +421,10 @@ class MergeMovimentacoesVeiculosPreservingOriginalBase extends Migration
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.STATISTICS')
@@ -430,6 +442,10 @@ class MergeMovimentacoesVeiculosPreservingOriginalBase extends Migration
 
     private function dropForeignIfExists(string $table, string $foreignName): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         $database = DB::getDatabaseName();
 
         $exists = DB::table('information_schema.TABLE_CONSTRAINTS')
@@ -445,4 +461,10 @@ class MergeMovimentacoesVeiculosPreservingOriginalBase extends Migration
             });
         }
     }
+
+    private function isSqlite(): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite';
+    }
+
 }

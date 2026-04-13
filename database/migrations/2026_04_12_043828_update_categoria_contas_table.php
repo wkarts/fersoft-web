@@ -157,9 +157,7 @@ class UpdateCategoriaContasTable extends Migration
         string $referencesColumn = 'id',
         string $onDelete = 'cascade'
     ): void {
-        $driver = DB::connection()->getDriverName();
-
-        if ($driver === 'sqlite') {
+        if ($this->isSqlite()) {
             return;
         }
 
@@ -190,9 +188,7 @@ class UpdateCategoriaContasTable extends Migration
 
     private function dropForeignIfExists(string $table, string $foreignName): void
     {
-        $driver = DB::connection()->getDriverName();
-
-        if ($driver === 'sqlite') {
+        if ($this->isSqlite()) {
             return;
         }
 
@@ -211,4 +207,10 @@ class UpdateCategoriaContasTable extends Migration
             });
         }
     }
+
+    private function isSqlite(): bool
+    {
+        return DB::connection()->getDriverName() === 'sqlite';
+    }
+
 }
