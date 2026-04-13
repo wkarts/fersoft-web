@@ -15,6 +15,7 @@ use App\Models\Usuario;
 use App\Services\OtpService;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Support\AuditContext;
 
 abstract class BaseController extends Controller
 {
@@ -341,6 +342,9 @@ abstract class BaseController extends Controller
             $registroId = null;
             $dadosAnteriores = [];
 
+            // 🔹 Impede duplicidade com auditoria automática do BaseModel
+            $this->disableNextModelAudit();
+
             if ($request->filled('id')) {
                 $registroId = $request->id;
                 $record = $this->model::where('empresa_id', $this->empresa_id)
@@ -375,6 +379,9 @@ abstract class BaseController extends Controller
                     ['registro_id' => $record->id, 'form_title' => $this->formTitle]
                 ));
             }
+
+            // 🔹 Marca que o controller assumiu o log desta operação
+            $this->markManualAuditExecuted();
 
             // 🔹 Certifica-se de que $this->model é uma instância válida antes de chamar get_class()
             $modelInstance = is_string($this->model) ? app($this->model) : $this->model;
@@ -486,6 +493,9 @@ abstract class BaseController extends Controller
             $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
             $acao = 'delete';
 
+            // Evita duplicidade com auditoria automática do BaseModel
+            $this->disableNextModelAudit();
+
             if (method_exists($this->model, 'bootSoftDeletes')) {
                 $record->delete(); // Soft delete
             } else {
@@ -550,6 +560,9 @@ abstract class BaseController extends Controller
 
             // 🔹 Captura os dados antes da restauração para o log
             $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
+
+            // Evita duplicidade com auditoria automática do BaseModel
+            $this->disableNextModelAudit();
 
             $record->restore();
 
@@ -937,4 +950,13 @@ abstract class BaseController extends Controller
         }
     }
 
+    protected function disableNextModelAudit(): void
+    {
+        AuditContext::skipNextModelAudit();
+    }
+
+    protected function markManualAuditExecuted(): void
+    {
+        AuditContext::markManualAuditExecuted();
+    }
 }
