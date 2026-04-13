@@ -312,7 +312,9 @@ class MergeMovimentacoesVeiculosTableWithoutDataLoss extends Migration
         string $referencesColumn = 'id',
         string $onDelete = 'cascade'
     ): void {
-        if ($this->isSqlite()) {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
             return;
         }
 
@@ -343,7 +345,9 @@ class MergeMovimentacoesVeiculosTableWithoutDataLoss extends Migration
 
     private function dropForeignIfExists(string $table, string $foreignName): void
     {
-        if ($this->isSqlite()) {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
             return;
         }
 
@@ -365,7 +369,9 @@ class MergeMovimentacoesVeiculosTableWithoutDataLoss extends Migration
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
-        if ($this->isSqlite()) {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
             return;
         }
 
