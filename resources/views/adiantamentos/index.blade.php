@@ -146,20 +146,39 @@ $(document).ready(function() {
     });
 
     // 2. Inicialização do Select2 (Busca dentro do Modal de Novo Adiantamento)
-    $('#pessoa_id').select2({
-        placeholder: 'Digite para buscar...',
-        minimumInputLength: 3,
-        dropdownParent: $('#modalAdiantamento'), 
-        ajax: {
-            url: "{{ route('adiantamentos.buscarPessoas') }}",
-            dataType: 'json',
-            delay: 300,
-            data: function (params) {
-                return { term: params.term, tipo: $('#tipo_pessoa').val() };
-            },
-            processResults: function (data) { return data; },
-            cache: true
+    function initSelectPessoa() {
+        if ($('#pessoa_id').hasClass("select2-hidden-accessible")) {
+            $('#pessoa_id').select2('destroy');
         }
+
+        $('#pessoa_id').select2({
+            width: '100%',
+            placeholder: 'Digite para buscar...',
+            minimumInputLength: 1,
+            dropdownParent: $('#modalAdiantamento'),
+            ajax: {
+                url: "{{ route('adiantamentos.buscarPessoas') }}",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term || '',
+                        tipo: $('#tipo_pessoa').val()
+                    };
+                },
+                processResults: function (data) {
+                    return Array.isArray(data) ? { results: data } : data;
+                },
+                cache: false
+            }
+        });
+    }
+
+    initSelectPessoa();
+
+    $('#modalAdiantamento').on('shown.bs.modal', function () {
+        initSelectPessoa();
+        $('#pessoa_id').select2('open');
     });
 
     // 3. Outros gatilhos (Máscaras e Nome)
@@ -168,7 +187,8 @@ $(document).ready(function() {
     });
 
     $('#tipo_pessoa').on('change', function() {
-        $('#pessoa_id').val(null).trigger('change');
+        $('#pessoa_id').empty().append('<option value="">Digite para buscar...</option>').val('').trigger('change');
+        $('#nome_pessoa').val('');
     });
 
     $('.money').mask('#.##0,00', {reverse: true});

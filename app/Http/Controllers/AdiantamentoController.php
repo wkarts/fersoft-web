@@ -69,7 +69,7 @@ class AdiantamentoController extends BaseController
 
     public function buscarPessoas(Request $request)
     {
-        $pesquisa = $request->term;
+        $pesquisa = trim((string)$request->term);
         $tipo = $request->tipo;
 
         $query = ($tipo == 'cliente') ? Cliente::query() : Fornecedor::query();
@@ -80,6 +80,7 @@ class AdiantamentoController extends BaseController
                   ->orWhere('nome_fantasia', 'LIKE', "%$pesquisa%")
                   ->orWhere('cpf_cnpj', 'LIKE', "%$pesquisa%");
             })
+            ->orderBy('razao_social')
             ->limit(20)
             ->get();
 

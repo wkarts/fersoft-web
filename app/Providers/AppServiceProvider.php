@@ -579,6 +579,7 @@ class AppServiceProvider extends ServiceProvider
             if(in_array($uri, $rotaDeGestaoPessoal)) return 'Gestão Pessoal';
             if(in_array($uri, $rotaDeEstoque)) return 'Estoque';
             if(in_array($uri, $rotaFinanceiro)) return 'Financeiro';
+            if($uri == 'adiantamentos') return 'Adiantamentos';
             if(in_array($uri, $rotaConfig)) return 'Configurações';
             if(in_array($uri, $rotaVenda)) return 'Vendas';
             if(in_array($uri, $rotaCTe)) return 'CTe';
