@@ -36,6 +36,7 @@ $(function () {
 
 	PERMITEDESCONTO = $('#permite_desconto').val()
 	PERCENTUALMAXDESCONTO = $('#percentual_max_desconto').val()
+    PERMITENEGATIVO = $('#permitir_estoque_negativo').val();
 	
 	PRODUTOS = JSON.parse($('#produtos').val())
 	FORMASPAGAMENTO = JSON.parse($('#formasPagamento').val())
@@ -375,24 +376,35 @@ function selectGrade(id){
 }
 
 function somaQuantidadeProdutoAdicionado(produto, quantidadeAdicionar, call){
+    // Busca o valor direto do input toda vez para não ter erro de cache de variável
+    let permitirNegativo = $('#permitir_estoque_negativo').val();
+    
+    let quantidadeNaLista = 0;
+    ITENS.map((p) => {
+        if(p.codigo == produto.id){
+            quantidadeNaLista += parseFloat(p.quantidade)
+        }
+    })
 
-	let quantidade = 0;
-	ITENS.map((p) => {
-		if(p.codigo == produto.id){
-			quantidade += parseFloat(p.quantidade)
-		}
-	})
+    let quantidadeTotal = quantidadeNaLista + parseFloat(quantidadeAdicionar);
 
-	quantidade += parseFloat(quantidadeAdicionar);
+    // Se a config for '1', ignora o resto e libera a venda (true)
+    if(permitirNegativo == '1' || permitirNegativo == 1){
+        return call(true); 
+    }
 
-
-
-	if(produto.gerenciar_estoque == 1 && (!produto.estoque || produto.estoque.quantidade < quantidade)){
-		call(false)
-	}else{
-		call(true)
-	}
+    // Se não permitir negativo, valida o estoque
+    if(produto.gerenciar_estoque == 1){
+        let estoqueAtual = produto.estoque ? parseFloat(produto.estoque.quantidade) : 0;
+        
+        if(estoqueAtual < quantidadeTotal){
+            return call(false); // Aqui é onde o swal de bloqueio é disparado
+        }
+    }
+    
+    call(true);
 }
+    }
 
 $('#addProd').click(() => {
 	$('#formaPagamento').val('--').change();

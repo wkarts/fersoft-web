@@ -61,6 +61,7 @@ class ConfigNota extends Model
         'alerta_sonoro',
         'casas_decimais_qtd',
         'gerenciar_estoque_produto',
+        'permitir_estoque_negativo', // <-- ADICIONADO AQUI
         'token_nfse',
         'parcelamento_maximo',
         'codigo_tributacao_municipio',

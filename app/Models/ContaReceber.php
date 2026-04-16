@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\MultiEmpresaTrait;
 //use App\Traits\FilialInjectable;
 //use App\Models\BaseModel;
 
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class ContaReceber extends Model
 {
     //use FilialInjectable;
-
+   use MultiEmpresaTrait;
     protected $fillable = [
         'venda_id',
         'data_vencimento',
@@ -35,6 +36,7 @@ class ContaReceber extends Model
         'nf_numero',
         'nf_data_emissao',
         'nf_chave',
+        
     ];
 
     public function filial(){
@@ -207,6 +209,13 @@ class ContaReceber extends Model
         }
     }
 
+  public function usuarioBaixa()
+{
+    // Isso diz ao Laravel que a coluna 'usuario_baixa_id' se conecta com a tabela de usuários
+    return $this->belongsTo(Usuario::class, 'usuario_baixa_id');
+}
+  
+  
     public static function tiposPagamento(){
         return [
             'Dinheiro',

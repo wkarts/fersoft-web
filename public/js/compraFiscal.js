@@ -462,6 +462,8 @@ function salvarFatura(compra_id, call){
 			item.categoria_conta_id = $('#categoria_conta_id').val();
 			item.numero_nota_fiscal = $('#nNf').val();
             item.filial_id = $('#filial_id') ? $('#filial_id').val() : -1;
+            item.veiculo_id = $('#veiculo_id').val();
+            item.data_emissao = $('#data_emissao').val();
             item.fornecedor_id = $('#idFornecedor').val(); // <--- muito importante!
             $.ajax
 			({
@@ -519,6 +521,7 @@ function salvarNF(call){
 		categoria_conta_id: $('#categoria_conta_id').val(),
 		chave: $('#chave').val(),
 		filial_id: $('#filial_id') ? $('#filial_id').val() : -1,
+        veiculo_id: $('#veiculo_id').val(),
 	}
 	console.log(js)
 

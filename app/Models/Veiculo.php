@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\MarcaVeiculo;
 use App\Models\ModeloVeiculo;
 use App\Models\CombustivelVeiculo;
@@ -11,7 +10,6 @@ use App\Models\Manutencao;
 
 class Veiculo extends BaseModel
 {
-    use SoftDeletes;
 
     protected $fillable = [
         'empresa_id',
@@ -272,5 +270,20 @@ class Veiculo extends BaseModel
     {
         return self::cUF()[$ufCode] ?? 'N/A';
     }
+  public function getStatusManutencaoNivelAttribute()
+{
+    // Se não tiver KM de próxima manutenção definido, fica neutro
+    if (!$this->proxima_manutencao_km) return 'indefinido';
+
+    $kmRestante = $this->proxima_manutencao_km - $this->quilometragem;
+
+    if ($kmRestante <= 0) {
+        return 'vencido'; // Vermelho
+    } elseif ($kmRestante <= 500) {
+        return 'alerta'; // Amarelo (Faltam menos de 500km)
+    }
+
+    return 'em_dia'; // Verde
+}
 
 }

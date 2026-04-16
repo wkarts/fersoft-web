@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		th{
 			font-size: 13px;
@@ -34,7 +34,7 @@
 		<table>
 			<tr>
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 
 				<td class="" style="width: 550px;">
@@ -86,7 +86,7 @@
 				<strong>PRODUTOS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 
 	<table>
@@ -101,24 +101,24 @@
 				<td class="" style="width: 90px;">
 					Valor de venda
 				</td>
-				
+
 				<td class="" style="width: 90px;">
 					Valor de compra
 				</td>
 				<td class="" style="width: 90px;">
 					Data de cadastro
 				</td>
-				
+
 			</tr>
 		</thead>
-		
+
 		<tbody>
 			@foreach($data as $item)
 			<tr>
 				<th class="b-top">
 					{{ $item->nome }}
 				</th>
-				
+
 				<th class="b-top">
 					@if($item->estoque)
 					{{ $item->estoque->quantidade }}
@@ -166,11 +166,11 @@
 
 			<td class="" style="width: 350px;">
 				Total de linhas:
-				<strong> 
+				<strong>
 					{{sizeof($data)}}
 				</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 

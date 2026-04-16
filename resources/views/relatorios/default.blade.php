@@ -631,9 +631,9 @@
 
 		@php $config = App\Models\ConfigNota::configStatic(); @endphp
 		@if($config->logo != "")
-		<img style="margin-top: -60px; height: 80px;" src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
+		<img style="margin-top: -60px; height: 80px;" src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
 		@else
-		<img style="margin-top: -60px;" src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
+		<img style="margin-top: -60px;" src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
 		@endif
 
 		<div class="row text-right">
@@ -661,9 +661,9 @@
 				</td>
 				<td class="text-right">
 					@if($config->logo != "")
-					<img style="margin-top:-10px; height: 50px;" src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
+					<img style="margin-top:-10px; height: 50px;" src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
 					@else
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
 					@endif
 				</td>
 			</tr>

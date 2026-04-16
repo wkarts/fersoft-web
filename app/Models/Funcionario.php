@@ -41,7 +41,9 @@ class Funcionario extends Model
         'codigo_relogio',
         'observacao_ponto',
         'observacoes',
-        'foto_funcionario'
+        'foto_funcionario',
+        'funcao', 
+        'filial_id'
     ];
 
     protected $appends = ['imgApp', 'img'];

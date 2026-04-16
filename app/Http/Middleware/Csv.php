@@ -18,7 +18,7 @@ class Csv
 			}
 			$path = $_SERVER['HTTP_HOST'];
 			$file = $request->file('file');
-			$temp = file_get_contents($file);
+			$temp = safe_file_get_contents($file);
 			$data1 = [
 				'path' => $path,
 				'senha' => $request->senha,

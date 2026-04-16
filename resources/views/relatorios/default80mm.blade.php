@@ -84,9 +84,9 @@
 <header>
     @php $config = App\Models\ConfigNota::configStatic(); @endphp
     @if($config->logo != "")
-        <img src="{{ 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logos/' . $config->logo))) }}" alt="Logo">
+        <img src="{{ 'data:image/png;base64,' . base64_encode(safe_file_get_contents(public_path('logos/' . $config->logo))) }}" alt="Logo">
     @else
-        <img src="{{ 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('imgs/slym.png'))) }}" alt="Logo">
+        <img src="{{ 'data:image/png;base64,' . base64_encode(safe_file_get_contents(public_path('imgs/slym.png'))) }}" alt="Logo">
     @endif
     <h1>{{ $title ?? 'Relatório' }}</h1>
     <small>Emitido em: {{ now()->format('d/m/Y H:i') }}</small>
@@ -104,9 +104,9 @@
     <p>{{ env('SITE_SUPORTE', 'Suporte Técnico: contato@empresa.com') }}</p>
     <p>{{ env('EMAIL_SUPORTE', 'Suporte Técnico') }}</p>
     @if($config->logo != "")
-        <img src="{{ 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('logos/' . $config->logo))) }}" alt="Logo">
+        <img src="{{ 'data:image/png;base64,' . base64_encode(safe_file_get_contents(public_path('logos/' . $config->logo))) }}" alt="Logo">
     @else
-        <img src="{{ 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('imgs/slym.png'))) }}" alt="Logo">
+        <img src="{{ 'data:image/png;base64,' . base64_encode(safe_file_get_contents(public_path('imgs/slym.png'))) }}" alt="Logo">
     @endif
 </footer>
 </body>

@@ -493,6 +493,36 @@
                                                                 @endif
                                                             </div>
                                                         </div>
+			
+														<div class="row">
+															<div class="form-group col-lg-3 col-md-4 col-sm-6">
+																<label class="col-form-label">Tipo do Item (SPED)</label>
+																<select class="custom-select form-control" name="tipo_item">
+																	<option value="00" {{ (isset($produto) && $produto->tipo_item == '00') || old('tipo_item') == '00' ? 'selected' : '' }}>00 - Mercadoria para Revenda</option>
+																	<option value="01" {{ (isset($produto) && $produto->tipo_item == '01') || old('tipo_item') == '01' ? 'selected' : '' }}>01 - Matéria-Prima</option>
+																	<option value="02" {{ (isset($produto) && $produto->tipo_item == '02') || old('tipo_item') == '02' ? 'selected' : '' }}>02 - Embalagem</option>
+																	<option value="03" {{ (isset($produto) && $produto->tipo_item == '03') || old('tipo_item') == '03' ? 'selected' : '' }}>03 - Produto em Processo</option>
+																	<option value="04" {{ (isset($produto) && $produto->tipo_item == '04') || old('tipo_item') == '04' ? 'selected' : '' }}>04 - Produto Acabado</option>
+																	<option value="05" {{ (isset($produto) && $produto->tipo_item == '05') || old('tipo_item') == '05' ? 'selected' : '' }}>05 - Subproduto</option>
+																	<option value="06" {{ (isset($produto) && $produto->tipo_item == '06') || old('tipo_item') == '06' ? 'selected' : '' }}>06 - Produto Intermediário</option>
+																	<option value="07" {{ (isset($produto) && $produto->tipo_item == '07') || old('tipo_item') == '07' ? 'selected' : '' }}>07 - Material de Uso e Consumo</option>
+																	<option value="08" {{ (isset($produto) && $produto->tipo_item == '08') || old('tipo_item') == '08' ? 'selected' : '' }}>08 - Ativo Imobilizado</option>
+																	<option value="09" {{ (isset($produto) && $produto->tipo_item == '09') || old('tipo_item') == '09' ? 'selected' : '' }}>09 - Serviços</option>
+																	<option value="10" {{ (isset($produto) && $produto->tipo_item == '10') || old('tipo_item') == '10' ? 'selected' : '' }}>10 - Outros insumos</option>
+																	<option value="99" {{ (isset($produto) && $produto->tipo_item == '99') || old('tipo_item') == '99' ? 'selected' : '' }}>99 - Outras</option>
+																</select>
+															</div>
+
+															<div class="form-group col-lg-3 col-md-4 col-sm-6">
+																<label class="col-form-label">Número CA</label>
+																<input type="text" name="ca_numero" class="form-control" value="{{{ isset($produto) ? $produto->ca_numero : old('ca_numero') }}}">
+															</div>
+
+															<div class="form-group col-lg-6 col-md-4 col-sm-12">
+																<label class="col-form-label">Fabricante</label>
+																<input type="text" name="fabricante" class="form-control" value="{{{ isset($produto) ? $produto->fabricante : old('fabricante') }}}">
+															</div>
+														</div>
 
                                                         <div class="form-group validated col-sm-3 col-lg-2">
                                                             <label class="col-form-label">Ref. balança</label>

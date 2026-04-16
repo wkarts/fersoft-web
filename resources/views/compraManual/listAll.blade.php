@@ -43,35 +43,33 @@
 							</div>
 						</div>
 					</div>
+                  
+<div class="form-group col-lg-2 col-md-4 col-sm-6">
+    <label class="col-form-label">Data Emissão Inicial</label>
+    <div class="input-group date">
+        <input type="text" name="data_inicial" class="form-control" readonly value="{{{ isset($dataInicial) ? $dataInicial : '' }}}" id="kt_datepicker_3" />
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+        </div>
+    </div>
+</div>
 
-					<div class="form-group col-lg-2 col-md-4 col-sm-6">
-						<label class="col-form-label">Data Inicial</label>
-						<div class="">
-							<div class="input-group date">
-								<input type="text" name="data_inicial" class="form-control" readonly value="{{{ isset($dataInicial) ? $dataInicial : '' }}}" id="kt_datepicker_3" />
-								<div class="input-group-append">
-									<span class="input-group-text">
-										<i class="la la-calendar"></i>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
+<div class="form-group col-lg-2 col-md-4 col-sm-6">
+    <label class="col-form-label">Data Emissão Final</label>
+    <div class="input-group date">
+        <input type="text" name="data_final" class="form-control" readonly value="{{{ isset($dataFinal) ? $dataFinal : '' }}}" id="kt_datepicker_3" />
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+        </div>
+    </div>
+</div>
 
-					<div class="form-group col-lg-2 col-md-4 col-sm-6">
-						<label class="col-form-label">Data Final</label>
-						<div class="">
-							<div class="input-group date">
-								<input type="text" name="data_final" class="form-control" readonly value="{{{ isset($dataFinal) ? $dataFinal : '' }}}" id="kt_datepicker_3" />
-								<div class="input-group-append">
-									<span class="input-group-text">
-										<i class="la la-calendar"></i>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
+<div class="form-group col-lg-2 col-md-4 col-sm-6">
+    <label class="col-form-label">Nº Emissão Própria</label>
+    <input type="text" name="numero_emissao" class="form-control" value="{{{ isset($numero_emissao) ? $numero_emissao : '' }}}">
+</div>
+                  
+                  
 					<div class="form-group col-lg-2 col-md-2 col-sm-3">
 						<label class="col-form-label">Nº NFe</label>
 						<div class="">
@@ -117,7 +115,6 @@
 										<i class="fa fa-ellipsis-h"></i>
 									</a>
 									<div class="dropdown-menu p-0 m-0 dropdown-menu-md dropdown-menu-right">
-										<!--begin::Navigation-->
 										<ul class="navi navi-hover">
 											<li class="navi-header font-weight-bold py-4">
 												<span class="font-size-lg">Ações:</span>
@@ -143,7 +140,8 @@
 											</li>
 											@endif
 
-											@if($c->estado == 'NOVO' || $c->estado == 'REJEITADO')
+                                            {{-- Trava de segurança: Só exclui se NÃO houver número de emissão --}}
+											@if(($c->estado == 'NOVO' || $c->estado == 'REJEITADO' || $c->estado == 'EMITIDA' || $c->estado == 'IMPORTADO') && ($c->numero_emissao == 0 || $c->numero_emissao == null))
 											<li class="navi-item">
 												<a onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/compras/delete/{{ $c->id }}" }else{return false} })' href="#!" class="navi-link">
 													<span class="navi-text">
@@ -167,15 +165,17 @@
 													</span>
 												</a>
 											</li>
-											@if($c->nf == 0 && $c->estado == 'NOVO')
-											<li class="navi-item">
-												<a onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/compraManual/editar/{{ $c->id }}" }else{return false} })' href="#!" class="navi-link">
-													<span class="navi-text">
-														<span class="label label-xl label-inline label-light-warning">Editar</span>
-													</span>
-												</a>
-											</li>
-											@endif
+											
+                                            {{-- Trava de segurança: Só edita se NÃO houver número de emissão --}}
+											@if(($c->chave == "" || $c->chave == null) && ($c->estado == 'NOVO' || $c->estado == 'EMITIDA') && ($c->numero_emissao == 0 || $c->numero_emissao == null))
+                                            <li class="navi-item">
+                                                <a onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/compraManual/editar/{{ $c->id }}" }else{return false} })' href="#!" class="navi-link">
+                                                    <span class="navi-text">
+                                                        <span class="label label-xl label-inline label-light-warning">Editar</span>
+                                                    </span>
+                                                </a>
+                                            </li>
+                                            @endif
 										</ul>
 									</div>
 								</div>
@@ -204,27 +204,27 @@
 							</div>
 
 							<div class="kt-widget__info">
-								<span class="kt-widget__label">Estado:</span>
-								@if($c->nf > 0)
-								<span class="label label-xl label-inline label-light-info">IMPORTADO
-								</span>
-								@else
-
-								@if($c->estado == 'NOVO')
-								<span class="label label-xl label-inline label-light-primary">NOVO
-								</span>
-								@elseif($c->estado == 'APROVADO')
-								<span class="label label-xl label-inline label-light-success">APROVADO
-								</span>
-								@elseif($c->estado == 'REJEITADO')
-								<span REJEITADO="label label-xl label-inline label-light-warning">APROVADO
-								</span>
-								@elseif($c->estado == 'CANCELADO')
-								<span REJEITADO="label label-xl label-inline label-light-dange">CANCELADO
-								</span>
-								@endif
-								@endif
-							</div>
+                                <span class="kt-widget__label">Estado:</span>
+                                
+                                {{-- Lógica de etiquetas de estado --}}
+                                @if($c->numero_emissao > 0)
+                                    <span class="label label-xl label-inline label-light-success">AUTORIZADO</span>
+                                @elseif($c->chave != "" && $c->chave != null)
+                                    <span class="label label-xl label-inline label-light-dark">IMPORTADO</span>
+                                @else
+                                    @if($c->estado == 'NOVO')
+                                        <span class="label label-xl label-inline label-light-primary">NOVO</span>
+                                    @elseif($c->estado == 'EMITIDA')
+                                        <span class="label label-xl label-inline label-light-info">EMITIDA</span>
+                                    @elseif($c->estado == 'APROVADO')
+                                        <span class="label label-xl label-inline label-light-success">APROVADO</span>
+                                    @elseif($c->estado == 'REJEITADO')
+                                        <span class="label label-xl label-inline label-light-warning">REJEITADO</span>
+                                    @elseif($c->estado == 'CANCELADO')
+                                        <span class="label label-xl label-inline label-light-danger">CANCELADO</span>
+                                    @endif
+                                @endif
+                            </div>
 							<div class="kt-widget__info">
 								<span class="kt-widget__label">Usuário:</span>
 								<a class="kt-widget__data text-success">{{ $c->usuario->nome }}</a>

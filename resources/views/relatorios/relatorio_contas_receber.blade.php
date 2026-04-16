@@ -615,9 +615,9 @@
 
 		@php $config = App\Models\ConfigNota::configStatic(); @endphp
 		@if($config->logo != "")
-		<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
+		<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
 		@else
-		<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
+		<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
 		@endif
 
 
@@ -631,12 +631,12 @@
 		<div class="row">
 			<h4 style="text-align:center; margin-top: -50px;">Relatório de Contas a Receber</h4>
 		</div>
-		
+
 	</div>
 </header>
 <body>
 	<br>
-	
+
 	<table class="table-sm table-borderless"
 	style="border-bottom: 1px solid rgb(206, 206, 206); margin-bottom:10px;  width: 100%;">
 	@if($data_inicial && $data_final)
@@ -655,10 +655,10 @@
 		</tr>
 	</thead>
 	<tbody>
-		@php 
+		@php
 		$dTemp = null;
-		$somaPago = $somaLinhaPago = 0; 
-		$somaPendente = $somaLinhaPendente = 0; 
+		$somaPago = $somaLinhaPago = 0;
+		$somaPendente = $somaLinhaPendente = 0;
 		@endphp
 
 		@foreach($contas as $key => $c)
@@ -687,7 +687,7 @@
 			<td class="text-left">{{ $c->tipo_pagamento != '' ? $c->tipo_pagamento : '-' }}</td>
 		</tr>
 
-		@php 
+		@php
 		if($c->status){
 			$somaPago += $c->valor_integral;
 			$somaLinhaPago += $c->valor_integral;
@@ -708,7 +708,7 @@
 			</td>
 		</tr>
 		@php
-		$somaLinhaPago = 0; 
+		$somaLinhaPago = 0;
 		$somaLinhaPendente = 0;
 		@endphp
 		@endif
@@ -753,9 +753,9 @@
 				</td>
 				<td class="text-right">
 					@if($config->logo != "")
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
 					@else
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
 					@endif
 				</td>
 			</tr>

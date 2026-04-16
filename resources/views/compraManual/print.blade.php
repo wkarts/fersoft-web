@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 
@@ -33,11 +33,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -91,7 +91,7 @@
 			<td class="b-bottom" style="width: 700px;">
 				Email: <strong>{{$config->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 	<br>
@@ -144,7 +144,7 @@
 			<td class="b-top" style="width: 700px;">
 				Email: <strong>{{$compra->fornecedor->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -165,7 +165,7 @@
 				<strong>MERCADORIAS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
@@ -202,7 +202,7 @@
 					{{$i->produto->nome}}
 					{{$i->produto->grade ? " (" . $i->produto->str_grade . ")" : ""}}
 					@if($i->produto->lote != "")
-					| Lote: {{$i->produto->lote}}, 
+					| Lote: {{$i->produto->lote}},
 					Vencimento: {{$i->produto->vencimento}}
 					@endif
 				</th class="b-top">
@@ -240,7 +240,7 @@
 			</td>
 
 			<td class="b-top b-bottom" style="width: 350px;">
-				<center><strong>Valor Total dos Itens: 
+				<center><strong>Valor Total dos Itens:
 					{{number_format($somaTotalItens, $casasDecimais, ',', '.')}}
 				</strong></center>
 			</td>
@@ -279,7 +279,7 @@
 	<br>
 	<table>
 		<tr>
-			
+
 		</tr>
 	</table>
 	<table>
@@ -299,7 +299,7 @@
 		<tr>
 			<td class="" style="width: 170px;">
 				Desconto (-):
-				<strong> 
+				<strong>
 					{{number_format($compra->desconto, 2, ',', '.')}}
 				</strong>
 			</td>
@@ -312,11 +312,11 @@
 
 			<td class="" style="width: 200px;">
 				Valor Líquido:
-				<strong> 
+				<strong>
 					{{number_format($compra->valor - $compra->desconto, $casasDecimais, ',', '.')}}
 				</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -324,7 +324,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				<span>Observação: 
+				<span>Observação:
 					<strong>
 						{{$compra->observacao}}
 					</strong>
@@ -354,6 +354,6 @@
 		</tr>
 	</table>
 
-	
+
 </body>
 </html>

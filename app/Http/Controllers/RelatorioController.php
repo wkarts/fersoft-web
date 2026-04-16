@@ -187,7 +187,140 @@ class RelatorioController extends Controller
 		return $cfops;
 	}
 
-	public function filtroVendas(Request $request){
+    public function filtroVendas(Request $request)
+    {
+        $data_inicial = $request->data_inicial;
+        $data_final = $request->data_final;
+        $total_resultados = $request->total_resultados;
+        $ordem = $request->ordem ?: 'desc';
+        $filial_id = isset($request->filial_id) ? $request->filial_id : null;
+
+        if ($data_inicial && $data_final) {
+            $data_inicial = $this->parseDate($data_inicial);
+            $data_final = $this->parseDate($data_final, true);
+        }
+
+        $itensVendaSub = DB::table('item_vendas')
+            ->select('venda_id', DB::raw('SUM(quantidade) as quantidade_vendida'))
+            ->groupBy('venda_id');
+
+        $vendas = Venda::query()
+            ->leftJoinSub($itensVendaSub, 'iv', function ($join) {
+                $join->on('iv.venda_id', '=', 'vendas.id');
+            })
+            ->selectRaw('DATE_FORMAT(vendas.data_registro, "%d-%m-%Y") as data')
+            ->selectRaw('SUM((vendas.valor_total - vendas.desconto) + vendas.acrescimo) as total')
+            ->selectRaw('SUM(COALESCE(iv.quantidade_vendida, 0)) as quantidade_vendida')
+            ->where('vendas.empresa_id', $this->empresa_id)
+            ->where('vendas.estado', '!=', 'CANCELADO')
+            ->when($data_inicial && $data_final, function ($q) use ($data_inicial, $data_final) {
+                return $q->whereBetween('vendas.data_registro', [$data_inicial, $data_final]);
+            })
+            ->when($filial_id !== null && $filial_id !== '', function ($q) use ($filial_id) {
+                $local = ((string)$filial_id === '-1') ? null : $filial_id;
+
+                if (is_null($local)) {
+                    return $q->whereNull('vendas.filial_id');
+                }
+
+                return $q->where('vendas.filial_id', $local);
+            })
+            ->groupBy('data');
+
+        if ($ordem === 'data') {
+            $vendas->orderByRaw('STR_TO_DATE(data, "%d-%m-%Y") DESC');
+        } else {
+            $vendas->orderBy('total', $ordem === 'asc' ? 'asc' : 'desc');
+        }
+
+        $vendas = $vendas
+            ->limit($total_resultados ?? 1000000)
+            ->get();
+
+        $itensVendaCaixaSub = DB::table('item_venda_caixas')
+            ->select('venda_caixa_id', DB::raw('SUM(quantidade) as quantidade_vendida'))
+            ->groupBy('venda_caixa_id');
+
+        $vendasCaixa = VendaCaixa::query()
+            ->leftJoinSub($itensVendaCaixaSub, 'ivc', function ($join) {
+                $join->on('ivc.venda_caixa_id', '=', 'venda_caixas.id');
+            })
+            ->selectRaw('DATE_FORMAT(venda_caixas.data_registro, "%d-%m-%Y") as data')
+            ->selectRaw('SUM(venda_caixas.valor_total) as total')
+            ->selectRaw('SUM(COALESCE(ivc.quantidade_vendida, 0)) as quantidade_vendida')
+            ->where('venda_caixas.empresa_id', $this->empresa_id)
+            ->where('venda_caixas.estado', '!=', 'CANCELADO')
+            ->when($data_inicial && $data_final, function ($q) use ($data_inicial, $data_final) {
+                return $q->whereBetween('venda_caixas.data_registro', [$data_inicial, $data_final]);
+            })
+            ->when($filial_id !== null && $filial_id !== '', function ($q) use ($filial_id) {
+                $local = ((string)$filial_id === '-1') ? null : $filial_id;
+
+                if (is_null($local)) {
+                    return $q->whereNull('venda_caixas.filial_id');
+                }
+
+                return $q->where('venda_caixas.filial_id', $local);
+            })
+            ->groupBy('data');
+
+        if ($ordem === 'data') {
+            $vendasCaixa->orderByRaw('STR_TO_DATE(data, "%d-%m-%Y") DESC');
+        } else {
+            $vendasCaixa->orderBy('total', $ordem === 'asc' ? 'asc' : 'desc');
+        }
+
+        $vendasCaixa = $vendasCaixa
+            ->limit($total_resultados ?? 1000000)
+            ->get();
+
+        $arr = $this->uneArrayVendas($vendas, $vendasCaixa);
+
+        if ($total_resultados) {
+            $arr = array_slice($arr, 0, $total_resultados);
+        }
+
+        usort($arr, function ($a, $b) use ($ordem) {
+            if ($ordem === 'asc') {
+                return $a['total'] <=> $b['total'];
+            } elseif ($ordem === 'desc') {
+                return $b['total'] <=> $a['total'];
+            }
+
+            $dataA = \DateTime::createFromFormat('d-m-Y', $a['data']);
+            $dataB = \DateTime::createFromFormat('d-m-Y', $b['data']);
+
+            if ($dataA == $dataB) {
+                return 0;
+            }
+
+            return $dataA < $dataB ? 1 : -1;
+        });
+
+        if (sizeof($arr) == 0) {
+            session()->flash("mensagem_erro", "Relatório sem registro!");
+            return redirect('/relatorios');
+        }
+
+        $p = view('relatorios/relatorio_venda')
+            ->with('ordem', $ordem == 'asc' ? 'Menos' : 'Mais')
+            ->with('data_inicial', $request->data_inicial)
+            ->with('data_final', $request->data_final)
+            ->with('title', 'Relatório de vendas')
+            ->with('vendas', $arr);
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+
+        $pdf = ob_get_clean();
+
+        $domPdf->setPaper("A4");
+        $domPdf->render();
+
+        $domPdf->stream("Somatório de vendas.pdf", ["Attachment" => false]);
+    }
+
+	public function filtroVendas_err(Request $request){
 
 		$data_inicial = $request->data_inicial;
 		$data_final = $request->data_final;

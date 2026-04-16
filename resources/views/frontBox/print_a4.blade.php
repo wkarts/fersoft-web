@@ -69,7 +69,7 @@
 		.assinatura p{
 			text-align: right;
 		}
-		
+
 
 	</style>
 </head>
@@ -79,9 +79,9 @@
 			<tr>
 				<div style="width: 140px; height: 55px;">
 					@if($config->logo != "")
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" style="height: 60px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" style="height: 60px;">
 					@else
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 					@endif
 
 				</div>

@@ -1,205 +1,204 @@
 @extends('default.layout')
 @section('content')
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
-            <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-                <div class="col-lg-12">
-                    <br>
-                    <form method="post" action="{{ isset($data->id) ? "{$actionUpdate}/{$data->id}" : $actionSave }}">
-                        @csrf
-                        <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
-                        <div class="row align-items-center">
-                            <div class="col-lg-12 col-md-12 col-sm-12">
-                                <div class="card card-custom gutter-b example example-compact">
-                                    <div class="card-header text-center">
-                                        <h3 class="card-title">{{ $title }}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<div class="card card-custom gutter-b">
+    <div class="card-body">
+        <form method="post" action="/manutencoes/save">
+            @csrf
+            <input type="hidden" name="manutencao_id" value="{{ $data->manutencao_id ?? '' }}">
 
-                        <div class="row">
-                            <div class="col-xl-12">
-                                <div class="kt-section kt-section--first">
-                                    <div class="kt-section__body">
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Veículo</label>
-                                                <select class="custom-select @if($errors->has('veiculo_id')) is-invalid @endif" name="veiculo_id">
-                                                    <option value="">Selecione um Veículo</option>
-                                                    @foreach($veiculos as $veiculo)
-                                                        <option value="{{ $veiculo->id }}" {{ old('veiculo_id', $data->veiculo_id ?? '') == $veiculo->id ? 'selected' : '' }}>
-                                                            {{ $veiculo->placa }} - {{ $veiculo->marca }} {{ $veiculo->modelo }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @if($errors->has('veiculo_id'))
-                                                    <div class="invalid-feedback">{{ $errors->first('veiculo_id') }}</div>
-                                                @endif
-                                            </div>
+            <h3 class="card-title text-center">{{ $title }}</h3>
 
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Responsável</label>
-                                                <select class="custom-select @if($errors->has('responsavel_id')) is-invalid @endif" name="responsavel_id">
-                                                    <option value="">Selecione um Responsável</option>
-                                                    @foreach($funcionarios as $funcionario)
-                                                        <option value="{{ $funcionario->id }}" {{ old('responsavel_id', $data->responsavel_id ?? '') == $funcionario->id ? 'selected' : '' }}>
-                                                            {{ $funcionario->nome }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @if($errors->has('responsavel_id'))
-                                                    <div class="invalid-feedback">{{ $errors->first('responsavel_id') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Fornecedor</label>
-                                                <select class="custom-select @if($errors->has('fornecedor_id')) is-invalid @endif" name="fornecedor_id">
-                                                    <option value="">Selecione um Fornecedor</option>
-                                                    @foreach($fornecedores as $fornecedor)
-                                                        <option value="{{ $fornecedor->id }}" {{ old('fornecedor_id', $data->fornecedor_id ?? '') == $fornecedor->id ? 'selected' : '' }}>
-                                                            {{ $fornecedor->razao_social ?? $fornecedor->nome_fantasia ?? $fornecedor->cpf_cnpj }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @if($errors->has('fornecedor_id'))
-                                                    <div class="invalid-feedback">{{ $errors->first('fornecedor_id') }}</div>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Descrição</label>
-                                                <input type="text" class="form-control @if($errors->has('descricao')) is-invalid @endif" name="descricao" value="{{ old('descricao', $data->descricao ?? '') }}">
-                                                @if($errors->has('descricao'))
-                                                    <div class="invalid-feedback">{{ $errors->first('descricao') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Tipo</label>
-                                                <input type="text" class="form-control @if($errors->has('tipo')) is-invalid @endif" name="tipo" value="{{ old('tipo', $data->tipo ?? '') }}">
-                                                @if($errors->has('tipo'))
-                                                    <div class="invalid-feedback">{{ $errors->first('tipo') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Data da Manutenção</label>
-                                                <input type="date" class="form-control @if($errors->has('data_manutencao')) is-invalid @endif" name="data_manutencao" value="{{ old('data_manutencao', isset($data->data_manutencao) ? optional($data->data_manutencao)->format('Y-m-d') : '') }}">
-                                                @if($errors->has('data_manutencao'))
-                                                    <div class="invalid-feedback">{{ $errors->first('data_manutencao') }}</div>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-12 col-lg-3">
-                                                <label class="col-form-label">Quilometragem Atual</label>
-                                                <input type="number" step="0.01" class="form-control @if($errors->has('quilometragem_atual')) is-invalid @endif" name="quilometragem_atual" value="{{ old('quilometragem_atual', $data->quilometragem_atual ?? '') }}">
-                                                @if($errors->has('quilometragem_atual'))
-                                                    <div class="invalid-feedback">{{ $errors->first('quilometragem_atual') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-3">
-                                                <label class="col-form-label">Próxima Manutenção (KM)</label>
-                                                <input type="number" step="0.01" class="form-control @if($errors->has('proxima_manutencao_km')) is-invalid @endif" name="proxima_manutencao_km" value="{{ old('proxima_manutencao_km', $data->proxima_manutencao_km ?? '') }}">
-                                                @if($errors->has('proxima_manutencao_km'))
-                                                    <div class="invalid-feedback">{{ $errors->first('proxima_manutencao_km') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-3">
-                                                <label class="col-form-label">Próxima Manutenção (Data)</label>
-                                                <input type="date" class="form-control @if($errors->has('proxima_manutencao_data')) is-invalid @endif" name="proxima_manutencao_data" value="{{ old('proxima_manutencao_data', isset($data->proxima_manutencao_data) ? optional($data->proxima_manutencao_data)->format('Y-m-d') : '') }}">
-                                                @if($errors->has('proxima_manutencao_data'))
-                                                    <div class="invalid-feedback">{{ $errors->first('proxima_manutencao_data') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-3">
-                                                <label class="col-form-label">Custo</label>
-                                                <input type="number" step="0.01" class="form-control @if($errors->has('custo')) is-invalid @endif" name="custo" value="{{ old('custo', $data->custo ?? '') }}">
-                                                @if($errors->has('custo'))
-                                                    <div class="invalid-feedback">{{ $errors->first('custo') }}</div>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Prioridade</label>
-                                                <select class="custom-select @if($errors->has('prioridade')) is-invalid @endif" name="prioridade">
-                                                    @foreach(['Baixa', 'Média', 'Alta'] as $prioridade)
-                                                        <option value="{{ $prioridade }}" {{ old('prioridade', $data->prioridade ?? 'Média') == $prioridade ? 'selected' : '' }}>{{ $prioridade }}</option>
-                                                    @endforeach
-                                                </select>
-                                                @if($errors->has('prioridade'))
-                                                    <div class="invalid-feedback">{{ $errors->first('prioridade') }}</div>
-                                                @endif
-                                            </div>
-
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Status</label>
-                                                <select class="custom-select @if($errors->has('status')) is-invalid @endif" name="status">
-                                                    @foreach(['Planejada', 'Em andamento', 'Concluída'] as $status)
-                                                        <option value="{{ $status }}" {{ old('status', $data->status ?? 'Planejada') == $status ? 'selected' : '' }}>{{ $status }}</option>
-                                                    @endforeach
-                                                </select>
-                                                @if($errors->has('status'))
-                                                    <div class="invalid-feedback">{{ $errors->first('status') }}</div>
-                                                @endif
-                                            </div>
-
-                                            @php
-                                                $checklistText = old('checklist_items');
-                                                if($checklistText === null && isset($data) && is_array($data->checklist)) {
-                                                    $checklistText = implode("\n", $data->checklist);
-                                                }
-                                            @endphp
-                                            <div class="form-group validated col-sm-12 col-lg-4">
-                                                <label class="col-form-label">Checklist (uma linha por item)</label>
-                                                <textarea class="form-control" name="checklist_items" rows="4">{{ $checklistText }}</textarea>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-12">
-                                                <label class="col-form-label">Observações</label>
-                                                <textarea class="form-control @if($errors->has('observacoes')) is-invalid @endif" name="observacoes" rows="3">{{ old('observacoes', $data->observacoes ?? '') }}</textarea>
-                                                @if($errors->has('observacoes'))
-                                                    <div class="invalid-feedback">{{ $errors->first('observacoes') }}</div>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card-footer">
-                            <div class="row">
-                                <div class="col-lg-3 col-sm-6 col-md-4">
-                                    <a style="width: 100%" class="btn btn-danger" href="{{ $actionCancel }}">
-                                        <i class="la la-close"></i>
-                                        <span class="">Cancelar</span>
-                                    </a>
-                                </div>
-                                <div class="col-lg-3 col-sm-6 col-md-4">
-                                    <button style="width: 100%" type="submit" class="btn btn-success">
-                                        <i class="la la-check"></i>
-                                        <span class="">Salvar</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+            <div class="row mt-5">
+                <div class="form-group col-lg-3">
+                    <label>Veículo *</label>
+                    <select name="veiculo_id" id="select_veiculo" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        @foreach($veiculos as $v)
+                            <option value="{{ $v->id }}" data-km="{{ $v->quilometragem }}" {{ ($data->veiculo_id ?? '') == $v->id ? 'selected' : '' }}>
+                                {{ $v->placa }} - {{ $v->marca }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group col-lg-2">
+                    <label>KM Atual</label>
+                    <input type="number" name="km_registro" id="input_km" class="form-control" value="{{ $data->km_registro ?? '' }}">
+                </div>
+                <div class="form-group col-lg-2">
+                    <label>Data *</label>
+                    <input type="date" name="data_manutencao" class="form-control" value="{{ isset($data->data_manutencao) ? \Carbon\Carbon::parse($data->data_manutencao)->format('Y-m-d') : date('Y-m-d') }}" required>
+                </div>
+                <div class="form-group col-lg-2">
+                    <label>Status</label>
+                    <select name="status" class="form-control">
+                        <option value="Aguardando" {{ ($data->status ?? '') == 'Aguardando' ? 'selected' : '' }}>Aguardando</option>
+                        <option value="Em andamento" {{ ($data->status ?? '') == 'Em andamento' ? 'selected' : '' }}>Em andamento</option>
+                        <option value="Finalizado" {{ ($data->status ?? '') == 'Finalizado' ? 'selected' : '' }}>Finalizado</option>
+                    </select>
+                </div>
+                <div class="form-group col-lg-3">
+                    <label>Prioridade</label>
+                    <select name="prioridade" class="form-control">
+                        <option value="Normal" {{ ($data->prioridade ?? '') == 'Normal' ? 'selected' : '' }}>Normal</option>
+                        <option value="Alta" {{ ($data->prioridade ?? '') == 'Alta' ? 'selected' : '' }}>Alta</option>
+                        <option value="Urgente" {{ ($data->prioridade ?? '') == 'Urgente' ? 'selected' : '' }}>Urgente</option>
+                    </select>
                 </div>
             </div>
-        </div>
+
+            <div class="row">
+                <div class="form-group col-lg-4">
+                    <label>Mecânico / Responsável</label>
+                    <select name="responsavel_id" class="form-control">
+                        <option value="">Selecione...</option>
+                        @foreach($funcionarios as $f)
+                            <option value="{{ $f->id }}" {{ ($data->responsavel_id ?? '') == $f->id ? 'selected' : '' }}>{{ $f->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group col-lg-4">
+                    <label>Tipo de Execução</label>
+                    <div class="radio-inline mt-2">
+                        <label class="radio"><input type="radio" name="tipo_execucao" value="Interno" {{ ($data->tipo_execucao ?? 'Interno') == 'Interno' ? 'checked' : '' }}><span></span> Interno</label>
+                        <label class="radio"><input type="radio" name="tipo_execucao" value="Externo" {{ ($data->tipo_execucao ?? '') == 'Externo' ? 'checked' : '' }}><span></span> Externo</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="form-group col-lg-6">
+                    <label>Descrição do Problema</label>
+                    <textarea name="descricao" class="form-control" rows="3">{{ $data->descricao ?? '' }}</textarea>
+                </div>
+                <div class="form-group col-lg-6">
+                    <label>Checklist do Veículo</label>
+                    <textarea name="checklist" class="form-control" rows="3">{{ is_array($data->checklist ?? '') ? implode("\n", $data->checklist) : ($data->checklist ?? '') }}</textarea>
+                </div>
+            </div>
+
+            <hr>
+            <h4 class="mb-4">Adicionar Peças e Custos</h4>
+            <div class="row align-items-end bg-light p-4 rounded">
+                <div class="form-group col-lg-6">
+                    <label>Buscar Peça/Produto</label>
+                    <select id="select_produto" class="form-control select2" style="width: 100%"></select>
+                </div>
+                <div class="form-group col-lg-2">
+                    <label>Qtd.</label>
+                    <input type="number" id="quantidade_item" class="form-control" value="1">
+                </div>
+                <div class="form-group col-lg-2">
+                    <label>Custo Unit.</label>
+                    <input type="text" id="valor_item" class="form-control" value="0.00">
+                </div>
+                <div class="form-group col-lg-2">
+                    <button type="button" id="btn-add-item" class="btn btn-success w-100">Adicionar</button>
+                </div>
+            </div>
+
+            <table class="table table-bordered mt-4" id="tabela_itens">
+                <thead>
+                    <tr>
+                        <th>Produto / Peça</th>
+                        <th>Qtd</th>
+                        <th>Custo Unit.</th>
+                        <th>Subtotal</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if(isset($data) && $data->itens)
+                        @foreach($data->itens as $item)
+                            <tr>
+                                <td>
+                                    <input type="hidden" name="produtos_ids[]" value="{{ $item->produto_id }}">
+                                    <input type="hidden" name="produtos_nomes[]" value="{{ $item->produto->nome ?? $item->descricao }}">
+                                    {{ $item->produto->nome ?? $item->descricao }}
+                                </td>
+                                <td><input type="hidden" name="quantidades[]" value="{{ $item->quantidade }}">{{ $item->quantidade }}</td>
+                                <td><input type="hidden" name="valores[]" value="{{ $item->valor_unitario }}">{{ number_format($item->valor_unitario, 2, ',', '.') }}</td>
+                                <td><input type="hidden" name="subtotais[]" value="{{ $item->subtotal }}">{{ number_format($item->subtotal, 2, ',', '.') }}</td>
+                                <td><button type="button" class="btn btn-danger btn-xs remover-item" data-subtotal="{{ $item->subtotal }}"><i class="la la-trash"></i></button></td>
+                            </tr>
+                        @endforeach
+                    @endif
+                </tbody>
+            </table>
+
+            <div class="row justify-content-end mt-4">
+                <div class="col-lg-3 text-right">
+                    <label class="font-weight-bold">Total (R$):</label>
+                    <input type="text" name="custo" id="custo_total_input" class="form-control text-right text-danger font-weight-bold" value="{{ $data->custo ?? '0.00' }}" readonly>
+                </div>
+            </div>
+
+            <div class="card-footer text-right">
+                <a href="/manutencoes" class="btn btn-light-danger">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Salvar Manutenção</button>
+            </div>
+        </form>
     </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    let totalGeral = parseFloat($('#custo_total_input').val()) || 0;
+
+    $(document).ready(function() {
+        // BUSCA AUTOMÁTICA DE KM
+        $('#select_veiculo').change(function() {
+            let km = $(this).find(':selected').data('km');
+            $('#input_km').val(km);
+        });
+
+        // SELECT2 DE PRODUTOS
+        $('#select_produto').select2({
+            ajax: {
+                url: '/manutencoes/buscar-produtos',
+                dataType: 'json',
+                delay: 250,
+                processResults: function (data) { return { results: data.results }; }
+            }
+        });
+
+        // PREÇO AUTOMÁTICO
+        $('#select_produto').on('select2:select', function (e) {
+            $('#valor_item').val(e.params.data.valor);
+        });
+    });
+
+    $('#btn-add-item').click(function() {
+        let data = $('#select_produto').select2('data')[0];
+        if(!data) return alert('Selecione um produto');
+
+        let qtd = parseFloat($('#quantidade_item').val());
+        let valor = parseFloat($('#valor_item').val());
+        let subtotal = qtd * valor;
+
+        let linha = `<tr>
+            <td>
+                <input type="hidden" name="produtos_ids[]" value="${data.id}">
+                <input type="hidden" name="produtos_nomes[]" value="${data.text}">
+                ${data.text}
+            </td>
+            <td><input type="hidden" name="quantidades[]" value="${qtd}">${qtd}</td>
+            <td><input type="hidden" name="valores[]" value="${valor}">${valor.toFixed(2)}</td>
+            <td><input type="hidden" name="subtotais[]" value="${subtotal}">${subtotal.toFixed(2)}</td>
+            <td><button type="button" class="btn btn-danger btn-xs remover-item" data-subtotal="${subtotal}"><i class="la la-trash"></i></button></td>
+        </tr>`;
+
+        $('#tabela_itens tbody').append(linha);
+        totalGeral += subtotal;
+        $('#custo_total_input').val(totalGeral.toFixed(2));
+    });
+
+    $(document).on('click', '.remover-item', function() {
+        totalGeral -= $(this).data('subtotal');
+        $('#custo_total_input').val(totalGeral.toFixed(2));
+        $(this).closest('tr').remove();
+    });
+</script>
 @endsection

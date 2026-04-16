@@ -96,7 +96,35 @@
                                     </div>
                                 </div>
                             </div>
+<div class="row">
+    <div class="form-group validated col-sm-4 col-lg-3">
+        <label class="col-form-label text-left">Nota Fiscal</label>
+        <input type="text" class="form-control" id="nf" name="nf" 
+               value="{{ isset($compra) ? $compra->nf : '' }}" placeholder="Ex: 000000">
+    </div>
 
+    <div class="form-group validated col-sm-4 col-lg-3">
+        <label class="col-form-label text-left">Data de Emissão</label>
+        <input type="date" class="form-control" id="data_emissao" name="data_emissao" 
+               value="{{ (isset($compra) && $compra->data_emissao) ? \Carbon\Carbon::parse($compra->data_emissao)->format('Y-m-d') : date('Y-m-d') }}">
+    </div>
+
+    <div class="form-group validated col-sm-4 col-lg-6">
+        <label class="col-form-label text-left">Veículo Utilizado</label>
+        <select class="form-control custom-select" id="veiculo_id" name="veiculo_id">
+            <option value="">-- Selecione um veículo (Opcional) --</option>
+            @if(isset($veiculos) && count($veiculos) > 0)
+                @foreach($veiculos as $v)
+                    <option value="{{ $v->id }}" {{ (isset($compra) && $compra->veiculo_id == $v->id) ? 'selected' : '' }}>
+                        {{ $v->placa }} - {{ $v->marca }}
+                    </option>
+                @endforeach
+            @else
+                <option value="" disabled>Nenhum veículo encontrado/cadastrado</option>
+            @endif
+        </select>
+    </div>
+</div>
                             <input type="hidden" value="{{ json_encode($produtos) }}" id="produtos">
                             <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                                 <!--begin: Wizard Nav-->
@@ -1494,4 +1522,80 @@
         </div>
     </div>
     --}}
+
+<script>
+// Força a atualização do JS na tela de Editar
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        window.atualizarCompra = function() {
+            if(salvando == false){
+                salvando = true;
+                $('#preloader2').css('display', 'block');
+
+                var fornecedor = $('.fornecedor').val();
+                if (fornecedor == '--') {
+                    swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    return;
+                } 
+                
+                var transportadora = $('#kt_select2_3').val();
+                transportadora = transportadora == 'null' ? null : transportadora;
+                
+                let js = {
+                    id: $('#compra_id').val(),
+                    fornecedor_id: fornecedor,
+                    formaPagamento: $('#formaPagamento').val(),
+
+                    // --- CAMPOS INJETADOS À FORÇA (CORRIGIDOS) ---
+                    nf: $('#nf').val(), // Corrigido para pegar o ID certo da Nota Fiscal
+                    data_emissao: $('#data_emissao').val(),
+                    veiculo_id: $('#veiculo_id').val(),
+                    filial_id: $('#filial_id').val(),
+                    // --------------------------------
+
+                    itens: ITENS,
+                    fatura: FATURA,
+                    faturas_removidas: PARCELAS_REMOVIDAS,
+                    total: TOTAL,
+                    desconto: $('#desconto').val(),
+                    acrescimo: $('#acrescimo').val(),
+                    observacao: $('#obs').val(),
+                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    especie: $('#especie').val(),
+                    numeracaoVol: $('#numeracaoVol').val(),
+                    qtdVol: $('#qtdVol').val(),
+                    pesoL: $('#pesoL').val(),
+                    pesoB: $('#pesoB').val(),
+                    transportadora: transportadora,
+                    frete: $('#frete').val(),
+                    placaVeiculo: $('#placa').val(),
+                    ufPlaca: $('#uf_placa').val(),
+                    valorFrete: $('#valor_frete').val(),
+                    data_retroativa: $('#data_retroativa_dynamic').val(),
+                    data_saida: $('#data_saida_dynamic').val()
+                };
+
+                let token = $('#_token').val();
+                
+                $.ajax({
+                    type: 'POST',
+                    data: { compra: js, _token: token },
+                    url: path + 'compraManual/update',
+                    dataType: 'json',
+                    success: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        sucesso(e);
+                    }, error: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        swal("Erro", "Erro ao atualizar a compra.", "warning");
+                    }
+                });
+            }
+            salvando = false;
+        };
+    }, 1000);
+});
+</script>
 @endsection

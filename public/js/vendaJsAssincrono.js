@@ -482,30 +482,46 @@ function selectGrade(id){
 }
 
 function somaQuantidadeProdutoAdicionado(produto, quantidadeAdicionar, call){
-	console.clear()
+    console.clear()
 
-	let movimentaEstoque = $('#natureza').find('option:selected').data('movimenta_estoque')
+    // 1. Verifica se a Natureza de Operação permite ignorar o estoque
+    let naoMovimentaEstoque = $('#natureza').find('option:selected').data('movimenta_estoque')
 
-	if(movimentaEstoque == 1){
-		call(true)
-		return;
-	}
+    if(naoMovimentaEstoque == 1){
+        call(true)
+        return;
+    }
 
-	let quantidade = 0;
-	ITENS.map((p) => {
-		if(p.codigo == produto.id){
-			quantidade += parseFloat(p.quantidade)
-		}
-	})
+    // 2. Verifica a configuração GLOBAL de estoque negativo que enviamos pelo Blade
+    let permitirNegativo = $('#permitir_estoque_negativo').val();
 
-	quantidade += parseFloat(quantidadeAdicionar);
-	console.log(produto)
-	console.log(produto.estoque)
-	if(produto.gerenciar_estoque == 1 && (produto.estoqueAtual < quantidade)){
-		call(false)
-	}else{
-		call(true)
-	}
+    // Se a config global permitir (valor 1), liberamos a venda independente do estoque
+    if(permitirNegativo == '1' || permitirNegativo == 1){
+        call(true);
+        return;
+    }
+
+    // 3. Lógica de cálculo de quantidade já adicionada
+    let quantidade = 0;
+    ITENS.map((p) => {
+        if(p.codigo == produto.id){
+            quantidade += parseFloat(p.quantidade)
+        }
+    })
+
+    quantidade += parseFloat(quantidadeAdicionar);
+    
+    console.log("Produto:", produto.nome)
+    console.log("Estoque Atual:", produto.estoqueAtual)
+    console.log("Quantidade Tentada:", quantidade)
+
+    // 4. Bloqueio: Só barra se (Gerencia Estoque E Estoque Insuficiente)
+    // Nota: Como já verificamos o 'permitirNegativo' acima, aqui ele só chega se for proibido negativo
+    if(produto.gerenciar_estoque == 1 && (parseFloat(produto.estoqueAtual) < quantidade)){
+        call(false) // Dispara o alerta de estoque insuficiente
+    }else{
+        call(true)
+    }
 }
 
 $('#addProd').click(() => {

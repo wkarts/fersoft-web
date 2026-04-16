@@ -118,6 +118,14 @@ class ConfigNotaController extends Controller
 	}
 
 	public function save(Request $request){
+      $request->merge([
+            'permitir_estoque_negativo' => $request->has('permitir_estoque_negativo') ? 1 : 0
+        ]);
+      if ($request->id == 0) {
+        $config = new ConfigNota();
+    } else {
+        $config = ConfigNota::find($request->id);
+    }
 		$this->_validate($request);
 
 		$tentouDesabilitarProdutoReferenciado = false;
@@ -267,6 +275,7 @@ class ConfigNotaController extends Controller
 				'desbloquear_campo_peso_bag_ticket' => $request->desbloquear_campo_peso_bag_ticket,
 				'conectar_automaticamente_balanca_padrao_usuario' => $request->conectar_automaticamente_balanca_padrao_usuario,
 				'conectar_automaticamente_balanca_ao_selecionar' => $request->conectar_automaticamente_balanca_ao_selecionar,
+				'permitir_estoque_negativo' => $request->permitir_estoque_negativo, // ADICIONE ESTA LINHA
 			]);
 		}else{
 			$config = ConfigNota::
@@ -348,7 +357,7 @@ class ConfigNotaController extends Controller
 			$config->desbloquear_campo_peso_bag_ticket = $request->desbloquear_campo_peso_bag_ticket;
 			$config->conectar_automaticamente_balanca_padrao_usuario = $request->conectar_automaticamente_balanca_padrao_usuario;
 			$config->conectar_automaticamente_balanca_ao_selecionar = $request->conectar_automaticamente_balanca_ao_selecionar;
-
+			$config->permitir_estoque_negativo = $request->permitir_estoque_negativo; // ADICIONE ESTA LINHA
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';
 			if($request->hasFile('file')){

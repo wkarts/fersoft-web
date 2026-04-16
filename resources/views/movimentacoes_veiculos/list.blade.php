@@ -1,5 +1,35 @@
 @extends('default.layout')
 @section('content')
+<style>
+    /* Remove a quebra de linha e permite scroll se a tabela for grande */
+    .datatable-table {
+        display: block !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+    }
+
+    /* Garante que as células fiquem lado a lado, não empilhadas */
+    .datatable-row {
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100% !important;
+        min-width: 1200px; /* Força uma largura mínima para as colunas não esmagarem */
+    }
+
+    .datatable-cell {
+        flex: 1 !important; /* Faz todas as colunas terem tamanhos parecidos */
+        display: flex !important;
+        align-items: center !important;
+        padding: 10px 5px !important;
+    }
+
+    /* Coluna de Ações: um pouco maior para os botões caberem lado a lado */
+    .datatable-cell:last-child {
+        flex: 0 0 180px !important; 
+        justify-content: center;
+    }
+</style>
+
     <div class="card card-custom gutter-b">
         <div class="card-body">
             <div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -69,19 +99,29 @@
                             @foreach($records as $record)
                                 <tr class="datatable-row">
                                     @foreach($fields as $field)
-                                        <td class="datatable-cell">
-                                            <span>{{ data_get($record, $field) ?: 'N/A' }}</span>
-                                        </td>
-                                    @endforeach
-                                    <td class="datatable-cell">
-                                        <a href="{{ $editUrl }}/{{ $record->id }}" class="btn btn-warning btn-sm">
-                                            <i class="la la-edit"></i> Editar
-                                        </a>
-                                        <a onclick="if(confirm('Deseja realmente excluir?')) { window.location.href = '{{ $deleteUrl }}/{{ $record->id }}' }" class="btn btn-danger btn-sm">
-                                            <i class="la la-trash"></i> Excluir
-                                        </a>
-                                    </td>
-                                </tr>
+    <td class="datatable-cell">
+        <span>
+            @if($field == 'status_formatado')
+                {!! data_get($record, $field) !!}
+            @else
+                {{ data_get($record, $field) ?: 'N/A' }}
+            @endif
+        </span>
+                           </td>
+                             @endforeach
+                                   <td class="datatable-cell">
+    <a href="/movimentacaoVeiculo/imprimir/{{ $record->id }}" target="_blank" class="btn btn-info btn-sm mr-1">
+        <i class="la la-print"></i> Imprimir
+    </a>
+
+    <a href="{{ $editUrl }}/{{ $record->id }}" class="btn btn-warning btn-sm mr-1">
+        <i class="la la-edit"></i> Editar
+    </a>
+    
+    <a onclick="if(confirm('Deseja realmente excluir?')) { window.location.href = '{{ $deleteUrl }}/{{ $record->id }}' }" class="btn btn-danger btn-sm">
+        <i class="la la-trash"></i> Excluir
+    </a>
+</td>
                             @endforeach
                             </tbody>
                         </table>

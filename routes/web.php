@@ -1259,6 +1259,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::post('/pagar-multi', 'ContasPagarController@pagarMultiploStore');
         Route::get('/export','ContasPagarController@exportExcel');
         Route::get('/syncNotaFiscal','ContasPagarController@syncNotaFiscal');
+        Route::put('/setVeiculo/{id}', 'ContasPagarController@setVeiculo')->name('contasPagar.setVeiculo');
 	});
 
 	Route::resource('retencoes', 'RetencaoController');
@@ -2138,6 +2139,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/add1', 'StockController@add1');
 		Route::get('/zerarEstoque', 'StockController@zerarEstoque');
 		Route::get('/alterarGerenciamento', 'StockController@alterarGerenciamento');
+
+		// Implementation Agnaldo Borges
+		Route::get('/ajusteManual', 'StockAdjustmentController@create');
+		Route::get('/ajustes', 'StockAdjustmentController@index')->name('estoque.ajustes.index');
+		Route::get('/ajustes/create', 'StockAdjustmentController@create')->name('estoque.ajustes.create');
+		Route::post('/ajustes', 'StockAdjustmentController@store')->name('estoque.ajustes.store');
+		Route::get('/ajustes/{id}', 'StockAdjustmentController@show')->name('estoque.ajustes.show');
 	});
 
 	Route::group(['prefix' => 'cotacao'],function(){
@@ -2329,11 +2337,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/buscar', 'CozinhaController@buscar');
 		Route::get('/concluido', 'CozinhaController@concluido');
 	});
-
-	Route::get('/graficos', 'HomeController@index');
+	
+	Route::get('/graficos', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
+	Route::get('/graficos2', 'HomeController@index');
 	Route::get('/getPlan', 'HomeController@getPlan');
 
-	Route::group(['prefix' => 'graficos'],function(){
+	Route::group(['prefix' => 'graficos2'],function(){
 		Route::get('/faturamentoDosUltimosSeteDias', 'HomeController@faturamentoDosUltimosSeteDias');
 		Route::get('/faturamentoFiltrado', 'HomeController@faturamentoFiltrado');
 		Route::get('/produtosFiltrado', 'HomeController@produtosFiltrado');
@@ -2801,7 +2810,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/delete/{id}', 'MovimentacaoVeiculoController@delete');
         Route::get('/filtro', 'MovimentacaoVeiculoController@filtro');
         Route::get('/funcionarios', 'FuncionarioController@index');
-
+        Route::get('/dashboard', 'MovimentacaoVeiculoController@dashboard')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/relatorio', 'MovimentacaoVeiculoController@relatorio')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/imprimir/{id}', 'MovimentacaoVeiculoController@imprimir')->middleware(['verificaEmpresa', 'validaAcesso']);
     });
 
 	Route::group(['prefix' => 'atendimentoWeb'], function () {
@@ -2960,6 +2971,48 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/nfe-inutilizacoes/{id}/ignorar-gap', 'NFeNumeracaoGapController@marcarInutilizacaoComoIgnorada')->name('relatorios.nfe_inutilizacoes.ignorar_gap');
         Route::post('/ignorar-gap', 'NFeNumeracaoGapController@ignorarGapManual')->name('relatorios.nfe_numeracao_gaps.ignorar_gap');
     });
+
+	// Declare Novos Grupos de Rotas aqui Protegidos Pelo MidiWare
+	// Siga o padrao abaixo
+
+	Route::group(['prefix' => 'funcoes'],function(){
+		//Novas Rotas Futuras Declare aqui
+		Route::post('/quickSave', 'FuncionarioController@quickSave');
+    });
+    
+    Route::group(['prefix' => 'contas-empresa'],function(){
+    	Route::get('//extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+    });
+    
+	Route::group(['prefix' => 'requisicoes'], function() {    
+	    Route::get('/', 'RequisicaoController@index')->name('requisicoes.index');
+	    Route::get('/create', 'RequisicaoController@create')->name('requisicoes.create');
+	    Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');        
+	});
+	
+	Route::group(['prefix' => 'dashboard-analitico'],function(){
+		//Novas Rotas Futuras Declare aqui
+		Route::get('/', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
+	});
+	
+	Route::group(['prefix' => 'adiantamentos'], function () {
+    // Agora usando String, sem precisar do 'use' no topo
+		Route::get('/', 'AdiantamentoController@index')->name('adiantamentos.index');
+		Route::post('/store', 'AdiantamentoController@store')->name('adiantamentos.store');
+		Route::get('/buscar-pessoas', 'AdiantamentoController@buscarPessoas')->name('adiantamentos.buscarPessoas');
+		Route::post('/cancelar/{id}', 'AdiantamentoController@cancelar')->name('adiantamentos.cancelar');
+		Route::get('/sincronizar', 'AdiantamentoController@sincronizar')->name('adiantamentos.sincronizar');
+		Route::get('/extrato/{tipo}/{id}', 'AdiantamentoController@extrato')->name('adiantamentos.extrato');
+		Route::get('/consulta-saldo/{tipo}/{id}', 'AdiantamentoController@getSaldoPessoa')->name('adiantamentos.getSaldoPessoa');
+	});
+    
+	Route::group(['prefix' => 'apuracao'],function () {
+	    Route::get('/', 'ApuracaoController@index');
+	    Route::post('/filtrar', 'ApuracaoController@index'); 
+	    Route::post('/finalizar', 'ApuracaoController@finalizar');
+	    Route::get('/apuracao', 'ApuracaoController@index');
+	    Route::post('/apuracao/finalizar', 'ApuracaoController@finalizar');
+	});
 
     /*
     Route::group(['prefix' => 'eletronicDocs'], function () {

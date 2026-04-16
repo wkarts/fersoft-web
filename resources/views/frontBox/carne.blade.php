@@ -191,7 +191,7 @@
             <tr>
                 <div class="logo" style="width: 140px; height: 130px">
                     @if($config->logo != "")
-                    <img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" style="width: 100px; margin: 5px">
+                    <img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" style="width: 100px; margin: 5px">
                     @endif
                 </div>
                 {{-- dados emitente --}}

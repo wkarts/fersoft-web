@@ -2,12 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\FilialInjectable;
-
 class ProdutoPrateleira extends BaseModel
 {
-    use SoftDeletes, FilialInjectable;
 
     protected $table = 'produto_prateleiras';
 

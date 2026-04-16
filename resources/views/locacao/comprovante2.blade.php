@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 
 		.align-right{
@@ -30,14 +30,14 @@
 
 </head>
 <body>
-	
+
 	<br>
 	<table>
 		<tr>
 			<td class="" style="width: 250px; height: 170px;">
 				@if($config->logo != null)
 
-				<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="250px;" height="150px;">
+				<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="250px;" height="150px;">
 				@endif
 			</td>
 
@@ -105,7 +105,7 @@
 			</td>
 
 			<td class="" style="width: 250px;">
-				<span style="font-size: 18px;">Situação: 
+				<span style="font-size: 18px;">Situação:
 					<strong>
 						@if($locacao->status == 0)
 						Em andamento
@@ -114,7 +114,7 @@
 						@endif
 					</strong>
 				</span><br>
-				<span style="font-size: 18px;">Prev. de Conclusão:: 
+				<span style="font-size: 18px;">Prev. de Conclusão::
 					<strong>
 
 						@if($locacao->fim != '1969-12-31')
@@ -137,13 +137,13 @@
 			<td class="" style="width: 233px;">
 				<span style="font-size: 15px;">RG/Inscricao Estadual: {{$locacao->cliente->ie_rg}}</span>
 			</td>
-			
+
 		</tr>
 	</table>
 
 	<table>
 		<tr>
-			
+
 			<td class="" style="width: 233px;">
 				<span style="font-size: 15px;">Telefone: {{$locacao->cliente->telefone}}</span>
 			</td>
@@ -151,7 +151,7 @@
 			<td class="" style="width: 233px;">
 				<span style="font-size: 15px;">Celular: {{$locacao->cliente->celular}}</span>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -163,7 +163,7 @@
 				Produtos e Serviços:
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 
 	<table>
@@ -216,11 +216,11 @@
 			<td class="b-top" style="width: 450px;">
 			</td>
 			<td class="b-top" style="width: 150px;">
-				<strong style="float: right; margin-right: 10px;">Total de produtos: 
+				<strong style="float: right; margin-right: 10px;">Total de produtos:
 				</strong>
 			</td>
 			<td class="b-top" style="width: 100px;">
-				<strong style="margin-left: 20px;"> 
+				<strong style="margin-left: 20px;">
 					{{number_format($locacao->total, 2, ',', '.')}}
 				</strong>
 			</td>
@@ -233,7 +233,7 @@
 		<tr>
 
 			<td class="b-top b-bottom" style="width: 700px;">
-				Observação: 
+				Observação:
 				<strong>{{ $locacao->observacao != "" ? $locacao->observacao : '--' }}
 				</strong>
 

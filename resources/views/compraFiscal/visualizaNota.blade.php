@@ -280,11 +280,20 @@
 									@endforeach
 								</select>
 							</div>
-
+                             <div class="form-group col-lg-3">
+                             <select name="veiculo_id" id="veiculo_id" class="form-control custom-select">
+                             <option value="">Selecione um veículo</option>
+                             @foreach($veiculos as $v)
+                             <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
+                              @endforeach
+                             </select>
+                          </div>
+                          
+                          
 							<div class="col-xl-3">
 								<input type="text" class="form-control" id="lote" placeholder="Lote">
 							</div>
-							
+                          
 							<div class="col-xl-3">
 								<button id="salvarNF" disabled style="width: 100%" type="submit" class="btn btn-success spinner-white spinner-right">
 									<i class="la la-check"></i>

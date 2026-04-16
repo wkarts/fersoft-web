@@ -16,10 +16,10 @@
 		}
 
 		/*.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}*/
 		.page_break { page-break-before: always; }
 		td{
@@ -49,11 +49,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -116,7 +116,7 @@
 			<td class="b-top" style="width: 700px;">
 				Email: <strong>{{$venda->cliente->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 	@endif
@@ -140,7 +140,7 @@
 				<strong>MERCADORIAS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table style="margin-top: -20px">
 		<thead>
@@ -177,13 +177,13 @@
 					{{$i->produto->nome}}
 					{{$i->produto->grade ? " (" . $i->produto->str_grade . ")" : ""}}
 					@if($i->produto->lote != "")
-					| Lote: {{$i->produto->lote}}, 
+					| Lote: {{$i->produto->lote}},
 					Vencimento: {{$i->produto->vencimento}}
 					@endif
 				</th class="b-top">
 				<th class="b-top">
 					{{number_format($i->quantidade, $casasDecimaisQtd, ',', '.')}}
-					
+
 				</th>
 				<th class="b-top">{{number_format($i->valor, $casasDecimais, ',', '.')}}</th>
 				<th class="b-top">{{number_format($i->quantidade * $i->valor, $casasDecimais, ',', '.')}}</th>
@@ -211,7 +211,7 @@
 				<center><strong>Quantidade Total: {{$somaItens}}</strong></center>
 			</td>
 			<td class="b-top b-bottom" style="width: 350px;">
-				<center><strong>Valor Total dos Itens: 
+				<center><strong>Valor Total dos Itens:
 					{{number_format($somaTotalItens, $casasDecimais, ',', '.')}}
 				</strong></center>
 			</td>
@@ -236,16 +236,16 @@
 			</td>
 		</tr>
 	</table>
-	
+
 	<table>
 		<tr>
-			
+
 			@if($venda->vendedor_id)
 			<td class="" style="width: 250px;">
 				Vendedor: <strong>{{ $venda->vendedor_setado->funcionario->nome }}</strong>
 			</td>
 			@endif
-			
+
 		</tr>
 	</table>
 
@@ -253,25 +253,25 @@
 		<tr>
 			<td class="" style="width: 233px;">
 				Desconto (-):
-				<strong> 
+				<strong>
 					{{number_format($venda->desconto, 2, ',', '.')}}
 				</strong>
 			</td>
 
 			<td class="" style="width: 233px;">
 				Acrescimo (+):
-				<strong> 
+				<strong>
 					{{number_format($venda->acrescimo, 2, ',', '.')}}
 				</strong>
 			</td>
 
 			<td class="" style="width: 233px;">
 				Valor Líquido:
-				<strong> 
+				<strong>
 					{{number_format($venda->valor_total - $venda->desconto + $venda->acrescimo, $casasDecimais, ',', '.')}}
 				</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -279,7 +279,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				<span>Observação: 
+				<span>Observação:
 					<strong>{{$config->campo_obs_pedido}}
 						{{$venda->observacao}}
 					</strong>
@@ -292,7 +292,7 @@
 	<br>
 	<table>
 		<tr>
-			
+
 			<td class="" style="width: 350px;">
 				<strong>
 					________________________________________
@@ -306,6 +306,6 @@
 		</tr>
 	</table>
 
-	
+
 </body>
 </html>

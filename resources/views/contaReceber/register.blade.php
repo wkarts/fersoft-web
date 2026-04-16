@@ -148,7 +148,7 @@
 												<span class="switch switch-outline switch-success">
 													<label>
 														<input @if(isset($conta) && $conta->status) checked 
-														@endif type="checkbox" id="recebido" name="status" type="checkbox" id="status">
+														@endif type="checkbox" id="recebido" name="status">
 														<span></span>
 													</label>
 												</span>
@@ -165,6 +165,17 @@
 											</div>
 											@endif
 										</div>
+
+                                        {{-- AJUSTE: CAMPO CONTA EMPRESA --}}
+                                        <div class="form-group validated col-lg-3 col-md-4 col-sm-6 div-recebido" style="display: none">
+                                            <label class="col-form-label text-primary font-weight-bold">Conta Bancária</label>
+                                            <select name="conta_id" id="conta_id" class="custom-select form-control">
+                                                <option value="">Selecione a conta</option>
+                                                @foreach($contasEmpresa as $c)
+                                                <option value="{{$c->id}}">{{$c->nome}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
 										@endif
 
 										<div class="form-group validated col-12">
@@ -565,8 +576,10 @@
 		let recebido = $('#recebido').is(':checked')
 		if(recebido){
 			$('.div-recebido').css('display', 'block')
+            $('#conta_id').attr('required', true)
 		}else{
 			$('.div-recebido').css('display', 'none')
+            $('#conta_id').attr('required', false)
 		}
 	}
 
@@ -787,4 +800,3 @@
 	}
 </script>
 @endsection
-

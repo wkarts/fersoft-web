@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 		thead td{
@@ -35,11 +35,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -51,7 +51,7 @@
 
 	</div>
 	<br>
-	
+
 	<table>
 		<tr>
 			<td class="b-top" style="width: 350px;">
@@ -69,7 +69,7 @@
 				<strong>Itens:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
@@ -89,7 +89,7 @@
 			</tr>
 		</thead>
 
-		
+
 		<tbody>
 
 			@foreach($item->itens as $p)
@@ -99,13 +99,13 @@
 				<td>{{number_format($p->produto->valor_venda, $casasDecimais, ',', '.')}}</td>
 				<td>{{number_format($p->produto->valor_compra, $casasDecimais, ',', '.')}}</td>
 			</tr>
-			
+
 			@endforeach
 		</tbody>
 	</table>
-	
 
-	
+
+
 	<br>
 	<table>
 		<tr>
@@ -114,7 +114,7 @@
 			</td>
 		</tr>
 	</table>
-	
+
 </table>
 <table>
 	<tr>

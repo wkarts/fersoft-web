@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class NaturezaOperacao extends Model
+class NaturezaOperacao extends BaseModel
 {
     protected $fillable = [
 		'natureza', 'CFOP_entrada_estadual', 'CFOP_entrada_inter_estadual',

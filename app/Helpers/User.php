@@ -11,6 +11,8 @@ use App\Models\Redirect;
 use App\Models\ConfigSystem;
 use App\Http\Controllers\EvoApiInstanceController;
 use App\Helpers\UserOtpHelper;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 function is_adm(){
     $usr = session('user_logged');
@@ -1262,5 +1264,143 @@ $(function(){
 });
 </script>
 HTML;
+    }
+}
+// Methods to New Dashboard/Panel/Graphics/MultiTenant
+if (!function_exists('__empresa_id_logada')) {
+    function __empresa_id_logada()
+    {
+        $usr = session('user_logged');
+        return $usr['empresa'] ?? $usr['empresa_id'] ?? null;
+    }
+}
+
+if (!function_exists('__usuario_locais_ids_logado')) {
+    function __usuario_locais_ids_logado(): array
+    {
+        $usr = \App\Models\Usuario::find(get_id_user());
+        if (!$usr) {
+            return [-1];
+        }
+
+        $locais = $usr->locais != null && $usr->locais != 'null'
+            ? json_decode($usr->locais, true)
+            : [];
+
+        if (!is_array($locais) || count($locais) === 0) {
+            return [];
+        }
+
+        return array_map(function ($item) {
+            return is_numeric($item) ? (int)$item : $item;
+        }, $locais);
+    }
+}
+
+if (!function_exists('__usuario_pode_ver_todos_locais')) {
+    function __usuario_pode_ver_todos_locais(): bool
+    {
+        return __user_all_locations();
+    }
+}
+
+if (!function_exists('__filial_solicitada_valida_para_usuario')) {
+    function __filial_solicitada_valida_para_usuario($filialId): bool
+    {
+        if ($filialId === null || $filialId === '' || $filialId === 'todos') {
+            return true;
+        }
+
+        if (__usuario_pode_ver_todos_locais()) {
+            return true;
+        }
+
+        $locaisPermitidos = __usuario_locais_ids_logado();
+
+        if ($filialId === 'matriz') {
+            return in_array(-1, $locaisPermitidos, true) || in_array('-1', $locaisPermitidos, true);
+        }
+
+        return in_array((int)$filialId, $locaisPermitidos, true) || in_array((string)$filialId, $locaisPermitidos, true);
+    }
+}
+
+if (!function_exists('__normaliza_filial_banco')) {
+    function __normaliza_filial_banco($filialId)
+    {
+        if ($filialId === '-1' || $filialId === -1 || $filialId === 'matriz') {
+            return null;
+        }
+
+        if ($filialId === '' || $filialId === 'todos') {
+            return null;
+        }
+
+        return $filialId !== null ? (int)$filialId : null;
+    }
+}
+
+if (!function_exists('__aplicar_filtro_empresa_filial')) {
+    function __aplicar_filtro_empresa_filial($query, string $tabela = '', string $colunaFilial = 'filial_id')
+    {
+        $empresaId = __empresa_id_logada();
+        $filialSelecionada = request()->get('filial_id', 'todos');
+
+        $colEmpresa = $tabela ? "{$tabela}.empresa_id" : 'empresa_id';
+        $colFilial = $tabela ? "{$tabela}.{$colunaFilial}" : $colunaFilial;
+
+        $query->where($colEmpresa, $empresaId);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Restringe pelo escopo do usuário quando ele NÃO pode ver tudo
+        |--------------------------------------------------------------------------
+        */
+        if (!__usuario_pode_ver_todos_locais()) {
+            $locaisPermitidos = __usuario_locais_ids_logado();
+
+            $temMatriz = in_array(-1, $locaisPermitidos, true) || in_array('-1', $locaisPermitidos, true);
+            $filiaisPermitidas = array_values(array_filter($locaisPermitidos, function ($item) {
+                return (string)$item !== '-1';
+            }));
+
+            $query->where(function ($q) use ($colFilial, $temMatriz, $filiaisPermitidas) {
+                if ($temMatriz) {
+                    $q->orWhereNull($colFilial)
+                        ->orWhere($colFilial, 0);
+                }
+
+                if (count($filiaisPermitidas) > 0) {
+                    $q->orWhereIn($colFilial, $filiaisPermitidas);
+                }
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Aplica o filtro escolhido na tela
+        |--------------------------------------------------------------------------
+        */
+        if ($filialSelecionada === 'todos' || $filialSelecionada === null || $filialSelecionada === '') {
+            return $query;
+        }
+
+        if (!__filial_solicitada_valida_para_usuario($filialSelecionada)) {
+            $query->whereRaw('1 = 0');
+            return $query;
+        }
+
+        if ($filialSelecionada === 'matriz') {
+            $query->where(function ($q) use ($colFilial) {
+                $q->whereNull($colFilial)
+                    ->orWhere($colFilial, 0);
+            });
+
+            return $query;
+        }
+
+        $query->where($colFilial, (int)$filialSelecionada);
+
+        return $query;
     }
 }
