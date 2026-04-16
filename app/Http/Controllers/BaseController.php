@@ -111,10 +111,41 @@ abstract class BaseController extends Controller
         });
     }
 
+    /**
+     * Detecta suporte a soft delete tanto no trait nativo quanto no BaseModel custom.
+     */
+    protected function modelSupportsSoftDelete(): bool
+    {
+        try {
+            if (!$this->model) {
+                return false;
+            }
+
+            $modelClass = is_string($this->model) ? $this->model : get_class($this->model);
+
+            if (!class_exists($modelClass)) {
+                return false;
+            }
+
+            if (method_exists($modelClass, 'supportsSoftDelete')) {
+                return (bool) $modelClass::supportsSoftDelete();
+            }
+
+            if (method_exists($modelClass, 'bootSoftDeletes')) {
+                return true;
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     protected function getTenantRecords()
     {
         $query = $this->model::where('empresa_id', $this->empresa_id);
-        if (method_exists($this->model, 'bootSoftDeletes')) {
+
+        if ($this->modelSupportsSoftDelete()) {
             $query = $query->withTrashed();
         }
         return $query;
@@ -406,27 +437,9 @@ abstract class BaseController extends Controller
         try {
             $request->merge(['id' => $id]);
 
-            // 🔹 Busca registro antes da atualização para log
-            $record = $this->model::where('empresa_id', $this->empresa_id)->findOrFail($id);
-            $dadosAnteriores = $record->toArray(); // Mantém os dados como array antes de converter para JSON
-
-            $response = $this->save($request);
-
-            // 🔹 Obtém os dados atualizados para log
-            $recordAtualizado = $this->model::findOrFail($id);
-            $dadosDepois = $recordAtualizado->toArray(); // Mantém os dados como array antes de converter para JSON
-
-            // 🔹 Certifica-se de que $this->model é uma instância válida antes de chamar get_class()
-            $modelInstance = is_string($this->model) ? app($this->model) : $this->model;
-
-            // 🔹 Registra log da atualização
-            $this->logService->registrar('update', get_class($modelInstance), [
-                'registro_id' => $record->id,
-                'dados_antes' => json_encode($dadosAnteriores, JSON_UNESCAPED_UNICODE),
-                'dados_depois' => json_encode($dadosDepois, JSON_UNESCAPED_UNICODE),
-            ]);
-
-            return $response;
+            // Corrigido para não duplicar log de update:
+            // o save() já atualiza e já registra o log manual do controller.
+            return $this->save($request);
         } catch (\Exception $e) {
             \Log::error('Erro ao atualizar registro', [
                 'id' => $id,
@@ -496,10 +509,14 @@ abstract class BaseController extends Controller
             // Evita duplicidade com auditoria automática do BaseModel
             $this->disableNextModelAudit();
 
-            if (method_exists($this->model, 'bootSoftDeletes')) {
-                $record->delete(); // Soft delete
+            if ($this->modelSupportsSoftDelete()) {
+                $record->delete();
             } else {
-                $record->forceDelete();
+                if (method_exists($record, 'forceDelete')) {
+                    $record->forceDelete();
+                } else {
+                    $record->delete();
+                }
             }
 
             // 🔹 Certifica-se de que $this->model é uma instância válida antes de chamar get_class()
@@ -546,7 +563,7 @@ abstract class BaseController extends Controller
     public function restore($id)
     {
         try {
-            if (!method_exists($this->model, 'bootSoftDeletes')) {
+            if (!$this->modelSupportsSoftDelete()) {
                 throw new \Exception('Esta tabela não suporta recuperação de registros.');
             }
 
@@ -573,7 +590,7 @@ abstract class BaseController extends Controller
             $this->logService->registrar('restore', get_class($modelInstance), [
                 'registro_id' => $id,
                 'dados_antes' => $dadosAnteriores,
-                'dados_depois' => json_encode($record->toArray(), JSON_UNESCAPED_UNICODE),
+                'dados_depois' => json_encode($record->fresh()?->toArray() ?? $record->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
 
             session()->flash('mensagem_sucesso', "O registro #{$id} foi restaurado com sucesso em: {$this->formTitle}");

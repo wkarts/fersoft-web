@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 
@@ -37,11 +37,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -95,7 +95,7 @@
 			<td class="b-bottom" style="width: 700px;">
 				Email: <strong>{{$config->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 	<br>
@@ -147,7 +147,7 @@
 			<td class="b-top" style="width: 700px;">
 				Email: <strong>{{$venda->cliente->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -168,7 +168,7 @@
 				<strong>MERCADORIAS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
@@ -205,7 +205,7 @@
 					{{$i->produto->nome}}
 					{{$i->produto->grade ? " (" . $i->produto->str_grade . ")" : ""}}
 					@if($i->produto->lote != "")
-					| Lote: {{$i->produto->lote}}, 
+					| Lote: {{$i->produto->lote}},
 					Vencimento: {{$i->produto->vencimento}}
 					@endif
 				</th style="text-align: left;" class="b-top">
@@ -246,7 +246,7 @@
 			</td>
 
 			<td class="b-top b-bottom" style="width: 350px;">
-				<center><strong>Valor Total dos Itens: 
+				<center><strong>Valor Total dos Itens:
 					{{number_format($somaTotalItens, $casasDecimais, ',', '.')}}
 				</strong></center>
 			</td>
@@ -286,7 +286,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				Forma de pagamento: <strong> 
+				Forma de pagamento: <strong>
 					{{$venda->forma_pagamento == 'a_vista' ? 'À vista' : $venda->forma_pagamento}}
 					@if($venda->getFormaPagamento($venda->empresa_id) != null)
 					- <span style="color: #8950FC">{{ $venda->getFormaPagamento($venda->empresa_id)->infos }}</span>
@@ -345,21 +345,21 @@
 		<tr>
 			<td class="" style="width: 170px;">
 				Desconto (-):
-				<strong> 
+				<strong>
 					{{number_format($venda->desconto, 2, ',', '.')}}
 				</strong>
 			</td>
 
 			<td class="" style="width: 170px;">
 				Acrescimo (+):
-				<strong> 
+				<strong>
 					{{number_format($venda->acrescimo, 2, ',', '.')}}
 				</strong>
 			</td>
 
 			<td class="" style="width: 170px;">
 				Frete (+):
-				<strong> 
+				<strong>
 					@if($venda->frete)
 					{{number_format($venda->frete->valor, 2, ',', '.')}}
 					@else
@@ -370,11 +370,11 @@
 
 			<td class="" style="width: 200px;">
 				Valor Líquido:
-				<strong> 
+				<strong>
 					{{number_format($venda->valor_total - $venda->desconto + $venda->acrescimo, $casasDecimais, ',', '.')}}
 				</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -384,7 +384,7 @@
 		<tr>
 			<td class="" style="width: 170px;">
 				Peso:
-				<strong> 
+				<strong>
 					{{ number_format($venda->frete->peso_liquido, 3, ',', '.')}}KG
 				</strong>
 			</td>
@@ -397,7 +397,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				<span>Observação: 
+				<span>Observação:
 					<strong>{{$config->campo_obs_pedido}}
 						{{$venda->observacao}}
 					</strong>
@@ -475,7 +475,7 @@
 				<strong>MERCADORIAS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
@@ -490,7 +490,7 @@
 					Qtd. Dim.
 				</td>
 				<td class="" style="width: 70px;">
-					Qtd. 
+					Qtd.
 				</td>
 			</tr>
 		</thead>
@@ -508,7 +508,7 @@
 					{{$i->produto->nome}}
 					{{$i->produto->grade ? " (" . $i->produto->str_grade . ")" : ""}}
 					@if($i->produto->lote != "")
-					| Lote: {{$i->produto->lote}}, 
+					| Lote: {{$i->produto->lote}},
 					Vencimento: {{$i->produto->vencimento}}
 					@endif
 					@if($i->produto->tipo_dimensao != '')
@@ -542,7 +542,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 200px;">
-				<strong>Vendedor: 
+				<strong>Vendedor:
 					{{$venda->usuario->nome}}
 				</strong>
 			</td>
@@ -559,7 +559,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				<strong>Observação: 
+				<strong>Observação:
 					{{$venda->observacao}}
 				</strong>
 			</td>
@@ -576,11 +576,11 @@
 
 			@if($config->logo != "")
 			<td class="" style="width: 150px;">
-				<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+				<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 			</td>
 			@else
 			<td class="" style="width: 150px;">
-				<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+				<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 			</td>
 			@endif
 		</tr>
@@ -644,7 +644,7 @@
 				</td>
 
 				<td class="" style="width: 14px;">
-					Qtd. 
+					Qtd.
 				</td>
 			</tr>
 		</thead>
@@ -663,7 +663,7 @@
 					{{$i->produto->nome}}
 					{{$i->produto->grade ? " (" . $i->produto->str_grade . ")" : ""}}
 					@if($i->produto->lote != "")
-					| Lote: {{$i->produto->lote}}, 
+					| Lote: {{$i->produto->lote}},
 					Vencimento: {{$i->produto->vencimento}}
 					@endif
 

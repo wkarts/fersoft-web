@@ -82,8 +82,6 @@
 													</button>
 												</div>
 											</div>
-
-
 											<div class="row" id="fornecedor" style="display: none">
 
 												<br>
@@ -1444,4 +1442,152 @@
 		</div>
 	</div>
 </div>
+
+<script>
+// Este código aguarda o JS velho carregar e sobrescreve ele na memória
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        console.log("Forçando a captura da NF e Veículo!");
+
+        window.salvarCompra = function() {
+            $('#salvar-venda').attr('disabled', 1);
+            if(salvando == false){
+                salvando = true;
+                $('#preloader2').css('display', 'block');
+
+                var fornecedor = $('.fornecedor').val();
+                if (fornecedor == '--') {
+                    swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    $('#salvar-venda').removeAttr('disabled');
+                    return;
+                }
+
+                var transportadora = $('#kt_select2_3').val();
+                transportadora = transportadora == 'null' ? null : transportadora;
+                
+                let js = {
+                    fornecedor: fornecedor,
+                    formaPagamento: $('#formaPagamento').val(),
+                    
+                    // --- CAMPOS INJETADOS À FORÇA ---
+                    nf: $('#numero_emissao').val(),
+                    numero_emissao: 0,
+                    data_emissao: $('#data_emissao').val(),
+                    veiculo_id: $('#veiculo_id').val(),
+                    filial_id: $('#filial_id').val(),
+                    // --------------------------------
+
+                    itens: ITENS,
+                    fatura: FATURA,
+                    total: TOTAL,
+                    desconto: $('#desconto').val(),
+                    acrescimo: $('#acrescimo').val(),
+                    observacao: $('#obs').val(),
+                    especie: $('#especie').val(),
+                    numeracaoVol: $('#numeracaoVol').val(),
+                    qtdVol: $('#qtdVol').val(),
+                    pesoL: $('#pesoL').val(),
+                    pesoB: $('#pesoB').val(),
+                    transportadora: transportadora,
+                    frete: $('#frete').val(),
+                    placaVeiculo: $('#placa').val(),
+                    ufPlaca: $('#uf_placa').val(),
+                    valorFrete: $('#valor_frete').val(),
+                    data_retroativa: $('#data_retroativa_dynamic').val(),
+                    data_saida: $('#data_saida_dynamic').val()
+                };
+
+                let token = $('#_token').val();
+
+                $.ajax({
+                    type: 'POST',
+                    data: { compra: js, _token: token },
+                    url: path + 'compraManual/salvar',
+                    dataType: 'json',
+                    success: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        sucesso(e);
+                    }, error: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        swal("Erro", "Erro ao salvar a compra.", "warning");
+                    }
+                });
+            }
+            salvando = false;
+        };
+
+        window.atualizarCompra = function() {
+            if(salvando == false){
+                salvando = true;
+                $('#preloader2').css('display', 'block');
+
+                var fornecedor = $('.fornecedor').val();
+                if (fornecedor == '--') {
+                    swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    return;
+                } 
+                
+                var transportadora = $('#kt_select2_3').val();
+                transportadora = transportadora == 'null' ? null : transportadora;
+                
+                let js = {
+                    id: $('#compra_id').val(),
+                    fornecedor_id: fornecedor,
+                    formaPagamento: $('#formaPagamento').val(),
+
+                    // --- CAMPOS INJETADOS À FORÇA ---
+                    nf: $('#numero_emissao').val(),
+                    numero_emissao:0,
+                    data_emissao: $('#data_emissao').val(),
+                    veiculo_id: $('#veiculo_id').val(),
+                    // --------------------------------
+
+                    itens: ITENS,
+                    fatura: FATURA,
+                    faturas_removidas: PARCELAS_REMOVIDAS,
+                    total: TOTAL,
+                    desconto: $('#desconto').val(),
+                    acrescimo: $('#acrescimo').val(),
+                    observacao: $('#obs').val(),
+                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    especie: $('#especie').val(),
+                    numeracaoVol: $('#numeracaoVol').val(),
+                    qtdVol: $('#qtdVol').val(),
+                    pesoL: $('#pesoL').val(),
+                    pesoB: $('#pesoB').val(),
+                    transportadora: transportadora,
+                    frete: $('#frete').val(),
+                    placaVeiculo: $('#placa').val(),
+                    ufPlaca: $('#uf_placa').val(),
+                    valorFrete: $('#valor_frete').val(),
+                    data_retroativa: $('#data_retroativa_dynamic').val(),
+                    data_saida: $('#data_saida_dynamic').val()
+                };
+
+                let token = $('#_token').val();
+                
+                $.ajax({
+                    type: 'POST',
+                    data: { compra: js, _token: token },
+                    url: path + 'compraManual/update',
+                    dataType: 'json',
+                    success: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        sucesso(e);
+                    }, error: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        swal("Erro", "Erro ao atualizar a compra.", "warning");
+                    }
+                });
+            }
+            salvando = false;
+        };
+
+    }, 1000); // Dá tempo do arquivo velho carregar para depois substituí-lo
+});
+</script>
 @endsection

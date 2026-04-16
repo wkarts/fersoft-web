@@ -612,9 +612,9 @@
 
 		@php $config = App\Models\ConfigNota::configStatic(); @endphp
 		@if($config->logo != "")
-		<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
+		<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="Logo" class="mb-2">
 		@else
-		<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
+		<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mb-2">
 
 		@endif
 
@@ -629,7 +629,7 @@
 		<div class="row">
 			<h4 style="text-align:center; margin-top: 0px">Relatório de Orçamentos</h4>
 		</div>
-		
+
 	</div>
 </header>
 <body>
@@ -666,7 +666,7 @@
 			</td>
 			<td class="text-left">{{ \Carbon\Carbon::parse($c->created_at)->format('d/m/Y') }}</td>
 			<td class="text-left">{{$c->usuario->nome}}</td>
-			
+
 			<td class="text-left">{{ number_format($c->valor_total, 2, ',', '.') }}</td>
 			<td class="text-left">{{ $c->estado }}</td>
 			<td class="text-left">
@@ -687,7 +687,7 @@
 			</td>
 		</tr>
 
-		@php 
+		@php
 		$soma += $c->valor_total
 		@endphp
 
@@ -698,7 +698,7 @@
 			<td colspan="3">
 				Total: <strong>R$ {{number_format($soma, 2, ',', '.')}}</strong>
 			</td>
-			
+
 		</tr>
 	</tfoot>
 </table>
@@ -713,9 +713,9 @@
 				</td>
 				<td class="text-right">
 					@if($config->logo != "")
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" alt="logo" class="mr-3">
 					@else
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" alt="Logo" class="mr-3">
 					@endif
 				</td>
 			</tr>

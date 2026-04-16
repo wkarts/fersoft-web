@@ -549,239 +549,10 @@ class ProductController extends Controller
 
             return $result;
         } catch (\Exception $e) {
-            echo $e->getMessage() . ", linha: " . $e->getLine();
-            die;
             __saveError($e, $this->empresa_id);
-            session()->flash("mensagem_erro", "algo deu errado: " . $e->getMessage());
+            session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
             return redirect('/produtos');
         }
-    }
-    public function save_ok_bkp(Request $request){
-
-        $this->_validate($request);
-        if($request->ecommerce){
-            $this->_validateEcommerce($request);
-        }
-        try{
-            $result = DB::transaction(function () use ($request) {
-                $produto = new Produto();
-
-                $anps = Produto::lista_ANP();
-                $descAnp = '';
-
-                foreach($anps as $key => $a){
-                    if($key == $request->anp){
-                        $descAnp = $a;
-                    }
-                }
-
-                $request->merge([ 'composto' => $request->input('composto') ? true : false ]);
-                $request->merge([ 'info_tecnica_composto' => $request->info_tecnica_composto ?? '' ]);
-                $request->merge([ 'observacao' => $request->observacao ?? '' ]);
-                $request->merge([ 'info_adicional_item' => $request->info_adicional_item ?? '' ]);
-                $request->merge([ 'inativo' => $request->input('inativo') ? true : false ]);
-                $request->merge([ 'valor_livre' => $request->input('valor_livre') ? true : false ]);
-                $request->merge([ 'gerenciar_estoque' => $request->input('gerenciar_estoque') ? true : false ]);
-                $request->merge([ 'reajuste_automatico' => $request->input('reajuste_automatico') ? true : false ]);
-                $request->merge([ 'valor_venda' => str_replace(",", ".", $request->input('valor_venda'))]);
-                $request->merge([ 'percentual_lucro' => str_replace(",", ".", $request->input('percentual_lucro'))]);
-                $request->merge([ 'valor_compra' => str_replace(",", ".", $request->input('valor_compra'))]);
-                $request->merge([ 'conversao_unitaria' => $request->input('conversao_unitaria') ?
-                    $request->input('conversao_unitaria') : 1]);
-                $request->merge([ 'codBarras' => $request->input('codBarras') ?? 'SEM GTIN']);
-                $request->merge([ 'CST_CSOSN' => $request->input('CST_CSOSN') ?? '0']);
-                $request->merge([ 'CST_CSOSN_EXP' => $request->input('CST_CSOSN_EXP') ?? '']);
-                $request->merge([ 'CST_PIS' => $request->input('CST_PIS') ?? '0']);
-                $request->merge([ 'CST_COFINS' => $request->input('CST_COFINS') ?? '0']);
-
-                $request->merge([ 'CST_CSOSN_entrada' => $request->input('CST_CSOSN_entrada') ?? '0']);
-                $request->merge([ 'CST_PIS_entrada' => $request->input('CST_PIS_entrada') ?? '0']);
-                $request->merge([ 'CST_COFINS_entrada' => $request->input('CST_COFINS_entrada') ?? '0']);
-                $request->merge([ 'CST_IPI_entrada' => $request->input('CST_IPI_entrada') ?? '0']);
-                $request->merge([ 'CST_IPI' => $request->input('CST_IPI') ?? '0']);
-                $request->merge([ 'codigo_anp' => $request->anp != '' ? $request->anp : '']);
-                $request->merge([ 'descricao_anp' => $request->anp != '' ? $request->anp : '']);
-
-                $request->merge([ 'perc_glp' => $request->perc_glp != '' ? __replace($request->perc_glp) : '']);
-                $request->merge([ 'perc_gnn' => $request->perc_gnn != '' ? __replace($request->perc_gnn) : '']);
-                $request->merge([ 'perc_gni' => $request->perc_gni != '' ? __replace($request->perc_gni) : '']);
-                $request->merge([ 'valor_partida' => $request->valor_partida != '' ? __replace($request->valor_partida) : '']);
-                $request->merge([ 'unidade_tributavel' => $request->unidade_tributavel != '' ?
-                    $request->unidade_tributavel : '']);
-                $request->merge([ 'quantidade_tributavel' => $request->quantidade_tributavel != '' ? __replace($request->quantidade_tributavel) : '']);
-
-                $request->merge([ 'cListServ' => $request->cListServ ?? '']);
-                $request->merge([ 'alerta_vencimento' => $request->alerta_vencimento ?? 0]);
-                $request->merge([ 'imagem' => '' ]);
-                $request->merge([ 'estoque_minimo' => $request->estoque_minimo ?? 0]);
-                $request->merge([ 'referencia_balanca' => $request->referencia_balanca ?? 0]);
-                $request->merge([ 'referencia' => $request->referencia ?? '']);
-
-                $request->merge([ 'largura' => $request->largura ?? 0]);
-                $request->merge([ 'comprimento' => $request->comprimento ?? 0]);
-                $request->merge([ 'altura' => $request->altura ?? 0]);
-                $request->merge([ 'peso_liquido' => $request->peso_liquido ?? 0]);
-                $request->merge([ 'peso_bruto' => $request->peso_bruto ?? 0]);
-                $request->merge([ 'tela_pedido_id' => $request->tela_pedido_id ?? 0]);
-                $request->merge([ 'limite_maximo_desconto' =>
-                    $request->limite_maximo_desconto ?? 0]);
-                $request->merge([ 'perc_icms' => $request->perc_icms ? __replace($request->perc_icms) : 0]);
-                $request->merge([ 'perc_pis' => $request->perc_pis ? __replace($request->perc_pis) : 0]);
-                $request->merge([ 'perc_cofins' => $request->perc_cofins ? __replace($request->perc_cofins) : 0]);
-                $request->merge([ 'perc_ipi' => $request->perc_ipi ? __replace($request->perc_ipi) : 0]);
-                $request->merge([ 'pRedBC' => $request->pRedBC ? __replace($request->pRedBC) : 0]);
-                $request->merge([ 'adRemICMSRet' => $request->adRemICMSRet ? __replace($request->adRemICMSRet) : 0]);
-                $request->merge([ 'pBio' => $request->pBio ? __replace($request->pBio) : 0]);
-                $request->merge([ 'peso' => $request->peso ? __replace($request->peso) : 0]);
-
-                $request->merge([ 'perc_frete' => $request->perc_frete ? __replace($request->perc_frete) : 0]);
-                $request->merge([ 'perc_outros' => $request->perc_outros ? __replace($request->perc_outros) : 0]);
-                $request->merge([ 'perc_mlv' => $request->perc_mlv ? __replace($request->perc_mlv) : 0]);
-                $request->merge([ 'perc_mva' => $request->perc_mva ? __replace($request->perc_mva) : 0]);
-
-                $request->merge([ 'cBenef' => $request->cBenef ? $request->cBenef : '']);
-                $request->merge([ 'CEST' => $request->CEST ?? '']);
-
-                $request->merge([ 'perc_icms_interestadual' => $request->perc_icms_interestadual ? __replace($request->perc_icms_interestadual) : 0]);
-                $request->merge([ 'perc_icms_interno' => $request->perc_icms_interno ? __replace($request->perc_icms_interno) : 0]);
-                $request->merge([ 'perc_fcp_interestadual' => $request->perc_fcp_interestadual ? __replace($request->perc_fcp_interestadual) : 0]);
-
-                $request->merge([ 'renavam' => $request->renavam ?? '']);
-                $request->merge([ 'placa' => $request->placa ?? '']);
-                $request->merge([ 'chassi' => $request->chassi ?? '']);
-                $request->merge([ 'combustivel' => $request->combustivel ?? '']);
-                $request->merge([ 'ano_modelo' => $request->ano_modelo ?? '']);
-                $request->merge([ 'cor_veiculo' => $request->cor_veiculo ?? '']);
-
-                $request->merge([ 'lote' => $request->lote ?? '']);
-                $request->merge([ 'CFOP_entrada_estadual' => $request->CFOP_entrada_estadual ?? '']);
-                $request->merge([ 'CFOP_entrada_inter_estadual' => $request->CFOP_entrada_inter_estadual ?? '']);
-                $request->merge([ 'vencimento' => $request->vencimento ?? '']);
-
-                $locais = json_encode($request->local);
-                if($request->local == null){
-                    $locais = '["-1"]';
-                }
-                $request->merge([ 'locais' => $locais ]);
-
-                $request->merge([ 'valor_locacao' => $request->valor_locacao ? __replace($request->valor_locacao) : 0 ]);
-                $request->merge([ 'tipo_dimensao' => $request->tipo_dimensao ?? '']);
-                $request->merge([ 'perc_comissao' => $request->perc_comissao ? __replace($request->perc_comissao) : 0]);
-                $request->merge([ 'valor_comissao' => $request->valor_comissao ? __replace($request->valor_comissao) : 0]);
-                $request->merge([ 'acrescimo_perca' => $request->acrescimo_perca ? __replace($request->acrescimo_perca) : 0]);
-                $request->merge([ 'custo_assessor' => $request->custo_assessor ? __replace($request->custo_assessor) : 0]);
-
-                $request->merge([ 'pICMSST' => $request->pICMSST ? __replace($request->pICMSST) : 0]);
-                $request->merge([ 'modBCST' => $request->modBCST ?? 0]);
-                $request->merge([ 'modBC' => $request->modBC ?? 0]);
-
-                $request->merge([ 'pOrig' => $request->pOrig ? __replace($request->pOrig) : 0 ]);
-
-                // === INCLUIR OS NOVOS RECURSOS AQUI ===
-                $request->merge([ 'controla_pesagem' => $request->input('controla_pesagem') ? true : false ]);
-                $request->merge([ 'produto_referenciado_id' => $request->input('produto_referenciado_id') ?? null ]);
-                $request->merge([ 'produto_prateleira_id' => $request->input('produto_prateleira_id') ?? null ]);
-
-                if(!$request->grade){
-                    $request->merge([ 'referencia_grade' => Str::random(20)]);
-                    $request->merge([ 'grade' => false ]);
-                    $request->merge([ 'str_grade' => '' ]);
-
-                    $result = $produto->create($request->all());
-                    $this->inserePercentualPorEstado($result);
-
-                    $this->criarLog($result);
-                    $produto = Produto::find($result->id);
-
-                    $nomeImagem = $this->salveImagemProduto($request, $produto);
-
-                    if($request->delivery){
-                        $this->salvarProdutoNoDelivery($request, $produto, $nomeImagem);
-                    }
-
-                    $this->saveIbpt($produto);
-                    if($request->ecommerce){
-                        $this->salvarProdutoEcommerce($request, $produto, $nomeImagem);
-                    }
-
-                    $mensagem_sucesso = "Produto cadastrado com sucesso!";
-                    $estoque = $request->estoque;
-                    if($estoque){
-                        $estoque = __replace($request->estoque);
-                        $data = [
-                            'produto_id' => $produto->id,
-                            'usuario_id' => get_id_user(),
-                            'quantidade' => $estoque,
-                            'tipo' => 'incremento',
-                            'observacao' => '',
-                            'empresa_id' => $this->empresa_id
-                        ];
-
-                        $estoque = $request->conversao_unitaria * $estoque;
-                        AlteracaoEstoque::create($data);
-                        $stockMove = new StockMove();
-                        $stockMove->pluStock($produto->id,
-                            $estoque, str_replace(",", ".", $produto->valor_compra));
-                        $mensagem_sucesso = "Produto cadastrado com sucesso, e atribuido estoque!";
-                    }
-
-                    $locais = isset($request->local) ? $request->local : [];
-
-                    if(sizeof($locais) > 0){
-                        session()->flash("mensagem_sucesso", "Produto cadastrado com sucesso, informe o estoque");
-                        return redirect('/produtos/set-estoque/' . $result->id);
-                    }elseif($request->composto == true){
-                        session()->flash("mensagem_sucesso", "Produto cadastrado com sucesso, informe a composição");
-                        return redirect('/produtos/receita/' . $result->id);
-                    }else{
-                        if($result){
-                            session()->flash("mensagem_sucesso", $mensagem_sucesso);
-                        }else{
-                            session()->flash('mensagem_erro', 'Erro ao cadastrar produto!');
-                        }
-                        return redirect('/produtos');
-                    }
-
-                }else{
-
-                    $produtoGrade = new ProdutoGrade();
-
-                    // Certificar-se de que os mesmos campos estão disponíveis para cada variação de grade:
-                    $request->merge([ 'controla_pesagem' => $request->input('controla_pesagem') ? true : false ]);
-                    $request->merge([ 'produto_referenciado_id' => $request->input('produto_referenciado_id') ?? null ]);
-                    $request->merge([ 'produto_prateleira_id' => $request->input('produto_prateleira_id') ?? null ]);
-
-                    $nomeImagem = "";
-                    if($request->hasFile('file')){
-                        $nomeImagem = $this->salveImagemProdutoTemp($request);
-                    }
-                    $res = $produtoGrade->salvar($request, $nomeImagem);
-
-                    if($res == "ok"){
-                        session()->flash("mensagem_sucesso", "Produto cadastrado como grade!");
-                    }else{
-                        session()->flash('mensagem_erro', 'Erro ao cadastrar produto, confira a grade!');
-                    }
-                    $locais = isset($request->local) ? $request->local : [];
-
-                    if(sizeof($locais) > 0){
-                        $lastProduto = Produto::where('empresa_id', $this->empresa_id)
-                        ->orderBy('id', 'desc')
-                        ->first();
-                        return redirect('/produtos/set-estoque/' . $lastProduto->id);
-                    }
-                    return redirect('/produtos');
-                }
-            });
-
-    return $result;
-    }catch(\Exception $e){
-    echo $e->getMessage() . ", linha: " . $e->getLine();
-    die;
-    __saveError($e, $this->empresa_id);
-    session()->flash("mensagem_erro", "algo deu errado: " . $e->getMessage());
-    return redirect('/produtos');
-    }
     }
 
     private function inserePercentualPorEstado($produto){
@@ -1433,6 +1204,9 @@ class ProductController extends Controller
                 $resp->percentual_lucro = str_replace(",", ".", $request->input('percentual_lucro'));
                 $resp->NCM = $request->input('NCM');
                 $resp->CEST = $request->input('CEST') ?? '';
+                $resp->tipo_item = $request->input('tipo_item');
+                $resp->ca_numero = $request->input('ca_numero');
+                $resp->fabricante = $request->input('fabricante');
 
                 $resp->CST_CSOSN = $request->input('CST_CSOSN');
                 $resp->CST_CSOSN_EXP = $request->input('CST_CSOSN_EXP');
@@ -1729,6 +1503,7 @@ class ProductController extends Controller
                 $resp->percentual_lucro = str_replace(",", ".", $request->input('percentual_lucro'));
                 $resp->NCM = $request->input('NCM');
                 $resp->CEST = $request->input('CEST') ?? '';
+                $resp->tipo_item = $request->input('tipo_item');
 
                 $resp->CST_CSOSN = $request->input('CST_CSOSN');
                 $resp->CST_CSOSN_EXP = $request->input('CST_CSOSN_EXP');
@@ -2821,8 +2596,6 @@ class ProductController extends Controller
                                 }
 
                             }catch(\Exception $e){
-                                // echo $e->getMessage() . ", linha: " . $e->getLine();
-                                // die;
                                 session()->flash('mensagem_erro', $e->getMessage());
                                 return redirect()->back();
                             }
@@ -3396,7 +3169,7 @@ class ProductController extends Controller
             where('produtos.empresa_id', $this->empresa_id)
             ->select('produtos.*')
             ->where('produtos.inativo', false)
-            ->where('produtos.valor_venda', '>', 0)
+            //->where('produtos.valor_venda', '>', 0) // Busca de Produtos (sem a trava do valor_venda > 0)
             ->where('produtos.nome', 'LIKE', "%$request->pesquisa%")
             ->where('produtos.locais', 'like', "%$filial_id%")
             ->orderBy('produtos.nome')

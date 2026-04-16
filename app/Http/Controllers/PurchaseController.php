@@ -68,37 +68,58 @@ class PurchaseController extends Controller
         }
     }
 
-    public function index(){
+public function index()
+{
+    $this->numeroSequencial();
 
-        $this->numeroSequencial();
-        $totalRegistros = count(Compra::where('empresa_id', $this->empresa_id)->get());
-        $compras = Compra::
-        orderBy('id', 'desc')
-        ->where('empresa_id', $this->empresa_id)
-        ->paginate(15);
+    // Deixamos as datas apenas para preencher o campo na tela,
+    // mas não vamos filtrar a query por elas agora para mostrar os últimos lançamentos
+    $dataInicial = date('01/m/Y');
+    $dataFinal = date('d/m/Y');
 
-        $somaCompraMensal = $this->somaCompraMensal();
-        return view('compraManual/listAll')
+    $usuario = \App\Models\Usuario::find($this->usuario_id);
+    $locais_permitidos = json_decode($usuario->locais) ?? [];
+
+    $query = Compra::orderBy('id', 'desc') // Ordena pelo mais recente
+        ->where('empresa_id', $this->empresa_id);
+
+    // Lógica de permissão de locais
+    $query->where(function($q) use ($locais_permitidos) {
+        if (session('user_logged.adm') == 0) {
+            $ids_filiais = array_filter($locais_permitidos, function($id) {
+                return $id != "-1" && $id != ""; // CORRIGIDO: removido ";" extra
+            });
+
+            if (count($ids_filiais) > 0) {
+                $q->whereIn('filial_id', $ids_filiais);
+                if (in_array("-1", $locais_permitidos)) {
+                    $q->orWhereNull('filial_id');
+                }
+            } else {
+                if (in_array("-1", $locais_permitidos)) {
+                    $q->whereNull('filial_id');
+                } else {
+                    // Se o usuário não tiver permissão configurada,
+                    // a query morre aqui (segurança)
+                    $q->whereRaw("1=0");
+                }
+            }
+        }
+    });
+
+    // Pega os últimos 15 lançamentos como você pediu
+    $compras = $query->paginate(15);
+
+    $somaCompraMensal = $this->somaCompraMensal();
+
+    return view('compraManual/listAll')
         ->with('compras', $compras)
+        ->with('dataInicial', $dataInicial)
+        ->with('dataFinal', $dataFinal)
         ->with('somaCompraMensal', $somaCompraMensal)
         ->with('links', true)
-        ->with('graficoJs', true)
         ->with('title', 'Compras');
-
-    }
-
-    public function pesquisa(Request $request){
-        $compras = Compra::pesquisaProduto($request->pesquisa);
-        $totalRegistros = count($compras);
-
-        $somaCompraMensal = $this->somaCompraMensal();
-        return view('compraManual/listAll')
-        ->with('compras', $compras)
-        ->with('somaCompraMensal', $somaCompraMensal)
-        ->with('graficoJs', true)
-        ->with('title', 'Pequisa de Produto em Compras');
-
-    }
+}
 
     private function somaCompraMensal(){
         $compras = Compra::
@@ -180,80 +201,76 @@ class PurchaseController extends Controller
         return floor($dif / (60 * 60 * 24));
     }
 
-    public function filtro(Request $request){
-        $dataInicial = $request->data_inicial;
-        $dataFinal = $request->data_final;
-        $fornecedor = $request->fornecedor;
-        $numero_nfe = $request->numero_nfe;
-        $filial_id = $request->filial_id;
-        $compras = null;
-        $diferencaDatas = null;
+   public function filtro(Request $request)
+{
+    // 1. Pegamos os dados do request SEM valores padrão fixos de data
+    $dataInicial = $request->data_inicial;
+    $dataFinal = $request->data_final;
+    $fornecedor = $request->fornecedor;
+    $numero_emissao = $request->numero_emissao;
+    $filial_id = $request->filial_id;
 
-        // if($dataInicial == null || $dataFinal == null || $fornecedor == null){
-        //     session()->flash('mensagem_erro', 'Informe o fornecedor, data inicial e data final!');
-        //     return redirect('/compras');
-        // }
-        $compras = Compra::
-        select('compras.*')
-        ->orderBy('compras.created_at', 'desc')
+    $usuario = \App\Models\Usuario::find($this->usuario_id);
+    $locais_permitidos = json_decode($usuario->locais) ?? [];
+
+    // 2. Iniciamos a query com o empresa_id (obrigatório)
+    $compras = Compra::select('compras.*')
+        ->orderBy('compras.id', 'desc') // Ordena por ID decrescente para ver as últimas
         ->where('compras.empresa_id', $this->empresa_id);
 
-        if(($fornecedor)){
-            $compras->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
-            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
-        }
-        if(($dataInicial) && isset($dataFinal)){
-            $compras->whereBetween('compras.created_at', [
-                $this->parseDate($dataInicial),
-                $this->parseDate($dataFinal, true)
-            ]);
-        }
-        if(($numero_nfe)){
-            $compras->where('nf', 'LIKE', "%$numero_nfe%");
-        }
-
-        if($filial_id){
-            if($filial_id == -1){
-                $compras->where('filial_id', null);
-            }else{
-                $compras->where('filial_id', $filial_id);
+    // 3. Lógica de permissões (ACL)
+    $compras->where(function($q) use ($locais_permitidos) {
+        if (session('user_logged.adm') == 0) {
+            $ids_filiais = array_filter($locais_permitidos, function($id) {
+                return $id != "-1" && $id != "";
+            });
+            if (count($ids_filiais) > 0) {
+                $q->whereIn('filial_id', $ids_filiais);
+                if (in_array("-1", $locais_permitidos)) {
+                    $q->orWhereNull('filial_id');
+                }
+            } else {
+                if (in_array("-1", $locais_permitidos)) {
+                    $q->whereNull('filial_id');
+                } else {
+                    $q->whereRaw("1=0");
+                }
             }
         }
+    });
 
-        $compras = $compras->get();
+    // 4. FILTRO DE FORNECEDOR (Opcional)
+    if($fornecedor){
+        $compras->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
+            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
+    }
 
-        if(isset($dataInicial) && isset($dataFinal)){
-            $diferencaDatas = $this->diferencaEntreDatas($this->parseDate($dataInicial), $this->parseDate($dataFinal));
-        }
+    // 5. FILTRO DE DATA (Agora só aplica se AMBAS estiverem preenchidas)
+    if($dataInicial && $dataFinal){
+        $compras->whereBetween('compras.data_emissao', [
+            $this->parseDate($dataInicial) . " 00:00:00",
+            $this->parseDate($dataFinal) . " 23:59:59"
+        ]);
+    }
 
-        if($diferencaDatas > 31 || $diferencaDatas == null){
-            $somaCompraMensal = $this->somaCompraMensalFiltro($compras);
-        }else{
-            $somaCompraMensal = $this->somaCompraDiarioFiltro($compras);
-        }
+    // 6. FILTRO DE NÚMERO DA NOTA (Nº Emissão Própria)
+    if($numero_emissao){
+        // Usamos where especificando a tabela para evitar conflito com o join do fornecedor
+        $compras->where('compras.numero_emissao', 'LIKE', "%$numero_emissao%");
+    }
 
-        return view('compraManual/listAll')
-        ->with('compras', $compras)
-        ->with('fornecedor', $fornecedor)
-        ->with('dataInicial', $dataInicial)
-        ->with('numero_nfe', $numero_nfe)
-        ->with('dataFinal', $dataFinal)
-        ->with('filial_id', $filial_id)
-        ->with('somaCompraMensal', $somaCompraMensal)
-        ->with('graficoJs', true)
-        ->with('infoDados', "Contas filtradas")
+    // 7. FILTRO DE FILIAL
+    if($filial_id){
+        if($filial_id == -1) $compras->whereNull('filial_id');
+        else $compras->where('filial_id', $filial_id);
+    }
+
+    // Paginação com 50 para buscas
+    $compras = $compras->paginate(50);
+
+    return view('compraManual/listAll', compact('compras', 'dataInicial', 'dataFinal', 'fornecedor', 'numero_emissao', 'filial_id'))
         ->with('title', 'Filtro Compras');
-
-    }
-
-    private function parseDate($date, $plusDay = false){
-
-        if($plusDay == false)
-            return date('Y-m-d', strtotime(str_replace("/", "-", $date)));
-        else
-            return date('Y-m-d', strtotime("+1 day",strtotime(str_replace("/", "-", $date))));
-    }
-
+}
     public function downloadXml($id){
         $compra = Compra::
         where('id', $id)
@@ -265,9 +282,9 @@ class PurchaseController extends Controller
             else return response()->download(public_path('xml_entrada_emitida/').$compra->chave. '.xml');
         }else{
             return redirect('/403');
-        }
-    }
 
+    }
+  }
     public function downloadXmlCancela($id){
         $compra = Compra::
         where('id', $id)
@@ -310,16 +327,25 @@ class PurchaseController extends Controller
             if($compra->xml_path != "" && file_exists(public_path("xml_entrada/") . $compra->xml_path)){
                 unlink(public_path("xml_entrada/") .$compra->xml_path);
             }
+
             foreach($compra->itens as $i){
-        // baixa de estoque
-                $stockMove->downStock($i->produto->id, $i->quantidade*$i->produto->conversao_unitaria, $compra->filial_id);
+                // baixa de estoque
+                if ($i->produto->gerenciar_estoque) {
+                    $stockMove->downStock(
+                        $i->produto->id,
+                        $i->quantidade * $i->produto->conversao_unitaria,
+                        $compra->filial_id,
+                        'compra',   // <--- ADICIONADO: Avisa ao histórico que a origem é uma compra
+                        $compra->id // <--- ADICIONADO: Passa o ID para ele puxar o Fornecedor e a NF
+                    );
+                }
                 $i->delete();
             }
 
             if($compra->delete()){
-                session()->flash('mensagem_sucesso', 'Registro removido!');
+                session()->flash('mensagem_sucesso', 'Registro e movimentações removidos!');
             }else{
-                session()->flash('mensagem_erro', 'Erro!');
+                session()->flash('mensagem_erro', 'Erro ao excluir!');
             }
             return redirect('/compras');
         }else{
@@ -1719,7 +1745,7 @@ class PurchaseController extends Controller
 
                     $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
 
-                    safe_file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
+                    file_put_contents(public_path("barcode")."/$rand.png", $bar_code);
 
                     for($i=0; $i<$it->quantidade; $i++){
                         array_push($data, $item);
@@ -1988,5 +2014,13 @@ class PurchaseController extends Controller
         }
         return redirect()->back();
     }
+
+      private function parseDate($date){
+    if(strpos($date, "/") !== false){
+        $d = explode("/", $date);
+        return $d[2] . "-" . $d[1] . "-" . $d[0];
+    }
+    return $date;
+}
 
 }

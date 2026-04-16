@@ -29,6 +29,8 @@
 								<th>Banco</th>
 								<th>Agência</th>
 								<th>Conta</th>
+								{{-- ADICIONADO: CABEÇALHO LOCAL --}}
+								<th>Local</th>
 								<th>Status</th>
 								<th>Saldo</th>
 								<th>Ações</th>
@@ -42,6 +44,21 @@
 								<td>{{ $item->banco }}</td>
 								<td>{{ $item->agencia }}</td>
 								<td>{{ $item->conta }}</td>
+								
+								{{-- ADICIONADO: ETIQUETA DE FILIAL/MATRIZ --}}
+								<td>
+									@php
+										$nomeLocal = 'Matriz'; 
+										if ($item->filial_id && $item->filial_id > 0) {
+											$listaLocais = __locaisAtivos();
+											$nomeLocal = isset($listaLocais[$item->filial_id]) ? $listaLocais[$item->filial_id] : 'Filial ' . $item->filial_id;
+										}
+									@endphp
+									<span class="label label-inline label-light-danger font-weight-bold" style="font-size: 10px;">
+										{{ $nomeLocal }}
+									</span>
+								</td>
+
 								<td>
 									@if($item->status)
 									<i class="la la-check text-success"></i>
@@ -58,14 +75,13 @@
 											<i class="la la-edit"></i>
 										</a>
 
-										<button class="btn btn-sm btn-danger btn-delete">
+										<button type="button" class="btn btn-sm btn-danger" onclick="excluirConta({{$item->id}})">
 											<i class="la la-trash"></i>
 										</button>
 
 										<a title="Movimentações" href="{{ route('contas-empresa.show', $item->id) }}" class="btn btn-sm btn-dark">
 											<i class="la la-list"></i>
 										</a>
-
 									</form>
 								</td>
 							</tr>
@@ -79,4 +95,26 @@
 	</div>
 </div>
 
+@section('javascript')
+<script>
+function excluirConta(id) {
+    Swal.fire({
+        title: 'Excluir esta Conta?',
+        text: "Isso apagará a conta e todo o histórico. Digite a senha:",
+        input: 'password',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+        preConfirm: (senha) => {
+            if (!senha) { Swal.showValidationMessage('Senha obrigatória'); }
+            return senha;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = "/contas-empresa/delete/" + id + "?senha=" + result.value;
+        }
+    });
+}
+</script>
+@endsection
 @endsection

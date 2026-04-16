@@ -140,14 +140,14 @@
 
                                             </div>
 
-                                            <div class="row"> 
-                                                <div class="col-12"> 
-                                                    <div class="card card-custom gutter-b"> 
-                                                        <div class="card-body"> 
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <div class="card card-custom gutter-b">
+                                                        <div class="card-body">
                                                             <h5 class="mb-4">Controle de Pesagem por Balança</h5>
-                                                            <div class="form-group"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="bloquear_pesagem_manual_balanca" value="1" {{ (old('bloquear_pesagem_manual_balanca', $config->bloquear_pesagem_manual_balanca ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Bloquear pesagem manual e obrigar leitura da balança padrão
@@ -170,9 +170,9 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div class="form-group mb-0"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="exibir_valores_ticket_pesagem_grid" value="1" {{ (old('exibir_valores_ticket_pesagem_grid', $config->exibir_valores_ticket_pesagem_grid ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Exibir colunas de valor unitário/total da pesagem na grid
@@ -218,9 +218,9 @@
                                                                 <small class="text-muted">Quando ativo, o campo de recipiente fica editável e a tara não é aplicada automaticamente.</small>
                                                             </div>
 
-                                                            <div class="form-group mt-3 mb-0"> 
-                                                                <div class="checkbox-inline"> 
-                                                                    <label class="checkbox"> 
+                                                            <div class="form-group mt-3 mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
                                                                         <input type="checkbox" name="conectar_automaticamente_balanca_padrao_usuario" value="1" {{ (old('conectar_automaticamente_balanca_padrao_usuario', $config->conectar_automaticamente_balanca_padrao_usuario ?? 0)) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Conectar automaticamente à balança padrão do usuário no abrir do modal
@@ -911,6 +911,19 @@
 													</div>
 												</div>
 
+                                                 <div class="form-group col-lg-3 col-md-4 col-sm-6">
+                                                    <label>Permitir Estoque Negativo</label>
+                                                    <div class="input-group">
+                                                        <span class="switch switch-outline switch-icon switch-success">
+                                                            <label>
+                                                                <input type="checkbox" name="permitir_estoque_negativo" value="1"
+                                                                @if(isset($config->permitir_estoque_negativo) && $config->permitir_estoque_negativo) checked @endif />
+                                                                <span></span>
+                                                            </label>
+                                                        </span>
+                                                    </div>
+                                                    <span class="form-text text-muted">Vender sem saldo no sistema</span>
+                                                </div>
 												<div class="form-group validated col-lg-2 col-md-4 col-sm-10">
 													<label class="col-form-label">% Max. desconto</label>
 													<div class="">

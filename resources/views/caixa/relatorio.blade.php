@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 
@@ -41,11 +41,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -63,7 +63,7 @@
 	</div>
 
 	<br>
-	
+
 	<table>
 		<tr>
 			<td class="" style="width: 500px;">
@@ -160,7 +160,7 @@
 				<td class="b-top">{{ $v->tipo }}</td>
 				<td class="b-top">{{ number_format($v->valor_total, 2, ',', '.') }}</td>
 				<td class="b-top">{{ number_format($v->desconto, 2, ',', '.') }}</td>
-				
+
 				@if(!isset($v->cpf))
 				<td class="b-top">
 					{{ number_format($v->valor_total-$v->desconto+$v->acrescimo, 2, ',', '.') }}
@@ -207,7 +207,7 @@
 		</thead>
 
 		<tbody>
-			
+
 			@foreach($nfse as $n)
 			<tr>
 				<td>{{ $n->razao_social }}</td>
@@ -236,7 +236,7 @@
 	$somaSangria = 0;
 	@endphp
 	<br>
-	
+
 	<table>
 		<tr>
 			<td class="b-bottom" style="width: 350px;">

@@ -31,6 +31,11 @@ abstract class BaseModel extends Model
 
     protected static array $deletedAtSupportCache = [];
 
+    /**
+     * Marca exclusão física intencional.
+     */
+    protected bool $forceDeletingFlag = false;
+
     protected static function boot()
     {
         parent::boot();
@@ -79,23 +84,30 @@ abstract class BaseModel extends Model
         });
     }
 
-    /**
-     * Marca exclusão física intencional.
-     */
-    protected bool $forceDeletingFlag = false;
-
-    public function forceDeleteSmart(): bool
+    public function forceDeleteSmart()
     {
         $this->forceDeletingFlag = true;
 
         try {
-            return (bool) parent::delete();
+            return parent::delete();
         } finally {
             $this->forceDeletingFlag = false;
         }
     }
 
-    protected function isForceDeleting(): bool
+    /**
+     * Compatibilidade com API padrão do Laravel.
+     */
+    public function forceDelete()
+    {
+        return $this->forceDeleteSmart();
+    }
+
+    /**
+     * Compatível com SoftDeletes do Laravel.
+     * Não usar tipagem rígida aqui.
+     */
+    public function isForceDeleting()
     {
         return $this->forceDeletingFlag === true;
     }
@@ -103,7 +115,7 @@ abstract class BaseModel extends Model
     /**
      * Restauração custom para tabelas com deleted_at.
      */
-    public function restoreSmart(): bool
+    public function restoreSmart()
     {
         if (!$this->supportsSoftDeleteColumn()) {
             return false;
@@ -127,15 +139,31 @@ abstract class BaseModel extends Model
     }
 
     /**
+     * Compatibilidade com API padrão do Laravel.
+     */
+    public function restore()
+    {
+        return $this->restoreSmart();
+    }
+
+    /**
      * Verifica se o registro está "soft deleted".
      */
-    public function trashedSmart(): bool
+    public function trashedSmart()
     {
         if (!$this->supportsSoftDeleteColumn()) {
             return false;
         }
 
         return !empty($this->getAttribute('deleted_at'));
+    }
+
+    /**
+     * Compatibilidade com API padrão do Laravel.
+     */
+    public function trashed()
+    {
+        return $this->trashedSmart();
     }
 
     /**
@@ -170,6 +198,41 @@ abstract class BaseModel extends Model
         }
 
         return $query;
+    }
+
+    /**
+     * Compatibilidade com API padrão do Laravel.
+     * Assinatura alinhada ao SoftDeletes.
+     */
+    public function scopeWithTrashed($query, $withTrashed = true)
+    {
+        if ($withTrashed === false) {
+            return $this->scopeWithoutDeleted($query);
+        }
+
+        return $this->scopeWithDeleted($query);
+    }
+
+    /**
+     * Compatibilidade com API padrão do Laravel.
+     */
+    public function scopeOnlyTrashed($query)
+    {
+        return $this->scopeOnlyDeleted($query);
+    }
+
+    /**
+     * Compatibilidade com API padrão do Laravel.
+     */
+    public function scopeWithoutTrashed($query)
+    {
+        return $this->scopeWithoutDeleted($query);
+    }
+
+    public static function supportsSoftDelete(): bool
+    {
+        $instance = new static();
+        return $instance->supportsSoftDeleteColumn();
     }
 
     public function disableAuditForThisInstance(): self
@@ -214,9 +277,9 @@ abstract class BaseModel extends Model
             }
 
             $logService = new LogService(
-                $this->normalizeNullableInt($empresaId),
-                $this->normalizeNullableInt($usuarioId),
-                $this->normalizeNullableInt($filialId)
+                static::normalizeNullableInt($empresaId),
+                static::normalizeNullableInt($usuarioId),
+                static::normalizeNullableInt($filialId)
             );
 
             $logService->registrar($acao, get_class($this), [
@@ -263,7 +326,7 @@ abstract class BaseModel extends Model
         return null;
     }
 
-    protected function normalizeNullableInt($value): ?int
+    protected static function normalizeNullableInt($value): ?int
     {
         if ($value === null || $value === '' || $value === 'null') {
             return null;

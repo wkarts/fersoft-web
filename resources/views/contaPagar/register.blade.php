@@ -94,8 +94,7 @@
                                             @endif
 
                                             <div class="form-group validated col-lg-3 col-md-4 col-sm-6">
-                                                <label class="col-form-label">Categoria</label>
-
+                                                <label class="col-form-label">Categoria</label>                                                                                    
                                                 <select class="custom-select form-control" id="categoria_id" name="categoria_id">
                                                     @foreach($categorias as $cat)
                                                         <option value="{{$cat->id}}" @isset($conta)
@@ -108,7 +107,17 @@
                                                 </select>
 
                                             </div>
-
+                                          
+                                         <div class="form-group col-lg-3 col-md-4 col-sm-6">
+                                               <label class="col-form-label">Veículo (Opcional)</label>
+                                                <select class="form-control custom-select" name="veiculo_id" id="veiculo_id">
+                                                 <option value="">Selecione um veículo</option>
+                                                 @foreach($veiculos as $v)
+                                                <option value="{{$v->id}}">{{$v->placa}} - {{$v->modelo}}</option>
+                                                 @endforeach
+                                              </select>
+                                          </div>
+                                          
                                             <div class="form-group col-lg-2 col-md-9 col-sm-12">
                                                 <label class="col-form-label">Data de vencimento</label>
                                                 <div class="">
@@ -185,20 +194,40 @@
                                             </div>
 
                                             @if(!isset($conta))
-                                                <div class="form-group col-lg-2 col-md-9 col-sm-12">
-                                                    <label class="col-form-label">Conta Paga</label>
+ <div class="form-group col-lg-2 col-md-9 col-sm-12">
+    <label class="col-form-label">Conta Paga</label>
+    <div class="col-lg-12 col-xl-12">
+        <span class="switch switch-outline switch-success">
+            <label>
+                <input @if(isset($conta) && $conta->status) checked @endif type="checkbox" id="pago" name="status">
+                <span></span>
+            </label>
+        </span>
+    </div>
+</div>
 
-                                                    <div class="col-lg-12 col-xl-12">
-												<span class="switch switch-outline switch-success">
-													<label>
-														<input @if(isset($conta) && $conta->status) checked
-                                                               @endif type="checkbox" id="pago" name="status" type="checkbox" id="status">
-														<span></span>
-													</label>
-												</span>
-
-                                                    </div>
-                                                </div>
+<div class="form-group validated col-lg-4 col-md-6 col-sm-12 div-conta-empresa" style="display: none">
+    <label class="col-form-label">Conta Bancária/Caixa</label>
+    <select class="form-control custom-select" name="conta_id" id="conta_id">
+        <option value="">Selecione Banco/Caixa</option>
+        @foreach($contasEmpresa as $c)
+            <option value="{{ $c->id }}" @if(isset($conta) && $conta->conta_id == $c->id) selected @endif>
+                {{ $c->nome }} | Saldo: R$ {{ number_format($c->saldo, 2, ',', '.') }}
+            </option>
+        @endforeach
+    </select>
+</div>
+                                          
+<div class="form-group validated col-lg-3 col-md-6 col-sm-12 div-data-pagamento" style="display: none">
+    <label class="col-form-label">Data de Pagamento</label>
+    <div class="input-group date">
+        <input type="text" name="data_pagamento" class="form-control date-input" 
+            value="{{ date('d/m/Y') }}" id="kt_datepicker_payment" />
+        <div class="input-group-append">
+            <span class="input-group-text"><i class="la la-calendar"></i></span>
+        </div>
+    </div>
+</div>
 
                                                 <div class="form-group validated col-lg-2 col-md-4 col-sm-6 div-pago" style="display: none">
                                                     <label class="col-form-label">Valor pago</label>
@@ -662,11 +691,22 @@
             let pago = $('#pago').is(':checked')
             if(pago){
                 $('.div-pago').css('display', 'block')
+                $('.div-conta-empresa').css('display', 'block')
+                $('.div-data-pagamento').css('display', 'block')
             }else{
                 $('.div-pago').css('display', 'none')
+                $('.div-conta-empresa').css('display', 'none')
+                $('.div-data-pagamento').css('display', 'none')
+                $('#conta_id').val('').change()
+                $('#kt_datepicker_payment').val("{{ date('d/m/Y') }}")
             }
         }
-
+$('#kt_datepicker_payment').datepicker({
+    format: "dd/mm/yyyy",
+    todayHighlight: true,
+    autoclose: true,
+    orientation: "bottom left"
+});
         function novoFornecedor(){
             $('#modal-fornecedor').modal('show')
         }
@@ -886,6 +926,46 @@
                     call(err)
                 })
         }
+      // Função para verificar saldo de adiantamento
+function verificarAdiantamento(pessoa_id, tipo) {
+    if(!pessoa_id) return;
+
+    $.get('/adiantamentos/verificar-saldo/' + pessoa_id + '/' + tipo, function(data) {
+        if (data.saldo > 0) {
+            let valorFormatado = data.saldo.toLocaleString('pt-br',{style: 'currency', currency: 'BRL'});
+            
+            Swal.fire({
+                title: 'Crédito Disponível!',
+                text: `Este ${tipo} possui ${valorFormatado} de adiantamento. Deseja utilizar este saldo para abater nesta operação?`,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sim, usar crédito',
+                cancelButtonText: 'Não, manter saldo'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Cria um campo escondido no formulário para avisar o Controller
+                    $('#form-venda, #form-compra').append(`<input type="hidden" name="usar_adiantamento" value="1">`);
+                    Swal.fire('Confirmado!', 'O saldo será abatido ao salvar.', 'success');
+                }
+            });
+        }
+    });
+}
+
+// Gatilho quando mudar o Cliente/Fornecedor
+$(document).ready(function() {
+    // Para Clientes (Venda)
+    $('#kt_select2_3').on('change', function() { // Ajuste o ID conforme seu select de cliente
+        verificarAdiantamento($(this).val(), 'cliente');
+    });
+
+    // Para Fornecedores (Compra)
+    $('#kt_select2_1').on('change', function() { // Ajuste o ID conforme seu select de fornecedor
+        verificarAdiantamento($(this).val(), 'fornecedor');
+    });
+});
 
     </script>
 @endsection

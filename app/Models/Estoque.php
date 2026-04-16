@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\ItemPurchase;
 use App\Models\Produto;
+use App\Models\MultiEmpresaTrait;
 
 class Estoque extends Model
 {
-    protected $fillable = [
+    use MultiEmpresaTrait;
+  
+  protected $fillable = [
         'produto_id', 'quantidade', 'valor_compra', 'validade', 'empresa_id', 'filial_id'
     ];
 

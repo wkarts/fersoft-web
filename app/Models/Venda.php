@@ -8,11 +8,13 @@ use App\Models\Devolucao;
 use App\Models\ConfigNota;
 use App\Models\FormaPagamento;
 use App\Models\Compra;
+use App\Models\MultiEmpresaTrait;
 
 class Venda extends Model
 {
     //use SoftDeletes;
-
+use MultiEmpresaTrait;
+  
     public const CREATED_AT = 'created_at';
     public const UPDATED_AT = 'updated_at';
     //public const DELETED_AT = 'deleted_at';

@@ -316,6 +316,10 @@ class Menu {
 						'rota' => '/estoque'
 					],
 					[
+						'nome' => 'Requisição',
+						'rota' => 'requisicoes'
+					],
+					[
 						'nome' => 'Apontameto de produçao',
 						'rota' => '/estoque/apontamentoProducao'
 					],
@@ -486,9 +490,18 @@ class Menu {
 						'rota' => '/contas-empresa'
 					],
 					[
+						'nome' => 'Apuração',
+						'rota' => '/Apuracao'
+					],
+					[
+						'nome' => 'Adiantamento',
+						'rota' => '/Adiantamento'
+					],
+					[
 						'nome' => 'Plano de contas',
 						'rota' => '/plano-contas'
-					]//,
+					],
+					
 					// [
 					// 	'nome' => 'Emitir - DAS',
 					// 	'rota' => env('LINK_DAS'),
@@ -542,7 +555,7 @@ class Menu {
                 ],
             ],
             [
-                'titulo' => 'Controle de Frota',
+                'titulo' => 'Gestão de Frota',
                 'icone' => $this->getIcone('Frota'),
                 'subs' => [
                     [
@@ -556,6 +569,18 @@ class Menu {
                     [
                         'nome' => 'Movimentação de Veiculos',
                         'rota' => '/movimentacaoVeiculo'
+                    ],
+                    [
+                        'nome' => 'Manutenções',
+                        'rota' => '/manutencoes'
+                    ],
+                    [
+                        'nome' => 'Relatório',
+                        'rota' => '/movimentacaoVeiculo/relatorio'
+                    ],
+                    [
+                        'nome' => 'Dashboard',
+                        'rota' => '/movimentacaoVeiculo/dashboard'
                     ],
                 ],
             ],

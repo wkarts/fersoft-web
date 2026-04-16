@@ -65,6 +65,6 @@ class Post implements RequestMethod
             ),
         );
         $context = stream_context_create($options);
-        return file_get_contents(self::SITE_VERIFY_URL, false, $context);
+        return safe_file_get_contents(self::SITE_VERIFY_URL, false, $context);
     }
 }

@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		th{
 			font-size: 13px;
@@ -34,7 +34,7 @@
 		<table>
 			<tr>
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 
 				<td class="" style="width: 550px;">
@@ -113,7 +113,7 @@
 				<strong>PRODUTOS:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 
 	<table>
@@ -128,17 +128,17 @@
 				<td class="" style="width: 70px;">
 					Unid.
 				</td>
-				
+
 				<td class="" style="width: 70px;">
 					Vl Custo
 				</td>
 				<td class="" style="width: 70px;">
 					Vl Venda
 				</td>
-				
+
 			</tr>
 		</thead>
-		
+
 		<tbody>
 			@foreach($produtosSemContar as $i)
 			<tr>
@@ -152,7 +152,7 @@
 					{{$i->nome}}
 					{{$i->grade ? " (" . $i->str_grade . ")" : ""}}
 					@if($i->lote != "")
-					| Lote: {{$i->lote}}, 
+					| Lote: {{$i->lote}},
 					Vencimento: {{$i->vencimento}}
 					@endif
 				</th class="b-top">
@@ -191,7 +191,7 @@
 	<table>
 		<tr>
 			<td class="" style="width: 700px;">
-				<strong>Observação: 
+				<strong>Observação:
 					{{$inventario->observacao}}
 				</strong>
 			</td>
@@ -199,18 +199,18 @@
 	</table>
 	@endif
 
-	
+
 	<table>
 		<tr>
-			
+
 
 			<td class="" style="width: 350px;">
 				Total de linhas:
-				<strong> 
+				<strong>
 					{{sizeof($produtosSemContar)}}
 				</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 

@@ -46,50 +46,73 @@
 		<div class="card card-custom gutter-b example example-compact">
 			<div class="">
 				<div class="col-lg-12">
-					<!--begin::Portlet-->
-
-
-					<input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
 					<div class="card card-custom gutter-b example example-compact m-3">
 						<div class="card-header">
-
 							<h3 class="card-title">DADOS INICIAIS</h3>
-
 							{!! __view_locais_select() !!}
-
 						</div>
-                        <div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
-                            <div class="col-xl-12">
-                                <div class="row">
-                                    <div class="form-group col-lg-2 col-md-6 col-sm-12">
-                                        <label class="col-form-label">Data de emissão retroativa</label>
-                                        <div class="input-group date">
-                                            <input type="text" name="data_retroativa" class="form-control date-input"
-                                                   value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa') }}" id="data_retroativa_dynamic" />
-                                            <div class="input-group-append">
-                                                <span class="input-group-text"><i class="la la-calendar"></i></span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div class="form-group col-lg-2 col-md-6 col-sm-12">
-                                        <label class="col-form-label">Data de saída retroativa</label>
-                                        <div class="input-group date">
-                                            <input type="text" name="data_saida" class="form-control date-input"
-                                                   value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida') }}" id="data_saida_dynamic" />
-                                            <div class="input-group-append">
-                                                <span class="input-group-text"><i class="la la-calendar"></i></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+						<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
+							<div class="col-xl-12">
+								<div class="row">
+									<div class="form-group col-lg-2 col-md-4 col-sm-6">
+										<label class="col-form-label">Data retroativa</label>
+										<div class="input-group date">
+											<input type="text" name="data_retroativa" class="form-control date-input"
+												value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa') }}" id="data_retroativa_dynamic" />
+											<div class="input-group-append">
+												<span class="input-group-text"><i class="la la-calendar"></i></span>
+											</div>
+										</div>
+									</div>
+
+									<div class="form-group col-lg-2 col-md-4 col-sm-6">
+										<label class="col-form-label">Data saída</label>
+										<div class="input-group date">
+											<input type="text" name="data_saida" class="form-control date-input"
+												value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida') }}" id="data_saida_dynamic" />
+											<div class="input-group-append">
+												<span class="input-group-text"><i class="la la-calendar"></i></span>
+											</div>
+										</div>
+									</div>
+
+									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
+										<label class="col-form-label">Nota Fiscal</label>
+										<input type="text" class="form-control" id="numero_emissao" name="numero_emissao" 
+											value="{{ $compra->nf ?? '' }}" placeholder="Ex: 000000">
+									</div>
+
+									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
+										<label class="col-form-label">Emissão da NF</label>
+										<input type="date" class="form-control" id="data_emissao" name="data_emissao" 
+											value="{{ (isset($compra) && $compra->data_emissao) ? \Carbon\Carbon::parse($compra->data_emissao)->format('Y-m-d') : date('Y-m-d') }}">
+									</div>
+
+									<div class="form-group validated col-lg-4 col-md-8 col-sm-12">
+										<label class="col-form-label">Veículo Utilizado</label>
+										<select class="form-control custom-select" id="veiculo_id" name="veiculo_id">
+											<option value="">-- Selecione um veículo (Opcional) --</option>
+											@if(isset($veiculos) && count($veiculos) > 0)
+												@foreach($veiculos as $v)
+													<option value="{{ $v->id }}" {{ (isset($compra) && $compra->veiculo_id == $v->id) ? 'selected' : '' }}>
+														{{ $v->placa }} - {{ $v->marca }}
+													</option>
+												@endforeach
+											@else
+												<option value="" disabled>Nenhum veículo encontrado/cadastrado</option>
+											@endif
+										</select>
+									</div>
+								</div>
+							</div>
+						</div>
                         </div>
+                       
+                  </div>
 						<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-							<!--begin: Wizard Nav-->
 							<div class="wizard-nav">
 								<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-									<!--begin::Wizard Step 1 Nav-->
 									<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
 										<div class="wizard-label">
 											<h3 class="wizard-title">
@@ -106,8 +129,6 @@
 											<div class="wizard-bar"></div>
 										</div>
 									</div>
-									<!--end::Wizard Step 1 Nav-->
-									<!--begin::Wizard Step 2 Nav-->
 									<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
 										<div class="wizard-label">
 											<h3 class="wizard-title">
@@ -116,22 +137,15 @@
 											<div class="wizard-bar"></div>
 										</div>
 									</div>
-									<!--end::Wizard Step 2 Nav-->
-
-								</div>
+									</div>
 							</div>
-							<!--end: Wizard Nav-->
-							<!--begin: Wizard Body-->
 							<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
 								<div class="col-xl-12">
 
-									<!--begin: Wizard Form-->
 									<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
-										<!--begin: Wizard Step 1-->
 										<div class="pb-5" data-wizard-type="step-content">
 
 											<h4 class="mb-10 font-weight-bold text-dark">Selecione o Fornecedor</h4>
-											<!--begin::Input-->
 											<div class="row">
 												<div class="input-group col-8">
 
@@ -144,6 +158,26 @@
 													<button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm">
 														<i class="la la-plus-circle icon-add"></i>
 													</button>
+												</div>
+											</div>
+
+											<div class="row mt-3" id="div_adiantamento" style="display:none;">
+												<div class="col-lg-8"> 
+													<div class="alert alert-custom alert-outline-info fade show mb-5" role="alert" style="background: #f3f6f9; border: 1px solid #17a2b8;">
+														<div class="alert-icon"><i class="flaticon-questions-wheels-and-self-care text-info"></i></div>
+														<div class="alert-text">
+															<span class="font-weight-bold">Crédito Disponível: </span>
+															<span class="label label-lg label-light-info label-inline font-weight-bold" id="label_saldo_adv" style="font-size: 1.2rem;">R$ 0,00</span>
+															<br>
+															<div class="checkbox-inline mt-2">
+																<label class="checkbox checkbox-success">
+																	<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento">
+																	<span></span>
+																	<strong class="text-dark">Deseja abater este valor no pagamento desta compra?</strong>
+																</label>
+															</div>
+														</div>
+													</div>
 												</div>
 											</div>
 
@@ -169,7 +203,7 @@
 												</div>
                                             <hr>
                                             <br>
-                                            <h4 class="mb-10 font-weight-bold text-dark">...</h4>
+                                            
 											</div>
 
 											<hr>
@@ -244,8 +278,6 @@
 
 											</div>
 										</div>
-										<!--end: Wizard Step 1-->
-
 										<div class="pb-5" data-wizard-type="step-content" >
 											<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 												<div class="row">
@@ -400,10 +432,8 @@
 										</div>
 
 
-										<!--begin: Wizard Step 2-->
 										<div class="pb-5" data-wizard-type="step-content" data-wizard-state="current">
 											<h4 class="mb-10 font-weight-bold text-dark">Selecione a forma de pagamento</h4>
-											<!--begin::Input-->
 											<div class="row">
 												<div class="form-group validated col-sm-3 col-lg-3">
 													<label class="col-form-label">Forma de pagamento</label>
@@ -477,20 +507,13 @@
 											</div>
 
 										</div>
-										<!--end: Wizard Step 2-->
-
-										<!--begin: Wizard Actions-->
 										<div class="d-flex justify-content-between border-top mt-5 pt-10">
 
 										</div>
-										<!--end: Wizard Actions-->
-
-									</form>
-									<!--end: Wizard Form-->
-								</div>
+										</form>
+									</div>
 							</div>
-							<!--end: Wizard Body-->
-						</div>
+							</div>
 
 						<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
 							<div class="col-xl-12">
@@ -756,12 +779,9 @@
 			<div class="modal-body">
 
 				<div class="wizard wizard-3" id="kt_wizard_v4" data-wizard-state="between" data-wizard-clickable="true">
-					<!--begin: Wizard Nav-->
-
 					<div class="wizard-nav">
 
 						<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-							<!--begin::Wizard Step 1 Nav-->
 							<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
 								<div class="wizard-label">
 									<h3 class="wizard-title">
@@ -772,8 +792,6 @@
 									<div class="wizard-bar"></div>
 								</div>
 							</div>
-							<!--end::Wizard Step 1 Nav-->
-							<!--begin::Wizard Step 2 Nav-->
 							<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
 								<div class="wizard-label">
 									<h3 class="wizard-title">
@@ -790,9 +808,7 @@
 					<div class="card-body">
 						<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-							<!--begin: Wizard Form-->
 							<form class="form fv-plugins-bootstrap fv-plugins-framework form-prod" id="kt_form">
-								<!--begin: Wizard Step 1-->
 								<p class="kt-widget__data text-danger">Campos com (*) obrigatório</p>
 
 								<div class="pb-5" data-wizard-type="step-content">
@@ -1425,17 +1441,6 @@
 
 								</div>
 							</div>
-							<!-- <div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-								<label class="col-form-label">UF</label>
-
-								<select class="custom-select form-control" id="sigla_uf3" name="sigla_uf">
-									@foreach(App\Models\Cidade::estados() as $c)
-									<option value="{{$c}}">{{$c}}
-									</option>
-									@endforeach
-								</select>
-
-							</div> -->
 							<div class="form-group validated col-lg-2 col-md-2 col-sm-6">
 								<br><br>
 								<a type="button" id="btn-consulta-cadastro3" onclick="consultaCadastro3()" class="btn btn-success spinner-white spinner-right">
@@ -1512,4 +1517,197 @@
 		</div>
 	</div>
 </div>
+
+<script>
+// Este código aguarda o JS velho carregar e sobrescreve ele na memória
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        console.log("Forçando a captura da NF e Veículo!");
+
+        // NOVA FUNÇÃO: Busca o saldo de adiantamento via AJAX
+        console.log("Forçando a captura da NF e Veículo!");
+
+        // 1. FUNÇÃO QUE VAI BUSCAR O SALDO NO BANCO
+        function buscarSaldoAdiantamento(id_fornecedor) {
+            if(id_fornecedor && id_fornecedor !== '--') {
+                let url = path + 'adiantamentos/consulta-saldo/fornecedor/' + id_fornecedor;
+
+                $.get(url, function(data) {
+                    let saldo = parseFloat(data.saldo);
+                    
+                    if(saldo > 0) {
+                        $('#label_saldo_adv').text('R$ ' + saldo.toLocaleString('pt-br', {minimumFractionDigits: 2}));
+                        $('#div_adiantamento').show(); // MOSTRA A CAIXA AZUL
+                    } else {
+                        $('#div_adiantamento').hide(); // ESCONDE SE O SALDO FOR ZERO
+                        $('#usar_adiantamento').prop('checked', false);
+                    }
+                }).fail(function() {
+                    console.error("Erro na busca de saldo.");
+                });
+            } else {
+                $('#div_adiantamento').hide();
+                $('#usar_adiantamento').prop('checked', false);
+            }
+        }
+
+        // 2. GATILHO: QUANDO VOCÊ CLICA E TROCA O FORNECEDOR NA LISTA
+        $('#kt_select2_1').on('change', function() {
+            buscarSaldoAdiantamento($(this).val());
+        });
+
+        // 3. GATILHO: QUANDO A PÁGINA CARREGA JÁ COM UM FORNECEDOR (Ex: Edição)
+        let fornecedorJaPreenchido = $('#kt_select2_1').val();
+        if(fornecedorJaPreenchido && fornecedorJaPreenchido !== '--') {
+            buscarSaldoAdiantamento(fornecedorJaPreenchido);
+        }
+
+        window.salvarCompra = function() {
+            $('#salvar-venda').attr('disabled', 1);
+            if(salvando == false){
+                salvando = true;
+                $('#preloader2').css('display', 'block');
+
+                var fornecedor = $('.fornecedor').val();
+                if (fornecedor == '--') {
+                    swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    $('#salvar-venda').removeAttr('disabled');
+                    return;
+                }
+
+                var transportadora = $('#kt_select2_3').val();
+                transportadora = transportadora == 'null' ? null : transportadora;
+                
+                let js = {
+                    fornecedor: fornecedor,
+                    formaPagamento: $('#formaPagamento').val(),
+                    
+                    // --- VARIÁVEL DO ADIANTAMENTO ---
+                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
+                    
+                    // --- CAMPOS INJETADOS À FORÇA ---
+                    nf: $('#numero_emissao').val(),
+                    numero_emissao: 0,
+                    data_emissao: $('#data_emissao').val(),
+                    veiculo_id: $('#veiculo_id').val(),
+                    filial_id: $('#filial_id').val(),
+                    // --------------------------------
+
+                    itens: ITENS,
+                    fatura: FATURA,
+                    total: TOTAL,
+                    desconto: $('#desconto').val(),
+                    acrescimo: $('#acrescimo').val(),
+                    observacao: $('#obs').val(),
+                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    especie: $('#especie').val(),
+                    numeracaoVol: $('#numeracaoVol').val(),
+                    qtdVol: $('#qtdVol').val(),
+                    pesoL: $('#pesoL').val(),
+                    pesoB: $('#pesoB').val(),
+                    transportadora: transportadora,
+                    frete: $('#frete').val(),
+                    placaVeiculo: $('#placa').val(),
+                    ufPlaca: $('#uf_placa').val(),
+                    valorFrete: $('#valor_frete').val(),
+                    data_retroativa: $('#data_retroativa_dynamic').val(),
+                    data_saida: $('#data_saida_dynamic').val()
+                };
+
+                let token = $('#_token').val();
+
+                $.ajax({
+                    type: 'POST',
+                    data: { compra: js, _token: token },
+                    url: path + 'compraManual/salvar',
+                    dataType: 'json',
+                    success: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        sucesso(e);
+                    }, error: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        swal("Erro", "Erro ao salvar a compra.", "warning");
+                    }
+                });
+            }
+            salvando = false;
+        };
+
+        window.atualizarCompra = function() {
+            if(salvando == false){
+                salvando = true;
+                $('#preloader2').css('display', 'block');
+
+                var fornecedor = $('.fornecedor').val();
+                if (fornecedor == '--') {
+                    swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    return;
+                } 
+                
+                var transportadora = $('#kt_select2_3').val();
+                transportadora = transportadora == 'null' ? null : transportadora;
+                
+                let js = {
+                    id: $('#compra_id').val(),
+                    fornecedor_id: fornecedor,
+                    formaPagamento: $('#formaPagamento').val(),
+
+                    // --- VARIÁVEL DO ADIANTAMENTO ---
+                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
+
+                    // --- CAMPOS INJETADOS À FORÇA ---
+                    nf: $('#numero_emissao').val(),
+                    numero_emissao: 0,
+                    data_emissao: $('#data_emissao').val(),
+                    veiculo_id: $('#veiculo_id').val(),
+                    // --------------------------------
+
+                    itens: ITENS,
+                    fatura: FATURA,
+                    faturas_removidas: PARCELAS_REMOVIDAS,
+                    total: TOTAL,
+                    desconto: $('#desconto').val(),
+                    acrescimo: $('#acrescimo').val(),
+                    observacao: $('#obs').val(),
+                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    especie: $('#especie').val(),
+                    numeracaoVol: $('#numeracaoVol').val(),
+                    qtdVol: $('#qtdVol').val(),
+                    pesoL: $('#pesoL').val(),
+                    pesoB: $('#pesoB').val(),
+                    transportadora: transportadora,
+                    frete: $('#frete').val(),
+                    placaVeiculo: $('#placa').val(),
+                    ufPlaca: $('#uf_placa').val(),
+                    valorFrete: $('#valor_frete').val(),
+                    data_retroativa: $('#data_retroativa_dynamic').val(),
+                    data_saida: $('#data_saida_dynamic').val()
+                };
+
+                let token = $('#_token').val();
+                
+                $.ajax({
+                    type: 'POST',
+                    data: { compra: js, _token: token },
+                    url: path + 'compraManual/update',
+                    dataType: 'json',
+                    success: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        sucesso(e);
+                    }, error: function (e) {
+                        $('#preloader2').css('display', 'none');
+                        swal("Erro", "Erro ao atualizar a compra.", "warning");
+                    }
+                });
+            }
+            salvando = false;
+        };
+
+    }, 1000); // Dá tempo do arquivo velho carregar para depois substituí-lo
+});
+</script>
 @endsection

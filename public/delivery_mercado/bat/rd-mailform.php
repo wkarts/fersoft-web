@@ -1,6 +1,6 @@
 <?php
 
-$formConfigFile = file_get_contents("rd-mailform.config.json");
+$formConfigFile = safe_file_get_contents("rd-mailform.config.json");
 $formConfig = json_decode($formConfigFile, true);
 
 date_default_timezone_set('Etc/UTC');
@@ -30,7 +30,7 @@ try {
         die('MF002');
     }
 
-    $template = file_get_contents('rd-mailform.tpl');
+    $template = safe_file_get_contents('rd-mailform.tpl');
 
     if (isset($_POST['form-type'])) {
         switch ($_POST['form-type']){

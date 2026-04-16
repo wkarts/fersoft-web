@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\MultiEmpresaTrait;
 
-class Compra extends Model
+class Compra extends BaseModel
 {
-
+      use MultiEmpresaTrait;
     protected $table = 'compras';
 
     //protected $dates = ['data_retroativa', 'data_saida'];
@@ -16,7 +17,7 @@ class Compra extends Model
 		'chave', 'estado', 'numero_emissao', 'empresa_id', 'sequencia_cce', 'valor_frete', 'placa',
 		'tipo', 'uf', 'numeracaoVolumes', 'peso_liquido', 'peso_bruto', 'especie', 'qtdVolumes',
 		'transportadora_id', 'data_emissao', 'filial_id', 'lote', 'acrescimo', 'xml_importado',
-		'categoria_conta_id', 'data_retroativa', 'data_saida'
+		'categoria_conta_id', 'veiculo_id', 'data_retroativa', 'data_saida', 'nf'
 	];
 
 	public static function lastNumero($empresa_id){

@@ -35,14 +35,23 @@ class FuncionarioController extends Controller
         $funcionarios = Funcionario::
         where('empresa_id', $this->empresa_id)
         ->get();
+        
+        $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
+        $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
+
         return view('funcionarios/list')
         ->with('funcionarios', $funcionarios)
+        ->with('funcoes', $funcoes)
+        ->with('filiais', $filiais)
         ->with('title', 'Funcionarios');
     }
 
     public function new(){
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
+        
+        $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
+        $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
         $temp = [];
         foreach($usuarios as $u){
@@ -52,6 +61,9 @@ class FuncionarioController extends Controller
         }
         return view('funcionarios/register')
         ->with('usuarios', $temp)
+        ->with('funcoes', $funcoes)
+        ->with('filiais', $filiais)
+        ->with('empresa_id', $this->empresa_id)
         ->with('title', 'Cadastrar Funcionario');
     }
 
@@ -71,6 +83,12 @@ class FuncionarioController extends Controller
         $request->merge([ 'usuario_id' => $request->usuario_id != 'NULL' ? $request->usuario_id : null]);
 
         $request->merge([ 'salario' => $request->salario ? __replace($request->salario) : 0 ]);
+
+        // Merge dos novos campos
+        $request->merge([ 
+            'funcao_id' => $request->funcao_id ? $request->funcao_id : null,
+            'filial_id' => $request->filial_id != '' ? $request->filial_id : null
+        ]);
 
         $request->merge([
             'cnh' => $request->cnh ?? null,
@@ -108,9 +126,6 @@ class FuncionarioController extends Controller
 
         $result = $funcionario->create($request->all());
 
-        //$funcionario->fill($request->all());
-        //$funcionario->save();
-
         if($result){
             session()->flash("mensagem_sucesso", "Funcionario cadastrado com sucesso!");
         }else{
@@ -125,6 +140,9 @@ class FuncionarioController extends Controller
 
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
+        
+        $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
+        $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
         $resp = $funcionario
         ->where('id', $id)->first();
@@ -141,11 +159,13 @@ class FuncionarioController extends Controller
             ->with('pessoaFisicaOuJuridica', true)
             ->with('funcionario', $resp)
             ->with('usuarios', $usuarios)
+            ->with('funcoes', $funcoes)
+            ->with('filiais', $filiais)
+            ->with('empresa_id', $this->empresa_id)
             ->with('title', 'Editar Funcionario');
         }else{
             return redirect('/403');
         }
-
     }
 
     public function update(Request $request){
@@ -203,6 +223,10 @@ class FuncionarioController extends Controller
 
         $resp->usuario_id = ($request->usuario_id && $request->usuario_id != 'NULL') ? $request->usuario_id : null;
 
+        // Inserção dos novos campos
+        $resp->funcao_id = $request->input('funcao_id') ? $request->input('funcao_id') : null;
+        $resp->filial_id = $request->input('filial_id') != '' ? $request->input('filial_id') : null;
+
         $resp->cnh = $request->input('cnh');
         $resp->categoria_cnh = $request->input('categoria_cnh');
 
@@ -240,6 +264,18 @@ class FuncionarioController extends Controller
         return redirect('/funcionarios');
     }
 
+    public function quickSave(Request $request) {
+        try {
+            $novaFuncao = \App\Models\Funcao::create([
+                'nome' => $request->nome,
+                'empresa_id' => $request->empresa_id
+            ]);
+            return response()->json(['success' => true, 'id' => $novaFuncao->id, 'nome' => $novaFuncao->nome]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erro ao salvar função']);
+        }
+    }
+
     public function delete($id){
 
         $resp = Funcionario::where('id', $id)->first();
@@ -259,7 +295,6 @@ class FuncionarioController extends Controller
         }
 
     }
-
 
     private function _validate(Request $request){
         $rules = [

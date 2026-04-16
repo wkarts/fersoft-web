@@ -178,7 +178,7 @@ class WhatsAppUtil
                 ]);
             }
 
-            $b64      = base64_encode(file_get_contents($path));
+            $b64      = base64_encode(safe_file_get_contents($path));
             $filename = basename($path);
 
             $res = $this->evoService->sendBase64(

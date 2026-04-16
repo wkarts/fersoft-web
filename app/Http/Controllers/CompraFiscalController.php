@@ -17,6 +17,8 @@ use App\Models\NaturezaOperacao;
 use App\Services\DFeService;
 use App\Models\Marca;
 use App\Models\SubCategoria;
+use App\Models\Veiculo;
+use App\Models\ContaPagar;
 
 class CompraFiscalController extends Controller
 {
@@ -42,6 +44,10 @@ class CompraFiscalController extends Controller
 	}
 
 	public function index(){
+        $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
+        return view('compraFiscal/new')
+            ->with('veiculos', $veiculos)
+            ->with('title', 'Compra Fiscal');
 		$natureza = Produto::firstNatureza($this->empresa_id);
 		if($natureza == null){
 			session()->flash('mensagem_erro', 'Cadastre uma natureza de operação!');
@@ -307,6 +313,7 @@ class CompraFiscalController extends Controller
 				return view('compraFiscal/visualizaNota')
 				->with('title', 'Nota Fiscal')
 				->with('itens', $itens)
+                ->with('veiculos', Veiculo::where('empresa_id', $this->empresa_id)->get())
 				->with('subs', $subs)
 				->with('marcas', $marcas)
 				->with('categoriasDeConta', $categoriasDeConta)
@@ -366,9 +373,16 @@ class CompraFiscalController extends Controller
 	}
 
 	private function verificaFornecedor($cnpj){
-		$forn = Fornecedor::verificaCadastrado($this->formataCnpj($cnpj));
-		return $forn;
-	}
+    // Remova qualquer máscara antes de consultar para garantir precisão
+    $cnpjApenasNumeros = preg_replace('/[^0-9]/', '', $cnpj);
+    
+    // Tente buscar das duas formas para garantir: formatado e limpo
+    $forn = Fornecedor::where('cpf_cnpj', $this->formataCnpj($cnpj))
+                      ->orWhere('cpf_cnpj', $cnpjApenasNumeros)
+                      ->where('empresa_id', $this->empresa_id)
+                      ->first();
+    return $forn;
+    }
 
 	private function verificaAtualizacao($fornecedorEncontrado, $dadosEmitente){
 		$dadosAtualizados = [];
@@ -463,38 +477,48 @@ class CompraFiscalController extends Controller
 
 	public function salvarNfFiscal(Request $request){
 		$nf = $request->nf;
+        $veiculo_id = (isset($nf['veiculo_id']) && $nf['veiculo_id'] > 0) ? $nf['veiculo_id'] : null;
+        $data_emissao = isset($nf['data_emissao']) ? substr($nf['data_emissao'], 0, 10) : date('Y-m-d');
 
 		$result = Compra::create([
 			'fornecedor_id' => $nf['fornecedor_id'],
-			'usuario_id' => get_id_user(),
+			'usuario_id' => $this->usuario_id,
 			'nf' => $nf['nNf'],
-			'data_emissao' => $nf['data_emissao'],
+			'data_emissao' => $data_emissao,
 			'observacao' => '',
-			'lote' => $nf['lote'] != null ? $nf['lote'] : '',
+			'lote' => $nf['lote'] ?? '',
 			'valor' => str_replace(",", ".", $nf['valor_nf']),
 			'desconto' => str_replace(",", ".", $nf['desconto']),
 			'xml_path' => $nf['xml_path'],
-			'estado' => 'NOVO',
+            'veiculo_id' => $veiculo_id, // Salva o veículo corretamente
+			'estado' => 'IMPORTADO',     // Status automático de nota importada
 			'numero_emissao' => 0,
 			'xml_importado' => 1,
-			'categoria_conta_id' => $nf['categoria_conta_id'] ? $nf['categoria_conta_id'] : null,
-		    //'categoria_id' => 1,
+			'categoria_conta_id' => $nf['categoria_conta_id'] ?? null,
 			'chave' => $nf['chave'],
 			'empresa_id' => $this->empresa_id,
-			'filial_id' => $nf['filial_id'] != -1 ? $nf['filial_id'] : null
+			'filial_id' => (isset($nf['filial_id']) && $nf['filial_id'] != -1) ? $nf['filial_id'] : null
 		]);
 
-		echo json_encode($result);
+		return response()->json($result);
 	}
 
-	public function salvarItem(Request $request){
+public function salvarItem(Request $request){
 		$prod = $request->produto;
 
-		$produtoBD = Produto::
-		where('id', (int) $prod['produto_id'])
-		->where('empresa_id', $this->empresa_id)
-		->first();
+		// 1. Busca o produto no banco
+		$produtoBD = Produto::where('id', (int) $prod['produto_id'])
+		    ->where('empresa_id', $this->empresa_id)
+		    ->first();
 
+		// 2. BUSCA A COMPRA (Isso faltava no seu código e causava o erro!)
+		$compra = Compra::find($prod['compra_id']);
+
+		if(!$compra){
+			return response()->json("Compra não encontrada", 404);
+		}
+
+		// 3. Cria o item da compra
 		$result = ItemCompra::create([
 			'compra_id' => (int) $prod['compra_id'],
 			'produto_id' => (int) $prod['produto_id'],
@@ -504,25 +528,80 @@ class CompraFiscalController extends Controller
 			'cfop_entrada' => $prod['cfop_entrada'],
 			'codigo_siad' => $prod['said'] ?? ''
 		]);
+
+		// 4. Atualiza os dados de custo/venda no cadastro do produto
 		$produtoBD->nome = $prod['nome'];
 		$produtoBD->conversao_unitaria = $prod['conversao_unitaria'] ?? 1;
 		if($prod['valor_venda'] > 0){
 			$produtoBD->valor_venda = str_replace(",", ".", $prod['valor_venda']);
 		}
-
 		if($prod['valor_compra'] > 0){
 			$produtoBD->valor_compra = str_replace(",", ".", $prod['valor_compra']);
 		}
-
 		$produtoBD->save();
 
-		$valor = $produtoBD->valor_venda > 0 ? $produtoBD->valor_venda : $prod['valor'];
-		$stockMove = new StockMove();
-		$stockMove->pluStock((int) $prod['produto_id'],
-			__replace($prod['quantidade']) * $produtoBD->conversao_unitaria,
-			__replace($valor), $prod['filial_id']);
+		// 5. MOVIMENTAÇÃO DE ESTOQUE (Só se gerenciar_estoque for 1)
+		if($produtoBD->gerenciar_estoque == 1){
+			$valor = $produtoBD->valor_venda > 0 ? $produtoBD->valor_venda : $prod['valor'];
+			
+			// Limpeza da quantidade (garante que seja número e positivo)
+			$qtdLimpa = str_replace(',', '.', $prod['quantidade']);
+			$quantidadeFinal = abs((float)$qtdLimpa) * $produtoBD->conversao_unitaria;
+
+			$stockMove = new StockMove();
+			$stockMove->pluStock(
+				(int) $prod['produto_id'],
+				$quantidadeFinal,
+				__replace($valor), 
+				$compra->filial_id,   // Pega a filial direto da nota (Garante o saldo no local certo)
+				'compra',
+				$compra->id,          // 6º Parâmetro: ID da Compra (Fundamental para o Histórico)
+				$compra->data_emissao // 7º Parâmetro: Data da Nota
+			);
+		}
 
 		echo json_encode($result);
 	}
+      
+      public function salvarParcela(Request $request){
+        $parcela = $request->parcela;
+        
+        // Busca a compra recém-salva para amarrar os mesmos dados no Contas a Pagar
+        $compra = Compra::find($parcela['compra_id']);
 
+        // Formatação limpa do valor para evitar o erro de multiplicação do BD
+        $valor = $parcela['valor_parcela'];
+        if (strpos($valor, ',') !== false) {
+            $valor = str_replace('.', '', $valor);
+            $valor = str_replace(',', '.', $valor);
+        }
+
+        $result = ContaPagar::create([
+            'compra_id' => $parcela['compra_id'],
+            'fornecedor_id' => $compra ? $compra->fornecedor_id : null,
+            'data_vencimento' => $this->parseDate($parcela['vencimento']),
+            'data_emissao' => $compra ? $compra->data_emissao : date('Y-m-d'),
+            'valor_integral' => $valor,
+            'valor_original' => $valor,
+            'status' => false, // Nasce pendente
+            'referencia' => $parcela['referencia'] ?? 'XML NF ' . ($compra ? $compra->nf : ''),
+            'categoria_id' => $compra ? $compra->categoria_conta_id : null,
+            'empresa_id' => $this->empresa_id,
+            'filial_id' => $compra ? $compra->filial_id : null,
+            'veiculo_id' => $compra ? $compra->veiculo_id : null // Amarra o veículo à conta a pagar também!
+        ]);
+
+        return response()->json($result);
+    }
+
+    private function parseDate($date){
+        if(strpos($date, "/") !== false){
+            $d = explode("/", $date);
+            // Verifica se está no padrão BR e converte para Y-m-d
+            if(strlen($d[2]) == 4){ 
+                return $d[2] . "-" . $d[1] . "-" . $d[0];
+            }
+        }
+        return $date;
+    }
 }

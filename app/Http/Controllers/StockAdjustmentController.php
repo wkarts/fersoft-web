@@ -6,13 +6,14 @@ use App\Models\Filial;
 use App\Models\Produto;
 use App\Models\StockAdjustment;
 use App\Models\StockMovement;
+use App\Models\Estoque; // Importado para atualizar o saldo
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StockAdjustmentController extends BaseController
 {
     protected $redirectPage = '/estoque/ajustes';
-
 
     protected function rules(): array
     {
@@ -23,7 +24,6 @@ class StockAdjustmentController extends BaseController
     {
         return [];
     }
-
 
     public function index(Request $request)
     {
@@ -123,48 +123,90 @@ class StockAdjustmentController extends BaseController
             ]);
         }
 
-        $ajuste = StockAdjustment::create([
-            'empresa_id' => $this->empresa_id,
-            'filial_id' => $request->filled('filial_id') ? (int) $request->filial_id : $this->filial_id,
-            'usuario_id' => $this->usuario_id,
-            'data_ref' => $request->data_ref,
-            'observacao' => $request->observacao,
-            'itens' => $itensNormalizados,
-        ]);
+        // Envolvemos em uma transação para garantir que o movimento e o saldo sejam salvos juntos
+        return DB::transaction(function () use ($request, $itensNormalizados, $stockService) {
 
-        foreach ($itensNormalizados as $item) {
-            $idempotencyKey = sprintf(
-                'stock_adjustment:%d:idx:%d:produto:%d:tipo:%s',
-                $ajuste->id,
-                $item['idx'],
-                $item['produto_id'],
-                $item['tipo']
-            );
-
-            $stockService->mover([
+            $ajuste = StockAdjustment::create([
                 'empresa_id' => $this->empresa_id,
-                'filial_id' => $ajuste->filial_id,
+                'filial_id' => $request->filled('filial_id') ? (int) $request->filial_id : $this->filial_id,
                 'usuario_id' => $this->usuario_id,
-                'produto_id' => $item['produto_id'],
-                'contexto' => 'ERP',
-                'tipo' => $item['tipo'],
-                'quantidade' => $item['quantidade'],
-                'custo_unitario' => $item['custo_unitario'],
-                'origem_tipo' => 'stock_adjustment',
-                'origem_id' => $ajuste->id,
-                'idempotency_key' => $idempotencyKey,
-                'movimentado_em' => now(),
-                'metadata' => [
-                    'stock_adjustment_id' => $ajuste->id,
-                    'idx' => $item['idx'],
-                    'observacao' => $ajuste->observacao,
-                ],
+                'data_ref' => $request->data_ref,
+                'observacao' => $request->observacao,
+                'itens' => $itensNormalizados,
             ]);
-        }
 
-        session()->flash('mensagem_sucesso', 'Ajuste de estoque registrado com sucesso.');
+            // Tratativa de Filial: Se vier 0 ou -1, assume 1 (Matriz) ou a filial do usuário
+            $filial_id_estoque = $ajuste->filial_id;
+            if ($filial_id_estoque <= 0) {
+                $sessionData = session('user_logged');
+                $filial_id_estoque = $sessionData['filial_id'] ?? 1;
+            }
 
-        return redirect('/estoque/ajustes/' . $ajuste->id);
+            foreach ($itensNormalizados as $item) {
+                $idempotencyKey = sprintf(
+                    'stock_adjustment:%d:idx:%d:produto:%d:tipo:%s',
+                    $ajuste->id,
+                    $item['idx'],
+                    $item['produto_id'],
+                    $item['tipo']
+                );
+
+                // 1. O código original que envia para o extrato (Kardex)
+                $stockService->mover([
+                    'empresa_id' => $this->empresa_id,
+                    'filial_id' => $filial_id_estoque,
+                    'usuario_id' => $this->usuario_id,
+                    'produto_id' => $item['produto_id'],
+                    'contexto' => 'ERP',
+                    'tipo' => $item['tipo'],
+                    'quantidade' => $item['quantidade'],
+                    'custo_unitario' => $item['custo_unitario'],
+                    'origem_tipo' => 'stock_adjustment',
+                    'origem_id' => $ajuste->id,
+                    'idempotency_key' => $idempotencyKey,
+                    'movimentado_em' => now(),
+                    'metadata' => [
+                        'stock_adjustment_id' => $ajuste->id,
+                        'idx' => $item['idx'],
+                        'observacao' => $ajuste->observacao,
+                    ],
+                ]);
+
+                // 2. ATUALIZAÇÃO DO SALDO REAL NA TABELA DE ESTOQUES
+                $estoqueFilial = Estoque::where('produto_id', $item['produto_id'])
+                    ->where('filial_id', $filial_id_estoque)
+                    ->where('empresa_id', $this->empresa_id)
+                    ->first();
+
+                if ($estoqueFilial) {
+                    if ($item['tipo'] == 'entrada') {
+                        $estoqueFilial->increment('quantidade', $item['quantidade']);
+                    } else {
+                        $estoqueFilial->decrement('quantidade', $item['quantidade']);
+                    }
+                } else {
+                    // Se não existir o registro para essa filial, cria um novo
+                    if ($item['tipo'] == 'entrada') {
+                        Estoque::create([
+                            'empresa_id' => $this->empresa_id,
+                            'produto_id' => $item['produto_id'],
+                            'filial_id'  => $filial_id_estoque,
+                            'quantidade' => $item['quantidade']
+                        ]);
+                    } else {
+                        Estoque::create([
+                            'empresa_id' => $this->empresa_id,
+                            'produto_id' => $item['produto_id'],
+                            'filial_id'  => $filial_id_estoque,
+                            'quantidade' => -$item['quantidade']
+                        ]);
+                    }
+                }
+            }
+
+            session()->flash('mensagem_sucesso', 'Ajuste de estoque registrado com sucesso.');
+            return redirect('/estoque/ajustes/' . $ajuste->id);
+        });
     }
 
     public function show($id)

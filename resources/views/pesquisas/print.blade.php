@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 
@@ -41,7 +41,7 @@
 			float: right;
 			margin-top: -20px;
 		}
-		
+
 		.nota i{
 			color: #999!important;
 		}
@@ -73,11 +73,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -104,7 +104,7 @@
 			<div class="empresa">
 				<span>Empresa: <strong>{{ $r->empresa->nome }}</strong> - NOTA: <strong>{{ $r->nota }}</strong></span>
 			</div>
-			
+
 			<div class="texto">
 
 				@if($r->resposta == "")
@@ -118,6 +118,6 @@
 		@endforeach
 	</div>
 	<br>
-	
+
 </body>
 </html>

@@ -1,72 +1,69 @@
 @extends('default.layout')
-
 @section('content')
 <div class="card card-custom gutter-b">
     <div class="card-header">
-        <h3 class="card-title">Ajustes de Estoque (Ledger)</h3>
+        <h3 class="card-title">Estoque Consolidado - {{ $mes }}/{{ $ano }}</h3>
+        <div class="card-toolbar">
+            <button class="btn btn-light-primary font-weight-bold" onclick="window.print()">
+                <i class="la la-print"></i> Imprimir Relatório
+            </button>
+        </div>
     </div>
     <div class="card-body">
-        <form method="get" action="/estoque/ajustes" class="form mb-4">
-            <div class="form-row">
-                <div class="form-group col-md-3">
-                    <label>Data início</label>
-                    <input type="date" name="data_inicio" class="form-control" value="{{ $filtros['data_inicio'] }}">
-                </div>
-                <div class="form-group col-md-3">
-                    <label>Data fim</label>
-                    <input type="date" name="data_fim" class="form-control" value="{{ $filtros['data_fim'] }}">
-                </div>
-                <div class="form-group col-md-4">
-                    <label>Filial</label>
-                    <select name="filial_id" class="form-control">
-                        <option value="">Todas</option>
-                        @foreach($filiais as $filial)
-                            <option value="{{ $filial->id }}" {{ (string)$filtros['filial_id'] === (string)$filial->id ? 'selected' : '' }}>{{ $filial->descricao }}</option>
-                        @endforeach
+        <form method="get" class="mb-5">
+            <div class="row">
+                <div class="col-md-2">
+                    <select name="mes" class="form-control">
+                        @for($m=1; $m<=12; $m++)
+                            <option value="{{$m}}" {{$mes == $m ? 'selected' : ''}}>{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}</option>
+                        @endfor
                     </select>
                 </div>
-                <div class="form-group col-md-2 d-flex align-items-end">
-                    <button class="btn btn-primary btn-block" type="submit">Filtrar</button>
+                <div class="col-md-2">
+                    <button class="btn btn-primary">Filtrar</button>
                 </div>
             </div>
         </form>
 
-        <div class="mb-3">
-            <a class="btn btn-success" href="/estoque/ajustes/novo">Novo ajuste</a>
-        </div>
-
         <div class="table-responsive">
-            <table class="table table-sm table-bordered">
+            <table class="table table-head-custom table-vertical-center">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Data</th>
-                        <th>Filial</th>
-                        <th>Usuário</th>
-                        <th>Qtd itens</th>
-                        <th>Observação</th>
-                        <th>Ação</th>
+                        <th style="width: 250px">Produto</th>
+                        <th>S. Inicial</th>
+                        <th>Entradas (+)</th>
+                        <th>Saídas (-)</th>
+                        <th>Saldo Atual</th>
+                        <th>Vl. Compra</th>
+                        <th>Total Custo</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($ajustes as $ajuste)
+                    @foreach($estoque as $e)
                     <tr>
-                        <td>{{ $ajuste->id }}</td>
-                        <td>{{ optional($ajuste->data_ref)->format('d/m/Y') }}</td>
-                        <td>{{ $ajuste->filial_id ?? 'Todas' }}</td>
-                        <td>{{ $ajuste->usuario_id }}</td>
-                        <td>{{ is_array($ajuste->itens) ? count($ajuste->itens) : 0 }}</td>
-                        <td>{{ $ajuste->observacao ?: '—' }}</td>
-                        <td><a class="btn btn-sm btn-light-primary" href="/estoque/ajustes/{{ $ajuste->id }}">Detalhar</a></td>
+                        <td class="font-weight-bolder">{{ $e->produto_nome }}</td>
+                        <td>{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
+                        <td class="text-success">+{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
+                        <td class="text-danger">-{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
+                        <td class="font-weight-boldest {{ $e->quantidade < 0 ? 'text-danger' : '' }}">
+                            {{ number_format($e->quantidade, 2, ',', '.') }}
+                        </td>
+                        <td>R$ {{ number_format($e->valor_compra, 2, ',', '.') }}</td>
+                        <td class="bg-light">
+                            <strong>R$ {{ number_format($e->quantidade * $e->valor_compra, 2, ',', '.') }}</strong>
+                        </td>
+                        <td>
+                            <a href="/estoque/historico/{{$e->id}}" class="btn btn-sm btn-clean btn-icon" title="Ver Extrato Detalhado">
+                                <i class="la la-list-ul text-primary"></i>
+                            </a>
+                        </td>
                     </tr>
-                @empty
-                    <tr><td colspan="7" class="text-center">Nenhum ajuste encontrado.</td></tr>
-                @endforelse
+                    @endforeach
                 </tbody>
             </table>
+            {{ $estoque->links() }}
         </div>
-
-        {{ $ajustes->links() }}
     </div>
 </div>
 @endsection

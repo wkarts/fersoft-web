@@ -16,10 +16,10 @@
 		}
 
 		.b-top{
-			border-top: 1px solid #000; 
+			border-top: 1px solid #000;
 		}
 		.b-bottom{
-			border-bottom: 1px solid #000; 
+			border-bottom: 1px solid #000;
 		}
 		.page_break { page-break-before: always; }
 
@@ -33,11 +33,11 @@
 
 				@if($config->logo != "")
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('logos/').$config->logo))}}" width="100px;">
 				</td>
 				@else
 				<td class="" style="width: 150px;">
-					<img src="{{'data:image/png;base64,' . base64_encode(file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
+					<img src="{{'data:image/png;base64,' . base64_encode(safe_file_get_contents(@public_path('imgs/slym.png')))}}" width="100px;">
 				</td>
 				@endif
 
@@ -91,7 +91,7 @@
 			<td class="b-bottom" style="width: 700px;">
 				Email: <strong>{{$config->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 	<br>
@@ -143,7 +143,7 @@
 			<td class="b-top" style="width: 700px;">
 				Email: <strong>{{$ordem->cliente->email}}</strong>
 			</td>
-			
+
 		</tr>
 	</table>
 
@@ -164,12 +164,12 @@
 				<strong>Serviços:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
 			<tr>
-				
+
 				<td class="" style="width: 350px;">
 					Descrição
 				</td>
@@ -185,7 +185,7 @@
 			</tr>
 		</thead>
 
-		
+
 		<tbody>
 
 			@foreach($ordem->servicos as $item)
@@ -195,7 +195,7 @@
 				<td>{{ moeda($item->valor_unitario) }}</td>
 				<td>{{ moeda($item->sub_total) }}</td>
 			</tr>
-			
+
 			@endforeach
 		</tbody>
 	</table>
@@ -206,7 +206,7 @@
 			</td>
 
 			<td class="b-top b-bottom" style="width: 350px;">
-				<center><strong>Valor total de serviço: R$ 
+				<center><strong>Valor total de serviço: R$
 					{{ moeda($ordem->servicos->sum('sub_total')) }}
 				</strong></center>
 			</td>
@@ -219,12 +219,12 @@
 				<strong>Produtos:</strong>
 			</td>
 		</tr>
-	</table>	
+	</table>
 
 	<table>
 		<thead>
 			<tr>
-				
+
 				<td class="" style="width: 350px;">
 					Descrição
 				</td>
@@ -249,7 +249,7 @@
 				<td>{{ moeda($item->valor_unitario) }}</td>
 				<td>{{ moeda($item->sub_total) }}</td>
 			</tr>
-			
+
 			@endforeach
 		</tbody>
 	</table>
@@ -268,7 +268,7 @@
 		</tr>
 	</table>
 
-	
+
 	<br>
 	<table>
 		<tr>
@@ -277,7 +277,7 @@
 			</td>
 		</tr>
 	</table>
-	
+
 </table>
 <table>
 	<tr>
@@ -293,14 +293,14 @@
 	<tr>
 		<td class="" style="width: 170px;">
 			Desconto (-):
-			<strong> 
+			<strong>
 				R$ {{moeda($ordem->desconto)}}
 			</strong>
 		</td>
 
 		<td class="" style="width: 170px;">
 			Acréscimo (+):
-			<strong> 
+			<strong>
 				R$ {{moeda($ordem->acrescimo)}}
 			</strong>
 		</td>
@@ -309,7 +309,7 @@
 
 		<td class="" style="width: 200px;">
 			Valor Líquido:
-			<strong> 
+			<strong>
 				R$ {{moeda($ordem->total_os())}}
 			</strong>
 		</td>
@@ -327,7 +327,7 @@
 <table>
 	<tr>
 		<td class="" style="width: 700px;">
-			<span>Observação: 
+			<span>Observação:
 				<strong>
 					{{$ordem->observacao}}
 				</strong>

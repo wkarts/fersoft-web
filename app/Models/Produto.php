@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\NaturezaOperacao;
 use App\Models\Estoque;
 USE App\Models\ProdutoPrateleira;
+use App\Models\Scopes\FilialScope;
 
-class Produto extends Model
+class Produto extends BaseModel
 {
+ use MultiEmpresaTrait;
+
 	protected $fillable = [
 		'nome',
         'categoria_id',
@@ -108,6 +111,7 @@ class Produto extends Model
         'modBCST',
         'modBC',
         'pICMSST',
+        'tipo_item',
         'locais',
         'perc_frete',
 		'perc_outros',
@@ -125,6 +129,8 @@ class Produto extends Model
         'observacao',
         'controla_pesagem',
         'produto_referenciado_id',
+        'ca_numero',
+        'fabricante',
         'produto_prateleira_id'
 	];
 
@@ -1551,4 +1557,20 @@ class Produto extends Model
         // Ajuste o namespace caso seu modelo de prateleira esteja em outro lugar
         return $this->belongsTo(ProdutoPrateleira::class, 'produto_prateleira_id');
     }
+
+  /**
+     * Scope para filtrar apenas produtos que NÃO são de revenda.
+     */
+    public function scopeApenasMateriaisInternos($query)
+    {
+        return $query->whereHas('categoria', function($q) {
+            // Certifique-se de que 'REVENDA' é o nome exato na sua tabela de categorias
+            $q->where('nome', '!=', 'REVENDA');
+        });
+    }
+
+    // Relacionamento com a Categoria (caso ainda não tenha no seu Model)
+
+
+
 }
