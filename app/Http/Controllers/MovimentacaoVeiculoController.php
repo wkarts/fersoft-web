@@ -152,7 +152,7 @@ public function save(Request $request)
             
             $dados = $request->all();
             $dados['empresa_id'] = $empresa_id;
-            $dados['filial_id'] = $filial_id; // Define na movimentação pai
+            $dados['filial_id'] = ($filial_id > 0) ? $filial_id : null;
             $dados['status'] = $request->filled('km_final') ? 'finalizado' : 'iniciado';
 
             if ($request->id > 0) {

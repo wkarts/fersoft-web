@@ -228,3 +228,6 @@ app/Services/NFService.php.back
 fersoft-web.7z
 public/barcode/6499.png
 release-notes.md
+app/Helpers/Menu.php.bak
+app/Providers/AppServiceProvider.php.bak
+app/Http/Controllers/MovimentacaoVeiculoController.php.bak

@@ -494,8 +494,8 @@ class Menu {
 						'rota' => '/Apuracao'
 					],
 					[
-						'nome' => 'Adiantamentos',
-						'rota' => '/adiantamentos'
+						'nome' => 'Adiantamento',
+						'rota' => '/Adiantamento'
 					],
 					[
 						'nome' => 'Plano de contas',
