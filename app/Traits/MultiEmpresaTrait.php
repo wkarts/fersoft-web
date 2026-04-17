@@ -5,7 +5,7 @@ namespace App\Traits;
 use Illuminate\Support\Facades\Session;
 use App\Services\LogService;
 
-trait FilialInjectable
+trait MultiEmpresaTrait
 {
     public static function bootFilialInjectable()
     {
