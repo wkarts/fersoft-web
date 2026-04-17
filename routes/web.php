@@ -2337,7 +2337,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/buscar', 'CozinhaController@buscar');
 		Route::get('/concluido', 'CozinhaController@concluido');
 	});
-	
+
 	Route::get('/graficos', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
 	Route::get('/graficos2', 'HomeController@index');
 	Route::get('/getPlan', 'HomeController@getPlan');
@@ -2979,22 +2979,22 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		//Novas Rotas Futuras Declare aqui
 		Route::post('/quickSave', 'FuncionarioController@quickSave');
     });
-    
+
     Route::group(['prefix' => 'contas-empresa'],function(){
     	Route::get('//extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
     });
-    
-	Route::group(['prefix' => 'requisicoes'], function() {    
+
+	Route::group(['prefix' => 'requisicoes'], function() {
 	    Route::get('/', 'RequisicaoController@index')->name('requisicoes.index');
 	    Route::get('/create', 'RequisicaoController@create')->name('requisicoes.create');
-	    Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');        
+	    Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');
 	});
-	
+
 	Route::group(['prefix' => 'dashboard-analitico'],function(){
 		//Novas Rotas Futuras Declare aqui
 		Route::get('/', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
 	});
-	
+
 	Route::group(['prefix' => 'adiantamentos'], function () {
     // Agora usando String, sem precisar do 'use' no topo
 		Route::get('/', 'AdiantamentoController@index')->name('adiantamentos.index');
@@ -3005,14 +3005,19 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/extrato/{tipo}/{id}', 'AdiantamentoController@extrato')->name('adiantamentos.extrato');
 		Route::get('/consulta-saldo/{tipo}/{id}', 'AdiantamentoController@getSaldoPessoa')->name('adiantamentos.getSaldoPessoa');
 	});
-    
+
 	Route::group(['prefix' => 'apuracao'],function () {
 	    Route::get('/', 'ApuracaoController@index');
-	    Route::post('/filtrar', 'ApuracaoController@index'); 
+	    Route::post('/filtrar', 'ApuracaoController@index');
 	    Route::post('/finalizar', 'ApuracaoController@finalizar');
 	    Route::get('/apuracao', 'ApuracaoController@index');
 	    Route::post('/apuracao/finalizar', 'ApuracaoController@finalizar');
 	});
+
+    Route::group(['prefix' => 'compras-lote'],function () {
+        Route::get('/', 'CompraLoteController@index')->name('compras.lote.index');
+        Route::post('/importar', 'CompraLoteController@importar')->name('compras.lote.importar');
+    });
 
     /*
     Route::group(['prefix' => 'eletronicDocs'], function () {

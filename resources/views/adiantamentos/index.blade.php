@@ -86,7 +86,7 @@
 
                         <div class="col-md-8 form-group">
                             <label>Razão Social</label>
-                            <select name="pessoa_id" id="pessoa_id" class="form-control select2" style="width: 100%;" required>
+                            <select name="pessoa_id" id="pessoa_id" class="form-control" style="width: 100%;" required>
                                 <option value="">Digite para buscar...</option>
                             </select>
                             <input type="hidden" name="nome_pessoa" id="nome_pessoa">
@@ -134,61 +134,56 @@
 @section('javascript')
 <script>
 $(document).ready(function() {
-    
-    // 1. Configuração do DataTables (Para a tabela de 400+ nomes)
-    // Isso adiciona a barra de busca no topo da tabela e ordena por saldo
+    // 1. CORREÇÃO DO FOCO: Permite digitar no Select2 dentro do Modal do Bootstrap
+    $(document).on('focusin', function(e) {
+        if ($(e.target).closest(".select2-container").length) {
+            e.stopImmediatePropagation();
+        }
+    });
+
+    // 2. DataTables
     $('.table').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
         },
-        "order": [[ 4, "desc" ]], // 4 é a coluna "Saldo Disponível", ordena do maior para o menor
+        "order": [[ 4, "desc" ]],
         "pageLength": 50
     });
 
-    // 2. Inicialização do Select2 (Busca dentro do Modal de Novo Adiantamento)
-    function initSelectPessoa() {
-        if ($('#pessoa_id').hasClass("select2-hidden-accessible")) {
-            $('#pessoa_id').select2('destroy');
-        }
-
+    // 3. Inicialização do Select2
+    // IMPORTANTE: Inicializamos quando o modal abre para evitar erros de renderização
+    $('#modalAdiantamento').on('shown.bs.modal', function () {
         $('#pessoa_id').select2({
-            width: '100%',
             placeholder: 'Digite para buscar...',
-            minimumInputLength: 1,
-            dropdownParent: $('#modalAdiantamento'),
+            minimumInputLength: 3,
+            dropdownParent: $('#modalAdiantamento'), 
             ajax: {
                 url: "{{ route('adiantamentos.buscarPessoas') }}",
                 dataType: 'json',
-                delay: 250,
+                delay: 300,
                 data: function (params) {
-                    return {
-                        term: params.term || '',
-                        tipo: $('#tipo_pessoa').val()
+                    return { 
+                        term: params.term, 
+                        tipo: $('#tipo_pessoa').val() 
                     };
                 },
                 processResults: function (data) {
-                    return Array.isArray(data) ? { results: data } : data;
+                    // Se o seu Controller retorna um array simples, use: { results: data }
+                    // Se já retorna { results: [...] }, use apenas: return data;
+                    return { results: data };
                 },
-                cache: false
+                cache: true
             }
         });
-    }
-
-    initSelectPessoa();
-
-    $('#modalAdiantamento').on('shown.bs.modal', function () {
-        initSelectPessoa();
-        $('#pessoa_id').select2('open');
     });
 
-    // 3. Outros gatilhos (Máscaras e Nome)
+    // 4. Gatilhos e Máscaras
     $('#pessoa_id').on('select2:select', function (e) {
         $('#nome_pessoa').val(e.params.data.text);
     });
 
     $('#tipo_pessoa').on('change', function() {
-        $('#pessoa_id').empty().append('<option value="">Digite para buscar...</option>').val('').trigger('change');
-        $('#nome_pessoa').val('');
+        $('#pessoa_id').val(null).trigger('change');
     });
 
     $('.money').mask('#.##0,00', {reverse: true});
