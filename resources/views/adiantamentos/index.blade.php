@@ -1,6 +1,12 @@
 @extends('default.layout', ['title' => 'Adiantamentos'])
 
 @section('content')
+<style type="text/css">
+    /* Garante que o dropdown do Select2 fique acima de qualquer elemento do modal */
+    .select2-container--open {
+        z-index: 9999999 !important;
+    }
+</style>
 <div class="container-fluid">
     
     <div class="row">
@@ -65,7 +71,7 @@
 </div>
 
 {{-- Modal Novo Adiantamento (Mesma lógica que já funciona) --}}
-<div class="modal fade" id="modalAdiantamento" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade" id="modalAdiantamento" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form action="{{ route('adiantamentos.store') }}" method="POST">
@@ -113,13 +119,15 @@
 
                         <div class="col-md-12 form-group">
                             <label>Categoria Financeira</label>
-                            <select name="categoria_id" class="form-control" required>
+                            <select name="categoria_id" id="categoria_id" class="form-control" required>
+                                <option value="">Selecione uma categoria...</option>
                                 @foreach($categorias as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+                                    <option value="{{ $cat->id }}" data-tipo="{{ strtolower($cat->tipo ?? '') }}">
+                                        {{ $cat->nome }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
@@ -134,59 +142,95 @@
 @section('javascript')
 <script>
 $(document).ready(function() {
-    // 1. CORREÇÃO DO FOCO: Permite digitar no Select2 dentro do Modal do Bootstrap
-    $(document).on('focusin', function(e) {
-        if ($(e.target).closest(".select2-container").length) {
-            e.stopImmediatePropagation();
-        }
-    });
+    
+    // =======================================================
+    // 1. LÓGICA DE CATEGORIAS E CLIENTE/FORNECEDOR
+    // Colocamos primeiro para garantir que execute logo
+    // =======================================================
+    $('#tipo_pessoa').on('change', function() {
+        var tipoPessoa = $(this).val(); 
+        
+        // Limpa a razão social
+        $('#pessoa_id').val(null).trigger('change');
 
-    // 2. DataTables
-    $('.table').DataTable({
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
-        },
-        "order": [[ 4, "desc" ]],
-        "pageLength": 50
-    });
+        // Filtro: Cliente = receber | Fornecedor = pagar
+        var tipoCategoriaPermitida = (tipoPessoa === 'cliente') ? 'receber' : 'pagar';
 
-    // 3. Inicialização do Select2
-    // IMPORTANTE: Inicializamos quando o modal abre para evitar erros de renderização
-    $('#modalAdiantamento').on('shown.bs.modal', function () {
-        $('#pessoa_id').select2({
-            placeholder: 'Digite para buscar...',
-            minimumInputLength: 3,
-            dropdownParent: $('#modalAdiantamento'), 
-            ajax: {
-                url: "{{ route('adiantamentos.buscarPessoas') }}",
-                dataType: 'json',
-                delay: 300,
-                data: function (params) {
-                    return { 
-                        term: params.term, 
-                        tipo: $('#tipo_pessoa').val() 
-                    };
-                },
-                processResults: function (data) {
-                    // Se o seu Controller retorna um array simples, use: { results: data }
-                    // Se já retorna { results: [...] }, use apenas: return data;
-                    return { results: data };
-                },
-                cache: true
+        $('#categoria_id option').each(function() {
+            var tipoCat = $(this).data('tipo');
+            
+            if ($(this).val() === '') {
+                $(this).show(); 
+                return;
+            }
+
+            if (tipoCat === tipoCategoriaPermitida) {
+                $(this).show();
+            } else {
+                $(this).hide();
             }
         });
+
+        $('#categoria_id').val('');
     });
 
-    // 4. Gatilhos e Máscaras
-    $('#pessoa_id').on('select2:select', function (e) {
-        $('#nome_pessoa').val(e.params.data.text);
-    });
+    // Dispara logo que abre a página
+    $('#tipo_pessoa').trigger('change');
 
-    $('#tipo_pessoa').on('change', function() {
-        $('#pessoa_id').val(null).trigger('change');
-    });
 
-    $('.money').mask('#.##0,00', {reverse: true});
+    // =======================================================
+    // 2. SELECT2 (BUSCA AO CLICAR)
+    // =======================================================
+    if ($.fn.select2) {
+        $('#modalAdiantamento').on('shown.bs.modal', function () {
+            $('#pessoa_id').select2({
+                placeholder: 'Clique para selecionar...',
+                dropdownParent: $('#modalAdiantamento .modal-content'), 
+                ajax: {
+                    url: "{{ route('adiantamentos.buscarPessoas') }}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { 
+                            term: params.term || '', 
+                            tipo: $('#tipo_pessoa').val() 
+                        };
+                    },
+                    processResults: function (data) {
+                        return data; 
+                    },
+                    cache: true
+                }
+            });
+        });
+
+        $('#pessoa_id').on('select2:select', function (e) {
+            $('#nome_pessoa').val(e.params.data.text);
+        });
+    }
+
+    // =======================================================
+    // 3. DATATABLE (BLINDADO CONTRA ERROS)
+    // =======================================================
+    try {
+        if ($.fn.DataTable) {
+            $('.table').DataTable({
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json" },
+                "order": [[ 4, "desc" ]],
+                "pageLength": 50
+            });
+        }
+    } catch (e) {
+        console.warn("DataTable ignorado para não travar a tela:", e);
+    }
+
+    // =======================================================
+    // 4. MÁSCARAS
+    // =======================================================
+    if ($.fn.mask) {
+        $('.money').mask('#.##0,00', {reverse: true});
+    }
+
 });
 </script>
 @endsection

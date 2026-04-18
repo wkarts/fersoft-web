@@ -98,22 +98,38 @@ class AdiantamentoController extends BaseController
 
     public function store(Request $request)
     {
+      
+      //dd($request->all());
+      
         try {
             return DB::transaction(function () use ($request) {
                 $valor = str_replace(['.', ','], ['', '.'], $request->valor);
-                $filial_id = __get_local_padrao() == -1 ? null : __get_local_padrao();
+                $filial_id = __get_local_padrao();
 
-                $conta = ContaEmpresa::findOrFail($request->conta_id);
-                if ($request->tipo_pessoa == 'cliente') {
-                    $conta->saldo += $valor;
-                    $descricao = "Adiant. Cliente: " . $request->nome_pessoa;
-                    $tipo_mov = 'entrada';
-                } else {
-                    $conta->saldo -= $valor;
-                    $descricao = "Adiant. Fornecedor: " . $request->nome_pessoa;
-                    $tipo_mov = 'saida';
+                // SE a empresa de teste não tem filiais cadastradas, ou se a função retornar 1 (Matriz padrão), forçamos NULL
+                if ($filial_id <= 1) {
+                    $filial_id = null;
                 }
-                $conta->save();
+
+                $categoria = \App\Models\CategoriaConta::find($request->categoria_id);
+                    $nomeCategoria = $categoria ? $categoria->nome : 'Adiantamento';
+
+                    $nomePessoa = $request->nome_pessoa; // Vem formatado: "CNPJ - Nome"
+
+                    $conta = ContaEmpresa::findOrFail($request->conta_id);
+
+                    if ($request->tipo_pessoa == 'cliente') {
+                        $conta->saldo += $valor;
+                        // Monta a string profissional para Entrada
+                        $descricao = "Rec. Adiantamento - {$nomePessoa} (Ref: {$nomeCategoria})";
+                        $tipo_mov = 'entrada';
+                    } else {
+                        $conta->saldo -= $valor;
+                        // Monta a string profissional para Saída
+                        $descricao = "Pag. Adiantamento - {$nomePessoa} (Ref: {$nomeCategoria})";
+                        $tipo_mov = 'saida';
+                    }
+                    $conta->save();
 
                 $item = ItemContaEmpresa::create([
                     'conta_id' => $conta->id,
@@ -130,6 +146,7 @@ class AdiantamentoController extends BaseController
                 Adiantamento::create([
                     'empresa_id' => $this->empresa_id,
                     'filial_id' => $filial_id,
+                    'usuario_id' => auth()->user()->id ?? 1,
                     'cliente_id' => ($request->tipo_pessoa == 'cliente') ? $request->pessoa_id : null,
                     'fornecedor_id' => ($request->tipo_pessoa == 'fornecedor') ? $request->pessoa_id : null,
                     'valor_total' => $valor,
@@ -143,7 +160,11 @@ class AdiantamentoController extends BaseController
                 return redirect()->back()->with('success', 'Adiantamento registrado com sucesso!');
             });
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erro ao salvar: ' . $e->getMessage());
+            // O CÓDIGO DA VERDADE:
+            // Isso vai fazer o erro do banco explodir na tela preta igualzinho ao print que você mandou!
+            dd('ERRO AO SALVAR:', $e->getMessage(), 'LINHA:', $e->getLine());
+
+            // return redirect()->back()->with('error', 'Erro ao salvar: ' . $e->getMessage());
         }
     }
 

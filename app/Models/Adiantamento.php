@@ -8,8 +8,17 @@ class Adiantamento extends Model
 {
     // Adicione o 'filial_id' aqui na lista!
     protected $fillable = [
-        'empresa_id', 'filial_id', 'cliente_id', 'fornecedor_id', 'valor_total', 
-        'valor_utilizado', 'data', 'status', 'descricao', 'item_conta_empresa_id'
+        'empresa_id',
+        'filial_id', 
+        'cliente_id', 
+        'fornecedor_id', 
+        'valor_total', 
+        'usuario_id',
+        'valor_utilizado', 
+        'data', 
+        'status', 
+        'descricao', 
+        'item_conta_empresa_id'
     ];
 
     public function cliente() {
