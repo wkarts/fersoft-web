@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "argws/laravel-updater",
-            "version": "v0.1.200",
+            "version": "v0.1.201",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/laravel-updater.git",
-                "reference": "3fe626846ac82b30514d13343f1843c4920b0eb8"
+                "reference": "a382726d086f646b6bdd06fa241f5f601be0121b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/3fe626846ac82b30514d13343f1843c4920b0eb8",
-                "reference": "3fe626846ac82b30514d13343f1843c4920b0eb8",
+                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/a382726d086f646b6bdd06fa241f5f601be0121b",
+                "reference": "a382726d086f646b6bdd06fa241f5f601be0121b",
                 "shasum": ""
             },
             "require": {
@@ -53,9 +53,9 @@
             "description": "Sistema genérico de autoatualização para aplicações Laravel.",
             "support": {
                 "issues": "https://github.com/wkarts/laravel-updater/issues",
-                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.200"
+                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.201"
             },
-            "time": "2026-04-17T08:25:03+00:00"
+            "time": "2026-04-18T15:35:26+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",
@@ -3887,16 +3887,16 @@
         },
         {
             "name": "mercadopago/dx-php",
-            "version": "3.8.0",
+            "version": "v3.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mercadopago/sdk-php.git",
-                "reference": "98a3f7da2f13d1e85b309441b2e45c07fa312bf4"
+                "reference": "7eeafc66b90ffda3d49dba6d81aeacc43e8621b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/98a3f7da2f13d1e85b309441b2e45c07fa312bf4",
-                "reference": "98a3f7da2f13d1e85b309441b2e45c07fa312bf4",
+                "url": "https://api.github.com/repos/mercadopago/sdk-php/zipball/7eeafc66b90ffda3d49dba6d81aeacc43e8621b4",
+                "reference": "7eeafc66b90ffda3d49dba6d81aeacc43e8621b4",
                 "shasum": ""
             },
             "require": {
@@ -3920,9 +3920,9 @@
             "description": "Mercado Pago PHP SDK",
             "homepage": "https://github.com/mercadopago/sdk-php",
             "support": {
-                "source": "https://github.com/mercadopago/sdk-php/tree/3.8.0"
+                "source": "https://github.com/mercadopago/sdk-php/tree/v3.9.0"
             },
-            "time": "2025-11-28T14:17:27+00:00"
+            "time": "2026-04-17T17:41:52+00:00"
         },
         {
             "name": "monolog/monolog",
