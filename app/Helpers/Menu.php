@@ -223,6 +223,10 @@ class Menu {
 						'nome' => 'Compras',
 						'rota' => '/compras'
 					],
+                    [
+						'nome' => 'Importação em Lote',
+						'rota' => '/compras-lote'
+					],                  
 					[
 						'nome' => 'Cotações',
 						'rota' => '/cotacao'
@@ -353,7 +357,6 @@ class Menu {
 				'titulo' => 'Vendas',
 				'icone' => $this->getIcone('Vendas'),
 				'subs' => [
-
 					[
 						'nome' => 'Caixa',
 						'rota' => '/caixa'
@@ -494,8 +497,8 @@ class Menu {
 						'rota' => '/Apuracao'
 					],
 					[
-						'nome' => 'Adiantamento',
-						'rota' => '/Adiantamento'
+						'nome' => 'Adiantamentos',
+						'rota' => '/adiantamentos'
 					],
 					[
 						'nome' => 'Plano de contas',

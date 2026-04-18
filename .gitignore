@@ -231,3 +231,4 @@ release-notes.md
 app/Helpers/Menu.php.bak
 app/Providers/AppServiceProvider.php.bak
 app/Http/Controllers/MovimentacaoVeiculoController.php.bak
+routes/web.php.bak

@@ -2981,7 +2981,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'contas-empresa'],function(){
-    	Route::get('//extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+    	Route::get('/extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+    });
+
+    Route::group(['prefix' => 'item-conta'],function(){
+    	Route::post('/salvar', 'ItemContaController@store')->name('item-conta.store');
     });
 
 	Route::group(['prefix' => 'requisicoes'], function() {
