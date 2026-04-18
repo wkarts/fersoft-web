@@ -2981,7 +2981,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'contas-empresa'],function(){
-    	Route::get('/extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+    	Route::get('/extrato', 'ContaEmpresaController@imprimirExtrato')->name('contas-empresa.extrato');
     });
 
     Route::group(['prefix' => 'item-conta'],function(){
