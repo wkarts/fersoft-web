@@ -7,8 +7,28 @@
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
+  <header class="mobile-topbar">
+    <button
+      id="menu-toggle"
+      class="menu-toggle"
+      type="button"
+      aria-label="Abrir menu de navegação"
+      aria-controls="sidebar-nav"
+      aria-expanded="false"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <div class="mobile-title">
+      <strong>Manual Técnico</strong>
+      <small>BaseController &amp; BaseModel</small>
+    </div>
+  </header>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
   <div class="layout">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar-nav" aria-label="Navegação da documentação">
       <div class="brand">
         <h1>Manual Técnico</h1>
         <p>BaseController &amp; BaseModel</p>
