@@ -12,26 +12,38 @@ use Illuminate\Support\Facades\DB;
 use Dompdf\Dompdf;
 use App\Models\MultiEmpresaTrait;
 
-class ContaEmpresaController extends Controller
+class ContaEmpresaController extends BaseController
 {
     use MultiEmpresaTrait;
 
-    protected $empresa_id = null;
+    /**
+     * Propriedade exigida pelo BaseController para redirecionamentos.
+     */
+    protected $redirectPage = 'contas-empresa.index';
 
-    public function __construct()
+    /**
+     * Define as regras de validação (Exigido pelo BaseController).
+     */
+    public function rules(): array
     {
-        $this->middleware(function ($request, $next) {
-            $value = session('user_logged');
+        return [
+            'nome' => 'required|max:50',
+            'saldo_inicial' => 'required',
+            'plano_conta_id' => 'required',
+        ];
+    }
 
-            if (!$value) {
-                return redirect('/login');
-            }
-
-            // Mantém compatibilidade com request, mas prioriza a empresa real da sessão
-            $this->empresa_id = __empresa_id_logada() ?? $request->empresa_id;
-
-            return $next($request);
-        });
+    /**
+     * Define as mensagens de validação (Exigido pelo BaseController).
+     */
+    public function messages(): array
+    {
+        return [
+            'nome.required' => 'Campo obrigatório.',
+            'nome.max' => '50 caracteres máximos permitidos.',
+            'saldo_inicial.required' => 'Campo obrigatório.',
+            'plano_conta_id.required' => 'Campo obrigatório.',
+        ];
     }
 
     public function index(Request $request)
@@ -87,7 +99,7 @@ class ContaEmpresaController extends Controller
 
     public function store(Request $request)
     {
-        $this->_validate($request);
+        $this->validate($request, $this->rules(), $this->messages());
 
         try {
             $filialRequest = $request->input('filial_id', $request->input('local', '-1'));
@@ -97,18 +109,31 @@ class ContaEmpresaController extends Controller
                 return redirect()->back()->withInput();
             }
 
-            $request->merge([
-                'saldo' => __replace($request->saldo_inicial),
-                'saldo_inicial' => __replace($request->saldo_inicial),
-                'filial_id' => __normaliza_filial_banco($filialRequest),
-                'empresa_id' => $this->empresa_id,
-                'usuario_id' => get_id_user(),
-            ]);
+            // Lógica para definir se é Matriz (NULL) ou Filial (ID)
+            $filial_final = null;
+            if ($filialRequest != '-1' && $filialRequest != 'matriz' && $filialRequest != '') {
+                $filial_final = (int)$filialRequest;
+            }
 
-            ContaEmpresa::create($request->all());
+            // Criamos o objeto manualmente para garantir que nenhum Trait sobrescreva
+            $item = new ContaEmpresa();
+            $item->nome = $request->nome;
+            $item->banco = $request->banco;
+            $item->agencia = $request->agencia;
+            $item->conta = $request->conta;
+            $item->plano_conta_id = $request->plano_conta_id;
+            $item->saldo = __replace($request->saldo_inicial);
+            $item->saldo_inicial = __replace($request->saldo_inicial);
+            $item->status = $request->status ?? 1;
+            $item->empresa_id = $this->empresa_id;
+            $item->usuario_id = get_id_user();
+            $item->filial_id = $filial_final; // Atribuição direta e forçada
+
+            $item->save();
 
             session()->flash('mensagem_sucesso', 'Conta cadastrada!');
-            return redirect()->route('contas-empresa.index');
+            return redirect()->route($this->redirectPage);
+
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', 'Algo deu errado: ' . $e->getMessage());
             return redirect()->back()->withInput();
@@ -127,24 +152,37 @@ class ContaEmpresaController extends Controller
                 return redirect('/403');
             }
 
+            // Pega o ID que veio do Select
             $filialRequest = $request->input('filial_id', $request->input('local', '-1'));
 
+            // Validação de permissão
             if (!__filial_solicitada_valida_para_usuario($filialRequest === null ? 'matriz' : $filialRequest)) {
                 session()->flash('mensagem_erro', 'Você não possui permissão para utilizar este local.');
                 return redirect()->back()->withInput();
             }
 
-            $request->merge([
-                'saldo_inicial' => __replace($request->saldo_inicial),
-                'filial_id' => __normaliza_filial_banco($filialRequest),
-                'empresa_id' => $this->empresa_id,
-                'usuario_id' => get_id_user(),
-            ]);
+            // Lógica forçada para o ID da filial
+            $filial_final = null;
+            if ($filialRequest != '-1' && $filialRequest != 'matriz' && $filialRequest != '') {
+                $filial_final = (int)$filialRequest;
+            }
 
-            $item->fill($request->all())->save();
+            // ATRIBUIÇÃO DIRETA (Não usamos fill para a filial, para evitar bloqueios do Eloquent)
+            $item->nome = $request->nome;
+            $item->banco = $request->banco;
+            $item->agencia = $request->agencia;
+            $item->conta = $request->conta;
+            $item->plano_conta_id = $request->plano_conta_id;
+            $item->saldo_inicial = __replace($request->saldo_inicial);
+            $item->status = $request->status;
+            $item->filial_id = $filial_final; // <--- Forçamos o ID (ex: 8) aqui!
+            $item->usuario_id = get_id_user();
+
+            $item->save();
 
             session()->flash('mensagem_sucesso', 'Conta atualizada!');
-            return redirect()->route('contas-empresa.index');
+            return redirect()->route($this->redirectPage);
+
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', 'Algo deu errado: ' . $e->getMessage());
             return redirect()->back()->withInput();
@@ -183,238 +221,202 @@ class ContaEmpresaController extends Controller
             return redirect('/403');
         }
 
-        $categoriasQuery = DB::table('categoria_contas')
-            ->where('empresa_id', $this->empresa_id);
-
+        $categoriasQuery = DB::table('categoria_contas')->where('empresa_id', $this->empresa_id);
         __aplicar_filtro_empresa_filial($categoriasQuery);
-
         $categorias = $categoriasQuery->get();
 
-        $contasQuery = ContaEmpresa::withoutGlobalScopes()
-            ->where('empresa_id', $this->empresa_id);
-
+        $contasQuery = ContaEmpresa::withoutGlobalScopes()->where('empresa_id', $this->empresa_id);
         __aplicar_filtro_empresa_filial($contasQuery);
-
         $contas = $contasQuery->orderBy('nome', 'asc')->get();
 
         $saldo_anterior = $item->saldo_inicial;
+        $entradas = ItemContaEmpresa::where('conta_id', $id)->where('tipo', 'entrada')
+            ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])->sum('valor');
+        $saidas = ItemContaEmpresa::where('conta_id', $id)->where('tipo', 'saida')
+            ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])->sum('valor');
 
-        if ($data_inicio) {
-            $entradas = ItemContaEmpresa::where('conta_id', $id)
-                ->where('tipo', 'entrada')
-                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
-                ->sum('valor');
-
-            $saidas = ItemContaEmpresa::where('conta_id', $id)
-                ->where('tipo', 'saida')
-                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
-                ->sum('valor');
-
-            $saldo_anterior += ($entradas - $saidas);
-        }
+        $saldo_anterior += ($entradas - $saidas);
 
         $data = ItemContaEmpresa::where('conta_id', $id)
             ->orderByRaw('COALESCE(data_pagamento, created_at) ASC')
-            ->when($data_inicio, function ($q) use ($data_inicio) {
-                return $q->whereRaw('COALESCE(data_pagamento, created_at) >= ?', [$data_inicio]);
-            })
-            ->when($data_final, function ($q) use ($data_final) {
-                return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]);
-            })
-            ->when($tipo, function ($q) use ($tipo) {
-                return $q->where('tipo', $tipo);
-            })
+            ->when($data_inicio, function ($q) use ($data_inicio) { return $q->whereRaw('COALESCE(data_pagamento, created_at) >= ?', [$data_inicio]); })
+            ->when($data_final, function ($q) use ($data_final) { return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]); })
+            ->when($tipo, function ($q) use ($tipo) { return $q->where('tipo', $tipo); })
             ->paginate(50);
 
-        return view('conta_empresa/show', compact(
-            'data',
-            'item',
-            'data_inicio',
-            'data_final',
-            'tipo',
-            'saldo_anterior',
-            'categorias',
-            'contas'
-        ));
+        return view('conta_empresa/show', compact('data', 'item', 'data_inicio', 'data_final', 'tipo', 'saldo_anterior', 'categorias', 'contas'));
     }
 
     public function imprimirExtrato(Request $request, $id)
     {
-        $item = ContaEmpresa::withoutGlobalScopes()
-            ->where('id', $id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
+        $item = ContaEmpresa::withoutGlobalScopes()->where('id', $id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) { return redirect('/403'); }
 
-        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) {
-            return redirect('/403');
-        }
-
-        $empresaIdLogada = $this->empresa_id ?? session('user_logged')['empresa'] ?? 1;
-
-        $empresa = Empresa::find($empresaIdLogada);
-        if (!$empresa) {
-            $empresa = Empresa::first();
-        }
-
-        $config = ConfigNota::where('empresa_id', $empresaIdLogada)->first();
-
+        $empresa = Empresa::find($this->empresa_id) ?? Empresa::first();
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
         $data_inicio = $request->data_inicio;
         $data_final = $request->data_final;
-
         $saldo_anterior = $item->saldo_inicial;
 
         if ($data_inicio) {
-            $entradas = ItemContaEmpresa::where('conta_id', $id)
-                ->where('tipo', 'entrada')
-                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
-                ->sum('valor');
-
-            $saidas = ItemContaEmpresa::where('conta_id', $id)
-                ->where('tipo', 'saida')
-                ->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])
-                ->sum('valor');
-
+            $entradas = ItemContaEmpresa::where('conta_id', $id)->where('tipo', 'entrada')->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])->sum('valor');
+            $saidas = ItemContaEmpresa::where('conta_id', $id)->where('tipo', 'saida')->whereRaw('COALESCE(data_pagamento, created_at) < ?', [$data_inicio])->sum('valor');
             $saldo_anterior += ($entradas - $saidas);
         }
 
         $movimentacoes = ItemContaEmpresa::where('conta_id', $id)
             ->orderByRaw('COALESCE(data_pagamento, created_at) ASC')
-            ->when($data_inicio, function ($q) use ($data_inicio) {
-                return $q->whereRaw('COALESCE(data_pagamento, created_at) >= ?', [$data_inicio]);
-            })
-            ->when($data_final, function ($q) use ($data_final) {
-                return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]);
-            })
+            ->when($data_inicio, function ($q) use ($data_inicio) { return $q->whereRaw('COALESCE(data_pagamento, created_at) >= ?', [$data_inicio]); })
+            ->when($data_final, function ($q) use ($data_final) { return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]); })
             ->get();
 
-        return view('conta_empresa.print', compact(
-            'item',
-            'movimentacoes',
-            'saldo_anterior',
-            'data_inicio',
-            'data_final',
-            'empresa',
-            'config'
-        ));
+        return view('conta_empresa.print', compact('item', 'movimentacoes', 'saldo_anterior', 'data_inicio', 'data_final', 'empresa', 'config'));
     }
 
     public function imprimirTransacao($id)
     {
-        if (ob_get_contents()) {
-            ob_end_clean();
-        }
-
+        if (ob_get_contents()) { ob_end_clean(); }
         $transacao = ItemContaEmpresa::findOrFail($id);
-        $item = ContaEmpresa::withoutGlobalScopes()
-            ->where('id', $transacao->conta_id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
+        $item = ContaEmpresa::withoutGlobalScopes()->where('id', $transacao->conta_id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) { return redirect('/403'); }
 
-        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) {
-            return redirect('/403');
-        }
-
-        $empresaIdLogada = $this->empresa_id ?? session('user_logged')['empresa'] ?? 1;
-
-        $config = ConfigNota::where('empresa_id', $empresaIdLogada)->first();
-        $empresa = DB::table('empresas')->where('id', $empresaIdLogada)->first();
-
-        if (!$config) {
-            $config = (object) [
-                'razao_social' => null,
-                'cnpj' => 'Não configurado',
-                'logo' => null,
-                'cidade' => null,
-                'uf' => null
-            ];
-        }
-
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first() ?? (object)['cnpj' => 'Não configurado'];
+        $empresa = DB::table('empresas')->where('id', $this->empresa_id)->first();
         $p = view('relatorios/recibo_transacao', compact('transacao', 'item', 'config', 'empresa'));
-
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
         $domPdf->setPaper("A4");
         $domPdf->render();
-
         return response($domPdf->output())->header('Content-Type', 'application/pdf');
     }
 
     public function deleteLancamento(Request $request)
     {
         $item = ItemContaEmpresa::findOrFail($request->id);
+        $conta = ContaEmpresa::withoutGlobalScopes()->where('id', $item->conta_id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+        if (!$this->usuarioPodeAcessarFilialRegistro($conta->filial_id)) { return redirect('/403'); }
+        if ($item->origem != 'manual') { session()->flash('mensagem_erro', 'Lançamentos automáticos não podem ser excluídos.'); return redirect()->back(); }
 
-        $conta = ContaEmpresa::withoutGlobalScopes()
-            ->where('id', $item->conta_id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
-
-        if (!$this->usuarioPodeAcessarFilialRegistro($conta->filial_id)) {
-            return redirect('/403');
-        }
-
-        if ($item->origem != 'manual') {
-            session()->flash('mensagem_erro', 'Lançamentos automáticos não podem ser excluídos por aqui.');
-            return redirect()->back();
-        }
-
-        $id_busca = $this->empresa_id ?? (session('user_logged')['empresa'] ?? 1);
-        $config = ConfigNota::where('empresa_id', $id_busca)->first() ?? ConfigNota::first();
-
-        if (!$config || md5($request->senha) != $config->senha_remover) {
-            session()->flash('mensagem_erro', 'Senha de autorização incorreta!');
-            return redirect()->back();
-        }
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first() ?? ConfigNota::first();
+        if (!$config || md5($request->senha) != $config->senha_remover) { session()->flash('mensagem_erro', 'Senha incorreta!'); return redirect()->back(); }
 
         try {
             DB::transaction(function () use ($item, $conta) {
-                if ($item->tipo == 'entrada') {
-                    $conta->saldo -= $item->valor;
-                } else {
-                    $conta->saldo += $item->valor;
-                }
-
+                if ($item->tipo == 'entrada') { $conta->saldo -= $item->valor; } 
+                else { $conta->saldo += $item->valor; }
                 $conta->save();
                 $item->delete();
             });
-
-            session()->flash('mensagem_sucesso', 'Lançamento manual excluído com sucesso!');
-        } catch (\Exception $e) {
-            session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
-        }
-
+            session()->flash('mensagem_sucesso', 'Excluído com sucesso!');
+        } catch (\Exception $e) { session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage()); }
         return redirect()->back();
     }
 
     private function usuarioPodeAcessarFilialRegistro($filialId): bool
     {
-        if (__usuario_pode_ver_todos_locais()) {
-            return true;
-        }
-
-        $locaisPermitidos = __usuario_locais_ids_logado();
-
+        if (__usuario_pode_ver_todos_locais()) { return true; }
+        $locaisPermitidos = (array) __usuario_locais_ids_logado();
         if ($filialId === null || $filialId == 0) {
             return in_array(-1, $locaisPermitidos, true) || in_array('-1', $locaisPermitidos, true);
         }
-
         return in_array((int)$filialId, $locaisPermitidos, true) || in_array((string)$filialId, $locaisPermitidos, true);
     }
+  
+  	public function sincronizar($id)
+{
+    // Se o JS funcionar, você verá esta mensagem na tela preta
+    // dd("O controlador recebeu o pedido para a conta: " . $id);
 
-    private function _validate(Request $request)
-    {
-        $rules = [
-            'nome' => 'required|max:50',
-            'saldo_inicial' => 'required',
-            'plano_conta_id' => 'required',
-        ];
+    $conta = ContaEmpresa::withoutGlobalScopes()
+        ->where('id', $id)
+        ->where('empresa_id', $this->empresa_id)
+        ->firstOrFail();
 
-        $messages = [
-            'nome.required' => 'Campo obrigatório.',
-            'nome.max' => '50 caracteres maximos permitidos.',
-            'saldo_inicial.required' => 'Campo obrigatório.',
-            'plano_conta_id.required' => 'Campo obrigatório.',
-        ];
+    DB::transaction(function () use ($conta) {
+        // 1. LIMPEZA TOTAL (Forçada via Query Builder)
+        DB::table('item_conta_empresas')->where('conta_id', $conta->id)->delete();
 
-        $this->validate($request, $rules, $messages);
-    }
+        // 2. TERMO DE BUSCA
+        $termoBusca = '';
+        $nomeLower = strtolower($conta->nome);
+        if (str_contains($nomeLower, 'itau')) $termoBusca = 'Itau';
+        elseif (str_contains($nomeLower, 'santander')) $termoBusca = 'Santander';
+        elseif (str_contains($nomeLower, 'bradesco')) $termoBusca = 'Bradesco';
+        elseif (str_contains($nomeLower, 'fundo fixo') || str_contains($nomeLower, 'caixa') || str_contains($nomeLower, 'dinheiro')) $termoBusca = 'Dinheiro';
+
+        // 3. BUSCA SAÍDAS (Contas a Pagar + Fornecedor)
+        // Ajuste 'fornecedores' se o nome da sua tabela for 'fornecedors'
+        $pagamentos = DB::table('conta_pagars as cp')
+            ->leftJoin('fornecedores as f', 'f.id', '=', 'cp.fornecedor_id') 
+            ->where('cp.empresa_id', $this->empresa_id)
+            ->where('cp.status', 1)
+            ->where('cp.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+            ->where(function($q) use ($conta) {
+                if ($conta->filial_id === null) return $q->whereNull('cp.filial_id');
+                return $q->where('cp.filial_id', $conta->filial_id);
+            })
+            ->select('cp.*', 'f.razao_social as nome_entidade')
+            ->get();
+
+        // 4. BUSCA ENTRADAS (Contas a Receber + Cliente)
+        $recebimentos = DB::table('conta_recebers as cr')
+            ->leftJoin('clientes as c', 'c.id', '=', 'cr.cliente_id')
+            ->where('cr.empresa_id', $this->empresa_id)
+            ->where('cr.status', 1)
+            ->where('cr.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+            ->where(function($q) use ($conta) {
+                if ($conta->filial_id === null) return $q->whereNull('cr.filial_id');
+                return $q->where('cr.filial_id', $conta->filial_id);
+            })
+            ->select('cr.*', 'c.razao_social as nome_entidade')
+            ->get();
+
+        // 5. UNIÃO E CÁLCULO
+        $todos = collect();
+        foreach($pagamentos as $p) {
+            $todos->push([
+                'id' => $p->id, 'tipo' => 'saida', 'valor' => $p->valor_integral,
+                'data' => $p->data_pagamento, 'cat' => $p->categoria_id,
+                'desc' => "Pgto: " . ($p->nome_entidade ?? 'Fornecedor N/D') . " (" . $p->referencia . ")",
+                'origem' => 'conta pagar', 'user' => $p->usuario_id
+            ]);
+        }
+        foreach($recebimentos as $r) {
+            $todos->push([
+                'id' => $r->id, 'tipo' => 'entrada', 'valor' => $r->valor_integral,
+                'data' => $r->data_recebimento, 'cat' => $r->categoria_id,
+                'desc' => "Rec: " . ($r->nome_entidade ?? 'Cliente N/D') . " (" . $r->referencia . ")",
+                'origem' => 'conta a receber', 'user' => null
+            ]);
+        }
+
+        $saldo = $conta->saldo_inicial;
+        foreach ($todos->sortBy('data') as $l) {
+            $saldo = ($l['tipo'] == 'entrada') ? ($saldo + $l['valor']) : ($saldo - $l['valor']);
+
+            DB::table('item_conta_empresas')->insert([
+                'conta_id' => $conta->id,
+                'descricao' => $l['desc'],
+                'tipo_pagamento' => '01',
+                'valor' => $l['valor'],
+                'data_pagamento' => $l['data'],
+                'saldo_atual' => $saldo,
+                'tipo' => $l['tipo'],
+                'origem' => $l['origem'],
+                'conta_pagar_id' => ($l['origem'] == 'conta pagar' ? $l['id'] : null),
+                'conta_receber_id' => ($l['origem'] == 'conta a receber' ? $l['id'] : null),
+                'categoria_id' => $l['cat'], // Gravando categoria
+                'user_id' => $l['user'] ?? get_id_user(),
+                'empresa_id' => $this->empresa_id,
+                'created_at' => now(), 'updated_at' => now()
+            ]);
+        }
+
+        $conta->saldo = $saldo;
+        $conta->save();
+    });
+
+    session()->flash('mensagem_sucesso', 'Histórico sincronizado!');
+    return redirect()->back();
+}
 }

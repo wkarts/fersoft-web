@@ -642,8 +642,8 @@ function __view_locais_edit($locais_ativos, $lbl = "Locais de acesso"){
         $html .= '<div class="">';
         $html .= '<select id="locais" name="local[]" required class="form-control select2-custom" multiple>';
         foreach($locais as $key => $l){
-            $html .= '<option '. (in_array($key, $locais_ativos) ? ' selected ' : '') .' value="'.$key.'">'.$l.'</option>';
-        }
+    $html .= '<option '. (in_array($key, (array)$locais_ativos) ? ' selected ' : '') .' value="'.$key.'">'.$l.'</option>';
+}
         $html .= '</select></div></div>';
     }else{
         $v = array_key_first($locais);

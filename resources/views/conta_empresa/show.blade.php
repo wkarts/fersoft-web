@@ -2,7 +2,7 @@
 
 @section('content')
 
-{{-- (GRUPO) CABEÇALHO: Informações da conta e botão de extrato geral --}}
+{{-- (GRUPO) CABEÇALHO: Informações da conta e botões de ação --}}
 <div class="card card-custom gutter-b">
     <div class="card-body">
         @if(session('mensagem_sucesso'))
@@ -13,22 +13,28 @@
         @endif
 
         <div class="row align-items-center">
-            <div class="col-md-8">
+            <div class="col-md-7">
                 <h3 class="mb-0">Conta: {{ $item->nome }}</h3>
                 <p class="text-muted mb-0">Agência: {{ $item->agencia }} | Conta: {{ $item->conta }}</p>
             </div>
-           
-            <div class="col-md-4 text-right">
+            
+            <div class="col-md-5 text-right">
+                {{-- NOVO BOTÃO DE SINCRONIZAÇÃO --}}
+                <button onclick="confirmarSincronismo({{ $item->id }})" class="btn btn-warning font-weight-bold">
+                    <i class="la la-refresh"></i> Sincronizar Histórico
+                </button>
+
                 <a href="{{ route('contas-empresa.extrato', [$item->id]) }}?data_inicio={{request('data_inicio')}}&data_final={{request('data_final')}}&tipo={{request('tipo')}}" 
                    target="_blank" class="btn btn-info font-weight-bold">
                     <i class="la la-print"></i> Imprimir Extrato
                 </a>
             </div>
-           <div class="col-12">
-                  <a href="{{ route('contas-empresa.index') }}" class="btn btn-light-primary font-weight-bold">
-            <i class="la la-arrow-left"></i> Voltar para Contas
-        </a>
-    </div>
+
+            <div class="col-12 mt-3">
+                <a href="{{ route('contas-empresa.index') }}" class="btn btn-light-primary font-weight-bold">
+                    <i class="la la-arrow-left"></i> Voltar para Contas
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -204,35 +210,49 @@
 
 <input type="hidden" id="casas_decimais" value="{{ $casasDecimais ?? 2 }}">
 
-@endsection
-
-{{-- (GRUPO) JAVASCRIPT: Funções de alerta e confirmação --}}
-@section('javascript')
+{{-- MOVIDO PARA DENTRO DO CONTENT PARA GARANTIR QUE FUNCIONE --}}
 <script type="text/javascript">
+function confirmarSincronismo(id) {
+    // Teste definitivo: se isso não aparecer, o navegador não está lendo a função
+    console.log("Chamando sincronismo para ID: " + id); 
+
+    Swal.fire({
+        title: 'Reconstruir Histórico?',
+        text: "O extrato atual desta conta será APAGADO e refeito com base no financeiro. Confirmar?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3699FF',
+        confirmButtonText: 'Sim, Sincronizar!',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Processando...',
+                text: 'Isso pode levar alguns segundos.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+            
+            // Usando o helper do Laravel para não errar a URL
+            window.location.href = "{{ route('contas-empresa.sincronizar', '') }}/" + id;
+        }
+    });
+}
+
 function excluirLancamentoManual(id) {
     Swal.fire({
-        title: 'Excluir Lançamento Manual?',
-        text: "O saldo será recalculado. Digite a senha de segurança:",
+        title: 'Excluir Lançamento?',
+        text: "Digite a senha de segurança:",
         input: 'password',
-        inputAttributes: {
-            autocapitalize: 'off',
-            autocomplete: 'new-password',
-            name: 'senha_falsa'
-        },
         showCancelButton: true,
-        confirmButtonText: 'Confirmar Exclusão',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#f64e60',
-        showLoaderOnConfirm: true,
+        confirmButtonText: 'Confirmar',
         preConfirm: (senha) => {
-            if (!senha) {
-                Swal.showValidationMessage('A senha é obrigatória');
-            }
+            if (!senha) { Swal.showValidationMessage('Senha obrigatória'); }
             return senha;
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = "/contasEmpresa/deleteLancamento?id=" + id + "&senha=" + result.value;
+            window.location.href = "{{ route('contas-empresa.delete-lancamento') }}?id=" + id + "&senha=" + result.value;
         }
     });
 }
