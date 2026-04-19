@@ -2135,6 +2135,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/listApontamentos', 'StockController@listApontamentos');
 		Route::get('/listApontamentos/delete/{id}', 'StockController@listApontamentosDelte');
 		Route::post('/set-estoque-local', 'StockController@setEstoqueStore');
+        Route::get('/historico/{id}', 'StockController@historico');
+        Route::get('/relatorioPdf', 'StockController@relatorioPdf');
+      	Route::get('/relatorioFiscal', 'StockController@relatorioFiscal');
 
 		Route::get('/add1', 'StockController@add1');
 		Route::get('/zerarEstoque', 'StockController@zerarEstoque');
@@ -2982,6 +2985,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'contas-empresa'],function(){
     	Route::get('/extrato', 'ContaEmpresaController@imprimirExtrato')->name('contas-empresa.extrato');
+    	Route::get('/extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+        Route::get('contas-empresa/sincronizar/{id}', 'ContaEmpresaController@sincronizar')->name('contas-empresa.sincronizar');
     });
 
     Route::group(['prefix' => 'item-conta'],function(){

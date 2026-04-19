@@ -4,7 +4,14 @@
     <div class="card-header">
         <h3 class="card-title">Estoque</h3>
         <div class="card-toolbar">
-            <a href="/estoque/ajusteManual" class="btn btn-info btn-sm mr-2"><i class="la la-plus"></i> Apontamento Manual</a>
+            
+            <a href="/estoque/listApontamentos" class="btn btn-warning btn-sm mr-2">
+                <i class="la la-clipboard-list"></i> Lista de Alterações
+            </a>
+
+            <a href="/estoque/apontamentoManual" class="btn btn-info btn-sm mr-2">
+                <i class="la la-plus"></i> Apontamento Manual
+            </a>
             
             <a onclick='swal({
                 title: "Atenção!",
@@ -23,7 +30,14 @@
                 <i class="la la-trash"></i> Zerar estoque completo
             </a>
 
-            <button class="btn btn-light-primary btn-sm" onclick="window.print()"><i class="la la-print"></i> Imprimir</button>
+            <a href="/estoque/relatorioPdf?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-danger btn-sm">
+  				  <i class="la la-file-pdf"></i> Gerar PDF
+			</a>
+          
+          	<a href="/estoque/relatorioFiscal?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-success btn-sm ml-2">
+   				 <i class="la la-file-invoice"></i> Relatório Fiscal
+			</a>
+          
         </div>
     </div>
 
@@ -115,7 +129,8 @@
                         <th>Saídas (-)</th>
                         <th class="text-info">Estoque Atual</th>
                         <th>Vl. Venda</th>
-                        <th>Vl. Custo</th> <th class="text-right">Ações</th>
+                        <th>Vl. Custo</th> 
+                        <th class="text-right">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,7 +156,12 @@
                         <td class="font-weight-boldest text-info h5">{{ number_format($e->quantidade, 2, ',', '.') }}</td>
                         <td>R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
                         <td>R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 
-                        <td class="text-right">
+                        
+                        <td class="text-right d-flex justify-content-end">
+                            <a href="/estoque/apontamentoManual" class="btn btn-icon btn-light-warning btn-sm mr-1" title="Ajuste / Apontamento Manual">
+                                <i class="la la-edit"></i>
+                            </a>
+
                             <a href="/estoque/historico/{{$e->id}}" class="btn btn-icon btn-light-primary btn-sm" title="Ver Extrato">
                                 <i class="la la-list"></i>
                             </a>
