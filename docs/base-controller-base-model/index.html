@@ -35,7 +35,7 @@
           Este manual foi criado para ser uma referência prática e didática sobre os componentes
           <strong>BaseController</strong> e <strong>BaseModel</strong>. O objetivo é acelerar onboarding,
           padronizar implementação e reduzir erro operacional em fluxos de CRUD, multi-tenant,
-          auditoria e soft delete.
+          auditoria e soft delete, mantendo abertura para evolução contínua do material.
         </p>
         <div class="card-grid">
           <article class="card">
@@ -100,7 +100,8 @@
         <div class="callout info">
           <strong>Conceito-chave:</strong> BaseController e BaseModel funcionam melhor quando você mantém
           <em>responsabilidade clara</em>: controller orquestra fluxo HTTP e view; model representa estado,
-          persistência e eventos de domínio técnico (auditoria).
+          persistência e eventos de domínio técnico (auditoria). Essa é uma base prática atual e pode receber
+          ajustes conforme o projeto amadurecer.
         </div>
 
         <h3>Básico</h3>
@@ -292,7 +293,8 @@ class Categoria extends BaseModel
         <h3>Cenário 4 — Evitando duplicidade de logs (Avançado)</h3>
         <p>
           Em operações coordenadas pelo controller, desabilitar a próxima auditoria automática do model evita
-          duas entradas para o mesmo evento. Esse padrão é essencial para manter trilha auditável limpa.
+          duas entradas para o mesmo evento. Esse padrão já resolve bem o cenário atual e pode ser refinado
+          conforme novas necessidades de observabilidade aparecerem.
         </p>
 
         <h3>Checklist operacional de implementação</h3>
@@ -372,20 +374,30 @@ class Categoria extends BaseModel
 
         <div class="callout warn">
           <strong>Atenção:</strong> em sistemas com alto volume de transações, valide impacto de auditoria em massa
-          e considere estratégias de processamento assíncrono para logs quando necessário.
+          e considere estratégias de processamento assíncrono para logs quando necessário. Se a carga crescer, vale
+          complementar esta seção com recomendações mais específicas de operação.
         </div>
       </section>
 
       <section id="conclusao">
         <h2>Conclusão</h2>
         <p>
-          BaseController e BaseModel oferecem uma fundação robusta para padronizar módulos, melhorar segurança,
-          reduzir retrabalho e fortalecer rastreabilidade. Com este manual, o time tem um guia completo para
-          aprender, implementar e evoluir funcionalidades com menos risco e maior previsibilidade.
+          BaseController e BaseModel ajudam bastante na organização do projeto, na padronização das rotinas e na
+          redução de retrabalho, principalmente quando o sistema cresce e passa a exigir mais consistência entre
+          implementações.
         </p>
         <p>
-          Use este material como referência viva: sempre que um novo padrão surgir, adicione exemplos,
-          fluxos e decisões arquiteturais para manter a documentação útil e prática no dia a dia.
+          Este manual foi pensado como apoio prático para o momento atual, não como documentação encerrada. Conforme
+          surgirem novos modelos, novos padrões internos e novas necessidades da aplicação, o conteúdo pode ser
+          ampliado com explicações mais específicas e exemplos mais próximos da realidade operacional.
+        </p>
+        <p>
+          Em alguns pontos já existe uma direção segura de uso; em outros, ainda há espaço para aprofundar detalhes,
+          ajustar cenários e incluir materiais complementares, inclusive exemplos adicionais e vídeos de apoio.
+        </p>
+        <p>
+          A ideia é manter esta documentação viva: útil agora e aberta para evolução contínua junto com as decisões
+          arquiteturais e práticas reais do time.
         </p>
       </section>
     </main>
