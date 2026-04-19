@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual BaseController & BaseModel</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Manual Técnico</h1>
+        <p>BaseController &amp; BaseModel</p>
+      </div>
+      <nav>
+        <a href="#inicio">1. Página inicial</a>
+        <a href="#introducao">2. Introdução</a>
+        <a href="#fundamentos">3. Fundamentos</a>
+        <a href="#conceitos">4. Conceitos principais</a>
+        <a href="#base-controller">5. BaseController</a>
+        <a href="#base-model">6. BaseModel</a>
+        <a href="#praticos">7. Exemplos práticos</a>
+        <a href="#avancado">8. Aplicações avançadas</a>
+        <a href="#duvidas">9. Dúvidas comuns</a>
+        <a href="#boas-praticas">10. Boas práticas</a>
+        <a href="#conclusao">11. Conclusão</a>
+      </nav>
+    </aside>
+
+    <main class="content" id="conteudo-principal">
+      <section id="inicio">
+        <h2>Página inicial / apresentação</h2>
+        <p>
+          Este manual foi criado para ser uma referência prática e didática sobre os componentes
+          <strong>BaseController</strong> e <strong>BaseModel</strong>. O objetivo é acelerar onboarding,
+          padronizar implementação e reduzir erro operacional em fluxos de CRUD, multi-tenant,
+          auditoria e soft delete, mantendo abertura para evolução contínua do material.
+        </p>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Para quem é este material?</h3>
+            <ul>
+              <li>Desenvolvedores iniciantes que precisam entender a base arquitetural.</li>
+              <li>Desenvolvedores plenos/sêniores que querem padronização e ganho de escala.</li>
+              <li>Times de suporte/manutenção que precisam diagnosticar comportamento rapidamente.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>O que você vai aprender</h3>
+            <ul>
+              <li>Nível básico: responsabilidades e ciclo de vida.</li>
+              <li>Nível intermediário: filtros, validações, logs e integração entre camadas.</li>
+              <li>Nível avançado: auditoria sem duplicidade, concorrência e cuidados de arquitetura.</li>
+            </ul>
+          </article>
+        </div>
+        <figure>
+          <img src="assets/img/visao-geral.svg" alt="Diagrama de visão geral BaseController e BaseModel" />
+          <figcaption>Visão geral do fluxo entre request, controller, model, banco e auditoria.</figcaption>
+        </figure>
+      </section>
+
+      <section id="introducao">
+        <h2>Introdução</h2>
+        <p>
+          Em sistemas corporativos, controllers e models costumam repetir regras como:
+          escopo por empresa, usuário autenticado, tratamento de filial, auditoria, validação e mensagens.
+          Centralizar isso em classes-base reduz inconsistências e aumenta previsibilidade.
+        </p>
+        <p>
+          Nesta aplicação, <strong>BaseController</strong> padroniza operações web (listagem, cadastro,
+          edição, exclusão, restauração e filtros), enquanto <strong>BaseModel</strong> centraliza
+          auditoria automática e comportamento de soft delete por coluna <code>deleted_at</code>.
+        </p>
+      </section>
+
+      <section id="fundamentos">
+        <h2>Fundamentos</h2>
+        <h3>Fundamento 1 — Multi-tenant por empresa</h3>
+        <p>
+          O controller base inicia contexto de tenant via <code>empresa_id</code>, <code>usuario_id</code>
+          e <code>filial_id</code>. Isso evita vazamento de dados entre empresas e garante rastreabilidade.
+        </p>
+        <h3>Fundamento 2 — Convenção explícita</h3>
+        <p>
+          O controller exige propriedades e métodos obrigatórios (como <code>$redirectPage</code>,
+          <code>rules()</code> e <code>messages()</code>). Se faltar configuração mínima, a execução falha cedo,
+          evitando bugs silenciosos em produção.
+        </p>
+        <h3>Fundamento 3 — Auditoria confiável</h3>
+        <p>
+          O model base registra eventos de create/update/delete/restore. O controller também registra
+          logs manuais em operações críticas, com mecanismos para impedir duplicidade de auditoria.
+        </p>
+      </section>
+
+      <section id="conceitos">
+        <h2>Conceitos principais</h2>
+        <div class="callout info">
+          <strong>Conceito-chave:</strong> BaseController e BaseModel funcionam melhor quando você mantém
+          <em>responsabilidade clara</em>: controller orquestra fluxo HTTP e view; model representa estado,
+          persistência e eventos de domínio técnico (auditoria). Essa é uma base prática atual e pode receber
+          ajustes conforme o projeto amadurecer.
+        </div>
+
+        <h3>Básico</h3>
+        <ul>
+          <li>Controller base cuida da entrada, validação e resposta.</li>
+          <li>Model base cuida de persistência e eventos do ciclo de vida.</li>
+          <li>Evite lógica de negócio pesada diretamente no controller.</li>
+        </ul>
+
+        <h3>Intermediário</h3>
+        <ul>
+          <li>Use filtros declarativos para listagem consistente.</li>
+          <li>Aplique escopo de tenant em toda consulta sensível.</li>
+          <li>Mantenha logs com dados antes/depois para auditoria e suporte.</li>
+        </ul>
+
+        <h3>Avançado</h3>
+        <ul>
+          <li>Desacople integrações externas (WhatsApp, serviços) em classes utilitárias/serviços.</li>
+          <li>Evite condição de corrida em atualizações concorrentes usando validações e transações.</li>
+          <li>Padronize mensagens de erro e sucesso para facilitar observabilidade operacional.</li>
+        </ul>
+      </section>
+
+      <section id="base-controller">
+        <h2>BaseController — explicação completa</h2>
+
+        <h3>1) Responsabilidade principal</h3>
+        <p>
+          BaseController centraliza autenticação de sessão, contexto de tenant, inicialização de serviços,
+          CRUD genérico e comunicação com views. Com isso, controllers concretos herdam comportamento padrão
+          e implementam apenas o específico de cada recurso.
+        </p>
+
+        <h3>2) Ciclo resumido do construtor</h3>
+        <ol>
+          <li>Lê e normaliza <code>empresa_id</code>, <code>usuario_id</code> e <code>filial_id</code>.</li>
+          <li>Valida se usuário está autenticado na sessão.</li>
+          <li>Exige que <code>$redirectPage</code> esteja definido no controller filho.</li>
+          <li>Inicializa <code>LogService</code> para auditoria.</li>
+          <li>Compartilha configurações globais com as views.</li>
+        </ol>
+
+        <h3>3) Métodos de uso recorrente</h3>
+        <ul>
+          <li><code>list()</code>: listagem com filtros.</li>
+          <li><code>register()</code>: tela de cadastro/edição.</li>
+          <li><code>save()</code> e <code>update()</code>: persistência com validação e log.</li>
+          <li><code>delete()</code> e <code>restore()</code>: ciclo de exclusão/recuperação.</li>
+          <li><code>search()</code>: endpoint de busca simples.</li>
+        </ul>
+
+        <h3>4) Exemplo completo de controller concreto</h3>
+<pre><code class="language-php">&lt;?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Categoria;
+
+class CategoriaController extends BaseController
+{
+    protected $model = Categoria::class;
+    protected $formTitle = 'Categoria';
+    protected $listView = 'categorias.list';
+    protected $registerView = 'categorias.form';
+    protected $redirectPage = '/categorias';
+
+    protected function rules(): array
+    {
+        return [
+            'nome' =&gt; 'required|string|max:80',
+            'status' =&gt; 'required|in:ativo,inativo',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'nome.required' =&gt; 'Informe o nome da categoria.',
+            'status.in' =&gt; 'Status inválido.',
+        ];
+    }
+
+    protected function defineFilters(Request $request): array
+    {
+        return [
+            ['name' =&gt; 'nome', 'type' =&gt; 'text', 'default' =&gt; ''],
+            ['name' =&gt; 'status', 'type' =&gt; 'select', 'default' =&gt; ''],
+        ];
+    }
+
+    protected function headers(): array
+    {
+        return ['ID', 'Nome', 'Status'];
+    }
+
+    protected function fields(): array
+    {
+        return ['id', 'nome', 'status'];
+    }
+}</code></pre>
+
+        <h3>5) Erros comuns no BaseController</h3>
+        <ul>
+          <li>Não definir <code>$redirectPage</code> no controller filho.</li>
+          <li>Não implementar <code>rules()</code> e <code>messages()</code>.</li>
+          <li>Atualizar dados sem escopo por <code>empresa_id</code>.</li>
+          <li>Ignorar normalização de <code>filial_id</code> e causar comportamento inconsistente.</li>
+        </ul>
+
+        <figure>
+          <img src="assets/img/fluxo-controller.svg" alt="Fluxo operacional do BaseController" />
+          <figcaption>Fluxo de listagem e persistência coordenado pelo BaseController.</figcaption>
+        </figure>
+      </section>
+
+      <section id="base-model">
+        <h2>BaseModel — explicação completa</h2>
+
+        <h3>1) Responsabilidade principal</h3>
+        <p>
+          BaseModel padroniza guardas de atribuição, auditoria automática por eventos e estratégia de soft delete
+          baseada em existência da coluna <code>deleted_at</code>. Isso permite compatibilidade com APIs conhecidas
+          e comportamento consistente entre tabelas com e sem soft delete.
+        </p>
+
+        <h3>2) Recursos importantes</h3>
+        <ul>
+          <li><strong>Auditoria automática:</strong> create, update, delete e restore.</li>
+          <li><strong>Soft delete custom:</strong> com <code>delete()</code>, <code>restore()</code> e escopos de consulta.</li>
+          <li><strong>Cache de suporte:</strong> evita consultar schema toda hora para descobrir <code>deleted_at</code>.</li>
+          <li><strong>Controle fino:</strong> possibilidade de desabilitar auditoria por instância.</li>
+        </ul>
+
+        <h3>3) Exemplo completo de model concreto</h3>
+<pre><code class="language-php">&lt;?php
+
+namespace App\Models;
+
+class Categoria extends BaseModel
+{
+    protected $table = 'categorias';
+
+    protected $fillable = [
+        'empresa_id',
+        'usuario_id',
+        'filial_id',
+        'nome',
+        'status',
+    ];
+}</code></pre>
+
+        <h3>4) Fluxo de exclusão e restauração</h3>
+        <ol>
+          <li>Ao excluir, o model verifica suporte a <code>deleted_at</code>.</li>
+          <li>Com suporte, faz soft delete custom e registra auditoria.</li>
+          <li>Sem suporte, realiza delete físico e também registra auditoria.</li>
+          <li>Ao restaurar, limpa <code>deleted_at</code> e loga estado antes/depois.</li>
+        </ol>
+
+        <figure>
+          <img src="assets/img/fluxo-model.svg" alt="Fluxo de auditoria e soft delete do BaseModel" />
+          <figcaption>Fluxo de eventos do BaseModel para auditoria e integridade do ciclo de vida.</figcaption>
+        </figure>
+      </section>
+
+      <section id="praticos">
+        <h2>Exemplos práticos (cenários reais)</h2>
+
+        <h3>Cenário 1 — CRUD completo multi-tenant (Básico)</h3>
+        <p>
+          Você precisa criar um módulo de categorias por empresa. A estratégia é herdar o BaseController,
+          configurar as propriedades mínimas e deixar o BaseModel cuidar da trilha de auditoria.
+        </p>
+
+        <h3>Cenário 2 — Filtros por data/status (Intermediário)</h3>
+        <p>
+          Para telas operacionais, declare filtros em <code>defineFilters()</code>. Evite construir SQL manual
+          repetitivo em cada controller, mantendo filtros previsíveis e padronizados.
+        </p>
+
+        <h3>Cenário 3 — Restauração de registros removidos (Intermediário/Avançado)</h3>
+        <p>
+          Quando o domínio permitir recuperação, mantenha a coluna <code>deleted_at</code> na tabela e use
+          <code>restore()</code>. Isso reduz risco de perda acidental e melhora governança de dados.
+        </p>
+
+        <h3>Cenário 4 — Evitando duplicidade de logs (Avançado)</h3>
+        <p>
+          Em operações coordenadas pelo controller, desabilitar a próxima auditoria automática do model evita
+          duas entradas para o mesmo evento. Esse padrão já resolve bem o cenário atual e pode ser refinado
+          conforme novas necessidades de observabilidade aparecerem.
+        </p>
+
+        <h3>Checklist operacional de implementação</h3>
+        <ul>
+          <li>Definir propriedades obrigatórias do controller filho.</li>
+          <li>Implementar validações mínimas e mensagens amigáveis.</li>
+          <li>Garantir presença de campos de tenant em tabelas críticas.</li>
+          <li>Padronizar uso de <code>deleted_at</code> quando a regra de negócio permitir recuperação.</li>
+          <li>Validar logs de create/update/delete/restore em homologação antes de produção.</li>
+        </ul>
+      </section>
+
+      <section id="avancado">
+        <h2>Aplicações avançadas</h2>
+
+        <h3>1) Arquitetura e separação de responsabilidades</h3>
+        <p>
+          Use o BaseController como camada de orquestração HTTP e delegue regras de negócio densas para services.
+          O BaseModel deve manter comportamento técnico transversal (auditoria, soft delete, escopos).
+        </p>
+
+        <h3>2) Concorrência e consistência</h3>
+        <ul>
+          <li>Use transações em operações com múltiplas gravações correlacionadas.</li>
+          <li>Adote controle de versão/updated_at para detectar atualização concorrente.</li>
+          <li>Evite side effects no mesmo request sem estratégia de retry seguro.</li>
+        </ul>
+
+        <h3>3) Observabilidade</h3>
+        <ul>
+          <li>Inclua <em>contexto mínimo</em> no log: empresa, usuário, filial e registro.</li>
+          <li>Diferencie erros de validação de erros de integração externa.</li>
+          <li>Use mensagens consistentes para facilitar busca em logs.</li>
+        </ul>
+
+        <h3>4) Segurança</h3>
+        <ul>
+          <li>Nunca confiar apenas em id da requisição sem escopo por tenant.</li>
+          <li>Sanitizar entradas e aplicar validação obrigatória por recurso.</li>
+          <li>Evitar exposição de detalhes sensíveis em mensagens de erro para o usuário final.</li>
+        </ul>
+      </section>
+
+      <section id="duvidas">
+        <h2>Dúvidas comuns (FAQ)</h2>
+
+        <details>
+          <summary>Posso usar BaseModel em tabelas sem deleted_at?</summary>
+          <p>Sim. O BaseModel detecta suporte e executa delete físico quando não houver coluna de soft delete.</p>
+        </details>
+
+        <details>
+          <summary>Quando devo sobrescrever save/update no controller filho?</summary>
+          <p>Somente quando houver fluxo específico real. Se for CRUD padrão, mantenha a implementação herdada.</p>
+        </details>
+
+        <details>
+          <summary>Como evitar logs duplicados?</summary>
+          <p>Use os mecanismos de contexto de auditoria antes de operações com log manual no controller.</p>
+        </details>
+
+        <details>
+          <summary>Posso reaproveitar esse padrão em outros módulos?</summary>
+          <p>Sim. O desenho é reutilizável e favorece escalabilidade, desde que regras de tenant sejam preservadas.</p>
+        </details>
+      </section>
+
+      <section id="boas-praticas">
+        <h2>Boas práticas recomendadas</h2>
+        <ol>
+          <li>Não bypassar o escopo por <code>empresa_id</code> em consultas sensíveis.</li>
+          <li>Centralizar regras de validação para reduzir divergência entre endpoints.</li>
+          <li>Padronizar mensagens de sucesso/erro para experiência consistente.</li>
+          <li>Evitar lógica de integração externa diretamente no model.</li>
+          <li>Manter exemplos e documentação atualizados junto com evolução da base.</li>
+        </ol>
+
+        <div class="callout warn">
+          <strong>Atenção:</strong> em sistemas com alto volume de transações, valide impacto de auditoria em massa
+          e considere estratégias de processamento assíncrono para logs quando necessário. Se a carga crescer, vale
+          complementar esta seção com recomendações mais específicas de operação.
+        </div>
+      </section>
+
+      <section id="conclusao">
+        <h2>Conclusão</h2>
+        <p>
+          BaseController e BaseModel ajudam bastante na organização do projeto, na padronização das rotinas e na
+          redução de retrabalho, principalmente quando o sistema cresce e passa a exigir mais consistência entre
+          implementações.
+        </p>
+        <p>
+          Este manual foi pensado como apoio prático para o momento atual, não como documentação encerrada. Conforme
+          surgirem novos modelos, novos padrões internos e novas necessidades da aplicação, o conteúdo pode ser
+          ampliado com explicações mais específicas e exemplos mais próximos da realidade operacional.
+        </p>
+        <p>
+          Em alguns pontos já existe uma direção segura de uso; em outros, ainda há espaço para aprofundar detalhes,
+          ajustar cenários e incluir materiais complementares, inclusive exemplos adicionais e vídeos de apoio.
+        </p>
+        <p>
+          A ideia é manter esta documentação viva: útil agora e aberta para evolução contínua junto com as decisões
+          arquiteturais e práticas reais do time.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
