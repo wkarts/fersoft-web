@@ -232,3 +232,11 @@ app/Helpers/Menu.php.bak
 app/Providers/AppServiceProvider.php.bak
 app/Http/Controllers/MovimentacaoVeiculoController.php.bak
 routes/web.php.bak
+public/xml_nfe/29260449916126000108550010000001581000766945.xml
+*.bak
+*.zip
+*.pfx
+*.jpg
+*.csv
+*.html
+*.xml
