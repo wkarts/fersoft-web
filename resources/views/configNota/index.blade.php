@@ -1148,6 +1148,40 @@
 													</div>
 												</div>
 
+												<div class="form-group validated col-sm-12 col-lg-12">
+													<div class="alert alert-warning" role="alert" style="margin-bottom: 8px;">
+														<strong>Aviso importante:</strong> habilitação/desabilitação destes textos só entra em vigor em <strong>novas emissões</strong>.
+														O XML já emitido não é reprocessado.
+													</div>
+													<label class="col-form-label">Textos opcionais em <code>infCpl</code> (NFe/NFCe)</label>
+													<div class="row">
+														<div class="col-md-4">
+															<label class="checkbox checkbox-outline checkbox-success">
+																<input type="checkbox" name="exibir_deolho_imposto_inf_cpl" value="1"
+																	@if(isset($config) && (int)($config->exibir_deolho_imposto_inf_cpl ?? 1) === 1) checked @endif>
+																<span></span>
+																Exibir “De olho no imposto”
+															</label>
+														</div>
+														<div class="col-md-4">
+															<label class="checkbox checkbox-outline checkbox-success">
+																<input type="checkbox" name="exibir_piscofins_inf_cpl" value="1"
+																	@if(isset($config) && (int)($config->exibir_piscofins_inf_cpl ?? 0) === 1) checked @endif>
+																<span></span>
+																Exibir resumo PIS/COFINS
+															</label>
+														</div>
+														<div class="col-md-4">
+															<label class="checkbox checkbox-outline checkbox-success">
+																<input type="checkbox" name="exibir_ibscbs_inf_cpl" value="1"
+																	@if(isset($config) && (int)($config->exibir_ibscbs_inf_cpl ?? 0) === 1) checked @endif>
+																<span></span>
+																Exibir RT IBS/CBS/IS
+															</label>
+														</div>
+													</div>
+												</div>
+
 
 												<div class="form-group validated col-sm-12 col-lg-12">
 													<label class="col-form-label">Observação padrão para Pedido/Orçamento (opcional)</label>

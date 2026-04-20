@@ -249,6 +249,9 @@ class ConfigNotaController extends Controller
 				'aut_xml' => $request->aut_xml ?? '',
 				'logo' => $nomeImagem,
 				'campo_obs_nfe' => $request->campo_obs_nfe ?? '',
+				'exibir_ibscbs_inf_cpl' => $request->exibir_ibscbs_inf_cpl ? 1 : 0,
+				'exibir_piscofins_inf_cpl' => $request->exibir_piscofins_inf_cpl ? 1 : 0,
+				'exibir_deolho_imposto_inf_cpl' => $request->exibir_deolho_imposto_inf_cpl ? 1 : 0,
 				'usar_email_proprio' => $request->usar_email_proprio,
 				'campo_obs_pedido' => $request->campo_obs_pedido ?? '',
 				'token_ibpt' => $request->token_ibpt ?? '',
@@ -330,6 +333,9 @@ class ConfigNotaController extends Controller
 			$config->csc = $request->csc;
 			$config->csc_id = $request->csc_id;
 			$config->campo_obs_nfe = $request->campo_obs_nfe ?? '';
+			$config->exibir_ibscbs_inf_cpl = $request->exibir_ibscbs_inf_cpl ? 1 : 0;
+			$config->exibir_piscofins_inf_cpl = $request->exibir_piscofins_inf_cpl ? 1 : 0;
+			$config->exibir_deolho_imposto_inf_cpl = $request->exibir_deolho_imposto_inf_cpl ? 1 : 0;
 			$config->campo_obs_pedido = $request->campo_obs_pedido ?? '';
 			$config->token_ibpt = $request->token_ibpt ?? '';
 			$config->token_nfse = $request->token_nfse ?? '';
