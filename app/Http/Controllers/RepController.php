@@ -1275,6 +1275,9 @@ class RepController extends Controller
 				'aut_xml' => $request->aut_xml ?? '',
 				'logo' => $nomeImagem,
 				'campo_obs_nfe' => $request->campo_obs_nfe ?? '',
+				'exibir_ibscbs_inf_cpl' => $request->exibir_ibscbs_inf_cpl ? 1 : 0,
+				'exibir_piscofins_inf_cpl' => $request->exibir_piscofins_inf_cpl ? 1 : 0,
+				'exibir_deolho_imposto_inf_cpl' => $request->exibir_deolho_imposto_inf_cpl ? 1 : 0,
 				'senha_remover' => '',
 				'gerenciar_comissao_usuario_logado' => 1
 			]);
@@ -1317,6 +1320,9 @@ class RepController extends Controller
 			$config->csc = $request->csc;
 			$config->csc_id = $request->csc_id;
 			$config->campo_obs_nfe = $request->campo_obs_nfe ?? '';
+			$config->exibir_ibscbs_inf_cpl = $request->exibir_ibscbs_inf_cpl ? 1 : 0;
+			$config->exibir_piscofins_inf_cpl = $request->exibir_piscofins_inf_cpl ? 1 : 0;
+			$config->exibir_deolho_imposto_inf_cpl = $request->exibir_deolho_imposto_inf_cpl ? 1 : 0;
 			if($request->senha_remover != ""){
 				$config->senha_remover = md5($request->senha_remover);
 			}

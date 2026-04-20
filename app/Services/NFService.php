@@ -175,7 +175,7 @@ class NFService{
 			return '';
 		}
 
-		$resumo = ' | PIS: BC=' . number_format($somaBasePIS, 2, ',', '.') . ' Valor=' . number_format($somaPIS, 2, ',', '.');
+		$resumo = 'PIS: BC=' . number_format($somaBasePIS, 2, ',', '.') . ' Valor=' . number_format($somaPIS, 2, ',', '.');
 		$resumo .= ' | COFINS: BC=' . number_format($somaBaseCOFINS, 2, ',', '.') . ' Valor=' . number_format($somaCOFINS, 2, ',', '.');
 
 		Log::info('NF-e: resumo PIS/COFINS adicionado em infCpl.', [
@@ -440,7 +440,7 @@ class NFService{
 		return ['xml' => $dom->saveXML(), 'structured' => $structured];
 	}
 
-	private function appendReformaObservacao(string $obs, $venda, bool $reformaEstruturadaNoXml = false): string
+	private function montarReformaObservacao($venda, bool $reformaEstruturadaNoXml = false): string
 	{
 		$rt = app(ReformaTributariaService::class);
 
@@ -450,7 +450,7 @@ class NFService{
 		$tIs = (float)($venda->total_is ?? 0);
 
 		if ($tBase <= 0 && $tIbs <= 0 && $tCbs <= 0 && $tIs <= 0) {
-			return $obs;
+			return '';
 		}
 
 		if (!$reformaEstruturadaNoXml) {
@@ -462,15 +462,32 @@ class NFService{
 				'total_cbs' => $tCbs,
 				'total_is' => $tIs,
 			]);
-			return $obs;
+			return '';
 		}
 
-		$obs .= " | RT IBS/CBS/IS: BC=" . number_format($tBase, 2, ',', '.')
+		return "RT IBS/CBS/IS: BC=" . number_format($tBase, 2, ',', '.')
 			. " IBS=" . number_format($tIbs, 2, ',', '.')
 			. " CBS=" . number_format($tCbs, 2, ',', '.')
 			. " IS=" . number_format($tIs, 2, ',', '.');
+	}
 
-		return $obs;
+	private function montarTributosAproximadosObservacao(float $somaEstadual, float $somaFederal, float $somaMunicipal, string $obsIbpt): string
+	{
+		if ($somaEstadual <= 0 && $somaFederal <= 0 && $somaMunicipal <= 0) {
+			return '';
+		}
+
+		$partes = [];
+		if ($somaFederal > 0) $partes[] = "R$ " . number_format($somaFederal, 2, ',', '.') . " Federal";
+		if ($somaEstadual > 0) $partes[] = "R$ " . number_format($somaEstadual, 2, ',', '.') . " Estadual";
+		if ($somaMunicipal > 0) $partes[] = "R$ " . number_format($somaMunicipal, 2, ',', '.') . " Municipal";
+
+		$texto = 'Trib. aprox. ' . implode(', ', $partes);
+		$obsIbpt = trim((string) $obsIbpt);
+		if ($obsIbpt !== '') {
+			$texto .= ' ' . $obsIbpt;
+		}
+		return trim($texto);
 	}
 	private function getContigencia(){
 		$active = Contigencia::
@@ -1709,26 +1726,17 @@ class NFService{
 
 		$stdInfoAdic = new \stdClass();
 
-		$obs = " " . $venda->observacao;
+		$obsPartes = [];
+		$obsInicial = trim((string) $venda->observacao);
+		if ($obsInicial !== '') $obsPartes[] = $obsInicial;
 
 		if($nfesRef != ""){
-			$obs .= " Chaves referênciadas: " . $nfesRef;
+			$obsPartes[] = "Chaves referenciadas: " . $nfesRef;
 		}
 
-		if($somaEstadual > 0 || $somaFederal > 0 || $somaMunicipal > 0){
-			$obs .= " Trib. aprox. ";
-			if($somaFederal > 0){
-				$obs .= "R$ " . number_format($somaFederal, 2, ',', '.') ." Federal";
-			}
-			if($somaEstadual > 0){
-				$obs .= ", R$ ".number_format($somaEstadual, 2, ',', '.')." Estadual";
-			}
-			if($somaMunicipal > 0){
-				$obs .= ", R$ ".number_format($somaMunicipal, 2, ',', '.')." Municipal";
-			}
-			// $ibpt = IBPT::where('uf', $config->UF)->first();
-
-			$obs .= $obsIbpt;
+		if((int)($config->exibir_deolho_imposto_inf_cpl ?? 1) === 1){
+			$tribAprox = $this->montarTributosAproximadosObservacao($somaEstadual, $somaFederal, $somaMunicipal, $obsIbpt);
+			if ($tribAprox !== '') $obsPartes[] = $tribAprox;
 		}
 		// $stdInfoAdic->infCpl = $obs;
 		if($p->produto->renavam != ''){
@@ -1739,11 +1747,11 @@ class NFService{
 			if($p->produto->ano_modelo != '') $veiCpl .= ', ANO/MODELO ' . $p->produto->ano_modelo;
 			if($p->produto->cor_veiculo != '') $veiCpl .= ', COR ' . $p->produto->cor_veiculo;
 
-			$obs .= $veiCpl;
+			$obsPartes[] = trim($veiCpl);
 		}
 
 		if($venda->vendedor_setado && $venda->vendedor_setado->funcionario){
-			$obs .= " | vendedor " . $venda->vendedor_setado->funcionario->nome . " ";
+			$obsPartes[] = "Vendedor: " . $venda->vendedor_setado->funcionario->nome;
 		}
 
 		if($somaApCredito > 0){
@@ -1751,18 +1759,33 @@ class NFService{
 				$msg = $config->campo_obs_nfe;
 				$msg = str_replace("%", number_format($tributacao->perc_ap_cred, 2, ",",  ".") . "%", $msg);
 				$msg = str_replace('R$', 'R$ ' . number_format($somaApCredito, 2, ",",  "."), $msg);
-				$obs .= $msg;
+				$obsPartes[] = trim($msg);
 			}
 		}elseif($config->campo_obs_nfe != ""){
-			$obs .= " ".$config->campo_obs_nfe;
+			$obsPartes[] = trim((string)$config->campo_obs_nfe);
 		}
 
 		if($venda->getFormaPagamento($venda->empresa_id) != null){
-			$obs .= "Inf. adicional de pagamento: " . $venda->getFormaPagamento($venda->empresa_id)->infos;
+			$infosPag = trim((string)($venda->getFormaPagamento($venda->empresa_id)->infos ?? ''));
+			if($infosPag !== ''){
+				$obsPartes[] = "Inf. adicional de pagamento: " . $infosPag;
+			}
 		}
 
-		$obs .= $this->montarResumoPisCofinsObservacao($somaBasePIS, $somaPIS, $somaBaseCOFINS, $somaCOFINS);
-		$obs = $this->appendReformaObservacao($obs, $venda, $reformaEstruturadaNoXml);
+		if((int)($config->exibir_piscofins_inf_cpl ?? 0) === 1){
+			$resumoPisCofins = $this->montarResumoPisCofinsObservacao($somaBasePIS, $somaPIS, $somaBaseCOFINS, $somaCOFINS);
+			if($resumoPisCofins !== '') $obsPartes[] = $resumoPisCofins;
+		}
+
+		if((int)($config->exibir_ibscbs_inf_cpl ?? 0) === 1){
+			$resumoRt = $this->montarReformaObservacao($venda, $reformaEstruturadaNoXml);
+			if($resumoRt !== '') $obsPartes[] = $resumoRt;
+		}
+
+		$obs = implode(' | ', array_values(array_filter(array_map(function ($item) {
+			$item = trim((string)$item);
+			return $item === '' ? null : preg_replace('/\s+/', ' ', $item);
+		}, $obsPartes))));
 		$stdInfoAdic->infCpl = $this->retiraAcentos($obs);
 
 		$infoAdic = $nfe->taginfAdic($stdInfoAdic);
