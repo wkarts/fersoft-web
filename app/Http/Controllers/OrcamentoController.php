@@ -449,7 +449,7 @@ class OrcamentoController extends Controller
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,

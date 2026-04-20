@@ -10,6 +10,10 @@ use App\Models\ReformaTributaria\ClassTribIbsCbs;
 
 class ReformaTributariaService
 {
+    public const RT_ALIQ_CBS_FIXA = 0.9000;
+    public const RT_ALIQ_IBS_UF_FIXA = 0.1000;
+    public const RT_ALIQ_IBS_MUN_FIXA = 0.0000;
+
     /**
      * Contexto (sem persistir nada do usuário).
      * Usado para preencher automaticamente empresa/usuário/filial quando não vierem na requisição.
@@ -464,7 +468,6 @@ class ReformaTributariaService
     protected function getRegimeEmpresa(int $empresaId): ?int
     {
         if (!Schema::hasTable('tributacaos')) return null;
-
         if (!Schema::hasColumn('tributacaos', 'regime')) return null;
 
         $whereCol = $this->resolveEmpresaWhereColumn('tributacaos');
@@ -473,16 +476,49 @@ class ReformaTributariaService
         $val = DB::table('tributacaos')->where($whereCol, $empresaId)->value('regime');
         if ($val === null) return null;
 
-        $s = trim((string)$val);
-        if ($s === '') return null;
+        $raw = trim((string)$val);
+        if ($raw === '') return null;
 
-        // pega só dígitos (caso venha "1", " 1 ", "REGIME=1", etc)
-        $n = (int)preg_replace('/\D+/', '', $s);
+        if (preg_match('/^\d+$/', $raw)) {
+            $n = (int)$raw;
+            if (in_array($n, [0, 1, 2], true)) {
+                return $n;
+            }
+        }
 
-        // regime permitido: 0/1/2
-        if (!in_array($n, [0, 1, 2], true)) return null;
+        $s = function_exists('mb_strtolower')
+            ? mb_strtolower($raw, 'UTF-8')
+            : strtolower($raw);
 
-        return $n;
+        $s = str_replace(
+            ['á','à','ã','â','ä','é','è','ê','ë','í','ì','î','ï','ó','ò','ô','õ','ö','ú','ù','û','ü','ç'],
+            ['a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','c'],
+            $s
+        );
+
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        $s = trim((string)$s);
+
+        if ($s === '0' || $s === 'simples' || $s === 'simples nacional' || $s === 'sn' || str_contains($s, 'simples nacional')) {
+            return 0;
+        }
+
+        if ($s === '1' || $s === 'normal' || $s === 'regime normal' || $s === 'lucro real' || $s === 'lucro presumido' || str_contains($s, 'normal')) {
+            return 1;
+        }
+
+        if ($s === '2' || $s === 'mei' || $s === 'microempreendedor individual' || str_contains($s, 'mei')) {
+            return 2;
+        }
+
+        if (preg_match('/\b([012])\b/', $s, $m)) {
+            $n = (int)$m[1];
+            if (in_array($n, [0, 1, 2], true)) {
+                return $n;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -530,49 +566,28 @@ class ReformaTributariaService
     // Defaults (buscaProduto), mas configuráveis por ENV/colunas.
     // ---------------------------------------------------------------------
 
-    protected function aliquotaPadrao(int $empresaId, string $tipo): float
+    public function aliquotasFixas(): array
+    {
+        return [
+            'cbs' => self::RT_ALIQ_CBS_FIXA,
+            'ibs_uf' => self::RT_ALIQ_IBS_UF_FIXA,
+            'ibs_mun' => self::RT_ALIQ_IBS_MUN_FIXA,
+        ];
+    }
+
+    public function aliquotaPadrao(int $empresaId, string $tipo): float
     {
         $tipo = strtolower(trim($tipo));
+        $fixas = $this->aliquotasFixas();
+        return (float) ($fixas[$tipo] ?? 0.0);
+    }
 
-        // defaults corretos conforme pedido
-        $defaultsEnv = [
-            'cbs'     => $this->toFloat(env('REFORMA_ALIQ_CBS', 0.9000), 0.9000),
-            'ibs_uf'  => $this->toFloat(env('REFORMA_ALIQ_IBS_UF', 0.1000), 0.1000),
-            'ibs_mun' => $this->toFloat(env('REFORMA_ALIQ_IBS_MUN', 0.0500), 0.0500),
-        ];
-
-        $default = $defaultsEnv[$tipo] ?? 0.0;
-
-        // Prioridade: tributacaos (conforme sua regra)
-        $map = [
-            'cbs' => [
-                ['table' => 'tributacaos', 'col' => 'aliq_cbs'],
-            ],
-            'ibs_uf' => [
-                ['table' => 'tributacaos', 'col' => 'aliq_ibs_uf'],
-            ],
-            'ibs_mun' => [
-                ['table' => 'tributacaos', 'col' => 'aliq_ibs_mun'],
-            ],
-        ];
-
-        foreach (($map[$tipo] ?? []) as $c) {
-            if (!Schema::hasTable($c['table'])) continue;
-            if (!Schema::hasColumn($c['table'], $c['col'])) continue;
-
-            $whereCol = $this->resolveEmpresaWhereColumn($c['table']);
-            if ($whereCol === null) continue;
-
-            $val = DB::table($c['table'])
-                ->where($whereCol, $empresaId)
-                ->value($c['col']);
-
-            if ($val !== null && trim((string)$val) !== '') {
-                return $this->toFloat($val, $default);
-            }
-        }
-
-        return $default;
+    public function applyAliquotasFixas(&$item): void
+    {
+        $fixas = $this->aliquotasFixas();
+        $this->setIfExists($item, 'aliq_cbs', $fixas['cbs']);
+        $this->setIfExists($item, 'aliq_ibs_uf', $fixas['ibs_uf']);
+        $this->setIfExists($item, 'aliq_ibs_mun', $fixas['ibs_mun']);
     }
 
     // ---------------------------------------------------------------------
@@ -632,7 +647,7 @@ class ReformaTributariaService
         // >>> DEFAULTS <<<
         $this->setIfExists($item, 'aliq_cbs',     $this->aliquotaPadrao($empresaId, 'cbs'));     // 0.9000
         $this->setIfExists($item, 'aliq_ibs_uf',  $this->aliquotaPadrao($empresaId, 'ibs_uf'));  // 0.1000
-        $this->setIfExists($item, 'aliq_ibs_mun', $this->aliquotaPadrao($empresaId, 'ibs_mun')); // 0.0500
+        $this->setIfExists($item, 'aliq_ibs_mun', $this->aliquotaPadrao($empresaId, 'ibs_mun')); // 0.0000
 
         // Defaults “zerados” (valores/base/resultados) — NÃO zera alíquotas!
         $zeroFloat = [
@@ -668,6 +683,8 @@ class ReformaTributariaService
 
     public function calcularItem($item, int $empresaId, ?string $cfopDescricao = null): void
     {
+        $this->applyAliquotasFixas($item);
+
         $vProdTotal = $this->getNum($item, ['nfsi_vlrtotal','vlr_total','valor_total','valor_total_item'], 0.0);
 
         $qtd = $this->getNum($item, ['nfsi_quantidade','quantidade','qtd'], 0.0);
@@ -878,10 +895,11 @@ class ReformaTributariaService
     // 4) Totais (cabeçalho) por venda
     // ---------------------------------------------------------------------
 
-    public function calcularTotaisVenda(?int $empresaId, int $vendaId, string $itensTable = 'item_vendas'): array
+    public function calcularTotaisVenda(?int $empresaId, int $vendaId, string $itensTable = 'item_vendas', string $foreignKey = 'venda_id'): array
     {
         $empresaId = $this->ctxEmpresaId($empresaId);
         if (!Schema::hasTable($itensTable)) return [];
+        if (!Schema::hasColumn($itensTable, $foreignKey)) return [];
 
         $sumCols = [
             'bc_ibs_cbs'               => 'total_bc_ibs_cbs',
@@ -909,7 +927,6 @@ class ReformaTributariaService
 
         $selects = [];
         foreach ($sumCols as $col => $alias) {
-
             if (Schema::hasColumn($itensTable, $col)) {
                 $selects[] = "COALESCE(SUM($col),0) as $alias";
             }
@@ -918,8 +935,8 @@ class ReformaTributariaService
         if (!$selects) return [];
 
         $row = DB::table($itensTable)
-            ->where('venda_id', $vendaId)
-            ->selectRaw(implode(",\n", $selects))
+            ->where($foreignKey, $vendaId)
+            ->selectRaw(implode(",", $selects))
             ->first();
 
         if (!$row) return [];

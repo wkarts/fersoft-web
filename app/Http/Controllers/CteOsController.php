@@ -286,7 +286,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",
@@ -334,7 +334,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",
@@ -397,7 +397,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",
@@ -440,7 +440,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",
@@ -481,7 +481,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",
@@ -706,7 +706,7 @@ class CteOsController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_CTe_400",
+            "schemes" => config('fiscal.default_schemes_cte'),
             "versao" => '4.00',
             "proxyConf" => [
                 "proxyIp" => "",

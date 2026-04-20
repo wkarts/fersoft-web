@@ -269,7 +269,7 @@ class TransferenciaController extends Controller
             "siglaUF" => $emitente['UF'],
             "cUF" => $emitente['cUF'],
             "cnpj" => $emitente['cnpj'],
-            "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+            "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
             "versao" => $emitente['versao'] ?? "4.00",
             "tokenIBPT" => $emitente['token_ibpt'] ?? '',
             "CSC" => $emitente['csc'] ?? '',
@@ -314,7 +314,7 @@ class TransferenciaController extends Controller
             "siglaUF" => $emitente['UF'],
             "cUF" => $emitente['cUF'],
             "cnpj" => $emitente['cnpj'],
-            "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+            "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
             "versao" => $emitente['versao'] ?? "4.00",
             "tokenIBPT" => $emitente['token_ibpt'] ?? '',
             "CSC" => $emitente['csc'] ?? '',
@@ -423,7 +423,7 @@ class TransferenciaController extends Controller
             "siglaUF" => $emitente['UF'],
             "cUF" => $emitente['cUF'],
             "cnpj" => $emitente['cnpj'],
-            "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+            "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
             "versao" => $emitente['versao'] ?? "4.00",
             "tokenIBPT" => $emitente['token_ibpt'] ?? '',
             "CSC" => $emitente['csc'] ?? '',
@@ -545,7 +545,7 @@ class TransferenciaController extends Controller
             "siglaUF" => $emitente['UF'],
             "cUF" => $emitente['cUF'],
             "cnpj" => $emitente['cnpj'],
-            "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+            "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
             "versao" => $emitente['versao'] ?? "4.00",
             "tokenIBPT" => $emitente['token_ibpt'] ?? '',
             "CSC" => $emitente['csc'] ?? '',
@@ -582,7 +582,7 @@ class TransferenciaController extends Controller
             "siglaUF" => $emitente['UF'],
             "cUF" => $emitente['cUF'],
             "cnpj" => $emitente['cnpj'],
-            "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+            "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
             "versao" => $emitente['versao'] ?? "4.00",
             "tokenIBPT" => $emitente['token_ibpt'] ?? '',
             "CSC" => $emitente['csc'] ?? '',
@@ -861,7 +861,7 @@ class TransferenciaController extends Controller
             "ultimo_numero_cte" => $configMatriz->ultimo_numero_cte ?? 0,
             "ultimo_numero_mdfe" => $configMatriz->ultimo_numero_mdfe ?? 0,
             "ultimo_numero_nfse" => $configMatriz->ultimo_numero_nfse ?? 0,
-            "schemes" => $configMatriz->schemes ?? "PL_009_V4",
+            "schemes" => $configMatriz->schemes ?? config('fiscal.default_schemes'),
             "versao" => $configMatriz->versao ?? "4.00",
             "csc" => $configMatriz->csc ?? '',
             "csc_id" => $configMatriz->csc_id ?? '',
@@ -922,7 +922,7 @@ class TransferenciaController extends Controller
             "ultimo_numero_nfce" => $configFilial->ultimo_numero_nfce ?? 0,
             "ultimo_numero_cte" => $configFilial->ultimo_numero_cte ?? 0,
             "ultimo_numero_mdfe" => $configFilial->ultimo_numero_mdfe ?? 0,
-            "schemes" => $configFilial->schemes ?? "PL_009_V4",
+            "schemes" => $configFilial->schemes ?? config('fiscal.default_schemes'),
             "versao" => $configFilial->versao ?? "4.00",
             "csc" => $configFilial->csc ?? '',
             "csc_id" => $configFilial->csc_id ?? '',
@@ -943,7 +943,7 @@ class TransferenciaController extends Controller
         $filial['campo_obs_nfe'] = $matriz->campo_obs_nfe ?? '';
         $filial['campo_obs_pedido'] = $matriz->campo_obs_pedido ?? '';
         $filial['token_ibpt'] = $matriz->token_ibpt ?? '';
-        $filial['schemes'] = $matriz->schemes ?? 'PL_009_V4';
+        $filial['schemes'] = $matriz->schemes ?? config('fiscal.default_schemes');
         $filial['versao'] = $matriz->versao ?? '4.00';
         $filial['csc'] = $matriz->csc ?? '';
         $filial['csc_id'] = $matriz->csc_id ?? '';
@@ -1041,7 +1041,7 @@ class TransferenciaController extends Controller
                 "siglaUF" => $emitente['UF'],
                 "cUF" => $emitente['cUF'],
                 "cnpj" => $emitente['cnpj'],
-                "schemes" => $emitente['schemes'] ?? "PL_009_V4",
+                "schemes" => $emitente['schemes'] ?? config('fiscal.default_schemes'),
                 "versao" => $emitente['versao'] ?? "4.00",
                 "tokenIBPT" => $emitente['token_ibpt'] ?? '',
                 "CSC" => $emitente['csc'] ?? '',

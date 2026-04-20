@@ -26,6 +26,7 @@ use App\Prints\PedidoCompraPrint80;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\Fiscal\TransmissaoResult;
+use App\Support\TransmissionMessageNormalizer;
 use NFePHP\NFe\Common\Standardize;
 
 class PurchaseController extends Controller
@@ -426,7 +427,7 @@ public function index()
                 "razaosocial" => $config->razao_social,
                 "siglaUF"     => $config->UF,
                 "cnpj"        => $cnpj,
-                "schemes"     => "PL_009_V4",
+                "schemes"     => config('fiscal.default_schemes'),
                 "versao"      => "4.00",
                 "tokenIBPT"   => "AAAAAAA",
                 "CSC"         => $config->csc,
@@ -550,7 +551,7 @@ public function index()
 
                 // Mantém contrato antigo: 200 com o retorno bruto (string)
                 //return response()->json($resultadoBruto, 200);
-                return response()->json($statusPayload, 200);
+                return response()->json($statusPayload, 200, [], TransmissionMessageNormalizer::jsonOptions());
             }
 
             // === DENEGADA (110/301/302) - mantém número e chave ===
@@ -567,7 +568,7 @@ public function index()
 
                 // Mantém contrato antigo: 200 com o retorno bruto (string)
                 // return response()->json($resultadoBruto, 200);
-                return response()->json($statusPayload, 200);
+                return response()->json($statusPayload, 200, [], TransmissionMessageNormalizer::jsonOptions());
             }
 
             // === REJEITADA - mantém número/chave já reservados ===
@@ -580,7 +581,7 @@ public function index()
             $statusPayload['mensagem'] = $xMotivo ?: ($resStr ?: 'NF-e rejeitada pela SEFAZ.');
             // Mantém contrato antigo: 401 com STRING prefixada por "Erro: "
             //return response()->json('Erro: '.$resultadoBruto, 401);
-            return response()->json($statusPayload, 401);
+            return response()->json($statusPayload, 401, [], TransmissionMessageNormalizer::jsonOptions());
 
         } catch (\Throwable $e) {
             \Log::error('Erro em gerarEntrada', ['exception' => $e->getMessage()]);
@@ -713,7 +714,7 @@ public function index()
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,
@@ -756,7 +757,7 @@ public function index()
                     $file = safe_file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
                     importaXmlSieg($file, $this->empresa_id);
 
-                    return response()->json($resultado, 200);
+                    return response()->json($resultado, 200, [], TransmissionMessageNormalizer::jsonOptions());
                 }
 
                 if ($resultado->isDenegado()) {
@@ -769,13 +770,13 @@ public function index()
                     $config->ultimo_numero_nfe = $nNF;
                     $config->save();
 
-                    return response()->json($resultado, 200);
+                    return response()->json($resultado, 200, [], TransmissionMessageNormalizer::jsonOptions());
                 }
 
                 $compra->estado = 'REJEITADO';
                 $compra->save();
 
-                return response()->json($resultado, $resultado->httpStatus());
+                return response()->json($resultado, $resultado->httpStatus(), [], TransmissionMessageNormalizer::jsonOptions());
             }
 
             if (is_string($resultado) && substr($resultado, 0, 4) != 'Erro') {
@@ -792,12 +793,12 @@ public function index()
                 $file = safe_file_get_contents(public_path('xml_entrada_emitida/'.$chave.'.xml'));
                 importaXmlSieg($file, $this->empresa_id);
 
-                return response()->json($resultado, 200);
+                return response()->json($resultado, 200, [], TransmissionMessageNormalizer::jsonOptions());
             }
 
             $compra->estado = 'REJEITADO';
             $compra->save();
-            return response()->json($resultado, 401);
+            return response()->json($resultado, 401, [], TransmissionMessageNormalizer::jsonOptions());
         }else{
             return response()->json("Não permitido!!", 403);
 
@@ -973,7 +974,7 @@ public function index()
                 "razaosocial" => $config->razao_social,
                 "siglaUF"     => $config->UF,
                 "cnpj"        => $cnpj,
-                "schemes"     => "PL_009_V4",
+                "schemes"     => config('fiscal.default_schemes'),
                 "versao"      => "4.00",
                 "tokenIBPT"   => "AAAAAAA",
                 "CSC"         => $config->csc,
@@ -1197,7 +1198,7 @@ public function index()
             "razaosocial" => $config->razao_social,
             "siglaUF"     => $config->UF,
             "cnpj"        => $cnpj,
-            "schemes"     => "PL_009_V4",
+            "schemes"     => config('fiscal.default_schemes'),
             "versao"      => "4.00",
             "tokenIBPT"   => "AAAAAAA",
             "CSC"         => $config->csc,
@@ -1337,7 +1338,7 @@ public function index()
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,
@@ -1399,7 +1400,7 @@ public function index()
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,
@@ -1463,7 +1464,7 @@ public function index()
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -1836,7 +1837,7 @@ public function index()
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,

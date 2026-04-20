@@ -398,7 +398,7 @@ class DevolucaoController extends Controller
 
 			$vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
             // Adicione esta linha caso queira usar o vOutro depois
-            
+
             $vOutro  = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0);
 
 			$idFornecedor = 0;
@@ -625,7 +625,7 @@ class DevolucaoController extends Controller
        // Busca o ID interno da cidade usando o código do IBGE
     // O erro acontece porque você estava usando $fornecedor['cidade_id'] direto no 'create'
          $cidade = Cidade::where('codigo', $fornecedor['cidade_id'])->first();
-    
+
 
 		$result = Fornecedor::create([
 			'razao_social' => $fornecedor['razaoSocial'],
@@ -1475,7 +1475,7 @@ class DevolucaoController extends Controller
             'razaosocial' => $config->razao_social,
             'siglaUF'     => $config->UF,
             'cnpj'        => $cnpj,
-            'schemes'     => 'PL_009_V4',
+            'schemes'     => config('fiscal.default_schemes'),
             'versao'      => '4.00',
             'tokenIBPT'   => 'AAAAAAA',
             'CSC'         => $config->csc,
@@ -1569,7 +1569,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF"     => $config->UF,
             "cnpj"        => $cnpj,
-            "schemes"     => "PL_009_V4",
+            "schemes"     => config('fiscal.default_schemes'),
             "versao"      => "4.00",
             "tokenIBPT"   => "AAAAAAA",
             "CSC"         => $config->csc,
@@ -1653,7 +1653,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF"     => $config->UF,
             "cnpj"        => $cnpj,
-            "schemes"     => "PL_009_V4",
+            "schemes"     => config('fiscal.default_schemes'),
             "versao"      => "4.00",
             "tokenIBPT"   => "AAAAAAA",
             "CSC"         => $config->csc,
@@ -1733,7 +1733,7 @@ class DevolucaoController extends Controller
             'razaosocial'  => $configModel->razao_social,
             'siglaUF'      => $configModel->UF,
             'cnpj'         => $cnpj,
-            'schemes'      => 'PL_009_V4',
+            'schemes'      => config('fiscal.default_schemes'),
             'versao'       => '4.00',
             'tokenIBPT'    => $configModel->token_ibpt ?? '',
             'CSC'          => $configModel->csc,
@@ -1811,7 +1811,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -1868,8 +1868,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
-            //"schemes" => "PL_010v1.10b",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -1902,7 +1901,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -1992,7 +1991,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -2034,7 +2033,7 @@ class DevolucaoController extends Controller
             "razaosocial"  => $config->razao_social,
             "siglaUF"      => $config->UF,
             "cnpj"         => $cnpj,
-            "schemes"      => "PL_009_V4",
+            "schemes"      => config('fiscal.default_schemes'),
             "versao"       => "4.00",
             "tokenIBPT"    => "AAAAAAA",
             "CSC"          => $config->csc,
@@ -2088,7 +2087,7 @@ class DevolucaoController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,

@@ -69,7 +69,7 @@ class MdfeController extends Controller
 			"cnpj" => $cnpj,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"is_filial" => $isFilial,
 			"versao" => '3.00'
 		]);

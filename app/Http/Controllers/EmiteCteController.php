@@ -62,7 +62,7 @@ class EmiteCteController extends Controller
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
 			"is_filial" => $isFilial,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -105,7 +105,7 @@ class EmiteCteController extends Controller
 		}else{
 			echo json_encode("Apro");
 		}
-		
+
 	}
 
 	public function xmlTemp($id){
@@ -139,7 +139,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"is_filial" => $isFilial,
 			"proxyConf" => [
@@ -194,7 +194,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"is_filial" => $isFilial,
 			"proxyConf" => [
@@ -257,7 +257,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"is_filial" => $isFilial,
 			"proxyConf" => [
@@ -306,7 +306,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -348,7 +348,7 @@ class EmiteCteController extends Controller
 					}else{
 						$logo = null;
 					}
-					
+
 					$dacte = new Dacte($xml);
 					$dacte->debugMode(true);
 					$dacte->creditsIntegratorFooter('WEBNFe Sistemas - http://www.webenf.com.br');
@@ -360,7 +360,7 @@ class EmiteCteController extends Controller
 					->header('Content-Type', 'application/pdf');
 				} catch (InvalidArgumentException $e) {
 					echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-				}  
+				}
 			}else{
 				echo "Arquivo não encontrado!";
 			}
@@ -418,7 +418,7 @@ class EmiteCteController extends Controller
 
 				} catch (InvalidArgumentException $e) {
 					echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-				}  
+				}
 			}else{
 				echo "Arquivo não encontrado!";
 			}
@@ -458,7 +458,7 @@ class EmiteCteController extends Controller
 
 				} catch (InvalidArgumentException $e) {
 					echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-				}  
+				}
 			}else{
 				echo "Arquivo não encontrado!";
 			}
@@ -506,7 +506,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"is_filial" => $isFilial,
 			"proxyConf" => [
@@ -531,7 +531,7 @@ class EmiteCteController extends Controller
 			$c->estado = 'CANCELADO';
 			$c->save();
 		}
-		
+
 		echo json_encode($cte);
 	}
 
@@ -551,7 +551,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -583,7 +583,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -594,7 +594,7 @@ class EmiteCteController extends Controller
 		], '57');
 
 		// echo json_encode($request->justificativa);
-		$result = $cte_service->inutilizar($request->nInicio, $request->nFinal, 
+		$result = $cte_service->inutilizar($request->nInicio, $request->nFinal,
 			$request->justificativa);
 
 		echo json_encode($result);
@@ -621,7 +621,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"is_filial" => $isFilial,
 			"proxyConf" => [
@@ -632,7 +632,7 @@ class EmiteCteController extends Controller
 			]
 		], '57');
 
-		$cte = $cte_service->cartaCorrecao($request->id, $request->grupo, 
+		$cte = $cte_service->cartaCorrecao($request->id, $request->grupo,
 			$request->campo, $request->correcao);
 		echo json_encode($cte);
 	}
@@ -682,7 +682,7 @@ class EmiteCteController extends Controller
 			safe_file_put_contents(public_path('pdf/').'CTe.pdf', $pdf);
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-		}  
+		}
 	}
 
 	private function isJson($string) {
@@ -800,7 +800,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -851,7 +851,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -865,7 +865,7 @@ class EmiteCteController extends Controller
 		$manifestaAnterior = $this->verificaAnterior($request->chave);
 
 		if($evento == 1){
-			$res = $cte_service->desacordo($request->chave,	 
+			$res = $cte_service->desacordo($request->chave,
 				$manifestaAnterior != null ? ($manifestaAnterior->sequencia_evento + 1) : 1, $request->justificativa, $config->UF);
 		}
 		// print_r($res);
@@ -917,7 +917,7 @@ class EmiteCteController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_CTe_400",
+			"schemes" => config('fiscal.default_schemes_cte'),
 			"versao" => '4.00',
 			"proxyConf" => [
 				"proxyIp" => "",
@@ -967,5 +967,5 @@ class EmiteCteController extends Controller
 			});
 		}
 	}
-	
+
 }

@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use NFePHP\NFe\Factories\Contingency;
 use App\Services\ReformaTributariaService;
+use App\Support\TransmissionMessageNormalizer;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -244,19 +245,21 @@ class NFService{
 			]);
 		}
 
+		$norm = $this->normalizeReformaItemValues($item);
+
 		$std = new \stdClass();
 		$std->item = $itemCont;
-		$std->CST = (string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '');
-		$std->cClassTrib = (string)($item->class_trib_ibs_cbs ?? $item->class_trib_rt ?? '');
-		$std->vBC = $this->format($base);
-		$std->pIBSUF = $this->format((float)($item->aliq_ibs_uf ?? 0), 4);
-		$std->vIBSUF = $this->format((float)($item->valor_ibs_uf ?? 0));
-		$std->pIBSMun = $this->format((float)($item->aliq_ibs_mun ?? 0), 4);
-		$std->vIBSMun = $this->format((float)($item->valor_ibs_mun ?? 0));
-		$std->vIBS = $this->format($vIbs);
-		$std->pCBS = $this->format((float)($item->aliq_cbs ?? 0), 4);
-		$std->vCBS = $this->format($vCbs);
-		$std->vIS = $this->format($vIs);
+		$std->CST = $norm['CST'];
+		$std->cClassTrib = $norm['cClassTrib'];
+		$std->vBC = $this->format($norm['vBC']);
+		$std->pIBSUF = $this->format($norm['pIBSUF'], 4);
+		$std->vIBSUF = $this->format($norm['vIBSUF']);
+		$std->pIBSMun = $this->format($norm['pIBSMun'], 4);
+		$std->vIBSMun = $this->format($norm['vIBSMun']);
+		$std->vIBS = $this->format($norm['vIBS']);
+		$std->pCBS = $this->format($norm['pCBS'], 4);
+		$std->vCBS = $this->format($norm['vCBS']);
+		$std->vIS = $this->format($norm['vIS']);
 
 		$methods = ['tagIBSCBS', 'tagImpostoIBSCBS', 'tagIBS'];
 		foreach ($methods as $method) {
@@ -281,6 +284,160 @@ class NFService{
 			'empresa_id' => $this->empresa_id,
 		]);
 		return false;
+	}
+
+
+    private function normalizeReformaItemValues($item): array
+    {
+        $rt = app(ReformaTributariaService::class);
+        if (is_object($item) || is_array($item)) {
+            $rt->applyAliquotasFixas($item);
+        }
+
+        $base = max(0, $this->getNumericFromAny($item, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']));
+        $fixas = $rt->aliquotasFixas();
+
+        $pIbsUf = (float) $fixas['ibs_uf'];
+        $pIbsMun = (float) $fixas['ibs_mun'];
+        $pCbs = (float) $fixas['cbs'];
+        $pIs = max(0, (float)($item->is_aliq ?? 0));
+
+        $vIbsUf = max(0, (float)($item->valor_ibs_uf ?? 0));
+        $vIbsMun = max(0, (float)($item->valor_ibs_mun ?? 0));
+        $vCbs = max(0, $this->getNumericFromAny($item, ['valor_cbs', 'cbs_valor']));
+        $vIs = max(0, $this->getNumericFromAny($item, ['valor_is', 'is_valor']));
+
+        if ($base > 0) {
+            $vIbsUf = round(($base * $pIbsUf) / 100, 2);
+            $vIbsMun = round(($base * $pIbsMun) / 100, 2);
+            $vCbs = round(($base * $pCbs) / 100, 2);
+            if ($pIs > 0) {
+                $vIs = round(($base * $pIs) / 100, 2);
+            }
+        }
+
+        $vIbs = round($vIbsUf + $vIbsMun, 2);
+
+        return [
+            'CST' => str_pad((string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '000'), 3, '0', STR_PAD_LEFT),
+            'cClassTrib' => str_pad((string)($item->class_trib_ibs_cbs ?? $item->class_trib_rt ?? '000000'), 6, '0', STR_PAD_LEFT),
+            'vBC' => $base,
+            'pIBSUF' => $pIbsUf,
+            'vIBSUF' => $vIbsUf,
+            'pIBSMun' => $pIbsMun,
+            'vIBSMun' => $vIbsMun,
+            'vIBS' => $vIbs,
+            'pCBS' => $pCbs,
+            'vCBS' => $vCbs,
+            'pIS' => $pIs,
+            'vIS' => $vIs,
+        ];
+    }
+
+	private function appendNsNode(\DOMDocument $dom, \DOMElement $parent, string $name, ?string $value = null): \DOMElement
+	{
+		$node = $dom->createElementNS('http://www.portalfiscal.inf.br/nfe', $name);
+		if ($value !== null) {
+			$node->appendChild($dom->createTextNode($value));
+		}
+		$parent->appendChild($node);
+		return $node;
+	}
+
+	private function finalizeReformaTributariaXml(string $xml, $venda): array
+	{
+		if (trim($xml) === '' || !$venda) {
+			return ['xml' => $xml, 'structured' => false];
+		}
+		$dom = new \DOMDocument('1.0', 'UTF-8');
+		$dom->preserveWhiteSpace = false;
+		$dom->formatOutput = false;
+		if (!@$dom->loadXML($xml)) {
+			return ['xml' => $xml, 'structured' => false];
+		}
+		$xp = new \DOMXPath($dom);
+		$xp->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+		$detNodes = $xp->query('//nfe:det');
+		$items = $venda->itens ?? [];
+		$structured = false;
+		foreach ($detNodes as $idx => $det) {
+			$item = $items[$idx] ?? null;
+			if (!$item) continue;
+			$imposto = $xp->query('./nfe:imposto', $det)->item(0);
+			if (!$imposto) continue;
+			if ($xp->query('./nfe:IS', $imposto)->length === 0) {
+				$vIs = (float)($item->is_valor ?? 0);
+				if ($vIs > 0) {
+					$is = $this->appendNsNode($dom, $imposto, 'IS');
+					$this->appendNsNode($dom, $is, 'vIS', $this->format($vIs));
+					$structured = true;
+				}
+			}
+			if ($xp->query('./nfe:IBSCBS', $imposto)->length === 0) {
+				$base = (float)($item->bc_ibs_cbs ?? 0);
+				$vIbs = (float)($item->valor_ibs ?? 0);
+				$vCbs = (float)($item->valor_cbs ?? 0);
+				if ($base > 0 || $vIbs > 0 || $vCbs > 0) {
+					$ibscbs = $this->appendNsNode($dom, $imposto, 'IBSCBS');
+					$this->appendNsNode($dom, $ibscbs, 'CST', str_pad((string)($item->cst_ibs_cbs ?? '000'), 3, '0', STR_PAD_LEFT));
+					$this->appendNsNode($dom, $ibscbs, 'cClassTrib', str_pad((string)($item->class_trib_ibs_cbs ?? '000000'), 6, '0', STR_PAD_LEFT));
+					$g = $this->appendNsNode($dom, $ibscbs, 'gIBSCBS');
+					$this->appendNsNode($dom, $g, 'vBC', $this->format($base));
+					$gUf = $this->appendNsNode($dom, $g, 'gIBSUF');
+					$this->appendNsNode($dom, $gUf, 'pIBSUF', $this->format((float)($item->aliq_ibs_uf ?? 0), 4));
+					$this->appendNsNode($dom, $gUf, 'vIBSUF', $this->format((float)($item->valor_ibs_uf ?? 0)));
+					$gMun = $this->appendNsNode($dom, $g, 'gIBSMun');
+					$this->appendNsNode($dom, $gMun, 'pIBSMun', $this->format((float)($item->aliq_ibs_mun ?? 0), 4));
+					$this->appendNsNode($dom, $gMun, 'vIBSMun', $this->format((float)($item->valor_ibs_mun ?? 0)));
+					$this->appendNsNode($dom, $g, 'vIBS', $this->format($vIbs));
+					$gCbs = $this->appendNsNode($dom, $g, 'gCBS');
+					$this->appendNsNode($dom, $gCbs, 'pCBS', $this->format((float)($item->aliq_cbs ?? 0), 4));
+					$this->appendNsNode($dom, $gCbs, 'vCBS', $this->format($vCbs));
+					$structured = true;
+				}
+			}
+		}
+		$totalNode = $xp->query('//nfe:total')->item(0);
+		if ($totalNode) {
+			if ($xp->query('./nfe:ISTot', $totalNode)->length === 0) {
+				$tIs = (float)($venda->total_is ?? 0);
+				if ($tIs > 0) {
+					$isTot = $this->appendNsNode($dom, $totalNode, 'ISTot');
+					$this->appendNsNode($dom, $isTot, 'vIS', $this->format($tIs));
+					$structured = true;
+				}
+			}
+			if ($xp->query('./nfe:IBSCBSTot', $totalNode)->length === 0) {
+				$tBase = (float)($venda->total_bc_ibs_cbs ?? 0);
+				$tIbs = (float)($venda->total_ibs ?? 0);
+				$tCbs = (float)($venda->total_cbs ?? 0);
+				$tIs = (float)($venda->total_is ?? 0);
+				if ($tBase > 0 || $tIbs > 0 || $tCbs > 0 || $tIs > 0) {
+					$tot = $this->appendNsNode($dom, $totalNode, 'IBSCBSTot');
+					$this->appendNsNode($dom, $tot, 'vBCIBSCBS', $this->format($tBase));
+					$gIbs = $this->appendNsNode($dom, $tot, 'gIBS');
+					$gUf = $this->appendNsNode($dom, $gIbs, 'gIBSUF');
+					$this->appendNsNode($dom, $gUf, 'vDif', $this->format((float)($venda->total_ibs_uf_dif ?? 0)));
+					$this->appendNsNode($dom, $gUf, 'vDevTrib', $this->format((float)($venda->total_ibs_uf_dev_trib ?? 0)));
+					$this->appendNsNode($dom, $gUf, 'vIBSUF', $this->format((float)($venda->total_ibs_uf ?? 0)));
+					$gMun = $this->appendNsNode($dom, $gIbs, 'gIBSMun');
+					$this->appendNsNode($dom, $gMun, 'vDif', $this->format((float)($venda->total_ibs_mun_dif ?? 0)));
+					$this->appendNsNode($dom, $gMun, 'vDevTrib', $this->format((float)($venda->total_ibs_mun_dev_trib ?? 0)));
+					$this->appendNsNode($dom, $gMun, 'vIBSMun', $this->format((float)($venda->total_ibs_mun ?? 0)));
+					$this->appendNsNode($dom, $gIbs, 'vIBS', $this->format($tIbs));
+					$this->appendNsNode($dom, $gIbs, 'vCredPres', $this->format((float)($venda->total_ibs_cred_pres ?? 0)));
+					$this->appendNsNode($dom, $gIbs, 'vCredPresCondSus', $this->format((float)($venda->total_ibs_cred_pres_cond_sus ?? 0)));
+					$gCbs = $this->appendNsNode($dom, $tot, 'gCBS');
+					$this->appendNsNode($dom, $gCbs, 'vDif', $this->format((float)($venda->total_cbs_dif ?? 0)));
+					$this->appendNsNode($dom, $gCbs, 'vDevTrib', $this->format((float)($venda->total_cbs_dev_trib ?? 0)));
+					$this->appendNsNode($dom, $gCbs, 'vCBS', $this->format($tCbs));
+					$this->appendNsNode($dom, $gCbs, 'vCredPres', $this->format((float)($venda->total_cbs_cred_pres ?? 0)));
+					$this->appendNsNode($dom, $gCbs, 'vCredPresCondSus', $this->format((float)($venda->total_cbs_cred_pres_cond_sus ?? 0)));
+					$structured = true;
+				}
+			}
+		}
+		return ['xml' => $dom->saveXML(), 'structured' => $structured];
 	}
 
 	private function appendReformaObservacao(string $obs, $venda, bool $reformaEstruturadaNoXml = false): string
@@ -1626,9 +1783,11 @@ class NFService{
 
 		try{
 			$nfe->montaNFe();
+			$xmlGerado = $nfe->getXML();
+			$xmlRt = $this->finalizeReformaTributariaXml($xmlGerado, $venda);
 			$arr = [
 				'chave' => $nfe->getChave(),
-				'xml' => $nfe->getXML(),
+				'xml' => $xmlRt['xml'],
 				'nNf' => $stdIde->nNF
 			];
 			return $arr;

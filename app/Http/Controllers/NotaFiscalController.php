@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\FiscalLogoHelper;
 use Illuminate\Http\Request;
 use App\Models\ConfigNota;
 use App\Services\NFService;
 use App\Services\Fiscal\TransmissaoResult;
+use App\Support\TransmissionMessageNormalizer;
 use App\Models\Venda;
 use App\Models\Contigencia;
 use App\Models\Filial;
@@ -64,7 +66,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => " v8zRciG2x1Y32X8Q_ebzXXHj5yKd6cwJgkdXgeJTak5rwqe4v4yzt0537HmXrY8G",
 			"CSC" => $config->csc,
@@ -94,7 +96,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -134,7 +136,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -218,7 +220,7 @@ class NotaFiscalController extends Controller
                                                 $venda->save();
                                         }
 
-                                        return response()->json($resultado, $resultado->httpStatus());
+                                        return response()->json($resultado, $resultado->httpStatus(), [], TransmissionMessageNormalizer::jsonOptions());
                                 }
 
                                 return response()->json((string)$resultado, 500);
@@ -258,7 +260,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -328,7 +330,7 @@ class NotaFiscalController extends Controller
                                         $venda->save();
                                 }
 
-                                return response()->json($resultado, $resultado->httpStatus());
+                                return response()->json($resultado, $resultado->httpStatus(), [], TransmissionMessageNormalizer::jsonOptions());
                         }
 
                         return response()->json((string)$resultado, 500);
@@ -380,7 +382,7 @@ class NotaFiscalController extends Controller
 				"razaosocial" => $config->razao_social,
 				"siglaUF" => $config->UF,
 				"cnpj" => $cnpj,
-				"schemes" => "PL_009_V4",
+				"schemes" => config('fiscal.default_schemes'),
 				"versao" => "4.00",
 				"tokenIBPT" => "AAAAAAA",
 				"CSC" => $config->csc,
@@ -427,7 +429,7 @@ class NotaFiscalController extends Controller
 				"razaosocial" => $config->razao_social,
 				"siglaUF" => $config->UF,
 				"cnpj" => $cnpj,
-				"schemes" => "PL_009_V4",
+				"schemes" => config('fiscal.default_schemes'),
 				"versao" => "4.00",
 				"tokenIBPT" => "AAAAAAA",
 				"CSC" => $config->csc,
@@ -458,7 +460,7 @@ class NotaFiscalController extends Controller
 			if(file_exists(public_path('xml_nfe/').$venda->chave.'.xml')){
 				$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+					$logo = FiscalLogoHelper::buildDataUri($config->logo);
 				}else{
 					$logo = null;
 				}
@@ -466,14 +468,16 @@ class NotaFiscalController extends Controller
 				if($venda->filial_id != null){
 					$filial = Filial::findOrFail($venda->filial_id);
 					if($filial->logo){
-						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $filial->logo));
+						$logo = FiscalLogoHelper::buildDataUri($filial->logo);
 					}
 				}
 
 				try {
 					$danfe = new Danfe($xml);
 					$danfe->setVUnComCasasDec($config->casas_decimais);
-					$danfe->logoParameters($logo, 'L');
+					if ($logo) {
+						$danfe->logoParameters($logo, 'L');
+					}
 
 					// $id = $danfe->monta($logo);
 					$pdf = $danfe->render();
@@ -507,7 +511,7 @@ class NotaFiscalController extends Controller
 			if(file_exists($public.'xml_nfe/'.$venda->chave.'.xml')){
 				$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+					$logo = FiscalLogoHelper::buildDataUri($config->logo);
 				}else{
 					$logo = null;
 				}
@@ -539,7 +543,7 @@ class NotaFiscalController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
 		$xml = safe_file_get_contents(public_path('xml_nfe/').$venda->chave.'.xml');
-		$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('imgs/logo.jpg')));
+		$logo = FiscalLogoHelper::buildDataUriFromPath(public_path('imgs/logo.jpg'));
 
 		$connector = new NetworkPrintConnector('127.0.0.1', 9100);
 		$danfcepos = new DanfcePos($connector);
@@ -563,7 +567,7 @@ class NotaFiscalController extends Controller
 				->first();
 
 				if($config->logo){
-					$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+					$logo = FiscalLogoHelper::buildDataUri($config->logo);
 				}else{
 					$logo = null;
 				}
@@ -605,7 +609,7 @@ class NotaFiscalController extends Controller
 					->first();
 
 					if($config->logo){
-						$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+						$logo = FiscalLogoHelper::buildDataUri($config->logo);
 					}else{
 						$logo = null;
 					}
@@ -671,7 +675,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -780,7 +784,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -806,7 +810,7 @@ class NotaFiscalController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -961,7 +965,7 @@ class NotaFiscalController extends Controller
 		->first();
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 		}else{
 			$logo = null;
 		}

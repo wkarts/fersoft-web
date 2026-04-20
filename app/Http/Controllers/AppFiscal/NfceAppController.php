@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\AppFiscal;
 
+use App\Support\FiscalLogoHelper;
+
 use Illuminate\Http\Request;
 use App\Models\ConfigNota;
 use App\Models\VendaCaixa;
 use App\Services\NFCeService;
 use NFePHP\DA\NFe\Danfce;
+use App\Support\TransmissionMessageNormalizer;
 
 class NfceAppController extends Controller
 {
@@ -30,7 +33,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -66,7 +69,7 @@ class NfceAppController extends Controller
 					$venda->estado = 'REJEITADO';
 					$venda->save();
 				}
-				return response()->json($resultado, 401);
+				return response()->json($resultado, 401, [], TransmissionMessageNormalizer::jsonOptions());
 			}else{
 				return response()->json($nfce['erros_xml'][0], 401);
 			}
@@ -82,15 +85,15 @@ class NfceAppController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
 		$xml = safe_file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
-		// $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'imgs/logo.jpg'));
+		// $logo = FiscalLogoHelper::buildDataUriFromPath($public.'imgs/logo.jpg');
 		// $docxml = FilesFolders::readFile($xml);
 
 		$config = ConfigNota::
 		where('empresa_id', $venda->empresa_id)
 		->first();
-		
+
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 		}else{
 			$logo = null;
 		}
@@ -105,7 +108,7 @@ class NfceAppController extends Controller
 		} catch (InvalidArgumentException $e) {
 			return response()->json("erro", 401);
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-		}  
+		}
 	}
 
 	public function consultar(Request $request){
@@ -124,7 +127,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -160,7 +163,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -188,13 +191,13 @@ class NfceAppController extends Controller
 		try {
 
 			$xml = safe_file_get_contents($public.'xml_nfce/'.$venda->chave.'.xml');
-			
+
 			return response($xml)
 			->header('Content-Type', 'application/xml');
 
 		} catch (InvalidArgumentException $e) {
 			return response()->json("erro", 401);
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-		}  
+		}
 	}
 }

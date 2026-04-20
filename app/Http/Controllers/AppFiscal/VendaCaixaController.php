@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\AppFiscal;
 
+use App\Support\FiscalLogoHelper;
+
 use Illuminate\Http\Request;
 use App\Models\VendaCaixa;
 use App\Models\Venda;
@@ -203,7 +205,7 @@ class VendaCaixaController extends Controller
 					'produto_id' => (int) $i['item_id'],
 					'quantidade' => (float) str_replace(",", ".", $i['quantidade']),
 					'valor' => (float) str_replace(",", ".", $i['valor']),
-					'item_pedido_id' => null, 
+					'item_pedido_id' => null,
 					'observacao' => ''
 				];
 				$pTemp = Produto::find((int)$i['item_id']);
@@ -212,7 +214,7 @@ class VendaCaixaController extends Controller
 					'produto_id' => (int) $i['item_id'],
 					'quantidade' => (float) str_replace(",", ".", $i['quantidade']),
 					'valor' => (float) str_replace(",", ".", $i['valor']),
-					'item_pedido_id' => null, 
+					'item_pedido_id' => null,
 					'observacao' => '',
 					'valor_custo' => $pTemp->valor_compra
 				]);
@@ -223,26 +225,26 @@ class VendaCaixaController extends Controller
 
 				if(!empty($prod->receita)){
 				//baixa por receita
-					$receita = $prod->receita; 
+					$receita = $prod->receita;
 					foreach($receita->itens as $rec){
 
 
-						if(!empty($rec->produto->receita)){ 
+						if(!empty($rec->produto->receita)){
 
-							$receita2 = $rec->produto->receita; 
+							$receita2 = $rec->produto->receita;
 
 							foreach($receita2->itens as $rec2){
 								$stockMove->downStock(
-									$rec2->produto_id, 
-									(float) str_replace(",", ".", $i['quantidade']) * 
+									$rec2->produto_id,
+									(float) str_replace(",", ".", $i['quantidade']) *
 									($rec2->quantidade/$receita2->rendimento)
 								);
 							}
 						}else{
 
 							$stockMove->downStock(
-								$rec->produto_id, 
-								(float) str_replace(",", ".", $i['quantidade']) * 
+								$rec->produto_id,
+								(float) str_replace(",", ".", $i['quantidade']) *
 								($rec->quantidade/$receita->rendimento)
 							);
 						}
@@ -292,7 +294,7 @@ class VendaCaixaController extends Controller
 						'valor' => __replace($f['valor']),
 						'forma_pagamento' => $f['tipoPagamento'],
 						'data_vencimento' => $this->parseDate($f['vencimento']),
-						'venda_caixa_id' => $v->id    
+						'venda_caixa_id' => $v->id
 					]);
 				}
 			}
@@ -342,7 +344,7 @@ class VendaCaixaController extends Controller
 					'produto_id' => (int) $i['item_id'],
 					'quantidade' => (float) str_replace(",", ".", $i['quantidade']),
 					'valor' => (float) str_replace(",", ".", $i['valor']),
-					'item_pedido_id' => null, 
+					'item_pedido_id' => null,
 					'observacao' => '',
 				]);
 
@@ -418,7 +420,7 @@ class VendaCaixaController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -433,7 +435,7 @@ class VendaCaixaController extends Controller
 		$public = env('SERVIDOR_WEB') ? 'public/' : '';
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 		}else{
 			$logo = null;
 		}
@@ -448,7 +450,7 @@ class VendaCaixaController extends Controller
 		} catch (InvalidArgumentException $e) {
 			return response()->json("erro", 401);
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-		}  
+		}
 	}
 
 	public function cupomNaoFiscal($id){
@@ -531,9 +533,9 @@ class VendaCaixaController extends Controller
 				'usuario_id' => $request->usuario_id,
 				'valor' => str_replace(",", ".", $request->valor),
 				'empresa_id' => $request->empresa_id,
-				'primeira_venda_nfe' => $ultimaVendaNfe != null ? 
+				'primeira_venda_nfe' => $ultimaVendaNfe != null ?
 				$ultimaVendaNfe->id : 0,
-				'primeira_venda_nfce' => $ultimaVendaNfce != null ? 
+				'primeira_venda_nfce' => $ultimaVendaNfce != null ?
 				$ultimaVendaNfce->id : 0,
 				'status' => 0
 			]);

@@ -297,6 +297,18 @@ class VendaController extends Controller
         $data['cbs_aliq'] = $aliqCbs;
 
         $data['is_vlr'] = (float)($data['is_valor'] ?? 0);
+        $data['valor_is'] = (float)($data['is_valor'] ?? 0);
+        $data['bc_ibs'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['bc_cbs'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['rt_ibs_bc'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['rt_ibs_vlr'] = (float)($data['valor_ibs'] ?? 0);
+        $data['rt_ibs_aliq'] = (float)($data['aliq_ibs_total'] ?? 0);
+        $data['rt_cbs_bc'] = (float)($data['bc_ibs_cbs'] ?? 0);
+        $data['rt_cbs_vlr'] = (float)($data['valor_cbs'] ?? 0);
+        $data['rt_cbs_aliq'] = (float)$aliqCbs;
+        $data['rt_is_bc'] = (float)($data['is_bc'] ?? 0);
+        $data['rt_is_vlr'] = (float)($data['is_valor'] ?? 0);
+        $data['rt_is_aliq'] = (float)($data['is_aliq'] ?? 0);
 
         return $data;
     }
@@ -463,12 +475,72 @@ class VendaController extends Controller
 
     private function rtAccumulateFromItemArray(array $itemArr): void
     {
-        // acumula usando as chaves “padrão”
-        $this->rtTotals['rt_base'] += (float)($itemArr['rt_base'] ?? 0);
+        $this->rtTotals['rt_base'] += (float)($itemArr['rt_base'] ?? $itemArr['bc_ibs_cbs'] ?? 0);
 
-        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['rt_ibs_valor'] ?? $itemArr['ibs_valor'] ?? 0);
-        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['rt_cbs_valor'] ?? $itemArr['cbs_valor'] ?? 0);
-        $this->rtTotals['rt_is_valor']  += (float)($itemArr['rt_is_valor']  ?? $itemArr['is_valor']  ?? 0);
+        $this->rtTotals['rt_ibs_valor'] += (float)($itemArr['rt_ibs_valor'] ?? $itemArr['ibs_valor'] ?? $itemArr['valor_ibs'] ?? 0);
+        $this->rtTotals['rt_cbs_valor'] += (float)($itemArr['rt_cbs_valor'] ?? $itemArr['cbs_valor'] ?? $itemArr['valor_cbs'] ?? 0);
+        $this->rtTotals['rt_is_valor']  += (float)($itemArr['rt_is_valor']  ?? $itemArr['valor_is'] ?? $itemArr['is_valor']  ?? 0);
+    }
+
+    private function applyRtToItemVendaCaixaArray(array $itemArr, $produto): array
+    {
+        $rt = app(ReformaTributariaService::class);
+
+        $empresaId = (int)($this->empresa_id ?? 0);
+        if ($empresaId <= 0) {
+            $userLogged = session('user_logged');
+            if (is_array($userLogged)) {
+                $empresaId = (int)($userLogged['empresa'] ?? 0);
+            }
+        }
+
+        $aplicar = $rt->shouldApply($empresaId);
+
+        $item = new ItemVendaCaixa();
+        $item->fill($itemArr);
+        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
+        $item->quantidade = (float)str_replace(',', '.', (string)($itemArr['quantidade'] ?? 0));
+        $item->valor = (float)str_replace(',', '.', (string)($itemArr['valor'] ?? 0));
+        $item->valor_unitario = isset($itemArr['valor_unitario'])
+            ? (float)str_replace(',', '.', (string)$itemArr['valor_unitario'])
+            : (float)$item->valor;
+        $item->valor_total = isset($itemArr['valor_total'])
+            ? (float)str_replace(',', '.', (string)$itemArr['valor_total'])
+            : ((float)$item->quantidade * (float)$item->valor);
+
+        $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
+        $rt->calcularItem($item, $empresaId, null);
+
+        if (!$aplicar) {
+            $rt->calcularItem($item, $empresaId, 'REMESSA');
+        }
+
+        $lists = $this->rtItemFieldLists();
+        $fields = array_merge($lists['strings'], $lists['ints'], $lists['floats']);
+
+        foreach ($fields as $col) {
+            if (!Schema::hasColumn('item_venda_caixas', $col)) {
+                continue;
+            }
+
+            $val = $item->getAttribute($col);
+            if ($val === null) {
+                continue;
+            }
+
+            $itemArr[$col] = $val;
+        }
+
+        return $itemArr;
+    }
+
+    private function applyRtToVendaCaixaTotals($vendaCaixa): void
+    {
+        $rt = app(ReformaTributariaService::class);
+        $totais = $rt->calcularTotaisVenda($this->empresa_id, (int)$vendaCaixa->id, 'item_venda_caixas', 'venda_caixa_id');
+        if (!empty($totais)) {
+            $rt->applyTotaisToVenda($vendaCaixa, $totais);
+        }
     }
 
     private function applyRtToVendaTotals($venda): void
@@ -1014,7 +1086,7 @@ class VendaController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
             "CSC" => $config->csc,
@@ -2156,7 +2228,7 @@ class VendaController extends Controller
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,
@@ -2885,7 +2957,7 @@ class VendaController extends Controller
                 "razaosocial" => $config->razao_social,
                 "siglaUF" => $config->UF,
                 "cnpj" => $cnpj,
-                "schemes" => "PL_009_V4",
+                "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
                 "CSC" => $config->csc,
@@ -3361,15 +3433,23 @@ class VendaController extends Controller
         foreach($itens as $i){
             $pTemp = Produto::find($i['codigo']);
 
-            ItemVendaCaixa::create([
+            $itemArr = [
                 'venda_caixa_id' => $vendaId,
                 'produto_id' => $i['codigo'],
                 'quantidade' => $i['quantidade'],
                 'valor' => $i['valor'],
                 'item_pedido_id' => NULL,
                 'observacao' => '',
-                'valor_custo' => $pTemp->valor_compra
-            ]);
+                'valor_custo' => $pTemp ? $pTemp->valor_compra : 0
+            ];
+
+            $itemArr = $this->applyRtToItemVendaCaixaArray($itemArr, $pTemp);
+            ItemVendaCaixa::create($itemArr);
+        }
+
+        $vendaCaixa = VendaCaixa::find($vendaId);
+        if ($vendaCaixa) {
+            $this->applyRtToVendaCaixaTotals($vendaCaixa);
         }
     }
 
@@ -3722,7 +3802,7 @@ class VendaController extends Controller
             "razaosocial" => $config->razao_social,
             "siglaUF" => $config->UF,
             "cnpj" => $cnpj,
-            "schemes" => "PL_009_V4",
+            "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => " v8zRciG2x1Y32X8Q_ebzXXHj5yKd6cwJgkdXgeJTak5rwqe4v4yzt0537HmXrY8G",
             "CSC" => $config->csc,

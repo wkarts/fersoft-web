@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\AppFiscal;
 
+use App\Support\FiscalLogoHelper;
 use Illuminate\Http\Request;
 use App\Models\Venda;
 use App\Models\ItemVenda;
@@ -10,6 +11,7 @@ use App\Helpers\StockMove;
 use App\Models\ContaReceber;
 use App\Services\NFService;
 use App\Services\Fiscal\TransmissaoResult;
+use App\Support\TransmissionMessageNormalizer;
 //use NFePHP\DA\NFe\Danfe;
 use App\Services\CustomDanfe as Danfe;
 use NFePHP\DA\NFe\Daevento;
@@ -37,7 +39,7 @@ class NotaFiscalAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -68,7 +70,7 @@ class NotaFiscalAppController extends Controller
                                                 $venda->NfNumero = $nfe['nNf'];
                                                 $venda->save();
 
-                                                return response()->json($resultado, 200);
+                                                return response()->json($resultado, 200, [], TransmissionMessageNormalizer::jsonOptions());
                                         }
 
                                         if ($resultado->isDenegado()) {
@@ -77,7 +79,7 @@ class NotaFiscalAppController extends Controller
                                                 $venda->NfNumero = $nfe['nNf'];
                                                 $venda->save();
 
-                                                return response()->json($resultado, 200);
+                                                return response()->json($resultado, 200, [], TransmissionMessageNormalizer::jsonOptions());
                                         }
 
                                         $venda->estado = 'REJEITADO';
@@ -86,7 +88,7 @@ class NotaFiscalAppController extends Controller
                                         }
                                         $venda->save();
 
-                                        return response()->json($resultado, $resultado->httpStatus());
+                                        return response()->json($resultado, $resultado->httpStatus(), [], TransmissionMessageNormalizer::jsonOptions());
                                 }
 
                                 return response()->json((string)$resultado, 500);
@@ -119,7 +121,7 @@ class NotaFiscalAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -160,7 +162,7 @@ class NotaFiscalAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -188,7 +190,7 @@ class NotaFiscalAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -230,7 +232,7 @@ class NotaFiscalAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
-			"schemes" => "PL_009_V4",
+			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
 			"CSC" => $config->csc,
@@ -255,7 +257,7 @@ class NotaFiscalAppController extends Controller
 		$config = ConfigNota::where('empresa_id', $venda->empresa_id)->first();
 
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 
 		}else{
 			$logo = null;
@@ -286,7 +288,7 @@ class NotaFiscalAppController extends Controller
 
 		$xml = safe_file_get_contents($public.'xml_nfe_correcao/'.$venda->chave.'.xml');
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 
 		}else{
 			$logo = null;
@@ -319,7 +321,7 @@ class NotaFiscalAppController extends Controller
 
 		$xml = safe_file_get_contents($public.'xml_nfe_cancelada/'.$venda->chave.'.xml');
 		if($config->logo){
-			$logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents($public.'logos/' . $config->logo));
+			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 
 		}else{
 			$logo = null;

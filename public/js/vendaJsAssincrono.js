@@ -18,6 +18,135 @@ var REFERENCIASNFE = [];
 var FORMASPAGAMENTO = [];
 var TIPODIMENSAO = ''
 
+function rtFirstValueRt(obj, keys, def){
+	if(!obj) return def;
+	for(let i=0;i<keys.length;i++){
+		const k = keys[i];
+		if(Object.prototype.hasOwnProperty.call(obj,k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== '') return obj[k];
+	}
+	return def;
+}
+
+function rtFmtMoneyBr(v){
+	const n = rtParseNumber(v);
+	try{ return 'R$ ' + n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }catch(e){}
+	return 'R$ ' + n.toFixed(2).replace('.', ',');
+}
+
+function rtFmtPctBr(v){
+	const n = rtParseNumber(v);
+	try{ return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) + '%'; }catch(e){}
+	return n.toFixed(2).replace('.', ',') + '%';
+}
+
+function rtUpdateCardsFromItensRealtime(forceIndex){
+	const itens = Array.isArray(ITENS) ? ITENS : [];
+	const setVal = (id,val) => { const el=document.getElementById(id); if(el) el.value=val; };
+	const setBadge = (txt) => { const el=document.getElementById('rt_item_badge'); if(el) el.textContent=txt; };
+	let totalBase=0,totalIbs=0,totalCbs=0,totalIs=0;
+	for(let i=0;i<itens.length;i++){
+		const it=itens[i]||{};
+		totalBase += rtParseNumber(rtFirstValueRt(it,['bc_ibs_cbs','ibs_bc','cbs_bc','rt_ibs_bc'],0));
+		totalIbs += rtParseNumber(rtFirstValueRt(it,['valor_ibs','ibs_vlr','rt_ibs_vlr'],0));
+		totalCbs += rtParseNumber(rtFirstValueRt(it,['valor_cbs','cbs_vlr','rt_cbs_vlr'],0));
+		totalIs += rtParseNumber(rtFirstValueRt(it,['is_valor','valor_is','is_vlr','rt_is_vlr'],0));
+	}
+	setVal('rt_total_ibs_bc', rtFmtMoneyBr(totalBase));
+	setVal('rt_total_ibs_vlr', rtFmtMoneyBr(totalIbs));
+	setVal('rt_total_cbs_bc', rtFmtMoneyBr(totalBase));
+	setVal('rt_total_cbs_vlr', rtFmtMoneyBr(totalCbs));
+	setVal('rt_total_is_bc', rtFmtMoneyBr(totalBase));
+	setVal('rt_total_is_vlr', rtFmtMoneyBr(totalIs));
+
+	if(!itens.length){
+		setBadge('Item: -');
+		setVal('rt_item_classificacao','');
+		setVal('rt_item_ibs_aliq','');
+		setVal('rt_item_ibs_vlr','');
+		setVal('rt_item_cbs_aliq','');
+		setVal('rt_item_cbs_vlr','');
+		setVal('rt_item_is_aliq','');
+		setVal('rt_item_is_vlr','');
+		setVal('rt_item_nbs','');
+		return;
+	}
+	let idx = -1;
+	if(window.RT_SELECTED_KEY){ idx = rtFindIndexByKey(window.RT_SELECTED_KEY); }
+	if(!Number.isInteger(idx) || idx < 0){ idx = Number.isInteger(forceIndex) ? forceIndex : (Number.isInteger(window.RT_SELECTED_INDEX) ? window.RT_SELECTED_INDEX : itens.length-1); }
+	if(idx < 0 || idx >= itens.length) idx = itens.length-1;
+	window.RT_SELECTED_INDEX = idx;
+	const item = itens[idx] || {};
+	window.RT_SELECTED_KEY = item.rt_uid || window.RT_SELECTED_KEY;
+	setBadge('Item: ' + (idx+1));
+	setVal('rt_item_classificacao', rtFirstValueRt(item,['classificacao_ibs_cbs','class_trib_ibs_cbs'],''));
+	setVal('rt_item_ibs_aliq', rtFmtPctBr(rtFirstValueRt(item,['rt_ibs_aliq','ibs_aliq','aliq_ibs_total'],0)));
+	setVal('rt_item_ibs_vlr', rtFmtMoneyBr(rtFirstValueRt(item,['rt_ibs_vlr','ibs_vlr','valor_ibs'],0)));
+	setVal('rt_item_cbs_aliq', rtFmtPctBr(rtFirstValueRt(item,['rt_cbs_aliq','cbs_aliq','aliq_cbs'],0)));
+	setVal('rt_item_cbs_vlr', rtFmtMoneyBr(rtFirstValueRt(item,['rt_cbs_vlr','cbs_vlr','valor_cbs'],0)));
+	setVal('rt_item_is_aliq', rtFmtPctBr(rtFirstValueRt(item,['rt_is_aliq','is_aliq'],0)));
+	setVal('rt_item_is_vlr', rtFmtMoneyBr(rtFirstValueRt(item,['rt_is_vlr','is_vlr','valor_is','is_valor'],0)));
+	setVal('rt_item_nbs', rtFirstValueRt(item,['nbs','nbs_codigo','codigo_nbs'],''));
+}
+
+function rtRebindRowSelection(){
+	$('#body tr').off('click.rtview').on('click.rtview', function(){
+		let key = $(this).data('rtKey');
+		if(key !== undefined && key !== null && key !== ''){
+			const idxByKey = rtSelectItemByKey(String(key));
+			if(idxByKey >= 0){
+				rtUpdateCardsFromItensRealtime(idxByKey);
+				return;
+			}
+		}
+		let idx = $(this).data('rtIndex');
+		if(idx === undefined || idx === null || idx === ''){
+			const n = parseInt(String($(this).find('td:first').text()).trim(), 10);
+			if(!isNaN(n)) idx = n-1;
+		}
+		idx = parseInt(idx,10);
+		if(!isNaN(idx)){
+			window.RT_SELECTED_INDEX = idx;
+			window.RT_SELECTED_KEY = (ITENS[idx] && ITENS[idx].rt_uid) ? ITENS[idx].rt_uid : window.RT_SELECTED_KEY;
+			rtUpdateCardsFromItensRealtime(idx);
+		}
+	});
+}
+
+function rtEnsureKey(item){
+	if(!item) return null;
+	if(!item.rt_uid){
+		item.rt_uid = 'rt_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10);
+	}
+	return item.rt_uid;
+}
+
+function rtFindIndexByKey(key){
+	if(!Array.isArray(ITENS) || !key) return -1;
+	for(let i=0;i<ITENS.length;i++){
+		if((ITENS[i]||{}).rt_uid === key) return i;
+	}
+	return -1;
+}
+
+function rtSelectItemByKey(key){
+	const idx = rtFindIndexByKey(key);
+	if(idx >= 0){
+		window.RT_SELECTED_INDEX = idx;
+		window.RT_SELECTED_KEY = key;
+		return idx;
+	}
+	return -1;
+}
+
+function rtRenderItensAndCards(preferredKey){
+	if(preferredKey){ rtSelectItemByKey(preferredKey); }
+	let t = montaTabela();
+	$('#prod tbody').html(t);
+	rtRebindRowSelection();
+	const idx = preferredKey ? rtFindIndexByKey(preferredKey) : (typeof window.RT_SELECTED_INDEX === 'number' ? window.RT_SELECTED_INDEX : undefined);
+	rtUpdateCardsFromItensRealtime(idx);
+}
+
 function rtParseNumber(v){
 	if(v === null || v === undefined) return 0;
 	if(typeof v === 'number') return isFinite(v) ? v : 0;
@@ -35,8 +164,11 @@ function rtParseNumber(v){
 }
 
 function aplicarReformaItem(item){
-	if(!item || !item.codigo) return;
-	$.ajax({
+	if(!item || !item.codigo) return $.Deferred().resolve(item).promise();
+	const itemKey = rtEnsureKey(item);
+	item.__rt_req_seq = (parseInt(item.__rt_req_seq || 0, 10) || 0) + 1;
+	const reqSeq = item.__rt_req_seq;
+	return $.ajax({
 		type: 'POST',
 		url: path + 'vendas/reforma/preview-item',
 		dataType: 'json',
@@ -48,41 +180,24 @@ function aplicarReformaItem(item){
 			_token: $('#_token').val()
 		}
 	}).done((res) => {
-		if(!res || !res.success || !res.data) return;
-
-		const data = res.data;
-
-		item.cst_ibs_cbs = data.cst_ibs_cbs || item.cst_ibs_cbs;
-		item.class_trib_ibs_cbs = data.class_trib_ibs_cbs || item.class_trib_ibs_cbs;
-
-		item.bc_ibs_cbs = data.bc_ibs_cbs;
-		item.valor_ibs = data.valor_ibs;
-		item.valor_ibs_uf = data.valor_ibs_uf;
-		item.valor_ibs_mun = data.valor_ibs_mun;
-		item.aliq_ibs_uf = data.aliq_ibs_uf;
-		item.aliq_ibs_mun = data.aliq_ibs_mun;
-
-		item.aliq_cbs = data.aliq_cbs;
-		item.valor_cbs = data.valor_cbs;
-
-		item.is_bc = data.is_bc;
-		item.is_aliq = data.is_aliq;
-		item.is_valor = data.is_valor;
-
-		item.flag_is = data.flag_is;
-		item.flag_combustivel = data.flag_combustivel;
-		item.anp = data.anp;
-
-		// aliases para os cards da tela
-		item.ibs_bc = data.bc_ibs_cbs;
-		item.ibs_vlr = data.valor_ibs;
-		item.ibs_aliq = data.aliq_ibs_total;
-		item.cbs_bc = data.bc_ibs_cbs;
-		item.cbs_vlr = data.valor_cbs;
-		item.cbs_aliq = data.aliq_cbs;
-		item.is_bc = data.is_bc;
-		item.is_vlr = data.is_valor;
-		item.is_aliq = data.is_aliq;
+		if(!res || !res.success) return;
+		const data = res.data || res.item || res;
+		if(!data) return;
+		const idx = rtFindIndexByKey(itemKey);
+		if(idx < 0) return;
+		const target = ITENS[idx];
+		if(!target) return;
+		if(parseInt(target.__rt_req_seq || 0, 10) !== reqSeq) return;
+		aplicarReformaFromServer(target, data);
+		window.RT_SELECTED_KEY = itemKey;
+		window.RT_SELECTED_INDEX = idx;
+		if(typeof window.RTRefreshCards === 'function'){
+			window.RTRefreshCards(idx);
+		}
+		if(typeof window.RTRecalcTotaisVenda === 'function'){
+			window.RTRecalcTotaisVenda();
+		}
+		rtUpdateCardsFromItensRealtime(idx);
 	}).fail((err) => {
 		const status = err && err.status ? err.status : 'sem_status';
 		const body = err && err.responseJSON ? err.responseJSON : null;
@@ -92,6 +207,7 @@ function aplicarReformaItem(item){
 
 function aplicarReformaFromServer(item, data){
 	if(!item || !data) return;
+	rtEnsureKey(item);
 
 	item.cst_ibs_cbs = data.cst_ibs_cbs || item.cst_ibs_cbs;
 	item.class_trib_ibs_cbs = data.class_trib_ibs_cbs || item.class_trib_ibs_cbs;
@@ -117,6 +233,16 @@ function aplicarReformaFromServer(item, data){
 	item.cbs_vlr = item.valor_cbs;
 	item.cbs_aliq = item.aliq_cbs;
 	item.is_vlr = item.is_valor;
+	item.valor_is = item.is_valor;
+	item.rt_ibs_bc = item.bc_ibs_cbs;
+	item.rt_ibs_vlr = item.valor_ibs;
+	item.rt_ibs_aliq = item.ibs_aliq;
+	item.rt_cbs_bc = item.bc_ibs_cbs;
+	item.rt_cbs_vlr = item.valor_cbs;
+	item.rt_cbs_aliq = item.aliq_cbs;
+	item.rt_is_bc = item.is_bc;
+	item.rt_is_vlr = item.is_valor;
+	item.rt_is_aliq = item.is_aliq;
 }
 
 function convertData(data){
@@ -137,6 +263,8 @@ var PERCENTUALMAXDESCONTO = false;
 var SENHADESBLOQUEADA = false
 
 $(function () {
+	rtRebindRowSelection();
+	setTimeout(function(){ rtUpdateCardsFromItensRealtime(0); }, 300);
 
 	FORMASPAGAMENTO = JSON.parse($('#formasPagamento').val())
 
@@ -176,6 +304,8 @@ $(function () {
 		})
 		let t = montaTabela();
 		$('#prod tbody').html(t)
+		rtRebindRowSelection();
+		rtUpdateCardsFromItensRealtime(0)
 
 		t = montaTabelaChave();
 		$('#chaves tbody').html(t)
@@ -676,7 +806,8 @@ function montaTabela(){
 	let t = "";
 	ITENS.map((v) => {
 
-		t += '<tr class="datatable-row">'
+		rtEnsureKey(v)
+		t += '<tr class="datatable-row" data-index="'+(v.id-1)+'" data-rt-index="'+(v.id-1)+'" data-rt-key="'+v.rt_uid+'">'
 		t += '<td class="datatable-cell">'
 		t += '<span class="codigo" style="width: 70px;">'
 		t += v.id + '</span>'
@@ -803,6 +934,7 @@ function refatoreItens(){
 	let cont = 1;
 	let temp = [];
 	ITENS.map((v) => {
+		rtEnsureKey(v)
 		v.id = cont;
 		temp.push(v)
 		cont++;
@@ -872,6 +1004,7 @@ function addItemTable(codigo, nome, quantidade, valor, altura = 0, largura = 0, 
 		}
 
 		ITENS.push({
+			rt_uid: 'rt_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10),
 			id: (ITENS.length+1),
 			codigo: codigo,
 			nome: nome,
@@ -918,7 +1051,12 @@ function addItemTable(codigo, nome, quantidade, valor, altura = 0, largura = 0, 
 			cbs_aliq: 0,
 			is_vlr: 0
 		})
+		window.RT_SELECTED_INDEX = ITENS.length - 1;
+		window.RT_SELECTED_KEY = ITENS[ITENS.length - 1].rt_uid;
 		aplicarReformaItem(ITENS[ITENS.length-1])
+		if(typeof window.RTRefreshCards === 'function'){
+			window.RTRefreshCards(window.RT_SELECTED_INDEX);
+		}
 		PESOATUAL = 0
 
 		// apagar linhas tabela
@@ -927,8 +1065,7 @@ function addItemTable(codigo, nome, quantidade, valor, altura = 0, largura = 0, 
 
 		atualizaTotal();
 		limparCamposFormProd();
-		let t = montaTabela();
-		$('#prod tbody').html(t)
+		rtRenderItensAndCards(window.RT_SELECTED_KEY);
 		$('#kt_select2_1').val('null').change();
 		$('.produto-search').html('')
 
@@ -941,6 +1078,7 @@ $('#delete-parcelas').click(() => {
 
 function deleteItem(id){
 	let temp = [];
+	let preferredKey = null;
 	ITENS.map((v) => {
 		if(v.id != id){
 			temp.push(v)
@@ -951,10 +1089,12 @@ function deleteItem(id){
 		}
 	});
 	ITENS = temp;
-	refatoreItens()
-	let t = montaTabela(); // para remover
-	$('#prod tbody').html(t)
-
+	refatoreItens();
+	if(ITENS.length){
+		const pos = Math.max(0, Math.min((window.RT_SELECTED_INDEX || 0), ITENS.length - 1));
+		preferredKey = (ITENS[pos] || ITENS[0] || {}).rt_uid || null;
+	}
+	rtRenderItensAndCards(preferredKey);
 	atualizaTotal();
 }
 
@@ -975,6 +1115,8 @@ function editItem(id){
 	refatoreItens()
 	let t = montaTabela(); // para remover
 	$('#prod tbody').html(t)
+	window.RT_SELECTED_KEY = item.rt_uid || null;
+	rtRenderItensAndCards(window.RT_SELECTED_KEY);
 
 }
 
@@ -1000,22 +1142,23 @@ $('#salvar-edit').click(() => {
 			ITENS[i].num_item_pedido = $('#num_item_pedido').val()
 			ITENS[i].peso = p * ITENS[i].quantidade
 
-			aplicarReformaItem(ITENS[i])
 		}
 		TOTALQTD += parseFloat(ITENS[i].quantidade)
 
 		peso += ITENS[i].peso
 	}
 
-	setTimeout(() => {
+	const editedItem = ITENS.find((x) => { return x.id == id });
+	const editedKey = editedItem ? rtEnsureKey(editedItem) : null;
+	const pending = editedItem ? aplicarReformaItem(editedItem) : $.Deferred().resolve().promise();
+	$.when(pending).always(() => {
 		refatoreItensEdit()
-		let t = montaTabela();
-		$('#prod tbody').html(t)
-
+		if(editedKey){ window.RT_SELECTED_KEY = editedKey; }
+		rtRenderItensAndCards(editedKey);
 		atualizaTotal();
 		$('#pesoL').val(parseFloat(peso).toFixed(3).replace('.', ','))
 		$('#pesoB').val(parseFloat(peso).toFixed(3).replace('.', ','))
-	}, 100)
+	})
 })
 
 function refatoreItensEdit(){
@@ -1027,6 +1170,7 @@ function refatoreItensEdit(){
 
 	TOTAL += vf
 	ITENS.map((v) => {
+		rtEnsureKey(v)
 		v.id = cont;
 		temp.push(v)
 		cont++;
@@ -2715,7 +2859,7 @@ function validaFrete(call){
 		let t = "";
 		REFERENCIASNFE.map((v) => {
 
-			t += '<tr class="datatable-row">'
+			t += '<tr class="datatable-row" data-index="'+(v.id-1)+'" data-rt-index="'+(v.id-1)+'">'
 			t += '<td class="datatable-cell">'
 			t += v
 			t += '</td>'
