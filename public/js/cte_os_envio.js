@@ -30,28 +30,18 @@ function enviar(){
 				$('#btn-enviar').removeClass('spinner');
 				$('#btn-enviar').removeClass('disabled');
 
-				let recibo = e;
-				let retorno = recibo.substring(0,4);
-				let mensagem = recibo.substring(5,recibo.length);
-				if(retorno == 'Erro'){
-					try{
-						let m = JSON.parse(mensagem);
-						swal("Erro", "[" + m.protCTe.infProt.cStat + "] : " + m.protCTe.infProt.xMotivo, "error")
-						.then(() => {
-							location.reload()
-						})
-					}catch{
-						swal("Erro", e, "error")
-						.then(() => {
-							location.reload()
-						})
-					}
-					
+				const parsed = parseFiscalReturnString(e);
+				if(parsed && parsed.success === false){
+					showFiscalError("Erro", parsed, "Falha ao transmitir CT-e OS")
+					.then(() => {
+						location.reload()
+					})
 				}
-				else if(e == 'Apro'){
+				else if(e == 'Apro' || (parsed && parsed.status === 'ja_autorizado')){
 					swal("Cuidado!", "Esta CTe Os já esta aprovada, não é possível enviar novamente!", "warning")
 				}
 				else{
+					const recibo = (parsed && parsed.recibo) ? parsed.recibo : e;
 					swal("Sucesso", "CTe Os gerada com sucesso PROTOCOLO: "+recibo, "success")
 					.then(() => {
 						window.open(path+"cteos/imprimir/"+id, "_blank");
@@ -65,11 +55,7 @@ function enviar(){
 
 				$('#btn-enviar').removeClass('spinner');
 				$('#btn-enviar').removeClass('disabled');
-				if(e.status == 401){
-					swal("Erro", e.responseText, "error")
-				}else{
-					swal("Erro", e.responseJSON.message, "error")
-				}
+				showFiscalError("Erro", e, "Falha ao transmitir CT-e OS")
 
 			}
 		});
@@ -97,20 +83,18 @@ function transmitirCTe(id){
 				$('#btn-btn_transmitir_grid_'+id).removeClass('spinner');
 				$('#btn-btn_transmitir_grid_'+id).removeClass('disabled');
 
-				let recibo = e;
-				let retorno = recibo.substring(0,4);
-				let mensagem = recibo.substring(5,recibo.length);
-				if(retorno == 'Erro'){
-					let m = JSON.parse(mensagem);
-					swal("Erro", "[" + m.protCTe.infProt.cStat + "] : " + m.protCTe.infProt.xMotivo, "error")
+				const parsed = parseFiscalReturnString(e);
+				if(parsed && parsed.success === false){
+					showFiscalError("Erro", parsed, "Falha ao transmitir CT-e OS")
 					.then(() => {
 						location.reload()
 					})
 				}
-				else if(e == 'Apro'){
+				else if(e == 'Apro' || (parsed && parsed.status === 'ja_autorizado')){
 					swal("Cuidado!", "Esta CTe já esta aprovada, não é possível enviar novamente!", "warning")
 				}
 				else{
+					const recibo = (parsed && parsed.recibo) ? parsed.recibo : e;
 					swal("Sucesso", "CTe gerada com sucesso RECIBO: "+recibo, "success")
 					.then(() => {
 						window.open(path+"cteos/imprimir/"+id, "_blank");
@@ -124,12 +108,7 @@ function transmitirCTe(id){
 
 				$('#btn-btn_transmitir_grid_'+id).removeClass('spinner');
 				$('#btn-btn_transmitir_grid_'+id).removeClass('disabled');
-				if(e.status == 401){
-					swal("Erro", "teste", "error")
-
-				}else{
-					swal("Erro", "Erro verifique o console do navegador", "error")
-				}
+				showFiscalError("Erro", e, "Erro verifique o console do navegador")
 
 			}
 		});
@@ -768,5 +747,4 @@ function enviarEmailXMl(){
 
 	})
 }
-
 
