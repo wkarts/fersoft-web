@@ -29,7 +29,10 @@ function enviar(){
 			$('#btn-enviar').removeClass('spinner')
 			$('#btn-enviar').removeClass('disabled')
 
-			swal("Sucesso", "MDF-e gerada com sucesso Protocolo: " + e.protocolo, "success")
+			const protocolo = e && e.protocolo ? e.protocolo : null;
+			const msg = extractFiscalMessage(e) || 'MDF-e processada com sucesso.';
+			const texto = protocolo ? `${msg}\nProtocolo: ${protocolo}` : msg;
+			swal("Sucesso", texto, "success")
 			.then(() => {
 				window.open(path+"mdfeSefaz/imprimir/"+id, "_blank");
 				location.href = path + 'mdfe'
@@ -43,38 +46,7 @@ function enviar(){
 			$('#btn-enviar').removeClass('spinner')
 			$('#btn-enviar').removeClass('disabled')
 
-			if(e.status == '403'){
-				let js = e.responseJSON;
-
-				swal("Erro", '[' + js.cStat + ']: ' + js.message, "error")
-			}
-			else if(e.status == '401'){
-				let js = e.responseJSON;
-
-				swal("Erro", 'Esta ao transmitir, verifique o console do navegador!', "error")
-
-			}
-			else if(e.status == '404'){
-				let js = e.responseJSON;
-
-				swal("Erro", js[0], "error")
-
-			}
-			else if(e.status == 407){
-				swal("Erro", e.responseJSON, "warning")
-
-			}
-
-			if(e.status == '500'){
-				
-				try{
-					let js = e.responseJSON;
-					swal("Erro", js.message, "error")
-				}catch{
-					swal("Erro", 'Erro no XML, verifique o console do navegador!', "error")
-				}
-
-			}
+			showFiscalError("Erro", e, 'Erro ao transmitir MDF-e');
 		}
 	});
 	
@@ -108,7 +80,10 @@ function transmitirMDFe(id){
 			$('#btn_transmitir_grid_'+id).removeClass('spinner')
 			$('#btn_transmitir_grid_'+id).removeClass('disabled')
 
-			swal("Sucesso", "MDF-e gerada com sucesso Protocolo: " + e.protocolo, "success")
+			const protocolo = e && e.protocolo ? e.protocolo : null;
+			const msg = extractFiscalMessage(e) || 'MDF-e processada com sucesso.';
+			const texto = protocolo ? `${msg}\nProtocolo: ${protocolo}` : msg;
+			swal("Sucesso", texto, "success")
 			.then(() => {
 				window.open(path+"mdfeSefaz/imprimir/"+id, "_blank");
 				location.href = path + 'mdfe'
@@ -121,34 +96,7 @@ function transmitirMDFe(id){
 			$('#btn_transmitir_grid_'+id).removeClass('spinner')
 			$('#btn_transmitir_grid_'+id).removeClass('disabled')
 
-			if(e.status == '403'){
-				let js = e.responseJSON;
-				console.log(js)
-
-				swal("Erro", '[' + js.cStat + ']: ' + js.message, "error")
-			}
-			else if(e.status == '401'){
-				let js = e.responseJSON;
-				console.log(js)
-
-				swal("Erro", 'Esta ao transmitir, verifique o console do navegador!', "error")
-
-			}
-			else if(e.status == '404'){
-				let js = e.responseJSON;
-				console.log(js)
-
-				swal("Erro", js[0], "error")
-
-			}
-
-			if(e.status == '500'){
-				let js = e.responseJSON;
-				console.log(js)
-
-				swal("Erro", 'Erro no XML, verifique o console do navegador!', "error")
-
-			}
+			showFiscalError("Erro", e, 'Erro ao transmitir MDF-e');
 		}
 	});
 }
@@ -532,5 +480,4 @@ function enviarEmailXMl(){
 		
 	})
 }
-
 
