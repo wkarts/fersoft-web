@@ -54,7 +54,7 @@ class EmiteMdfeController extends Controller
 			"cnpj" => $cnpj,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"is_filial" => $isFilial,
 			"versao" => '3.00'
 		]);
@@ -135,7 +135,7 @@ class EmiteMdfeController extends Controller
 			"is_filial" => $isFilial,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"versao" => '3.00'
 		]);
 
@@ -178,7 +178,7 @@ class EmiteMdfeController extends Controller
 			"cnpj" => $cnpj,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"versao" => '3.00',
 			"is_filial" => null
 		]);
@@ -193,9 +193,9 @@ class EmiteMdfeController extends Controller
 
 		if($resultados['xMotivo'] != 'Consulta não encerrados não localizou MDF-e nessa situação'){
 
-			
+
 			if(isset($resultados['infMDFe'])){
-				
+
 				// if(sizeof($resultados['infMDFe']) == 2){
 				if(!isset($resultados['infMDFe'][1])){
 					$array = [
@@ -239,7 +239,7 @@ class EmiteMdfeController extends Controller
 				"cnpj" => $cnpj,
 				"inscricaomunicipal" => $config->inscricao_municipal,
 				"codigomunicipio" => $config->codMun,
-				"schemes" => "PL_MDFe_300a",
+				"schemes" => config('fiscal.default_schemes_mdfe'),
 				"versao" => '3.00',
 				"is_filial" => $config->id
 			]);
@@ -327,7 +327,7 @@ class EmiteMdfeController extends Controller
 			"is_filial" => $isFilial,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"versao" => '3.00'
 		]);
 		$resp = null;
@@ -377,7 +377,7 @@ class EmiteMdfeController extends Controller
 					->header('Content-Type', 'application/pdf');
 				} catch (Exception $e) {
 					echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-				} 
+				}
 			}else{
 				echo "Arquivo XML não encontrado!";
 			}
@@ -431,7 +431,7 @@ class EmiteMdfeController extends Controller
 				"inscricaomunicipal" => $config->inscricao_municipal,
 				"codigomunicipio" => $config->codMun,
 				"is_filial" => $isFilial,
-				"schemes" => "PL_MDFe_300a",
+				"schemes" => config('fiscal.default_schemes_mdfe'),
 				"versao" => '3.00'
 			]);
 
@@ -470,7 +470,7 @@ class EmiteMdfeController extends Controller
 				"cnpj" => $cnpj,
 				"inscricaomunicipal" => $config->inscricao_municipal,
 				"codigomunicipio" => $config->codMun,
-				"schemes" => "PL_MDFe_300a",
+				"schemes" => config('fiscal.default_schemes_mdfe'),
 				"is_filial" => $isFilial,
 				"versao" => '3.00'
 			]);
@@ -533,7 +533,7 @@ class EmiteMdfeController extends Controller
 
 		} catch (InvalidArgumentException $e) {
 			echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
-		}  
+		}
 	}
 
 
@@ -609,7 +609,7 @@ class EmiteMdfeController extends Controller
 			"is_filial" => $isFilial,
 			"inscricaomunicipal" => $config->inscricao_municipal,
 			"codigomunicipio" => $config->codMun,
-			"schemes" => "PL_MDFe_300a",
+			"schemes" => config('fiscal.default_schemes_mdfe'),
 			"versao" => '3.00'
 		]);
 

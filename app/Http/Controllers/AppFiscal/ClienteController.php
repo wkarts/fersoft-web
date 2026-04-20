@@ -21,7 +21,7 @@ class ClienteController extends Controller
 	}
 
 	public function salvar(Request $request){
-		
+
 		if($request->id > 0){
 			$cliente = Cliente::find($request->id);
 			$cliente->razao_social = $request->razao_social;
@@ -67,7 +67,7 @@ class ClienteController extends Controller
 			$res = Cliente::create($data);
 		}
 
-		
+
 		return response()->json($res, 200);
 	}
 
@@ -113,7 +113,7 @@ class ClienteController extends Controller
 		$cnpj = str_replace("-", "", $cnpj);
 		$cnpj = str_replace(" ", "", $cnpj);
 
-		
+
 		try{
 			$nfe_service = new NFService([
 				"atualizacao" => date('Y-m-d h:i:s'),
@@ -121,7 +121,7 @@ class ClienteController extends Controller
 				"razaosocial" => $config->razao_social,
 				"siglaUF" => $config->UF,
 				"cnpj" => $cnpj,
-				"schemes" => "PL_009_V4",
+				"schemes" => config('fiscal.default_schemes'),
 				"versao" => "4.00",
 				"tokenIBPT" => "AAAAAAA",
 				"CSC" => $config->csc,
@@ -139,6 +139,6 @@ class ClienteController extends Controller
 		}catch(\Exception $e){
 			return response()->json($e->getMessage(), 401);
 		}
-		// return response()->json("chupa!!", 200); 
+		// return response()->json("chupa!!", 200);
 	}
 }

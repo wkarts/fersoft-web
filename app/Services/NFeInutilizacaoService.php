@@ -243,7 +243,7 @@ class NFeInutilizacaoService
             'razaosocial' => $emitente->razao_social ?? $emitente->nome_fantasia ?? 'Empresa',
             'siglaUF'     => $emitente->UF ?? $emitente->uf ?? '',
             'cnpj'        => preg_replace('/\D/', '', $emitente->cnpj ?? ''),
-            'schemes'     => 'PL_009_V4',
+            'schemes'     => config('fiscal.default_schemes'),
             'versao'      => '4.00',
             'tokenIBPT'   => $emitente->token_ibpt ?? '',
             'CSC'         => $emitente->csc ?? '',

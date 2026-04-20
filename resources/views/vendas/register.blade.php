@@ -2669,7 +2669,7 @@
                 // IS (se existir)
                 setVal('rt_item_is_aliq', rtPick(it, ['is_aliq','aliq_is','rt_item_is_aliq'], ''));
                 setVal('rt_item_is_bc',   rtMoneyBRL(rtPick(it, ['is_bc','bc_is','rt_item_is_bc'], 0)));
-                setVal('rt_item_is_vlr',  rtMoneyBRL(rtPick(it, ['is_vlr','vlr_is','valor_is','rt_item_is_vlr'], 0)));
+                setVal('rt_item_is_vlr',  rtMoneyBRL(rtPick(it, ['is_vlr','vlr_is','valor_is','is_valor','rt_item_is_vlr'], 0)));
 
                 // crédito / efetiva
                 setVal('rt_item_cred_pres', rtMoneyBRL(rtPick(it, ['cred_pres','credito_presumido','rt_item_cred_pres'], 0)));
@@ -2887,7 +2887,7 @@
 
             _rtSet('rt_item_is_aliq', _rtFirst(item, ['is_aliq','aliq_is','pIs','pIS']) || '');
             _rtSetMoney('rt_item_is_bc', _rtFirst(item, ['is_bc','bc_is','vBcIs','vBCIS']) || '');
-            _rtSetMoney('rt_item_is_vlr', _rtFirst(item, ['is_vlr','vlr_is','vIs','vIS','valor_is']) || '');
+            _rtSetMoney('rt_item_is_vlr', _rtFirst(item, ['is_vlr','vlr_is','vIs','vIS','valor_is','is_valor']) || '');
 
             _rtSet('rt_item_cred_pres', _rtFirst(item, ['credito_presumido','cred_pres','credito','vCredPres','valor_cred_pres_ibs','valor_cred_pres_cbs']) || '');
             _rtSet('rt_item_aliq_efetiva', _rtFirst(item, ['aliq_efetiva','carga_efetiva','aliquota_efetiva','aliq_efet_cbs','aliq_efet_ibs_uf','aliq_efet_ibs_mun']) || '');
@@ -2907,7 +2907,7 @@
                     t_cbs_bc += _rtToNumber(_rtFirst(it, ['cbs_bc','bc_ibs_cbs','bc_cbs','vBcCbs','vBCCBS']));
                     t_cbs_vlr += _rtToNumber(_rtFirst(it, ['cbs_vlr','vlr_cbs','vCbs','vCBS','valor_cbs']));
                     t_is_bc  += _rtToNumber(_rtFirst(it, ['is_bc','bc_is','vBcIs','vBCIS']));
-                    t_is_vlr += _rtToNumber(_rtFirst(it, ['is_vlr','vlr_is','vIs','vIS','valor_is']));
+                    t_is_vlr += _rtToNumber(_rtFirst(it, ['is_vlr','vlr_is','vIs','vIS','valor_is','is_valor']));
 
                     var nbs = _rtFirst(it, ['nbs','codigo_nbs','cod_nbs','nbs_codigo']);
                     if (nbs) nbsSet[String(nbs)] = true;
@@ -2942,6 +2942,16 @@
                 var vis = document.getElementById('rt-visao-itens');
                 if (vis) vis.style.display = '';
 
+                _rtUpdateTotals();
+                _rtUpdateItemBox();
+            }catch(e){}
+        }
+
+        window.RTRefreshCards = function(index){
+            try{
+                if(index !== null && index !== undefined){
+                    window.RT_SELECTED_INDEX = index;
+                }
                 _rtUpdateTotals();
                 _rtUpdateItemBox();
             }catch(e){}

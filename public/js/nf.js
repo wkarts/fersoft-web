@@ -1,3 +1,97 @@
+
+function stripBom(value){
+	if(typeof value !== 'string') return value;
+	return value.replace(/^\uFEFF/, '').trim();
+}
+
+function safeParseJson(value){
+	if(typeof value !== 'string') return value;
+	let parsed = stripBom(value);
+	for(let i=0;i<3;i++){
+		if(typeof parsed !== 'string') return parsed;
+		const t = parsed.trim();
+		if(!t) return t;
+		if(!((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']')))){
+			return parsed;
+		}
+		try{
+			parsed = JSON.parse(t);
+		}catch(e){
+			return value;
+		}
+	}
+	return parsed;
+}
+
+function normalizeMessageText(value){
+	if(value === null || value === undefined) return '';
+	let text = String(value);
+	text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+	text = text.replace(/\n{3,}/g, '\n\n');
+	text = text.replace(/[\t ]{2,}/g, ' ');
+	return text.trim();
+}
+
+function extractFiscalMessage(payload){
+	if(payload === null || payload === undefined) return '';
+	if(typeof payload === 'string'){
+		const parsed = safeParseJson(payload);
+		if(parsed !== payload){
+			return extractFiscalMessage(parsed);
+		}
+		return normalizeMessageText(payload);
+	}
+	if(Array.isArray(payload)){
+		for(const item of payload){
+			const msg = extractFiscalMessage(item);
+			if(msg) return msg;
+		}
+		return '';
+	}
+	if(typeof payload === 'object'){
+		const preferredKeys = ['mensagem','message','xMotivo','error','erro','detail','details','title'];
+		for(const key of preferredKeys){
+			if(payload[key]){
+				const msg = extractFiscalMessage(payload[key]);
+				if(msg) return msg;
+			}
+		}
+		if(payload.cStat && payload.xMotivo){
+			return normalizeMessageText('[' + payload.cStat + '] - ' + payload.xMotivo);
+		}
+		if(payload.protNFe && payload.protNFe.infProt){
+			const inf = payload.protNFe.infProt;
+			if(inf.cStat || inf.xMotivo){
+				return normalizeMessageText('[' + (inf.cStat || '') + '] - ' + (inf.xMotivo || ''));
+			}
+		}
+		if(payload.retEvento && payload.retEvento.infEvento){
+			const inf = payload.retEvento.infEvento;
+			if(inf.cStat || inf.xMotivo){
+				return normalizeMessageText('[' + (inf.cStat || '') + '] - ' + (inf.xMotivo || ''));
+			}
+		}
+		if(payload.payload){
+			const msg = extractFiscalMessage(payload.payload);
+			if(msg) return msg;
+		}
+		if(payload.responseJSON){
+			const msg = extractFiscalMessage(payload.responseJSON);
+			if(msg) return msg;
+		}
+		if(payload.responseText){
+			const msg = extractFiscalMessage(payload.responseText);
+			if(msg) return msg;
+		}
+	}
+	return '';
+}
+
+function showFiscalError(title, payload, fallback){
+	const msg = extractFiscalMessage(payload) || fallback || 'Algo deu errado';
+	swal(title || 'Erro', msg, 'error');
+}
+
 $(function () {
 	let semCertificado = $('#semCertificado').val() ? $('#semCertificado').val() : false;
 	if(semCertificado){
@@ -24,7 +118,7 @@ $('.btn-consulta-status').click(() => {
 		$('.btn-consulta-status').removeClass('spinner')
 		console.log(err)
 		try{
-			swal("Erro", err.responseText, "error")
+			showFiscalError("Erro", err, "Algo deu errado")
 		}catch{
 			swal("Erro", "Algo deu errado", "error")
 		}
@@ -137,10 +231,10 @@ function transmitirNFe(id){
 
 					if(js.message){
 
-						swal("Erro!", js.message, "warning")
+						showFiscalError("Erro", js.message)
 
 					}else if(e.status == 407){
-						swal("", js, "warning")
+						showFiscalError("Erro", js)
 
 					}else{
 						let err = "";
@@ -148,11 +242,11 @@ function transmitirNFe(id){
 							err += v + "\n";
 						});
 
-						swal("Erro!", err, "warning")
+						showFiscalError("Erro", err)
 					}
 				}catch{
 					console.log(e)
-					swal("", e, "warning")
+					showFiscalError("Erro", e)
 
 				}
 				$('#btn_trnasmitir_grid_'+id).removeClass('spinner');
@@ -242,10 +336,10 @@ function enviar(){
 
 					if(js.message){
 
-						swal("Erro!", js.message, "warning")
+						showFiscalError("Erro", js.message)
 
 					}else if(e.status == 407){
-						swal("Algo deu errrado", js, "error")
+						showFiscalError("Erro", js)
 
 					}else{
 						let err = "";
@@ -253,12 +347,12 @@ function enviar(){
 							err += v + "\n";
 						});
 
-						swal("Erro!", err, "warning")
+						showFiscalError("Erro", err)
 
 					}
 				}catch{
 					console.log(e)
-					swal("", e.responseText, "warning")
+					showFiscalError("Erro", e, "Algo deu errado")
 
 				}
 
@@ -373,7 +467,7 @@ function consultarNFe(id){
 
 		}, error: function(e){
 
-			swal("Erro", e.responseText, "error")
+			showFiscalError("Erro", e, "Algo deu errado")
 
 			$('#btn_consulta_grid_'+id).removeClass('spinner')
 			$('#btn_consulta_grid_'+id).removeClass('disabled')
@@ -467,7 +561,7 @@ function consultar(){
 			}, error: function(e){
 				$('#btn-consultar').removeClass('spinner')
 				console.log(e)
-				swal("Erro", e.responseText, "error")
+				showFiscalError("Erro", e, "Algo deu errado")
 
 				// $('#preloader1').css('display', 'none');
 
@@ -584,7 +678,7 @@ function cancelar2(){
 				try{
 					swal("Erro", js.retEvento.infEvento.xMotivo, "error");
 				}catch{
-					swal("Erro", e.responseText, "error");
+					showFiscalError("Erro", e, "Algo deu errado");
 				}
 
 				$('#btn-cancelar-3').removeClass('spinner')
@@ -713,7 +807,7 @@ function cartaCorrecao(){
 
 			}, error: function(e){
 				console.log(e)
-				swal("Erro", e.responseText, "error")
+				showFiscalError("Erro", e, "Algo deu errado")
 				$('#btn-corrigir-2').removeClass('spinner');
 
 				// $('#preloader4').css('display', 'none');
@@ -762,7 +856,7 @@ function cartaCorrecaoAux(){
 
 			}, error: function(e){
 				console.log(e)
-				swal("Erro", e.responseText, "error")
+				showFiscalError("Erro", e, "Algo deu errado")
 
 				$('#btn-corrigir-2-aux').removeClass('spinner')
 				$('#btn-corrigir-2-aux').removeClass('disabled')
@@ -825,7 +919,7 @@ function inutilizar(){
 
 		}, error: function(e){
 			console.log(e)
-			swal("Erro", e.responseText, "error")
+			showFiscalError("Erro", e, "Algo deu errado")
 			$('#preloader1').css('display', 'none');
 		}
 	});

@@ -2315,12 +2315,12 @@
         var nbsSet = {};
         for(var i=0;i<itens.length;i++){
             var it = itens[i] || {};
-            sumIbsBc  += rtParseNumber(rtFirst(it, ['rt_ibs_bc','ibs_bc','vbcibs','bc_ibs','ibsBase'], 0));
+            sumIbsBc  += rtParseNumber(rtFirst(it, ['rt_ibs_bc','ibs_bc','bc_ibs_cbs','vbcibs','bc_ibs','ibsBase'], 0));
             sumIbsVlr += rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','vibs','valor_ibs','ibs'], 0));
-            sumCbsBc  += rtParseNumber(rtFirst(it, ['rt_cbs_bc','cbs_bc','vbccbs','bc_cbs','cbsBase'], 0));
+            sumCbsBc  += rtParseNumber(rtFirst(it, ['rt_cbs_bc','cbs_bc','bc_ibs_cbs','vbccbs','bc_cbs','cbsBase'], 0));
             sumCbsVlr += rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','vcbs','valor_cbs','cbs'], 0));
             sumIsBc   += rtParseNumber(rtFirst(it, ['rt_is_bc','is_bc','vbcis','bc_is','isBase'], 0));
-            sumIsVlr  += rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','vis','valor_is','is'], 0));
+            sumIsVlr  += rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','vis','valor_is','is_valor','is'], 0));
 
             var nbs = rtFirst(it, ['nbs','NBS','nbs_codigo','nbsCodigo','codigo_nbs'], '');
             if(nbs) nbsSet[String(nbs)] = true;
@@ -2339,6 +2339,14 @@
         el = document.getElementById('rt_total_nbs_resumo'); if(el) el.value = nbsResumo;
     }
 
+    function rtFindIndexByKey(key){
+        if(!Array.isArray(window.ITENS) || !key) return -1;
+        for(var i=0;i<window.ITENS.length;i++){
+            if((window.ITENS[i] || {}).rt_uid === key) return i;
+        }
+        return -1;
+    }
+
     function rtFillItemCard(it, index){
         it = it || {};
         var badge = document.getElementById('rt_item_badge');
@@ -2349,13 +2357,16 @@
         if(el) el.value = rtFirst(it, ['classificacao_ibs_cbs','ibs_cbs_classificacao','class_trib_ibs_cbs','class_trib','classificacao','rt_item_classificacao'], '');
 
         el = document.getElementById('rt_item_ibs_aliq'); if(el) el.value = rtFmtPct(rtFirst(it, ['rt_ibs_aliq','ibs_aliq','pIbs','aliq_ibs','ibsAliq'], 0));
+        el = document.getElementById('rt_item_ibs_bc');   if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_ibs_bc','ibs_bc','bc_ibs_cbs','bc_ibs','vBcIbs','vBCIBS'], 0));
         el = document.getElementById('rt_item_ibs_vlr');  if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','vIbs','valor_ibs','ibs'], 0));
 
         el = document.getElementById('rt_item_cbs_aliq'); if(el) el.value = rtFmtPct(rtFirst(it, ['rt_cbs_aliq','cbs_aliq','pCbs','aliq_cbs','cbsAliq'], 0));
+        el = document.getElementById('rt_item_cbs_bc');   if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_cbs_bc','cbs_bc','bc_ibs_cbs','bc_cbs','vBcCbs','vBCCBS'], 0));
         el = document.getElementById('rt_item_cbs_vlr');  if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','vCbs','valor_cbs','cbs'], 0));
 
         el = document.getElementById('rt_item_is_aliq');  if(el) el.value = rtFmtPct(rtFirst(it, ['rt_is_aliq','is_aliq','pIs','aliq_is','isAliq'], 0));
-        el = document.getElementById('rt_item_is_vlr');   if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_is_vlr','is_vlr','vIs','valor_is','is'], 0));
+        el = document.getElementById('rt_item_is_bc');    if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_is_bc','is_bc','bc_is','vBcIs','vBCIS'], 0));
+        el = document.getElementById('rt_item_is_vlr');   if(el) el.value = rtFmtMoney(rtFirst(it, ['rt_is_vlr','is_vlr','vIs','valor_is','is_valor','is'], 0));
 
         el = document.getElementById('rt_item_nbs');
         if(el) el.value = rtFirst(it, ['nbs','NBS','nbs_codigo','nbsCodigo','codigo_nbs'], '');
@@ -2370,19 +2381,34 @@
             while(tr && tr.tagName !== 'TR') tr = tr.parentElement;
             if(!tr) return;
 
-            // tenta descobrir o índice pelo 1º TD (Item)
-            var tds = tr.querySelectorAll('td');
             var idx = null;
-            if(tds && tds.length){
+            var key = tr.getAttribute('data-rt-key');
+            if(key){
+                var keyIdx = rtFindIndexByKey(String(key));
+                if(keyIdx >= 0){
+                    window.RT_SELECTED_KEY = String(key);
+                    window.RT_SELECTED_INDEX = keyIdx;
+                    rtFillItemCard((window.ITENS || [])[keyIdx], keyIdx);
+                    return;
+                }
+            }
+
+            var tds = tr.querySelectorAll('td');
+            var dataIdx = tr.getAttribute('data-rt-index') || tr.getAttribute('data-index');
+            if(dataIdx !== null && dataIdx !== '' && !isNaN(parseInt(String(dataIdx), 10))){
+                idx = parseInt(String(dataIdx), 10);
+            }
+            if(idx === null && tds && tds.length){
                 var n = parseInt(String(tds[0].innerText || '').trim(), 10);
                 if(!isNaN(n) && n > 0) idx = n-1;
             }
 
             var itens = rtGetItens();
             if(idx !== null && idx >= 0 && idx < itens.length){
+                window.RT_SELECTED_INDEX = idx;
+                window.RT_SELECTED_KEY = (itens[idx] && itens[idx].rt_uid) ? itens[idx].rt_uid : window.RT_SELECTED_KEY;
                 rtFillItemCard(itens[idx], idx);
             }else{
-                // fallback: seleciona o primeiro, se existir
                 if(itens.length) rtFillItemCard(itens[0], 0);
             }
         }, true);
@@ -2401,7 +2427,7 @@
                     sig += '|' + rtParseNumber(rtFirst(it, ['subtotal','SubTotal','valor_total','total'], 0));
                     sig += '|' + rtParseNumber(rtFirst(it, ['rt_ibs_vlr','ibs_vlr','valor_ibs','ibs'], 0));
                     sig += '|' + rtParseNumber(rtFirst(it, ['rt_cbs_vlr','cbs_vlr','valor_cbs','cbs'], 0));
-                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','valor_is','is'], 0));
+                    sig += '|' + rtParseNumber(rtFirst(it, ['rt_is_vlr','is_vlr','valor_is','is_valor','is'], 0));
                 }
             }else{
                 var rows = document.querySelectorAll('#body tr').length;
@@ -2421,6 +2447,30 @@
         }catch(e){}
         setTimeout(rtTick, 700);
     }
+
+    window.RTRecalcTotaisVenda = rtUpdateTotalCard;
+
+    window.RTRefreshCards = function(index){
+        try{
+            rtUpdateTotalCard();
+            var itens = rtGetItens();
+            if(index !== null && index !== undefined && index >= 0 && index < itens.length){
+                window.RT_SELECTED_INDEX = index;
+                window.RT_SELECTED_KEY = (itens[index] && itens[index].rt_uid) ? itens[index].rt_uid : window.RT_SELECTED_KEY;
+                rtFillItemCard(itens[index], index);
+                return;
+            }
+            if(itens.length){
+                var idx = (typeof window.RT_SELECTED_KEY === 'string' && window.RT_SELECTED_KEY !== '') ? rtFindIndexByKey(window.RT_SELECTED_KEY) : -1;
+                if(!(idx >= 0 && idx < itens.length)){
+                    idx = (typeof window.RT_SELECTED_INDEX === 'number' && window.RT_SELECTED_INDEX >= 0 && window.RT_SELECTED_INDEX < itens.length)
+                        ? window.RT_SELECTED_INDEX
+                        : 0;
+                }
+                rtFillItemCard(itens[idx], idx);
+            }
+        }catch(e){}
+    };
 
     document.addEventListener('DOMContentLoaded', function(){
         rtBindRowClick();

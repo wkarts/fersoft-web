@@ -59,8 +59,8 @@ class NfeRemessaController extends Controller
             if($permissaoAcesso != null){
                 foreach ($permissaoAcesso as $value) {
                     if($value == -1){
-                        $value = null;  
-                    } 
+                        $value = null;
+                    }
                     $query->orWhere('filial_id', $value);
                 }
             }
@@ -113,8 +113,8 @@ class NfeRemessaController extends Controller
             if($permissaoAcesso != null){
                 foreach ($permissaoAcesso as $value) {
                     if($value == -1){
-                        $value = null;  
-                    } 
+                        $value = null;
+                    }
                     $query->orWhere('remessa_nves.filial_id', $value);
                 }
             }
@@ -124,7 +124,7 @@ class NfeRemessaController extends Controller
 
         if(isset($dataInicial) && isset($dataFinal)){
             $vendas->whereBetween('remessa_nves.'.$request->tipo_pesquisa_data, [
-                $this->parseDate($dataInicial), 
+                $this->parseDate($dataInicial),
                 $this->parseDate($dataFinal, true)
             ]);
         }
@@ -181,7 +181,7 @@ class NfeRemessaController extends Controller
     }
 
     private function menos30Dias(){
-        return date('d/m/Y', strtotime("-30 days",strtotime(str_replace("/", "-", 
+        return date('d/m/Y', strtotime("-30 days",strtotime(str_replace("/", "-",
             date('Y-m-d')))));
     }
 
@@ -356,7 +356,7 @@ class NfeRemessaController extends Controller
         where('empresa_id', $this->empresa_id)
         ->where('inativo', false)
         ->get();
-        
+
         $tiposPagamento = Venda::tiposPagamento();
 
         $countProdutos = Produto::
@@ -364,7 +364,7 @@ class NfeRemessaController extends Controller
         ->where('inativo', false)
         ->count();
 
-        
+
         $transportadoras = Transportadora::
         where('empresa_id', $this->empresa_id)
         ->get();
@@ -444,7 +444,7 @@ class NfeRemessaController extends Controller
         ->with('clone', 1)
         ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
         ->with('title', "Clonar NFe");
-        
+
     }
 
     public function edit($id){
@@ -479,7 +479,7 @@ class NfeRemessaController extends Controller
         where('empresa_id', $this->empresa_id)
         ->where('inativo', false)
         ->get();
-        
+
         $tiposPagamento = Venda::tiposPagamento();
 
         $countProdutos = Produto::
@@ -487,7 +487,7 @@ class NfeRemessaController extends Controller
         ->where('inativo', false)
         ->count();
 
-        
+
         $transportadoras = Transportadora::
         where('empresa_id', $this->empresa_id)
         ->get();
@@ -566,7 +566,7 @@ class NfeRemessaController extends Controller
         ->with('lastNF', $lastNF)
         ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
         ->with('title', "Editar NFe");
-        
+
     }
 
     private function verificaAberturaCaixa(){
@@ -930,15 +930,15 @@ private function reverteEstoque($itens){
     $stockMove = new StockMove();
     foreach($itens as $i){
         if(!empty($i->produto->receita)){
-            $receita = $i->produto->receita; 
+            $receita = $i->produto->receita;
             foreach($receita->itens as $rec){
 
                 if(!empty($rec->produto->receita)){
-                    $receita2 = $rec->produto->receita; 
+                    $receita2 = $rec->produto->receita;
                     foreach($receita2->itens as $rec2){
                         $stockMove->pluStock(
-                            $rec2->produto_id, 
-                            (float) str_replace(",", ".", $i->quantidade) * 
+                            $rec2->produto_id,
+                            (float) str_replace(",", ".", $i->quantidade) *
                             ($rec2->quantidade/$receita2->rendimento),
                             -1,
                             $itens[0]->venda->filial_id ?? null
@@ -947,8 +947,8 @@ private function reverteEstoque($itens){
                 }else{
 
                     $stockMove->pluStock(
-                        $rec->produto_id, 
-                        (float) str_replace(",", ".", $i->quantidade) * 
+                        $rec->produto_id,
+                        (float) str_replace(",", ".", $i->quantidade) *
                         ($rec->quantidade/$receita->rendimento),
                         -1,
                         $itens[0]->venda->filial_id ?? null
@@ -989,14 +989,14 @@ public function editXml($id){
         "razaosocial" => $config->razao_social,
         "siglaUF" => $config->UF,
         "cnpj" => $cnpj,
-        "schemes" => "PL_009_V4",
+        "schemes" => config('fiscal.default_schemes'),
         "versao" => "4.00",
         "tokenIBPT" => "",
         "CSC" => $config->csc,
         "CSCid" => $config->csc_id,
         "is_filial" => $isFilial
     ]);
-    
+
     $nfe = $nfe_service->gerarNFe($item);
 
     if(!isset($nfe['erros_xml'])){

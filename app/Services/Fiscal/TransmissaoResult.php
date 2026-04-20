@@ -2,6 +2,8 @@
 
 namespace App\Services\Fiscal;
 
+use App\Support\TransmissionMessageNormalizer;
+
 class TransmissaoResult implements \JsonSerializable
 {
     private bool $success;
@@ -20,13 +22,13 @@ class TransmissaoResult implements \JsonSerializable
         $this->success           = (bool)($data['success'] ?? false);
         $this->status            = (string)($data['status'] ?? 'erro_tecnico');
         $this->cStat             = isset($data['cStat']) ? (int)$data['cStat'] : null;
-        $this->xMotivo           = $data['xMotivo'] ?? null;
+        $this->xMotivo           = TransmissionMessageNormalizer::normalize($data['xMotivo'] ?? null);
         $this->protocolo         = $data['protocolo'] ?? null;
         $this->recibo            = $data['recibo'] ?? null;
-        $this->mensagem          = $data['mensagem'] ?? null;
+        $this->mensagem          = TransmissionMessageNormalizer::normalize($data['mensagem'] ?? null);
         $this->xmlAutorizadoPath = $data['xmlAutorizadoPath'] ?? null;
-        $this->payload           = $data['payload'] ?? [];
-        $this->context           = $data['context'] ?? [];
+        $this->payload           = TransmissionMessageNormalizer::normalize($data['payload'] ?? []);
+        $this->context           = TransmissionMessageNormalizer::normalize($data['context'] ?? []);
     }
 
     public function __toString(): string
@@ -45,7 +47,7 @@ class TransmissaoResult implements \JsonSerializable
             'status'             => $this->status,
             'cStat'              => $this->cStat,
             'xMotivo'            => $this->xMotivo,
-            'mensagem'           => $this->mensagem ?? $this->formatMensagem(),
+            'mensagem'           => TransmissionMessageNormalizer::normalize($this->mensagem ?? $this->formatMensagem()),
             'protocolo'          => $this->protocolo,
             'recibo'             => $this->recibo,
             'xmlAutorizadoPath'  => $this->xmlAutorizadoPath,
@@ -119,9 +121,6 @@ class TransmissaoResult implements \JsonSerializable
 
     private function formatMensagem(): string
     {
-        $codigo = $this->cStat !== null ? '[' . $this->cStat . '] ' : '';
-        $motivo = $this->xMotivo ?? 'Retorno indefinido';
-
-        return $codigo . $motivo;
+        return TransmissionMessageNormalizer::message($this->cStat, $this->xMotivo, 'Retorno indefinido');
     }
 }
