@@ -32,6 +32,32 @@ function normalizeMessageText(value){
 	return text.trim();
 }
 
+function formatFiscalPayload(payload){
+	if(payload === null || payload === undefined) return '';
+	if(typeof payload === 'string'){
+		const parsed = safeParseJson(payload);
+		if(parsed !== payload){
+			return formatFiscalPayload(parsed);
+		}
+		return normalizeMessageText(payload);
+	}
+	if(Array.isArray(payload)){
+		try{
+			return JSON.stringify(payload, null, 2);
+		}catch(e){
+			return normalizeMessageText(String(payload));
+		}
+	}
+	if(typeof payload === 'object'){
+		try{
+			return JSON.stringify(payload, null, 2);
+		}catch(e){
+			return normalizeMessageText(String(payload));
+		}
+	}
+	return normalizeMessageText(String(payload));
+}
+
 function extractFiscalMessage(payload){
 	if(payload === null || payload === undefined) return '';
 	if(typeof payload === 'string'){
@@ -46,7 +72,7 @@ function extractFiscalMessage(payload){
 			const msg = extractFiscalMessage(item);
 			if(msg) return msg;
 		}
-		return '';
+		return formatFiscalPayload(payload);
 	}
 	if(typeof payload === 'object'){
 		const preferredKeys = ['mensagem','message','xMotivo','error','erro','detail','details','title'];
@@ -56,21 +82,23 @@ function extractFiscalMessage(payload){
 				if(msg) return msg;
 			}
 		}
-		if(payload.cStat && payload.xMotivo){
-			return normalizeMessageText('[' + payload.cStat + '] - ' + payload.xMotivo);
-		}
-		if(payload.protNFe && payload.protNFe.infProt){
-			const inf = payload.protNFe.infProt;
-			if(inf.cStat || inf.xMotivo){
-				return normalizeMessageText('[' + (inf.cStat || '') + '] - ' + (inf.xMotivo || ''));
+
+		const grupos = [
+			payload.infProt,
+			payload.protNFe && payload.protNFe.infProt,
+			payload.protCTe && payload.protCTe.infProt,
+			payload.infEvento,
+			payload.retEvento && payload.retEvento.infEvento,
+			payload.infInut,
+			payload
+		];
+
+		for(const grupo of grupos){
+			if(grupo && (grupo.cStat || grupo.xMotivo)){
+				return normalizeMessageText('[' + (grupo.cStat || '---') + '] - ' + (grupo.xMotivo || 'Sem detalhamento'));
 			}
 		}
-		if(payload.retEvento && payload.retEvento.infEvento){
-			const inf = payload.retEvento.infEvento;
-			if(inf.cStat || inf.xMotivo){
-				return normalizeMessageText('[' + (inf.cStat || '') + '] - ' + (inf.xMotivo || ''));
-			}
-		}
+
 		if(payload.payload){
 			const msg = extractFiscalMessage(payload.payload);
 			if(msg) return msg;
@@ -83,13 +111,41 @@ function extractFiscalMessage(payload){
 			const msg = extractFiscalMessage(payload.responseText);
 			if(msg) return msg;
 		}
+
+		return formatFiscalPayload(payload);
 	}
 	return '';
 }
 
+function parseFiscalReturnString(raw){
+	if(typeof raw !== 'string') return null;
+	const texto = stripBom(raw);
+	if(!texto) return null;
+
+	if(texto === 'Apro'){
+		return { success: false, status: 'ja_autorizado', mensagem: 'Documento já autorizado.' };
+	}
+
+	if(texto.startsWith('Erro')){
+		const idx = texto.indexOf(':');
+		const detalhe = idx >= 0 ? texto.substring(idx + 1).trim() : texto.substring(4).trim();
+		const parsed = safeParseJson(detalhe);
+		if(typeof parsed === 'object' && parsed !== null){
+			return Object.assign({ success: false, status: 'erro' }, parsed);
+		}
+		return { success: false, status: 'erro', mensagem: normalizeMessageText(detalhe || texto) };
+	}
+
+	if(/^\d+$/.test(texto)){
+		return { success: true, status: 'recibo', recibo: texto, mensagem: 'Recibo gerado com sucesso.' };
+	}
+
+	return null;
+}
+
 function showFiscalError(title, payload, fallback){
 	const msg = extractFiscalMessage(payload) || fallback || 'Algo deu errado';
-	swal(title || 'Erro', msg, 'error');
+	return swal(title || 'Erro', msg, 'error');
 }
 
 $(function () {
@@ -1128,4 +1184,3 @@ $('#btn-danfe').click(() => {
 	})
 	window.open(path + 'vendas/rederizarDanfe/' + id);
 })
-

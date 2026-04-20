@@ -28,6 +28,35 @@ latest_stable_tag() {
   fi
 }
 
+tag_exists() {
+  local tag="$1"
+  git fetch --tags --force >/dev/null 2>&1 || true
+  git rev-parse "$tag" >/dev/null 2>&1
+}
+
+next_available_version() {
+  local candidate="$1"
+  local bump="${2:-patch}"
+
+  if [[ ! "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]; then
+    echo "$candidate"
+    return 0
+  fi
+
+  while tag_exists "$candidate"; do
+    if [[ "$candidate" =~ ^(v[0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+)$ ]]; then
+      local base="${BASH_REMATCH[1]}"
+      local rc="${BASH_REMATCH[2]}"
+      rc=$((rc + 1))
+      candidate="${base}-rc.${rc}"
+    else
+      candidate=$(bump_semver "$candidate" "$bump")
+    fi
+  done
+
+  echo "$candidate"
+}
+
 bump_semver() {
   local base="$1"
   local bump="$2"
@@ -66,6 +95,7 @@ main() {
     fi
     local validated
     validated=$(normalize_version "$manual_version")
+    validated=$(next_available_version "$validated" "$bump")
     echo "$validated"
     exit 0
   fi
@@ -81,6 +111,7 @@ main() {
     next=$(make_prerelease "$next" "$prerelease_number")
   fi
 
+  next=$(next_available_version "$next" "$bump")
   echo "$next"
 }
 

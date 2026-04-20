@@ -712,7 +712,7 @@ $('#finalizar-venda').click(() => {
 					// swal("Erro", err.responseJSON.message, "error")
 					$('#modal-venda').modal('show')
 				}else{
-					swal("Erro", err.responseJSON.message, "error")
+					showFiscalError("Erro", err, "Falha na operação fiscal")
 				}
 			})
 		}else{
@@ -1615,7 +1615,7 @@ function sangriaCaixa(){
 				$('#obs_sangria').val('')
 				console.log(e)
 				try{
-					swal("Erro", e.responseJSON, "error")
+					showFiscalError("Erro", e, "Falha na operação fiscal")
 					.then(() => {
 						$('#modal2').modal('hide');
 					})
@@ -2449,7 +2449,7 @@ function transmitirContigencia(vendaId){
 					});
 					swal("Erro", err, "warning")
 				}catch{
-					swal("Erro", js, "warning")
+					showFiscalError("Erro", js, "Falha na operação fiscal")
 
 				}
 
@@ -2573,7 +2573,7 @@ function emitirNFCe(vendaId){
 					});
 					swal("Erro", err, "warning")
 				}catch{
-					swal("Erro", js, "warning")
+					showFiscalError("Erro", js, "Falha na operação fiscal")
 
 				}
 
@@ -4474,6 +4474,5 @@ function convertFloatToMoeda(value) {
 		maximumFractionDigits: casas_decimais
 	});
 }
-
 
 
