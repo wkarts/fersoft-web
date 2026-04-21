@@ -22,6 +22,13 @@ class NfceAppController extends Controller
 		where('empresa_id', $venda->empresa_id)
 		->first();
 
+		if ($venda->filial_id) {
+			$configFilial = $venda->filial;
+			if ($configFilial) {
+				$config = $configFilial;
+			}
+		}
+
 		$cnpj = str_replace(".", "", $config->cnpj);
 		$cnpj = str_replace("/", "", $cnpj);
 		$cnpj = str_replace("-", "", $cnpj);
@@ -33,6 +40,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
+			"is_filial" => $venda->filial_id,
 			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
@@ -92,6 +100,13 @@ class NfceAppController extends Controller
 		where('empresa_id', $venda->empresa_id)
 		->first();
 
+		if ($venda->filial_id) {
+			$configFilial = $venda->filial;
+			if ($configFilial) {
+				$config = $configFilial;
+			}
+		}
+
 		if($config->logo){
 			$logo = FiscalLogoHelper::buildDataUri($config->logo);
 		}else{
@@ -117,6 +132,13 @@ class NfceAppController extends Controller
 		where('empresa_id', $venda->empresa_id)
 		->first();
 
+		if ($venda->filial_id) {
+			$configFilial = $venda->filial;
+			if ($configFilial) {
+				$config = $configFilial;
+			}
+		}
+
 		$cnpj = str_replace(".", "", $config->cnpj);
 		$cnpj = str_replace("/", "", $cnpj);
 		$cnpj = str_replace("-", "", $cnpj);
@@ -127,6 +149,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
+			"is_filial" => $venda->filial_id,
 			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
@@ -148,6 +171,13 @@ class NfceAppController extends Controller
 		where('empresa_id', $venda->empresa_id)
 		->first();
 
+		if ($venda->filial_id) {
+			$configFilial = $venda->filial;
+			if ($configFilial) {
+				$config = $configFilial;
+			}
+		}
+
 		if(strlen($request->justificativa) < 15){
 			return response()->json('Informe um motivo com pelo menos 15 caracteres!', 401);
 		}
@@ -163,6 +193,7 @@ class NfceAppController extends Controller
 			"razaosocial" => $config->razao_social,
 			"siglaUF" => $config->UF,
 			"cnpj" => $cnpj,
+			"is_filial" => $venda->filial_id,
 			"schemes" => config('fiscal.default_schemes'),
 			"versao" => "4.00",
 			"tokenIBPT" => "AAAAAAA",
