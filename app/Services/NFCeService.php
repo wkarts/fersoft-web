@@ -22,6 +22,7 @@ use App\Models\Contigencia;
 use NFePHP\NFe\Factories\Contingency;
 use App\Services\ReformaTributariaService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -244,10 +245,17 @@ class NFCeService{
 
     private function normalizeReformaItemValues($item): array
     {
+        $rt = app(ReformaTributariaService::class);
+        if (is_object($item) || is_array($item)) {
+            $rt->applyAliquotasFixas($item);
+        }
+
         $base = max(0, $this->getNumericFromAny($item, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']));
-        $pIbsUf = max(0, (float)($item->aliq_ibs_uf ?? 0));
-        $pIbsMun = max(0, (float)($item->aliq_ibs_mun ?? 0));
-        $pCbs = max(0, (float)($item->aliq_cbs ?? 0));
+        $fixas = $rt->aliquotasFixas();
+
+        $pIbsUf = (float) $fixas['ibs_uf'];
+        $pIbsMun = (float) $fixas['ibs_mun'];
+        $pCbs = (float) $fixas['cbs'];
         $pIs = max(0, (float)($item->is_aliq ?? 0));
 
         $vIbsUf = max(0, (float)($item->valor_ibs_uf ?? 0));
@@ -256,24 +264,15 @@ class NFCeService{
         $vIs = max(0, $this->getNumericFromAny($item, ['valor_is', 'is_valor']));
 
         if ($base > 0) {
-            if ($pIbsUf > 0 && $vIbsUf <= 0) {
-                $vIbsUf = round(($base * $pIbsUf) / 100, 2);
-            }
-            if ($pIbsMun > 0 && $vIbsMun <= 0) {
-                $vIbsMun = round(($base * $pIbsMun) / 100, 2);
-            }
-            if ($pCbs > 0 && $vCbs <= 0) {
-                $vCbs = round(($base * $pCbs) / 100, 2);
-            }
+            $vIbsUf = round(($base * $pIbsUf) / 100, 2);
+            $vIbsMun = round(($base * $pIbsMun) / 100, 2);
+            $vCbs = round(($base * $pCbs) / 100, 2);
             if ($pIs > 0 && $vIs <= 0) {
                 $vIs = round(($base * $pIs) / 100, 2);
             }
         }
 
-        $vIbs = max(0, $this->getNumericFromAny($item, ['valor_ibs', 'ibs_valor']));
-        if ($vIbs <= 0) {
-            $vIbs = round($vIbsUf + $vIbsMun, 2);
-        }
+        $vIbs = round($vIbsUf + $vIbsMun, 2);
 
         return [
             'CST' => str_pad((string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '000'), 3, '0', STR_PAD_LEFT),
@@ -437,6 +436,90 @@ class NFCeService{
         }
         return trim($texto);
     }
+
+    private function resolveEmitenteIE($config): string
+    {
+        $candidates = [];
+
+        if (isset($config->ie)) {
+            $candidates[] = $config->ie;
+        }
+
+        if ($config instanceof Filial && isset($config->empresa_id)) {
+            $matriz = ConfigNota::where('empresa_id', $config->empresa_id)->first();
+            if ($matriz && isset($matriz->ie)) {
+                $candidates[] = $matriz->ie;
+            }
+        }
+
+        foreach ($candidates as $value) {
+            $value = trim((string)$value);
+
+            if ($value === '') {
+                continue;
+            }
+
+            if (strcasecmp($value, 'ISENTO') === 0) {
+                return 'ISENTO';
+            }
+
+            $digits = preg_replace('/[^0-9]/', '', $value);
+            if ($digits !== '') {
+                return $digits;
+            }
+        }
+
+        return '';
+    }
+
+    private function resolveInfCplFlag($config, ?ConfigNota $matriz, string $campo, int $default = 0): int
+    {
+        if (isset($config->{$campo}) && $config->{$campo} !== null && $config->{$campo} !== '') {
+            return (int)$config->{$campo};
+        }
+
+        if ($matriz && isset($matriz->{$campo}) && $matriz->{$campo} !== null && $matriz->{$campo} !== '') {
+            return (int)$matriz->{$campo};
+        }
+
+        return $default;
+    }
+
+    private function emitentePermiteIsencao($tributacao): bool
+    {
+        if (!$tributacao) {
+            return false;
+        }
+
+        return in_array((int)$tributacao->regime, [0, 2], true);
+    }
+
+    private function reservarNumeroNFCe(VendaCaixa $venda, $config): int
+    {
+        if ($venda->NFcNumero && $venda->NFcNumero > 0) {
+            return (int) $venda->NFcNumero;
+        }
+
+        return DB::transaction(function () use ($venda, $config) {
+            if ($venda->filial_id) {
+                $filial = Filial::where('id', $venda->filial_id)->lockForUpdate()->firstOrFail();
+                $numero = (int) (($filial->ultimo_numero_nfce ?? 0) + 1);
+                $filial->ultimo_numero_nfce = $numero;
+                $filial->save();
+            } else {
+                $configEmitente = ConfigNota::where('empresa_id', $this->empresa_id)->lockForUpdate()->firstOrFail();
+                $numero = (int) (($configEmitente->ultimo_numero_nfce ?? 0) + 1);
+                $configEmitente->ultimo_numero_nfce = $numero;
+                $configEmitente->save();
+            }
+
+            $venda->NFcNumero = $numero;
+            $venda->save();
+
+            return (int) $numero;
+        }, 3);
+    }
+
     private function getContigencia(){
         $active = Contigencia::
         where('empresa_id', $this->empresa_id)
@@ -504,16 +587,17 @@ class NFCeService{
         where('id', $idVenda)
             ->first();
 
-        $config = ConfigNota::
+        $configMatriz = ConfigNota::
         where('empresa_id', $this->empresa_id)
             ->first();
+        $config = $configMatriz;
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
             ->first();
 
         if($venda->filial_id != null){
-            $casas_decimais = $config->casas_decimais;
+            $casas_decimais = $configMatriz->casas_decimais;
             $config = Filial::findOrFail($venda->filial_id);
             $config->casas_decimais = $casas_decimais;
 
@@ -535,15 +619,9 @@ class NFCeService{
 
         // $stdIde->indPag = 1; //NÃO EXISTE MAIS NA VERSÃO 4.00 // forma de pagamento
 
-        $vendaLast = VendaCaixa::lastNFCe($this->empresa_id);
-        if($venda->filial_id != null){
-            $vendaLast = $config->ultimo_numero_nfce;
-        }
-        $lastNumero = $vendaLast;
-
         $stdIde->mod = 65;
         $stdIde->serie = $config->numero_serie_nfce;
-        $stdIde->nNF = (int)$lastNumero+1;
+        $stdIde->nNF = $this->reservarNumeroNFCe($venda, $config);
         $stdIde->dhEmi = FiscalDateHelper::nowXml();
         $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = 1;
@@ -568,7 +646,16 @@ class NFCeService{
         $stdEmit->xNome = $config->razao_social;
         $stdEmit->xFant = $config->nome_fantasia;
 
-        $ie = preg_replace('/[^0-9]/', '', $config->ie);
+        $ie = $this->resolveEmitenteIE($config);
+        if ($ie === '') {
+            if ($this->emitentePermiteIsencao($tributacao)) {
+                $ie = 'ISENTO';
+            } else {
+            return [
+                'erros_xml' => ['Inscrição estadual do emitente não configurada. Atualize o cadastro do emitente e tente novamente.'],
+            ];
+            }
+        }
 
         $stdEmit->IE = $ie;
         $stdEmit->CRT = ($tributacao->regime == 0 || $tributacao->regime == 2) ? 1 : 3;
@@ -1201,17 +1288,17 @@ class NFCeService{
         $obsInicial = trim((string) $venda->observacao);
         if ($obsInicial !== '') $obsPartes[] = $obsInicial;
 
-        if((int)($config->exibir_deolho_imposto_inf_cpl ?? 1) === 1){
+        if($this->resolveInfCplFlag($config, $configMatriz, 'exibir_deolho_imposto_inf_cpl', 1) === 1){
             $tribAprox = $this->montarTributosAproximadosObservacao($somaEstadual, $somaFederal, $somaMunicipal, $obsIbpt);
             if ($tribAprox !== '') $obsPartes[] = $tribAprox;
         }
 
-        if((int)($config->exibir_piscofins_inf_cpl ?? 0) === 1){
+        if($this->resolveInfCplFlag($config, $configMatriz, 'exibir_piscofins_inf_cpl', 0) === 1){
             $resumoPisCofins = $this->montarResumoPisCofinsObservacao($somaBasePIS, $somaPIS, $somaBaseCOFINS, $somaCOFINS);
             if($resumoPisCofins !== '') $obsPartes[] = $resumoPisCofins;
         }
 
-        if((int)($config->exibir_ibscbs_inf_cpl ?? 0) === 1){
+        if($this->resolveInfCplFlag($config, $configMatriz, 'exibir_ibscbs_inf_cpl', 0) === 1){
             $resumoRt = $this->montarReformaObservacao($venda, $reformaEstruturadaNoXml);
             if($resumoRt !== '') $obsPartes[] = $resumoRt;
         }
