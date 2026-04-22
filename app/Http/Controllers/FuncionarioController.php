@@ -32,24 +32,25 @@ class FuncionarioController extends Controller
     }
 
     public function index(){
-        $funcionarios = Funcionario::
-        where('empresa_id', $this->empresa_id)
-        ->get();
-        
+        // Adicionei o -> antes do where
+        $funcionarios = Funcionario::with('funcao')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
+
         $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
         return view('funcionarios/list')
-        ->with('funcionarios', $funcionarios)
-        ->with('funcoes', $funcoes)
-        ->with('filiais', $filiais)
-        ->with('title', 'Funcionarios');
+            ->with('funcionarios', $funcionarios)
+            ->with('funcoes', $funcoes)
+            ->with('filiais', $filiais)
+            ->with('title', 'Funcionários');
     }
 
     public function new(){
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
-        
+
         $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
@@ -60,11 +61,11 @@ class FuncionarioController extends Controller
             }
         }
         return view('funcionarios/register')
-        ->with('usuarios', $temp)
-        ->with('funcoes', $funcoes)
-        ->with('filiais', $filiais)
-        ->with('empresa_id', $this->empresa_id)
-        ->with('title', 'Cadastrar Funcionario');
+            ->with('usuarios', $temp)
+            ->with('funcoes', $funcoes)
+            ->with('filiais', $filiais)
+            ->with('empresa_id', $this->empresa_id)
+            ->with('title', 'Cadastrar Funcionario');
     }
 
     private function parseDate($date){
@@ -85,7 +86,7 @@ class FuncionarioController extends Controller
         $request->merge([ 'salario' => $request->salario ? __replace($request->salario) : 0 ]);
 
         // Merge dos novos campos
-        $request->merge([ 
+        $request->merge([
             'funcao_id' => $request->funcao_id ? $request->funcao_id : null,
             'filial_id' => $request->filial_id != '' ? $request->filial_id : null
         ]);
@@ -140,12 +141,12 @@ class FuncionarioController extends Controller
 
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
-        
+
         $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
         $resp = $funcionario
-        ->where('id', $id)->first();
+            ->where('id', $id)->first();
 
         $temp = [];
         foreach($usuarios as $u){
@@ -156,13 +157,13 @@ class FuncionarioController extends Controller
 
         if(valida_objeto($resp)){
             return view('funcionarios/register')
-            ->with('pessoaFisicaOuJuridica', true)
-            ->with('funcionario', $resp)
-            ->with('usuarios', $usuarios)
-            ->with('funcoes', $funcoes)
-            ->with('filiais', $filiais)
-            ->with('empresa_id', $this->empresa_id)
-            ->with('title', 'Editar Funcionario');
+                ->with('pessoaFisicaOuJuridica', true)
+                ->with('funcionario', $resp)
+                ->with('usuarios', $usuarios)
+                ->with('funcoes', $funcoes)
+                ->with('filiais', $filiais)
+                ->with('empresa_id', $this->empresa_id)
+                ->with('title', 'Editar Funcionario');
         }else{
             return redirect('/403');
         }
@@ -219,7 +220,7 @@ class FuncionarioController extends Controller
         $resp->salario = __replace($request->salario);
 
         $resp->percentual_comissao = $request->input('percentual_comissao') ?
-        __replace($request->percentual_comissao) : 0;
+            __replace($request->percentual_comissao) : 0;
 
         $resp->usuario_id = ($request->usuario_id && $request->usuario_id != 'NULL') ? $request->usuario_id : null;
 
@@ -266,13 +267,28 @@ class FuncionarioController extends Controller
 
     public function quickSave(Request $request) {
         try {
-            $novaFuncao = \App\Models\Funcao::create([
-                'nome' => $request->nome,
-                'empresa_id' => $request->empresa_id
+            $sessionData = session('user_logged');
+            $usuarioLogadoId = $sessionData ? $sessionData['id'] : null;
+
+            // Usamos o método forceCreate para testar se o problema é o $fillable
+            $novaFuncao = \App\Models\Funcao::forceCreate([
+                'nome'       => $request->nome,
+                'empresa_id' => $this->empresa_id,
+                'usuario_id' => $usuarioLogadoId,
+                'filial_id'  => $request->filial_id ?? null
             ]);
-            return response()->json(['success' => true, 'id' => $novaFuncao->id, 'nome' => $novaFuncao->nome]);
+
+            return response()->json([
+                'success' => true,
+                'id' => $novaFuncao->id,
+                'nome' => $novaFuncao->nome
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Erro ao salvar função']);
+            // Isso vai fazer o erro real aparecer no alerta da tela
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro técnico: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -375,12 +391,12 @@ class FuncionarioController extends Controller
     public function contatos($id, $edit = false){
         $funcionario = Funcionario::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($funcionario)){
             return view('funcionarios/contatos')
-            ->with('funcionario', $funcionario)
-            ->with('edit', $edit)
-            ->with('title', 'Contato Funcionario');
+                ->with('funcionario', $funcionario)
+                ->with('edit', $edit)
+                ->with('title', 'Contato Funcionario');
         }else{
             return redirect('/403');
         }
@@ -389,15 +405,15 @@ class FuncionarioController extends Controller
     public function editContato($id){
         $contato = ContatoFuncionario::
         where('id', $id)
-        ->first();
+            ->first();
         if($contato != null && valida_objeto($contato->funcionario)){
 
             $funcionario = $contato->funcionario;
 
             return view('funcionarios/contatos')
-            ->with('funcionario', $funcionario)
-            ->with('contato', $contato)
-            ->with('title', 'Contato Funcionario');
+                ->with('funcionario', $funcionario)
+                ->with('contato', $contato)
+                ->with('title', 'Contato Funcionario');
         }else{
             return redirect('/403');
         }
@@ -406,7 +422,7 @@ class FuncionarioController extends Controller
     public function deleteContato($id){
         $funcionario = ContatoFuncionario::
         where('id', $id)
-        ->first();
+            ->first();
 
         if($funcionario != null && valida_objeto($funcionario->funcionario)){
 
@@ -431,7 +447,7 @@ class FuncionarioController extends Controller
         if($request->id > 0){
             $contato = ContatoFuncionario::
             where('id', $request->id)
-            ->first();
+                ->first();
 
             $contato->nome = $request->nome;
             $contato->telefone = $request->telefone;
@@ -453,18 +469,18 @@ class FuncionarioController extends Controller
     public function comissao(){
         $funcionarios = Funcionario::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $comissoes = ComissaoVenda::
         where('empresa_id', $this->empresa_id)
-        ->limit(200)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->limit(200)
+            ->orderBy('id', 'desc')
+            ->get();
 
         return view('funcionarios/comissao')
-        ->with('funcionarios', $funcionarios)
-        ->with('comissoes', $comissoes)
-        ->with('comissaoJs', true)
-        ->with('title', 'Lista de comissões');
+            ->with('funcionarios', $funcionarios)
+            ->with('comissoes', $comissoes)
+            ->with('comissaoJs', true)
+            ->with('title', 'Lista de comissões');
     }
 
     public function pagarComissao(Request $request){
@@ -495,7 +511,7 @@ class FuncionarioController extends Controller
 
         $comissoes = ComissaoVenda::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc');
+            ->orderBy('id', 'desc');
 
         if($status != '--'){
             $comissoes->where('status', $status);
@@ -515,13 +531,13 @@ class FuncionarioController extends Controller
 
         $funcionarios = Funcionario::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         return view('funcionarios/comissao')
-        ->with('funcionarios', $funcionarios)
-        ->with('comissoes', $comissoes)
-        ->with('comissaoJs', true)
-        ->with('title', 'Lista de comissões');
+            ->with('funcionarios', $funcionarios)
+            ->with('comissoes', $comissoes)
+            ->with('comissaoJs', true)
+            ->with('title', 'Lista de comissões');
     }
 
     private function calcularComissaoVenda($venda, $percentual_comissao){
@@ -544,18 +560,18 @@ class FuncionarioController extends Controller
 
     public function calcComissao(){
         $vendas = VendaCaixa::where('empresa_id', $this->empresa_id)
-        ->whereDate('created_at', '>=', '2024-02-01')
-        ->whereDate('created_at', '<=', '2024-02-29')
-        ->get();
+            ->whereDate('created_at', '>=', '2024-02-01')
+            ->whereDate('created_at', '<=', '2024-02-29')
+            ->get();
 
         $cont = 1;
         echo "total de vendas do PDV: " . sizeof($vendas) . "<br>";
 
         foreach($vendas as $v){
             $c = ComissaoVenda::where('venda_id', $v->id)
-            ->where('empresa_id', $this->empresa_id)
-            ->where('tabela', 'venda_caixas')
-            ->first();
+                ->where('empresa_id', $this->empresa_id)
+                ->where('tabela', 'venda_caixas')
+                ->first();
             if($c == null){
                 if($v->usuario){
                     if($v->usuario->funcionario){

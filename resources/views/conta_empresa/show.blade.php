@@ -24,9 +24,8 @@
                     <i class="la la-refresh"></i> Sincronizar Histórico
                 </button>
 
-                <a href="{{ route('contas-empresa.extrato', [$item->id]) }}?data_inicio={{request('data_inicio')}}&data_final={{request('data_final')}}&tipo={{request('tipo')}}" 
-                   target="_blank" class="btn btn-info font-weight-bold">
-                    <i class="la la-print"></i> Imprimir Extrato
+                <a href="{{ route('contas-empresa.imprimir-extrato', $item->id) }}?data_inicio={{$data_inicio}}&data_final={{$data_final}}" target="_blank" class="btn btn-info">
+                    <i class="fa fa-print"></i> Imprimir Extrato
                 </a>
             </div>
 
@@ -69,17 +68,18 @@
                     </select>
                 </div>
               
- <div class="form-group col-md-6">
-    <label>Conta de Destino (Para Transferência)</label>
-    <select name="conta_destino_id" class="form-control custom-select">
-        <option value="">Nenhuma (Lançamento Simples)</option>
-        @foreach($contas as $c)
-            @if($c->id != $item->id) <option value="{{ $c->id }}">{{ $c->nome }}</option>
-            @endif
-        @endforeach
-    </select>
-    <small class="text-muted text-info">Se selecionar, o sistema criará o lançamento oposto na conta escolhida.</small>
-</div>
+                 <div class="form-group col-md-6">
+                    <label>Conta de Destino (Para Transferência)</label>
+                    <select name="conta_destino_id" class="form-control custom-select">
+                        <option value="">Nenhuma (Lançamento Simples)</option>
+                        @foreach($contas as $c)
+                            @if($c->id != $item->id) <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                    <small class="text-muted text-info">Se selecionar, o sistema criará o lançamento oposto na conta escolhida.</small>
+                </div>
+              
                 <div class="col-md-2">
                     <label class="font-weight-bold">Categoria</label>
                     <select name="plano_conta_id" class="form-control" required>
@@ -252,7 +252,7 @@ function excluirLancamentoManual(id) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = "{{ route('contas-empresa.delete-lancamento') }}?id=" + id + "&senha=" + result.value;
+            window.location.href = "{{ route('contas-empresa.delete-lancamento', ['id' => ':id']) }}".replace(':id', id) + "?senha=" + result.value;
         }
     });
 }

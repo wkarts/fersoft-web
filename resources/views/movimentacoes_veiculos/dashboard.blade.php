@@ -8,27 +8,27 @@
             <div class="card-body py-4 d-flex justify-content-between align-items-center">
                 <h3 class="text-dark font-weight-bold m-0">{{ $title }}</h3>
                 
-<form action="" method="GET" class="d-flex align-items-center">
-    <label class="mr-2 font-weight-bold mb-0">Período:</label>
-    <input type="date" name="data_inicio" value="{{ $dataInicio }}" class="form-control mr-2" style="width: 160px;">
-    <input type="date" name="data_fim" value="{{ $dataFim }}" class="form-control mr-2" style="width: 160px;">
+                <form action="" method="GET" class="d-flex align-items-center">
+                    <label class="mr-2 font-weight-bold mb-0">Período:</label>
+                    <input type="date" name="data_inicio" value="{{ $dataInicio }}" class="form-control mr-2" style="width: 160px;">
+                    <input type="date" name="data_fim" value="{{ $dataFim }}" class="form-control mr-2" style="width: 160px;">
 
-    <label class="mr-2 font-weight-bold mb-0">Veículo:</label>
-    <select name="veiculo_id" class="form-control mr-2" style="width: 200px;" onchange="this.form.submit()">
-        <option value="">TODOS OS VEÍCULOS</option>
-        @foreach($veiculos as $v)
-            <option value="{{ $v->id }}" {{ $veiculoSelecionado == $v->id ? 'selected' : '' }}>
-                {{ $v->placa }} - {{ $v->modelo }}
-            </option>
-        @endforeach
-    </select>
-    
-    <button type="submit" class="btn btn-primary btn-sm mr-1">Filtrar</button>
+                    <label class="mr-2 font-weight-bold mb-0">Veículo:</label>
+                    <select name="veiculo_id" class="form-control mr-2" style="width: 200px;" onchange="this.form.submit()">
+                        <option value="">TODOS OS VEÍCULOS</option>
+                        @foreach($veiculos as $v)
+                            <option value="{{ $v->id }}" {{ $veiculoSelecionado == $v->id ? 'selected' : '' }}>
+                                {{ $v->placa }} - {{ $v->modelo }}
+                            </option>
+                        @endforeach
+                    </select>
 
-    @if($veiculoSelecionado || request('data_inicio'))
-        <a href="/movimentacaoVeiculo/dashboard" class="btn btn-light-danger btn-sm">Limpar</a>
-    @endif
-</form>
+                    <button type="submit" class="btn btn-primary btn-sm mr-1">Filtrar</button>
+
+                    @if($veiculoSelecionado || request('data_inicio'))
+                        <a href="/movimentacaoVeiculo/dashboard" class="btn btn-light-danger btn-sm">Limpar</a>
+                    @endif
+                </form>
             </div>
         </div>
 
@@ -129,7 +129,70 @@
             </div>
         </div>
         @endif
-
+<div class="row mt-4">
+            <div class="col-12">
+                <div class="card card-custom gutter-b @if(count($motoristasAlerta) > 0) border border-warning @endif">
+                    <div class="card-header border-0 pt-5">
+                        <h3 class="card-title align-items-start flex-column">
+                            <span class="card-label font-weight-bolder text-dark">
+                                <i class="fa fa-id-card text-warning mr-2"></i> Alertas de CNH
+                            </span>
+                            <span class="text-muted mt-3 font-weight-bold font-size-sm">Motoristas com CNH vencida ou a vencer nos próximos 30 dias</span>
+                        </h3>
+                    </div>
+                    
+                    <div class="card-body pt-3 pb-0">
+                        <div class="table-responsive">
+                            <table class="table table-borderless table-vertical-center">
+                                <tbody>
+                                    @forelse($motoristasAlerta as $mot)
+                                        @php
+                                            $hoje = \Carbon\Carbon::now();
+                                            $vencimento = \Carbon\Carbon::parse($mot->vencimento_cnh);
+                                            $diasParaVencer = $hoje->diffInDays($vencimento, false);
+                                        @endphp
+                                        <tr>
+                                            <td class="pl-0" style="width: 50px">
+                                                <div class="symbol symbol-50 symbol-light mr-2">
+                                                    <span class="symbol-label">
+                                                        <span class="font-size-h4 font-weight-bold text-primary">{{ substr($mot->nome, 0, 1) }}</span>
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td class="pl-0">
+                                                <a href="/funcionarios/edit/{{ $mot->id }}" class="text-dark-75 font-weight-bolder text-hover-primary mb-1 font-size-lg">
+                                                    {{ $mot->nome }}
+                                                </a>
+                                                <span class="text-muted font-weight-bold d-block">Categoria: {{ $mot->categoria_cnh ?? 'Não informada' }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-dark-75 font-weight-bolder d-block font-size-lg">
+                                                    Vencimento: {{ \Carbon\Carbon::parse($mot->vencimento_cnh)->format('d/m/Y') }}
+                                                </span>
+                                            </td>
+                                            <td class="text-right pr-0">
+                                                @if($diasParaVencer <= 0)
+                                                    <span class="label label-danger label-inline font-weight-bold p-3" title="CNH Vencida!">VENCIDA</span>
+                                                @else
+                                                    <span class="label label-warning label-inline font-weight-bold p-3" title="Vence em {{ $diasParaVencer }} dias">EM {{ $diasParaVencer }} DIAS</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted font-weight-bold py-5">
+                                                <i class="la la-check-circle text-success mb-2" style="font-size: 30px"></i><br>
+                                                Todas as CNHs estão dentro da validade.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="row mt-5">
             <div class="col-lg-8 mb-4">
                 <div class="card card-custom gutter-b h-100">

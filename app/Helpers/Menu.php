@@ -226,7 +226,11 @@ class Menu {
                     [
 						'nome' => 'Importação em Lote',
 						'rota' => '/compras-lote'
-					],                  
+					],
+                  	[
+						'nome' => 'Importação XML Serviço',
+						'rota' => '/compras/importacaoNfse'
+					],      
 					[
 						'nome' => 'Cotações',
 						'rota' => '/cotacao'

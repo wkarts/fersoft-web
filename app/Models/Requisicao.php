@@ -4,30 +4,30 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Requisicao extends Model
+class Requisicao extends BaseModel
 {
     protected $table = 'requisicoes';
-    
+
     protected $fillable = [
-        'empresa_id', 
-        'funcionario_id', 
-        'responsavel_id', 
-        'unidade', 
-        'data_requisicao', 
-        'observacao', 
+        'empresa_id',
+        'filial_id',
+        'funcionario_id',
+        'usuario_id',
+        'responsavel_id',
+        'unidade',
+        'data_requisicao',
+        'observacao',
         'status'
     ];
 
     // Relacionamento com o Funcionário que recebeu
-    public function funcionario()
-    {
+    public function funcionario() {
         return $this->belongsTo(Funcionario::class, 'funcionario_id');
     }
 
     // Relacionamento com o Usuário que entregou
-    public function responsavel()
-    {
-        return $this->belongsTo(User::class, 'responsavel_id');
+    public function responsavel() {
+        return $this->belongsTo(Funcionario::class, 'responsavel_id')->withDefault(['nome' => 'N/A']);
     }
 
     // Relacionamento com os itens da requisição

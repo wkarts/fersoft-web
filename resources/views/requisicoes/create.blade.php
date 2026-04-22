@@ -9,19 +9,36 @@
     <form action="{{ route('requisicoes.store') }}" method="POST" id="form-requisicao">
         @csrf
         <div class="card-body">
+            
             <div class="row mb-8">
-                <div class="col-md-8">
+                <div class="col-md-4">
                     <label class="font-weight-bold">Funcionário Beneficiário <span class="text-danger">*</span></label>
-                    <select name="funcionario_id" class="form-control custom-select" required>
+                    <select name="funcionario_id" class="form-control" required>
                         <option value="">Selecione o funcionário...</option>
                         @foreach($funcionarios as $f)
                             <option value="{{ $f->id }}">{{ $f->nome }}</option>
                         @endforeach
                     </select>
                 </div>
+
                 <div class="col-md-4">
-                    <label class="font-weight-bold">Observação Geral</label>
-                    <input type="text" name="observacao" class="form-control" placeholder="Ex: Substituição por desgaste">
+                    <label class="font-weight-bold">Técnico Responsável <span class="text-danger">*</span></label>
+                    <select name="tecnico_id" class="form-control" required>
+                        <option value="">Selecione o Técnico de Segurança...</option>
+                        @foreach($funcionarios as $t)
+                            <option value="{{ $t->id }}">{{ $t->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                  <div class="col-md-3">
+                      <label>Data da Entrega (Opcional)</label>
+                      <input type="date" name="data_requisicao" class="form-control" value="{{ date('Y-m-d') }}">
+                  </div>
+              
+              
+                <div class="col-md-4">
+                    <label class="font-weight-bold">Observação</label>
+                    <input type="text" name="observacao" class="form-control">
                 </div>
             </div>
 
@@ -34,8 +51,8 @@
                     <select id="prod_temp" class="form-control custom-select">
                         <option value="">Selecione o produto...</option>
                         @foreach($produtos as $p)
-                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $p->estoque_atual }}">
-                                {{ $p->nome }} (Estoque: {{ $p->estoque_atual }})
+                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $p->quantidade }}">
+                                {{ $p->nome }} (Estoque: {{ number_format($p->quantidade, 2, ',', '.') }})
                             </option>
                         @endforeach
                     </select>
@@ -101,68 +118,67 @@
         </div>
     </form>
 </div>
-@endsection
 
-@section('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-// Função em JS puro para não conflitar com nada do sistema
-function adicionarItem() {
-    let select = document.getElementById('prod_temp');
-    
-    if(select.selectedIndex <= 0) {
-        alert("Por favor, selecione um produto.");
-        return;
+    function adicionarItem() {
+        let selectProd = $('#prod_temp');
+        let id = selectProd.val();
+
+        if (!id || id === "") {
+            alert("Por favor, selecione um produto.");
+            return;
+        }
+
+        let option = selectProd.find('option:selected');
+        let nome = option.data('nome');
+        let estoque = parseFloat(option.data('estoque'));
+        
+        let ca = $('#ca_temp').val();
+        let uso = $('#uso_temp').val();
+        let motivo = $('#motivo_temp').val();
+        let qtd = parseFloat($('#qtd_temp').val());
+
+        if (isNaN(qtd) || qtd <= 0) { 
+            alert("Informe uma quantidade válida."); 
+            return; 
+        }
+        if (qtd > estoque) { 
+            alert("Estoque insuficiente! Saldo atual: " + estoque); 
+            return; 
+        }
+        if ($('#linha_' + id).length > 0) { 
+            alert("Este produto já está na lista."); 
+            return; 
+        }
+
+        let tr = `
+            <tr id="linha_${id}">
+                <td>
+                    <input type="hidden" name="produtos[${id}][id]" value="${id}">
+                    <input type="hidden" name="produtos[${id}][ca]" value="${ca}">
+                    <input type="hidden" name="produtos[${id}][uso]" value="${uso}">
+                    <input type="hidden" name="produtos[${id}][motivo]" value="${motivo}">
+                    <input type="hidden" name="produtos[${id}][qtd]" value="${qtd}">
+                    ${nome}
+                </td>
+                <td>${ca || '-'}</td>
+                <td>${uso}</td>
+                <td>${motivo}</td>
+                <td>${qtd}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removerItem(${id})">X</button>
+                </td>
+            </tr>
+        `;
+
+        $('#tabela-itens tbody').append(tr);
+
+        selectProd.val('').trigger('change');
+        $('#ca_temp').val('');
+        $('#qtd_temp').val('');
     }
 
-    let option = select.options[select.selectedIndex];
-    let id = option.value;
-    let nome = option.getAttribute('data-nome');
-    let estoque = parseFloat(option.getAttribute('data-estoque'));
     
-    let ca = document.getElementById('ca_temp').value;
-    let uso = document.getElementById('uso_temp').value;
-    let motivo = document.getElementById('motivo_temp').value;
-    let qtd = parseFloat(document.getElementById('qtd_temp').value);
-
-    // Validações
-    if (isNaN(qtd) || qtd <= 0) { alert("Informe uma quantidade válida."); return; }
-    if (qtd > estoque) { alert("Estoque insuficiente! Saldo atual: " + estoque); return; }
-    if (document.getElementById('linha_' + id)) { alert("Este produto já está na lista."); return; }
-
-    // Cria a linha HTML
-    let tbody = document.querySelector('#tabela-itens tbody');
-    let tr = document.createElement('tr');
-    tr.id = 'linha_' + id;
-    
-    tr.innerHTML = `
-        <td>
-            <input type="hidden" name="produtos[${id}][id]" value="${id}">
-            <input type="hidden" name="produtos[${id}][ca]" value="${ca}">
-            <input type="hidden" name="produtos[${id}][uso]" value="${uso}">
-            <input type="hidden" name="produtos[${id}][motivo]" value="${motivo}">
-            <input type="hidden" name="produtos[${id}][qtd]" value="${qtd}">
-            ${nome}
-        </td>
-        <td>${ca || '-'}</td>
-        <td>${uso}</td>
-        <td>${motivo}</td>
-        <td>${qtd}</td>
-        <td class="text-center">
-            <button type="button" class="btn btn-sm btn-danger" onclick="removerItem(${id})">X</button>
-        </td>
-    `;
-
-    tbody.appendChild(tr);
-
-    // Limpa os campos para o próximo
-    select.selectedIndex = 0;
-    document.getElementById('ca_temp').value = '';
-    document.getElementById('qtd_temp').value = '';
-}
-
-function removerItem(id) {
-    let linha = document.getElementById('linha_' + id);
-    if(linha) { linha.remove(); }
-}
 </script>
 @endsection

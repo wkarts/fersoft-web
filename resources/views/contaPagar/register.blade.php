@@ -619,49 +619,53 @@
             }
         })
 
-        function montaHtml(meses, vencimento, ultimoDia, dia){
+        function montaHtml(meses, vencimento, ultimoDia, dia) {
+    $('table tbody').html('');
+    let valor = $('#valor').val();
+    if ($('#valor_final').val()) {
+        valor = $('#valor_final').val();
+    }
 
-            $('table tbody').html('')
-            let valor = $('#valor').val()
-            if($('#valor_final').val()){
-                valor = $('#valor_final').val()
-            }
-            vencimento = converteData(vencimento)
-            let venc = new Date(vencimento);
-            if(dia == '01'){
-                venc = new Date(venc.setDate(venc.getDate()+1));
-            }
-            console.log("vencimento", venc)
-            // PARCELAS = []
-            for(let i=0; i<=meses; i++){
-                html = ''
-                // let data = converteData(vencimento);
-                if(i > 0){
+    // Pegamos a data limite digitada no campo "Salvar até este mês"
+    let recorrencia = $('#recorrencia').val(); // formato "mm/aa"
+    let mesLimite = parseInt(recorrencia.split('/')[0]);
+    let anoLimite = parseInt("20" + recorrencia.split('/')[1]);
 
-                    venc = new Date(venc.setMonth(venc.getMonth()+1));
+    let vencOriginal = converteData(vencimento);
+    let venc = new Date(vencOriginal + "T00:00:00"); // Força fuso horário local
 
-                    // alert(venc.getMonth()+1)
-                    data = (venc.getDate() < 10 ? ("0" + venc.getDate()) : venc.getDate()) +
-                        "/"+ ((venc.getMonth()+1) < 10 ? "0" + (venc.getMonth()+1) : (venc.getMonth()+1)) +
-                        "/" + venc.getFullYear();
-                    data = converteData(data);
+    // O loop começa em 1 porque a Parcela 0 é a que você está salvando agora (Principal)
+    // Usamos um limite de segurança de 100 para evitar loops infinitos
+    for (let i = 1; i <= 100; i++) {
+        // Adiciona 1 mês à data
+        venc.setMonth(venc.getMonth() + 1);
 
-                    html += '<tr>'
-                    html += '<td>'
-                    html += '<input value="'+data+'" type="date" class="form-control dt" '
-                    html += 'name="">'
-                    html += '</td>'
-                    html += '<td>'
-                    html += '<input value="'+valor+'" type="text" class="form-control valor" '
-                    html += 'name="">'
-                    html += '</td>'
-                    html += '</tr>'
-                    $('table tbody').append(html)
-                }
+        let mesAtual = venc.getMonth() + 1;
+        let anoAtual = venc.getFullYear();
 
-            }
+        // TRAVA: Se o mês e ano ultrapassarem o limite digitado, para o loop
+        if (anoAtual > anoLimite || (anoAtual == anoLimite && mesAtual > mesLimite)) {
+            break; 
         }
 
+        let dataFormatada = (venc.getDate() < 10 ? ("0" + venc.getDate()) : venc.getDate()) +
+            "/" + (mesAtual < 10 ? "0" + mesAtual : mesAtual) +
+            "/" + anoAtual;
+
+        let dataSQL = converteData(dataFormatada);
+
+        let html = '<tr>';
+        html += '<td>';
+        html += '<input value="' + dataSQL + '" type="date" class="form-control dt">';
+        html += '</td>';
+        html += '<td>';
+        html += '<input value="' + valor + '" type="text" class="form-control valor">';
+        html += '</td>';
+        html += '</tr>';
+        
+        $('table tbody').append(html);
+    }
+}
         function converteData(data){
             let temp = data.split('/')
             return temp[2] + '-' + temp[1] + '-' + temp[0]

@@ -9,7 +9,7 @@ use App\Models\ItemContaEmpresa;
 use App\Models\ConfigNota;
 use App\Models\Empresa;
 use Illuminate\Support\Facades\DB;
-use Dompdf\Dompdf;
+use Dompdf\Dompdf; // <-- IMPORTANTE: Adicionado para a impressão do Extrato
 use App\Models\MultiEmpresaTrait;
 
 class ContaEmpresaController extends BaseController
@@ -17,9 +17,13 @@ class ContaEmpresaController extends BaseController
     use MultiEmpresaTrait;
 
     /**
-     * Propriedade exigida pelo BaseController para redirecionamentos.
+     * Propriedades exigidas pelo BaseController para o funcionamento padrão.
      */
+    protected $model = ContaEmpresa::class;
+    protected $formTitle = 'Conta Empresa';
     protected $redirectPage = 'contas-empresa.index';
+    protected $listView = 'conta_empresa/index';
+    protected $registerView = 'conta_empresa/register';
 
     /**
      * Define as regras de validação (Exigido pelo BaseController).
@@ -51,7 +55,9 @@ class ContaEmpresaController extends BaseController
         $query = ContaEmpresa::withoutGlobalScopes()
             ->where('empresa_id', $this->empresa_id);
 
-        __aplicar_filtro_empresa_filial($query);
+        if (function_exists('__aplicar_filtro_empresa_filial')) {
+            __aplicar_filtro_empresa_filial($query);
+        }
 
         $data = $query
             ->orderBy('nome', 'asc')
@@ -126,7 +132,7 @@ class ContaEmpresaController extends BaseController
             $item->saldo_inicial = __replace($request->saldo_inicial);
             $item->status = $request->status ?? 1;
             $item->empresa_id = $this->empresa_id;
-            $item->usuario_id = get_id_user();
+            $item->usuario_id = $this->usuario_id ?? get_id_user();
             $item->filial_id = $filial_final; // Atribuição direta e forçada
 
             $item->save();
@@ -176,7 +182,7 @@ class ContaEmpresaController extends BaseController
             $item->saldo_inicial = __replace($request->saldo_inicial);
             $item->status = $request->status;
             $item->filial_id = $filial_final; // <--- Forçamos o ID (ex: 8) aqui!
-            $item->usuario_id = get_id_user();
+            $item->usuario_id = $this->usuario_id ?? get_id_user();
 
             $item->save();
 
@@ -206,8 +212,19 @@ class ContaEmpresaController extends BaseController
         return redirect()->back();
     }
 
-    public function show(Request $request, $id)
+    /**
+     * Alias para o método show, caso a rota procure por "extrato"
+     */
+    public function extrato(Request $request, $id = null)
     {
+        return $this->show($request, $id);
+    }
+
+    public function show(Request $request, $id = null)
+    {
+        // Se o ID não veio na rota, tenta pegar do Query String
+        $id = $id ?? $request->id;
+
         $data_inicio = $request->data_inicio ?? date('Y-m-d');
         $data_final = $request->data_final ?? date('Y-m-d');
         $tipo = $request->tipo;
@@ -222,11 +239,15 @@ class ContaEmpresaController extends BaseController
         }
 
         $categoriasQuery = DB::table('categoria_contas')->where('empresa_id', $this->empresa_id);
-        __aplicar_filtro_empresa_filial($categoriasQuery);
+        if (function_exists('__aplicar_filtro_empresa_filial')) {
+            __aplicar_filtro_empresa_filial($categoriasQuery);
+        }
         $categorias = $categoriasQuery->get();
 
         $contasQuery = ContaEmpresa::withoutGlobalScopes()->where('empresa_id', $this->empresa_id);
-        __aplicar_filtro_empresa_filial($contasQuery);
+        if (function_exists('__aplicar_filtro_empresa_filial')) {
+            __aplicar_filtro_empresa_filial($contasQuery);
+        }
         $contas = $contasQuery->orderBy('nome', 'asc')->get();
 
         $saldo_anterior = $item->saldo_inicial;
@@ -247,13 +268,42 @@ class ContaEmpresaController extends BaseController
         return view('conta_empresa/show', compact('data', 'item', 'data_inicio', 'data_final', 'tipo', 'saldo_anterior', 'categorias', 'contas'));
     }
 
-    public function imprimirExtrato(Request $request, $id)
+    /**
+     * VERSÃO CORRIGIDA COM DOMPDF PARA IMPRIMIR EM BRANCO (OU COM DADOS)
+     */
+    public function imprimirExtrato(Request $request, $id = null)
     {
+        $id = $id ?? $request->id;
         $item = ContaEmpresa::withoutGlobalScopes()->where('id', $id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+
         if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) { return redirect('/403'); }
+
+        if (ob_get_contents()) { ob_end_clean(); }
 
         $empresa = Empresa::find($this->empresa_id) ?? Empresa::first();
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+        // --- LÓGICA DA LOGO ---
+        $nomeLogo = '';
+        if ($item->filial_id) {
+            // Se a conta é de uma filial, busca na tabela filials
+            $nomeLogo = DB::table('filials')->where('id', $item->filial_id)->value('logo');
+        } else {
+            // Se for da matriz/empresa, busca na config_notas
+            $nomeLogo = $config->logo ?? '';
+        }
+
+        $caminhoLogo = '';
+        if ($nomeLogo) {
+            $caminhoFisico = public_path('logos/' . $nomeLogo);
+            if (file_exists($caminhoFisico)) {
+                $tipo = pathinfo($caminhoFisico, PATHINFO_EXTENSION);
+                $data = file_get_contents($caminhoFisico);
+                $caminhoLogo = 'data:image/' . $tipo . ';base64,' . base64_encode($data);
+            }
+        }
+        // -----------------------
+
         $data_inicio = $request->data_inicio;
         $data_final = $request->data_final;
         $saldo_anterior = $item->saldo_inicial;
@@ -270,7 +320,14 @@ class ContaEmpresaController extends BaseController
             ->when($data_final, function ($q) use ($data_final) { return $q->whereRaw('COALESCE(data_pagamento, created_at) <= ?', [$data_final]); })
             ->get();
 
-        return view('conta_empresa.print', compact('item', 'movimentacoes', 'saldo_anterior', 'data_inicio', 'data_final', 'empresa', 'config'));
+        $p = view('conta_empresa.print', compact('item', 'movimentacoes', 'saldo_anterior', 'data_inicio', 'data_final', 'empresa', 'config', 'caminhoLogo'));
+
+        $domPdf = new Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($p);
+        $domPdf->setPaper("A4", "portrait");
+        $domPdf->render();
+
+        return response($domPdf->output())->header('Content-Type', 'application/pdf');
     }
 
     public function imprimirTransacao($id)
@@ -290,9 +347,11 @@ class ContaEmpresaController extends BaseController
         return response($domPdf->output())->header('Content-Type', 'application/pdf');
     }
 
-    public function deleteLancamento(Request $request)
+    public function deleteLancamento(Request $request, $id = null)
     {
-        $item = ItemContaEmpresa::findOrFail($request->id);
+        $id_lancamento = $id ?? $request->id;
+        $item = ItemContaEmpresa::findOrFail($id_lancamento);
+
         $conta = ContaEmpresa::withoutGlobalScopes()->where('id', $item->conta_id)->where('empresa_id', $this->empresa_id)->firstOrFail();
         if (!$this->usuarioPodeAcessarFilialRegistro($conta->filial_id)) { return redirect('/403'); }
         if ($item->origem != 'manual') { session()->flash('mensagem_erro', 'Lançamentos automáticos não podem ser excluídos.'); return redirect()->back(); }
@@ -302,7 +361,7 @@ class ContaEmpresaController extends BaseController
 
         try {
             DB::transaction(function () use ($item, $conta) {
-                if ($item->tipo == 'entrada') { $conta->saldo -= $item->valor; } 
+                if ($item->tipo == 'entrada') { $conta->saldo -= $item->valor; }
                 else { $conta->saldo += $item->valor; }
                 $conta->save();
                 $item->delete();
@@ -314,109 +373,114 @@ class ContaEmpresaController extends BaseController
 
     private function usuarioPodeAcessarFilialRegistro($filialId): bool
     {
-        if (__usuario_pode_ver_todos_locais()) { return true; }
-        $locaisPermitidos = (array) __usuario_locais_ids_logado();
-        if ($filialId === null || $filialId == 0) {
-            return in_array(-1, $locaisPermitidos, true) || in_array('-1', $locaisPermitidos, true);
+        if (function_exists('__usuario_pode_ver_todos_locais')) {
+            if (__usuario_pode_ver_todos_locais()) { return true; }
         }
-        return in_array((int)$filialId, $locaisPermitidos, true) || in_array((string)$filialId, $locaisPermitidos, true);
+        if (function_exists('__usuario_locais_ids_logado')) {
+            $locaisPermitidos = (array) __usuario_locais_ids_logado();
+            if ($filialId === null || $filialId == 0) {
+                return in_array(-1, $locaisPermitidos, true) || in_array('-1', $locaisPermitidos, true);
+            }
+            return in_array((int)$filialId, $locaisPermitidos, true) || in_array((string)$filialId, $locaisPermitidos, true);
+        }
+        return true;
     }
-  
-  	public function sincronizar($id)
-{
-    // Se o JS funcionar, você verá esta mensagem na tela preta
-    // dd("O controlador recebeu o pedido para a conta: " . $id);
 
-    $conta = ContaEmpresa::withoutGlobalScopes()
-        ->where('id', $id)
-        ->where('empresa_id', $this->empresa_id)
-        ->firstOrFail();
+    public function sincronizar($id)
+    {
+        // Se o JS funcionar, você verá esta mensagem na tela preta
+        // dd("O controlador recebeu o pedido para a conta: " . $id);
 
-    DB::transaction(function () use ($conta) {
-        // 1. LIMPEZA TOTAL (Forçada via Query Builder)
-        DB::table('item_conta_empresas')->where('conta_id', $conta->id)->delete();
+        $conta = ContaEmpresa::withoutGlobalScopes()
+            ->where('id', $id)
+            ->where('empresa_id', $this->empresa_id)
+            ->firstOrFail();
 
-        // 2. TERMO DE BUSCA
-        $termoBusca = '';
-        $nomeLower = strtolower($conta->nome);
-        if (str_contains($nomeLower, 'itau')) $termoBusca = 'Itau';
-        elseif (str_contains($nomeLower, 'santander')) $termoBusca = 'Santander';
-        elseif (str_contains($nomeLower, 'bradesco')) $termoBusca = 'Bradesco';
-        elseif (str_contains($nomeLower, 'fundo fixo') || str_contains($nomeLower, 'caixa') || str_contains($nomeLower, 'dinheiro')) $termoBusca = 'Dinheiro';
+        DB::transaction(function () use ($conta) {
+            // 1. LIMPEZA TOTAL (Forçada via Query Builder)
+            DB::table('item_conta_empresas')->where('conta_id', $conta->id)->delete();
 
-        // 3. BUSCA SAÍDAS (Contas a Pagar + Fornecedor)
-        // Ajuste 'fornecedores' se o nome da sua tabela for 'fornecedors'
-        $pagamentos = DB::table('conta_pagars as cp')
-            ->leftJoin('fornecedores as f', 'f.id', '=', 'cp.fornecedor_id') 
-            ->where('cp.empresa_id', $this->empresa_id)
-            ->where('cp.status', 1)
-            ->where('cp.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
-            ->where(function($q) use ($conta) {
-                if ($conta->filial_id === null) return $q->whereNull('cp.filial_id');
-                return $q->where('cp.filial_id', $conta->filial_id);
-            })
-            ->select('cp.*', 'f.razao_social as nome_entidade')
-            ->get();
+            // 2. TERMO DE BUSCA
+            $termoBusca = '';
+            $nomeLower = strtolower($conta->nome);
+            if (str_contains($nomeLower, 'itau')) $termoBusca = 'Itau';
+            elseif (str_contains($nomeLower, 'santander')) $termoBusca = 'Santander';
+            elseif (str_contains($nomeLower, 'bradesco')) $termoBusca = 'Bradesco';
+            elseif (str_contains($nomeLower, 'fundo fixo') || str_contains($nomeLower, 'caixa') || str_contains($nomeLower, 'dinheiro')) $termoBusca = 'Dinheiro';
 
-        // 4. BUSCA ENTRADAS (Contas a Receber + Cliente)
-        $recebimentos = DB::table('conta_recebers as cr')
-            ->leftJoin('clientes as c', 'c.id', '=', 'cr.cliente_id')
-            ->where('cr.empresa_id', $this->empresa_id)
-            ->where('cr.status', 1)
-            ->where('cr.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
-            ->where(function($q) use ($conta) {
-                if ($conta->filial_id === null) return $q->whereNull('cr.filial_id');
-                return $q->where('cr.filial_id', $conta->filial_id);
-            })
-            ->select('cr.*', 'c.razao_social as nome_entidade')
-            ->get();
+            // 3. BUSCA SAÍDAS (Contas a Pagar + Fornecedor)
+            // Ajuste 'fornecedores' se o nome da sua tabela for 'fornecedors'
+            $pagamentos = DB::table('conta_pagars as cp')
+                ->leftJoin('fornecedores as f', 'f.id', '=', 'cp.fornecedor_id')
+                ->where('cp.empresa_id', $this->empresa_id)
+                ->where('cp.status', 1)
+                ->where('cp.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+                ->where(function($q) use ($conta) {
+                    if ($conta->filial_id === null) return $q->whereNull('cp.filial_id');
+                    return $q->where('cp.filial_id', $conta->filial_id);
+                })
+                ->select('cp.*', 'f.razao_social as nome_entidade')
+                ->get();
 
-        // 5. UNIÃO E CÁLCULO
-        $todos = collect();
-        foreach($pagamentos as $p) {
-            $todos->push([
-                'id' => $p->id, 'tipo' => 'saida', 'valor' => $p->valor_integral,
-                'data' => $p->data_pagamento, 'cat' => $p->categoria_id,
-                'desc' => "Pgto: " . ($p->nome_entidade ?? 'Fornecedor N/D') . " (" . $p->referencia . ")",
-                'origem' => 'conta pagar', 'user' => $p->usuario_id
-            ]);
-        }
-        foreach($recebimentos as $r) {
-            $todos->push([
-                'id' => $r->id, 'tipo' => 'entrada', 'valor' => $r->valor_integral,
-                'data' => $r->data_recebimento, 'cat' => $r->categoria_id,
-                'desc' => "Rec: " . ($r->nome_entidade ?? 'Cliente N/D') . " (" . $r->referencia . ")",
-                'origem' => 'conta a receber', 'user' => null
-            ]);
-        }
+            // 4. BUSCA ENTRADAS (Contas a Receber + Cliente)
+            $recebimentos = DB::table('conta_recebers as cr')
+                ->leftJoin('clientes as c', 'c.id', '=', 'cr.cliente_id')
+                ->where('cr.empresa_id', $this->empresa_id)
+                ->where('cr.status', 1)
+                ->where('cr.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+                ->where(function($q) use ($conta) {
+                    if ($conta->filial_id === null) return $q->whereNull('cr.filial_id');
+                    return $q->where('cr.filial_id', $conta->filial_id);
+                })
+                ->select('cr.*', 'c.razao_social as nome_entidade')
+                ->get();
 
-        $saldo = $conta->saldo_inicial;
-        foreach ($todos->sortBy('data') as $l) {
-            $saldo = ($l['tipo'] == 'entrada') ? ($saldo + $l['valor']) : ($saldo - $l['valor']);
+            // 5. UNIÃO E CÁLCULO
+            $todos = collect();
+            foreach($pagamentos as $p) {
+                $todos->push([
+                    'id' => $p->id, 'tipo' => 'saida', 'valor' => $p->valor_integral,
+                    'data' => $p->data_pagamento, 'cat' => $p->categoria_id,
+                    'desc' => "Pgto: " . ($p->nome_entidade ?? 'Fornecedor N/D') . " (" . $p->referencia . ")",
+                    'origem' => 'conta pagar', 'user' => $p->usuario_id
+                ]);
+            }
+            foreach($recebimentos as $r) {
+                $todos->push([
+                    'id' => $r->id, 'tipo' => 'entrada', 'valor' => $r->valor_integral,
+                    'data' => $r->data_recebimento, 'cat' => $r->categoria_id,
+                    'desc' => "Rec: " . ($r->nome_entidade ?? 'Cliente N/D') . " (" . $r->referencia . ")",
+                    'origem' => 'conta a receber', 'user' => null
+                ]);
+            }
 
-            DB::table('item_conta_empresas')->insert([
-                'conta_id' => $conta->id,
-                'descricao' => $l['desc'],
-                'tipo_pagamento' => '01',
-                'valor' => $l['valor'],
-                'data_pagamento' => $l['data'],
-                'saldo_atual' => $saldo,
-                'tipo' => $l['tipo'],
-                'origem' => $l['origem'],
-                'conta_pagar_id' => ($l['origem'] == 'conta pagar' ? $l['id'] : null),
-                'conta_receber_id' => ($l['origem'] == 'conta a receber' ? $l['id'] : null),
-                'categoria_id' => $l['cat'], // Gravando categoria
-                'user_id' => $l['user'] ?? get_id_user(),
-                'empresa_id' => $this->empresa_id,
-                'created_at' => now(), 'updated_at' => now()
-            ]);
-        }
+            $saldo = $conta->saldo_inicial;
+            foreach ($todos->sortBy('data') as $l) {
+                $saldo = ($l['tipo'] == 'entrada') ? ($saldo + $l['valor']) : ($saldo - $l['valor']);
 
-        $conta->saldo = $saldo;
-        $conta->save();
-    });
+                DB::table('item_conta_empresas')->insert([
+                    'conta_id' => $conta->id,
+                    'descricao' => $l['desc'],
+                    'tipo_pagamento' => '01',
+                    'valor' => $l['valor'],
+                    'data_pagamento' => $l['data'],
+                    'saldo_atual' => $saldo,
+                    'tipo' => $l['tipo'],
+                    'origem' => $l['origem'],
+                    'conta_pagar_id' => ($l['origem'] == 'conta pagar' ? $l['id'] : null),
+                    'conta_receber_id' => ($l['origem'] == 'conta a receber' ? $l['id'] : null),
+                    'categoria_id' => $l['cat'], // Gravando categoria
+                    'user_id' => $l['user'] ?? ($this->usuario_id ?? get_id_user()),
+                    'empresa_id' => $this->empresa_id,
+                    'created_at' => now(), 'updated_at' => now()
+                ]);
+            }
 
-    session()->flash('mensagem_sucesso', 'Histórico sincronizado!');
-    return redirect()->back();
-}
+            $conta->saldo = $saldo;
+            $conta->save();
+        });
+
+        session()->flash('mensagem_sucesso', 'Histórico sincronizado!');
+        return redirect()->back();
+    }
 }

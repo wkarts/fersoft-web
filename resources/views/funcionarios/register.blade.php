@@ -202,64 +202,43 @@
 									</div>
 
                                     <div id="secao_motorista" style="display: none;">
-                                        <div class="card card-custom gutter-b example example-compact" style="max-height: 30px; margin: 20px auto; display: flex; justify-content: center;">
-                                            <div class="card-header"><h3 class="card-title">Dados de Motorista</h3></div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group validated col-sm-9 col-lg-3">
-                                                <label class="col-form-label">CNH</label>
-                                                <input id="cnh" type="text" class="form-control" name="cnh" value="{{{ isset($funcionario) ? $funcionario->cnh : old('cnh') }}}">
-                                            </div>
-
-                                            <div class="form-group col-lg-3 col-md-9 col-sm-12">
-                                                <label class="col-form-label">Categoria</label>
-                                                <select class="custom-select form-control" name="categoria_cnh">
-                                                    <option value="">--</option>
-                                                    @foreach(['A','B','C','D','E'] as $cat)
-                                                    <option value="{{$cat}}" @if(isset($funcionario) && $funcionario->categoria_cnh == $cat) selected @endif>{{$cat}}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                             <div id="secao_motorista" style="display: none;">
                                                 <div class="card card-custom gutter-b example example-compact" style="max-height: 30px; margin: 20px auto; display: flex; justify-content: center;">
-                                                <div class="card-header"><h3 class="card-title">Dados de Motorista</h3></div>
-                                               </div>
+                                                    <div class="card-header"><h3 class="card-title">Dados de Motorista</h3></div>
+                                                </div>
 
-                                            <div class="row">
-											
-                                            <div class="form-group validated col-sm-9 col-lg-3">
-                                                <label class="col-form-label">CNH</label>
-                                                <input id="cnh" type="text" class="form-control" name="cnh" value="{{{ isset($funcionario) ? $funcionario->cnh : old('cnh') }}}">
-                                            </div>
+                                                <div class="row">
+                                                    <div class="form-group validated col-sm-9 col-lg-3">
+                                                        <label class="col-form-label">CNH</label>
+                                                        <input id="cnh" type="text" class="form-control" name="cnh" value="{{{ isset($funcionario) ? $funcionario->cnh : old('cnh') }}}">
+                                                    </div>
 
-                                            <div class="form-group col-lg-3 col-md-9 col-sm-12">
-                                                <label class="col-form-label">Categoria</label>
-                                                <select class="custom-select form-control" name="categoria_cnh">
-                                                    <option value="">--</option>
-                                                    @foreach(['A','B','C','D','E'] as $cat)
-                                                    <option value="{{$cat}}" @if(isset($funcionario) && $funcionario->categoria_cnh == $cat) selected @endif>{{$cat}}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
+                                                    <div class="form-group col-lg-3 col-md-9 col-sm-12">
+                                                        <label class="col-form-label">Categoria</label>
+                                                        <select class="custom-select form-control" name="categoria_cnh">
+                                                            <option value="">--</option>
+                                                            @foreach(['A','B','C','D','E', 'AB', 'AC', 'AD', 'AE'] as $cat)
+                                                            <option value="{{$cat}}" @if(isset($funcionario) && $funcionario->categoria_cnh == $cat) selected @endif>{{$cat}}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
 
-                                            <div class="form-group col-lg-3 col-md-9 col-sm-12">
-                                                <label class="col-form-label">Vencimento CNH</label>
-                                                <div class="input-group date">
-                                                    <input type="text" name="vencimento_cnh" class="form-control" readonly value="{{ isset($funcionario->vencimento_cnh) ? \Carbon\Carbon::parse($funcionario->vencimento_cnh)->format('d/m/Y') : old('vencimento_cnh') }}" id="kt_datepicker_3" />
-                                                    <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
+                                                    <div class="form-group col-lg-3 col-md-9 col-sm-12">
+                                                        <label class="col-form-label">Vencimento CNH</label>
+                                                        <div class="input-group date">
+                                                            <input type="text" name="vencimento_cnh" class="form-control" readonly value="{{ isset($funcionario->vencimento_cnh) && $funcionario->vencimento_cnh ? \Carbon\Carbon::parse($funcionario->vencimento_cnh)->format('d/m/Y') : old('vencimento_cnh') }}" id="kt_datepicker_3" />
+                                                            <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="form-group col-lg-3 col-md-9 col-sm-12">
+                                                        <label class="col-form-label">Status do Motorista</label>
+                                                        <select class="custom-select form-control" name="status_motorista">
+                                                            <option value="Ativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Ativo') selected @endif>Ativo</option>
+                                                            <option value="Inativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Inativo') selected @endif>Inativo</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                            <div class="form-group col-lg-3 col-md-9 col-sm-12">
-                                                <label class="col-form-label">Status do Motorista</label>
-                                                <select class="custom-select form-control" name="status_motorista">
-                                                    <option value="Ativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Ativo') selected @endif>Ativo</option>
-                                                    <option value="Inativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Inativo') selected @endif>Inativo</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
                                             <div class="form-group col-lg-3 col-md-9 col-sm-12">
                                                 <label class="col-form-label">Vencimento CNH</label>
                                                 <div class="input-group date">
@@ -317,22 +296,43 @@
 @section('javascript')
 <script>
 $(document).ready(function() {
-    // 1. Garante que o Select2 seja inicializado (se o seu template usar)
+    // 1. Garante que o Select2 seja inicializado
     if($('.select2').length) {
         $('.select2').select2();
     }
 
-    // 2. Evento de clique para salvar a função
+    // --- NOVA LÓGICA DO MOTORISTA AQUI ---
+    function verificaMotorista() {
+        // Pega o nome da função que está selecionada
+        let nomeFuncao = $('#funcao_id option:selected').text().toLowerCase();
+        
+        // Se o nome tiver a palavra "motorista", mostra os campos com uma animação
+        if (nomeFuncao.includes('motorista')) {
+            $('#secao_motorista').slideDown();
+        } else {
+            $('#secao_motorista').slideUp();
+        }
+    }
+
+    // Roda a verificação assim que a tela abre (ótimo para quando for Editar)
+    verificaMotorista();
+
+    // Roda a verificação toda vez que o usuário trocar a função no Select
+    $('#funcao_id').change(function() {
+        verificaMotorista();
+    });
+    // -------------------------------------
+
+    // 2. Evento de clique para salvar a função nova (Já estava no seu código)
     $('#btn_save_funcao_quick').click(function() {
         let nome = $('#nome_funcao_quick').val();
         let empresa_id = "{{ $empresa_id }}"; 
 
         if (nome == "") {
-            alert("Por favor, informe o nome da função."); // Usando alert nativo
+            alert("Por favor, informe o nome da função."); 
             return;
         }
 
-        // Muda o texto do botão para mostrar que está carregando
         let btn = $(this);
         btn.prop('disabled', true).text('Salvando...');
 
@@ -343,11 +343,9 @@ $(document).ready(function() {
         })
         .done(function(data) {
             if (data.success) {
-                // Adiciona no select e atualiza
                 let newOption = new Option(data.nome, data.id, true, true);
                 $('#funcao_id').append(newOption).trigger('change');
                 
-                // Limpa e esconde o modal
                 $('#nome_funcao_quick').val('');
                 $('#modal_funcao').modal('hide');
                 
@@ -357,11 +355,10 @@ $(document).ready(function() {
             }
         })
         .fail(function(xhr) {
-            alert("Erro de comunicação com o servidor. Aperte F12 e veja a aba Console.");
+            alert("Erro de comunicação. Aperte F12 e veja o Console.");
             console.log(xhr.responseText);
         })
         .always(function() {
-            // Reativa o botão
             btn.prop('disabled', false).text('Salvar');
         });
     });

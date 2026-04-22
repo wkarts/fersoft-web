@@ -386,4 +386,42 @@ class ProviderController extends Controller
             return response()->json($e->getMessage(), 401);
         }
     }
+
+    public function historico($id){
+        $fornecedor = Fornecedor::findOrFail($id);
+
+        // Busca os lançamentos financeiros vinculados ao fornecedor
+        // O 'with' tenta carregar os dados da compra se existirem
+        $contas = \App\Models\ContaPagar::with('compra')
+            ->where('fornecedor_id', $id)
+            ->where('empresa_id', $this->empresa_id)
+            ->orderBy('data_vencimento', 'desc')
+            ->get();
+
+        $historico = [];
+        foreach($contas as $c) {
+            // Se houver uma compra vinculada, pega o número da NF dela
+            $nf = $c->compra ? $c->compra->numero_emissao : ($c->numero_nota_fiscal ?? '--');
+
+            $valorTotal = (float)$c->valor_integral;
+            $valorPago = (float)$c->valor_pago;
+            $falta = $valorTotal - $valorPago;
+
+            $historico[] = [
+                'emissao' => $c->data_emissao ? \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y') : '--',
+                'nf' => $nf,
+                'vencimento' => $c->data_vencimento ? \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y') : '--',
+                'pagamento' => $c->data_pagamento ? \Carbon\Carbon::parse($c->data_pagamento)->format('d/m/Y') : '--',
+                'valor_total' => number_format($valorTotal, 2, ',', '.'),
+                'valor_pago' => number_format($valorPago, 2, ',', '.'),
+                'falta' => number_format($falta, 2, ',', '.'),
+                'status' => $c->status ? 'Pago' : 'Pendente'
+            ];
+        }
+
+        return response()->json([
+            'fornecedor' => $fornecedor->razao_social,
+            'historico' => $historico
+        ]);
+    }
 }
