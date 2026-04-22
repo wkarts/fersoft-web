@@ -38,8 +38,8 @@ class Cliente extends Model
 		return $this->belongsTo(Cidade::class, 'cidade_entrega_id');
 	}
 
-	public function receitaOtica(){
-		return $this->hasOne(ClienteOtica::class, 'cliente_id');
+	public function receitasOticas(){
+    return $this->hasMany(ClienteOtica::class, 'cliente_id')->orderBy('data', 'desc');
 	}
 
 	public function cashBacks(){

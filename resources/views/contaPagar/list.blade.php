@@ -256,7 +256,15 @@
         {{-- FIM DA BUSCA DA CONTA --}}
 
         @if($c->numero_nota_fiscal)
-            <span class="label label-inline border border-primary text-primary font-weight-bold" style="font-size: 10px; background: none; margin-top: 2px;">NF: {{ $c->numero_nota_fiscal }}</span>
+	            @if($c->compra_id)
+	                {{-- Se a conta veio de uma compra, transforma a etiqueta em um botão de impressão --}}
+	                <a href="/compras/imprimir/{{ $c->compra_id }}" target="_blank" class="label label-inline label-light-primary font-weight-bold" style="font-size: 11px; margin-top: 4px; cursor: pointer; text-decoration: none;" title="Imprimir DANFE">
+	                    <i class="la la-print text-primary mr-1" style="font-size: 14px;"></i> NF: {{ $c->numero_nota_fiscal }}
+	                </a>
+	            @else
+	                {{-- Se for uma conta manual (sem compra vinculada), mantém apenas o texto --}}
+	                <span class="label label-inline border border-primary text-primary font-weight-bold" style="font-size: 10px; background: none; margin-top: 2px;">NF: {{ $c->numero_nota_fiscal }}</span>
+	            @endif
         @endif
         @if($c->veiculo)
             <span class="label label-inline label-light-primary font-weight-bold mt-1" style="font-size: 11px;"><i class="la la-truck"></i> {{ $c->veiculo->placa }}</span>
@@ -417,25 +425,50 @@
         });
     });
   
-    // Função que abre o alerta de estorno pedindo a senha
+   // Função que abre o alerta de estorno pedindo a senha
     function estornarConta(id) {
         Swal.fire({
             title: 'Estornar Pagamento?',
             text: "Digite a senha de autorização:",
-            input: 'password',
-            inputAttributes: { autocapitalize: 'off' },
+            // TRUQUE ANTI-CHROME: Html customizado com readonly temporário e autocomplete desligado
+            html: '<input type="password" id="senha_estorno" class="swal2-input" autocomplete="new-password" readonly onfocus="this.removeAttribute(\'readonly\');" placeholder="Senha">',
             showCancelButton: true,
             confirmButtonText: 'Confirmar Estorno',
             cancelButtonText: 'Cancelar',
-            showLoaderOnConfirm: true,
-            preConfirm: (senha) => {
-                if (!senha) { Swal.showValidationMessage('A senha é obrigatória'); }
+            preConfirm: () => {
+                const senha = document.getElementById('senha_estorno').value;
+                if (!senha) { 
+                    Swal.showValidationMessage('A senha é obrigatória'); 
+                }
                 return senha;
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                let url = '/contasPagar/estorno?id=' + id + '&senha=' + result.value;
-                window.location.href = url;
+                // Formulário invisível via POST
+                let form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/contasPagar/estorno';
+
+                let csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = '_token';
+                csrfToken.value = '{{ csrf_token() }}';
+                form.appendChild(csrfToken);
+
+                let idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'id';
+                idInput.value = id;
+                form.appendChild(idInput);
+
+                let senhaInput = document.createElement('input');
+                senhaInput.type = 'hidden';
+                senhaInput.name = 'senha';
+                senhaInput.value = result.value;
+                form.appendChild(senhaInput);
+
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     }

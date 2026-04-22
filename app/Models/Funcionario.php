@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Funcionario extends Model
+class Funcionario extends BaseModel
 {
     protected $fillable = [
         'nome',
@@ -42,7 +42,7 @@ class Funcionario extends Model
         'observacao_ponto',
         'observacoes',
         'foto_funcionario',
-        'funcao', 
+        'funcao_id', 
         'filial_id'
     ];
 
@@ -117,4 +117,9 @@ class Funcionario extends Model
     {
         return $this->hasMany(Veiculo::class, 'motorista_id', 'id');
     }
+
+	 public function funcao()
+	{
+    return $this->belongsTo(\App\Models\Funcao::class, 'funcao_id');
+	}
 }

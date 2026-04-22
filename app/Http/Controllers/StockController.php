@@ -161,43 +161,46 @@ class StockController extends Controller
     }
   
     public function pesquisa(Request $request){
-        $filial_id = $request->input('filial_id');
-        $categoria_id = $request->input('categoria_id');
+    $filial_id = $request->input('filial_id');
+    $categoria_id = $request->input('categoria_id');
+    $pesquisa = $request->pesquisa;
 
-        // Retornamos ao ->get() original para não quebrar os botões
-        $estoque = Estoque::
-        orderBy('estoques.updated_at', 'desc')
+    $query = Estoque::where('estoques.empresa_id', $this->empresa_id)
         ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
-        ->where('produtos.gerenciar_estoque', 1) // Filtro adicionado
-        ->where('produtos.nome', 'LIKE', "%$request->pesquisa%")
-        ->where('estoques.empresa_id', $this->empresa_id)
-        ->when($filial_id, function ($query) use ($filial_id) {
-            $filial_id = $filial_id == -1 ? null : $filial_id;
-            return $query->where('estoques.filial_id', $filial_id);
-        })
-        ->when($categoria_id, function ($query) use ($categoria_id) {
-            return $query->where('produtos.categoria_id', $categoria_id);
-        })
-        ->get();
+        ->where('produtos.gerenciar_estoque', 1)
+        ->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
 
-        $somaEstoque = $this->somaEstoque($estoque);
+    // FILTRO DE FILIAL: Crucial para não duplicar
+    if ($filial_id) {
+        if ($filial_id == -1 || $filial_id == 'matriz') {
+            $query->whereNull('estoques.filial_id');
+        } else {
+            $query->where('estoques.filial_id', $filial_id);
+        }
+    }
 
-        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+    if ($categoria_id) {
+        $query->where('produtos.categoria_id', $categoria_id);
+    }
 
-        $produtos = $estoque;
+    // Selecionamos as colunas explicitamente para evitar sobreposição de IDs
+    $estoque = $query->select('estoques.*', 'produtos.nome as produto_nome')->get();
 
-        $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
+    // Reutiliza a lógica de soma que você já tem
+    $somaEstoque = $this->somaEstoque($estoque);
+    $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+    $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
 
-        return view('stock/list')
-        ->with('pesquisa', $request->pesquisa)
+    return view('stock/list')
+        ->with('pesquisa', $pesquisa)
         ->with('categorias', $categorias)
-        ->with('estoque', $produtos)
+        ->with('estoque', $estoque)
         ->with('categoria_id', $categoria_id)
         ->with('config', $config)
         ->with('filial_id', $filial_id)
         ->with('somaEstoque', $somaEstoque)
         ->with('title', 'Estoque');
-    }
+}
 
     private function somaEstoque($estoque){
 
@@ -240,25 +243,18 @@ class StockController extends Controller
     }
 
     public function apontamentoManual(){
-        $produtos = Produto::
-        where('empresa_id', $this->empresa_id)
+    // Buscamos apenas produtos ativos e da empresa logada
+    // Removendo o loop manual para ganhar performance
+    $produtos = Produto::where('empresa_id', $this->empresa_id)
         ->where('inativo', false)
+        ->orderBy('nome', 'asc')
         ->get();
 
-        foreach($produtos as $p){
-            if($p->grade){
-                $p->nome .= " " . $p->str_grade;
-            }
-            if($p->estoque){
-                $p->nome .= " | estoque: " . $p->estoqueAtual();
-            }
-        }
-
-        return view('stock/apontaManual')
+    return view('stock/apontaManual')
         ->with('produtoJs', false)
         ->with('produtos', $produtos)
         ->with('title', 'Apontamento Manual');
-    }
+	}
 
     public function todosApontamentos(){
         $apontamentos = Apontamento::
@@ -334,87 +330,79 @@ class StockController extends Controller
 
     }
 
-    public function saveApontamentoManual(Request $request){
+   public function saveApontamentoManual(Request $request){
+    if(__replace($request->quantidade) <= 0){
+        session()->flash('mensagem_erro', 'Informe uma quantidade maior que zero!');
+        return redirect()->back();
+    }
 
-        if(__replace($request->quantidade) <= 0){
-            session()->flash('mensagem_erro', 'Informe uma quantidade maior que zero!');
-            return redirect()->back();
+    $this->_validateApontamento($request);
+    $prod = Produto::findOrFail($request->produto_id);
+    $dataLancamento = $request->data ? $this->parseDate($request->data) . ' ' . date('H:i:s') : now();
+    $quantidade = __replace($request->quantidade);
+
+    try {
+        DB::beginTransaction();
+
+        // 1. Log de Alteração
+        AlteracaoEstoque::create([
+            'produto_id' => $prod->id,
+            'usuario_id' => get_id_user(),
+            'quantidade' => $quantidade,
+            'movimentado_em' => $dataLancamento,
+            'tipo' => $request->tipo,
+            'motivo' => $request->motivo_reducao != '' ? $request->motivo_reducao : $request->motivo_incremento,
+            'observacao' => $request->observacao ?? '',
+            'empresa_id' => $this->empresa_id,
+            'created_at' => $dataLancamento
+        ]);
+
+        $stockMove = new StockMove();
+
+        // 2. CORREÇÃO DO CÁLCULO (Evita dobrar)
+        if($request->tipo == 'reducao'){
+            // Tenta baixar pelo helper
+            $result = $stockMove->downStock($prod->id, $quantidade, $request->filial_id);
+            
+            // SE o helper falhar (ex: falta de saldo) e você AINDA quiser forçar a baixa:
+            if(!$result){
+                $estoque = Estoque::where('produto_id', $prod->id)
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('filial_id', $request->filial_id)
+                    ->first();
+                
+                if($estoque){
+                    $estoque->quantidade -= $quantidade;
+                    $estoque->save();
+                }
+            }
+        } else {
+            $stockMove->pluStock($prod->id, $quantidade, str_replace(",", ".", $prod->valor_venda), $request->filial_id);
         }
 
-        $this->_validateApontamento($request);
-        $prod = Produto::where('id', $request->produto_id)->first();
-
-        try {
-            DB::beginTransaction();
-
-            // 1. Grava o log na tabela de alterações
-            AlteracaoEstoque::create([
-                'produto_id' => $prod->id,
-                'usuario_id' => get_id_user(),
-                'quantidade' => __replace($request->quantidade),
-                'tipo' => $request->tipo, // 'reducao' ou 'incremento'
-                'motivo' => $request->motivo_reducao != '' ? $request->motivo_reducao : $request->motivo_incremento,
-                'observacao' => $request->observacao ?? '',
-                'empresa_id' => $this->empresa_id
+        // 3. Sincroniza a data no movimento recém criado
+        DB::table('stock_movements')
+            ->where('produto_id', $prod->id)
+            ->where('empresa_id', $this->empresa_id)
+            ->orderBy('id', 'desc')
+            ->limit(1)
+            ->update([
+                'movimentado_em' => $dataLancamento,
+                'created_at' => $dataLancamento,
+                'updated_at' => $dataLancamento,
+                'contexto' => $request->observacao ?? '',
+                'origem_id' => null,
+                'origem_tipo' => ''
             ]);
 
-            $stockMove = new StockMove();
-            $quantidade = __replace($request->quantidade);
-            $result = null;
-
-            // 2. Chama a função correta para cada tipo (Evita o erro de somar o que era para tirar)
-            if($request->tipo == 'reducao'){
-                // Usamos downStock para garantir que o tipo no banco seja 'saida'
-                $result = $stockMove->downStock($prod->id, $quantidade, $request->filial_id);
-                
-                // Se o helper recusar por saldo insuficiente, forçamos a baixa manualmente para aceitar o zero
-                if(!$result){
-                    $estoqueAtual = Estoque::where('produto_id', $prod->id)->where('empresa_id', $this->empresa_id)->first();
-                    if($estoqueAtual){
-                        $estoqueAtual->quantidade -= $quantidade;
-                        $estoqueAtual->save();
-                        
-                        // Criamos o movimento de saída manualmente no banco
-                        DB::table('stock_movements')->insert([
-                            'produto_id' => $prod->id,
-                            'empresa_id' => $this->empresa_id,
-                            'usuario_id' => get_id_user(),
-                            'tipo' => 'saida',
-                            'quantidade' => $quantidade,
-                            'created_at' => now(), 'updated_at' => now()
-                        ]);
-                    }
-                }
-            } else {
-                $stockMove->pluStock($prod->id, $quantidade, str_replace(",", ".", $prod->valor_venda), $request->filial_id);
-            }
-
-            // 3. Ajuste Final: Grava a observação no CONTEXTO e limpa as ORIGENS
-            // Pegamos o movimento que acabou de ser criado (pelo helper ou manualmente)
-            $ultimoMovimento = DB::table('stock_movements')
-                ->where('produto_id', $prod->id)
-                ->where('empresa_id', $this->empresa_id)
-                ->orderBy('id', 'desc')
-                ->first();
-
-            if($ultimoMovimento){
-                DB::table('stock_movements')->where('id', $ultimoMovimento->id)->update([
-                    'contexto' => $request->observacao ?? '',
-                    'origem_id' => null,
-                    'origem_tipo' => '' // Limpa o "AJUSTE DE ESTOQUE" que estava indo para cá
-                ]);
-            }
-
-            DB::commit();
-            session()->flash("mensagem_sucesso", "Apontamento Manual cadastrado com sucesso!");
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('mensagem_erro', 'Erro ao processar: ' . $e->getMessage());
-        }
-
-        return redirect("/estoque");
+        DB::commit();
+        session()->flash("mensagem_sucesso", "Apontamento Manual realizado!");
+    } catch (\Exception $e) {
+        DB::rollBack();
+        session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
     }
+    return redirect("/estoque");
+}
 
     private function downEstoquePorReceita($produto, $quantidade){
         

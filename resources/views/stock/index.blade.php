@@ -124,12 +124,12 @@
                         <th>Produto</th>
                         <th>Categoria</th>
                         <th>Local</th>
-                        <th>S. Inicial</th>
-                        <th>Entradas (+)</th>
-                        <th>Saídas (-)</th>
+                        <th class="text-right">S. Inicial</th>
+                        <th class="text-right">Entradas (+)</th>
+                        <th class="text-right">Saídas (-)</th>
                         <th class="text-info">Estoque Atual</th>
-                        <th>Vl. Venda</th>
-                        <th>Vl. Custo</th> 
+                        <th class="text-right">Vl. Venda</th>
+                        <th class="text-right">Vl. Custo</th> 
                         <th class="text-right">Ações</th>
                     </tr>
                 </thead>
@@ -150,12 +150,12 @@
                         <td>
                             <span class="label label-inline label-light-primary font-weight-bold">{{ $e->filial_nome ?? 'MATRIZ' }}</span>
                         </td>
-                        <td>{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
-                        <td class="text-success">+{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
-                        <td class="text-danger">-{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
-                        <td class="font-weight-boldest text-info h5">{{ number_format($e->quantidade, 2, ',', '.') }}</td>
-                        <td>R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
-                        <td>R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 
+                        <th class="text-right">{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
+                        <td class="text-right text-success">+{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
+                        <td class="text-right text-danger">-{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
+                        <td class="text-right"><strong>{{ number_format($e->quantidade, 2, ',', '.') }}</td>
+                        <td class="text-right">R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
+                        <td class="text-right">R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 
                         
                         <td class="text-right d-flex justify-content-end">
                             <a href="/estoque/apontamentoManual" class="btn btn-icon btn-light-warning btn-sm mr-1" title="Ajuste / Apontamento Manual">

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Funcao extends Model
+class Funcao extends BaseModel
 {
     // O nome da tabela que criamos no SQL
     protected $table = 'funcoes';
@@ -12,7 +12,9 @@ class Funcao extends Model
     // Campos que permitimos salvar (importante para o seu Modal de salvamento rápido)
     protected $fillable = [
         'nome', 
-        'empresa_id'
+        'empresa_id',
+        'usuario_id', 
+        'filial_id'
     ];
 
     // Se você não criou as colunas 'created_at' e 'updated_at' na tabela 'funcoes',

@@ -110,6 +110,18 @@
 											</div>
 										</div>
 
+                                      <div class="form-group col-lg-3">
+                                            <label class="col-form-label">Data do Lançamento</label>
+                                            <div class="input-group date">
+                                                <input type="text" name="data" id="data_lancamento" 
+                                                    class="form-control" 
+                                                    value="{{ date('d/m/Y') }}" 
+                                                    placeholder="00/00/0000">
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                                                </div>
+                                            </div>
+                                        </div>
 										<div class="form-group validated col-sm-6 col-lg-2 div-motivo-incremento d-none">
 											<label class="col-form-label">Motivo</label>
 											<div class="">
@@ -333,6 +345,24 @@
 		})
 		$('.search-prod').css('display', 'none')
 	}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // 1. Faz colocar as barras automaticamente enquanto digita
+        $('#data_lancamento').mask('00/00/0000');
+
+        // 2. Habilita o calendário ao clicar (considerando que você usa Bootstrap Datepicker)
+        if ($.isFunction($.fn.datepicker)) {
+            $('#data_lancamento').datepicker({
+                format: 'dd/mm/yyyy',
+                language: 'pt-BR',
+                autoclose: true,
+                todayHighlight: true
+            });
+        }
+    });
 </script>
 @endsection
 

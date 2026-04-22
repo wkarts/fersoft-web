@@ -19,6 +19,7 @@ use App\Models\ClienteOtica;
 use App\Models\ClienteUpload;
 use Dompdf\Dompdf;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClienteController extends Controller
 {
@@ -38,13 +39,13 @@ class ClienteController extends Controller
     public function buscar(Request $request){
         $pesquisa = $request->input('pesquisa');
         $data = Cliente::where('empresa_id', $this->empresa_id)
-        ->when(is_numeric($pesquisa), function ($query) use ($pesquisa) {
-            $query->where('cpf_cnpj', 'like', "%$pesquisa%");
-        })
-        ->when(!is_numeric($pesquisa), function ($query) use ($pesquisa) {
-            $query->where('razao_social', 'like', "%$pesquisa%");
-        })
-        ->get();
+            ->when(is_numeric($pesquisa), function ($query) use ($pesquisa) {
+                $query->where('cpf_cnpj', 'like', "%$pesquisa%");
+            })
+            ->when(!is_numeric($pesquisa), function ($query) use ($pesquisa) {
+                $query->where('razao_social', 'like', "%$pesquisa%");
+            })
+            ->get();
 
         return response()->json($data, 200);
     }
@@ -61,10 +62,10 @@ class ClienteController extends Controller
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
-        ->when($ordem, function ($query) use ($ordem) {
-            $query->orderBy('created_at', $ordem);
-        });
+            ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
+            ->when($ordem, function ($query) use ($ordem) {
+                $query->orderBy('created_at', $ordem);
+            });
 
         if($cpf_cnpj){
             $clientes->where('cpf_cnpj', 'LIKE', "%$cpf_cnpj%");
@@ -86,14 +87,14 @@ class ClienteController extends Controller
         }
 
         return view('clientes/list')
-        ->with('clientes', $clientes)
-        ->with('tipoPesquisa', $request->tipo_pesquisa)
-        ->with('cpf_cnpj', preg_replace('/[^0-9]/', '', $request->cpf_cnpj))
-        ->with('pesquisa', $pesquisa)
-        ->with('ordem', $ordem)
-        ->with('paraImprimir', true)
-        ->with('aniversariante', $aniversariante)
-        ->with('title', 'Filtro Clientes');
+            ->with('clientes', $clientes)
+            ->with('tipoPesquisa', $request->tipo_pesquisa)
+            ->with('cpf_cnpj', preg_replace('/[^0-9]/', '', $request->cpf_cnpj))
+            ->with('pesquisa', $pesquisa)
+            ->with('ordem', $ordem)
+            ->with('paraImprimir', true)
+            ->with('aniversariante', $aniversariante)
+            ->with('title', 'Filtro Clientes');
     }
 
     public function relatorio(Request $request){
@@ -102,8 +103,8 @@ class ClienteController extends Controller
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
-        ->get();
+            ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
+            ->get();
 
         if($aniversariante){
             $mes = date('m');
@@ -120,7 +121,7 @@ class ClienteController extends Controller
         }
 
         $p = view('clientes/relatorio_clientes')
-        ->with('clientes', $clientes);
+            ->with('clientes', $clientes);
 
         // return $p;
 
@@ -139,16 +140,16 @@ class ClienteController extends Controller
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->paginate(20);
+            ->paginate(20);
 
         $totalGeralClientes = sizeof(Cliente::
-            where('empresa_id', $this->empresa_id)
+        where('empresa_id', $this->empresa_id)
             ->get());
         return view('clientes/list')
-        ->with('clientes', $clientes)
-        ->with('totalGeralClientes', $totalGeralClientes)
-        ->with('links', true)
-        ->with('title', 'Clientes');
+            ->with('clientes', $clientes)
+            ->with('totalGeralClientes', $totalGeralClientes)
+            ->with('links', true)
+            ->with('title', 'Clientes');
     }
 
     public function new(){
@@ -157,26 +158,26 @@ class ClienteController extends Controller
         $pais = Pais::all();
         $grupos = GrupoCliente::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $acessores = Acessor::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $funcionarios = Funcionario::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         return view('clientes/register')
-        ->with('pessoaFisicaOuJuridica', true)
-        ->with('cidadeJs', true)
-        ->with('cidades', $cidades)
-        ->with('estados', $estados)
-        ->with('acessores', $acessores)
-        ->with('funcionarios', $funcionarios)
-        ->with('grupos', $grupos)
-        ->with('pais', $pais)
-        ->with('title', 'Cadastrar Cliente');
+            ->with('pessoaFisicaOuJuridica', true)
+            ->with('cidadeJs', true)
+            ->with('cidades', $cidades)
+            ->with('estados', $estados)
+            ->with('acessores', $acessores)
+            ->with('funcionarios', $funcionarios)
+            ->with('grupos', $grupos)
+            ->with('pais', $pais)
+            ->with('title', 'Cadastrar Cliente');
     }
 
     public function save(Request $request){
@@ -293,75 +294,108 @@ class ClienteController extends Controller
 
                 return redirect('/clientes');
             });
-return $result;
-}catch(\Exception $e){
-    __saveError($e, $this->empresa_id);
-    session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
-    return redirect('/clientes');
-}
-}
-
-private function criarReceitaOtica($request, $result){
-
-    if($request->receita != '[]'){
-        $cli = Cliente::find($result->id);
-        if($cli->receitaOtica){
-           $cli->receitaOtica->delete();
-       }
-       $receita = (array)json_decode($request->receita);
-
-       $receita['cliente_id'] = $result->id;
-       ClienteOtica::create($receita);
-   }
-}
-
-private function criarLog($objeto, $tipo = 'criar'){
-    if(isset(session('user_logged')['log_id'])){
-        $record = [
-            'tipo' => $tipo,
-            'usuario_log_id' => session('user_logged')['log_id'],
-            'tabela' => 'clientes',
-            'registro_id' => $objeto->id,
-            'empresa_id' => $this->empresa_id
-        ];
-        __saveLog($record);
+            return $result;
+        }catch(\Exception $e){
+            __saveError($e, $this->empresa_id);
+            session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
+            return redirect('/clientes');
+        }
     }
-}
 
-public function edit($id){
+    private function criarReceitaOtica($request, $result){
+
+        if($request->receita != '[]'){
+            $cli = Cliente::find($result->id);
+            if($cli->receitaOtica){
+                //$cli->receitaOtica->delete();
+            }
+            $receita = (array)json_decode($request->receita);
+
+            $receita['cliente_id'] = $result->id;
+            ClienteOtica::create($receita);
+        }
+    }
+
+    public function imprimirReceita($id)
+    {
+        // Busca a receita e as configurações
+        $receita = \App\Models\ClienteOtica::with('cliente')->findOrFail($id);
+        $config = \App\Models\ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+        $p = [
+            'receita' => $receita,
+            'config' => $config,
+            'cliente' => $receita->cliente
+        ];
+
+        // 1. Renderiza o HTML da View para uma string
+        $html = view('clientes.relatorios.receita_otica', $p)->render();
+
+        // 2. Instancia o Dompdf (usando a classe que já está no seu 'use' no topo do arquivo)
+        $dompdf = new \Dompdf\Dompdf();
+
+        // 3. Carrega o HTML e define o papel
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+
+        // 4. Renderiza o PDF
+        $dompdf->render();
+
+        // 5. Retorna o PDF para o navegador
+        return response($dompdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename=\"receita.pdf\"');
+    }
+
+    private function criarLog($objeto, $tipo = 'criar'){
+        if(isset(session('user_logged')['log_id'])){
+            $record = [
+                'tipo' => $tipo,
+                'usuario_log_id' => session('user_logged')['log_id'],
+                'tabela' => 'clientes',
+                'registro_id' => $objeto->id,
+                'empresa_id' => $this->empresa_id
+            ];
+            __saveLog($record);
+        }
+    }
+
+
+
+    public function edit($id){
         $cliente = new Cliente(); //Model
         $estados = Cliente::estados();
         $resp = $cliente
-        ->where('id', $id)->first();
+            ->where('id', $id)->first();
 
         $cidades = Cidade::all();
         $pais = Pais::all();
 
         $grupos = GrupoCliente::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $acessores = Acessor::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $funcionarios = Funcionario::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
 
         if(valida_objeto($resp)){
             return view('clientes/register')
-            ->with('pessoaFisicaOuJuridica', true)
-            ->with('cidadeJs', true)
-            ->with('cliente', $resp)
-            ->with('pais', $pais)
-            ->with('funcionarios', $funcionarios)
-            ->with('estados', $estados)
-            ->with('grupos', $grupos)
-            ->with('acessores', $acessores)
-            ->with('cidades', $cidades)
-            ->with('title', 'Editar Cliente');
+                ->with('pessoaFisicaOuJuridica', true)
+                ->with('cidadeJs', true)
+                ->with('cliente', $resp)
+                ->with('pais', $pais)
+                ->with('funcionarios', $funcionarios)
+                ->with('estados', $estados)
+                ->with('grupos', $grupos)
+                ->with('acessores', $acessores)
+                ->with('cidades', $cidades)
+                ->with('title', 'Editar Cliente');
         }else{
             return redirect('/403');
         }
@@ -508,8 +542,8 @@ public function edit($id){
             }
         }catch(\Exception $e){
             return view('errors.sql')
-            ->with('title', 'Erro ao deletar cliente')
-            ->with('motivo', 'Não é possivel remover clientes, presentes vendas ou pedidos!');
+                ->with('title', 'Erro ao deletar cliente')
+                ->with('motivo', 'Não é possivel remover clientes, presentes vendas ou pedidos!');
         }
     }
 
@@ -577,7 +611,7 @@ public function edit($id){
         $arr = array();
         foreach($clientes as $c){
             $arr[$c->id. ' - ' .$c->razao_social] = null;
-                //array_push($arr, $temp);
+            //array_push($arr, $temp);
         }
         echo json_encode($arr);
     }
@@ -587,7 +621,7 @@ public function edit($id){
 
         $item->valor_cash_back = $item->valor_cashback;
         $config = CashBackConfig::where('empresa_id', $item->empresa_id)
-        ->first();
+            ->first();
         $item->config = $config;
         return response()->json($item, 200);
     }
@@ -595,7 +629,7 @@ public function edit($id){
     public function find($id){
         $cliente = Cliente::
         where('id', $id)
-        ->first();
+            ->first();
 
         echo json_encode($this->getCidade($cliente));
     }
@@ -612,8 +646,8 @@ public function edit($id){
     public function findCliente_($id){
         $cliente = Cliente::
         where('id', $id)
-        ->with('cidade')
-        ->first();
+            ->with('cidade')
+            ->first();
 
         return response()->json($cliente, 200);
     }
@@ -621,7 +655,7 @@ public function edit($id){
     public function verificaLimite(Request $request){
         $cliente = Cliente::
         where('id', $request->id)
-        ->first();
+            ->first();
 
         $somaVendas = $this->somaVendasCredito($cliente);
         if($somaVendas != null){
@@ -635,10 +669,10 @@ public function edit($id){
     private function somaVendasCredito($cliente){
         return CreditoVenda::
         selectRaw('sum(vendas.valor_total) as total')
-        ->join('vendas', 'vendas.id', '=', 'credito_vendas.venda_id')
-        ->where('credito_vendas.cliente_id', $cliente->id)
-        ->where('status', 0)
-        ->first();
+            ->join('vendas', 'vendas.id', '=', 'credito_vendas.venda_id')
+            ->where('credito_vendas.cliente_id', $cliente->id)
+            ->where('status', 0)
+            ->first();
     }
 
     private function getCidade($transp){
@@ -650,8 +684,8 @@ public function edit($id){
     public function cpfCnpjDuplicado(Request $request){
         $cliente = Cliente::
         where('empresa_id', $request->empresa_id)
-        ->where('cpf_cnpj', $request->cpf_cnpj)
-        ->first();
+            ->where('cpf_cnpj', $request->cpf_cnpj)
+            ->first();
 
         echo json_encode($cliente);
     }
@@ -663,7 +697,7 @@ public function edit($id){
             return redirect()->back();
         }
         return view('clientes/importacao')
-        ->with('title', 'Importação de clientes');
+            ->with('title', 'Importação de clientes');
     }
 
     public function downloadModelo(){
@@ -878,8 +912,8 @@ public function edit($id){
         $doc = str_replace("_", "/", $doc);
         $cliente = Cliente::
         where('cpf_cnpj', $doc)
-        ->where('empresa_id', $this->empresa_id)
-        ->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->first();
 
         return response()->json($cliente, 200);
     }
@@ -890,8 +924,8 @@ public function edit($id){
 
             $temp = Cliente::
             where('empresa_id', $this->empresa_id)
-            ->where('cpf_cnpj', $data['cpf_cnpj'])
-            ->first();
+                ->where('cpf_cnpj', $data['cpf_cnpj'])
+                ->first();
             if($temp != null) {
                 return response()->json("Cliente já cadastrado!", 401);
             }
@@ -933,7 +967,7 @@ public function edit($id){
         if(valida_objeto($item)){
 
             return view('clientes.cash_back', compact('item'))
-            ->with('title', 'Lista de CashBack');
+                ->with('title', 'Lista de CashBack');
         }else{
             return redirect('/403');
         }
@@ -944,7 +978,7 @@ public function edit($id){
         if(valida_objeto($item)){
 
             return view('clientes.upload', compact('item'))
-            ->with('title', 'Upload de documentos');
+                ->with('title', 'Upload de documentos');
         }else{
             return redirect('/403');
         }
@@ -1044,4 +1078,72 @@ public function edit($id){
         return response()->json(['results' => $results]);
     }
 
+    public function historico($id)
+    {
+        try {
+            $cliente = Cliente::findOrFail($id);
+
+            // Busca Contas a Receber com a relação 'venda'
+            $contas = \App\Models\ContaReceber::with(['venda'])
+                ->where('cliente_id', $id)
+                ->where('empresa_id', $this->empresa_id)
+                ->orderBy('data_vencimento', 'desc')->get();
+
+            // Busca Adiantamentos (Créditos)
+            $adiantamentos = \App\Models\Adiantamento::where('cliente_id', $id)
+                ->where('empresa_id', $this->empresa_id)
+                ->orderBy('data', 'desc')->get();
+
+            $dados = [];
+
+            foreach($contas as $c){
+                $nf = '--';
+                if($c->venda_id){
+                    $venda = $c->venda;
+                    if($venda){
+                        $nf = $venda->numero_nfe > 0 ? $venda->numero_nfe : "Venda #" . $venda->id;
+                    }
+                } elseif($c->numero_nota_fiscal) {
+                    $nf = $c->numero_nota_fiscal;
+                }
+
+                $dados[] = [
+                    'data' => \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y'),
+                    'tipo' => 'Título',
+                    'nf' => $nf,
+                    'vencimento' => \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y'),
+                    'valor' => number_format($c->valor_integral, 2, ',', '.'),
+                    'pago' => number_format($c->valor_pago, 2, ',', '.'),
+                    'saldo' => number_format($c->valor_integral - $c->valor_pago, 2, ',', '.'),
+                    'status' => $c->status ? 'Pago' : 'Pendente'
+                ];
+            }
+
+            foreach($adiantamentos as $a){
+                $dados[] = [
+                    'data' => \Carbon\Carbon::parse($a->data)->format('d/m/Y'),
+                    'tipo' => 'Adiantamento',
+                    'nf' => '--',
+                    'vencimento' => '--',
+                    'valor' => number_format($a->valor_total, 2, ',', '.'),
+                    'pago' => number_format($a->valor_utilizado, 2, ',', '.'),
+                    'saldo' => number_format($a->valor_total - $a->valor_utilizado, 2, ',', '.'), //
+                    'status' => $a->status ? 'Utilizado' : 'Disponível'
+                ];
+            }
+
+            return response()->json(['cliente' => $cliente->razao_social, 'historico' => $dados]);
+        } catch (\Exception $e) {
+            return response()->json(['erro' => $e->getMessage()], 500);
+        }
+    }
+
+    public function buscarReceitas($id)
+    {
+        // ClienteOtica é a model das receitas
+        $receitas = \App\Models\ClienteOtica::where('cliente_id', $id)
+            ->orderBy('data', 'desc')
+            ->get();
+        return response()->json($receitas);
+    }
 }

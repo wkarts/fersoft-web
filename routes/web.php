@@ -1689,6 +1689,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/cashBacks/{id}', 'ClienteController@cashBacks');
 
         Route::get('/search/cliente', 'ClienteController@searchCliente')->name('clientes.search.cliente');
+
+        Route::get('/historico/{id}', 'ClienteController@historico');
+        Route::get('/receitas/{id}', 'ClienteController@buscarReceitas');
+        Route::get('/imprimirReceita/{id}', 'ClienteController@imprimirReceita');
 	});
 
 	Route::group(['prefix' => 'clientesDelivery'],function(){
@@ -1737,7 +1741,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::post('/update', 'ProviderController@update');
 		Route::get('/consultaCadastrado/{doc}', 'ProviderController@consultaCadastrado');
 		Route::post('/quickSave', 'ProviderController@quickSave');
-
+        Route::get('/historico/{id}', 'ProviderController@historico');
 	});
 
 	Route::group(['prefix' => 'compraFiscal', 'middleware' => ['limiteProdutos', 'limiteClientes']],function(){
@@ -2064,6 +2068,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::post('/set-dados-importacao-item', 'PurchaseController@setDadosImportacaoItem')
 		->name('compras.set-dados-importacao-item');
         Route::post('/recuperar-xml', 'PurchaseController@recuperarXmlSefaz');
+      
+       	Route::get('/importacaoNfse', 'ImportacaoNfseController@index');
+   		Route::post('/importacaoNfse/importarLote', 'ImportacaoNfseController@importarLote');
+    	Route::get('/importacaoNfse/visualizar/{id}', 'ImportacaoNfseController@visualizar');
 
     });
 
@@ -2984,9 +2992,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'contas-empresa'],function(){
-    	Route::get('/extrato', 'ContaEmpresaController@imprimirExtrato')->name('contas-empresa.extrato');
-    	Route::get('/extrato', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
-        Route::get('contas-empresa/sincronizar/{id}', 'ContaEmpresaController@sincronizar')->name('contas-empresa.sincronizar');
+        Route::get('/extrato/{id?}', 'ContaEmpresaController@extrato')->name('contas-empresa.extrato');
+    	Route::get('/sincronizar/{id}', 'ContaEmpresaController@sincronizar')->name('contas-empresa.sincronizar');
+     	Route::get('/delete-lancamento/{id}', 'ContaEmpresaController@deleteLancamento')->name('contas-empresa.delete-lancamento');
+        Route::get('/imprimir-extrato/{id}', 'ContaEmpresaController@imprimirExtrato')->name('contas-empresa.imprimir-extrato');
+        Route::get('/imprimir-transacao/{id}', 'ContaEmpresaController@imprimirTransacao')->name('contas-empresa.imprimir-transacao');
     });
 
     Route::group(['prefix' => 'item-conta'],function(){
@@ -2994,10 +3004,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
 	Route::group(['prefix' => 'requisicoes'], function() {
-	    Route::get('/', 'RequisicaoController@index')->name('requisicoes.index');
-	    Route::get('/create', 'RequisicaoController@create')->name('requisicoes.create');
-	    Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');
-	});
+    Route::get('/', 'RequisicaoController@index')->name('requisicoes.index');
+    Route::get('/create', 'RequisicaoController@create')->name('requisicoes.create');
+    Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');
+    Route::put('/finalizar/{id}', 'RequisicaoController@finalizar')->name('requisicoes.finalizar');
+    Route::get('/imprimir-ficha', 'RequisicaoController@imprimirFichaFiltro')->name('requisicoes.imprimirFichaFiltro');
+    Route::get('/{requisicao}', 'RequisicaoController@show')->name('requisicoes.show');
+    Route::get('/{requisicao}/edit', 'RequisicaoController@edit')->name('requisicoes.edit');
+    Route::put('/{requisicao}', 'RequisicaoController@update')->name('requisicoes.update');
+    Route::delete('/{requisicao}', 'RequisicaoController@destroy')->name('requisicoes.destroy');
+    Route::get('/{requisicao}/imprimir', 'RequisicaoController@imprimir')->name('requisicoes.imprimir');
+});
 
 	Route::group(['prefix' => 'dashboard-analitico'],function(){
 		//Novas Rotas Futuras Declare aqui
