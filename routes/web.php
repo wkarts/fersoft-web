@@ -2068,7 +2068,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::post('/set-dados-importacao-item', 'PurchaseController@setDadosImportacaoItem')
 		->name('compras.set-dados-importacao-item');
         Route::post('/recuperar-xml', 'PurchaseController@recuperarXmlSefaz');
-      
+
        	Route::get('/importacaoNfse', 'ImportacaoNfseController@index');
    		Route::post('/importacaoNfse/importarLote', 'ImportacaoNfseController@importarLote');
     	Route::get('/importacaoNfse/visualizar/{id}', 'ImportacaoNfseController@visualizar');
@@ -3000,7 +3000,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'item-conta'],function(){
-    	Route::post('/salvar', 'ItemContaController@store')->name('item-conta.store');
+    	Route::post('/salvar', 'ItemContaEmpresaController@store')->name('item-conta.store');
+        Route::post('/delete-lancamento/{id}', 'ItemContaEmpresaController@deleteLancamento')->name('item-conta.deleteLancamento');
     });
 
 	Route::group(['prefix' => 'requisicoes'], function() {
