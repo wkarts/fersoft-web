@@ -21,9 +21,17 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
         'usuario_id',
     ];
 
+    private ?string $driver = null;
+
     public function up(): void
     {
         if (!Schema::hasTable($this->table)) {
+            return;
+        }
+
+        // SQLite não suporta MODIFY COLUMN de forma nativa.
+        // Mantemos a migration segura em ambiente de testes (sqlite in-memory).
+        if ($this->isSqlite()) {
             return;
         }
 
@@ -47,6 +55,11 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
     public function down(): void
     {
         if (!Schema::hasTable($this->table)) {
+            return;
+        }
+
+        // Mesmo motivo do up(): rollback estrutural no SQLite exigiria recriação de tabela.
+        if ($this->isSqlite()) {
             return;
         }
 
@@ -80,6 +93,18 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
 
     private function isNullable(string $column): bool
     {
+        if ($this->isSqlite()) {
+            $columns = DB::select(sprintf('PRAGMA table_info("%s")', $this->table));
+
+            foreach ($columns as $columnInfo) {
+                if (($columnInfo->name ?? null) === $column) {
+                    return ((int) ($columnInfo->notnull ?? 1)) === 0;
+                }
+            }
+
+            return false;
+        }
+
         $database = DB::getDatabaseName();
 
         $columnInfo = DB::selectOne(
@@ -93,5 +118,14 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
         );
 
         return isset($columnInfo->IS_NULLABLE) && $columnInfo->IS_NULLABLE === 'YES';
+    }
+
+    private function isSqlite(): bool
+    {
+        if ($this->driver === null) {
+            $this->driver = DB::connection()->getDriverName();
+        }
+
+        return $this->driver === 'sqlite';
     }
 }
