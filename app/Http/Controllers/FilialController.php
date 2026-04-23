@@ -133,6 +133,7 @@ class FilialController extends Controller
             'senha_certificado' => $request->senha_certificado ?? '',
             'arquivo_certificado' => $certificado,
             'logo' => $logo_name,
+            'permitir_estoque_negativo' => $request->has('permitir_estoque_negativo') ? 1 : 0,
         ]);
 
         try{
@@ -198,6 +199,7 @@ class FilialController extends Controller
             'aut_xml' => $request->aut_xml ?? '',
             'senha_certificado' => $request->senha_certificado ?? '',
             'logo' => $logo_name,
+            'permitir_estoque_negativo' => $request->has('permitir_estoque_negativo') ? 1 : 0,
         ]);
 
         try{

@@ -125,7 +125,9 @@
 				<input type="hidden" value="{{$usuario->permite_desconto}}" id="permite_desconto">
 				<input type="hidden" value="{{$config->percentual_max_desconto}}" id="percentual_max_desconto">
 				<input type="hidden" value="{{$config->parcelamento_maximo}}" id="parcelamento_maximo">
-				<input type="hidden" value="{{ $config->permitir_estoque_negativo }}" id="permitir_estoque_negativo">
+				<input type="hidden" value="{{ $permitirEstoqueNegativoMatriz ?? ($config->permitir_estoque_negativo ?? 0) }}" id="permitir_estoque_negativo_matriz">
+				<input type="hidden" value='@json($permitirEstoqueNegativoFiliais ?? [])' id="permitir_estoque_negativo_filiais">
+				<input type="hidden" value="{{ $permitirEstoqueNegativoMatriz ?? ($config->permitir_estoque_negativo ?? 0) }}" id="permitir_estoque_negativo">
 				<div class="row">
 					<div class="col-xl-12">
 
