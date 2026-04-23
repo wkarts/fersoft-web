@@ -11,6 +11,11 @@
             text-align: right !important;
             white-space: nowrap;
         }
+        .table-apuracao td.col-valor .valor-apuracao {
+            display: block;
+            width: 100%;
+            text-align: right !important;
+        }
 
         .row-group { cursor: pointer; border-bottom: 1px solid #ebedf3; }
         .row-group:hover { background-color: #f3f6f9 !important; }
@@ -49,7 +54,7 @@
         <div class="card card-custom gutter-b" id="apuracao-relatorio">
             <div class="card-header py-3">
                 <div class="header-custom">
-                    <div style="flex: 1;" class="no-print"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="imprimirRelatorio()"><i class="la la-print"></i> Imprimir</button></div>
+                    <div style="flex: 1;" class="no-print"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="window.print()"><i class="la la-print"></i> Imprimir</button></div>
                     <div style="flex: 2; text-align: center;"><h3 class="card-title font-weight-bolder text-dark mb-0">Apuração de Resultado - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}/{{ $ano }}</h3></div>
                     <div style="flex: 1; text-align: right;" class="no-print">
                         <form action="/apuracao/finalizar" method="POST" id="form-finalizar" style="display: inline-block;">
@@ -91,6 +96,10 @@
                 </form>
 
                 <table class="table table-apuracao">
+                    <colgroup>
+                        <col class="col-nome">
+                        <col class="col-valor">
+                    </colgroup>
                     <thead>
                     <tr class="bg-light">
                         <th class="pl-7 col-nome">DESCRIÇÃO</th>
@@ -110,34 +119,34 @@
 
                     <tr class="row-group bg-light-success" onclick="toggleDet('rec')">
                         <td class="pl-7 font-weight-bold col-nome"><i class="la la-plus text-success mr-2"></i> (+) RECEITA BRUTA</td>
-                        <td class="col-valor font-weight-bold text-success">R$ {{number_format($recBruta,2,',','.')}}</td>
+                        <td class="col-valor font-weight-bold text-success"><span class="valor-apuracao">R$ {{number_format($recBruta,2,',','.')}}</span></td>
                     </tr>
                     @foreach($detalhes['receita_bruta'] as $det)
                         <tr class="row-detail rec">
                             <td class="text-detail text-muted small col-nome">{{$det->categoria_nome}}</td>
-                            <td class="col-valor text-muted small">R$ {{number_format($det->total,2,',','.')}}</td>
+                            <td class="col-valor text-muted small"><span class="valor-apuracao">R$ {{number_format($det->total,2,',','.')}}</span></td>
                         </tr>
                     @endforeach
 
                     <tr class="row-group" onclick="toggleDet('cmv_det')">
                         <td class="pl-7 text-danger font-weight-bold col-nome"><i class="la la-minus-circle mr-2"></i> (-) CUSTO DE MERCADORIA (CMV)</td>
-                        <td class="col-valor text-danger font-weight-bold">R$ {{number_format($cmvReal,2,',','.')}}</td>
+                        <td class="col-valor text-danger font-weight-bold"><span class="valor-apuracao">R$ {{number_format($cmvReal,2,',','.')}}</span></td>
                     </tr>
-                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(+) Estoque Inicial</td><td class="col-valor text-muted small">R$ {{number_format($estoqueInicial,2,',','.')}}</td></tr>
-                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(+) Compras Líquidas</td><td class="col-valor text-muted small">R$ {{number_format($comprasDoMes,2,',','.')}}</td></tr>
-                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(-) Estoque Final</td><td class="col-valor text-muted small">R$ {{number_format($estoqueFinal,2,',','.')}}</td></tr>
+                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(+) Estoque Inicial</td><td class="col-valor text-muted small"><span class="valor-apuracao">R$ {{number_format($estoqueInicial,2,',','.')}}</span></td></tr>
+                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(+) Compras Líquidas</td><td class="col-valor text-muted small"><span class="valor-apuracao">R$ {{number_format($comprasDoMes,2,',','.')}}</span></td></tr>
+                    <tr class="row-detail cmv_det"><td class="text-detail text-muted small col-nome">(-) Estoque Final</td><td class="col-valor text-muted small"><span class="valor-apuracao">R$ {{number_format($estoqueFinal,2,',','.')}}</span></td></tr>
 
-                    <tr class="bg-primary text-white font-weight-boldest"><td class="pl-7 col-nome">(=) LUCRO BRUTO</td><td class="col-valor">R$ {{number_format($lucBruto,2,',','.')}}</td></tr>
+                    <tr class="bg-primary text-white font-weight-boldest"><td class="pl-7 col-nome">(=) LUCRO BRUTO</td><td class="col-valor"><span class="valor-apuracao">R$ {{number_format($lucBruto,2,',','.')}}</span></td></tr>
 
                     @foreach(['operacional' => 'OPERACIONAIS', 'administrativa' => 'ADMINISTRATIVAS', 'tributaria' => 'TRIBUTÁRIAS'] as $key => $label)
                         <tr class="row-group" onclick="toggleDet('{{$key}}')" style="background-color: #fff5f5">
                             <td class="pl-7 font-weight-bold text-danger col-nome"><i class="la la-minus mr-2"></i> (-) DESPESAS {{$label}}</td>
-                            <td class="col-valor font-weight-bold text-danger">R$ {{number_format(abs($dados[$key] ?? 0),2,',','.')}}</td>
+                            <td class="col-valor font-weight-bold text-danger"><span class="valor-apuracao">R$ {{number_format(abs($dados[$key] ?? 0),2,',','.')}}</span></td>
                         </tr>
                         @foreach($detalhes[$key] as $det)
                             <tr class="row-detail {{$key}}">
                                 <td class="text-detail text-muted small col-nome">{{$det->categoria_nome}}</td>
-                                <td class="col-valor text-danger small">R$ {{number_format(abs($det->total),2,',','.')}}</td>
+                                <td class="col-valor text-danger small"><span class="valor-apuracao">R$ {{number_format(abs($det->total),2,',','.')}}</span></td>
                             </tr>
                         @endforeach
                     @endforeach
@@ -145,21 +154,21 @@
                     @foreach(['financeira' => 'FINANCEIRO', 'nao_operacional' => 'NÃO OPERACIONAL'] as $key => $label)
                         <tr class="row-group bg-light" onclick="toggleDet('{{$key}}')">
                             <td class="pl-7 font-weight-bold col-nome"><i class="la la-plus-circle mr-2"></i> (+/-) {{$label}}</td>
-                            <td class="col-valor font-weight-bold {{ ($dados[$key] ?? 0) < 0 ? 'text-danger' : 'text-success' }}">R$ {{number_format($dados[$key] ?? 0,2,',','.')}}</td>
+                            <td class="col-valor font-weight-bold {{ ($dados[$key] ?? 0) < 0 ? 'text-danger' : 'text-success' }}"><span class="valor-apuracao">R$ {{number_format($dados[$key] ?? 0,2,',','.')}}</span></td>
                         </tr>
                         @foreach($detalhes[$key] as $det)
                             <tr class="row-detail {{$key}}">
                                 <td class="text-detail text-muted small col-nome">{{$det->categoria_nome}}</td>
-                                <td class="col-valor small {{ $det->total < 0 ? 'text-danger' : 'text-success' }}">R$ {{number_format($det->total,2,',','.')}}</td>
+                                <td class="col-valor small {{ $det->total < 0 ? 'text-danger' : 'text-success' }}"><span class="valor-apuracao">R$ {{number_format($det->total,2,',','.')}}</span></td>
                             </tr>
                         @endforeach
                     @endforeach
 
-                    <tr class="border-top"><td class="pl-7 text-muted font-italic col-nome">Saldo Mês Anterior</td><td class="col-valor text-muted">R$ {{number_format($saldoAnterior,2,',','.')}}</td></tr>
+                    <tr class="border-top"><td class="pl-7 text-muted font-italic col-nome">Saldo Mês Anterior</td><td class="col-valor text-muted"><span class="valor-apuracao">R$ {{number_format($saldoAnterior,2,',','.')}}</span></td></tr>
 
                     <tr class="{{$resFinal >= 0 ? 'bg-success' : 'bg-danger'}} text-white font-weight-boldest">
                         <td class="pl-7 h4 col-nome">RESULTADO LÍQUIDO FINAL</td>
-                        <td class="col-valor h4 text-white">R$ {{number_format($resFinal,2,',','.')}}</td>
+                        <td class="col-valor h4 text-white"><span class="valor-apuracao">R$ {{number_format($resFinal,2,',','.')}}</span></td>
                     </tr>
                     </tbody>
                 </table>
@@ -170,51 +179,6 @@
     <script>
         function toggleDet(cls) { $('.' + cls).toggle(); }
         document.getElementById('val_final').value = "{{ $resFinal }}";
-
-        function imprimirRelatorio() {
-            const relatorio = document.getElementById('apuracao-relatorio');
-            if (!relatorio) {
-                window.print();
-                return;
-            }
-
-            const printWindow = window.open('', '_blank', 'width=1200,height=900');
-            if (!printWindow) {
-                window.print();
-                return;
-            }
-
-            const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-                .map((node) => node.outerHTML)
-                .join('\n');
-
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Relatório de Apuração</title>
-                        ${estilos}
-                        <style>
-                            body { padding: 24px; }
-                            .no-print { display: none !important; }
-                            .table-apuracao thead .col-valor,
-                            .table-apuracao tbody .col-valor,
-                            .table-apuracao tbody td:nth-child(2) {
-                                text-align: right !important;
-                                white-space: nowrap;
-                            }
-                        </style>
-                    </head>
-                    <body>${relatorio.outerHTML}</body>
-                </html>
-            `);
-
-            printWindow.document.close();
-            printWindow.focus();
-            printWindow.onload = function() {
-                printWindow.print();
-                printWindow.close();
-            };
-        }
 
         function confirmar() {
             swal({title: "Finalizar?", text: "Isso travará o estoque do mês!", icon: "warning", buttons: ["Não", "Sim"]})
