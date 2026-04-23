@@ -230,7 +230,7 @@ class Menu {
                   	[
 						'nome' => 'Importação XML Serviço',
 						'rota' => '/compras/importacaoNfse'
-					],      
+					],
 					[
 						'nome' => 'Cotações',
 						'rota' => '/cotacao'
@@ -498,7 +498,7 @@ class Menu {
 					],
 					[
 						'nome' => 'Apuração',
-						'rota' => '/Apuracao'
+						'rota' => '/apuracao'
 					],
 					[
 						'nome' => 'Adiantamentos',
@@ -508,7 +508,7 @@ class Menu {
 						'nome' => 'Plano de contas',
 						'rota' => '/plano-contas'
 					],
-					
+
 					// [
 					// 	'nome' => 'Emitir - DAS',
 					// 	'rota' => env('LINK_DAS'),
