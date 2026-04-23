@@ -213,25 +213,32 @@ class ContasPagarController extends Controller
         }
 
         if($dataInicial && $dataFinal){
+            $d_ini = $this->parseDate($dataInicial);
+            $d_fim = $this->parseDate($dataFinal);
+
             if($request->tipo_filtro_data == 1){
-                $c->whereBetween('conta_pagars.data_vencimento', [$this->parseDate($dataInicial), $this->parseDate($dataFinal)]);
+                $c->whereBetween('conta_pagars.data_vencimento', [$d_ini, $d_fim]);
             }elseif($request->tipo_filtro_data == 2){
-                $c->whereBetween('conta_pagars.created_at', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, true)]);
+                // Criado em (DateTime) - Forçamos o horário
+                $c->whereBetween('conta_pagars.created_at', [$d_ini . " 00:00:00", $d_fim . " 23:59:59"]);
             }elseif($request->tipo_filtro_data == 4){
-                $c->whereBetween('conta_pagars.data_emissao', [$this->parseDate($dataInicial), $this->parseDate($dataFinal)]);
+                $c->whereBetween('conta_pagars.data_emissao', [$d_ini, $d_fim]);
             }else{
-                $c->whereBetween('conta_pagars.data_pagamento', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, true)]);
+                // Data de Pagamento (DateTime) - Aqui estava o erro!
+                // Agora vai de 00:00:00 até 23:59:59 do MESMO dia
+                $c->whereBetween('conta_pagars.data_pagamento', [$d_ini . " 00:00:00", $d_fim . " 23:59:59"]);
             }
         }
 
+
         if($status != 'todos'){
-            if($status == 'pago') $c->where('status', true);
+            if($status == 'pago') $c->where('conta_pagars.status', true);
             else if($status == 'pendente') $c->where('status', false);
             else if($status == 'vencido') $c->where('status', false)->whereDate('data_vencimento', '<=', date('Y-m-d'));
         }
 
-        if($request->categoria != 'todos') $c->where('categoria_id', $request->categoria);
-        if($request->tipo_pagamento) $c->where('tipo_pagamento', $request->tipo_pagamento);
+        if($request->categoria != 'todos') $c->where('conta_pagars.categoria_id', $request->categoria);
+        if($request->tipo_pagamento) $c->where('conta_pagars.tipo_pagamento', $request->tipo_pagamento);
         if($request->numero_nota_fiscal) $c->where('conta_pagars.numero_nota_fiscal', $request->numero_nota_fiscal);
 
         $c->where('conta_pagars.empresa_id', $this->empresa_id);
@@ -278,20 +285,31 @@ class ContasPagarController extends Controller
         }
 
         if($dataInicial && $dataFinal){
-            if($request->tipo_filtro_data == 1) $c->whereBetween('conta_pagars.data_vencimento', [$this->parseDate($dataInicial), $this->parseDate($dataFinal)]);
-            elseif($request->tipo_filtro_data == 2) $c->whereBetween('conta_pagars.created_at', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, true)]);
-            elseif($request->tipo_filtro_data == 4) $c->whereBetween('conta_pagars.data_emissao', [$this->parseDate($dataInicial), $this->parseDate($dataFinal)]);
-            else $c->whereBetween('conta_pagars.data_pagamento', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, true)]);
+            $d_ini = $this->parseDate($dataInicial);
+            $d_fim = $this->parseDate($dataFinal);
+
+            if($request->tipo_filtro_data == 1){
+                $c->whereBetween('conta_pagars.data_vencimento', [$d_ini, $d_fim]);
+            }elseif($request->tipo_filtro_data == 2){
+                // Criado em (DateTime) - Forçamos o horário
+                $c->whereBetween('conta_pagars.created_at', [$d_ini . " 00:00:00", $d_fim . " 23:59:59"]);
+            }elseif($request->tipo_filtro_data == 4){
+                $c->whereBetween('conta_pagars.data_emissao', [$d_ini, $d_fim]);
+            }else{
+                // Data de Pagamento (DateTime) - Aqui estava o erro!
+                // Agora vai de 00:00:00 até 23:59:59 do MESMO dia
+                $c->whereBetween('conta_pagars.data_pagamento', [$d_ini . " 00:00:00", $d_fim . " 23:59:59"]);
+            }
         }
 
         if($status != 'todos'){
-            if($status == 'pago') $c->where('status', true);
+            if($status == 'pago') $c->where('conta_pagars.status', true);
             else if($status == 'pendente') $c->where('status', false);
             else if($status == 'vencido') $c->where('status', false)->whereDate('data_vencimento', '<=', date('Y-m-d'));
         }
 
-        if($request->categoria != 'todos') $c->where('categoria_id', $request->categoria);
-        if($request->tipo_pagamento) $c->where('tipo_pagamento', $request->tipo_pagamento);
+        if($request->categoria != 'todos') $c->where('conta_pagars.categoria_id', $request->categoria);
+        if($request->tipo_pagamento) $c->where('conta_pagars.tipo_pagamento', $request->tipo_pagamento);
         if($request->numero_nota_fiscal) $c->where('conta_pagars.numero_nota_fiscal', $request->numero_nota_fiscal);
 
         $c->where('conta_pagars.empresa_id', $this->empresa_id);
@@ -1055,7 +1073,7 @@ class ContasPagarController extends Controller
             $c->where('status', true);
         }
         if($request->categoria != 'todos'){
-            $c->where('categoria_id', $request->categoria);
+            $c->where('conta_pagars.categoria_id', $request->categoria);
         }
         if($request->tipo_pagamento){
             $c->where('tipo_pagamento', $request->tipo_pagamento);
