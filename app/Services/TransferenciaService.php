@@ -144,7 +144,7 @@ class TransferenciaService{
         $stdIde->indFinal = 0;
         $stdIde->indPres = 1;
         $stdIde->procEmi = '0';
-        $stdIde->verProc = '3.10.31';
+        $stdIde->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
         $nfe->tagide($stdIde);
 
         // Emitente

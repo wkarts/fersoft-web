@@ -582,7 +582,7 @@ class NFService{
 			}
 		}
 		$stdIde->procEmi = '0';
-		$stdIde->verProc = '3.10.31';
+		$stdIde->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
 
 		$tagide = $nfe->tagide($stdIde);
 
