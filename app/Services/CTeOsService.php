@@ -78,7 +78,7 @@ class CTeOsService{
 		$ide->tpAmb = (int)$config->ambiente; 
 		$ide->tpCTe = '0'; 
 		$ide->procEmi = '0'; 
-		$ide->verProc = '4.0'; 
+		$ide->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc(); 
 
 		$ide->cMunEnv = $cteEmit->municipioEnvio->codigo; 
 		$ide->xMunEnv = strtoupper($cteEmit->municipioEnvio->nome); 

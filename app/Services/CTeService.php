@@ -95,7 +95,7 @@ class CTeService{
 // 2 -CT-e de Anulação; 3 - CT-e Substituto
 
 		$ide->procEmi = '0'; 
-		$ide->verProc = '4.0'; 
+		$ide->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc(); 
 		$ide->indGlobalizado = $cteEmit->globalizado == 1 ? '1' : '';
 
 		$ide->cMunEnv = $cteEmit->municipioEnvio->codigo; 
