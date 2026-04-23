@@ -14,6 +14,7 @@ use App\Models\DespesaMovimentacao;
 use App\Helpers\StockMove;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class MovimentacaoVeiculoController extends BaseController
 {
@@ -137,22 +138,20 @@ class MovimentacaoVeiculoController extends BaseController
 
     public function save(Request $request)
     {
-        // 1. Definição obrigatória das variáveis de contexto
         $user_logged = session('user_logged');
         $usuario_id = $user_logged['id'] ?? $user_logged['usuario_id'];
         $empresa_id = $this->empresa_id;
 
-        // 2. DEFINIÇÃO DA FILIAL (A lógica que você sugeriu)
-        // Se a matriz é null no banco, forçamos o ID 1 para evitar erros de integridade
-        $filial_id = $request->filial_id ?? ($user_logged['filial_id'] ?? 1);
+        // SE NÃO TIVER FILIAL OU FOR MATRIZ, DEFINE COMO NULL
+        $filial_id = $request->filial_id ?? ($user_logged['filial_id'] ?? null);
+        if ($filial_id <= 0) $filial_id = null;
 
         try {
-            // 3. É CRÍTICO que o $filial_id esteja aqui no "use"
             return DB::transaction(function () use ($request, $usuario_id, $empresa_id, $filial_id) {
 
                 $dados = $request->all();
                 $dados['empresa_id'] = $empresa_id;
-                $dados['filial_id'] = ($filial_id > 0) ? $filial_id : null;
+                $dados['filial_id'] = $filial_id;
                 $dados['status'] = $request->filled('km_final') ? 'finalizado' : 'iniciado';
 
                 if ($request->id > 0) {
@@ -169,13 +168,11 @@ class MovimentacaoVeiculoController extends BaseController
                     foreach ($request->abastecimentos as $item) {
                         if (!empty($item['produto_id']) && $item['quantidade'] > 0) {
 
-                            // Conversão de valores
                             $qtd = str_replace(',', '.', $item['quantidade']);
                             $unit = str_replace(',', '.', $item['unitario']);
                             $total = str_replace(',', '.', $item['total']);
                             $kmAbast = str_replace(',', '.', $item['km_abastecimento'] ?? 0);
 
-                            // O erro morre aqui porque agora $filial_id existe no escopo
                             AbastecimentoMovimentacao::create([
                                 'empresa_id'         => $empresa_id,
                                 'usuario_id'         => $usuario_id,
@@ -197,17 +194,24 @@ class MovimentacaoVeiculoController extends BaseController
                     }
                 }
 
-                // GRAVAÇÃO DAS DESPESAS
+                // GRAVAÇÃO DAS DESPESAS (Corrigido o erro de Constraint)
                 if ($request->has('despesas')) {
                     foreach ($request->despesas as $desp) {
                         if (!empty($desp['valor']) && $desp['valor'] > 0) {
                             $valorDespesa = str_replace(',', '.', $desp['valor']);
-                            DespesaMovimentacao::create([
-                                'movimentacao_id' => $registro->id,
-                                'tipo'            => $desp['tipo'],
-                                'valor'           => (float)$valorDespesa,
-                                'descricao'       => $desp['descricao'] ?? '',
-                            ]);
+
+                            // Instanciando direto (Bypass no $fillable do Laravel)
+                            $novaDespesa = new DespesaMovimentacao();
+
+                            $novaDespesa->empresa_id      = $empresa_id;  // Resolve o erro do banco!
+                            $novaDespesa->usuario_id      = $usuario_id;
+                            $novaDespesa->filial_id       = $filial_id;   // Se for Matriz, aqui vai salvar NULL direitinho
+                            $novaDespesa->movimentacao_id = $registro->id;
+                            $novaDespesa->tipo            = $desp['tipo'];
+                            $novaDespesa->valor           = (float)$valorDespesa;
+                            $novaDespesa->descricao       = $desp['descricao'] ?? '';
+
+                            $novaDespesa->save(); // Manda pro banco
                         }
                     }
                 }
@@ -216,7 +220,7 @@ class MovimentacaoVeiculoController extends BaseController
                 if ($dados['status'] == 'finalizado' && $request->filled('km_final')) {
                     $v = Veiculo::find($request->veiculo_id);
                     if ($v) {
-                        $v->quilometragem = $request->km_final;
+                        $v->quilometragem = str_replace(',', '.', $request->km_final);
                         $v->save();
                     }
                 }
@@ -232,20 +236,17 @@ class MovimentacaoVeiculoController extends BaseController
 
     public function dashboard(Request $request)
     {
-        // 1. Definição do Período e Filtros
         $dataInicio = $request->data_inicio ?? date('Y-m-01');
         $dataFim = $request->data_fim ?? date('Y-m-t');
         $veiculo_id = $request->veiculo_id;
 
-        // --- NOVO: Alerta de CNH (Motoristas ativos com CNH vencida ou vencendo em 30 dias) ---
+        // --- 1. Alertas operacionais ---
         $motoristasAlerta = \App\Models\Funcionario::where('empresa_id', $this->empresa_id)
             ->where('status_funcionario', 'Ativo')
             ->whereNotNull('vencimento_cnh')
             ->whereDate('vencimento_cnh', '<=', \Carbon\Carbon::now()->addDays(30))
-            ->orderBy('vencimento_cnh', 'asc')
             ->get();
 
-        // 2. Veículos em Manutenção
         $veiculosManutencao = DB::table('manutencoes')
             ->join('veiculos', 'manutencoes.veiculo_id', '=', 'veiculos.id')
             ->where('manutencoes.empresa_id', $this->empresa_id)
@@ -253,8 +254,39 @@ class MovimentacaoVeiculoController extends BaseController
             ->select('veiculos.placa', 'veiculos.modelo', 'manutencoes.status as manutencao_status')
             ->get();
 
-        // 3. Base de Movimentação (KM e Litros)
-        $queryMov = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
+        // --- 2. Cálculos do Período Atual ---
+        $queryAbast = DB::table('abastecimentos_movimentacoes')
+            ->join('movimentacoes_veiculos', 'abastecimentos_movimentacoes.movimentacao_id', '=', 'movimentacoes_veiculos.id')
+            ->join('produtos', 'abastecimentos_movimentacoes.produto_id', '=', 'produtos.id')
+            ->where('movimentacoes_veiculos.empresa_id', $this->empresa_id)
+            ->whereBetween('movimentacoes_veiculos.data_hora_saida', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59'])
+            ->when($veiculo_id, function($q) use ($veiculo_id) {
+                return $q->where('movimentacoes_veiculos.veiculo_id', $veiculo_id);
+            });
+
+        $custoDiesel = (clone $queryAbast)->where('produtos.nome', 'NOT LIKE', '%ARLA%')->sum('valor_total');
+        $totalLitrosDiesel = (clone $queryAbast)->where('produtos.nome', 'NOT LIKE', '%ARLA%')->sum('quantidade');
+        $totalCustoArla = (clone $queryAbast)->where('produtos.nome', 'LIKE', '%ARLA%')->sum('valor_total');
+        $totalLitrosArla = (clone $queryAbast)->where('produtos.nome', 'LIKE', '%ARLA%')->sum('quantidade');
+
+        $custoManutencao = DB::table('conta_pagars')
+            ->where('empresa_id', $this->empresa_id)
+            ->whereBetween('data_emissao', [$dataInicio, $dataFim])
+            ->where('categoria_id', '!=', 6)
+            ->when($veiculo_id, function($q) use ($veiculo_id) {
+                return $q->where('veiculo_id', $veiculo_id);
+            })->sum('valor_integral');
+
+        // Despesas de Viagem (Refeição, Pedágio)
+        $custoViagem = DB::table('despesas_movimentacoes')
+            ->join('movimentacoes_veiculos', 'despesas_movimentacoes.movimentacao_id', '=', 'movimentacoes_veiculos.id')
+            ->where('movimentacoes_veiculos.empresa_id', $this->empresa_id)
+            ->whereBetween('movimentacoes_veiculos.data_hora_saida', [$dataInicio, $dataFim])
+            ->when($veiculo_id, function($q) use ($veiculo_id) {
+                return $q->where('movimentacoes_veiculos.veiculo_id', $veiculo_id);
+            })->sum('valor');
+
+        $queryMov = \App\Models\MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
             ->whereBetween('data_hora_saida', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59'])
             ->when($veiculo_id, function($q) use ($veiculo_id) {
                 return $q->where('veiculo_id', $veiculo_id);
@@ -264,148 +296,129 @@ class MovimentacaoVeiculoController extends BaseController
             return ($m->km_final > 0) ? ($m->km_final - $m->km_inicial) : 0;
         });
 
-        // 4. Abastecimentos
-        $queryAbastecimento = DB::table('abastecimentos_movimentacoes')
-            ->join('movimentacoes_veiculos', 'abastecimentos_movimentacoes.movimentacao_id', '=', 'movimentacoes_veiculos.id')
-            ->where('movimentacoes_veiculos.empresa_id', $this->empresa_id)
-            ->whereBetween('movimentacoes_veiculos.data_hora_saida', [$dataInicio, $dataFim])
-            ->when($veiculo_id, function($q) use ($veiculo_id) {
-                return $q->where('movimentacoes_veiculos.veiculo_id', $veiculo_id);
-            });
+        $mediaKmL = $totalLitrosDiesel > 0 ? ($totalKm / $totalLitrosDiesel) : 0;
 
-        $totalLitros = (clone $queryAbastecimento)->sum('quantidade');
-        $totalCustoCombustivel = (clone $queryAbastecimento)->sum('valor_total');
-
-        // 5. Financeiro
-        $totalOutrasDespesas = DB::table('conta_pagars')
-            ->where('empresa_id', $this->empresa_id)
-            ->whereBetween('data_emissao', [$dataInicio, $dataFim])
-            ->where('categoria_id', '!=', 6)
-            ->when($veiculo_id, function($q) use ($veiculo_id) {
-                return $q->where('veiculo_id', $veiculo_id);
-            })
-            ->sum('valor_integral');
-
-        $totalGeralDespesas = $totalCustoCombustivel + $totalOutrasDespesas;
-        $mediaKmPorLitro = $totalLitros > 0 ? ($totalKm / $totalLitros) : 0;
-
-        // 6. Gráficos (Histórico de 4 meses)
-        $graficoMeses = []; $graficoKmData = []; $graficoFinanceiroData = [];
+        // --- 3. Lógica do Gráfico de Histórico (Últimos 4 Meses) ---
+        $graficoMeses = []; $graficoKm = []; $graficoFinanceiro = []; $graficoViagem = [];
         for ($i = 3; $i >= 0; $i--) {
-            $dataRef = date('Y-m', strtotime("-$i months", strtotime($dataInicio)));
-            $graficoMeses[] = date('M/y', strtotime($dataRef));
+            $mesReferencia = date('Y-m', strtotime("-$i months"));
+            $graficoMeses[] = date('M/y', strtotime($mesReferencia));
 
-            $graficoKmData[] = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
-                ->where('data_hora_saida', 'like', "$dataRef%")
-                ->when($veiculo_id, function($q) use ($veiculo_id) {
-                    return $q->where('veiculo_id', $veiculo_id);
-                })
+            $graficoKm[] = \App\Models\MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
+                ->where('data_hora_saida', 'like', "$mesReferencia%")
+                ->when($veiculo_id, function($q) use ($veiculo_id) { return $q->where('veiculo_id', $veiculo_id); })
                 ->get()->sum(function($m){ return ($m->km_final - $m->km_inicial); });
 
-            $graficoFinanceiroData[] = DB::table('conta_pagars')
+            $graficoFinanceiro[] = DB::table('conta_pagars')
                 ->where('empresa_id', $this->empresa_id)
-                ->where('data_emissao', 'like', "$dataRef%")
-                ->when($veiculo_id, function($q) use ($veiculo_id) {
-                    return $q->where('veiculo_id', $veiculo_id);
-                })
+                ->where('data_emissao', 'like', "$mesReferencia%")
+                ->when($veiculo_id, function($q) use ($veiculo_id) { return $q->where('veiculo_id', $veiculo_id); })
                 ->sum('valor_integral');
+
+            $graficoViagem[] = DB::table('despesas_movimentacoes')
+                ->join('movimentacoes_veiculos', 'despesas_movimentacoes.movimentacao_id', '=', 'movimentacoes_veiculos.id')
+                ->where('movimentacoes_veiculos.empresa_id', $this->empresa_id)
+                ->where('movimentacoes_veiculos.data_hora_saida', 'like', "$mesReferencia%")
+                ->when($veiculo_id, function($q) use ($veiculo_id) { return $q->where('movimentacoes_veiculos.veiculo_id', $veiculo_id); })
+                ->sum('valor');
         }
 
-        // 7. Retorno da View
         return view('movimentacoes_veiculos.dashboard', [
-            'title' => 'Painel Gerencial - Frota',
-            'dataInicio' => $dataInicio,
-            'dataFim' => $dataFim,
+            'title' => 'Painel Gerencial de Frota',
+            'dataInicio' => $dataInicio, 'dataFim' => $dataFim,
             'veiculoSelecionado' => $veiculo_id,
-            'veiculos' => Veiculo::where('empresa_id', $this->empresa_id)->orderBy('placa')->get(),
-            'veiculosManutencao' => $veiculosManutencao,
-            'motoristasAlerta' => $motoristasAlerta, // Variável enviada para a view
-            'totalKm' => $totalKm,
-            'totalLitros' => $totalLitros,
-            'totalDespesas' => $totalGeralDespesas,
-            'mediaKmPorLitro' => number_format($mediaKmPorLitro, 2, ',', '.'),
-            'totalVeiculos' => Veiculo::where('empresa_id', $this->empresa_id)->count(),
-            'emPercurso' => MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)->where('status', 'iniciado')->count(),
-            'disponiveis' => Veiculo::where('empresa_id', $this->empresa_id)->count() - MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)->where('status', 'iniciado')->count(),
-            'graficoMeses' => json_encode($graficoMeses),
-            'graficoKm' => json_encode($graficoKmData),
-            'graficoContas' => json_encode($graficoFinanceiroData),
-            'graficoDespesas' => json_encode([$totalCustoCombustivel]),
-            'pizzaLabels' => json_encode(['Combustível', 'Outras Despesas']),
-            'pizzaValores' => json_encode([$totalCustoCombustivel, $totalOutrasDespesas]),
+            'veiculos' => \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->orderBy('placa')->get(),
+            'totalKm' => $totalKm, 'mediaKmPorLitro' => number_format($mediaKmL, 2, ',', '.'),
+            'totalLitros' => $totalLitrosDiesel, 'totalLitrosArla' => $totalLitrosArla,
+            'custoDiesel' => $custoDiesel, 'totalCustoArla' => $totalCustoArla,
+            'custoManutencao' => $custoManutencao, 'custoViagem' => $custoViagem,
+            'totalDespesas' => $custoDiesel + $totalCustoArla + $custoManutencao + $custoViagem,
+            'emPercurso' => (clone $queryMov)->where('status', 'iniciado')->count(),
+            'disponiveis' => \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->count() - (clone $queryMov)->where('status', 'iniciado')->count(),
+            'motoristasAlerta' => $motoristasAlerta, 'veiculosManutencao' => $veiculosManutencao,
+            // Gráficos agora povoados
+            'graficoMeses' => json_encode($graficoMeses), 'graficoKm' => json_encode($graficoKm),
+            'graficoContas' => json_encode($graficoFinanceiro), 'graficoDespesas' => json_encode($graficoViagem),
+            'pizzaLabels' => json_encode(['Diesel', 'Arla 32', 'Manutenção', 'Despesas Viagem']),
+            'pizzaValores' => json_encode([$custoDiesel, $totalCustoArla, $custoManutencao, $custoViagem]),
         ]);
-    }    public function relatorio(Request $request)
-{
-    $dataInicio = $request->data_inicio ?: date('Y-m-01');
-    $dataFim = $request->data_fim ?: date('Y-m-t');
-    $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->orderBy('placa')->get();
+    }
 
-    $dadosRelatorio = [];
 
-    foreach ($veiculos as $v) {
-        $movs = MovimentacaoVeiculo::with(['abastecimentos.produto', 'despesas'])
-            ->where('veiculo_id', $v->id)
-            ->whereBetween('data_hora_saida', [$dataInicio.' 00:00:00', $dataFim.' 23:59:59'])
-            ->get();
+    public function relatorio(Request $request)
+    {
+        $dataInicio = $request->data_inicio ?: date('Y-m-01');
+        $dataFim = $request->data_fim ?: date('Y-m-t');
+        $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->orderBy('placa')->get();
 
-        // 1. Inicialize SEMPRE as variáveis no topo do loop
-        $statusTexto = 'Disponível';
-        $kmRodado = 0;
-        $custoCombustivel = 0;
-        $custoArla = 0;
-        $litrosCombustivel = 0;
+        $dadosRelatorio = [];
 
-        // 2. Cálculo de KM
-        $kmRodado = $movs->where('status', 'finalizado')->sum(function($m) {
-            return $m->km_final - $m->km_inicial;
-        });
+        foreach ($veiculos as $v) {
+            $movs = MovimentacaoVeiculo::with(['abastecimentos.produto', 'despesas'])
+                ->where('veiculo_id', $v->id)
+                ->whereBetween('data_hora_saida', [$dataInicio.' 00:00:00', $dataFim.' 23:59:59'])
+                ->get();
 
-        // 3. Verificação de Status atual
-        if ($movs->where('status', 'iniciado')->count() > 0) {
-            $statusTexto = 'Em Viagem';
-        }
+            $statusTexto = 'Disponível';
+            $kmRodado = 0;
+            $custoCombustivel = 0;
+            $custoArla = 0;
+            $litrosCombustivel = 0;
+            $litrosArla = 0;
 
-        // 4. Separação de custos (Abastecimentos)
-        foreach($movs as $m) {
-            foreach($m->abastecimentos as $abast) {
-                if (str_contains(strtoupper($abast->produto->nome), 'ARLA')) {
-                    $custoArla += $abast->valor_total;
-                } else {
-                    $custoCombustivel += $abast->valor_total;
-                    $litrosCombustivel += $abast->quantidade;
+            $kmRodado = $movs->where('status', 'finalizado')->sum(function($m) {
+                return $m->km_final - $m->km_inicial;
+            });
+
+            if ($movs->where('status', 'iniciado')->count() > 0) {
+                $statusTexto = 'Em Viagem';
+            }
+
+            foreach($movs as $m) {
+                foreach($m->abastecimentos as $abast) {
+                    if (str_contains(strtoupper($abast->produto->nome), 'ARLA')) {
+                        $custoArla += $abast->valor_total;
+                        $litrosArla += $abast->quantidade;
+                    } else {
+                        $custoCombustivel += $abast->valor_total;
+                        $litrosCombustivel += $abast->quantidade;
+                    }
                 }
             }
-        }
 
-        $custoManutencao = DB::table('conta_pagars')
-            ->where('veiculo_id', $v->id)
-            ->where('empresa_id', $this->empresa_id)
-            ->whereBetween('data_emissao', [$dataInicio, $dataFim])
-            ->sum('valor_integral');
+            $custoManutencao = DB::table('conta_pagars')
+                ->where('veiculo_id', $v->id)
+                ->where('empresa_id', $this->empresa_id)
+                ->whereBetween('data_emissao', [$dataInicio, $dataFim])
+                ->sum('valor_integral');
 
-        $custoTotalGeral = $custoCombustivel + $custoArla + $custoManutencao;
-        $custoPorKm = ($kmRodado > 0) ? ($custoTotalGeral / $kmRodado) : 0;
-        // 5. Montagem do objeto (Certifique-se que o nome aqui bate com a View)
-        if ($kmRodado > 0 || $custoCombustivel > 0 || $custoArla > 0) {
-            $dadosRelatorio[] = (object)[
-                'placa' => $v->placa,
-                'modelo' => $v->modelo,
-                'status' => $statusTexto, // Agora a variável sempre existirá
-                'km_rodado' => $kmRodado,
-                'custo_manutencao' => $custoManutencao,
-                'custo_combustivel' => $custoCombustivel,
-                'custo_arla' => $custoArla,
-                'custo_total' => $custoCombustivel + $custoArla + $custoManutencao,
-                'custo_por_km' => $custoPorKm,
-                'media_kml' => $litrosCombustivel > 0 ? ($kmRodado / $litrosCombustivel) : 0,
-            ];
+            $custoTotalGeral = $custoCombustivel + $custoArla + $custoManutencao;
+            $custoPorKm = ($kmRodado > 0) ? ($custoTotalGeral / $kmRodado) : 0;
+
+            if ($kmRodado > 0 || $custoCombustivel > 0 || $custoArla > 0) {
+                $dadosRelatorio[] = (object)[
+                    'placa' => $v->placa,
+                    'modelo' => $v->modelo,
+                    'status' => $statusTexto,
+                    'km_rodado' => $kmRodado,
+                    'custo_manutencao' => $custoManutencao,
+                    'custo_combustivel' => $custoCombustivel,
+                    'litros_combustivel' => $litrosCombustivel,
+                    'custo_arla' => $custoArla,
+                    'litros_arla' => $litrosArla,
+                    'custo_total' => $custoTotalGeral,
+                    'custo_por_km' => $custoPorKm,
+                    'media_kml' => $litrosCombustivel > 0 ? ($kmRodado / $litrosCombustivel) : 0,
+                ];
+            }
         }
+        $title = "Relatório Consolidado de Frota";
+        return view('movimentacoes_veiculos.relatorio', compact('dadosRelatorio', 'dataInicio', 'dataFim', 'title'));
     }
-    $title = "Relatório Consolidado de Frota";
-    return view('movimentacoes_veiculos.relatorio', compact('dadosRelatorio', 'dataInicio', 'dataFim', 'title'));
-}
 
-    private function baixar($id, $qtd, $filial) { (new StockMove())->pluStock($id, (float)$qtd * -1, -1, $filial); }
+    private function baixar($id, $qtd, $filial) {
+        (new StockMove())->pluStock($id, (float)$qtd * -1, -1, $filial);
+    }
 
     public function imprimir($id) {
         $data = $this->model::with(['veiculo', 'motorista', 'abastecimentos.produto'])->findOrFail($id);
