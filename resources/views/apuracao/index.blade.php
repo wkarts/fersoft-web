@@ -5,6 +5,12 @@
         .table-apuracao { table-layout: fixed; width: 100%; border-collapse: collapse; }
         .col-nome { width: 70%; }
         .col-valor { width: 30%; text-align: right !important; padding-right: 2.5rem !important; }
+        .table-apuracao thead .col-valor,
+        .table-apuracao tbody .col-valor,
+        .table-apuracao tbody td:nth-child(2) {
+            text-align: right !important;
+            white-space: nowrap;
+        }
 
         .row-group { cursor: pointer; border-bottom: 1px solid #ebedf3; }
         .row-group:hover { background-color: #f3f6f9 !important; }
@@ -14,15 +20,38 @@
 
         /* Garante que o texto pequeno da categoria não quebre o alinhamento */
         .text-detail { padding-left: 3.5rem !important; }
+
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+
+            #apuracao-relatorio,
+            #apuracao-relatorio * {
+                visibility: visible !important;
+            }
+
+            #apuracao-relatorio {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: #fff !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
     </style>
 
     <div class="container mt-5">
-        <div class="card card-custom gutter-b">
+        <div class="card card-custom gutter-b" id="apuracao-relatorio">
             <div class="card-header py-3">
                 <div class="header-custom">
-                    <div style="flex: 1;"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="window.print()"><i class="la la-print"></i> Imprimir</button></div>
+                    <div style="flex: 1;" class="no-print"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="imprimirRelatorio()"><i class="la la-print"></i> Imprimir</button></div>
                     <div style="flex: 2; text-align: center;"><h3 class="card-title font-weight-bolder text-dark mb-0">Apuração de Resultado - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}/{{ $ano }}</h3></div>
-                    <div style="flex: 1; text-align: right;">
+                    <div style="flex: 1; text-align: right;" class="no-print">
                         <form action="/apuracao/finalizar" method="POST" id="form-finalizar" style="display: inline-block;">
                             @csrf
                             <input type="hidden" name="mes" value="{{ $mes }}"><input type="hidden" name="ano" value="{{ $ano }}">
@@ -34,7 +63,7 @@
             </div>
 
             <div class="card-body">
-                <form method="get" action="/apuracao" id="form-filtro" class="mb-8">
+                <form method="get" action="/apuracao" id="form-filtro" class="mb-8 no-print">
                     <div class="row align-items-end">
                         <div class="col-lg-2">
                             <label class="font-weight-bold">Período</label>
@@ -141,6 +170,52 @@
     <script>
         function toggleDet(cls) { $('.' + cls).toggle(); }
         document.getElementById('val_final').value = "{{ $resFinal }}";
+
+        function imprimirRelatorio() {
+            const relatorio = document.getElementById('apuracao-relatorio');
+            if (!relatorio) {
+                window.print();
+                return;
+            }
+
+            const printWindow = window.open('', '_blank', 'width=1200,height=900');
+            if (!printWindow) {
+                window.print();
+                return;
+            }
+
+            const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+                .map((node) => node.outerHTML)
+                .join('\n');
+
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Relatório de Apuração</title>
+                        ${estilos}
+                        <style>
+                            body { padding: 24px; }
+                            .no-print { display: none !important; }
+                            .table-apuracao thead .col-valor,
+                            .table-apuracao tbody .col-valor,
+                            .table-apuracao tbody td:nth-child(2) {
+                                text-align: right !important;
+                                white-space: nowrap;
+                            }
+                        </style>
+                    </head>
+                    <body>${relatorio.outerHTML}</body>
+                </html>
+            `);
+
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.onload = function() {
+                printWindow.print();
+                printWindow.close();
+            };
+        }
+
         function confirmar() {
             swal({title: "Finalizar?", text: "Isso travará o estoque do mês!", icon: "warning", buttons: ["Não", "Sim"]})
                 .then((v) => { if(v) $('#form-finalizar').submit(); });
