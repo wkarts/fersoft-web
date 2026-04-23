@@ -141,6 +141,20 @@
 												@endif
 											</div>
 										</div>
+
+										<div class="form-group col-12 col-lg-3">
+											<label class="col-form-label">Permitir Estoque Negativo</label>
+											<div class="input-group">
+												<span class="switch switch-outline switch-icon switch-success">
+													<label>
+														<input type="checkbox" name="permitir_estoque_negativo" value="1"
+														@if(isset($config->permitir_estoque_negativo) && $config->permitir_estoque_negativo) checked @endif />
+														<span></span>
+													</label>
+												</span>
+											</div>
+											<span class="form-text text-muted">Vender/movimentar sem saldo nesta filial.</span>
+										</div>
 									</div>
 
 									<hr>

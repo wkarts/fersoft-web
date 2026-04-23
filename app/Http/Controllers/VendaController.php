@@ -843,6 +843,8 @@ class VendaController extends Controller
                     ->with('tiposPagamento', $tiposPagamento)
                     ->with('lastNF', $lastNF)
                     ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                    ->with('permitirEstoqueNegativoMatriz', $this->getPermissaoEstoqueNegativoMatriz())
+                    ->with('permitirEstoqueNegativoFiliais', $this->getPermissoesEstoqueNegativoFiliais())
                     ->with('title', "Nova Venda");
             }
         }
@@ -972,6 +974,8 @@ class VendaController extends Controller
                 ->with('tiposPagamento', $tiposPagamento)
                 ->with('lastNF', $lastNF)
                 ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                ->with('permitirEstoqueNegativoMatriz', $this->getPermissaoEstoqueNegativoMatriz())
+                ->with('permitirEstoqueNegativoFiliais', $this->getPermissoesEstoqueNegativoFiliais())
                 ->with('title', "Nova Venda");
 
             return $p;
@@ -993,6 +997,36 @@ class VendaController extends Controller
             }
         }
         return $produtos;
+    }
+
+    private function getPermissaoEstoqueNegativoMatriz(): int
+    {
+        $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        return (int) ($configNota->permitir_estoque_negativo ?? 0);
+    }
+
+    private function getPermissoesEstoqueNegativoFiliais(): array
+    {
+        return Filial::where('empresa_id', $this->empresa_id)
+            ->get(['id', 'permitir_estoque_negativo'])
+            ->mapWithKeys(function ($filial) {
+                return [
+                    (string) $filial->id => is_null($filial->permitir_estoque_negativo) ? null : (int) $filial->permitir_estoque_negativo
+                ];
+            })
+            ->toArray();
+    }
+
+    private function permiteEstoqueNegativoPorFilial(?int $filialId): bool
+    {
+        if (!empty($filialId)) {
+            $filial = Filial::where('empresa_id', $this->empresa_id)->find($filialId);
+            if ($filial && !is_null($filial->permitir_estoque_negativo)) {
+                return (int) $filial->permitir_estoque_negativo === 1;
+            }
+        }
+
+        return $this->getPermissaoEstoqueNegativoMatriz() === 1;
     }
 
     public function detalhar($id){
@@ -2580,6 +2614,8 @@ class VendaController extends Controller
                     ->with('listaCST_IPI', $listaCST_IPI)
                     ->with('natureza', $natureza)
                     ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                    ->with('permitirEstoqueNegativoMatriz', $this->getPermissaoEstoqueNegativoMatriz())
+                    ->with('permitirEstoqueNegativoFiliais', $this->getPermissoesEstoqueNegativoFiliais())
                     ->with('title', "Editar Venda");
             }else{
                 return redirect('/403');
@@ -2717,6 +2753,8 @@ class VendaController extends Controller
                 ->with('tiposPagamento', $tiposPagamento)
                 ->with('lastNF', $lastNF)
                 ->with('listaPreco', ListaPreco::where('empresa_id', $this->empresa_id)->get())
+                ->with('permitirEstoqueNegativoMatriz', $this->getPermissaoEstoqueNegativoMatriz())
+                ->with('permitirEstoqueNegativoFiliais', $this->getPermissoesEstoqueNegativoFiliais())
                 ->with('title', "Editar Venda");
 
             return $p;
@@ -2761,6 +2799,9 @@ class VendaController extends Controller
     private function validaEstoque($venda){
         $semEstoque = [];
         foreach($venda->itens as $item){
+            if($this->permiteEstoqueNegativoPorFilial($item->filial_id)){
+                continue;
+            }
             $p = $item->produto;
             $qtdDisponivel = $p->estoquePorLocal($item->filial_id);
             if($item->quantidade > $qtdDisponivel && $p->gerenciar_estoque){

@@ -32,10 +32,33 @@ var PERMITEDESCONTO = 0;
 var PERCENTUALMAXDESCONTO = 0;
 var SENHADESBLOQUEADA = false
 
+function atualizarPermissaoEstoqueNegativoPorLocal(){
+	let matriz = parseInt($('#permitir_estoque_negativo_matriz').val() || 0);
+	let permissoesFiliais = {};
+	try{
+		permissoesFiliais = JSON.parse($('#permitir_estoque_negativo_filiais').val() || '{}');
+	}catch(e){
+		permissoesFiliais = {};
+	}
+
+	let filialId = $('#filial_id').length ? $('#filial_id').val() : '';
+	let permitirNegativo = matriz;
+
+	if(filialId && filialId !== '-1' && Object.prototype.hasOwnProperty.call(permissoesFiliais, filialId)){
+		let valorFilial = permissoesFiliais[filialId];
+		if(valorFilial !== null && valorFilial !== undefined && valorFilial !== ''){
+			permitirNegativo = parseInt(valorFilial);
+		}
+	}
+
+	$('#permitir_estoque_negativo').val(permitirNegativo ? 1 : 0);
+}
+
 $(function () {
 
 	PERMITEDESCONTO = $('#permite_desconto').val()
 	PERCENTUALMAXDESCONTO = $('#percentual_max_desconto').val()
+	atualizarPermissaoEstoqueNegativoPorLocal();
     PERMITENEGATIVO = $('#permitir_estoque_negativo').val();
 	
 	PRODUTOS = JSON.parse($('#produtos').val())
@@ -1309,6 +1332,7 @@ function verificaValorMaiorQueTotal(data){
 	})
 
 	$('#filial_id').change(() => {
+		atualizarPermissaoEstoqueNegativoPorLocal();
 		habilitaBtnSalarVenda()
 	})
 
@@ -2872,5 +2896,4 @@ function verificaValorMaiorQueTotal(data){
 
 		console.log(js)
 	}
-
 

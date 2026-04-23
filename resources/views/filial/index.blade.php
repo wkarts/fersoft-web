@@ -39,6 +39,7 @@
 												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 250px;">Razão Social</span></th>
 												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 170px;">Documento</span></th>
 												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">Data de cadastro</span></th>
+												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 170px;">Estoque negativo</span></th>
 												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">ATIVO</span></th>
 												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 200px;">Ações</span></th>
 											</tr>
@@ -64,6 +65,15 @@
 												<td class="datatable-cell">
 													<span class="codigo" style="width: 120px;" id="id">
 														{{ \Carbon\Carbon::parse($item->created_at)->format('d/m/Y H:i') }}
+													</span>
+												</td>
+												<td class="datatable-cell">
+													<span class="codigo" style="width: 170px;" id="id">
+														@if($item->permitir_estoque_negativo)
+														<span class="label label-xl label-inline label-light-warning">Permitido</span>
+														@else
+														<span class="label label-xl label-inline label-light-dark">Bloqueado</span>
+														@endif
 													</span>
 												</td>
 												<td class="datatable-cell">
