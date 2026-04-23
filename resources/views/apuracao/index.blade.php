@@ -29,48 +29,28 @@
         @media print {
             @page { margin: 8mm; }
 
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
-                background: #fff !important;
+            body.printing-apuracao * {
+                visibility: hidden !important;
             }
 
-            .no-print,
-            .aside,
-            .aside-menu-wrapper,
-            .header,
-            .subheader,
-            .footer,
-            .quick-panel,
-            .scrolltop,
-            .offcanvas {
-                display: none !important;
+            body.printing-apuracao #apuracao-relatorio,
+            body.printing-apuracao #apuracao-relatorio * {
+                visibility: visible !important;
             }
 
-            .wrapper,
-            .content,
-            .d-flex,
-            .container,
-            .container-fluid,
-            .card,
-            .card-body {
-                display: block !important;
+            body.printing-apuracao #apuracao-relatorio {
+                position: fixed;
+                inset: 0;
                 width: 100% !important;
-                max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                background: #fff !important;
                 box-shadow: none !important;
                 border: 0 !important;
-                min-height: auto !important;
             }
 
-            .table-apuracao {
-                width: 100% !important;
-                page-break-inside: auto;
-            }
-
-            .table-apuracao tr {
-                page-break-inside: avoid;
+            body.printing-apuracao .no-print {
+                display: none !important;
             }
         }
     </style>
@@ -79,7 +59,7 @@
         <div class="card card-custom gutter-b" id="apuracao-relatorio">
             <div class="card-header py-3">
                 <div class="header-custom">
-                    <div style="flex: 1;" class="no-print"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="window.print()"><i class="la la-print"></i> Imprimir</button></div>
+                    <div style="flex: 1;" class="no-print"><button class="btn btn-sm btn-light-primary font-weight-bold" onclick="imprimirApuracao()"><i class="la la-print"></i> Imprimir</button></div>
                     <div style="flex: 2; text-align: center;"><h3 class="card-title font-weight-bolder text-dark mb-0">Apuração de Resultado - {{ str_pad($mes, 2, '0', STR_PAD_LEFT) }}/{{ $ano }}</h3></div>
                     <div style="flex: 1; text-align: right;" class="no-print">
                         <form action="/apuracao/finalizar" method="POST" id="form-finalizar" style="display: inline-block;">
@@ -212,6 +192,15 @@
             });
         }
         document.getElementById('val_final').value = "{{ $resFinal }}";
+
+        function imprimirApuracao() {
+            document.body.classList.add('printing-apuracao');
+            window.print();
+        }
+
+        window.addEventListener('afterprint', function() {
+            document.body.classList.remove('printing-apuracao');
+        });
 
         function confirmar() {
             swal({title: "Finalizar?", text: "Isso travará o estoque do mês!", icon: "warning", buttons: ["Não", "Sim"]})
