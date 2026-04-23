@@ -128,9 +128,9 @@ class NFeEntradaService {
 		$stdIde->indFinal = 1;
 		$stdIde->indPres = 1;
 		$stdIde->procEmi = '0';
-		// $stdIde->verProc = '2.0';
+		// $stdIde->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
 
-		$stdIde->verProc = '3.10.31';
+		$stdIde->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
 		if($config->ambiente == 2){
 			$stdIde->indIntermed = 0;
 		}

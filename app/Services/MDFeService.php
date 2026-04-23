@@ -100,7 +100,7 @@ class MDFeService{
 		$std->dhEmi = FiscalDateHelper::nowXml();
 		$std->tpEmis = '1';
 		$std->procEmi = '0';
-		$std->verProc = '3.0';
+		$std->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
 		$std->UFIni = $mdfe->uf_inicio;
 		$std->UFFim = $mdfe->uf_fim;
 		$std->dhIniViagem = $mdfe->data_inicio_viagem . 'T06:00:48-03:00';

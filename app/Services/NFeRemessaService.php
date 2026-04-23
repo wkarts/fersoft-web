@@ -149,7 +149,7 @@ class NFeRemessaService{
 			}
 		}
 		$stdIde->procEmi = '0';
-		$stdIde->verProc = '3.10.31';
+		$stdIde->verProc = app(\App\Support\FiscalProcessVersion::class)->verProc();
 
 		if($stdIde->tpEmis == 5){
 			$stdIde->dhCont = FiscalDateHelper::nowXml();
