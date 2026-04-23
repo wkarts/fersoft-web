@@ -29,8 +29,6 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
             return;
         }
 
-        // SQLite não suporta MODIFY COLUMN de forma nativa.
-        // Mantemos a migration segura em ambiente de testes (sqlite in-memory).
         if ($this->isSqlite()) {
             return;
         }
@@ -45,7 +43,7 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
             }
 
             DB::statement(sprintf(
-                'ALTER TABLE `%s` MODIFY COLUMN `%s` INT UNSIGNED NULL',
+                'ALTER TABLE `%s` MODIFY COLUMN `%s` INT UNSIGNED NULL DEFAULT NULL',
                 $this->table,
                 $column
             ));
@@ -58,7 +56,6 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
             return;
         }
 
-        // Mesmo motivo do up(): rollback estrutural no SQLite exigiria recriação de tabela.
         if ($this->isSqlite()) {
             return;
         }
@@ -93,18 +90,6 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
 
     private function isNullable(string $column): bool
     {
-        if ($this->isSqlite()) {
-            $columns = DB::select(sprintf('PRAGMA table_info("%s")', $this->table));
-
-            foreach ($columns as $columnInfo) {
-                if (($columnInfo->name ?? null) === $column) {
-                    return ((int) ($columnInfo->notnull ?? 1)) === 0;
-                }
-            }
-
-            return false;
-        }
-
         $database = DB::getDatabaseName();
 
         $columnInfo = DB::selectOne(
@@ -117,7 +102,7 @@ class MakeOptionalColumnsNullableInRequisicoesTable extends Migration
             [$database, $this->table, $column]
         );
 
-        return isset($columnInfo->IS_NULLABLE) && $columnInfo->IS_NULLABLE === 'YES';
+        return isset($columnInfo->IS_NULLABLE) && strtoupper((string) $columnInfo->IS_NULLABLE) === 'YES';
     }
 
     private function isSqlite(): bool
