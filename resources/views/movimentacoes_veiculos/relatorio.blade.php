@@ -1,178 +1,164 @@
 @extends('default.layout')
 
 @section('content')
-<style>
-    @media print {
-        @page { 
-            size: landscape; 
-            margin: 8mm; 
-        } 
-        
-        body * { visibility: hidden; }
-        #area-relatorio, #area-relatorio * { visibility: visible; }
-        
-        #area-relatorio { 
-            position: relative;
-            width: 100%;
-            margin: 0 !important;
-            padding: 0 !important;
-            top: -30px !important; 
-        }
+    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="container mt-5">
 
-        .card { border: none !important; }
-        .table-responsive { overflow: visible !important; }
-        
-        .table { width: 100% !important; margin-bottom: 0 !important; }
-        .table th, .table td { 
-            padding: 4px !important; 
-            font-size: 11px !important; 
-            border: 1px solid #333 !important;
-        }
+            <div class="card card-custom mb-5 shadow-sm" style="border-radius: 10px;">
+                <div class="card-body py-4 d-flex justify-content-between align-items-center flex-wrap">
+                    <h3 class="text-dark font-weight-bold m-0 mb-3 mb-md-0">
+                        <i class="fas fa-file-invoice-dollar text-primary mr-2"></i> {{ $title }}
+                    </h3>
 
-        .no-print { display: none !important; }
-        
-        .assinatura-container { 
-            page-break-inside: avoid; 
-            margin-top: 20px !important;
-        }
-    }
-</style>
+                    <form action="{{ url()->current() }}" method="GET" class="d-flex align-items-center flex-wrap">
+                        <label class="mr-2 font-weight-bold mb-0">Período:</label>
+                        <input type="date" name="data_inicio" value="{{ $dataInicio }}" class="form-control mr-2 mb-2 mb-md-0" style="width: 150px;" required>
+                        <input type="date" name="data_fim" value="{{ $dataFim }}" class="form-control mr-2 mb-2 mb-md-0" style="width: 150px;" required>
 
-<div class="d-flex flex-column flex-column-fluid" id="kt_content">
-    <div class="container mt-5">
-        
-        <div class="card card-custom mb-5 no-print" style="border-radius: 10px;">
-            <div class="card-body py-4 d-flex justify-content-between align-items-center">
-                <h3 class="text-dark font-weight-bold m-0">Filtro do Relatório</h3>
-                
-                <form action="" method="GET" class="d-flex align-items-center">
-                    <label class="mr-2 font-weight-bold mb-0">Período:</label>
-                    <input type="date" name="data_inicio" class="form-control mr-2" value="{{ $dataInicio }}" required>
-                    <span class="mr-2">até</span>
-                    <input type="date" name="data_fim" class="form-control mr-3" value="{{ $dataFim }}" required>
-                    
-                    <button type="submit" class="btn btn-primary btn-sm mr-2"><i class="la la-search"></i> Filtrar</button>
-                    <button type="button" class="btn btn-info btn-sm" onclick="window.print()"><i class="la la-print"></i> Imprimir</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card card-custom gutter-b bg-white" id="area-relatorio">
-            <div class="card-body pt-8">
-                
-                <table width="100%" style="border-collapse: collapse; margin-bottom: 30px; border-bottom: 2px solid #EEE;">
-                    <tr>
-                        <td width="20%" style="vertical-align: middle; padding-bottom: 15px;">
-                            @if(isset($configNota) && $configNota->logo)
-                                <img src="{{ asset('logos/' . $configNota->logo) }}" 
-                                     alt="Logo Empresa" 
-                                     style="max-height: 85px; max-width: 100%; object-fit: contain;">
-                            @else
-                                <div style="width: 120px; height: 60px; border: 1px dashed #CCC; display: flex; align-items: center; justify-content: center; color: #AAA; font-size: 10px;">
-                                    Sua Logo
-                                </div>
-                            @endif
-                        </td>
-
-                        <td width="80%" style="vertical-align: middle; text-align: center; padding-bottom: 15px; padding-right: 10%;">
-                            <h1 class="font-weight-bolder text-dark text-uppercase mb-2" style="font-size: 26px; margin: 0;">
-                                {{ $title }}
-                            </h1>
-                            <h4 class="text-muted font-weight-bold" style="margin: 5px 0 0 0; font-size: 16px;">
-                                Período: {{ \Carbon\Carbon::parse($dataInicio)->format('d/m/Y') }} a {{ \Carbon\Carbon::parse($dataFim)->format('d/m/Y') }}
-                            </h4>
-                        </td>
-                    </tr>
-                </table>
-
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered table-striped">
-                        <thead class="text-center" style="background-color: #f3f6f9;">
-                            <tr>
-                                <th class="font-weight-bold text-dark">Veículo</th>
-                                <th class="font-weight-bold text-dark">Status</th>
-                                <th class="font-weight-bold text-dark" title="Situação da Manutenção">Mnt.</th> <th class="font-weight-bold text-dark">KM Rodado</th>
-                                <th class="font-weight-bold text-dark">Média (Km/L)</th>
-                                <th class="font-weight-bold text-dark">Manutenção (R$)</th>
-                                <th class="font-weight-bold text-dark">Combustível (R$)</th>
-                                <th class="font-weight-bold text-dark">Arla (R$)</th>
-                                <th class="font-weight-bold text-dark">Total Gasto (R$)</th>
-                                <th class="font-weight-bold text-dark">Custo/KM (R$)</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-center">
-                            @forelse($dadosRelatorio as $linha)
-                                <tr>
-                                    <td class="font-weight-bold text-left align-middle">
-                                        {{ $linha->placa }} <br> 
-                                        <span class="text-muted font-size-sm">{{ Str::limit($linha->modelo, 15) }}</span>
-                                    </td>
-
-                                    <td class="align-middle">
-                                        <span class="badge badge-{{ $linha->status == 'Em Viagem' ? 'warning' : 'success' }} no-print">
-                                            {{ $linha->status }}
-                                        </span>
-                                        <span class="d-none d-print-block font-weight-bold">{{ $linha->status }}</span>
-                                    </td>
-
-                                    <td class="align-middle">
-                                        @if(isset($linha->manutencao_nivel))
-                                            @if($linha->manutencao_nivel == 'vencido')
-                                                <span class="badge badge-danger" title="Manutenção Vencida">V</span>
-                                            @elseif($linha->manutencao_nivel == 'alerta')
-                                                <span class="badge badge-warning" title="Revisão Próxima">A</span>
-                                            @else
-                                                <span class="badge badge-success" title="Manutenção em Dia">OK</span>
-                                            @endif
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
-                                    </td>
-
-                                    <td class="align-middle">{{ number_format($linha->km_rodado, 0, ',', '.') }}</td>
-                                    
-                                    <td class="text-info font-weight-bold align-middle">
-                                        {{ number_format($linha->media_kml, 2, ',', '.') }}
-                                    </td>
-
-                                    <td class="align-middle">{{ number_format($linha->custo_manutencao, 2, ',', '.') }}</td>
-                                    <td class="align-middle">{{ number_format($linha->custo_combustivel, 2, ',', '.') }}</td>
-                                    <td class="align-middle">{{ number_format($linha->custo_arla, 2, ',', '.') }}</td>
-                                    <td class="text-danger font-weight-bold align-middle">{{ number_format($linha->custo_total, 2, ',', '.') }}</td>
-                                    <td class="text-dark font-weight-bold align-middle">{{ number_format($linha->custo_por_km, 2, ',', '.') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="10" class="text-center text-muted py-5 font-weight-bold">
-                                        Nenhum dado encontrado para este período.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                        <tfoot class="text-center font-weight-bolder" style="background-color: #e4e6ef;">
-                            <tr>
-                                <td colspan="3" class="text-right text-dark">TOTAIS DA FROTA:</td> <td class="text-dark">{{ number_format($totaisGerais['km'], 0, ',', '.') }}</td>
-                                <td>-</td>
-                                <td class="text-dark">{{ number_format($totaisGerais['manutencao'], 2, ',', '.') }}</td>
-                                <td class="text-dark">{{ number_format($totaisGerais['combustivel'], 2, ',', '.') }}</td>
-                                <td class="text-dark">{{ number_format($totaisGerais['arla'], 2, ',', '.') }}</td>
-                                <td class="text-danger font-size-h6">{{ number_format($totaisGerais['geral'], 2, ',', '.') }}</td>
-                                <td>-</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                        <button type="submit" class="btn btn-primary btn-sm mr-1 mb-2 mb-md-0">
+                            <i class="fas fa-filter"></i> Filtrar Período
+                        </button>
+                        <button type="button" onclick="window.print()" class="btn btn-success btn-sm mb-2 mb-md-0">
+                            <i class="fas fa-print"></i> Imprimir
+                        </button>
+                    </form>
                 </div>
-                
-                <div class="row mt-10 d-none d-print-flex">
-                    <div class="col-12 text-center mt-10">
-                        <hr style="width: 300px; border-top: 1px solid #000;">
-                        <span class="font-weight-bold">Visto do Gestor de Frota</span>
+            </div>
+
+            <div id="area-impressao">
+                <div class="card card-custom shadow-sm" style="border-radius: 10px;">
+
+                    <div class="print-cabecalho" style="display: none; text-align: center; margin-bottom: 20px;">
+                        <h2 style="font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">Relatório Consolidado de Frota</h2>
+                        <p style="font-size: 14px; margin: 0;">Período: {{ \Carbon\Carbon::parse($dataInicio)->format('d/m/Y') }} até {{ \Carbon\Carbon::parse($dataFim)->format('d/m/Y') }}</p>
+                        <div style="border-bottom: 2px solid #000; margin-top: 10px; width: 100%;"></div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-head-custom table-vertical-center table-hover table-relatorio">
+                                <thead>
+                                <tr class="bg-light text-left text-uppercase font-weight-bolder text-dark">
+                                    <th style="min-width: 130px;">Veículo</th>
+                                    <th>Status</th>
+                                    <th class="text-right">KM Rodado</th>
+                                    <th class="text-right">Média (KM/L)</th>
+                                    <th class="text-right">Consumo Diesel</th>
+                                    <th class="text-right">Consumo Arla 32</th>
+                                    <th class="text-right">Manutenções</th>
+                                    <th class="text-right">Custo Total</th>
+                                    <th class="text-right">R$ por KM</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @forelse($dadosRelatorio as $item)
+                                    <tr>
+                                        <td>
+                                            <span class="text-dark-75 font-weight-bolder d-block font-size-lg">{{ $item->placa }}</span>
+                                            <span class="text-muted font-weight-bold">{{ $item->modelo }}</span>
+                                        </td>
+                                        <td>
+                                            @if($item->status == 'Em Viagem')
+                                                <span class="label label-inline label-light-warning font-weight-bold">Em Viagem</span>
+                                            @else
+                                                <span class="label label-inline label-light-success font-weight-bold">Disponível</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-right font-weight-bold">
+                                            {{ number_format($item->km_rodado, 0, ',', '.') }} km
+                                        </td>
+                                        <td class="text-right font-weight-bold text-success">
+                                            {{ number_format($item->media_kml, 2, ',', '.') }}
+                                        </td>
+
+                                        <td class="text-right">
+                                            <span class="font-weight-bolder text-info d-block consumo-texto">{{ number_format($item->litros_combustivel, 0, ',', '.') }} L</span>
+                                            <span class="text-muted font-weight-bold">R$ {{ number_format($item->custo_combustivel, 2, ',', '.') }}</span>
+                                        </td>
+
+                                        <td class="text-right">
+                                            <span class="font-weight-bolder text-dark d-block consumo-texto">{{ number_format($item->litros_arla, 0, ',', '.') }} L</span>
+                                            <span class="text-muted font-weight-bold">R$ {{ number_format($item->custo_arla, 2, ',', '.') }}</span>
+                                        </td>
+
+                                        <td class="text-right font-weight-bold text-danger">
+                                            R$ {{ number_format($item->custo_manutencao, 2, ',', '.') }}
+                                        </td>
+
+                                        <td class="text-right">
+                                            <span class="font-weight-bolder text-dark d-block font-size-h6">
+                                                R$ {{ number_format($item->custo_total, 2, ',', '.') }}
+                                            </span>
+                                        </td>
+
+                                        <td class="text-right font-weight-bolder text-primary">
+                                            R$ {{ number_format($item->custo_por_km, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="9" class="text-center font-weight-bold text-muted py-10">
+                                            Nenhuma movimentação processada no período.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
             </div>
         </div>
-
     </div>
-</div>
+
+    <style>
+        @media print {
+            @page {
+                size: landscape !important;
+                margin: 1cm !important;
+            }
+
+            /* Reset de Layout */
+            body * { visibility: hidden !important; }
+            #area-impressao, #area-impressao * { visibility: visible !important; }
+            #area-impressao {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Centralização do Cabeçalho */
+            .print-cabecalho {
+                display: block !important;
+                width: 100% !important;
+            }
+
+            /* Tabela Compacta para não quebrar linha */
+            .table-relatorio {
+                width: 100% !important;
+                font-size: 10px !important; /* Fonte menor para caber tudo */
+            }
+
+            .table-relatorio th, .table-relatorio td {
+                padding: 4px 2px !important;
+                white-space: nowrap !important; /* Evita quebra de linha nas células */
+            }
+
+            /* Escurecer valores para Preto e Branco */
+            .consumo-texto {
+                color: #000000 !important; /* Preto puro para total nitidez */
+                font-weight: 900 !important;
+            }
+
+            .text-info, .text-primary, .text-success, .text-danger {
+                color: #000000 !important; /* Força tudo que é importante para preto na impressão */
+            }
+
+            .card { border: none !important; box-shadow: none !important; }
+            .bg-light { background-color: #f3f6f9 !important; -webkit-print-color-adjust: exact; }
+        }
+    </style>
 @endsection
