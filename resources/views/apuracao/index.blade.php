@@ -27,25 +27,50 @@
         .text-detail { padding-left: 3.5rem !important; }
 
         @media print {
-            body * {
-                visibility: hidden !important;
-            }
+            @page { margin: 8mm; }
 
-            #apuracao-relatorio,
-            #apuracao-relatorio * {
-                visibility: visible !important;
-            }
-
-            #apuracao-relatorio {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
                 background: #fff !important;
             }
 
-            .no-print {
+            .no-print,
+            .aside,
+            .aside-menu-wrapper,
+            .header,
+            .subheader,
+            .footer,
+            .quick-panel,
+            .scrolltop,
+            .offcanvas {
                 display: none !important;
+            }
+
+            .wrapper,
+            .content,
+            .d-flex,
+            .container,
+            .container-fluid,
+            .card,
+            .card-body {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: 0 !important;
+                min-height: auto !important;
+            }
+
+            .table-apuracao {
+                width: 100% !important;
+                page-break-inside: auto;
+            }
+
+            .table-apuracao tr {
+                page-break-inside: avoid;
             }
         }
     </style>
@@ -177,7 +202,15 @@
     </div>
 
     <script>
-        function toggleDet(cls) { $('.' + cls).toggle(); }
+        function toggleDet(cls) {
+            const rows = document.querySelectorAll('tr.' + cls);
+            if (!rows.length) return;
+
+            const isVisible = Array.from(rows).some(row => row.style.display === 'table-row');
+            rows.forEach((row) => {
+                row.style.display = isVisible ? 'none' : 'table-row';
+            });
+        }
         document.getElementById('val_final').value = "{{ $resFinal }}";
 
         function confirmar() {
