@@ -29,18 +29,16 @@
         @media print {
             @page { margin: 8mm; }
 
-            body.printing-apuracao * {
-                visibility: hidden !important;
+            body.printing-apuracao {
+                background: #fff !important;
             }
 
-            body.printing-apuracao #apuracao-relatorio,
-            body.printing-apuracao #apuracao-relatorio * {
-                visibility: visible !important;
+            body.printing-apuracao > *:not(#apuracao-relatorio) {
+                display: none !important;
             }
 
             body.printing-apuracao #apuracao-relatorio {
-                position: fixed;
-                inset: 0;
+                display: block !important;
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -194,13 +192,32 @@
         document.getElementById('val_final').value = "{{ $resFinal }}";
 
         function imprimirApuracao() {
-            document.body.classList.add('printing-apuracao');
-            window.print();
-        }
+            const relatorio = document.getElementById('apuracao-relatorio');
+            if (!relatorio || !relatorio.parentNode) {
+                window.print();
+                return;
+            }
 
-        window.addEventListener('afterprint', function() {
-            document.body.classList.remove('printing-apuracao');
-        });
+            const origem = relatorio.parentNode;
+            const placeholder = document.createElement('div');
+            placeholder.id = 'apuracao-print-placeholder';
+            origem.insertBefore(placeholder, relatorio);
+            document.body.appendChild(relatorio);
+
+            document.body.classList.add('printing-apuracao');
+
+            const restaurarLayout = function() {
+                if (placeholder.parentNode) {
+                    placeholder.parentNode.insertBefore(relatorio, placeholder);
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+                document.body.classList.remove('printing-apuracao');
+            };
+
+            window.addEventListener('afterprint', restaurarLayout, { once: true });
+            window.print();
+            setTimeout(restaurarLayout, 1200);
+        }
 
         function confirmar() {
             swal({title: "Finalizar?", text: "Isso travará o estoque do mês!", icon: "warning", buttons: ["Não", "Sim"]})
