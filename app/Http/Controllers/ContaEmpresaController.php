@@ -131,6 +131,7 @@ class ContaEmpresaController extends BaseController
             $item->saldo = __replace($request->saldo_inicial);
             $item->saldo_inicial = __replace($request->saldo_inicial);
             $item->status = $request->status ?? 1;
+            $item->exibir_dashboard_analitico = $request->has('exibir_dashboard_analitico') ? 1 : 0;
             $item->empresa_id = $this->empresa_id;
             $item->usuario_id = $this->usuario_id ?? get_id_user();
             $item->filial_id = $filial_final; // Atribuição direta e forçada
@@ -181,6 +182,7 @@ class ContaEmpresaController extends BaseController
             $item->plano_conta_id = $request->plano_conta_id;
             $item->saldo_inicial = __replace($request->saldo_inicial);
             $item->status = $request->status;
+            $item->exibir_dashboard_analitico = $request->has('exibir_dashboard_analitico') ? 1 : 0;
             $item->filial_id = $filial_final; // <--- Forçamos o ID (ex: 8) aqui!
             $item->usuario_id = $this->usuario_id ?? get_id_user();
 

@@ -62,10 +62,24 @@
 											<label class="col-form-label">Status da conta</label>
 											<div class="">
 												<select name="status" class="custom-select">
-													<option value="1">Ativa</option>
-													<option value="0">Desativada</option>
+													<option value="1" {{ (isset($item) && (int)$item->status === 1) ? 'selected' : '' }}>Ativa</option>
+													<option value="0" {{ (isset($item) && (int)$item->status === 0) ? 'selected' : '' }}>Desativada</option>
 													
 												</select>
+											</div>
+										</div>
+
+										<div class="form-group validated col-md-4 col-12">
+											<label class="col-form-label d-block">Exibir no Dashboard Analítico</label>
+											<div class="d-flex align-items-center">
+												<span class="switch switch-outline switch-icon switch-primary mr-3">
+													<label>
+														<input type="checkbox" name="exibir_dashboard_analitico" value="1"
+															{{ old('exibir_dashboard_analitico', isset($item) ? (int)$item->exibir_dashboard_analitico : 0) ? 'checked' : '' }}>
+														<span></span>
+													</label>
+												</span>
+												<span class="text-muted">Mostrar em Saldos Bancários</span>
 											</div>
 										</div>
 </div>
