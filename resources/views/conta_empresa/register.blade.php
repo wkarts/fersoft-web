@@ -69,15 +69,17 @@
 											</div>
 										</div>
 
-										<div class="form-group validated col-md-3 col-12">
-											<label class="col-form-label">Exibir no Dashboard Analítico</label>
-											<div class="pt-2">
-												<label class="checkbox checkbox-outline checkbox-primary">
-													<input type="checkbox" name="exibir_dashboard_analitico" value="1"
-														{{ old('exibir_dashboard_analitico', isset($item) ? (int)$item->exibir_dashboard_analitico : 0) ? 'checked' : '' }}>
-													<span></span>
-													Mostrar em Saldos Bancários
-												</label>
+										<div class="form-group validated col-md-4 col-12">
+											<label class="col-form-label d-block">Exibir no Dashboard Analítico</label>
+											<div class="d-flex align-items-center">
+												<span class="switch switch-outline switch-icon switch-primary mr-3">
+													<label>
+														<input type="checkbox" name="exibir_dashboard_analitico" value="1"
+															{{ old('exibir_dashboard_analitico', isset($item) ? (int)$item->exibir_dashboard_analitico : 0) ? 'checked' : '' }}>
+														<span></span>
+													</label>
+												</span>
+												<span class="text-muted">Mostrar em Saldos Bancários</span>
 											</div>
 										</div>
 </div>
