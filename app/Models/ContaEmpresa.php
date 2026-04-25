@@ -23,7 +23,8 @@ class ContaEmpresa extends BaseModel
         'plano_conta_id',
         'saldo_inicial',
         'status',
-        'saldo'
+        'saldo',
+        'exibir_dashboard_analitico',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class ContaEmpresa extends BaseModel
         'saldo' => 'float',
         'saldo_inicial' => 'float',
         'status' => 'boolean',
+        'exibir_dashboard_analitico' => 'boolean',
     ];
 
     public function plano()

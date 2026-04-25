@@ -320,6 +320,7 @@ class DashboardAnaliticoController extends Controller
             ->leftJoin('plano_contas as pc', 'pc.id', '=', 'ce.plano_conta_id')
             ->leftJoin('usuarios as u', 'u.id', '=', 'ce.usuario_id')
             ->leftJoin('filials as f', 'f.id', '=', 'ce.filial_id')
+            ->where('ce.exibir_dashboard_analitico', 1)
             ->select(
                 'ce.*',
                 'pc.descricao as plano_descricao',

@@ -32,6 +32,7 @@
 								{{-- ADICIONADO: CABEÇALHO LOCAL --}}
 								<th>Local</th>
 								<th>Status</th>
+								<th>Dashboard</th>
 								<th>Saldo</th>
 								<th>Ações</th>
 							</tr>
@@ -64,6 +65,13 @@
 									<i class="la la-check text-success"></i>
 									@else
 									<i class="la la-close text-danger"></i>
+									@endif
+								</td>
+								<td>
+									@if($item->exibir_dashboard_analitico)
+										<span class="label label-inline label-light-success font-weight-bold">Exibir</span>
+									@else
+										<span class="label label-inline label-light-secondary font-weight-bold">Ocultar</span>
 									@endif
 								</td>
 								<td>{{ moeda($item->saldo) }}</td>
