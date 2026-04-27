@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemOrcamento extends Model
+class ItemOrcamento extends BaseModel
 {
     protected $fillable = [
 		'produto_id', 'orcamento_id', 'quantidade', 'valor', 'altura', 'largura', 'profundidade',

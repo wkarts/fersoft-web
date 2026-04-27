@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaLojaSegmento extends Model
+class CategoriaLojaSegmento extends BaseModel
 {
     use HasFactory;
     protected $fillable = [ 'categoria_id', 'loja_id' ];

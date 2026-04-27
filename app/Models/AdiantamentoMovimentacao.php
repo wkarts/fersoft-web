@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AdiantamentoMovimentacao extends Model
+class AdiantamentoMovimentacao extends BaseModel
 {
     protected $table = 'adiantamento_movimentacoes';
     protected $fillable = ['adiantamento_id', 'conta_receber_id', 'conta_pagar_id', 'valor', 'data'];

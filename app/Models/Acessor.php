@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Acessor extends Model
+class Acessor extends BaseModel
 {
 
 	protected $fillable = [

@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class ProdutoIbpt extends Model
+class ProdutoIbpt extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

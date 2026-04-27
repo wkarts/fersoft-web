@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Pedido;
 use LaravelQRCode\Facades\QRCode;
 
-class Mesa extends Model
+class Mesa extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'empresa_id', 'token'

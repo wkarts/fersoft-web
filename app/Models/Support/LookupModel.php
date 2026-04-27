@@ -2,10 +2,11 @@
 
 namespace App\Models\Support;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BaseModel;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-abstract class LookupModel extends Model
+abstract class LookupModel extends BaseModel
 {
     use SoftDeletes;
 

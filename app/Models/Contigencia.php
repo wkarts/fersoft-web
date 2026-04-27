@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Contigencia extends Model
+class Contigencia extends BaseModel
 {
     use HasFactory;
 

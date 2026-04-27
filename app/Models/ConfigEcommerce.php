@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ConfigEcommerce extends Model
+class ConfigEcommerce extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'link', 'logo', 'rua', 'numero', 'bairro', 'cidade', 'cep', 'telefone',

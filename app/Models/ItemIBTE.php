@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemIBTE extends Model
+class ItemIBTE extends BaseModel
 {	
 	protected $table = 'item_i_b_t_es';
 	

@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ItemPedidoDelivery;
 
-class ProdutoDelivery extends Model
+class ProdutoDelivery extends BaseModel
 {
 	protected $fillable = [
 		'categoria_id', 'produto_id', 'valor', 'descricao',

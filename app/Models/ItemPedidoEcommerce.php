@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemPedidoEcommerce extends Model
+class ItemPedidoEcommerce extends BaseModel
 {
     protected $fillable = [
 		'pedido_id', 'produto_id', 'quantidade'

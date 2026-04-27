@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Agendamento extends Model
+class Agendamento extends BaseModel
 {
     protected $fillable = [
         'funcionario_id', 'cliente_id', 'data', 'inicio', 'termino', 'observacao', 'total',

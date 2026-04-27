@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoAjusteAprovacao extends Model
+class PontoAjusteAprovacao extends BaseModel
 {
     protected $table = 'ponto_ajuste_aprovacoes';
 

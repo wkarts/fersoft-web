@@ -2,12 +2,13 @@
 
 namespace App\Models\Updates;
 
+use App\Models\BaseModel;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class UpdateVersion extends Model
+class UpdateVersion extends BaseModel
 {
     use HasFactory;
 

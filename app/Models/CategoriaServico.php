@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaServico extends Model
+class CategoriaServico extends BaseModel
 {
     protected $fillable = [
         'nome', 'empresa_id'

@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class TicketMensagem extends Model
+class TicketMensagem extends BaseModel
 {
     use HasFactory;
     protected $fillable = ['mensagem', 'imagem', 'ticket_id', 'usuario_id'];

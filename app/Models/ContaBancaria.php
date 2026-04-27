@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ContaBancaria extends Model
+class ContaBancaria extends BaseModel
 {
 	protected $fillable = [
 		'banco', 'agencia', 'conta', 'titular', 'empresa_id', 'padrao', 'cnpj', 'endereco',

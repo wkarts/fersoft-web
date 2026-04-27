@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AberturaCaixa extends Model
+class AberturaCaixa extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'valor', 'ultima_venda_nfe', 'ultima_venda_nfce', 'empresa_id',

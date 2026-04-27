@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemCompra extends Model
+class ItemCompra extends BaseModel
 {
     protected $fillable = [
         'produto_id', 'compra_id', 'quantidade', 'valor_unitario', 'unidade_compra', 'validade', 'cfop_entrada', 'codigo_siad'

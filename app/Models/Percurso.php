@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Percurso extends Model
+class Percurso extends BaseModel
 {
     protected $fillable = [
 		'mdfe_id', 'uf'

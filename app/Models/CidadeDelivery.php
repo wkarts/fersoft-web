@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CidadeDelivery extends Model
+class CidadeDelivery extends BaseModel
 {
 	protected $fillable = [ 'nome', 'cep', 'uf' ];
 }

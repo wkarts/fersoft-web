@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class EnderecoEcommerce extends Model
+class EnderecoEcommerce extends BaseModel
 {
     protected $fillable = [
 		'rua', 'numero', 'bairro', 'cep', 'cidade', 'uf', 'complemento', 'cliente_id'

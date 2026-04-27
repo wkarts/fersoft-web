@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AbastecimentoMovimentacao extends Model
+class AbastecimentoMovimentacao extends BaseModel
 {
     protected $table = 'abastecimentos_movimentacoes';
 

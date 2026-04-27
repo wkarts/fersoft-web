@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class InfoDescarga extends Model
+class InfoDescarga extends BaseModel
 {
 	protected $fillable = [
 		'mdfe_id', 'tp_unid_transp', 'id_unid_transp', 'quantidade_rateio', 'cidade_id'

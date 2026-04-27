@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Evento extends Model
+class Evento extends BaseModel
 {
     protected $fillable = [
         'nome', 'descricao', 'logradouro', 'numero', 'bairro', 'cidade', 'status',

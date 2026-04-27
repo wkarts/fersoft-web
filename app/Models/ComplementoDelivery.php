@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ComplementoDelivery extends Model
+class ComplementoDelivery extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'valor', 'categoria', 'empresa_id', 'tipo'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaDestaqueMasterDelivery extends Model
+class CategoriaDestaqueMasterDelivery extends BaseModel
 {
 	protected $fillable = [ 'nome' ];
 }
