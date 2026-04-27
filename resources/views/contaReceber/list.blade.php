@@ -219,82 +219,100 @@
                                             <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                                                 <thead class="datatable-head">
                                                 <tr class="datatable-row">
-                                                    <th class="datatable-cell"><span style="width: 200px;">AÇÕES</span></th>
-                                                    <th class="datatable-cell"><span style="width: 250px;">CLIENTE</span></th>
-                                                    <th class="datatable-cell"><span style="width: 150px;">CATEGORIA</span></th>
-                                                    @if(empresaComFilial())
-                                                        <th class="datatable-cell"><span style="width: 150px;">Local</span></th>
-                                                    @endif
-                                                    <th class="datatable-cell"><span style="width: 120px;">REFERÊNCIA</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">VALOR INTEGRAL</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">VALOR RECEBIDO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">DATA VENCIMENTO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">DATA VENCIMENTO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">ESTADO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 120px;">Nº NOTA</span></th>
+                                                    <th class="datatable-cell"><span style="width: 160px;">AÇÕES</span></th>
+                                                    <th class="datatable-cell"><span style="width: 200px;">CLIENTE</span></th>
+                                                    <th class="datatable-cell"><span style="width: 200px;">CATEGORIA / REF</span></th>
+                                                    <th class="datatable-cell"><span style="width: 100px;">VALOR INT.</span></th>
+                                                    <th class="datatable-cell"><span style="width: 100px;">VALOR PAGO</span></th>
+                                                    <th class="datatable-cell"><span style="width: 100px;">VENCIMENTO</span></th>
+                                                    <th class="datatable-cell"><span style="width: 100px;">PAGAMENTO</span></th>
+                                                    <th class="datatable-cell"><span style="width: 100px;">ESTADO</span></th>
+                                                    <th class="datatable-cell"><span style="width: 80px;">Nº NOTA</span></th>
+                                                    <th class="datatable-cell"><span style="width: 150px;">USUÁRIOS (C/B)</span></th>
                                                 </tr>
                                                 </thead>
                                                 <tbody id="body" class="datatable-body">
                                                 @foreach($contas as $c)
                                                     <tr class="datatable-row">
                                                         <td class="datatable-cell">
-                                                        <span class="codigo" style="width: 200px;">
-                                                            @if($c->status == false)
-                                                                <label style="display: none" class="checkbox checkbox-success checkbox-inline mr-2" for="sel_{{$c->id}}">
-                                                                <input id="sel_{{$c->id}}" class="select" type="checkbox" name="Checkboxes5"/>
-                                                                <span></span>
-                                                            </label>
+                                                                <span style="width: 160px;">
+                                                                    @if($c->status == false)
+                                                                        {{-- Checkbox para seleção múltipla --}}
+                                                                        <label style="display: none" class="checkbox checkbox-success checkbox-inline mr-2" for="sel_{{$c->id}}">
+                                                                            <input id="sel_{{$c->id}}" class="select" type="checkbox" name="Checkboxes5"/>
+                                                                            <span></span>
+                                                                        </label>
 
-                                                                <a href="/contasReceber/edit/{{$c->id}}" class="btn btn-warning btn-sm btn-icon"><i class="la la-edit"></i></a>
-                                                                <a onclick='swal("Atenção!", "Remover?", "warning").then((sim) => {if(sim){ location.href="/contasReceber/delete/{{ $c->id }}" }})' class="btn btn-danger btn-sm btn-icon"><i class="la la-trash"></i></a>
-                                                                <a href="/contasReceber/receber/{{$c->id}}" class="btn btn-success btn-sm btn-icon" title="Receber"><i class="la la-money"></i></a>
-                                                            @else
-                                                                <a title="Estornar conta" href="/contasReceber/estorno/{{$c->id}}" class="btn btn-dark btn-sm btn-icon"><i class="la la-arrow-alt-circle-left"></i></a>
+                                                                        <a href="/contasReceber/edit/{{$c->id}}" class="btn btn-warning btn-sm btn-icon" title="Editar"><i class="la la-edit"></i></a>
+                                                                        <a onclick='swal("Atenção!", "Remover?", "warning").then((sim) => {if(sim){ location.href="/contasReceber/delete/{{ $c->id }}" }})' class="btn btn-danger btn-sm btn-icon" title="Excluir"><i class="la la-trash"></i></a>
+                                                                        <a href="/contasReceber/receber/{{$c->id}}" class="btn btn-success btn-sm btn-icon" title="Receber"><i class="la la-money"></i></a>
 
-                                                                {{-- IMPLEMENTAÇÃO: Botão Imprimir Recibo --}}
-                                                                <a href="/contasReceber/imprimirRecibo/{{$c->id}}" class="btn btn-info btn-sm btn-icon" target="_blank" title="Imprimir Recibo">
-                                                                <i class="la la-print"></i>
-                                                            </a>
-                                                            @endif
-                                                        </span>
+                                                                        {{-- BOTÃO GERAR BOLETO (Individual) --}}
+                                                                        @if(!$c->boleto)
+                                                                            <a href="/boleto/gerar/{{$c->id}}" class="btn btn-info btn-sm btn-icon" title="Gerar Boleto"><i class="la la-barcode"></i></a>
+                                                                        @endif
+                                                                    @else
+                                                                        <a title="Estornar conta" href="/contasReceber/estorno/{{$c->id}}" class="btn btn-dark btn-sm btn-icon"><i class="la la-arrow-alt-circle-left"></i></a>
+                                                                        <a href="/contasReceber/imprimirRecibo/{{$c->id}}" class="btn btn-info btn-sm btn-icon" target="_blank" title="Imprimir Recibo"><i class="la la-print"></i></a>
+                                                                    @endif
+
+                                                                    {{-- BOTÃO OBSERVAÇÃO --}}
+                                                                    @if($c->observacao)
+                                                                        <button onclick='swal("Observação", "{{$c->observacao}}", "info")' class="btn btn-light-primary btn-sm btn-icon" title="Ver Observação"><i class="la la-sticky-note"></i></button>
+                                                                    @endif
+                                                                </span>
                                                         </td>
 
                                                         <td class="datatable-cell">
-                                                        <span class="codigo" style="width: 250px;">
-                                                            @if($c->venda_id != null) {{ $c->venda->cliente->razao_social }}
-                                                            @else {{ $c->cliente->razao_social ?? '--' }}
-                                                            @endif
-                                                        </span>
-                                                        </td>
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 150px;">{{$c->categoria->nome}}</span></td>
-                                                        @if(empresaComFilial())
-                                                            <td class="datatable-cell"><span class="codigo" style="width: 150px;">{{ $c->filial_id ? $c->filial->descricao : 'Matriz' }}</span></td>
-                                                        @endif
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 120px;">{{ $c->referencia }}</span></td>
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 120px;">R$ {{number_format($c->valor_integral, $casasDecimais, ',', '.')}}</span></td>
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 120px;">R$ {{number_format($c->valor_recebido, $casasDecimais, ',', '.')}}</span></td>
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 120px;">R$ {{number_format($c->valor_recebido, $casasDecimais, ',', '.')}}</span></td>
-
-                                                        {{-- Coluna da Data de Emissão Corrigida --}}
-                                                        <td class="datatable-cell">
-                                                        <span class="codigo" style="width: 120px;">
-                                                            {{ $c->nf_data_emissao ? \Carbon\Carbon::parse($c->nf_data_emissao)->format('d/m/Y') : '--' }}
-                                                        </span>
+                                                                <span style="width: 200px;">
+                                                                    @if($c->venda_id != null) <b>{{ $c->venda->cliente->razao_social }}</b>
+                                                                    @else <b>{{ $c->cliente->razao_social ?? '--' }}</b>
+                                                                    @endif
+                                                                </span>
                                                         </td>
 
                                                         <td class="datatable-cell">
-                                                        <span class="codigo" style="width: 120px;">
-                                                            {{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y')}}
-                                                            @if(!$c->status) <br><span class="text-danger" style="font-size: 10px">{{ $c->diasAtraso() }}</span> @endif
-                                                        </span>
+                                                                <span style="width: 200px;">
+                                                                    <b>{{$c->categoria->nome}}</b> <br>
+                                                                    <small class="text-muted">{{ $c->referencia }}</small>
+                                                                    @if($c->filial_id) <br><span class="label label-inline label-light-primary">Local: {{ $c->filial->descricao }}</span> @endif
+                                                                </span>
                                                         </td>
+
+                                                        <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_integral, 2, ',', '.')}}</span></td>
+                                                        <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_recebido, 2, ',', '.')}}</span></td>
+
                                                         <td class="datatable-cell">
-                                                        <span class="codigo" style="width: 120px;">
-                                                            @if($c->status == true) <span class="label label-xl label-inline label-light-success">Pago</span>
-                                                            @else <span class="label label-xl label-inline label-light-danger">Pendente</span> @endif
-                                                        </span>
+                                                                <span style="width: 100px;">
+                                                                    {{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y')}}
+                                                                    @if(!$c->status)
+                                                                        <br><span class="text-danger" style="font-size: 10px">{{ $c->diasAtraso() }}</span>
+                                                                    @endif
+                                                                </span>
                                                         </td>
-                                                        <td class="datatable-cell"><span class="codigo" style="width: 120px;">{{ $c->numero_nota_fiscal }}</span></td>
+
+                                                        <td class="datatable-cell">
+                                                                <span style="width: 100px;">
+                                                                    {{ $c->status && $c->data_recebimento ? \Carbon\Carbon::parse($c->data_recebimento)->format('d/m/Y') : '--' }}
+                                                                </span>
+                                                        </td>
+
+                                                        <td class="datatable-cell">
+                                                                <span style="width: 100px;">
+                                                                    @if($c->status == true) <span class="label label-xl label-inline label-light-success">Pago</span>
+                                                                    @else <span class="label label-xl label-inline label-light-danger">Pendente</span> @endif
+                                                                </span>
+                                                        </td>
+
+                                                        <td class="datatable-cell"><span style="width: 80px;">{{ $c->numero_nota_fiscal > 0 ? $c->numero_nota_fiscal : '--' }}</span></td>
+
+                                                        {{-- COLUNA DE USUÁRIOS (CADASTROU / BAIXOU) --}}
+                                                        <td class="datatable-cell">
+                                                                <span style="width: 150px;">
+                                                                    <small><b>C:</b> {{ $c->usuario->nome ?? '--' }}</small> <br>
+                                                                    <small><b>B:</b> {{ $c->usuarioBaixa->nome ?? '--' }}</small>
+                                                                </span>
+                                                        </td>
                                                     </tr>
                                                 @endforeach
                                                 </tbody>
@@ -303,7 +321,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             {{-- CONTEÚDO 2: VISUALIZAÇÃO EM GRADE (CARTÕES) --}}
                             <input type="hidden" id="contas" value="{{json_encode($contas)}}">
                             <div class="pb-5" data-wizard-type="step-content">
