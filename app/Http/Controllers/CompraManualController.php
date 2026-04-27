@@ -28,6 +28,403 @@ class CompraManualController extends Controller
     public function __construct(){
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
+            $this->usuario_id = session('user_logged')['id'] ?? null;
+            if (!$this->usuario_id) { return redirect('/login'); }
+            $this->filial_id = $request->get('filial_id') ?? session('user_logged.local_padrao') ?? null;
+            return $next($request);
+        });
+    }
+
+    private function getValueOrDefault($array, $key, $default = null) {
+        if (isset($array[$key])) {
+            $value = trim($array[$key]);
+            if ($value !== '') { return $value; }
+        }
+        return $default;
+    }
+
+    public function custoMedio(Request $request){
+        $item = Produto::findOrFail($request->id);
+        $valorCompraAtual = __replace($request->valor);
+        $valorCompraProduto = $item->valor_compra;
+        $estoque = $item->estoque ? $item->estoque->quantidade : 0;
+        $quantidadeDaCompra = __replace($request->quantidade);
+        $vl = ($valorCompraAtual*$quantidadeDaCompra) + ($valorCompraProduto*$estoque);
+        $vcm = moeda($vl/($estoque+$quantidadeDaCompra));
+        return response()->json($vcm, 200);
+    }
+
+    public function numeroSequencial(){
+        $verify = Compra::where('empresa_id', $this->empresa_id)->where('numero_sequencial', 0)->first();
+        if($verify){
+            $vendas = Compra::where('empresa_id', $this->empresa_id)->get();
+            $n = 1;
+            foreach($vendas as $v){ $v->numero_sequencial = $n; $n++; $v->save(); }
+        }
+    }
+
+    public function index(){
+        $this->numeroSequencial();
+        $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $countProdutos = Produto::where('empresa_id', $this->empresa_id)->count();
+
+        if($countProdutos > env("ASSINCRONO_PRODUTOS")){ return $this->compraAssincrona(); }
+        else{
+            $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get();
+            if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
+            $produtos = Produto::where('empresa_id', $this->empresa_id)->orderBy('nome')->get();
+            foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
+            $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
+            $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
+            $unidadesDeMedida = Produto::unidadesMedida();
+            $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+            $anps = Produto::lista_ANP();
+            $listaCSTCSOSN = ($tributacao->regime == 1) ? Produto::listaCST() : Produto::listaCSOSN();
+            $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
+            $listaCST_IPI = Produto::listaCST_IPI();
+            $natureza = Produto::firstNatureza($this->empresa_id);
+
+            return view('compraManual/register')
+                ->with('compraManual', true)->with('fornecedores', $fornecedores)->with('config', $config)
+                ->with('transportadoras', $transportadoras)->with('produtos', $produtos)
+                ->with('categorias', $categorias)->with('tributacao', $tributacao)->with('anps', $anps)
+                ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('unidadesDeMedida', $unidadesDeMedida)
+                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)->with('listaCST_IPI', $listaCST_IPI)
+                ->with('natureza', $natureza)->with('title', 'Nova Compra Manual')->with('veiculos', $veiculos);
+        }
+    }
+
+    protected function compraAssincrona(){
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get();
+        $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
+        if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
+        $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
+        $unidadesDeMedida = Produto::unidadesMedida();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+        $anps = Produto::lista_ANP();
+        $listaCSTCSOSN = ($tributacao->regime == 1) ? Produto::listaCST() : Produto::listaCSOSN();
+        $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
+        $listaCST_IPI = Produto::listaCST_IPI();
+        $natureza = Produto::firstNatureza($this->empresa_id);
+        $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
+
+        return view('compraManual/register_assincrono')
+            ->with('compraManualAssincrono', true)->with('veiculos', $veiculos)->with('fornecedores', $fornecedores)
+            ->with('transportadoras', $transportadoras)->with('config', $config)->with('categoriasDeConta', $categoriasDeConta)
+            ->with('categorias', $categorias)->with('tributacao', $tributacao)->with('anps', $anps)
+            ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('unidadesDeMedida', $unidadesDeMedida)
+            ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)->with('listaCST_IPI', $listaCST_IPI)
+            ->with('natureza', $natureza)->with('title', 'Compra Manual');
+    }
+
+    public function salvar(Request $request)
+    {
+        try {
+            $result = DB::transaction(function () use ($request) {
+                $compra = $request->compra;
+                $qtdVol = isset($compra['qtdVol']) ? str_replace(",", ".", $compra['qtdVol']) : 0;
+                $pesoLiquido = isset($compra['pesoL']) ? str_replace(",", ".", $compra['pesoL']) : 0;
+                $pesoBruto = isset($compra['pesoB']) ? str_replace(",", ".", $compra['pesoB']) : 0;
+                $valorFrete = isset($compra['valorFrete']) ? str_replace(",", ".", $compra['valorFrete']) : 0;
+
+                $nfInformada = $compra['nf'] ?? 0;
+                $emissaoInformada = $compra['numero_emissao'] ?? 0;
+
+                if (isset($compra['data_retroativa']) && trim($compra['data_retroativa']) !== '' && $compra['data_retroativa'] != -1) {
+                    $dataEmissao = $this->parseDate($compra['data_retroativa']);
+                } else {
+                    $dataEmissao = date('Y-m-d H:i:s');
+                }
+
+                $statusCalculado = 'NOVO';
+                if ($emissaoInformada > 0) { $statusCalculado = 'APROVADO'; }
+                elseif ($nfInformada > 0) { $statusCalculado = 'EMITIDA'; }
+
+                $nf = (isset($compra['nNf']) && trim($compra['nNf']) !== '') ? $compra['nNf'] : 0;
+
+                $result = Compra::create([
+                    'fornecedor_id'      => $compra['fornecedor'],
+                    'nf'                 => $nf,
+                    'numero_emissao'     => $compra['numero_emissao'] ?? '0',
+                    'data_emissao'       => $dataEmissao,
+                    'veiculo_id'         => (!empty($compra['veiculo_id']) && $compra['veiculo_id'] > 0) ? $compra['veiculo_id'] : null,
+                    'usuario_id'         => $this->usuario_id,
+                    'observacao'         => $compra['observacao'] ?? '',
+                    'lote'               => $compra['lote'] ?? '',
+                    'valor'              => str_replace(",", ".", $compra['total']),
+                    'desconto'           => $compra['desconto'] != null ? str_replace(",", ".", $compra['desconto']) : 0,
+                    'acrescimo'          => $compra['acrescimo'] != null ? str_replace(",", ".", $compra['acrescimo']) : 0,
+                    'xml_path'           => '', 'estado' => $statusCalculado, 'chave' => '',
+                    'empresa_id'         => $this->empresa_id,
+                    'categoria_conta_id' => $compra['categoria_conta_id'] ?? null,
+                    'valor_frete'        => $valorFrete,
+                    'placa'              => $compra['placaVeiculo'] ?? '',
+                    'tipo'               => (int)($compra['frete'] ?? 0),
+                    'uf'                 => $compra['ufPlaca'] ?? '',
+                    'numeracaoVolumes'   => $compra['numeracaoVol'] ?? '0',
+                    'peso_liquido'       => $pesoLiquido, 'peso_bruto' => $pesoBruto,
+                    'especie'            => $compra['especie'] ?? '*',
+                    'qtdVolumes'         => $qtdVol, 'transportadora_id' => $compra['transportadora'] ?? null,
+                    'filial_id'          => $this->filial_id,
+                    'data_retroativa'    => (isset($compra['data_retroativa']) && $compra['data_retroativa'] != -1) ? $this->parseDate($compra['data_retroativa']) : null,
+                    'data_saida'         => (isset($compra['data_saida']) && $compra['data_saida'] != -1) ? $this->parseDate($compra['data_saida']) : null
+                ]);
+
+                $this->salvarItens($result->id, $compra['itens'] ?? []);
+
+                if (empty($compra['fatura']) || !is_array($compra['fatura'])) {
+                    $compra['fatura'] = [['data' => date('d/m/Y'), 'valor' => $compra['total'], 'numero' => 1]];
+                }
+
+                $this->salvarParcela($result->id, $compra['fatura'], $compra['fornecedor'], $compra['categoria_conta_id'] ?? null, $compra);
+                return $result;
+            });
+            return response()->json($result);
+        } catch (\Exception $e) { __saveError($e, $this->empresa_id); return response()->json($e->getMessage(), 400); }
+    }
+
+    public function update(Request $request)
+    {
+        try {
+            $result = DB::transaction(function () use ($request) {
+                $compra = $request->compra;
+                $res = Compra::findOrFail($compra['id']);
+
+                $res->fornecedor_id = $compra['fornecedor_id'] ?? $compra['fornecedor'] ?? $res->fornecedor_id;
+                $res->nf = $compra['nNf'] ?? $compra['nf'] ?? '0';
+                $res->numero_emissao = $compra['numero_emissao'] ?? '0';
+                $res->data_emissao = $compra['data_emissao'] ?? $res->data_emissao;
+                $res->veiculo_id = (!empty($compra['veiculo_id']) && $compra['veiculo_id'] > 0) ? $compra['veiculo_id'] : null;
+                $res->observacao = $compra['observacao'] ?? '';
+                $res->valor = str_replace(',', '.', $compra['total']);
+                $res->categoria_conta_id = $compra['categoria_conta_id'] ?: null;
+                $res->data_retroativa = (isset($compra['data_retroativa']) && $compra['data_retroativa'] != -1) ? $this->parseDate($compra['data_retroativa']) : null;
+                $res->data_saida = (isset($compra['data_saida']) && $compra['data_saida'] != -1) ? $this->parseDate($compra['data_saida']) : null;
+                $res->save();
+
+                $this->removerItens($res->id);
+                $this->salvarItens($res->id, $compra['itens'] ?? []);
+
+                if (!empty($compra['faturas_removidas'])) { ContaPagar::whereIn('id', $compra['faturas_removidas'])->delete(); }
+
+                if (empty($compra['fatura']) || !is_array($compra['fatura'])) {
+                    $compra['fatura'] = [['data' => date('d/m/Y'), 'valor' => $compra['total'], 'numero' => 1]];
+                }
+
+                $this->salvarParcela($res->id, $compra['fatura'], $res->fornecedor_id, $res->categoria_conta_id, $compra);
+                return $res;
+            });
+            return response()->json($result);
+        } catch (\Exception $e) { __saveError($e, $this->empresa_id); return response()->json($e->getMessage(), 400); }
+    }
+
+    public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
+        $cont = 0;
+        $usouCredito = (isset($compra['usar_adiantamento']) && $compra['usar_adiantamento'] == 1);
+        $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
+
+        $saldoAdiantamento = 0;
+        if ($usouCredito) {
+            $adiantamentos = \App\Models\Adiantamento::where('empresa_id', $this->empresa_id)->where('fornecedor_id', $fornecedor_id)->where('status', 'aberto')->get();
+            foreach($adiantamentos as $ad) $saldoAdiantamento += ($ad->valor_total - $ad->valor_utilizado);
+        }
+
+        foreach($fatura as $parcela){
+            if (isset($parcela['db_id'])) continue;
+            $cont++;
+            $valStr = str_replace(['R$', ' '], '', $parcela['valor']);
+            if (strpos($valStr, ',') !== false) $valStr = str_replace(['.', ','], ['', '.'], $valStr);
+            $valorParcelaFloat = (float) $valStr;
+            $formaPgtoOriginal = $compra['formaPagamento'] ?? 'a_vista';
+
+            if ($usouCredito && $saldoAdiantamento > 0) {
+                if ($saldoAdiantamento >= $valorParcelaFloat) {
+                    $resPaga = ContaPagar::create([
+                        'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
+                        'veiculo_id' => $compra['veiculo_id'] ?? null, 'numero_nota_fiscal' => $nf, 'data_emissao' => date('Y-m-d'),
+                        'data_vencimento' => $this->parseDate($parcela['data']), 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorParcelaFloat,
+                        'valor_pago' => $valorParcelaFloat, 'status' => true, 'tipo_pagamento' => 'adiantamento', 'referencia' => "Parcela $cont/" . sizeof($fatura),
+                        'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id
+                    ]);
+                    AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorParcelaFloat, $this->empresa_id, $resPaga->id, $this->usuario_id, $this->filial_id);
+                    $saldoAdiantamento -= $valorParcelaFloat;
+                } else {
+                    $valorAbater = $saldoAdiantamento;
+                    $valorRestante = $valorParcelaFloat - $saldoAdiantamento;
+                    $saldoAdiantamento = 0;
+
+                    $resPagaParcial = ContaPagar::create([
+                        'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
+                        'numero_nota_fiscal' => $nf, 'data_emissao' => date('Y-m-d'), 'data_vencimento' => $this->parseDate($parcela['data']),
+                        'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorAbater, 'valor_pago' => $valorAbater,
+                        'status' => true, 'tipo_pagamento' => 'adiantamento', 'referencia' => "Parcela $cont (Adiantamento)",
+                        'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id,
+                        'usuario_baixa_id' => $this->usuario_id
+                    ]);
+                    AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorAbater, $this->empresa_id, $resPagaParcial->id, $this->usuario_id, $this->filial_id);
+
+                    ContaPagar::create([
+                        'compra_id' => $id,
+                        'fornecedor_id' => $fornecedor_id,
+                        'usuario_id' => $this->usuario_id,
+                        'numero_nota_fiscal' => $nf,
+                        'data_emissao' => date('Y-m-d'),
+                        'data_vencimento' => $this->parseDate($parcela['data']),
+                        'valor_integral' => $valorRestante,
+                        'valor_pago' => 0,
+                        'status' => false,
+                        'tipo_pagamento' => $formaPgtoOriginal,
+                        'referencia' => "Parcela $cont (Restante)",
+                        'categoria_id' => $categoria_conta_id,
+                        'empresa_id' => $this->empresa_id,
+                        'filial_id' => $this->filial_id,
+                        'usuario_baixa_id' => $this->usuario_id
+                    ]);
+                }
+            } else {
+                ContaPagar::create([
+                    'compra_id' => $id,
+                    'fornecedor_id' => $fornecedor_id,
+                    'usuario_id' => $this->usuario_id,
+                    'numero_nota_fiscal' => $nf,
+                    'data_emissao' => date('Y-m-d'),
+                    'data_vencimento' => $this->parseDate($parcela['data']),
+                    'valor_integral' => $valorParcelaFloat,
+                    'valor_pago' => 0,
+                    'status' => false,
+                    'tipo_pagamento' => $formaPgtoOriginal,
+                    'referencia' => "Parcela $cont/" . sizeof($fatura),
+                    'categoria_id' => $categoria_conta_id,
+                    'empresa_id' => $this->empresa_id,
+                    'filial_id' => $this->filial_id
+                ]);
+            }
+        }
+        return true;
+    }
+
+    private function salvarItens($id, $itens) {
+        $stockMove = new StockMove();
+        $compra = Compra::findOrFail($id);
+        foreach ($itens as $i) {
+            $prod = Produto::where('id', (int)$i['codigo'])->where('empresa_id', $this->empresa_id)->first();
+            ItemCompra::create([
+                'compra_id' => $id, 'produto_id' => (int)$i['codigo'],
+                'quantidade' => str_replace(",", ".", $i['quantidade']),
+                'valor_unitario' => str_replace(",", ".", $i['valor']),
+                'unidade_compra' => $prod['unidade_compra'],
+            ]);
+            if ($prod->gerenciar_estoque) {
+                $dataLancamento = $compra->data_retroativa ?? $compra->data_emissao ?? date('Y-m-d');
+                $stockMove->pluStock((int)$i['codigo'], __replace($i['quantidade']) * $prod->conversao_unitaria, __replace($i['valor']), $compra->filial_id, 'compra', $compra->id, $dataLancamento);
+            }
+        }
+    }
+
+    private function removerItens($compraId) {
+        $stockMove = new StockMove();
+        $saldos = DB::table('stock_movements')
+            ->select('produto_id', 'filial_id', DB::raw('SUM(CASE WHEN tipo = "entrada" THEN quantidade ELSE -quantidade END) as saldo_real'))
+            ->where('origem_tipo', 'compra')->where('origem_id', $compraId)->groupBy('produto_id', 'filial_id')->having('saldo_real', '>', 0)->get();
+        foreach ($saldos as $saldo) { $stockMove->downStock($saldo->produto_id, $saldo->saldo_real, $saldo->filial_id, 'compra', $compraId); }
+        ItemCompra::where('compra_id', $compraId)->delete();
+    }
+
+    public function syncDataEmissaoRetroativa()
+    {
+        $updatedCount = 0;
+        $compras = Compra::whereNotNull('data_retroativa')
+            ->where(function ($query) { $query->whereNull('data_emissao')->orWhereRaw('DATE(data_emissao) <> DATE(data_retroativa)'); })
+            ->where('empresa_id', $this->empresa_id)->get();
+        foreach ($compras as $compra) { $compra->data_emissao = $compra->data_retroativa; if ($compra->save()) { $updatedCount++; } }
+        session()->flash('mensagem_sucesso', "Sincronização concluída. {$updatedCount} compras atualizadas.");
+        return redirect('/compras');
+    }
+
+    public function ultimaCompra($produtoId){
+        $item = ItemCompra::where('produto_id', $produtoId)->orderBy('id', 'desc')->get();
+        if(count($item) > 0){
+            $last = $item[0];
+            echo json_encode(['fornecedor' => $last->compra->fornecedor->razao_social, 'valor' => $last->valor_unitario, 'quantidade' => $last->quantidade, 'data' => Carbon::parse($last->compra->created_at)->format('d/m/Y H:i:s')]);
+        } else { echo json_encode(null); }
+    }
+
+    public function excluirItem(Request $request)
+    {
+        try {
+            DB::transaction(function() use ($request) {
+                $item = ItemCompra::findOrFail($request->itemId);
+                if ($item->produto->gerenciar_estoque) {
+                    (new StockMove())->downStock($item->produto_id, $item->quantidade, $item->compra->filial_id, 'compra', $item->compra_id);
+                }
+                $item->delete();
+                session()->flash('mensagem_sucesso', 'Item excluído com sucesso!');
+            });
+            return response()->json(['status' => 'success']);
+        } catch (\Exception $e) { return response()->json(['status' => 'error', 'message' => $e->getMessage()]); }
+    }
+
+    public function updateItem(Request $request)
+    {
+        try {
+            $item = ItemCompra::findOrFail($request->itemId);
+            $item->quantidade = $request->quantidade;
+            $item->valor_unitario = str_replace(",", ".", $request->valor);
+            $item->save();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function editarItem(Request $request)
+    {
+        $item = ItemCompra::where('id', $request->input('id_item'))->where('compra_id', $request->input('compraId'))->first();
+        if (!$item) { return response()->json(['status' => 'error', 'message' => 'Item não encontrado']); }
+        $item->quantidade = $request->input('quantidade');
+        $item->valor_unitario = $request->input('valor');
+        $item->save();
+        return response()->json(['status' => 'success']);
+    }
+
+    public function editar($id){
+        $compra = Compra::findOrFail($id);
+        $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get();
+        $produtos = Produto::where('empresa_id', $this->empresa_id)->where('inativo', false)->orderBy('nome')->get();
+        foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
+        $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $fatura = (sizeof($compra->fatura) == 0) ? [['data_vencimento' => Carbon::parse($compra->created_at)->format('Y-m-d'), 'valor_integral' => $compra->valor]] : $compra->fatura;
+        $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
+        $unidadesDeMedida = Produto::unidadesMedida();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+        $anps = Produto::lista_ANP();
+        $listaCSTCSOSN = ($tributacao->regime == 1) ? Produto::listaCST() : Produto::listaCSOSN();
+        $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
+        $listaCST_IPI = Produto::listaCST_IPI();
+        $natureza = Produto::firstNatureza($this->empresa_id);
+        $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
+
+        return view('compraManual/edit')
+            ->with('compraManual', true)->with('fornecedores', $fornecedores)->with('unidadesDeMedida', $unidadesDeMedida)
+            ->with('tributacao', $tributacao)->with('categoriasDeConta', $categoriasDeConta)->with('config', $config)
+            ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+            ->with('listaCST_IPI', $listaCST_IPI)->with('natureza', $natureza)->with('anps', $anps)
+            ->with('fatura', $fatura)->with('compra', $compra)->with('categorias', $categorias)
+            ->with('transportadoras', $transportadoras)->with('produtos', $produtos)->with('title', 'Editar Compra Manual')->with('veiculos', $veiculos);
+    }
+
+    private function parseDate($date){ return date('Y-m-d', strtotime(str_replace("/", "-", $date))); }
+
+    /*
+    public function __construct_aganldo_desativou_26042026(){
+        $this->middleware(function ($request, $next) {
+            $this->empresa_id = $request->empresa_id;
 
             $this->usuario_id = session('user_logged')['id'] ?? null;
             if (!$this->usuario_id) {
@@ -41,8 +438,9 @@ class CompraManualController extends Controller
             return $next($request);
         });
     }
+    */
 
-    private function getValueOrDefault($array, $key, $default = null) {
+    private function getValueOrDefault_aganldo_desativou_26042026($array, $key, $default = null) {
         if (isset($array[$key])) {
             $value = trim($array[$key]);
             if ($value !== '') {
@@ -52,7 +450,7 @@ class CompraManualController extends Controller
         return $default;
     }
 
-    public function custoMedio(Request $request){
+    public function custoMedio_aganldo_desativou_26042026(Request $request){
         $item = Produto::findOrFail($request->id);
 
         $valorCompraAtual = __replace($request->valor);
@@ -68,7 +466,7 @@ class CompraManualController extends Controller
         return response()->json($vcm, 200);
     }
 
-    public function numeroSequencial(){
+    public function numeroSequencial_aganldo_desativou_26042026(){
         $verify = Compra::where('empresa_id', $this->empresa_id)
             ->where('numero_sequencial', 0)
             ->first();
@@ -85,7 +483,7 @@ class CompraManualController extends Controller
         }
     }
 
-    public function index(){
+    public function index_aganldo_desativou_26042026(){
         $this->numeroSequencial();
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         $countProdutos = Produto::
@@ -166,7 +564,7 @@ class CompraManualController extends Controller
         }
     }
 
-    protected function compraAssincrona(){
+    protected function compraAssincrona_aganldo_desativou_26042026(){
         $fornecedores = Fornecedor::
         where('empresa_id', $this->empresa_id)
             ->orderBy('razao_social')->get();
@@ -232,7 +630,7 @@ class CompraManualController extends Controller
         return $p;
     }
 
-    public function salvar(Request $request)
+    public function salvar_aganldo_desativou_26042026(Request $request)
     {
         try {
             $result = DB::transaction(function () use ($request) {
@@ -424,7 +822,7 @@ class CompraManualController extends Controller
         }
     }
 
-    public function update(Request $request)
+    public function update_aganldo_desativou_26042026(Request $request)
     {
         try {
             $result = DB::transaction(function () use ($request) {
@@ -677,7 +1075,7 @@ class CompraManualController extends Controller
         }
     }
 
-    private function salvarItens($id, $itens) {
+    private function salvarItens_aganldo_desativou_26042026($id, $itens) {
         $stockMove = new StockMove();
         $compra = \App\Models\Compra::findOrFail($id);
 
@@ -725,7 +1123,7 @@ class CompraManualController extends Controller
         return true;
     }
 
-    public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
+    public function salvarParcela_aganldo_desativou_26042026($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
         $cont = 0;
 
         $numero_emissao = !empty($compra['numero_emissao']) ? $compra['numero_emissao'] : (!empty($compra['nf']) ? $compra['nf'] : '0');
@@ -868,11 +1266,11 @@ class CompraManualController extends Controller
         return true;
     }
 
-    private function parseDate($date){
+    private function parseDate_aganldo_desativou_26042026($date){
         return date('Y-m-d', strtotime(str_replace("/", "-", $date)));
     }
 
-    public function ultimaCompra($produtoId){
+    public function ultimaCompra_aganldo_desativou_26042026($produtoId){
         $item = ItemCompra::
         where('produto_id', $produtoId)
             ->orderBy('id', 'desc')
@@ -892,7 +1290,7 @@ class CompraManualController extends Controller
         }
     }
 
-    public function editar($id){
+    public function editar_aganldo_desativou_26042026($id){
         $compra = Compra::findOrFail($id);
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         $countProdutos = Produto::
@@ -991,7 +1389,7 @@ class CompraManualController extends Controller
 
     }
 
-    public function syncDataEmissaoRetroativa()
+    public function syncDataEmissaoRetroativa_aganldo_desativou_26042026()
     {
         $updatedCount = 0;
 
@@ -1022,7 +1420,7 @@ class CompraManualController extends Controller
         return $rota ? redirect($rota) : redirect('/compras');
     }
 
-    private function removerItens($compraId) {
+    private function removerItens_aganldo_desativou_26042026($compraId) {
         $stockMove = new StockMove();
         $compra = \App\Models\Compra::find($compraId);
 
@@ -1053,21 +1451,7 @@ class CompraManualController extends Controller
         return true;
     }
 
-    public function updateItem(Request $request)
-    {
-        try {
-            $item = ItemCompra::findOrFail($request->itemId);
-            $item->quantidade = $request->quantidade;
-            $item->valor_unitario = str_replace(",", ".", $request->valor);
-            $item->save();
-
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
-        }
-    }
-
-    public function editarItem(Request $request)
+    public function editarItem_aganldo_desativou_26042026(Request $request)
     {
         $validated = $request->validate([
             'valor' => 'required|numeric',
@@ -1095,7 +1479,7 @@ class CompraManualController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    public function excluirItem(Request $request)
+    public function excluirItem_aganldo_desativou_26042026(Request $request)
     {
         try {
             DB::transaction(function() use ($request) {
@@ -1124,4 +1508,5 @@ class CompraManualController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
+
 }
