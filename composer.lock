@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53fb5c17e05f0535b1adac8a6126d0c1",
+    "content-hash": "61e42f0c8875de672774dd5f7eb6aea4",
     "packages": [
         {
             "name": "argws/laravel-updater",
-            "version": "v0.1.202",
+            "version": "v0.1.206",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/laravel-updater.git",
-                "reference": "23afa2cad43c7912eff7d0b1facdf7d1d542932e"
+                "reference": "57330e1964668d6accc6587b09cd68d6360cdf8f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/23afa2cad43c7912eff7d0b1facdf7d1d542932e",
-                "reference": "23afa2cad43c7912eff7d0b1facdf7d1d542932e",
+                "url": "https://api.github.com/repos/wkarts/laravel-updater/zipball/57330e1964668d6accc6587b09cd68d6360cdf8f",
+                "reference": "57330e1964668d6accc6587b09cd68d6360cdf8f",
                 "shasum": ""
             },
             "require": {
@@ -53,9 +53,9 @@
             "description": "Sistema genérico de autoatualização para aplicações Laravel.",
             "support": {
                 "issues": "https://github.com/wkarts/laravel-updater/issues",
-                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.202"
+                "source": "https://github.com/wkarts/laravel-updater/tree/v0.1.206"
             },
-            "time": "2026-04-19T09:56:46+00:00"
+            "time": "2026-04-25T23:06:03+00:00"
         },
         {
             "name": "bacon/bacon-qr-code",

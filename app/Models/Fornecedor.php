@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use Faker\Provider\Base;
 use Illuminate\Database\Eloquent\Model;
 
-class Fornecedor extends Model
+class Fornecedor extends BaseModel
 {
     protected $fillable = [
         'razao_social',
@@ -26,7 +27,10 @@ class Fornecedor extends Model
         'complemento',
         'cod_pais',
         'id_estrangeiro',
-        'imagem'
+        'imagem',
+        'banco',
+        'agencia',
+        'conta'
     ];
 
     protected $appends = ['imgApp'];
@@ -44,11 +48,11 @@ class Fornecedor extends Model
     }
 
     public static function verificaCadastrado($cnpj){
-    	$value = session('user_logged');
+        $value = session('user_logged');
         $empresa_id = $value['empresa'];
         $forn = Fornecedor::where('cpf_cnpj', $cnpj)
-        ->where('empresa_id', $empresa_id)
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->first();
 
         return $forn;
     }

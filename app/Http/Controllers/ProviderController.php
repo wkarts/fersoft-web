@@ -77,6 +77,10 @@ class ProviderController extends Controller
                 'tipo_pix'       => $request->input('tipo_pix') ?? 'cpf',
                 'email'          => $request->email ?? '',
                 'id_estrangeiro' => $request->id_estrangeiro ?? '',
+                // Novos campos adicionados corretamente no array
+                'banco'          => $request->input('banco') ?? '',
+                'agencia'        => $request->input('agencia') ?? '',
+                'conta'          => $request->input('conta') ?? '',
             ]);
 
             $result = Fornecedor::create($request->all());
@@ -138,6 +142,11 @@ class ProviderController extends Controller
             $resp->cidade_id      = $cidade;
             $resp->cod_pais       = $request->input('cod_pais');
             $resp->id_estrangeiro = $request->input('id_estrangeiro');
+
+            // Novos campos para atualização
+            $resp->banco          = $request->input('banco') ?? '';
+            $resp->agencia        = $request->input('agencia') ?? '';
+            $resp->conta          = $request->input('conta') ?? '';
 
             $resp->save();
 
