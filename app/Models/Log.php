@@ -2,19 +2,13 @@
 
 namespace App\Models;
 
-use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Filial;
 
-class Log extends BaseModel
+class Log extends Model
 {
     use HasFactory;
-
-    /**
-     * Evita recursão infinita de auditoria:
-     * criar um Log não deve gerar outro Log automaticamente.
-     */
-    protected bool $auditEnabled = false;
 
     protected $fillable = [
         'empresa_id',
