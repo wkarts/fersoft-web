@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ComponenteCte extends Model
+class ComponenteCte extends BaseModel
 {
     protected $fillable = [
 		'nome', 'valor', 'cte_id'

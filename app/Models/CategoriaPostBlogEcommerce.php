@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaPostBlogEcommerce extends Model
+class CategoriaPostBlogEcommerce extends BaseModel
 {
     protected $fillable = [
         'nome', 'empresa_id'

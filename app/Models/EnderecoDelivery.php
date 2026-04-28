@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\BairroDelivery;
 
-class EnderecoDelivery extends Model
+class EnderecoDelivery extends BaseModel
 {
 	protected $fillable = [
 		'cliente_id', 'rua', 'numero', 'bairro', 'bairro_id', 'referencia', 'latitude', 'longitude',

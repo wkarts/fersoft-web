@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class MedidaCte extends Model
+class MedidaCte extends BaseModel
 {
     protected $fillable = [
         'cte_id', 'tipo_medida', 'quantidade_carga', 'cod_unidade'

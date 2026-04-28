@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class CupomDescontoEcommerce extends Model
+class CupomDescontoEcommerce extends BaseModel
 {
     use HasFactory;
 

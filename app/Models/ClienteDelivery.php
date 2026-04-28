@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ClienteDelivery extends Model
+class ClienteDelivery extends BaseModel
 {
     protected $fillable = [
 		'nome', 'sobre_nome', 'celular', 'email', 'token', 'ativo', 'senha', 'empresa_id',

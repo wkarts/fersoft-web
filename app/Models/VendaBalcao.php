@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class VendaBalcao extends Model
+class VendaBalcao extends BaseModel
 {
     protected $fillable = [
         'empresa_id', 'codigo_venda', 'numero_sequencial', 'cliente_id', 'usuario_id', 'transportadora_id', 'valor_total',

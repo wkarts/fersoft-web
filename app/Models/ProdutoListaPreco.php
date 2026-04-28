@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ProdutoListaPreco extends Model
+class ProdutoListaPreco extends BaseModel
 {
 	protected $fillable = [
 		'lista_id', 'produto_id', 'percentual_lucro', 'valor'

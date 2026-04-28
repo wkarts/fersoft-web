@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Payment extends Model
+class Payment extends BaseModel
 {
     protected $fillable = [
 		'empresa_id', 'plano_id', 'valor', 'transacao_id', 'status', 'forma_pagamento', 

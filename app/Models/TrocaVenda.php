@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class TrocaVenda extends Model
+class TrocaVenda extends BaseModel
 {
     use HasFactory;
 

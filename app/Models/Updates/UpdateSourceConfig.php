@@ -2,10 +2,11 @@
 
 namespace App\Models\Updates;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BaseModel;
 
-class UpdateSourceConfig extends Model
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class UpdateSourceConfig extends BaseModel
 {
     use HasFactory;
 

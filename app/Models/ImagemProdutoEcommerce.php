@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ImagemProdutoEcommerce extends Model
+class ImagemProdutoEcommerce extends BaseModel
 {
     protected $fillable = [
         'produto_id', 'img'

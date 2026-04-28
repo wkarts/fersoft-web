@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoOcorrencia extends Model
+class PontoOcorrencia extends BaseModel
 {
     protected $table = 'ponto_ocorrencias';
 

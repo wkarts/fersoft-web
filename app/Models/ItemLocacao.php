@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class ItemLocacao extends Model
+class ItemLocacao extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

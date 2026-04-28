@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ListaPreco extends Model
+class ListaPreco extends BaseModel
 {
     protected $fillable = [
 		'nome', 'percentual_alteracao', 'empresa_id', 'tipo', 'tipo_inc_red'

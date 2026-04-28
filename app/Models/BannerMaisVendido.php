@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class BannerMaisVendido extends Model
+class BannerMaisVendido extends BaseModel
 {
 	protected $fillable = [
 		'path', 'texto_primario', 'texto_secundario', 'produto_delivery_id', 'pack_id', 'ativo'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ContatoFuncionario extends Model
+class ContatoFuncionario extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'telefone', 'funcionario_id'

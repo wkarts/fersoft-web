@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ManutencaoItem extends Model
+class ManutencaoItem extends BaseModel
 {
     protected $table = 'manutencao_itens';
 

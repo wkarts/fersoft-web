@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemReceita extends Model
+class ItemReceita extends BaseModel
 {
     protected $fillable = [
 		'receita_id', 'produto_id', 'quantidade', 'medida'

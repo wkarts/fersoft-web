@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class Contador extends Model
+class Contador extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

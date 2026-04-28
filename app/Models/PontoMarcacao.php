@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoMarcacao extends Model
+class PontoMarcacao extends BaseModel
 {
     protected $guarded = [];
 

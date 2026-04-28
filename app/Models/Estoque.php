@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ItemPurchase;
 use App\Models\Produto;
 use App\Models\MultiEmpresaTrait;
 
-class Estoque extends Model
+class Estoque extends BaseModel
 {
     use MultiEmpresaTrait;
   

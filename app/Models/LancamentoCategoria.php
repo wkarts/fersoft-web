@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class LancamentoCategoria extends Model
+class LancamentoCategoria extends BaseModel
 {
     protected $fillable = [
         'categoria_id', 'nome', 'valor', 'percentual'

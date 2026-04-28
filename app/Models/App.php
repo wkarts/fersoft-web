@@ -4,9 +4,8 @@
 namespace App\Models;
 
 
-use Illuminate\Database\Eloquent\Model;
 
-class App extends Model
+class App extends BaseModel
 {
     protected $fillable = [
         'value', 'client_id'

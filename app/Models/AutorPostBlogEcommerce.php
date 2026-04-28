@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AutorPostBlogEcommerce extends Model
+class AutorPostBlogEcommerce extends BaseModel
 {
     protected $fillable = [
         'nome', 'tipo', 'img', 'empresa_id'

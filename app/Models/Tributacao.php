@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Tributacao extends Model
+class Tributacao extends BaseModel
 {
 	protected $fillable = [
 		'icms',

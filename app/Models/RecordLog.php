@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class RecordLog extends Model
+class RecordLog extends BaseModel
 {
     use HasFactory;
 

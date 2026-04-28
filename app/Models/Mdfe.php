@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Mdfe extends Model
+class Mdfe extends BaseModel
 {
 
 	protected $fillable = [

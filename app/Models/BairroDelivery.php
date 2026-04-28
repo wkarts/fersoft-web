@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class BairroDelivery extends Model
+class BairroDelivery extends BaseModel
 {
     protected $fillable = [
         'nome', 'valor_entrega', 'cidade_id'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Contrato extends Model
+class Contrato extends BaseModel
 {
     protected $fillable = [
         'texto', 'accessos_forcar_assinar', 'usar_certificado'

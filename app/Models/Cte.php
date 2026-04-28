@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ConfigNota;
 
-class Cte extends Model
+class Cte extends BaseModel
 {
     protected $fillable = [
         'chave_nfe', 'remetente_id', 'destinatario_id', 'usuario_id', 'natureza_id', 'tomador',

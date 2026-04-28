@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\UsuarioAcesso;
 use App\Models\Cidade;
 
-class Empresa extends Model
+class Empresa extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'rua', 'numero', 'bairro', 'cidade', 'telefone', 'email', 'status', 'cnpj',

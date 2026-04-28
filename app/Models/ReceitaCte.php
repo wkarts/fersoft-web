@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ReceitaCte extends Model
+class ReceitaCte extends BaseModel
 {	
 	protected $fillable = [
 		'descricao', 'cte_id', 'valor', 'data_registro'

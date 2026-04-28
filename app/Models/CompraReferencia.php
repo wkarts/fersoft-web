@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class CompraReferencia extends Model
+class CompraReferencia extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

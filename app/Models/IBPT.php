@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ItemIBTE;
 
-class IBPT extends Model
+class IBPT extends BaseModel
 {
 	protected $table = 'i_b_p_ts';
 	protected $fillable = [

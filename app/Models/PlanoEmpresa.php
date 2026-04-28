@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PlanoEmpresa extends Model
+class PlanoEmpresa extends BaseModel
 {
     protected $fillable = [
         'empresa_id', 'plano_id', 'expiracao', 'mensagem_alerta', 'valor'

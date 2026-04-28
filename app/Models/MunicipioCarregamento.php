@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class MunicipioCarregamento extends Model
+class MunicipioCarregamento extends BaseModel
 {
     protected $fillable = [
         'cidade_id', 'mdfe_id'

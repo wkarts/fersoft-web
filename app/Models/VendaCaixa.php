@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ConfigNota;
 
-class VendaCaixa extends Model
+class VendaCaixa extends BaseModel
 {
 	protected $fillable = [
 		'cliente_id', 'usuario_id', 'valor_total', 'NFcNumero',

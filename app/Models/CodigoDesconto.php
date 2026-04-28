@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ClienteDelivery;
 
-class CodigoDesconto extends Model
+class CodigoDesconto extends BaseModel
 {
     protected $fillable = [
 		'codigo', 'valor', 'tipo', 'cliente_id', 'ativo', 'push', 'sms', 'empresa_id',

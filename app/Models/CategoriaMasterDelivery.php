@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaMasterDelivery extends Model
+class CategoriaMasterDelivery extends BaseModel
 {
     protected $fillable = [ 'nome', 'img' ];
 

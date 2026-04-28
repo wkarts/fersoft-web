@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Frete extends Model
+class Frete extends BaseModel
 {
     protected $fillable = [
         'valor', 'placa', 'tipo', 'uf', 'numeracaoVolumes', 'peso_liquido', 'peso_bruto',

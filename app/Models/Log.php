@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
-use Faker\Provider\Base;
+use App\Models\BaseModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Filial;
-//use App\Models\BaseModel;
 
-class Log extends Model
+class Log extends BaseModel
 {
     use HasFactory;
+
+    /**
+     * Evita recursão infinita de auditoria:
+     * criar um Log não deve gerar outro Log automaticamente.
+     */
+    protected bool $auditEnabled = false;
 
     protected $fillable = [
         'empresa_id',
