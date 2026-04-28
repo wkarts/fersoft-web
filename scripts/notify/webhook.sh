@@ -25,7 +25,7 @@ fi
 attempt=1
 while [[ "$attempt" -le "$MAX_RETRIES" ]]; do
   echo "[notify:webhook] Tentativa $attempt/$MAX_RETRIES para enviar webhook."
-  http_code=$(curl -sS -o /tmp/webhook_response.txt -w "%{http_code}" -X POST "$WEBHOOK_URL" "${headers[@]}" --data-binary "@$PAYLOAD_FILE" || true)
+  http_code=$(curl -sS -L -o /tmp/webhook_response.txt -w "%{http_code}" -X POST "$WEBHOOK_URL" "${headers[@]}" --data-binary "@$PAYLOAD_FILE" || true)
 
   if [[ "$http_code" =~ ^2[0-9]{2}$ ]]; then
     echo "[notify:webhook] Webhook enviado com sucesso (HTTP $http_code)."
