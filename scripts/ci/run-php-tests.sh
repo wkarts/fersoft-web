@@ -6,14 +6,6 @@ PHPUNIT_TIMEOUT_SECONDS="${PHPUNIT_TIMEOUT_SECONDS:-1800}"
 PHPUNIT_HEARTBEAT_SECONDS="${PHPUNIT_HEARTBEAT_SECONDS:-30}"
 ALLOW_EXTERNAL_SIGTERM="${ALLOW_EXTERNAL_SIGTERM:-false}"
 
-on_termination() {
-  echo "Runner de testes recebeu sinal de término externo (SIGTERM/SIGINT)."
-  echo "Isso normalmente indica cancelamento do job/workflow pelo GitHub Actions (não falha de assert do PHPUnit)."
-  exit 143
-}
-
-trap on_termination TERM INT
-
 run_with_timeout() {
   local cmd="$1"
   local log_file
