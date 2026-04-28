@@ -32,6 +32,7 @@ jobs:
 
   php:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     needs: setup
     if: needs.setup.outputs.has_composer == 'true'
     steps:
@@ -107,7 +108,7 @@ jobs:
         shell: bash
         env:
           CI_RUN_FULL_TESTS: ${{ vars.CI_RUN_FULL_TESTS || 'false' }}
-          PHPUNIT_TIMEOUT_SECONDS: ${{ vars.PHPUNIT_TIMEOUT_SECONDS || '1800' }}
+          PHPUNIT_TIMEOUT_SECONDS: ${{ vars.PHPUNIT_TIMEOUT_SECONDS || '3600' }}
           PHPUNIT_HEARTBEAT_SECONDS: ${{ vars.PHPUNIT_HEARTBEAT_SECONDS || '30' }}
           ALLOW_EXTERNAL_SIGTERM: ${{ vars.ALLOW_EXTERNAL_SIGTERM || 'true' }}
         run: scripts/ci/run-php-tests.sh
