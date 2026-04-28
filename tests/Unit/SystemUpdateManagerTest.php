@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\SystemSetting;
 use App\Services\SystemUpdateManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 class SystemUpdateManagerTest extends TestCase
@@ -30,6 +31,7 @@ class SystemUpdateManagerTest extends TestCase
         $this->assertSame('db_only', $manager->resolveMode());
     }
 
+    #[Group('ci-slow')]
     public function test_run_creates_patch_hotfix_dry_run_entry(): void
     {
         config(['update_manager.default_mode' => 'patch_hotfix']);
