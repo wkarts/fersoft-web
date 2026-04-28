@@ -110,8 +110,7 @@ class LogController extends BaseController
      */
     public function list(Request $request)
     {
-        $query = Log::where('empresa_id', $this->empresa_id)
-            ->orderBy('created_at', 'desc');
+        $query = Log::where('empresa_id', $this->empresa_id);
 
         // Filtro por filial (sem refatorar)
         if ($request->filled('filial_id')) {
@@ -120,6 +119,10 @@ class LogController extends BaseController
             } else {
                 $query->where('filial_id', $request->filial_id);
             }
+        }
+
+        if ($request->filled('usuario_id')) {
+            $query->where('usuario_id', $request->usuario_id);
         }
 
         // Filtro por datas (se preenchido)
@@ -144,7 +147,29 @@ class LogController extends BaseController
             $query->where('acao', $request->acao);
         }
 
-        $logs = $query->paginate(15);
+        // Estratégia em duas etapas para reduzir uso de memória no ORDER BY
+        // 1) pagina apenas IDs (payload pequeno)
+        // 2) carrega registros completos apenas da página atual
+        $idsPaginator = (clone $query)
+            ->select('id')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
+        $ids = $idsPaginator->pluck('id')->all();
+        $logsById = empty($ids)
+            ? collect()
+            : Log::whereIn('id', $ids)->get()->keyBy('id');
+
+        $orderedLogs = collect($ids)
+            ->map(function ($id) use ($logsById) {
+                return $logsById->get($id);
+            })
+            ->filter()
+            ->values();
+
+        $logs = $idsPaginator->setCollection($orderedLogs);
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $filiais = Filial::where('empresa_id', $this->empresa_id)->get();
 
