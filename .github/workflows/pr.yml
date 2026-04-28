@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -99,26 +103,13 @@ jobs:
       
           printf '%s\n' "${filtered[@]}" | xargs -n1 -P4 php -l >/dev/null
           echo "Lint PHP concluído com sucesso no escopo CI (${#filtered[@]} arquivos)."
-      - name: PHPUnit
+      - name: PHPUnit (resiliente)
         shell: bash
-        run: |
-          if [ -x vendor/bin/phpunit ]; then
-            if grep -q 'testsuite name="Unit"' phpunit.xml 2>/dev/null; then
-              vendor/bin/phpunit --testsuite=Unit --testdox
-            else
-              vendor/bin/phpunit --testdox
-            fi
-
-            if [ "${CI_RUN_FULL_TESTS:-false}" = "true" ]; then
-              vendor/bin/phpunit --testdox
-            else
-              echo "CI_RUN_FULL_TESTS=false: suíte completa de testes (incluindo cenários com DB real) foi ignorada para estabilidade do CI."
-            fi
-          elif [ -f artisan ]; then
-            php artisan test --testsuite=Unit
-          else
-            echo "Nenhum runner de teste PHP encontrado; etapa ignorada."
-          fi
+        env:
+          CI_RUN_FULL_TESTS: ${{ vars.CI_RUN_FULL_TESTS || 'false' }}
+          PHPUNIT_TIMEOUT_SECONDS: ${{ vars.PHPUNIT_TIMEOUT_SECONDS || '1800' }}
+          PHPUNIT_HEARTBEAT_SECONDS: ${{ vars.PHPUNIT_HEARTBEAT_SECONDS || '30' }}
+        run: scripts/ci/run-php-tests.sh
 
   node:
     runs-on: ubuntu-latest
