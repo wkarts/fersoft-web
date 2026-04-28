@@ -2,11 +2,9 @@
 
 namespace App\Models;
 
-use Faker\Provider\Base;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Filial;
-//use App\Models\BaseModel;
 
 class Log extends BaseModel
 {

@@ -68,7 +68,7 @@ class LogService
                 'token' => $token, // 🔹 Garante que o token sempre seja único
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Erro ao registrar log de atividade', ['erro' => $e->getMessage()]);
         }
     }
