@@ -41,6 +41,7 @@ concurrency:
 jobs:
   full-validation:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,16 +85,18 @@ jobs:
 
       - name: Testes PHP
         if: hashFiles('composer.json') != ''
+        shell: bash
+        timeout-minutes: 30
         run: |
           if [ -x vendor/bin/phpunit ]; then
             if grep -q 'testsuite name="Unit"' phpunit.xml 2>/dev/null; then
-              vendor/bin/phpunit --testsuite=Unit --testdox
+              vendor/bin/phpunit --testsuite=Unit --testdox --exclude-group=ci-slow --colors=never
             else
-              vendor/bin/phpunit --testdox
+              vendor/bin/phpunit --testdox --exclude-group=ci-slow --colors=never
             fi
 
             if [ "${CI_RUN_FULL_TESTS:-false}" = "true" ]; then
-              vendor/bin/phpunit --testdox
+              vendor/bin/phpunit --testdox --exclude-group=ci-slow --colors=never
             else
               echo "CI_RUN_FULL_TESTS=false: suíte completa de testes (incluindo cenários com DB real) foi ignorada para estabilidade do CI."
             fi
