@@ -40,7 +40,7 @@ concurrency:
 
 jobs:
   full-validation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -113,7 +113,7 @@ jobs:
           fi
 
   prepare-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: full-validation
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -197,7 +197,7 @@ jobs:
           echo "Versão definida: $version"
 
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare-release
     outputs:
       release_url: ${{ steps.create_release.outputs.url }}
