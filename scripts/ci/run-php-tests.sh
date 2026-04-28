@@ -6,6 +6,27 @@ PHPUNIT_TIMEOUT_SECONDS="${PHPUNIT_TIMEOUT_SECONDS:-1800}"
 PHPUNIT_HEARTBEAT_SECONDS="${PHPUNIT_HEARTBEAT_SECONDS:-30}"
 ALLOW_EXTERNAL_SIGTERM="${ALLOW_EXTERNAL_SIGTERM:-false}"
 
+CURRENT_TEST_PID=""
+
+handle_sigterm() {
+  echo "SIGTERM recebido pelo script principal."
+
+  if [ -n "${CURRENT_TEST_PID}" ] && kill -0 "${CURRENT_TEST_PID}" 2>/dev/null; then
+    echo "Encerrando processo PHPUnit filho: ${CURRENT_TEST_PID}"
+    kill -TERM "${CURRENT_TEST_PID}" 2>/dev/null || true
+  fi
+
+  if [ "${ALLOW_EXTERNAL_SIGTERM}" = "true" ]; then
+    echo "ALLOW_EXTERNAL_SIGTERM=true: encerrando script com sucesso controlado."
+    exit 0
+  fi
+
+  echo "ALLOW_EXTERNAL_SIGTERM=false: encerrando script com código 143."
+  exit 143
+}
+
+trap handle_sigterm TERM INT
+
 run_with_timeout() {
   local cmd="$1"
   local log_file
@@ -20,6 +41,7 @@ run_with_timeout() {
   set +e
   bash -lc "${cmd}" > >(tee "${log_file}") 2>&1 &
   pid=$!
+  CURRENT_TEST_PID="${pid}"
   started_at=$SECONDS
 
   while kill -0 "${pid}" 2>/dev/null; do
@@ -37,6 +59,7 @@ run_with_timeout() {
       echo "Timeout atingido (${PHPUNIT_TIMEOUT_SECONDS}s). Enviando SIGTERM ao processo de teste."
       kill -TERM "${pid}" 2>/dev/null || true
       sleep 30
+
       if kill -0 "${pid}" 2>/dev/null; then
         echo "Processo não encerrou após SIGTERM; enviando SIGKILL."
         kill -KILL "${pid}" 2>/dev/null || true
@@ -46,6 +69,8 @@ run_with_timeout() {
 
   wait "${pid}"
   local exit_code=$?
+
+  CURRENT_TEST_PID=""
   set -e
 
   if [ "${timed_out}" = "true" ]; then
@@ -58,7 +83,6 @@ run_with_timeout() {
 
   if [ "${exit_code}" -eq 143 ]; then
     echo "Processo de teste recebeu SIGTERM externo (exit 143)."
-    echo "Causa provável: cancelamento externo do job/workflow no GitHub Actions."
 
     if [ "${ALLOW_EXTERNAL_SIGTERM}" = "true" ]; then
       echo "ALLOW_EXTERNAL_SIGTERM=true: marcando etapa como warning e seguindo execução."
@@ -75,6 +99,7 @@ run_with_timeout() {
   fi
 
   rm -f "${log_file}"
+  return 0
 }
 
 if [ -x vendor/bin/phpunit ]; then
