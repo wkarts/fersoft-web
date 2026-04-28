@@ -2,13 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\MultiEmpresaTrait;
 //use App\Traits\FilialInjectable;
 //use App\Models\BaseModel;
 
 
-class ContaReceber extends Model
+class ContaReceber extends BaseModel
 {
     //use FilialInjectable;
    use MultiEmpresaTrait;

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ListaComplementoDelivery extends Model
+class ListaComplementoDelivery extends BaseModel
 {
     protected $fillable = [
 		'categoria_id', 'complemento_id'

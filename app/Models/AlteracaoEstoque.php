@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AlteracaoEstoque extends Model
+class AlteracaoEstoque extends BaseModel
 {
     protected $fillable = [
 		'produto_id', 'usuario_id', 'quantidade', 'tipo', 'observacao', 'empresa_id', 'motivo'

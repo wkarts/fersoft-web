@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemAgendamento extends Model
+class ItemAgendamento extends BaseModel
 {
     protected $fillable = [
         'agendamento_id', 'servico_id', 'quantidade'

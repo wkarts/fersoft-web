@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class RequisicaoItem extends Model
+class RequisicaoItem extends BaseModel
 {
     protected $table = 'requisicao_itens';
 

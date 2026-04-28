@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ComissaoVenda extends Model
+class ComissaoVenda extends BaseModel
 {
 	protected $fillable = [
 		'funcionario_id', 'venda_id', 'tabela', 'valor', 'status', 'empresa_id'

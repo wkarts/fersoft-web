@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class TokenWeb extends Model
+class TokenWeb extends BaseModel
 {
      protected $fillable = [
 		'token', 'cliente_id'

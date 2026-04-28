@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Devolucao;
 use App\Models\ConfigNota;
@@ -10,7 +9,7 @@ use App\Models\FormaPagamento;
 use App\Models\Compra;
 use App\Models\MultiEmpresaTrait;
 
-class Venda extends Model
+class Venda extends BaseModel
 {
     //use SoftDeletes;
 use MultiEmpresaTrait;

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Marca extends Model
+class Marca extends BaseModel
 {
     protected $fillable = [
         'nome', 'empresa_id'

@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class PesquisaResposta extends Model
+class PesquisaResposta extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class CurtidaLoja extends Model
+class CurtidaLoja extends BaseModel
 {
     use HasFactory;
 

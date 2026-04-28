@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class FormaPagamento extends Model
+class FormaPagamento extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

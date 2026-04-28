@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class StockAdjustment extends Model
+class StockAdjustment extends BaseModel
 {
     protected $fillable = [
         'empresa_id',

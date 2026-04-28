@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class RelatorioOs extends Model
+class RelatorioOs extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'texto', 'ordem_servico_id'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class FaturaOrcamento extends Model
+class FaturaOrcamento extends BaseModel
 {
 	protected $fillable = [
 		'valor', 'vencimento', 'orcamento_id', 'empresa_id', 'tipo_pagamento'

@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Plano;
 
-class Plano extends Model
+class Plano extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'valor', 'maximo_clientes', 'maximo_produtos', 'maximo_fornecedores', 

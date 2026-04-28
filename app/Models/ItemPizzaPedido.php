@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\ProdutoPizza;
 
-class ItemPizzaPedido extends Model
+class ItemPizzaPedido extends BaseModel
 {
 	protected $fillable = [
 		'item_pedido', 'sabor_id'

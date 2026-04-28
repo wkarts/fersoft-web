@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class StockDailyAggregate extends Model
+class StockDailyAggregate extends BaseModel
 {
     protected $fillable = [
         'data_ref',

@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class NuvemShopConfig extends Model
+class NuvemShopConfig extends BaseModel
 {
     use HasFactory;
     protected $fillable = [

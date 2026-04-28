@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Apontamento extends Model
+class Apontamento extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'produto_id', 'quantidade', 'empresa_id'

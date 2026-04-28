@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class TamanhoPizza extends Model
+class TamanhoPizza extends BaseModel
 {
 	protected $fillable = [ 
 		'nome', 'pedacos', 'maximo_sabores', 'empresa_id'

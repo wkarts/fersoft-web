@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\PedidoEcommerce;
-class ClienteEcommerce extends Model
+class ClienteEcommerce extends BaseModel
 {
     protected $fillable = [
 		'nome', 'sobre_nome', 'cpf', 'email', 'senha', 'status', 'empresa_id', 'telefone', 

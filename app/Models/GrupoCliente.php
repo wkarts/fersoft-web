@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class GrupoCliente extends Model
+class GrupoCliente extends BaseModel
 {
     protected $fillable = [
         'nome', 'empresa_id'

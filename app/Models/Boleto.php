@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Boleto extends Model
+class Boleto extends BaseModel
 {
 	protected $fillable = [
 		'banco_id', 'conta_id', 'numero', 'numero_documento', 'carteira', 'convenio', 

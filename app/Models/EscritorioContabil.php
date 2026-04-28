@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class EscritorioContabil extends Model
+class EscritorioContabil extends BaseModel
 {
     protected $fillable = [
         'razao_social', 'nome_fantasia', 'cnpj', 'ie', 'logradouro',

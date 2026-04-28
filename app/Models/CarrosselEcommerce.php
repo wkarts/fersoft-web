@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CarrosselEcommerce extends Model
+class CarrosselEcommerce extends BaseModel
 {
 	protected $fillable = [ 
 		'empresa_id', 'titulo', 'descricao', 'img', 'link_acao', 'nome_botao', 'cor_titulo',

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Pais extends Model
+class Pais extends BaseModel
 {
     protected $fillable = [
         'nome', 'codigo'

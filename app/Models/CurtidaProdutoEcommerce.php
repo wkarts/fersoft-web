@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CurtidaProdutoEcommerce extends Model
+class CurtidaProdutoEcommerce extends BaseModel
 {
     protected $fillable = [
         'produto_id', 'cliente_id'

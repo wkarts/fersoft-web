@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemCotacao extends Model
+class ItemCotacao extends BaseModel
 {
     protected $fillable = [
         'produto_id', 'cotacao_id', 'quantidade', 'valor', 'valor_unitario'

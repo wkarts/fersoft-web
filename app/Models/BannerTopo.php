@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class BannerTopo extends Model
+class BannerTopo extends BaseModel
 {
 	protected $fillable = [
 		'path', 'titulo', 'descricao', 'produto_delivery_id', 'pack_id', 'ativo'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Remessa extends Model
+class Remessa extends BaseModel
 {
     protected $fillable = [
         'nome_arquivo', 'empresa_id'

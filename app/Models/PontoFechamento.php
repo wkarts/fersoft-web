@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoFechamento extends Model
+class PontoFechamento extends BaseModel
 {
     protected $table = 'ponto_fechamentos';
 

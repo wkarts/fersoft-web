@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaProdutoDelivery extends Model
+class CategoriaProdutoDelivery extends BaseModel
 {
     protected $fillable = [
         'nome', 'descricao', 'path', 'empresa_id', 'tipo_pizza'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class EventoFuncionario extends Model
+class EventoFuncionario extends BaseModel
 {
     protected $fillable = [
 		'evento_id', 'funcionario_id'

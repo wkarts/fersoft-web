@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Certificado extends Model
+class Certificado extends BaseModel
 {
     protected $fillable = [
 		'senha', 'arquivo', 'empresa_id', 'file_name'

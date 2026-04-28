@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class FuncionamentoDelivery extends Model
+class FuncionamentoDelivery extends BaseModel
 {
 
     protected $fillable = [

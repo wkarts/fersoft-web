@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class SangriaCaixa extends Model
+class SangriaCaixa extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'valor', 'empresa_id', 'observacao', 'conta_id'

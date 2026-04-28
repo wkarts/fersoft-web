@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class FuncionarioOs extends Model
+class FuncionarioOs extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'funcionario_id', 'ordem_servico_id', 'funcao'
