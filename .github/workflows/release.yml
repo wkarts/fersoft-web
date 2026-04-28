@@ -88,6 +88,7 @@ jobs:
           CI_RUN_FULL_TESTS: ${{ vars.CI_RUN_FULL_TESTS || 'false' }}
           PHPUNIT_TIMEOUT_SECONDS: ${{ vars.PHPUNIT_TIMEOUT_SECONDS || '1800' }}
           PHPUNIT_HEARTBEAT_SECONDS: ${{ vars.PHPUNIT_HEARTBEAT_SECONDS || '30' }}
+          ALLOW_EXTERNAL_SIGTERM: ${{ vars.ALLOW_EXTERNAL_SIGTERM || 'false' }}
         run: scripts/ci/run-php-tests.sh
 
       - name: Validar Node (resiliente)

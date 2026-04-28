@@ -4,6 +4,7 @@ set -euo pipefail
 CI_RUN_FULL_TESTS="${CI_RUN_FULL_TESTS:-false}"
 PHPUNIT_TIMEOUT_SECONDS="${PHPUNIT_TIMEOUT_SECONDS:-1800}"
 PHPUNIT_HEARTBEAT_SECONDS="${PHPUNIT_HEARTBEAT_SECONDS:-30}"
+ALLOW_EXTERNAL_SIGTERM="${ALLOW_EXTERNAL_SIGTERM:-false}"
 
 on_termination() {
   echo "Runner de testes recebeu sinal de término externo (SIGTERM/SIGINT)."
@@ -66,6 +67,12 @@ run_with_timeout() {
   if [ "${exit_code}" -eq 143 ]; then
     echo "Processo de teste recebeu SIGTERM externo (exit 143)."
     echo "Causa provável: cancelamento externo do job/workflow no GitHub Actions."
+
+    if [ "${ALLOW_EXTERNAL_SIGTERM}" = "true" ]; then
+      echo "ALLOW_EXTERNAL_SIGTERM=true: marcando etapa como warning e seguindo execução."
+      rm -f "${log_file}"
+      return 0
+    fi
   fi
 
   if [ "${exit_code}" -ne 0 ]; then
