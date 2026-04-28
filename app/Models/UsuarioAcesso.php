@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class UsuarioAcesso extends Model
+class UsuarioAcesso extends BaseModel
 {
     protected $fillable = [
         'usuario_id', 'status', 'hash', 'ip_address'

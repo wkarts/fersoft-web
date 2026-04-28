@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ManifestoDia extends Model
+class ManifestoDia extends BaseModel
 {
     protected $fillable = [
 		'empresa_id'

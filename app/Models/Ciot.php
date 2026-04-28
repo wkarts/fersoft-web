@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Ciot extends Model
+class Ciot extends BaseModel
 {
     protected $fillable = [
 		'mdfe_id', 'cpf_cnpj', 'codigo'

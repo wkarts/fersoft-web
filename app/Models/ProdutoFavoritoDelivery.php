@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ProdutoFavoritoDelivery extends Model
+class ProdutoFavoritoDelivery extends BaseModel
 {
 	protected $fillable = [ 
 		'produto_id', 'cliente_id'

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class StockMovement extends Model
+class StockMovement extends BaseModel
 {
     protected $fillable = [
         'empresa_id',

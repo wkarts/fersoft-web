@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class LacreTransporte extends Model
+class LacreTransporte extends BaseModel
 {
     protected $fillable = [
 		'info_id', 'numero'

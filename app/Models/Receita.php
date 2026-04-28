@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Receita extends Model
+class Receita extends BaseModel
 {
     protected $fillable = [
 		'descricao', 'produto_id', 'valor_custo', 'rendimento', 'tempo_preparo', 'pizza', 'pedacos'

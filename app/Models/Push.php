@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Push extends Model
+class Push extends BaseModel
 {
 	protected $fillable = [
 		'cliente_id', 'titulo', 'texto', 'status', 'path_img', 'referencia_produto',

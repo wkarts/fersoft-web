@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Devolucao extends Model
+class Devolucao extends BaseModel
 {
 	protected $fillable = [
 		'fornecedor_id', 'usuario_id', 'natureza_id', 'data_registro', 'valor_integral', 

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class InformativoEcommerce extends Model
+class InformativoEcommerce extends BaseModel
 {
     protected $fillable = [
         'empresa_id', 'email'

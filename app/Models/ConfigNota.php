@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ConfigNota extends Model
+class ConfigNota extends BaseModel
 {
     protected $fillable = [
         'razao_social',

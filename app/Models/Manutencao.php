@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Manutencao extends Model
+class Manutencao extends BaseModel
 {
     protected $table = 'manutencoes';
     protected $primaryKey = 'manutencao_id'; //

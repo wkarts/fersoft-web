@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ValorPizza extends Model
+class ValorPizza extends BaseModel
 {
     //
 }

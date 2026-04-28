@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Orcamento extends Model
+class Orcamento extends BaseModel
 {
     protected $fillable = [
         'cliente_id', 'usuario_id', 'frete_id', 'valor_total', 'forma_pagamento', 'email_enviado','natureza_id', 

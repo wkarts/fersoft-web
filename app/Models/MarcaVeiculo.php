@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 
-class MarcaVeiculo extends Model
+class MarcaVeiculo extends BaseModel
 {
     protected $table = 'marca_veiculo';
 

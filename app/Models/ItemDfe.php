@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ItemDfe extends Model
+class ItemDfe extends BaseModel
 {
     protected $fillable = [
 		'numero_nfe', 'produto_id', 'empresa_id'

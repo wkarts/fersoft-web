@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoImportacaoLog extends Model
+class PontoImportacaoLog extends BaseModel
 {
     protected $table = 'ponto_importacao_logs';
 

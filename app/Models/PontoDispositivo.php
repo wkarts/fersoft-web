@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PontoDispositivo extends Model
+class PontoDispositivo extends BaseModel
 {
     protected $table = 'ponto_dispositivos';
 

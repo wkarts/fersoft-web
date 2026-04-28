@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class AtividadeEvento extends Model
+class AtividadeEvento extends BaseModel
 {
     protected $fillable = [
 		'responsavel_nome', 'responsavel_telefone', 'crianca_nome', 'inicio', 'fim', 'total',

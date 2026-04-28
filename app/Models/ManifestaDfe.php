@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ManifestaDfe extends Model
+class ManifestaDfe extends BaseModel
 {
     protected $fillable = [
 		'chave', 'nome', 'documento', 'valor', 'num_prot', 'data_emissao', 

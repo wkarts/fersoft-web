@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class Transportadora extends Model
+class Transportadora extends BaseModel
 {
     protected $fillable = [
 		'razao_social', 'cnpj_cpf', 'logradouro', 'cidade_id', 'empresa_id', 'email',

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CreditoVenda extends Model
+class CreditoVenda extends BaseModel
 {
     protected $fillable = [
 		'venda_id', 'cliente_id', 'status', 'empresa_id'

@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\LancamentoCategoria;
 
-class DreCategoria extends Model
+class DreCategoria extends BaseModel
 {
 	protected $fillable = [
 		'nome', 'dre_id'

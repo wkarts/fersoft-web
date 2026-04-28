@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class CategoriaConta extends Model
+class CategoriaConta extends BaseModel
 {
     protected $table = 'categoria_contas';
 

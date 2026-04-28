@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class EmpresaContrato extends Model
+class EmpresaContrato extends BaseModel
 {
     protected $fillable = [
         'empresa_id', 'status', 'cpf_cnpj'

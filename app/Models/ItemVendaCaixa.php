@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Models\PedidoDelivery;
 
-class ItemVendaCaixa extends Model
+class ItemVendaCaixa extends BaseModel
 {
     protected $fillable = [
 		'produto_id', 'venda_caixa_id', 'quantidade', 'valor', 'item_pedido_id', 'observacao',

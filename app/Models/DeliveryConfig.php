@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class DeliveryConfig extends Model
+class DeliveryConfig extends BaseModel
 {
 	protected $fillable = [
 		'link_face', 'link_twiteer', 'link_google', 'link_instagram', 'telefone',

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class MdfePagamentoParcela extends Model
+class MdfePagamentoParcela extends BaseModel
 {
     protected $table = 'mdfe_pagamento_parcelas';
 

@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class PedidoQrCodeCliente extends Model
+class PedidoQrCodeCliente extends BaseModel
 {
     protected $fillable = [
         'pedido_id', 'hash'

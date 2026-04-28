@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class ServicoOs extends Model
+class ServicoOs extends BaseModel
 {
     protected $fillable = [
     	'servico_id', 'ordem_servico_id', 'quantidade', 'status', 'valor_unitario', 'sub_total'

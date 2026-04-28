@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 
-class UnidadeCarga extends Model
+class UnidadeCarga extends BaseModel
 {
     protected $fillable = [
 		'info_id', 'id_unidade_carga', 'quantidade_rateio'
