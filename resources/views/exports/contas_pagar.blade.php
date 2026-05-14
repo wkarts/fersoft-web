@@ -22,10 +22,11 @@
         @php
             $nf = $c->numero_nota_fiscal ?? null;
             $hasNf = !is_null($nf) && $nf !== '' && (int)$nf !== 0;
+            $statusPago = (bool)($c->status ?? false);
         @endphp
 
         <tr>
-            <td>{{ $c->id }}</td>
+            <td>{{ $c->id ?? '--' }}</td>
             <td>
                 @if(isset($c->fornecedor_razao))
                     {{ $c->fornecedor_razao }}
@@ -54,18 +55,18 @@
             </td>
 
             <td>
-                @if($c->status && !empty($c->data_pagamento))
+                @if($statusPago && !empty($c->data_pagamento))
                     {{ \Carbon\Carbon::parse($c->data_pagamento)->format('d/m/Y') }}
                 @else
                     --
                 @endif
             </td>
 
-            <td>{{ $c->status ? 'Pago' : 'Pendente' }}</td>
+            <td>{{ $statusPago ? 'Pago' : 'Pendente' }}</td>
 
             <td>{{ !empty($c->tipo_pagamento) ? $c->tipo_pagamento : '--' }}</td>
 
-            <td>{{ !is_null($c->numero_nota_fiscal) && $c->numero_nota_fiscal !== '' ? $c->numero_nota_fiscal : '--' }}</td>
+            <td>{{ !is_null($nf) && $nf !== '' ? $nf : '--' }}</td>
 
             <td>
                 @if($hasNf && !empty($c->data_emissao_nfe))

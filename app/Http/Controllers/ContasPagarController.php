@@ -1400,18 +1400,20 @@ class ContasPagarController extends Controller
             ->leftJoin('item_conta_empresas as ice', 'cp.id', '=', 'ice.conta_pagar_id')
             ->leftJoin('conta_empresas as ce', 'ice.conta_id', '=', 'ce.id')
             ->select(
-                'cp.data_emissao',
-                'cp.data_pagamento',
-                // LÓGICA DO FORNECEDOR: Se não tiver na conta, pega da compra
-                \DB::raw("COALESCE(forn_direto.razao_social, forn_compra.razao_social) as fornecedor_nome"),
+                'cp.id',
                 'cp.referencia',
-                'cc.nome as categoria_nome',
-                'cp.tipo_pagamento',
-                'ce.nome as conta_empresa',
+                'cp.valor_integral',
                 'cp.valor_pago',
-                \DB::raw('0 as juros'),
-                \DB::raw('0 as multa'),
-                \DB::raw('0 as desconto'),
+                'cp.data_vencimento',
+                'cp.data_pagamento',
+                'cp.status',
+                'cp.tipo_pagamento',
+                'cp.numero_nota_fiscal',
+                'cp.data_emissao as data_emissao_nfe',
+                'cc.nome as categoria_nome',
+                // LÓGICA DO FORNECEDOR: Se não tiver na conta, pega da compra
+                \DB::raw("COALESCE(forn_direto.razao_social, forn_compra.razao_social) as fornecedor_razao"),
+                \DB::raw("COALESCE(forn_direto.cpf_cnpj, forn_compra.cpf_cnpj) as fornecedor_cpf_cnpj"),
                 \DB::raw("COALESCE(fil.descricao, 'Matriz') as filial_nome")
             )
             ->where('cp.empresa_id', $this->empresa_id);
