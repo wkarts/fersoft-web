@@ -132,6 +132,15 @@ return new class extends Migration
     private function indexExists(string $tableName, string $indexName): bool
     {
         if ($this->isSqlite()) {
+            $safeTableName = str_replace("'", "''", $tableName);
+            $indexes = DB::select("PRAGMA index_list('" . $safeTableName . "')");
+
+            foreach ($indexes as $index) {
+                if (($index->name ?? null) === $indexName) {
+                    return true;
+                }
+            }
+
             return false;
         }
 
