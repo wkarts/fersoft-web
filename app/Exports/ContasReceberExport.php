@@ -2,18 +2,27 @@
 
 namespace App\Exports;
 
-use App\Models\ContaReceber;
-use Maatwebsite\Excel\Concerns\FromCollection;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ContasReceberExport implements FromView
+class ContasReceberExport implements FromView, ShouldAutoSize, WithStyles
 {
     protected $contas;
 
     public function __construct($contas)
     {
-        $this->contas = $contas;
+        $this->contas = $contas instanceof Collection ? $contas : collect($contas);
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => ['font' => ['bold' => true]], // Cabeçalho em Negrito
+        ];
     }
 
     public function view(): View

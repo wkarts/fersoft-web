@@ -42,52 +42,62 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($movimentacoes as $m)
-                    <tr>
-                        <td>{{ date('d/m/Y H:i', strtotime($m->created_at)) }}</td>
-                        
-                        <td>
-                            <span class="text-dark font-weight-bold">{{ $m->usuario_nome ?? 'Sistema' }}</span>
-                        </td>
-                        
-                        <td>
-                            <span class="label label-inline font-weight-bold {{ $m->tipo == 'entrada' ? 'label-light-success' : 'label-light-danger' }}">
-                                {{ strtoupper($m->tipo) }}
-                            </span>
-                        </td>
-                        
-                        <td>
-                            <span class="text-dark-75 font-weight-bolder">{{ strtoupper($m->origem_tipo ?? 'AJUSTE MANUAL') }}</span>
-                            @if($m->origem_tipo == 'compra')
-                                <span class="text-muted ml-1">
-                                    #{{ $m->compra_nf ?: ($m->compra_emissao ?: $m->origem_id) }}
-                                </span>
-                            @elseif($m->origem_id) 
-                                <span class="text-muted ml-1">#{{ $m->origem_id }}</span> 
-                            @endif
-                            <br>
-                            <span class="label label-inline label-light-info font-weight-bold mt-1" style="font-size: 0.75rem;">
-                                {{ $m->filial_nome ?? 'MATRIZ' }}
-                            </span>
-                        </td>
-                        
-                        <td>
-                            @if($m->origem_tipo == 'compra')
-                                <span class="text-info font-weight-bold"><i class="la la-truck"></i> {{ $m->fornecedor_nome ?? 'Não identificado' }}</span>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        </td>
+                      @forelse($movimentacoes as $m)
+                      <tr>
+                          <!-- ALTERADO: Exibindo a data real da movimentação (retroativa) em vez da data de criação do registro -->
+                          <td>{{ date('d/m/Y H:i', strtotime($m->movimentado_em)) }}</td>
 
-                        <td class="font-weight-bold {{ $m->tipo == 'entrada' ? 'text-success' : 'text-danger' }}">
-                            {{ $m->tipo == 'entrada' ? '+' : '-' }} {{ number_format($m->quantidade, 2, ',', '.') }}
-                        </td>
-                        
-                        <td class="font-weight-boldest text-primary h6">
-                            {{ number_format($m->saldo_momento, 2, ',', '.') }}
-                        </td>
-                    </tr>
-                    @empty
+                          <td>
+                              <span class="text-dark font-weight-bold">{{ $m->usuario_nome ?? 'Sistema' }}</span>
+                          </td>
+
+                          <td>
+                              <span class="label label-inline font-weight-bold {{ $m->tipo == 'entrada' ? 'label-light-success' : 'label-light-danger' }}">
+                                  {{ strtoupper($m->tipo) }}
+                              </span>
+                          </td>
+
+                          <td>
+                              <!-- ALTERADO: Exibindo a Origem vinda do banco e tratando o Ajuste Manual -->
+                              <span class="text-dark-75 font-weight-bolder">
+                                  {{ strtoupper($m->origem_tipo ?? 'AJUSTE MANUAL') }}
+                              </span>
+
+                              @if($m->origem_tipo == 'compra')
+                                  <span class="text-muted ml-1">
+                                      #{{ $m->compra_nf ?: ($m->compra_emissao ?: $m->origem_id) }}
+                                  </span>
+                              @elseif($m->origem_id) 
+                                  <span class="text-muted ml-1">#{{ $m->origem_id }}</span> 
+                              @endif
+                              <br>
+                              <span class="label label-inline label-light-info font-weight-bold mt-1" style="font-size: 0.75rem;">
+                                  {{ $m->filial_nome ?? 'MATRIZ' }}
+                              </span>
+
+                              {{-- NOVO: Exibindo a observação/contexto se for um ajuste --}}
+                              @if($m->contexto)
+                                  <br><small class="text-muted">{{ $m->contexto }}</small>
+                              @endif
+                          </td>
+
+                          <td>
+                              @if($m->origem_tipo == 'compra')
+                                  <span class="text-info font-weight-bold"><i class="la la-truck"></i> {{ $m->fornecedor_nome ?? 'Não identificado' }}</span>
+                              @else
+                                  <span class="text-muted">-</span>
+                              @endif
+                          </td>
+
+                          <td class="font-weight-bold {{ $m->tipo == 'entrada' ? 'text-success' : 'text-danger' }}">
+                              {{ $m->tipo == 'entrada' ? '+' : '-' }} {{ number_format($m->quantidade, 2, ',', '.') }}
+                          </td>
+
+                          <td class="font-weight-boldest text-primary h6">
+                              {{ number_format($m->saldo_momento, 2, ',', '.') }}
+                          </td>
+                      </tr>
+                      @empty
                     <tr>
                         <td colspan="7" class="text-center text-muted py-5">
                             Nenhuma movimentação registada para este período.

@@ -247,6 +247,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
 	Route::resource('sped', 'SpedController');
 	Route::resource('sped-config', 'SpedConfigController');
+  	Route::get('/sped-regras-1400', [App\Http\Controllers\SpedRegra1400Controller::class, 'index'])->name('sped_regras.index');
+    Route::post('/sped-regras-1400', [App\Http\Controllers\SpedRegra1400Controller::class, 'store'])->name('sped_regras.store');
+    Route::delete('/sped-regras-1400/{id}', [App\Http\Controllers\SpedRegra1400Controller::class, 'destroy'])->name('sped_regras.destroy');
 
     Route::prefix('sped-nfce-consolidado')->group(function () {
         Route::get('/list',   'SpedNfceConsolidadoController@list')->name('sped.consolidado.list');
@@ -1260,10 +1263,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/export','ContasPagarController@exportExcel');
         Route::get('/syncNotaFiscal','ContasPagarController@syncNotaFiscal');
         Route::put('/setVeiculo/{id}', 'ContasPagarController@setVeiculo')->name('contasPagar.setVeiculo');
+      	Route::post('/fecharMesRetencoes', 'ContasPagarController@fecharMesRetencoes')->name('compras.fecharMesRetencoes');
+		Route::post('/baixarParcial', 'ContasPagarController@baixarParcial')->name('contasPagar.baixarParcial');
 	});
 
 	Route::resource('retencoes', 'RetencaoController');
 	Route::get('/retencoes-print', 'RetencaoController@print')->name('retencoes.print');
+    Route::get('/compraconferencia', 'CompraConferenciaController@index');
 
 	Route::group(['prefix' => 'contasReceber'],function(){
 		Route::post('/salvarParcela', 'ContaReceberController@salvarParcela');
@@ -1833,6 +1839,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 		Route::get('/comissao', 'FuncionarioController@comissao');
 		Route::get('/pagarComissao', 'FuncionarioController@pagarComissao');
 		Route::get('/comissaoFiltro', 'FuncionarioController@comissaoFiltro');
+
+		// Agnaldo 14052026 - Importação Excel de Funcionários
+		Route::post('/importExcel', 'FuncionarioController@importExcel')->name('funcionarios.importExcel');
+		Route::get('/downloadLayout', 'FuncionarioController@downloadLayout')->name('funcionarios.downloadLayout');
 	});
 
 	Route::group(['prefix' => 'contatoFuncionario'],function(){
@@ -2072,6 +2082,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
        	Route::get('/importacaoNfse', 'ImportacaoNfseController@index');
    		Route::post('/importacaoNfse/importarLote', 'ImportacaoNfseController@importarLote');
     	Route::get('/importacaoNfse/visualizar/{id}', 'ImportacaoNfseController@visualizar');
+        Route::get('/visualizarNfse/{id}', 'ImportacaoNfseController@visualizar');
+      	Route::post('/gerarContasRetencao', 'ContaPagarController@gerarContasRetencao');
+      	Route::post('/gerarContasRetencao', 'ContaPagarController@gerarContasRetencao');
+   		Route::post('/baixarParcial', 'ContaPagarController@baixarParcial');
 
     });
 
@@ -2986,6 +3000,59 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 	// Declare Novos Grupos de Rotas aqui Protegidos Pelo MidiWare
 	// Siga o padrao abaixo
 
+	// =======================================================
+	// IMPORTAÇÃO DE CT-e (RECEBER)
+	// =======================================================
+	Route::group(['prefix' => 'importarCte'], function () {
+		Route::get('/', 'ImportacaoCteController@index')->name('importarCte.index');
+		Route::post('/lote', 'ImportacaoCteController@importarLote')->name('importarCte.importarLote');
+	});
+
+	// =======================================================
+	// ROTAS DE TAREFAS
+	// =======================================================
+	Route::group(['prefix' => 'tarefas'], function () {
+		Route::get('/', 'TarefaController@list')->name('tarefas.index');
+		Route::get('/list', 'TarefaController@list')->name('tarefas.list');
+		Route::post('/list', 'TarefaController@filtro')->name('tarefas.filtro');
+		Route::get('/new', 'TarefaController@register')->name('tarefas.new');
+		Route::post('/save', 'TarefaController@save')->name('tarefas.save');
+		Route::get('/edit/{id}', 'TarefaController@edit')->name('tarefas.edit');
+		Route::post('/update/{id}', 'TarefaController@update')->name('tarefas.update');
+		Route::get('/delete/{id}', 'TarefaController@delete')->name('tarefas.delete');
+		Route::get('/iniciar/{id}', 'TarefaController@iniciar')->name('tarefas.iniciar');
+		Route::get('/finalizar/{id}', 'TarefaController@finalizar')->name('tarefas.finalizar');
+		Route::get('/painel', 'TarefaController@painel')->name('tarefas.painel');
+	});
+
+	// =======================================================
+	// ROTAS DE PAGAMENTO EM LOTE
+	// =======================================================
+	Route::group(['prefix' => 'pagamento-lote'], function () {
+		Route::get('/', 'PagamentoLoteController@index')->name('pagamento-lote.index');
+		Route::post('/gerar-cnab', 'PagamentoLoteController@gerarArquivoPix')->name('pagamento-lote.gerar-cnab');
+	});
+
+	// =======================================================
+	// ROTAS DE FATURAMENTO
+	// =======================================================
+	Route::group(['prefix' => 'faturamento'], function () {
+		Route::get('/', 'FaturamentoController@index')->name('faturamento.index');
+		Route::get('/pdf', 'FaturamentoController@gerarPdfFaturamento')->name('faturamento.pdf');
+	});
+
+	// =======================================================
+	// ROTAS DE TABELAS DE PREÇOS
+	// =======================================================
+	Route::group(['prefix' => 'tabelas-precos'], function () {
+		Route::get('/', 'TabelaPrecoController@list')->name('tabelas-precos.index');
+		Route::get('/new', 'TabelaPrecoController@register')->name('tabelas-precos.new');
+		Route::get('/search-produto', 'TabelaPrecoController@searchProduto')->name('tabelas-precos.search-produto');
+		Route::get('/edit/{id}', 'TabelaPrecoController@register')->name('tabelas-precos.edit');
+		Route::post('/save', 'TabelaPrecoController@save')->name('tabelas-precos.save');
+		Route::get('/delete/{id}', 'TabelaPrecoController@delete')->name('tabelas-precos.delete');
+	});
+
 	Route::group(['prefix' => 'funcoes'],function(){
 		//Novas Rotas Futuras Declare aqui
 		Route::post('/quickSave', 'FuncionarioController@quickSave');
@@ -3010,6 +3077,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     Route::post('/store', 'RequisicaoController@store')->name('requisicoes.store');
     Route::put('/finalizar/{id}', 'RequisicaoController@finalizar')->name('requisicoes.finalizar');
     Route::get('/imprimir-ficha', 'RequisicaoController@imprimirFichaFiltro')->name('requisicoes.imprimirFichaFiltro');
+    Route::post('/migrarHistorico', 'RequisicaoController@migrarHistorico')->name('requisicoes.migrarHistorico');
     Route::get('/{requisicao}', 'RequisicaoController@show')->name('requisicoes.show');
     Route::get('/{requisicao}/edit', 'RequisicaoController@edit')->name('requisicoes.edit');
     Route::put('/{requisicao}', 'RequisicaoController@update')->name('requisicoes.update');
@@ -3023,15 +3091,19 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 	});
 
 	Route::group(['prefix' => 'adiantamentos'], function () {
-    // Agora usando String, sem precisar do 'use' no topo
-		Route::get('/', 'AdiantamentoController@index')->name('adiantamentos.index');
-		Route::post('/store', 'AdiantamentoController@store')->name('adiantamentos.store');
-		Route::get('/buscar-pessoas', 'AdiantamentoController@buscarPessoas')->name('adiantamentos.buscarPessoas');
-		Route::post('/cancelar/{id}', 'AdiantamentoController@cancelar')->name('adiantamentos.cancelar');
-		Route::get('/sincronizar', 'AdiantamentoController@sincronizar')->name('adiantamentos.sincronizar');
-		Route::get('/extrato/{tipo}/{id}', 'AdiantamentoController@extrato')->name('adiantamentos.extrato');
-		Route::get('/consulta-saldo/{tipo}/{id}', 'AdiantamentoController@getSaldoPessoa')->name('adiantamentos.getSaldoPessoa');
-	});
+    Route::get('/', 'AdiantamentoController@index')->name('adiantamentos.index');
+    Route::post('/store', 'AdiantamentoController@store')->name('adiantamentos.store');
+    Route::get('/buscar-pessoas', 'AdiantamentoController@buscarPessoas')->name('adiantamentos.buscarPessoas');
+    Route::post('/cancelar/{id}', 'AdiantamentoController@cancelar')->name('adiantamentos.cancelar'); // Este já serve como "Excluir/Estornar"
+    Route::get('/sincronizar', 'AdiantamentoController@sincronizar')->name('adiantamentos.sincronizar');
+    Route::get('/extrato/{tipo}/{id}', 'AdiantamentoController@extrato')->name('adiantamentos.extrato');
+    Route::get('/consulta-saldo/{tipo}/{id}', 'AdiantamentoController@getSaldoPessoa')->name('adiantamentos.getSaldoPessoa');
+    
+    // Novas rotas para Devolução e Edição
+    Route::post('/devolver', 'AdiantamentoController@devolver')->name('adiantamentos.devolver');
+    Route::get('/edit/{id}', 'AdiantamentoController@edit')->name('adiantamentos.edit');
+    Route::post('/update/{id}', 'AdiantamentoController@update')->name('adiantamentos.update');
+});
 
 	Route::group(['prefix' => 'apuracao'],function () {
 	    Route::get('/', 'ApuracaoController@index');
@@ -3199,6 +3271,104 @@ Route::get('/habilitadoApi', function(){
 	return view('habilitadoApi');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Desabilitado por Wallace em 15052026
+|--------------------------------------------------------------------------
+| A rota pública /cron-master foi desabilitada porque executava
+| Artisan::call('schedule:run') sem autenticação específica de cron.
+| Use o cron do servidor apontando para php artisan schedule:run.
+| Caso o provedor só permita chamada HTTP, use a rota protegida
+| /admin/cron-master/{token}.
+|
+Route::get('/cron-master', function () {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('schedule:run');
+        return "Comandos agendados foram disparados com sucesso!";
+    } catch (\Exception $e) {
+        return "Erro ao disparar: " . $e->getMessage();
+    }
+});
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Desabilitado por Wallace em 15052026
+|--------------------------------------------------------------------------
+| A rota pública /teste-dfe foi desabilitada porque expõe diagnóstico
+| interno de empresas, filiais, logs e horários do robô DF-e.
+| Esse diagnóstico deve virar Command Artisan ou tela administrativa
+| protegida para SuperAdmin.
+|
+Route::get('/teste-dfe', function () {
+    // Diagnóstico antigo do robô DF-e.
+});
+*/
+
+Route::group([
+    'prefix' => 'admin/cron-master',
+    'middleware' => ['cron.protected', 'throttle:1,1'],
+], function () {
+    Route::get('/status/{token?}', function () {
+        $monitor = app(\App\Services\Cron\CronMonitor::class);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status do cron carregado com sucesso.',
+            'data' => $monitor->status(),
+        ]);
+    })->name('admin.cron-master.status');
+
+    Route::get('/{token?}', function () {
+        $monitor = app(\App\Services\Cron\CronMonitor::class);
+
+        if (! $monitor->shouldRunInternalHttp()) {
+            return response()->json([
+                'success' => true,
+                'executed' => false,
+                'message' => $monitor->denyReasonForInternalHttp(),
+                'data' => $monitor->status(),
+            ]);
+        }
+
+        $lock = \Illuminate\Support\Facades\Cache::lock('admin-cron-master-schedule-run', 55);
+
+        if (! $lock->get()) {
+            return response()->json([
+                'success' => false,
+                'executed' => false,
+                'message' => 'Cron já está em execução. Tente novamente em instantes.',
+                'data' => $monitor->status(),
+            ], 429);
+        }
+
+        try {
+            app()->instance('fersoft.cron_source', 'internal_http');
+
+            \Illuminate\Support\Facades\Artisan::call('schedule:run');
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
+
+            return response()->json([
+                'success' => true,
+                'executed' => true,
+                'message' => 'Cron interno HTTP executado com sucesso.',
+                'output' => $output,
+                'data' => $monitor->status(),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'executed' => false,
+                'message' => 'Erro ao disparar cron: ' . $e->getMessage(),
+                'data' => $monitor->status(),
+            ], 500);
+        } finally {
+            optional($lock)->release();
+        }
+    })->name('admin.cron-master.run');
+});
 
 /* Desabilitado por Wallace em 16022026
 Route::group([

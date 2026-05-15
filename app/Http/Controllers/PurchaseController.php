@@ -1907,8 +1907,15 @@ public function index()
         $data = [];
         foreach($produtos as $p){
             $item = ItemCompra::where('produto_id', $p->id)
-            ->where('validade', '!=', null)
+            ->whereNotNull('validade') // Jeito mais otimizado do Laravel
             ->first();
+
+            // --- TRAVA DE SEGURANÇA ---
+            // Se o produto não tiver nenhuma compra com validade, pula para o próximo
+            if (!$item) {
+                continue;
+            }
+            // --------------------------
 
             $strValidade = strtotime($item->validade);
             $strHoje = strtotime(date('Y-m-d'));
@@ -1928,7 +1935,8 @@ public function index()
 
         // return response()->json($data, 200);
     }
-
+  
+  
     public function alertaEstoque(Request $request){
         $produtos = Produto::where('empresa_id', $this->empresa_id)
         ->where('estoque_minimo', '>', 0)

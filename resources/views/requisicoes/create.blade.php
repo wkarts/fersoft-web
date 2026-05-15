@@ -51,8 +51,13 @@
                     <select id="prod_temp" class="form-control custom-select">
                         <option value="">Selecione o produto...</option>
                         @foreach($produtos as $p)
-                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $p->quantidade }}">
-                                {{ $p->nome }} (Estoque: {{ number_format($p->quantidade, 2, ',', '.') }})
+                            @php 
+                                // Verifica se o produto possui registro na tabela estoques, se não, saldo é 0
+                                $saldo = $p->estoque ? $p->estoque->quantidade : 0; 
+                            @endphp
+                            
+                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $saldo }}">
+                                {{ $p->nome }} (Estoque: {{ number_format($saldo, 2, ',', '.') }})
                             </option>
                         @endforeach
                     </select>

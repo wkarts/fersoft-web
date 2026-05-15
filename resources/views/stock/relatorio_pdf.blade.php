@@ -39,8 +39,16 @@
                 <td>{{ $e->codBarras }}</td>
                 <td>{{ $e->produto_nome }}</td>
                 <td class="text-right">{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
-                <td class="text-right">--</td> <td class="text-right">--</td>
-                <td class="text-right"><strong>{{ number_format($e->quantidade, 2, ',', '.') }}</strong></td>
+
+                {{-- Colunas sem os sinais + ou - --}}
+                <td class="text-right">{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
+
+                {{-- Saldo do período calculado --}}
+                <td class="text-right">
+                    <strong>{{ number_format(($e->saldo_inicial ?? 0) + ($e->total_entradas ?? 0) - ($e->total_saidas ?? 0), 2, ',', '.') }}</strong>
+                </td>
+
                 <td class="text-right">R$ {{ number_format($e->valor_compra, 2, ',', '.') }}</td>
                 <td class="text-right">R$ {{ number_format($e->quantidade * $e->valor_compra, 2, ',', '.') }}</td>
                 <td>[ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ]</td>

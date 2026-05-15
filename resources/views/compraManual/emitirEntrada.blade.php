@@ -254,7 +254,7 @@
 										</strong>
 									</h5>
 
-									@if($compra->chave != '')
+									@if($compra->chave != '' && $compra->estado != 'REJEITADO')
 
 									@if($compra->estado != 'CANCELADO')
 

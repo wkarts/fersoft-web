@@ -9,6 +9,10 @@ use App\Models\Usuario;
 use App\Models\ComissaoVenda;
 use App\Models\VendaCaixa;
 use App\Services\SaveFilesDB;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\FuncionarioImport;
+use App\Exports\FuncionarioModeloExport;
+
 
 class FuncionarioController extends Controller
 {
@@ -599,6 +603,30 @@ class FuncionarioController extends Controller
                 $cont++;
             }
         }
+    }
+   public function downloadLayout() {
+    return Excel::download(new FuncionarioModeloExport, 'layout_funcionarios.xlsx');
+    }
+
+    public function importExcel(Request $request) {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:5120'
+        ]);
+
+        if ($request->hasFile('file') && $request->file('file')->isValid()) {
+            try {
+                // Se vier 'NULL' da view, vira null (Matriz). Se vier ID, salva o ID[cite: 6].
+                $filialId = ($request->filial_id == 'NULL' || !$request->filial_id) ? null : $request->filial_id;
+
+                Excel::import(new FuncionarioImport($this->empresa_id, $filialId), $request->file('file'));
+
+                session()->flash('mensagem_sucesso', 'Importação concluída com sucesso!');
+            } catch (\Exception $e) {
+                \Log::error("Erro na importação: " . $e->getMessage());
+                session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
+            }
+        }
+        return redirect('/funcionarios');
     }
 
 }

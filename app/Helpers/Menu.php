@@ -104,6 +104,10 @@ class Menu {
 						'nome' => 'Lista de preços',
 						'rota' => '/listaDePrecos'
 					],
+                  	[
+						'nome' => 'Tabela de preços',
+						'rota' => '/tabelas-precos'
+					],
 					[
 						'nome' => 'Categorias de contas',
 						'rota' => '/categoriasConta'
@@ -230,6 +234,10 @@ class Menu {
                   	[
 						'nome' => 'Importação XML Serviço',
 						'rota' => '/compras/importacaoNfse'
+					],
+                    [
+						'nome' => 'Conferência NF-e',
+						'rota' => '/compraconferencia'
 					],
 					[
 						'nome' => 'Cotações',
@@ -484,6 +492,15 @@ class Menu {
 						'nome' => 'Contas a receber',
 						'rota' => '/contasReceber'
 					],
+                  	[
+						'nome' => 'Conciliação Bancária',
+						'rota' => '/financeiro/conciliacao'
+					],
+					[
+						'nome' => 'Pagamentos em Lote (PIX)',
+						'rota' => '/pagamento-lote'
+					],
+                  
 					[
 						'nome' => 'Movimetação de caixa',
 						'rota' => '/fluxoCaixa'
@@ -522,13 +539,17 @@ class Menu {
 				]
 			],
 			[
-				'titulo' => 'Adiantamentos',
-				'icone' => $this->getIcone('Adiantamentos'),
+				'titulo' => 'Tarefas',
+				'icone' => $this->getIcone('SitesExternos'),
 				'subs' => [
 					[
-						'nome' => 'Controle de adiantamentos',
-						'rota' => '/adiantamentos'
-					]
+						'nome' => 'Painel Kanban (Tarefas)',
+						'rota' => '/tarefas/painel'
+					],
+					[
+						'nome' => 'Lista de Tarefas',
+						'rota' => '/tarefas'
+					],
 				]
 			],
             [
@@ -612,6 +633,10 @@ class Menu {
 					[
 						'nome' => 'Nova',
 						'rota' => '/cte/nova'
+					],
+                  	[
+						'nome' => 'Importação CT-e',
+						'rota' => '/importarCte'
 					],
 					[
 						'nome' => 'Categorias de despesa',

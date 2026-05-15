@@ -35,6 +35,10 @@ class ContaReceber extends BaseModel
         'nf_numero',
         'nf_data_emissao',
         'nf_chave',
+      	'usuario_id', 
+        'usuario_edit_id', 
+        'usuario_baixa_id',
+        'nf_data_emissao'
         
     ];
 

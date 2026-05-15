@@ -36,6 +36,7 @@ class RequisicaoController extends BaseController
 
         $requisicoes = $query->orderBy('data_requisicao', 'desc')->paginate(15);
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->orderBy('nome')->get();
+     	$filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
         return view('requisicoes.index', compact('requisicoes', 'funcionarios', 'title'));
     }
@@ -52,11 +53,26 @@ class RequisicaoController extends BaseController
                 $q->where('nome', 'LIKE', '%Tecnico%')
                     ->orWhere('nome', 'LIKE', '%Seguranca%');
             })->orderBy('nome')->get();
+      
+        $filial_id = $this->filial_id;
 
-        $produtos = Produto::where('empresa_id', $empresa_id)
+        $produtos = Produto::with(['estoque' => function ($query) use ($empresa_id, $filial_id) {
+                $query->where('empresa_id', $empresa_id);
+                
+                // Garante que pega o estoque do local correto (Matriz ou Filial)
+                if ($filial_id) {
+                    $query->where('filial_id', $filial_id);
+                } else {
+                    $query->whereNull('filial_id');
+                }
+            }])
+            ->where('empresa_id', $empresa_id)
+            ->where('inativo', 0) // <-- CORRIGIDO AQUI PARA 0 (Produtos Ativos)
             ->whereHas('categoria', function ($query) {
                 $query->where('nome', 'LIKE', '%EPI%');
-            })->orderBy('nome')->get();
+            })
+            ->orderBy('nome')
+            ->get();
 
         return view('requisicoes.create', compact('funcionarios', 'tecnicos', 'produtos', 'title'));
     }
@@ -142,16 +158,21 @@ class RequisicaoController extends BaseController
      */
     public function destroy(Request $request, $id)
     {
-        // 1. Busca a senha na tabela config_notas (senha_remover)
+        // 1. Busca a configuração da empresa
         $config = DB::table('config_notas')
             ->where('empresa_id', $this->empresa_id)
             ->first();
 
-        if (!$config || $request->senha_exclusao !== $config->senha_remover) {
+        // 2. Transforma a senha digitada em MD5 para comparar com o banco
+        $senhaDigitadaCripto = md5(trim($request->senha_exclusao));
+
+        // 3. Compara as duas versões criptografadas
+        if (!$config || $senhaDigitadaCripto !== $config->senha_remover) {
             return redirect()->back()->with('error', 'Senha de exclusão incorreta!');
         }
 
         return DB::transaction(function () use ($id) {
+            // ... restante do código de exclusão que você já tem ...
             $requisicao = Requisicao::where('empresa_id', $this->empresa_id)->findOrFail($id);
 
             // 2. Devolve os produtos ao estoque antes de excluir
@@ -269,4 +290,26 @@ class RequisicaoController extends BaseController
 
         return redirect()->back()->with('success', 'Requisição finalizada com sucesso! A edição agora está bloqueada.');
     }
+
+  
+ 	public function migrarHistorico(Request $request)
+{
+    // Verifique se a sua sessão realmente tem o 'empresa_id'
+    // Para teste rápido, você pode forçar o número 2:
+    $empresa_id = session('user_logged')['empresa_id'] ?? 2; 
+
+    if (!$empresa_id || $empresa_id == 0) {
+        return redirect()->back()->with('mensagem_erro', 'Erro: Empresa não identificada na sessão.');
+    }
+
+    try {
+        \Maatwebsite\Excel\Facades\Excel::import(
+            new \App\Imports\HistoricoEpiImport($empresa_id), 
+            $request->file('file')
+        );
+        return redirect()->back()->with('mensagem_sucesso', 'Migração executada!');
+    } catch (\Exception $e) {
+        return redirect()->back()->with('mensagem_erro', 'Erro: ' . $e->getMessage());
+    }
+}
 }

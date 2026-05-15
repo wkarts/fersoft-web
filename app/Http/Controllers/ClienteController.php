@@ -1106,15 +1106,17 @@ class ClienteController extends Controller
                 } elseif($c->numero_nota_fiscal) {
                     $nf = $c->numero_nota_fiscal;
                 }
-
+				
+              	$valor_pago_efetivo = $c->valor_recebido;
+              
                 $dados[] = [
                     'data' => \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y'),
                     'tipo' => 'Título',
                     'nf' => $nf,
                     'vencimento' => \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y'),
                     'valor' => number_format($c->valor_integral, 2, ',', '.'),
-                    'pago' => number_format($c->valor_pago, 2, ',', '.'),
-                    'saldo' => number_format($c->valor_integral - $c->valor_pago, 2, ',', '.'),
+                    'pago' => number_format($valor_pago_efetivo, 2, ',', '.'),
+                    'saldo' => number_format($c->valor_integral - $valor_pago_efetivo, 2, ',', '.'),
                     'status' => $c->status ? 'Pago' : 'Pendente'
                 ];
             }

@@ -8,9 +8,14 @@ class RequisicaoItem extends BaseModel
     protected $table = 'requisicao_itens';
 
     protected $fillable = [
+        'empresa_id', 
+        'filial_id', 
+        'usuario_id', 
         'requisicao_id', 
         'produto_id', 
-        'quantidade'
+        'quantidade', 
+        'ca_snapshot',
+    	'fab_snapshot'
     ];
 
     public function produto()

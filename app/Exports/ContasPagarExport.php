@@ -5,39 +5,41 @@ namespace App\Exports;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize; // Para ajuste automático de colunas
+use Maatwebsite\Excel\Concerns\WithStyles;     // Para aplicar estilos (negrito)
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet; // IMPORTANTE: Para o tipo Worksheet
 
-class ContasPagarExport implements FromView
+class ContasPagarExport implements FromView, ShouldAutoSize, WithStyles
 {
     protected $contas;
 
-    /**
-     * Recebe a coleção de contas a pagar.
-     *
-     * @param \Illuminate\Support\Collection|array $contas
-     */
     public function __construct($contas)
     {
-        // garante que sempre seja Collection
+        // Garante que sempre seja uma Collection
         $this->contas = $contas instanceof Collection ? $contas : collect($contas);
     }
 
-    /**
-     * Retorna a view que será utilizada para gerar o Excel.
-     *
-     * @return \Illuminate\Contracts\View\View
-     */
+    // Aplica negrito na primeira linha (cabeçalho)
+    public function styles(Worksheet $sheet)
+    {
+        return [
+            1 => ['font' => ['bold' => true]],
+        ];
+    }
+
     public function view(): View
     {
-        // detecta se a coluna "data_emissao_nfe" está presente no dataset
         $hasDataEmissaoNfe = false;
         $first = $this->contas->first();
+        
         if ($first && (is_array($first) || is_object($first))) {
-            $hasDataEmissaoNfe = isset($first->data_emissao_nfe) || (is_array($first) && array_key_exists('data_emissao_nfe', $first));
+            $hasDataEmissaoNfe = isset($first->data_emissao_nfe) || 
+                                (is_array($first) && array_key_exists('data_emissao_nfe', $first));
         }
 
         return view('exports.contas_pagar', [
             'contas' => $this->contas,
-            'hasDataEmissaoNfe' => $hasDataEmissaoNfe, // opcional pra condicionar header/coluna
+            'hasDataEmissaoNfe' => $hasDataEmissaoNfe,
         ]);
     }
 }
