@@ -23,6 +23,7 @@ class Fornecedor extends BaseModel
         'empresa_id',
         'contribuinte',
         'pix',
+      	'tabela_preco_id',
         'tipo_pix',
         'complemento',
         'cod_pais',
@@ -80,6 +81,11 @@ class Fornecedor extends BaseModel
     public function setCepAttribute($value)
     {
         $this->attributes['cep'] = preg_replace('/\D/', '', (string)$value);
+    }
+  
+ 	public function tabelaPreco()
+    {
+        return $this->belongsTo(\App\Models\TabelaPreco::class, 'tabela_preco_id');
     }
 
 }

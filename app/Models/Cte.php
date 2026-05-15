@@ -15,7 +15,7 @@ class Cte extends BaseModel
         'sequencia_cce', 'cte_numero', 'chave', 'path_xml', 'estado', 'retira', 'detalhes_retira',
         'modal', 'veiculo_id', 'tpDoc', 'descOutros', 'nDoc', 'vDocFisc', 'empresa_id', 
         'globalizado', 'cst', 'perc_icms', 'recebedor_id', 'expedidor_id', 'pRedBC',
-        'status_pagamento', 'filial_id', 'recibo', 'tipo_servico'
+        'status_pagamento', 'data_emissao', 'filial_id', 'recibo', 'tipo_servico'
     ];
 
     public function filial(){

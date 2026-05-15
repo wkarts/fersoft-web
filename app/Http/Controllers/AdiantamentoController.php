@@ -517,5 +517,128 @@ class AdiantamentoController extends BaseController
             $saldo_abater -= $usar;
         }
     }
+  
+       public function devolver(Request $request)
+      {
+          try {
+              return DB::transaction(function () use ($request) {
+                  $valorDevolucao = str_replace(['.', ','], ['', '.'], $request->valor_devolucao);
+                  $valorRestante = $valorDevolucao;
+                  $tipoPessoa = $request->tipo_pessoa; 
+                  $pessoaId = $request->pessoa_id;
 
+                  // --- NOVO: Busca o nome da pessoa para a descrição ---
+                  if ($tipoPessoa == 'cliente') {
+                      $pessoa = \App\Models\Cliente::find($pessoaId);
+                      $nomePessoa = $pessoa ? ($pessoa->nome_fantasia ?: $pessoa->razao_social) : 'Cliente não identificado';
+                      $tipoMovFinanceiro = 'saida'; // Devolução para cliente sai dinheiro
+                  } else {
+                      $pessoa = \App\Models\Fornecedor::find($pessoaId);
+                      $nomePessoa = $pessoa ? ($pessoa->nome_fantasia ?: $pessoa->razao_social) : 'Fornecedor não identificado';
+                      $tipoMovFinanceiro = 'entrada'; // Fornecedor devolvendo pra você entra dinheiro
+                  }
+                  // -----------------------------------------------------
+
+                  $adiantamentos = Adiantamento::where('empresa_id', $this->empresa_id)
+                      ->where($tipoPessoa . '_id', $pessoaId)
+                      ->where('status', 'aberto')
+                      ->orderBy('data', 'asc')
+                      ->get();
+
+                  if ($adiantamentos->isEmpty()) {
+                      return redirect()->back()->with('error', 'Não há adiantamentos abertos para esta pessoa.');
+                  }
+
+                  foreach ($adiantamentos as $adv) {
+                      if ($valorRestante <= 0) break;
+
+                      $disponivel = $adv->valor_total - $adv->valor_utilizado;
+                      $usar = ($disponivel > $valorRestante) ? $valorRestante : $disponivel;
+
+                      DB::table('adiantamento_movimentacoes')->insert([
+                          'adiantamento_id' => $adv->id,
+                          'empresa_id' => $this->empresa_id,
+                          'usuario_id' => $this->usuario_id,
+                          'valor' => $usar,
+                          'data' => $request->data_devolucao,
+                          'created_at' => now(), 'updated_at' => now()
+                      ]);
+
+                      $adv->valor_utilizado += $usar;
+                      if ($adv->valor_utilizado >= $adv->valor_total) { $adv->status = 'finalizado'; }
+                      $adv->save();
+                      $valorRestante -= $usar;
+                  }
+
+                  $conta = ContaEmpresa::findOrFail($request->conta_id);
+                  if ($tipoMovFinanceiro == 'saida') { $conta->saldo -= $valorDevolucao; } 
+                  else { $conta->saldo += $valorDevolucao; }
+                  $conta->save();
+
+                  // Descrição Profissional com o nome da pessoa
+                  $descricaoFinanceira = "DEVOLUÇÃO Adiantamento - " . strtoupper($tipoPessoa) . ": " . $nomePessoa;
+
+                  ItemContaEmpresa::create([
+                      'conta_id' => $conta->id,
+                      'descricao' => $descricaoFinanceira,
+                      'data_pagamento' => $request->data_devolucao,
+                      'valor' => $valorDevolucao,
+                      'tipo' => $tipoMovFinanceiro,
+                      'categoria_id' => $request->categoria_id ?? null,
+                      'saldo_atual' => $conta->saldo,
+                      'empresa_id' => $this->empresa_id,
+                      'user_id' => $this->usuario_id
+                  ]);
+
+                  return redirect()->back()->with('success', 'Devolução de R$ ' . number_format($valorDevolucao, 2, ',', '.') . ' realizada!');
+              });
+          } catch (\Exception $e) { dd($e->getMessage()); }
+      }
+		
+  		public function update(Request $request, $id)
+      {
+          try {
+              return DB::transaction(function () use ($request, $id) {
+                  $adv = Adiantamento::findOrFail($id);
+                  $valorNovo = str_replace(['.', ','], ['', '.'], $request->valor);
+                  $valorAntigo = $adv->valor_total;
+
+                  if ($adv->valor_utilizado > 0) {
+                      return redirect()->back()->with('error', 'Não é possível editar um adiantamento já utilizado.');
+                  }
+
+                  // Atualiza o saldo na Conta Empresa
+                  $itemOrig = ItemContaEmpresa::find($adv->item_conta_empresa_id);
+                  $conta = ContaEmpresa::find($itemOrig->conta_id);
+
+                  if ($adv->cliente_id) {
+                      // Se cliente: Devolve o antigo (subtrai) e soma o novo
+                      $conta->saldo = ($conta->saldo - $valorAntigo) + $valorNovo;
+                  } else {
+                      // Se fornecedor: Devolve o antigo (soma) e subtrai o novo
+                      $conta->saldo = ($conta->saldo + $valorAntigo) - $valorNovo;
+                  }
+                  $conta->save();
+
+                  // Atualiza o registro financeiro
+                  $itemOrig->update([
+                      'valor' => $valorNovo,
+                      'descricao' => $request->descricao,
+                      'data_pagamento' => $request->data,
+                      'saldo_atual' => $conta->saldo
+                  ]);
+
+                  // Atualiza o adiantamento
+                  $adv->update([
+                      'valor_total' => $valorNovo,
+                      'data' => $request->data,
+                      'descricao' => $request->descricao
+                  ]);
+
+                  return redirect()->back()->with('success', 'Adiantamento atualizado!');
+              });
+          } catch (\Exception $e) {
+              return redirect()->back()->with('error', 'Erro ao editar: ' . $e->getMessage());
+          }
+      }
 }

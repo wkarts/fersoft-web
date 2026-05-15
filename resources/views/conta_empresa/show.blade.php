@@ -213,13 +213,19 @@
 {{-- MOVIDO PARA DENTRO DO CONTENT PARA GARANTIR QUE FUNCIONE --}}
 <script type="text/javascript">
 function confirmarSincronismo(id) {
-    // Teste definitivo: se isso não aparecer, o navegador não está lendo a função
-    console.log("Chamando sincronismo para ID: " + id); 
+    // Captura as datas que estão nos campos de filtro da tela
+    let dInicio = $("input[name='data_inicio']").val();
+    let dFinal = $("input[name='data_final']").val();
+
+    if(!dInicio || !dFinal) {
+        Swal.fire("Atenção", "Selecione um período (Data Inicial e Final) nos filtros antes de sincronizar.", "info");
+        return;
+    }
 
     Swal.fire({
-        title: 'Reconstruir Histórico?',
-        text: "O extrato atual desta conta será APAGADO e refeito com base no financeiro. Confirmar?",
-        icon: 'warning',
+        title: 'Sincronizar Período?',
+        text: "O sistema buscará lançamentos financeiros entre " + dInicio + " e " + dFinal + " que ainda não constam nesta conta empresa. Confirmar?",
+        icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3699FF',
         confirmButtonText: 'Sim, Sincronizar!',
@@ -227,18 +233,19 @@ function confirmarSincronismo(id) {
     }).then((result) => {
         if (result.isConfirmed) {
             Swal.fire({
-                title: 'Processando...',
-                text: 'Isso pode levar alguns segundos.',
+                title: 'Sincronizando...',
                 allowOutsideClick: false,
                 didOpen: () => { Swal.showLoading(); }
             });
             
-            // Usando o helper do Laravel para não errar a URL
-            window.location.href = "{{ route('contas-empresa.sincronizar', '') }}/" + id;
+            // Constrói a URL passando as datas como parâmetros para o controlador
+            let url = "{{ route('contas-empresa.sincronizar', '') }}/" + id + 
+                      "?data_inicial=" + dInicio + "&data_final=" + dFinal;
+            
+            window.location.href = url;
         }
     });
 }
-
 function excluirLancamentoManual(id) {
     Swal.fire({
         title: 'Excluir Lançamento?',

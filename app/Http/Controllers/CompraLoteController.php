@@ -18,13 +18,16 @@ use Carbon\Carbon;
 
 class CompraLoteController extends Controller
 {
-    public function index()
+   public function index()
     {
         $sessionData = session('user_logged');
         $empresa_id = $sessionData['empresa'];
 
         $produtos = Produto::where('empresa_id', $empresa_id)
-            ->where('inativo', false)->orderBy('nome')->get();
+            ->where('inativo', 0)
+            ->where('tipo_item', '00') // <-- NOVA LINHA AQUI
+            ->orderBy('nome')
+            ->get();
 
         $contas = ContaEmpresa::where('empresa_id', $empresa_id)
             ->where('status', 1)->get();
@@ -34,7 +37,10 @@ class CompraLoteController extends Controller
 
         $naturezas = \App\Models\NaturezaOperacao::where('empresa_id', $empresa_id)->get();
 
-        return view('compras_lote.index', compact('produtos', 'contas', 'categorias', 'naturezas'))
+        // ADICIONADO: Busca as filiais para mostrar no select
+        $filiais = \App\Models\Filial::where('empresa_id', $empresa_id)->get();
+
+        return view('compras_lote.index', compact('produtos', 'contas', 'categorias', 'naturezas', 'filiais'))
             ->with('title', 'Importação de Compra em Lote');
     }
 
@@ -43,8 +49,13 @@ class CompraLoteController extends Controller
         $sessionData = session('user_logged');
         $empresa_id = $sessionData['empresa'];
         $usuario_id = $sessionData['id'];
-        $filial_id  = $sessionData['local_padrao'] ?? null;
-
+        
+        // 1. AQUI ESTÁ A CORREÇÃO: Pegamos a filial do request que veio do formulário
+        $local = $request->filial_id;
+        
+        // 2. Aplicamos a trava matemática
+        $filial_id = (is_numeric($local) && $local > 0) ? $local : null;
+      
         $meiosPagamento = [
             '01' => 'Dinheiro', '17' => 'Pix', '15' => 'Boleto Bancário', '03' => 'Cartão de Crédito', '99' => 'Outros'
         ];
@@ -152,6 +163,7 @@ class CompraLoteController extends Controller
                     // 3. Contas a Pagar (Agora com descrição "Pix")
                     $cp = ContaPagar::create([
                         'empresa_id' => $empresa_id,
+                        'filial_id' => $filial_id,
                         'fornecedor_id' => $fornecedor->id,
                         'compra_id' => $compra->id,
                         'valor_integral' => $valor,
@@ -187,6 +199,7 @@ class CompraLoteController extends Controller
                         'usuario_id' => $usuario_id,
                         'user_id' => $usuario_id, // Gravando coluna user_id
                         'categoria_id' => $request->categoria_id,
+                      	'saldo_atual' => $contaEmp->saldo,
                         'created_at' => $dataEmissaoCompleta
                     ])->id;
 

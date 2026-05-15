@@ -47,17 +47,26 @@ class ImportacaoNfseController extends BaseController
     public function index(Request $request = null)
     {
         $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
-        $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
-        return view('nfse.importar', ['veiculos' => $veiculos, 'categoriasDeConta' => $categoriasDeConta, 'title' => $this->formTitle]);
+        $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)
+            ->where('tipo', 'pagar')
+            ->orderBy('nome', 'asc')
+            ->get();
+        return view('nfse.importar', [
+            'veiculos' => $veiculos, 
+            'categoriasDeConta' => $categoriasDeConta, 
+            'title' => $this->formTitle
+        ]);
     }
 
     public function importarLote(Request $request)
     {
-        if (!$this->validateRequest($request)) return redirect()->back()->withInput();
         $arquivos = $request->file('xmls');
-        $sucessos = 0; $erros = [];
+        $sucessos = 0; 
+        $erros = [];
 
-        if (!file_exists(public_path('xml_servico'))) mkdir(public_path('xml_servico'), 0777, true);
+        if (!file_exists(public_path('xml_servico'))) {
+            mkdir(public_path('xml_servico'), 0777, true);
+        }
 
         foreach ($arquivos as $arquivo) {
             try {
@@ -66,11 +75,16 @@ class ImportacaoNfseController extends BaseController
                 $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
                 $xml = simplexml_load_string($xmlClean);
 
-                if (!isset($xml->infNFSe)) throw new \Exception("XML não reconhecido como NFS-e Nacional.");
+                if (!isset($xml->infNFSe)) throw new \Exception("XML não reconhecido.");
 
-                $chaveCompleta = str_replace('NFS', '', (string)$xml->infNFSe['Id']);
-                $nomeArquivo = $chaveCompleta . ".xml";
+                $idAtributo = (string)$xml->infNFSe['Id'];
+                $chaveCompleta = preg_replace('/[^0-9]/', '', $idAtributo);
+                $nNFSe = (string)$xml->infNFSe->nNFSe;
 
+                $jaExiste = Compra::where('chave', $chaveCompleta)->where('empresa_id', $this->empresa_id)->first();
+                if ($jaExiste) throw new \Exception("A nota Nº $nNFSe já foi importada.");
+
+                $nomeArquivo = trim($chaveCompleta) . ".xml";
                 $arquivo->move(public_path('xml_servico'), $nomeArquivo);
 
                 $this->processarXml(
@@ -92,101 +106,116 @@ class ImportacaoNfseController extends BaseController
             }
         }
 
-        session()->flash($sucessos > 0 ? 'mensagem_sucesso' : 'mensagem_erro', "$sucessos notas importadas. " . implode(' ', $erros));
+        session()->flash($sucessos > 0 ? 'mensagem_sucesso' : 'mensagem_erro', "$sucessos notas importadas.");
         return redirect('/compras');
     }
 
     private function processarXml($xml, $veiculo_id, $categoria_id, $prazo, $nomeArquivo, $chave, $qtdParcelas)
-    {
-        $inf = $xml->infNFSe;
-        $dps = $inf->DPS->infDPS ?? $inf;
-        $data_emi = isset($dps->dhEmi) ? substr((string)$dps->dhEmi, 0, 10) : date('Y-m-d');
+{
+    $inf = $xml->infNFSe;
+    $valores = $inf->valores;
+    $dps = $inf->DPS->infDPS ?? $inf;
+    $data_emi = isset($dps->dhEmi) ? substr((string)$dps->dhEmi, 0, 10) : date('Y-m-d');
 
-        // Garante que o valor é float para cálculos
-        $valorTotal = (float)($inf->valores->vLiq > 0 ? (float)$inf->valores->vLiq : (float)$inf->valores->vServ);
-        $nNFSe = (string)$inf->nNFSe;
+    // VALOR BRUTO CORRIGIDO: Busca em múltiplas tags possíveis
+    $vServico = (float)($valores->vServ ?? $dps->valores->vServPrest->vServ ?? $valores->vBC ?? 0);
+    $vLiquido = (float)($valores->vLiq ?? $vServico);
+    
+    if($vServico <= 0) throw new \Exception("Valor do serviço não localizado.");
 
-        $fornecedor = $this->obterFornecedor($inf->emit, (string)$inf->emit->CNPJ);
+    // LÓGICA DE ISS RETIDO
+    $tpRetISSQN = (int)($dps->valores->trib->tribMun->tpRetISSQN ?? 2);
+    $vIssRetido = ($tpRetISSQN === 1) ? (float)($valores->vISSQN ?? 0) : 0;
 
-        $servBloco = $dps->serv->cServ ?? $inf->serv->cServ;
-        $descricaoServico = (string)$servBloco->xDescServ;
-        $tribMun = (string)$inf->xTribMun;
+    // CONTINGÊNCIA DE IMPOSTOS FEDERAIS
+    $vPis = (float)($valores->vPIS ?? 0);
+    $vCofins = (float)($valores->vCOFINS ?? 0);
+    $vIr = (float)($valores->vIR ?? 0);
+    $vCsll = (float)($valores->vCSLL ?? 0);
+    $diffFederal = round($vServico - $vLiquido - $vIssRetido, 2);
 
-        $servico = $this->obterServico((string)($servBloco->cTribNac ?? '140101'), $descricaoServico, $valorTotal);
-
-        $obs = trim(str_replace(["\r", "\n"], ' ', $descricaoServico . " | Trib. Mun: " . $tribMun));
-        $refFinanceiro = "NFS-e " . $nNFSe . " - " . substr($obs, 0, 180);
-
-        $this->disableNextModelAudit();
-        $compra = Compra::create([
-            'fornecedor_id' => $fornecedor->id,
-            'usuario_id' => $this->usuario_id,
-            'nf' => $nNFSe,
-            'data_emissao' => $data_emi,
-            'valor' => $valorTotal,
-            'veiculo_id' => $veiculo_id,
-            'estado' => 'IMPORTADO',
-            'xml_importado' => 1,
-            'xml_path' => $nomeArquivo,
-            'categoria_conta_id' => $categoria_id,
-            'chave' => $chave,
-            'empresa_id' => $this->empresa_id,
-            'filial_id' => $this->filial_id,
-            'observacao' => $obs,
-            'numero_emissao' => 0
-        ]);
-
-        ItemCompra::create([
-            'compra_id' => $compra->id,
-            'produto_id' => $servico->id,
-            'quantidade' => 1,
-            'valor_unitario' => $valorTotal,
-            'unidade_compra' => 'UN',
-            'cfop_entrada' => '1933'
-        ]);
-
-        // LÓGICA DE FINANCEIRO PARCELADO
-        $qtdParcelas = (int) $qtdParcelas > 0 ? (int) $qtdParcelas : 1;
-        $prazoDias = (int) $prazo;
-        $valorParcela = round($valorTotal / $qtdParcelas, 2);
-        $somaAcumulada = 0;
-
-        for ($i = 1; $i <= $qtdParcelas; $i++) {
-            $diasParaAdicionar = $prazoDias * $i;
-            $vencimentoParcela = date('Y-m-d', strtotime($data_emi . " +{$diasParaAdicionar} days"));
-
-            if ($i == $qtdParcelas) {
-                $valorFinalParcela = round($valorTotal - $somaAcumulada, 2);
-            } else {
-                $valorFinalParcela = $valorParcela;
-                $somaAcumulada += $valorFinalParcela;
-            }
-
-            ContaPagar::create([
-                'compra_id' => $compra->id,
-                'fornecedor_id' => $fornecedor->id,
-                'data_vencimento' => $vencimentoParcela,
-                'data_emissao' => $data_emi,
-                'valor_integral' => $valorFinalParcela,
-                'valor_original' => $valorFinalParcela,
-                'status' => false,
-                'referencia' => $refFinanceiro . " ({$i}/{$qtdParcelas})",
-                'categoria_id' => $categoria_id,
-                'empresa_id' => $this->empresa_id,
-                'filial_id' => $this->filial_id,
-                'veiculo_id' => $veiculo_id,
-                'numero_nota_fiscal' => $nNFSe
-            ]);
-        }
+    if ($diffFederal > 0 && ($vPis + $vCofins + $vIr + $vCsll) == 0) {
+        $vPis = round($vServico * 0.0065, 2); 
+        $vCofins = round($vServico * 0.03, 2); 
+        $vCsll = round($vServico * 0.01, 2); 
+        $vIr = round($vServico * 0.015, 2);
     }
 
+    $retencoes = [
+        'valor_iss' => $vIssRetido,
+        'valor_pis' => $vPis,
+        'valor_cofins' => $vCofins,
+        'valor_ir' => $vIr,
+        'valor_csll' => $vCsll,
+        'valor_inss' => (float)($valores->vINSS ?? 0),
+    ];
+
+    $fornecedor = $this->obterFornecedor($inf->emit, (string)$inf->emit->CNPJ);
+    $servBloco = $dps->serv->cServ ?? $inf->serv->cServ;
+    $descCurta = substr((string)$servBloco->xDescServ, 0, 50); // Pega os primeiros 50 caracteres
+    $servico = $this->obterServico((string)($servBloco->cTribNac ?? '140101'), (string)$servBloco->xDescServ, $vServico);
+
+    $this->disableNextModelAudit();
+    $compra = Compra::create([
+        'fornecedor_id' => $fornecedor->id,
+        'usuario_id' => $this->usuario_id,
+        'nf' => (string)$inf->nNFSe,
+        'data_emissao' => $data_emi,
+        'valor' => $vServico,
+        'veiculo_id' => $veiculo_id,
+        'estado' => 'IMPORTADO',
+        'xml_importado' => 1,
+        'xml_path' => $nomeArquivo,
+        'categoria_conta_id' => $categoria_id,
+        'chave' => $chave,
+        'empresa_id' => $this->empresa_id,
+        'filial_id' => $this->filial_id,
+        'observacao' => trim(str_replace(["\r", "\n"], ' ', (string)$servBloco->xDescServ)),
+        'numero_emissao' => 0
+    ]);
+
+    ItemCompra::create([
+        'compra_id' => $compra->id,
+        'produto_id' => $servico->id,
+        'quantidade' => 1,
+        'valor_unitario' => $vServico,
+        'unidade_compra' => 'UN',
+        'cfop_entrada' => '1933'
+    ]);
+
+    $qtdParcelas = (int) $qtdParcelas > 0 ? (int) $qtdParcelas : 1;
+    $valorParcela = round($vLiquido / $qtdParcelas, 2);
+    $somaAcumulada = 0;
+
+    for ($i = 1; $i <= $qtdParcelas; $i++) {
+        $vencimento = date('Y-m-d', strtotime($data_emi . " + " . ($prazo * $i) . " days"));
+        $valorFinal = ($i == $qtdParcelas) ? round($vLiquido - $somaAcumulada, 2) : $valorParcela;
+        $somaAcumulada += $valorFinal;
+
+        ContaPagar::create([
+            'compra_id' => $compra->id,
+            'fornecedor_id' => $fornecedor->id,
+            'data_vencimento' => $vencimento,
+            'data_emissao' => $data_emi,
+            'valor_integral' => $valorFinal,
+            'valor_original' => $valorFinal,
+            'status' => false,
+            // REFERÊNCIA ATUALIZADA COM DESCRIÇÃO
+            'referencia' => "NFS-e " . $inf->nNFSe . " - " . $descCurta . " ($i/$qtdParcelas)",
+            'categoria_id' => $categoria_id,
+            'empresa_id' => $this->empresa_id,
+            'filial_id' => $this->filial_id,
+            'veiculo_id' => $veiculo_id,
+            'numero_nota_fiscal' => (string)$inf->nNFSe,
+            'usuario_id' => $this->usuario_id,
+            ...($i == 1 ? $retencoes : [])
+        ]);
+    }
+}
     private function obterFornecedor($emit, $cnpj)
     {
         $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
-        $forn = Fornecedor::where('empresa_id', $this->empresa_id)->where(function($q) use ($cnpjLimpo){
-            $q->where('cpf_cnpj', $cnpjLimpo)->orWhere('cpf_cnpj', $this->formataCnpj($cnpjLimpo));
-        })->first();
-
+        $forn = Fornecedor::where('empresa_id', $this->empresa_id)->where('cpf_cnpj', $this->formataCnpj($cnpjLimpo))->first();
         if (!$forn) {
             $forn = Fornecedor::create([
                 'cpf_cnpj' => $this->formataCnpj($cnpjLimpo), 'razao_social' => (string)$emit->xNome, 'nome_fantasia' => (string)$emit->xNome,
@@ -201,23 +230,10 @@ class ImportacaoNfseController extends BaseController
     {
         $s = Produto::where('empresa_id', $this->empresa_id)->where('referencia', $cod)->first();
         if (!$s) {
-            $cat = Categoria::where('empresa_id', $this->empresa_id)->first();
             $s = Produto::create([
-                'nome' => trim(substr(str_replace(["\r", "\n"], ' ', $desc), 0, 100)),
-                'referencia' => $cod,
-                'valor_compra' => $valor,
-                'valor_venda' => $valor,
-                'gerenciar_estoque' => 0,
-                'categoria_id' => $cat->id ?? 1,
-                'empresa_id' => $this->empresa_id,
-                'locais' => '["-1"]',
-                'tipo_item' => '09',
-                'unidade_compra' => 'UN',
-                'unidade_venda' => 'UN',
-                'conversao_unitaria' => 1,
-                'percentual_lucro' => 0,
-                'estoque_minimo' => 0,
-                'inativo' => 0
+                'nome' => trim(substr(str_replace(["\r", "\n"], ' ', $desc), 0, 100)), 'referencia' => $cod,
+                'valor_compra' => $valor, 'valor_venda' => $valor, 'gerenciar_estoque' => 0, 'categoria_id' => Categoria::where('empresa_id', $this->empresa_id)->first()->id ?? 1,
+                'empresa_id' => $this->empresa_id, 'locais' => '["-1"]', 'tipo_item' => '09', 'unidade_compra' => 'UN', 'unidade_venda' => 'UN', 'conversao_unitaria' => 1, 'percentual_lucro' => 0, 'estoque_minimo' => 0, 'inativo' => 0
             ]);
         }
         return $s;
@@ -226,20 +242,18 @@ class ImportacaoNfseController extends BaseController
     public function visualizar($id)
     {
         $compra = Compra::findOrFail($id);
-        $arquivo = str_contains($compra->xml_path, '.xml') ? $compra->xml_path : $compra->xml_path . ".xml";
+        $arquivo = preg_replace('/[^a-zA-Z0-9.]/', '', $compra->xml_path); 
+        if (!str_ends_with(strtolower($arquivo), '.xml')) $arquivo .= ".xml";
 
-        $pastas = ['xml_servico', 'xml_entrada'];
-        $caminhoFinal = null;
-
+        $pastas = ['xml_servico', 'xml_entrada', 'xml_entrada_emetida'];
         foreach ($pastas as $pasta) {
-            $teste = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
-            if (file_exists($teste)) { $caminhoFinal = $teste; break; }
+            $caminho = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
+            if (file_exists($caminho)) {
+                $xml = simplexml_load_string(preg_replace('/ xmlns[^=]*="[^"]*"/i', '', file_get_contents($caminho)));
+                return view('nfse.visualizar', ['xml' => $xml, 'title' => 'DANFSE']);
+            }
         }
-
-        if (!$caminhoFinal) return "Xml não encontrado! Arquivo: $arquivo";
-
-        $xml = simplexml_load_string(preg_replace('/ xmlns[^=]*="[^"]*"/i', '', file_get_contents($caminhoFinal)));
-        return view('nfse.visualizar', ['xml' => $xml, 'title' => 'DANFSE']);
+        return "Arquivo XML não localizado.";
     }
 
     private function formataCnpj($c){ return strlen($c) == 14 ? substr($c,0,2).'.'.substr($c,2,3).'.'.substr($c,5,3).'/'.substr($c,8,4).'-'.substr($c,12,2) : $c; }

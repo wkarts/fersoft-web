@@ -127,7 +127,8 @@
                         <th class="text-right">S. Inicial</th>
                         <th class="text-right">Entradas (+)</th>
                         <th class="text-right">Saídas (-)</th>
-                        <th class="text-info">Estoque Atual</th>
+                      	<th class="text-right">Saldo</th>
+                        
                         <th class="text-right">Vl. Venda</th>
                         <th class="text-right">Vl. Custo</th> 
                         <th class="text-right">Ações</th>
@@ -147,13 +148,42 @@
                             <span class="text-muted font-weight-bold">ID: {{ $e->produto_id }}</span>
                         </td>
                         <td>{{ $e->categoria_nome }}</td>
-                        <td>
-                            <span class="label label-inline label-light-primary font-weight-bold">{{ $e->filial_nome ?? 'MATRIZ' }}</span>
-                        </td>
+                        <td class="datatable-cell">
+                          <span style="width: 100px;">
+                              @if($e->filial_id == null)
+                                  {{-- Se o ID for nulo, é a Matriz --}}
+                                  <span class="label label-inline label-light-primary font-weight-bold">MATRIZ</span>
+                              @else
+                                  {{-- Se tiver ID, busca a descrição da filial que carregamos no Controller --}}
+                                  <span class="label label-inline label-light-success font-weight-bold">
+                                      {{ $e->filial->descricao ?? 'FILIAL' }}
+                                  </span>
+                              @endif
+                          </span>
+                      </td>
                         <th class="text-right">{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
                         <td class="text-right text-success">+{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
                         <td class="text-right text-danger">-{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
-                        <td class="text-right"><strong>{{ number_format($e->quantidade, 2, ',', '.') }}</td>
+                        @php
+                          // Verifica se o filtro é para o mês/ano presente
+                          $hoje = date('m/Y');
+                          $filtro = str_pad($mes, 2, '0', STR_PAD_LEFT) . '/' . $ano;
+                          $ehMesAtual = ($hoje == $filtro);
+                      @endphp
+
+                      <td class="text-right font-weight-boldest">
+                          @if($ehMesAtual)
+                              {{-- Se for o mês atual, mostra o Saldo Físico Real (quantidade atual no banco) --}}
+                              <span class="{{ $e->quantidade < 0 ? 'text-danger' : 'text-primary' }}" title="Saldo Físico Atual">
+                                  {{ number_format($e->quantidade, 2, ',', '.') }}
+                              </span>
+                          @else
+                              {{-- Se for mês retroativo, mostra o Saldo Calculado daquele período --}}
+                              <span class="{{ $e->saldo_no_periodo < 0 ? 'text-danger' : 'text-dark' }}" title="Saldo Fechamento do Período">
+                                  {{ number_format($e->saldo_no_periodo, 2, ',', '.') }}
+                              </span>
+                          @endif
+                      </td>
                         <td class="text-right">R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
                         <td class="text-right">R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 
                         

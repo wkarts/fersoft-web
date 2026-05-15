@@ -11,7 +11,7 @@ use App\Models\Pais;
 use App\Rules\ValidaDocumento;
 use App\Rules\ValidaCep;
 
-class ProviderController extends Controller
+class ProviderController extends BaseController
 {
     protected $empresa_id = null;
 
@@ -24,6 +24,28 @@ class ProviderController extends Controller
             }
             return $next($request);
         });
+    }
+  
+  /**
+     * Regras de validação obrigatórias do BaseController
+     */
+    protected function rules(): array
+    {
+        return [
+            // Aqui você pode colocar as regras do fornecedor no futuro, se quiser.
+            // Exemplo: 'razao_social' => 'required|string|max:255',
+        ];
+    }
+
+    /**
+     * Mensagens de erro obrigatórias do BaseController
+     */
+    protected function messages(): array
+    {
+        return [
+            // Aqui entram as mensagens traduzidas.
+            // Exemplo: 'razao_social.required' => 'O campo Razão Social é obrigatório.',
+        ];
     }
 
     public function index(){
@@ -81,6 +103,7 @@ class ProviderController extends Controller
                 'banco'          => $request->input('banco') ?? '',
                 'agencia'        => $request->input('agencia') ?? '',
                 'conta'          => $request->input('conta') ?? '',
+                'tabela_preco_id'=> $request->input('tabela_preco_id') ?: null,
             ]);
 
             $result = Fornecedor::create($request->all());
@@ -115,7 +138,8 @@ class ProviderController extends Controller
         }
     }
 
-    public function update(Request $request){
+    public function update(Request $request, $id = null)
+	{
         $resp = Fornecedor::findOrFail($request->id);
 
         $this->normalizeDocumentoECep($request);
@@ -142,11 +166,12 @@ class ProviderController extends Controller
             $resp->cidade_id      = $cidade;
             $resp->cod_pais       = $request->input('cod_pais');
             $resp->id_estrangeiro = $request->input('id_estrangeiro');
-
+            
             // Novos campos para atualização
             $resp->banco          = $request->input('banco') ?? '';
             $resp->agencia        = $request->input('agencia') ?? '';
             $resp->conta          = $request->input('conta') ?? '';
+            $resp->tabela_preco_id = $request->input('tabela_preco_id') ?: null;
 
             $resp->save();
 

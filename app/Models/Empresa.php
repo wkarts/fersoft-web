@@ -242,4 +242,12 @@ class Empresa extends BaseModel
     {
         return $this->belongsTo(Cidade::class, 'cidade_id');
     }
+  
+  
+  public function contabilidade()
+{
+    // O hasOne significa que a Empresa "tem um" escritório contabil 
+    // amarrado a ela através da coluna empresa_id
+    return $this->hasOne(EscritorioContabil::class, 'empresa_id', 'id');
+}
 }

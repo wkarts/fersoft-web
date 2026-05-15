@@ -199,4 +199,17 @@ class Compra extends BaseModel
         return $arr[$rand];
     }
 
+  
+    public function contasPagar()
+      {
+          // Define que uma Compra pode ter vários registros no Contas a Pagar
+          return $this->hasMany(ContaPagar::class, 'compra_id');
+      }
+ 
+  	public function natureza()
+      {
+          // Vincula o natureza_id da compra ao id da tabela natureza_operacaos
+          return $this->belongsTo(NaturezaOperacao::class, 'natureza_id');
+      }
+  
 }

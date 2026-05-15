@@ -388,101 +388,119 @@ class ContaEmpresaController extends BaseController
         return true;
     }
 
-    public function sincronizar($id)
+    public function sincronizar(Request $request, $id)
     {
-        // Se o JS funcionar, você verá esta mensagem na tela preta
-        // dd("O controlador recebeu o pedido para a conta: " . $id);
+        // 1. Definição do Período (Pega do request ou usa o mês atual)
+        $data_inicial = $request->data_inicial ? $this->parseDate($request->data_inicial) : date('Y-m-01');
+        $data_final   = $request->data_final ? $this->parseDate($request->data_final) : date('Y-m-d');
 
-        $conta = ContaEmpresa::withoutGlobalScopes()
-            ->where('id', $id)
+        // 2. Localiza a conta destino (Itaú ou Caixa)
+        $conta = \App\Models\ContaEmpresa::where('id', $id)
             ->where('empresa_id', $this->empresa_id)
             ->firstOrFail();
 
-        DB::transaction(function () use ($conta) {
-            // 1. LIMPEZA TOTAL (Forçada via Query Builder)
-            DB::table('item_conta_empresas')->where('conta_id', $conta->id)->delete();
+        \DB::transaction(function () use ($conta, $data_inicial, $data_final) {
 
-            // 2. TERMO DE BUSCA
-            $termoBusca = '';
             $nomeLower = strtolower($conta->nome);
-            if (str_contains($nomeLower, 'itau')) $termoBusca = 'Itau';
-            elseif (str_contains($nomeLower, 'santander')) $termoBusca = 'Santander';
-            elseif (str_contains($nomeLower, 'bradesco')) $termoBusca = 'Bradesco';
-            elseif (str_contains($nomeLower, 'fundo fixo') || str_contains($nomeLower, 'caixa') || str_contains($nomeLower, 'dinheiro')) $termoBusca = 'Dinheiro';
+            $bancoLower = strtolower($conta->banco);
 
-            // 3. BUSCA SAÍDAS (Contas a Pagar + Fornecedor)
-            // Ajuste 'fornecedores' se o nome da sua tabela for 'fornecedors'
-            $pagamentos = DB::table('conta_pagars as cp')
+            // --- LÓGICA DE FILTRO POR TIPO DE PAGAMENTO ---
+            // Se for Caixa/Dinheiro/Fundo Fixo: Pega apenas 'Dinheiro'
+            if (str_contains($nomeLower, 'caixa') || str_contains($bancoLower, 'fundo fixo')) {
+                $tiposPermitidos = ['Dinheiro'];
+                $comparacao = 'in';
+            } else {
+                // Se for Itaú ou outros: Pega tudo EXCETO Dinheiro, Crédito e Adiantamento
+                $tiposPermitidos = ['Dinheiro', 'Crédito', 'Cartão de Crédito', 'Adiantamento'];
+                $comparacao = 'not_in';
+            }
+
+            // 3. BUSCA PAGAMENTOS (Contas a Pagar)
+            $pagamentos = \DB::table('conta_pagars as cp')
                 ->leftJoin('fornecedores as f', 'f.id', '=', 'cp.fornecedor_id')
                 ->where('cp.empresa_id', $this->empresa_id)
                 ->where('cp.status', 1)
-                ->where('cp.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+                ->whereBetween('cp.data_pagamento', [$data_inicial, $data_final])
+                ->where(function($q) use ($tiposPermitidos, $comparacao) {
+                    if ($comparacao == 'in') $q->whereIn('cp.tipo_pagamento', $tiposPermitidos);
+                    else $q->whereNotIn('cp.tipo_pagamento', $tiposPermitidos);
+                })
                 ->where(function($q) use ($conta) {
-                    if ($conta->filial_id === null) return $q->whereNull('cp.filial_id');
-                    return $q->where('cp.filial_id', $conta->filial_id);
+                    // Respeita Matriz (null) e Filial
+                    return ($conta->filial_id === null) ? $q->whereNull('cp.filial_id') : $q->where('cp.filial_id', $conta->filial_id);
                 })
                 ->select('cp.*', 'f.razao_social as nome_entidade')
                 ->get();
 
-            // 4. BUSCA ENTRADAS (Contas a Receber + Cliente)
-            $recebimentos = DB::table('conta_recebers as cr')
+            // 4. BUSCA RECEBIMENTOS (Contas a Receber)
+            $recebimentos = \DB::table('conta_recebers as cr')
                 ->leftJoin('clientes as c', 'c.id', '=', 'cr.cliente_id')
                 ->where('cr.empresa_id', $this->empresa_id)
                 ->where('cr.status', 1)
-                ->where('cr.tipo_pagamento', 'LIKE', "%{$termoBusca}%")
+                ->whereBetween('cr.data_recebimento', [$data_inicial, $data_final])
+                ->where(function($q) use ($tiposPermitidos, $comparacao) {
+                    if ($comparacao == 'in') $q->whereIn('cr.tipo_pagamento', $tiposPermitidos);
+                    else $q->whereNotIn('cr.tipo_pagamento', $tiposPermitidos);
+                })
                 ->where(function($q) use ($conta) {
-                    if ($conta->filial_id === null) return $q->whereNull('cr.filial_id');
-                    return $q->where('cr.filial_id', $conta->filial_id);
+                    return ($conta->filial_id === null) ? $q->whereNull('cr.filial_id') : $q->where('cr.filial_id', $conta->filial_id);
                 })
                 ->select('cr.*', 'c.razao_social as nome_entidade')
                 ->get();
 
-            // 5. UNIÃO E CÁLCULO
-            $todos = collect();
-            foreach($pagamentos as $p) {
-                $todos->push([
-                    'id' => $p->id, 'tipo' => 'saida', 'valor' => $p->valor_integral,
-                    'data' => $p->data_pagamento, 'cat' => $p->categoria_id,
-                    'desc' => "Pgto: " . ($p->nome_entidade ?? 'Fornecedor N/D') . " (" . $p->referencia . ")",
-                    'origem' => 'conta pagar', 'user' => $p->usuario_id
-                ]);
-            }
-            foreach($recebimentos as $r) {
-                $todos->push([
-                    'id' => $r->id, 'tipo' => 'entrada', 'valor' => $r->valor_integral,
-                    'data' => $r->data_recebimento, 'cat' => $r->categoria_id,
-                    'desc' => "Rec: " . ($r->nome_entidade ?? 'Cliente N/D') . " (" . $r->referencia . ")",
-                    'origem' => 'conta a receber', 'user' => null
-                ]);
-            }
-
-            $saldo = $conta->saldo_inicial;
-            foreach ($todos->sortBy('data') as $l) {
-                $saldo = ($l['tipo'] == 'entrada') ? ($saldo + $l['valor']) : ($saldo - $l['valor']);
-
-                DB::table('item_conta_empresas')->insert([
-                    'conta_id' => $conta->id,
-                    'descricao' => $l['desc'],
-                    'tipo_pagamento' => '01',
-                    'valor' => $l['valor'],
-                    'data_pagamento' => $l['data'],
-                    'saldo_atual' => $saldo,
-                    'tipo' => $l['tipo'],
-                    'origem' => $l['origem'],
-                    'conta_pagar_id' => ($l['origem'] == 'conta pagar' ? $l['id'] : null),
-                    'conta_receber_id' => ($l['origem'] == 'conta a receber' ? $l['id'] : null),
-                    'categoria_id' => $l['cat'], // Gravando categoria
-                    'user_id' => $l['user'] ?? ($this->usuario_id ?? get_id_user()),
-                    'empresa_id' => $this->empresa_id,
-                    'created_at' => now(), 'updated_at' => now()
-                ]);
+            // 5. INSERÇÃO DOS LANÇAMENTOS FALTANTES
+            foreach ($pagamentos as $p) {
+                // Verifica se já existe para não duplicar
+                $existe = \DB::table('item_conta_empresas')->where('conta_pagar_id', $p->id)->exists();
+                if (!$existe) {
+                    \App\Models\ItemContaEmpresa::create([
+                        'conta_id' => $conta->id,
+                        'descricao' => "Sinc Pgto: " . ($p->nome_entidade ?? 'Fornecedor'),
+                        'tipo_pagamento' => $p->tipo_pagamento,
+                        'valor' => $p->valor_integral,
+                        'data_pagamento' => $p->data_pagamento,
+                        'tipo' => 'saida',
+                        'origem' => 'conta pagar',
+                        'conta_pagar_id' => $p->id,
+                        'categoria_id' => $p->categoria_id,
+                        'empresa_id' => $this->empresa_id,
+                        'user_id' => session('user_logged')['id']
+                    ]);
+                }
             }
 
-            $conta->saldo = $saldo;
+            foreach ($recebimentos as $r) {
+                $existe = \DB::table('item_conta_empresas')->where('conta_receber_id', $r->id)->exists();
+                if (!$existe) {
+                    \App\Models\ItemContaEmpresa::create([
+                        'conta_id' => $conta->id,
+                        'descricao' => "Sinc Rec: " . ($r->nome_entidade ?? 'Cliente'),
+                        'tipo_pagamento' => $r->tipo_pagamento,
+                        'valor' => $r->valor_integral,
+                        'data_pagamento' => $r->data_recebimento,
+                        'tipo' => 'entrada',
+                        'origem' => 'conta a receber',
+                        'conta_receber_id' => $r->id,
+                        'categoria_id' => $r->categoria_id,
+                        'empresa_id' => $this->empresa_id,
+                        'user_id' => session('user_logged')['id']
+                    ]);
+                }
+            }
+
+            // 6. ATUALIZAÇÃO DO SALDO FINAL DA CONTA
+            $itens = \App\Models\ItemContaEmpresa::where('conta_id', $conta->id)->get();
+            $novoSaldo = $conta->saldo_inicial;
+            foreach($itens as $i) {
+                $novoSaldo = ($i->tipo == 'entrada') ? ($novoSaldo + $i->valor) : ($novoSaldo - $i->valor);
+                $i->saldo_atual = $novoSaldo;
+                $i->save();
+            }
+            $conta->saldo = $novoSaldo;
             $conta->save();
         });
 
-        session()->flash('mensagem_sucesso', 'Histórico sincronizado!');
+        session()->flash('mensagem_sucesso', 'Sincronização realizada com sucesso!');
         return redirect()->back();
-    }
+		}
 }

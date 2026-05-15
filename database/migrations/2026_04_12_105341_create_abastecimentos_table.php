@@ -13,8 +13,8 @@ class CreateAbastecimentosTable extends Migration
                 $table->increments('id');
 
                 $table->unsignedInteger('empresa_id');
-                $table->unsignedInteger('usuario_id');
-                $table->unsignedInteger('filial_id');
+                $table->unsignedInteger('usuario_id')->nullable();
+                $table->unsignedInteger('filial_id')->nullable();
 
                 $table->unsignedInteger('veiculo_id');
                 $table->unsignedInteger('fornecedor_id')->nullable();

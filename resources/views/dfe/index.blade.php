@@ -2,131 +2,131 @@
 @section('content')
 
 <div class="card card-custom gutter-b">
+    <div class="card-body">
+        <form method="get" action="/dfe/filtro">
+            <div class="row align-items-end">
+                {{-- DATA INICIAL --}}
+                <div class="form-group col-lg-2 col-md-6">
+                    <label class="col-form-label">Data Inicial</label>
+                    <div class="input-group date">
+                        <input type="text" name="data_inicial" class="form-control datepicker" readonly value="{{ $data_inicial }}" id="kt_datepicker_3" />
+                        <div class="input-group-append">
+                            <span class="input-group-text">
+                                <i class="la la-calendar"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
+                {{-- DATA FINAL --}}
+                <div class="form-group col-lg-2 col-md-6">
+                    <label class="col-form-label">Data Final</label>
+                    <div class="input-group date">
+                        <input type="text" name="data_final" class="form-control datepicker" readonly value="{{ $data_final }}" id="kt_datepicker_3" />
+                        <div class="input-group-append">
+                            <span class="input-group-text">
+                                <i class="la la-calendar"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-	<div class="card-body">
+                {{-- STATUS IMPORTAÇÃO --}}
+                <div class="form-group col-lg-2 col-md-4">
+                    <label class="col-form-label">Importação</label>
+                    <select name="status_importacao" class="form-control custom-select">
+                        <option value="todos" {{ $status_importacao == 'todos' ? 'selected' : '' }}>TODOS</option>
+                        <option value="importadas" {{ $status_importacao == 'importadas' ? 'selected' : '' }}>IMPORTADAS</option>
+                        <option value="pendentes" {{ $status_importacao == 'pendentes' ? 'selected' : '' }}>PENDENTES</option>
+                    </select>
+                </div>
 
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+                {{-- TIPO --}}
+                <div class="form-group col-lg-2 col-md-4">
+                    <label class="col-form-label">Tipo</label>
+                    <select name="tipo" class="form-control custom-select">
+                        <option value="--">TODOS</option>
+                        <option value="1" {{ $tipo == '1' ? 'selected' : '' }}>Ciência</option>
+                        <option value="2" {{ $tipo == '2' ? 'selected' : '' }}>Confirmada</option>
+                        <option value="3" {{ $tipo == '3' ? 'selected' : '' }}>Desconhecida</option>
+                        <option value="4" {{ $tipo == '4' ? 'selected' : '' }}>Não Realizada</option>
+                    </select>
+                </div>
 
+                {{-- UNIDADE --}}
+                <div class="form-group col-lg-2 col-md-4">
+                    <label class="col-form-label">Unidade</label>
+                    <select name="filial_id" class="form-control custom-select">
+                        <option value="">Todas</option>
+                        <option value="matriz" {{ $filial_id == 'matriz' ? 'selected' : '' }}>Matriz</option>
+                        @foreach($filiais as $f)
+                            <option value="{{$f->id}}" {{ $filial_id == $f->id ? 'selected' : '' }}>{{$f->descricao}}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/dfe/filtro">
-				<div class="row align-items-center">
+                {{-- FORNECEDOR --}}
+                <div class="form-group col-lg-3 col-md-6">
+                    <label class="col-form-label">Fornecedor</label>
+                    <input type="text" name="fornecedor" class="form-control" value="{{ $fornecedor ?? '' }}" placeholder="Nome...">
+                </div>
 
-					<div class="form-group col-lg-2 col-md-4 col-sm-6">
-						<label class="col-form-label">Data Inicial</label>
-						<div class="">
-							<div class="input-group date">
-								<input type="text" name="data_inicial" class="form-control" readonly value="{{{isset($data_inicial) ? $data_inicial : ''}}}" id="kt_datepicker_3" />
-								<div class="input-group-append">
-									<span class="input-group-text">
-										<i class="la la-calendar"></i>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
+                {{-- N° NOTA --}}
+                <div class="form-group col-lg-2 col-md-6">
+                    <label class="col-form-label">Nº Nota</label>
+                    <input type="text" name="nNf" class="form-control" value="{{ $nNf ?? '' }}" placeholder="Número...">
+                </div>
 
-					<div class="form-group col-lg-2 col-md-4 col-sm-6">
-						<label class="col-form-label">Data Final</label>
-						<div class="">
-							<div class="input-group date">
-								<input type="text" name="data_final" class="form-control" readonly value="{{{isset($data_final) ? $data_final : ''}}}" id="kt_datepicker_3" />
-								<div class="input-group-append">
-									<span class="input-group-text">
-										<i class="la la-calendar"></i>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
+                {{-- BOTÃO FILTRAR --}}
+                <div class="col-lg-2 mb-2">
+                    <button type="submit" class="btn btn-primary font-weight-bold btn-block">
+                        <i class="la la-search"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+          
 
-					<div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-						<label class="col-form-label">Tipo</label>
+<h4 class="mt-2 mb-2 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Manifesto</h4>
 
-						<select class="custom-select form-control" id="tipo" name="tipo">
-							<option value="--">TODOS</option>
-							<option value="2">CONFIRMADA</option>
-							<option value="1">CIÊNCIA</option>
-							<option value="3">DESCONHECIDA</option>
-							<option value="4">NÃO REALIZADA</option>
-							<option value="0">SEM AÇÃO</option>
-						</select>
+<div class="row mb-4"> 
+    <div class="col-md-12">
+        <a href="/dfe/novaConsulta" class="btn btn-success btn-sm @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+            <i class="la la-refresh"></i>
+            Nova Consulta
+        </a>
 
-					</div>
+        @if($busca_automatica)
+        <a href="/dfe/logs" class="btn btn-warning btn-sm float-right @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+            <i class="la la-file"></i>
+            Logs Automáticos
+        </a>
+        @endif
+    </div>
+</div>
 
-					@if(empresaComFilial())
-					{!! __view_locais_select_filtro("Local", isset($filial_id) ? $filial_id : '') !!}
-					@endif
+<h5 class="mb-2 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Total de registros: <strong style="color: green">{{sizeof($docs)}}</strong></h5>
 
-					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
-					</div>
-				</div>
-			</form>
-			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Manifesto</h4>
+<input type="hidden" value="{{json_encode($docs)}}" id="docs">
 
-			<a href="/dfe/novaConsulta" class="btn btn-success @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
-				<i class="la la-refresh"></i>
-				Nova Consulta de Documentos
-			</a>
-
-			@if($busca_automatica)
-			<a href="/dfe/logs" class="btn btn-warning pull-right @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
-				<i class="la la-file"></i>
-				Logs de busca automatica
-			</a>
-			@endif
-
-			<h5 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Total de registros: <strong style="color: green">{{sizeof($docs)}}</strong></h5>
-
-			<input type="hidden" value="{{json_encode($docs)}}" id="docs">
-
-			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
-				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-
-					<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-						<!--begin: Wizard Nav-->
-						<div class="wizard-nav">
-							<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-								<!--begin::Wizard Step 1 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-									<div class="wizard-label">
-										<h3 class="wizard-title">
-											<span>
-												<i style="font-size: 40px" class="la la-table"></i>
-												Tabela
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
+<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+    <div class="col-sm-12">
+        <div class="wizard wizard-3" id="kt_wizard_v3">
+            <div class="wizard-nav">
+                {{-- Ajustado py-lg-1 para diminuir o espaço das abas Tabela/Grade --}}
+                <div class="wizard-steps px-8 py-2 px-lg-15 py-lg-1"> 
+                    <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
 									</div>
 								</div>
-								<!--end::Wizard Step 1 Nav-->
-								<!--begin::Wizard Step 2 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-									<div class="wizard-label">
-										<h3 class="wizard-title">
-											<span>
-												<i style="font-size: 40px" class="la la-tablet"></i>
-												Grade
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
-									</div>
-								</div>
 
 							</div>
 						</div>
-						<!--end: Wizard Nav-->
-						<!--begin: Wizard Body-->
 						<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-							<!--begin: Wizard Form-->
 							<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
-								<!--begin: Wizard Step 1-->
 								<div class="pb-5" data-wizard-type="step-content">
-
-									<!-- Inicio da tabela -->
 
 									<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 										<div class="row">
@@ -134,96 +134,85 @@
 
 												<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
-													<table class="datatable-table" style="max-width: 100%; overflow: scroll">
-														<thead class="datatable-head">
-															<tr class="datatable-row" style="left: 0px;">
-																<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Nome</span></th>
-																<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Documento</span></th>
+													<table class="datatable-table" style="max-width: 100%;">
+                                                    <thead class="datatable-head">
+                                                        <tr class="datatable-row" style="left: 0px;">
+                                                            <th class="datatable-cell"><span style="width: 150px;">FORNECEDOR</span></th>
+                                                            <th class="datatable-cell"><span style="width: 80px;">Nº NOTA</span></th>
+                                                            <th class="datatable-cell"><span style="width: 90px;">VALOR</span></th>
+                                                            <th class="datatable-cell"><span style="width: 80px;">EMISSÃO</span></th>
+                                                            <th class="datatable-cell"><span style="width: 100px;">SITUAÇÃO</span></th>
+                                                            <th class="datatable-cell"><span style="width: 80px;">ERP / FIN.</span></th>
+                                                            <th class="datatable-cell"><span style="width: 120px;">AÇÕES</span></th> {{-- Aumentei um pouco a largura para caber os 4 botões --}}
+                                                            <th class="datatable-cell"><span style="width: 180px;">CHAVE DE ACESSO</span></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="datatable-body">
+                                                        @foreach($docs as $d)
+                                                        <tr class="datatable-row" style="left: 0px;">
+                                                            <td class="datatable-cell"><span style="width: 150px; white-space: normal;">{{$d->nome}}</span></td>
+                                                            <td class="datatable-cell"><span style="width: 80px;">{{ $d->nNf > 0 ? $d->nNf : '---' }}</span></td>
+                                                            <td class="datatable-cell"><span style="width: 90px;">R$ {{number_format($d->valor, 2, ',', '.')}}</span></td>
+                                                            <td class="datatable-cell"><span style="width: 80px;">{{ \Carbon\Carbon::parse($d->data_emissao)->format('d/m/y')}}</span></td>
 
-																@if(empresaComFilial())
-																<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Local</span></th>
-																@endif
+                                                            <td class="datatable-cell">
+                                                                <span style="width: 100px;">
+                                                                    <span class="label label-inline @if($d->tipo == 2) label-light-success @elseif($d->tipo == 4) label-light-danger @else label-light-primary @endif font-weight-bold">
+                                                                        {{$d->estado()}}
+                                                                    </span>
+                                                                </span>
+                                                            </td>
 
-																<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
-																<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Data Emissão</span></th>
-																<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Nº NFe</span></th>
-																<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Protocolo</span></th>
+                                                            <td class="datatable-cell">
+                                                                <span style="width: 80px; display: flex; align-items: center; gap: 5px;">
+                                                                    @if($d->compra_id > 0)
+                                                                        <span class="badge badge-success" title="Compra">C</span>
+                                                                    @else
+                                                                        <i class="la la-clock-o text-warning" style="font-size: 18px;" title="Pendente"></i>
+                                                                    @endif
 
-																<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 200px;">Chave</span></th>
-																<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Estado</span></th>
+                                                                    @if($d->fatura_salva)
+                                                                        <span class="badge badge-info" title="Financeiro Salvo">F</span>
+                                                                    @endif
+                                                                </span>
+                                                            </td>
 
-																<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 140px;">Ações</span></th>
-															</tr>
-														</thead>
+                                                            <td class="datatable-cell">
+                                                                <span style="width: 120px; display: flex; gap: 4px;">
+                                                                    @if(!empty($d->chave))
+                                                                        {{-- Botão Download XML --}}
+                                                                        <a href="/dfe/download/{{$d->chave}}" class="btn btn-icon btn-xs btn-success" title="XML"><i class="la la-download"></i></a>
 
-														<tbody class="datatable-body">
+                                                                        {{-- Botão Imprimir DANFE --}}
+                                                                        <a href="/dfe/imprimirDanfe/{{$d->chave}}" target="_blank" class="btn btn-icon btn-xs btn-primary" title="Imprimir"><i class="la la-print"></i></a>
 
-															@foreach($docs as $d)
+                                                                        {{-- NOVO: Botão Importar para o ERP (Carrinho) --}}
+                                                                        <a href="/dfe/importar/{{$d->chave}}" class="btn btn-icon btn-xs btn-info" title="Importar XML"><i class="la la-shopping-cart"></i></a>
+                                                                    @endif
 
-															<tr class="datatable-row" style="left: 0px;">
-																<td class="datatable-cell"><span class="codigo" style="width: 150px;">{{$d->nome}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 150px;">{{$d->documento}}</span>
-																</td>
+                                                                    @if($d->tipo != 2)
+                                                                        {{-- Botão Manifestar (Martelo) --}}
+                                                                        <button onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1" class="btn btn-icon btn-xs btn-warning" title="Manifestar"><i class="la la-legal"></i></button>
+                                                                    @endif
+                                                                </span>
+                                                            </td>
 
-																@if(empresaComFilial())
-																<td class="datatable-cell">
-																	<span class="codigo" style="width: 150px;">
-																		{{ $d->filial_id ? $d->filial->descricao : 'Matriz' }}
-																	</span>
-																</td>
-																@endif
-
-																<td class="datatable-cell"><span class="codigo" style="width: 80px;">{{number_format($d->valor, 2, ',', '.')}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 80px;">{{ \Carbon\Carbon::parse($d->data_emissao)->format('d/m/Y H:i:s')}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 150px;">{{$d->nNf > 0 ? $d->nNf : ''}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 150px;">{{$d->num_prot}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 200px;">{{$d->chave}}</span>
-																</td>
-																<td class="datatable-cell"><span class="codigo" style="width: 80px;">{{$d->estado()}}</span>
-																</td>
-																<td class="datatable-cell">
-																	<span class="codigo" style="width: 140px;">
-																		@if($d->tipo == 1 || $d->tipo == 2)
-																		<a style="width: 100%;" href="/dfe/download/{{$d->chave}}" class="btn btn-success">Completa</a>
-																		<a style="width: 100%;" href="/dfe/imprimirDanfe/{{$d->chave}}" class="btn btn-primary">Imprimir</a>
-
-																		<!-- <a style="width: 100%;" class="btn btn-info" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a> -->
-																		@elseif($d->tipo == 3)
-																		<a style="width: 100%;" class="btn btn-danger">Desconhecida</a>
-																		@elseif($d->tipo == 4)
-																		<a style="width: 100%;" class="btn btn-warning">Não realizada</a>
-
-																		@else
-																		<!-- <a style="width: 100%;" class="btn btn-info" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a> -->
-																		@endif
-																		@if($d->tipo != 2)
-																		<a style="width: 100%;" class="btn btn-info" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a>
-																		@endif
-																	</span>
-																</td>
-															</tr>
-
-															@endforeach
-
-														</tbody>
-													</table>
+                                                            <td class="datatable-cell">
+                                                                <span class="text-muted" style="width: 180px; font-size: 11px; display: block; word-wrap: break-word; white-space: normal;">
+                                                                    {{$d->chave}}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
 												</div>
 											</div>
 										</div>
 									</div>
-									<!-- Fim da tabela -->
-								</div>
+									</div>
 
-								<!--end: Wizard Step 1-->
-								<!--begin: Wizard Step 2-->
 								<div class="pb-5" data-wizard-type="step-content">
-
-									<!-- Inicio do card -->
 
 									<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 										<div class="row">
@@ -234,78 +223,70 @@
 												<div class="card card-custom gutter-b example example-compact">
 													<div class="card-header">
 														<div class="card-title">
-															<h3 style="width: 230px; font-size: 15px; height: 10px;" class="card-title">{{$d->nome}}
-															</h3>
-
+															<h3 style="width: 230px; font-size: 15px; height: 10px;" class="card-title">{{$d->nome}}</h3>
 														</div>
 													</div>
 
 													<div class="card-body">
-
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Documento:</span>
-															<a class="kt-widget__data text-success">
-																{{ $d->documento }}
-															</a>
+															<a class="kt-widget__data text-success">{{ $d->documento }}</a>
 														</div>
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Valor:</span>
-															<a class="kt-widget__data text-success">
-																{{number_format($d->valor, 2)}}
-															</a>
+															<a class="kt-widget__data text-success">{{number_format($d->valor, 2)}}</a>
 														</div>
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Data:</span>
-															<a class="kt-widget__data text-success">
-																{{ \Carbon\Carbon::parse($d->data_emissao)->format('d/m/Y H:i:s')}}
-															</a>
+															<a class="kt-widget__data text-success">{{ \Carbon\Carbon::parse($d->data_emissao)->format('d/m/Y H:i:s')}}</a>
 														</div>
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Nº NFe:</span>
-															<a class="kt-widget__data text-success">
-																{{ $d->nNf }}
-															</a>
+															<a class="kt-widget__data text-success">{{ $d->nNf }}</a>
 														</div>
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Chave:</span>
-															<a class="kt-widget__data text-success">
-																{{ $d->chave }}
-															</a>
+															<a class="kt-widget__data text-success" style="word-break: break-all;">{{ $d->chave }}</a>
 														</div>
 														<div class="kt-widget__info">
 															<span class="kt-widget__label">Estado:</span>
-															<a class="kt-widget__data text-success">
-																{{ $d->estado() }}
-															</a>
+															<a class="kt-widget__data text-success">{{ $d->estado() }}</a>
 														</div>
+                                                        
+                                                        <div class="kt-widget__info mt-2 mb-3">
+                                                            <span class="kt-widget__label">Status ERP:</span>
+                                                            @if($d->compra_id > 0)
+                                                                <span class="label label-success label-inline font-weight-bolder">Compra ✔</span>
+                                                            @else
+                                                                <span class="label label-warning label-inline font-weight-bolder text-dark">Compra ⏳</span>
+                                                            @endif
+
+                                                            @if($d->fatura_salva)
+                                                                <span class="label label-info label-inline font-weight-bolder">Financeiro ✔</span>
+                                                            @else
+                                                                <span class="label label-light-danger label-inline font-weight-bolder text-dark">Financeiro ⏳</span>
+                                                            @endif
+                                                        </div>
 
 														@if($d->tipo == 1 || $d->tipo == 2)
 														<a style="width: 100%;" href="/dfe/download/{{$d->chave}}" class="btn btn-success">Completa</a>
-														<a style="width: 100%;" href="/dfe/imprimirDanfe/{{$d->chave}}" class="btn btn-primary">Imprimir</a>
+														<a style="width: 100%;" href="/dfe/imprimirDanfe/{{$d->chave}}" class="btn btn-primary mt-1">Imprimir</a>
 														@elseif($d->tipo == 3)
 														<a style="width: 100%;" class="btn btn-danger">Desconhecida</a>
 														@elseif($d->tipo == 4)
 														<a style="width: 100%;" class="btn btn-warning">Não realizada</a>
-
 														@else
-														<a style="width: 100%;" class="btn btn-info" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a>
+														<a style="width: 100%;" class="btn btn-info mt-1" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a>
 														@endif
 													</div>
 												</div>
-
-												
-
 											</div>
 											@endforeach
 
 										</div>
 									</div>
 								</div>
-								<!--end: Wizard Step 2-->
-
-
-
-							</form>
+								</form>
 
 						</div>
 					</div>
@@ -314,53 +295,8 @@
 			</div>
 		</div>
 
-
 	</div>
 </div>
-
-<!-- <div id="modal1" class="modal">
-	<form method="get" action="/dfe/manifestar">
-
-
-		<div class="modal-content">
-			<h4>MANIFESTAÇÃO DE DESTINATÁRIO</h4>
-			<div class="row">
-
-				<div class="input-field col s10">
-					<select name="evento" id="tipo_evento">
-						<option value="1">Ciencia de operção</option>
-						<option value="2">Confirmação</option>
-						<option value="3">Desconhecimento</option>
-						<option value="4">Operação não realizada</option>
-
-					</select>
-					<label>Evento</label>
-				</div>
-			</div>
-
-			<input type="hidden" id="nome" name="nome" />
-			<input type="hidden" id="cnpj" name="cnpj" />
-			<input type="hidden" id="valor" name="valor" />
-			<input type="hidden" id="data_emissao" name="data_emissao" />
-			<input type="hidden" id="num_prot" name="num_prot" />
-			<input type="hidden" id="chave" name="chave" />
-
-			<div class="row">
-				<div class="input-field col s12" style="display: none" id="div-just">
-					<input type="text" name="justificativa" id="justificativa" data-length="100">
-
-					<label>Justificativa</label>
-				</div>
-			</div>
-
-		</div>
-		<div class="modal-footer">
-			<a href="#!" class="modal-action modal-close red white-text waves-effect waves-green btn-flat">Fechar</a>
-			<button href="#!" class="modal-action waves green accent-3 btn">OK</button>
-		</div>
-	</form>
-</div>
--->
 
 <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<form method="get" action="/dfe/manifestar">
@@ -368,9 +304,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="exampleModalLabel">Manifestação de Destinatário</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-						x
-					</button>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
 				</div>
 				<div class="modal-body">
 					<input type="hidden" id="nome" name="nome" />
@@ -394,7 +328,6 @@
 						<label class="col-form-label">Justificativa</label>
 						<div class="">
 							<input id="justificativa" type="text" class="form-control" name="justificativa" value="">
-
 						</div>
 					</div>
 
@@ -408,6 +341,4 @@
 	</form>
 </div>
 
-
-
-@endsection	
+@endsection

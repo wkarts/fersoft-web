@@ -11,8 +11,11 @@
                 <a href="/funcionarios/comissao" class="btn btn-lg btn-info">
                     <i class="fa fa-list"></i>Comissão
                 </a>
+                <!-- Botão de Importação Excel -->
+                <a href="#" data-toggle="modal" data-target="#modal_import_excel" class="btn btn-lg btn-success" style="background-color: #1d6f42; border-color: #1d6f42;">
+                    <i class="fa fa-file-excel"></i>Importar Excel
+                </a>
             </div>
-        </div>
         <br>
 
         <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -221,5 +224,55 @@
         </div>
     </div>
 </div>
+<!-- Modal de Importação Excel -->
+<div class="modal fade" id="modal_import_excel" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog" role="document">
+        <form action="/funcionarios/importExcel" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar Funcionários (Excel)</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <i aria-hidden="true" class="ki ki-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                         <div class="alert alert-light-info mb-4">
+                            <i class="fa fa-info-circle"></i> 
+                            <strong>Dica:</strong> Para evitar erros, baixe nosso modelo padrão: 
+                            <a href="/funcionarios/downloadLayout" class="font-weight-bold text-primary">Baixar Layout Exemplo</a>
+                        </div>
+                        <label>Unidade de Destino</label>
+                        <select class="form-control custom-select" name="filial_id">
+                            <option value="NULL">MATRIZ (Null)</option>
+                            @foreach($filiais as $f)
+                                <option value="{{$f->id}}">{{ $f->nome ?? 'Filial '.$f->id }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Selecione a Planilha (.xlsx)</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+                        <small class="form-text text-muted">A importação será vinculada à Matriz.</small>
+                    </div>
 
+                    <div class="alert alert-custom alert-light-success mb-5" role="alert">
+                        <div class="alert-icon"><i class="flaticon-info"></i></div>
+                        <div class="alert-text">
+                            Para evitar erros de leitura, utilize a planilha padrão <strong>funcionario.xlsx</strong>.<br><br>
+                            A primeira linha da planilha deve conter os cabeçalhos em minúsculo (ex: <i>nome, cpf, rg, funcao, telefone, celular, rua, numero, bairro</i>).<br>
+                            <em>* Cadastros com CPFs já existentes no sistema serão ignorados para evitar duplicidade.</em>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success font-weight-bold">Importar Planilha</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection

@@ -14,8 +14,8 @@ class CreateDespesasMovimentacoesTable extends Migration
                 $table->increments('id');
 
                 $table->unsignedInteger('empresa_id');
-                $table->unsignedInteger('usuario_id');
-                $table->unsignedInteger('filial_id');
+                $table->unsignedInteger('usuario_id')->nullable();
+                $table->unsignedInteger('filial_id')->nullable();
 
                 // Compatível com movimentacoes_veiculos.id da base original (BIGINT UNSIGNED)
                 $table->unsignedBigInteger('movimentacao_id')->nullable();

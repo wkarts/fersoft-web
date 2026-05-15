@@ -35,12 +35,14 @@
 		cursor: pointer;
 	}
 </style>
+
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
 		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay>
 		</lottie-player>
 	</div>
 </div>
+
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 
 	<div id="content" style="display: block">
@@ -53,7 +55,6 @@
 					<input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
 					<div class="card card-custom gutter-b example example-compact">
 						<div class="card-header">
-
 							<h3 class="card-title">Importando XML</h3>
 						</div>
 					</div>
@@ -99,6 +100,30 @@
 								</div>
 							</div>
 
+                            @if(isset($saldo_credito) && $saldo_credito > 0)
+                            <div class="col-xl-12 mt-4">
+                                <div class="card card-custom gutter-b bg-light-warning">
+                                    <div class="card-body">
+                                        <h4 class="text-warning">Crédito de Adiantamento Disponível: <strong>R$ {{ number_format($saldo_credito, 2, ',', '.') }}</strong></h4>
+                                        <div class="form-group row">
+                                            <label class="col-3 col-form-label">Deseja aproveitar este crédito?</label>
+                                            <div class="col-3">
+                                                <span class="switch switch-outline switch-icon switch-primary">
+                                                    <label>
+                                                        <input type="checkbox" id="usar_credito">
+                                                        <span></span>
+                                                    </label>
+                                                </span>
+                                            </div>
+                                            <div class="col-4 div-valor-credito" style="display: none">
+                                                <input type="text" class="form-control" id="valor_credito_usar" value="{{ $saldo_credito }}" placeholder="Valor a descontar">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
+
 							<input type="hidden" id="pathXml" value="{{$pathXml}}">
 							<input type="hidden" id="idFornecedor" value="{{$idFornecedor}}">
 							<input type="hidden" id="nNf" value="{{$dadosNf['nNf']}}">
@@ -106,6 +131,13 @@
 							<input type="hidden" id="vDesc" value="{{$dadosNf['vDesc']}}">
 							<input type="hidden" id="prodSemRegistro" value="{{$dadosNf['contSemRegistro']}}">
 							<input type="hidden" id="chave" value="{{$dadosNf['chave']}}">
+
+							{{-- CAMPOS DE TOTAIS PARA O SPED --}}
+							<input type="hidden" id="vbc_icms_total" value="{{$dadosNf['vbc_icms']}}">
+							<input type="hidden" id="v_icms_total" value="{{$dadosNf['v_icms']}}">
+							<input type="hidden" id="v_ipi_total" value="{{$dadosNf['v_ipi']}}">
+							<input type="hidden" id="v_pis_total" value="{{$dadosNf['v_pis']}}">
+							<input type="hidden" id="v_cofins_total" value="{{$dadosNf['v_cofins']}}">
 
 						</div>
 						<div class="col-xl-12">
@@ -127,12 +159,17 @@
 													<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Produto</span></th>
 													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">NCM</span></th>
 													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CEST</span></th>
-													<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP</span></th>
+													<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP XML</span></th>
+													
+													<th class="datatable-cell"><span style="width: 80px;">CFOP Ent.</span></th>
+                                                    <th class="datatable-cell"><span style="width: 80px;">CST ICMS</span></th>
+                                                    <th class="datatable-cell"><span style="width: 80px;">CST PIS/COF</span></th>
+
+                                                   
 													<th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 90px;">Cod Barra</span></th>
 													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Un. Compra</span></th>
 													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
 													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Qtd</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP Ent.</span></th>
 													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
 													<th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
 												</tr>
@@ -147,28 +184,58 @@
 													<td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
 													<td class="datatable-cell"><span class="" style="width: 80px;">{{$i['CEST']}}</span></td>
 													<td class="datatable-cell"><span class="cfop" style="width: 80px;">{{$i['CFOP']}}</span></td>
+													
+													<td class="datatable-cell">
+														<span style="width: 80px;">
+															<input class="cfop_entrada_input form-control" style="width: 70px;" type="text" value="{{$i['CFOP_entrada']}}">
+														</span>
+													</td>
+													<td class="datatable-cell">
+														<span style="width: 80px;">
+															<input class="cst_icms_input form-control" style="width: 60px;" type="text" value="{{$i['cst_icms']}}">
+															
+															{{-- CAMPOS DE IMPOSTOS OCULTOS --}}
+															<input type="hidden" class="vbc_icms" value="{{$i['vbc_icms']}}">
+															<input type="hidden" class="p_icms" value="{{$i['p_icms'] ?? 0}}">
+															<input type="hidden" class="v_icms" value="{{$i['v_icms']}}">
+                                                		</span>
+													</td>
+
+                                                  <td class="datatable-cell">
+                                                        <span style="width: 80px;">
+                                                            <!-- Inputs visíveis e editáveis pelo usuário -->
+                                                            <input class="cst_pis_input form-control" style="width: 60px;" type="text" value="{{$i['cst_pis'] ?? ''}}" title="CST PIS" placeholder="PIS">
+                                                            <input class="cst_cofins_input form-control mt-1" style="width: 60px;" type="text" value="{{$i['cst_cofins'] ?? ''}}" title="CST COFINS" placeholder="COF">
+
+                                                            {{-- CAMPOS DE VALORES PIS/COFINS OCULTOS --}}
+                                                            <input type="hidden" class="vbc_pis" value="{{$i['vbc_pis'] ?? 0}}">
+                                                            <input type="hidden" class="p_pis" value="{{$i['p_pis'] ?? 0}}">
+                                                            <input type="hidden" class="v_pis" value="{{$i['v_pis'] ?? 0}}">
+                                                            <input type="hidden" class="vbc_cofins" value="{{$i['vbc_cofins'] ?? 0}}">
+                                                            <input type="hidden" class="p_cofins" value="{{$i['p_cofins'] ?? 0}}">
+                                                            <input type="hidden" class="v_cofins" value="{{$i['v_cofins'] ?? 0}}">
+
+                                                            {{-- REFORMA TRIBUTÁRIA OCULTOS (Garantir que estão aqui) --}}
+                                                            <input type="hidden" class="cst_ibs_cbs" value="{{$i['cst_ibs_cbs'] ?? ''}}">
+                                                            <input type="hidden" class="bc_ibs_cbs" value="{{$i['bc_ibs_cbs'] ?? 0}}">
+                                                            <input type="hidden" class="aliq_ibs" value="{{$i['aliq_ibs'] ?? 0}}">
+                                                            <input type="hidden" class="aliq_cbs" value="{{$i['aliq_cbs'] ?? 0}}">
+                                                            <input type="hidden" class="valor_ibs" value="{{$i['valor_ibs'] ?? 0}}">
+                                                            <input type="hidden" class="valor_cbs" value="{{$i['valor_cbs'] ?? 0}}">
+                                                          	<input type="hidden" class="class_trib_ibs_cbs" value="{{$i['class_trib'] ?? ''}}">
+                                                        </span>
+													</td>
+                                                  
+                                                  
 													<td class="datatable-cell"><span class="codBarras" style="width: 90px;">{{$i['codBarras']}}</span></td>
 													<td class="datatable-cell"><span class="unidade" style="width: 80px;">{{$i['uCom']}}</span></td>
-													<td class="datatable-cell"><span class="valor" style="width: 80px;">{{number_format((float)$i['vUnCom'], $casasDecimais, ',', '')}}</span></td>
+													<td class="datatable-cell"><span class="valor" style="width: 80px;">{{number_format((float)$i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
 													<td class="datatable-cell"><span id="qtd_aux_{{$i['codigo']}}" class="quantidade" style="width: 80px;">{{$i['qCom']}}</span></td>
 
 													<th class="cod" id="th_prod_id_{{$i['codigo']}}" style="visibility: hidden">{{$i['produtoId']}}</th>
-
 													<th class="valor_venda" id="th_prod_valor_venda_{{$i['codigo']}}" style="display: none">-1</th>
-
-													<th style="visibility: hidden" class="conv_estoque" id="th_prod_conv_unit_{{$i['codigo']}}">{{$i['conversao_unitaria']}}</th>
-
+													<th style="visibility: hidden" class="conv_estoque" id="th_prod_conv_unit_{{$i['codigo']}}">{{$i['conversao_unitaria'] ?? 1}}</th>
 													<th style="display: none" class="valor_compra" id="th_prod_valor_compra_{{$i['codigo']}}">-1</th>
-
-													<th style="display: none" class="link_prod" id="link_prod_{{$i['codigo']}}">
-
-													</th>
-
-													<td class="datatable-cell">
-														<span style="width: 80px;" id="cfop_entrada_{{$i['codigo']}}">
-															<input id="cfop_entrada_input" class="cfop form-control" style="width: 60px;" type="text" value="{{$i['CFOP_entrada']}}" name="">
-														</span>
-													</td>
 
 													<td class="datatable-cell quantidade"><span style="width: 80px;">{{number_format((float) $i['qCom'] * (float) $i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
 
@@ -213,7 +280,6 @@
 									@endif
 								</div>
 
-
 							</div>
 						</div>
 					</div>
@@ -245,6 +311,16 @@
 										</div>
 									</div>
 
+									<div class="form-group validated col-sm-3 col-lg-3">
+										<label class="col-form-label">Forma de Pagamento</label>
+										<select class="form-control" id="forma_pagamento_fatura">
+											<option value="boleto">Boleto</option>
+											<option value="pix">Pix</option>
+											<option value="transferencia">Transferência</option>
+											<option value="adiantamento">Adiantamento de Fornecedor</option>
+										</select>
+									</div>
+
 									<div class="form-group validated col-sm-4 col-lg-4">
 										<br>
 										<a style="margin-top: 13px;" id="add-pag" class="btn btn-primary font-weight-bold text-uppercase px-9 py-4">
@@ -267,7 +343,7 @@
 					<div class="col-xl-12">
 						<div class="row">
 							<div class="col-xl-3">
-								<h4>Total: <strong id="valorDaNF" class="blue-text">R$ {{ number_format((float)$dadosNf['vProd'], 2, ',', '') }}</strong></h4>
+								<h4>Total: <strong id="valorDaNF" class="blue-text">R$ {{ number_format((float)$dadosNf['vProd'], 2, ',', '.') }}</strong></h4>
 							</div>
 
 							<div class="col-xl-3">
@@ -289,12 +365,11 @@
                              </select>
                           </div>
                           
-                          
 							<div class="col-xl-3">
 								<input type="text" class="form-control" id="lote" placeholder="Lote">
 							</div>
                           
-							<div class="col-xl-3">
+							<div class="col-xl-3 mt-4">
 								<button id="salvarNF" disabled style="width: 100%" type="submit" class="btn btn-success spinner-white spinner-right">
 									<i class="la la-check"></i>
 									<span class="">Salvar</span>
@@ -309,9 +384,8 @@
 		</div>
 	</div>
 </div>
-</div>
-<input type="hidden" id="subs" value="{{json_encode($subs)}}">
 
+<input type="hidden" id="subs" value="{{json_encode($subs)}}">
 
 <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
@@ -325,12 +399,9 @@
 			<div class="modal-body">
 
 				<div class="wizard wizard-3" id="kt_wizard_v4" data-wizard-state="between" data-wizard-clickable="true">
-					<!--begin: Wizard Nav-->
-
 					<div class="wizard-nav">
 
 						<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-							<!--begin::Wizard Step 1 Nav-->
 							<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
 								<div class="wizard-label">
 									<h3 class="wizard-title">
@@ -341,8 +412,6 @@
 									<div class="wizard-bar"></div>
 								</div>
 							</div>
-							<!--end::Wizard Step 1 Nav-->
-							<!--begin::Wizard Step 2 Nav-->
 							<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
 								<div class="wizard-label">
 									<h3 class="wizard-title">
@@ -359,10 +428,7 @@
 					<div class="card-body">
 						<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-							<!--begin: Wizard Form-->
 							<form class="form fv-plugins-bootstrap fv-plugins-framework form-prod" id="kt_form">
-								<!--begin: Wizard Step 1-->
-
 								<div class="pb-5" data-wizard-type="step-content">
 									<div class="row">
 										<div class="form-group validated col-sm-10 col-lg-10">
@@ -866,5 +932,7 @@
 		</div>
 	</div>
 </div>
+
+<script src="/js/compraFiscal.js?v=2.1"></script>
 
 @endsection

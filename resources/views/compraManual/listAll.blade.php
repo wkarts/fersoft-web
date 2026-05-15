@@ -44,30 +44,30 @@
 						</div>
 					</div>
                   
-<div class="form-group col-lg-2 col-md-4 col-sm-6">
-    <label class="col-form-label">Data Emissão Inicial</label>
-    <div class="input-group date">
-        <input type="text" name="data_inicial" class="form-control" readonly value="{{{ isset($dataInicial) ? $dataInicial : '' }}}" id="kt_datepicker_3" />
-        <div class="input-group-append">
-            <span class="input-group-text"><i class="fa fa-calendar"></i></span>
-        </div>
-    </div>
-</div>
+                    <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                        <label class="col-form-label">Data Emissão Inicial</label>
+                        <div class="input-group date">
+                            <input type="text" name="data_inicial" class="form-control" readonly value="{{{ isset($dataInicial) ? $dataInicial : '' }}}" id="kt_datepicker_3" />
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                            </div>
+                        </div>
+                    </div>
 
-<div class="form-group col-lg-2 col-md-4 col-sm-6">
-    <label class="col-form-label">Data Emissão Final</label>
-    <div class="input-group date">
-        <input type="text" name="data_final" class="form-control" readonly value="{{{ isset($dataFinal) ? $dataFinal : '' }}}" id="kt_datepicker_3" />
-        <div class="input-group-append">
-            <span class="input-group-text"><i class="fa fa-calendar"></i></span>
-        </div>
-    </div>
-</div>
+                    <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                        <label class="col-form-label">Data Emissão Final</label>
+                        <div class="input-group date">
+                            <input type="text" name="data_final" class="form-control" readonly value="{{{ isset($dataFinal) ? $dataFinal : '' }}}" id="kt_datepicker_3" />
+                            <div class="input-group-append">
+                                <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                            </div>
+                        </div>
+                    </div>
 
-<div class="form-group col-lg-2 col-md-4 col-sm-6">
-    <label class="col-form-label">Nº Emissão Própria</label>
-    <input type="text" name="numero_emissao" class="form-control" value="{{{ isset($numero_emissao) ? $numero_emissao : '' }}}">
-</div>
+                    <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                        <label class="col-form-label">Nº Emissão Própria</label>
+                        <input type="text" name="numero_emissao" class="form-control" value="{{{ isset($numero_emissao) ? $numero_emissao : '' }}}">
+                    </div>
                   
                   
 					<div class="form-group col-lg-2 col-md-2 col-sm-3">
@@ -157,7 +157,25 @@
 													</span>
 												</a>
 											</li>
-
+											
+                                          @if($c->estado == 'REJEITADO')
+                                          <li class="navi-item">
+                                              <a href="/compras/emitirEntrada/{{ $c->id }}" class="navi-link">
+                                                  <span class="navi-text">
+                                                      <span class="label label-xl label-inline label-light-danger">Reenviar NFe</span>
+                                                  </span>
+                                              </a>
+                                          </li>
+                                          @else
+                                          <li class="navi-item">
+                                              <a href="/compras/emitirEntrada/{{ $c->id }}" class="navi-link">
+                                                  <span class="navi-text">
+                                                      <span class="label label-xl label-inline label-light-success">NFe entrada</span>
+                                                  </span>
+                                              </a>
+                                          </li>
+                                          @endif
+                                          
 											<li class="navi-item">
 												<a href="/compras/etiqueta/{{ $c->id }}" class="navi-link">
 													<span class="navi-text">
@@ -166,12 +184,12 @@
 												</a>
 											</li>
 											
-                                            {{-- Trava de segurança: Só edita se NÃO houver número de emissão --}}
-											@if(($c->chave == "" || $c->chave == null) && ($c->estado == 'NOVO' || $c->estado == 'EMITIDA') && ($c->numero_emissao == 0 || $c->numero_emissao == null))
+                                            {{-- Trava de segurança: Permite editar se NÃO houver número de emissão OU se estiver REJEITADA --}}
+                                            @if( (($c->chave == "" || $c->chave == null) && ($c->estado == 'NOVO' || $c->estado == 'EMITIDA') && ($c->numero_emissao == 0 || $c->numero_emissao == null)) || $c->estado == 'REJEITADO' )
                                             <li class="navi-item">
-                                                <a onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/compraManual/editar/{{ $c->id }}" }else{return false} })' href="#!" class="navi-link">
+                                                <a onclick='swal("Atenção!", "Deseja editar este registro para correção?", "warning").then((sim) => {if(sim){ location.href="/compraManual/editar/{{ $c->id }}" }else{return false} })' href="#!" class="navi-link">
                                                     <span class="navi-text">
-                                                        <span class="label label-xl label-inline label-light-warning">Editar</span>
+                                                        <span class="label label-xl label-inline label-light-warning">Editar e Corrigir</span>
                                                     </span>
                                                 </a>
                                             </li>
@@ -205,9 +223,13 @@
 
 							<div class="kt-widget__info">
                                 <span class="kt-widget__label">Estado:</span>
-                                
-                                {{-- Lógica de etiquetas de estado --}}
-                                @if($c->numero_emissao > 0)
+
+                                {{-- Lógica de etiquetas de estado ajustada --}}
+                                @if($c->estado == 'REJEITADO')
+                                    <span class="label label-xl label-inline label-light-danger" data-toggle="tooltip" title="Nota Rejeitada pela SEFAZ">REJEITADO</span>
+                                @elseif($c->estado == 'CANCELADO')
+                                    <span class="label label-xl label-inline label-light-danger">CANCELADO</span>
+                                @elseif($c->numero_emissao > 0)
                                     <span class="label label-xl label-inline label-light-success">AUTORIZADO</span>
                                 @elseif($c->chave != "" && $c->chave != null)
                                     <span class="label label-xl label-inline label-light-dark">IMPORTADO</span>
@@ -218,10 +240,6 @@
                                         <span class="label label-xl label-inline label-light-info">EMITIDA</span>
                                     @elseif($c->estado == 'APROVADO')
                                         <span class="label label-xl label-inline label-light-success">APROVADO</span>
-                                    @elseif($c->estado == 'REJEITADO')
-                                        <span class="label label-xl label-inline label-light-warning">REJEITADO</span>
-                                    @elseif($c->estado == 'CANCELADO')
-                                        <span class="label label-xl label-inline label-light-danger">CANCELADO</span>
                                     @endif
                                 @endif
                             </div>
