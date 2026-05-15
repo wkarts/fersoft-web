@@ -104,12 +104,73 @@ return new class extends Migration
             return;
         }
 
+        $this->normalizeForeignIntegerColumn($tableName, $column, $referenceTable);
+
         Schema::table($tableName, function (Blueprint $table) use ($foreignName, $column, $referenceTable, $onDelete) {
             $table->foreign($column, $foreignName)
                 ->references('id')
                 ->on($referenceTable)
                 ->onDelete($onDelete);
         });
+    }
+
+    private function normalizeForeignIntegerColumn(string $tableName, string $column, string $referenceTable): void
+    {
+        if (!$this->isMysql() || !Schema::hasTable($tableName) || !Schema::hasColumn($tableName, $column) || !Schema::hasTable($referenceTable)) {
+            return;
+        }
+
+        $databaseName = DB::getDatabaseName();
+
+        $localColumn = DB::selectOne(
+            'SELECT COLUMN_TYPE, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [$databaseName, $tableName, $column]
+        );
+
+        $referencedColumn = DB::selectOne(
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [$databaseName, $referenceTable, 'id']
+        );
+
+        if (!$localColumn || !$referencedColumn) {
+            return;
+        }
+
+        $localType = strtolower((string) ($localColumn->COLUMN_TYPE ?? $localColumn->column_type ?? ''));
+        $referencedType = strtolower((string) ($referencedColumn->COLUMN_TYPE ?? $referencedColumn->column_type ?? ''));
+
+        if ($referencedType === '' || $localType === $referencedType) {
+            return;
+        }
+
+        $allowedReferenceTypes = [
+            'tinyint unsigned',
+            'smallint unsigned',
+            'mediumint unsigned',
+            'int unsigned',
+            'bigint unsigned',
+        ];
+
+        if (!in_array($referencedType, $allowedReferenceTypes, true)) {
+            return;
+        }
+
+        $nullable = strtoupper((string) ($localColumn->IS_NULLABLE ?? $localColumn->is_nullable ?? 'NO')) === 'YES'
+            ? 'NULL'
+            : 'NOT NULL';
+
+        DB::statement(sprintf(
+            'ALTER TABLE %s MODIFY %s %s %s',
+            $this->quoteIdentifier($tableName),
+            $this->quoteIdentifier($column),
+            strtoupper($referencedType),
+            $nullable
+        ));
+    }
+
+    private function quoteIdentifier(string $identifier): string
+    {
+        return '`' . str_replace('`', '``', $identifier) . '`';
     }
 
     private function dropForeignIfExists(string $tableName, string $foreignName): void
@@ -157,6 +218,11 @@ return new class extends Migration
             ->where('CONSTRAINT_NAME', $foreignName)
             ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
             ->exists();
+    }
+
+    private function isMysql(): bool
+    {
+        return DB::connection()->getDriverName() === 'mysql';
     }
 
     private function isSqlite(): bool
