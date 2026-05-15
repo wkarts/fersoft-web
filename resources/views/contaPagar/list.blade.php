@@ -214,7 +214,12 @@
                                     @endif
 
                                     {{-- Botão para vincular veículo --}}
-                                    <button type="button" class="btn btn-secondary btn-sm btn-icon" data-toggle="modal" data-target="#modal_veiculo_{{$c->id}}" title="Vincular Veículo">
+                                    <button type="button"
+                                            class="btn btn-secondary btn-sm btn-icon btn-vincular-veiculo"
+                                            title="Vincular Veículo"
+                                            data-action="{{ route('contasPagar.setVeiculo', [$c->id]) }}"
+                                            data-referencia="{{ $c->referencia }}"
+                                            data-veiculo-id="{{ $c->veiculo_id ?? '' }}">
                                         <i class="la la-truck"></i>
                                     </button>
                                 </span>
@@ -260,13 +265,13 @@
                                             @if($eServico)
                                                 {{-- BOTÃO PARA NFS-e (Serviço) --}}
                                                 <a href="/compras/visualizarNfse/{{ $c->compra_id }}" target="_blank" class="label label-inline label-light-success font-weight-bold" style="font-size: 11px; margin-top: 4px; cursor: pointer; text-decoration: none;" title="Visualizar NFS-e">
-            <i class="la la-file-invoice text-success mr-1" style="font-size: 14px;"></i> NFS-e: {{ $c->numero_nota_fiscal }}
-        </a>
+                                                    <i class="la la-file-invoice text-success mr-1" style="font-size: 14px;"></i> NFS-e: {{ $c->numero_nota_fiscal }}
+                                                </a>
                                             @else
                                                 {{-- BOTÃO ÚNICO PARA NF-e (Terceiros e Própria) - Exatamente igual ao módulo de Compras! --}}
                                                 <a href="/compras/imprimir/{{ $c->compra_id }}" target="_blank" class="label label-inline label-light-primary font-weight-bold" style="font-size: 11px; margin-top: 4px; cursor: pointer; text-decoration: none;" title="Imprimir DANFE">
-            <i class="la la-print text-primary mr-1" style="font-size: 14px;"></i> NF: {{ $c->numero_nota_fiscal }}
-        </a>
+                                                    <i class="la la-print text-primary mr-1" style="font-size: 14px;"></i> NF: {{ $c->numero_nota_fiscal }}
+                                                </a>
                                             @endif
                                         @else
                                             <span class="label label-inline border border-primary text-primary font-weight-bold" style="font-size: 10px; background: none; margin-top: 2px;">NF: {{ $c->numero_nota_fiscal }}</span>
@@ -338,244 +343,295 @@
                     </div>
                 </div>
 
-                {{-- (GRUPO) MODAIS: Janelas que abrem por cima da tela (Ex: Vincular Veículo) --}}
-                @foreach($contas as $c)
-                    <div class="modal fade modal-veiculo-conta" id="modal_veiculo_{{$c->id}}" tabindex="-1" role="dialog" aria-labelledby="modal_veiculo_label_{{$c->id}}" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content">
-                                <form method="post" action="{{ route('contasPagar.setVeiculo', [$c->id]) }}">
-                                    @csrf
-                                    @method('put')
+                {{-- Fecha os containers principais antes dos modais.
+                     Isso evita modal/backdrop embutido dentro de card, datatable ou área com scroll/overflow. --}}
+            </div> {{-- fecha #kt_user_profile_aside --}}
+        </div> {{-- fecha .card-body --}}
+    </div> {{-- fecha .card --}}
 
-                                    <div class="modal-header">
-                                        <h5 class="modal-title font-weight-bold" id="modal_veiculo_label_{{$c->id}}">
-                                            Vincular Veículo - {{ $c->referencia }}
-                                        </h5>
-                                        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                                            <i aria-hidden="true" class="ki ki-close"></i>
-                                        </button>
-                                    </div>
+    <input type="hidden" id="casas_decimais" value="{{ $casasDecimais ?? 2 }}">
 
-                                    <div class="modal-body">
-                                        <div class="form-group mb-0">
-                                            <label class="font-weight-bold">Veículo</label>
-                                            <select name="veiculo_id" class="form-control">
-                                                <option value="">Nenhum</option>
-                                                @foreach($veiculos as $v)
-                                                    <option @if($c->veiculo_id == $v->id) selected @endif value="{{$v->id}}">{{$v->placa}} - {{$v->modelo}}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
+    {{-- MODAL ÚNICO DE VINCULAR VEÍCULO
+         Não gerar um modal por linha. Modal único evita travamento por DOM duplicado/nesting. --}}
+    <div class="modal fade" id="modal-veiculo-conta" tabindex="-1" role="dialog" aria-labelledby="modal-veiculo-conta-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form id="form-veiculo-conta" method="post" action="">
+                    @csrf
+                    @method('put')
 
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-success font-weight-bold">Salvar</button>
-                                    </div>
-                                </form>
-                            </div>
+                    <div class="modal-header">
+                        <h5 class="modal-title font-weight-bold" id="modal-veiculo-conta-title">Vincular Veículo</h5>
+                        <button type="button" class="close btn-fechar-modal-veiculo" aria-label="Fechar">
+                            <i aria-hidden="true" class="ki ki-close"></i>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold">Veículo</label>
+                            <select name="veiculo_id" class="form-control" id="modal-veiculo-conta-select">
+                                <option value="">Nenhum</option>
+                                @foreach($veiculos as $v)
+                                    <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
-                @endforeach
 
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-danger font-weight-bold btn-fechar-modal-veiculo">Cancelar</button>
+                        <button type="submit" class="btn btn-success font-weight-bold">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                <input type="hidden" id="casas_decimais" value="{{ $casasDecimais ?? 2 }}">
-
-                {{-- MODAL DE BAIXA PARCIAL --}}
-                <div class="modal fade" id="modal-baixa-parcial" tabindex="-1" role="dialog" aria-hidden="true">
-                    <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title font-weight-bold">Baixa Parcial de Conta</h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                    <i aria-hidden="true" class="ki ki-close"></i>
-                                </button>
-                            </div>
-                            <div class="modal-body">
-                                <input type="hidden" id="baixa_parcial_id">
-                                <div class="form-group">
-                                    <label>Valor Total Atual</label>
-                                    <input type="text" id="baixa_parcial_total" class="form-control" readonly>
-                                </div>
-                                <div class="form-group">
-                                    <label>Valor Pago Agora</label>
-                                    <input type="text" id="valor_pago_parcial" class="form-control money">
-                                </div>
-                                <div class="form-group">
-                                    <label>Data do Pagamento</label>
-                                    <input type="date" id="data_pagamento_parcial" class="form-control" value="{{ date('Y-m-d') }}">
-                                </div>
-                                <div class="form-group">
-                                    <label>Vencimento do Saldo Restante</label>
-                                    <input type="date" id="nova_data_vencimento" class="form-control">
-                                </div>
-                                <div class="form-group">
-                                    <label>Conta Bancária/Caixa</label>
-                                    <select id="conta_bancaria_id" class="form-control">
-                                        @foreach($contasEmpresa as $ce)
-                                            <option value="{{ $ce->id }}">{{ $ce->nome }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
-                                <button type="button" onclick="confirmarBaixaParcial()" class="btn btn-primary font-weight-bold">Confirmar Baixa</button>
-                            </div>
-                        </div>
+    {{-- MODAL DE BAIXA PARCIAL --}}
+    <div class="modal fade" id="modal-baixa-parcial" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">Baixa Parcial de Conta</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <i aria-hidden="true" class="ki ki-close"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="baixa_parcial_id">
+                    <div class="form-group">
+                        <label>Valor Total Atual</label>
+                        <input type="text" id="baixa_parcial_total" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Pago Agora</label>
+                        <input type="text" id="valor_pago_parcial" class="form-control money">
+                    </div>
+                    <div class="form-group">
+                        <label>Data do Pagamento</label>
+                        <input type="date" id="data_pagamento_parcial" class="form-control" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Vencimento do Saldo Restante</label>
+                        <input type="date" id="nova_data_vencimento" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Conta Bancária/Caixa</label>
+                        <select id="conta_bancaria_id" class="form-control">
+                            @foreach($contasEmpresa as $ce)
+                                <option value="{{ $ce->id }}">{{ $ce->nome }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
+                    <button type="button" onclick="confirmarBaixaParcial()" class="btn btn-primary font-weight-bold">Confirmar Baixa</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                @endsection
+@endsection
 
-                @section('javascript')
-                    <script type="text/javascript">
-                        var BTNSELECIONA = false;
-                        var SOMA = 0;
+@section('javascript')
+    <script type="text/javascript">
+        var BTNSELECIONA = false;
+        var SOMA = 0;
 
-                        // Segurança visual: evita que o backdrop fique preso caso algum modal seja fechado
-                        // por navegação, submissão ou interferência de scripts do tema.
-                        $(document).on('hidden.bs.modal', '.modal-veiculo-conta, #modal-baixa-parcial', function () {
-                            if ($('.modal.show').length === 0) {
-                                $('.modal-backdrop').remove();
-                                $('body').removeClass('modal-open').css('padding-right', '');
-                            }
-                        });
+        function limparBackdropsPresosContasPagar() {
+            if ($('.modal.show').length === 0) {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '').css('overflow', '');
+            }
+        }
 
-                        // Função que ativa o modo de seleção múltipla
-                        $('#btn_seleciona_varios').click(function(){
-                            BTNSELECIONA = !BTNSELECIONA;
-                            if(BTNSELECIONA){
-                                $(this).removeClass('btn-light-info').addClass('btn-info');
-                                $('.td_check, #th_check, #div-valor-selecionado').show();
-                            }else{
-                                $(this).removeClass('btn-info').addClass('btn-light-info');
-                                $('.td_check, #th_check, #div-valor-selecionado, #btn_pagar').hide();
-                                $('.select-check, #check-todos').prop('checked', false);
-                                SOMA = 0;
-                                atualizaValorTexto();
-                            }
-                        });
+        function fecharModalSeguroContasPagar(modalSelector) {
+            var $modal = $(modalSelector);
 
-                        // Função para Marcar/Desmarcar todos os itens da tabela de uma vez
-                        $('#check-todos').click(function(){
-                            var status = $(this).prop('checked');
-                            $('.select-check').prop('checked', status);
-                            calcularSoma();
-                        });
+            if ($modal.length === 0) {
+                limparBackdropsPresosContasPagar();
+                return;
+            }
 
-                        // Quando o usuário clica em um checkbox individual
-                        $('.select-check').change(function(){
-                            calcularSoma();
-                        });
+            try {
+                $modal.modal('hide');
+            } catch (e) {
+                $modal.removeClass('show').hide().attr('aria-hidden', 'true').removeAttr('aria-modal');
+            }
 
-                        // Calcula o valor somado das contas marcadas
-                        function calcularSoma(){
-                            SOMA = 0;
-                            var selecionados = 0;
-                            $('.select-check:checked').each(function(){
-                                SOMA += parseFloat($(this).data('valor'));
-                                selecionados++;
-                            });
+            setTimeout(limparBackdropsPresosContasPagar, 180);
+        }
 
-                            atualizaValorTexto();
+        $(document).on('click', '.btn-vincular-veiculo', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
 
-                            // Se houver ao menos 1 selecionado, o botão de Pagar aparece
-                            if(selecionados >= 1) $('#btn_pagar').show();
-                            else $('#btn_pagar').hide();
-                        }
+            var $botao = $(this);
+            var action = $botao.data('action') || '';
+            var referencia = $botao.data('referencia') || '';
+            var veiculoId = $botao.data('veiculo-id');
 
-                        // Formata o valor para Real (R$) e exibe no campo de Selecionado
-                        function atualizaValorTexto(){
-                            $('#valor-selecionado').html(SOMA.toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}));
-                        }
+            if (veiculoId === null || veiculoId === undefined) {
+                veiculoId = '';
+            }
 
-                        // Ao clicar em Pagar Selecionados, envia os IDs para a rota de pagar múltiplos
-                        $('#btn_pagar').click(function(){
-                            swal("Atenção!", "Deseja pagar as contas selecionadas?", "warning").then((sim) => {
-                                if(sim){
-                                    var ids = [];
-                                    $('.select-check:checked').each(function(){ ids.push($(this).val()); });
-                                    location.href = '/contasPagar/pagarMultiplos/' + ids.join(',');
-                                }
-                            });
-                        });
+            $('#form-veiculo-conta').attr('action', action);
+            $('#modal-veiculo-conta-title').text('Vincular Veículo' + (referencia ? ' - ' + referencia : ''));
+            $('#modal-veiculo-conta-select').val(String(veiculoId));
 
-                        // Função que abre o alerta de estorno pedindo a senha
-                        function estornarConta(id) {
-                            Swal.fire({
-                                title: 'Estornar Pagamento?',
-                                text: "Digite a senha de autorização:",
-                                // TRUQUE ANTI-CHROME: Html customizado com readonly temporário e autocomplete desligado
-                                html: '<input type="password" id="senha_estorno" class="swal2-input" autocomplete="new-password" readonly onfocus="this.removeAttribute(\'readonly\');" placeholder="Senha">',
-                                showCancelButton: true,
-                                confirmButtonText: 'Confirmar Estorno',
-                                cancelButtonText: 'Cancelar',
-                                preConfirm: () => {
-                                    const senha = document.getElementById('senha_estorno').value;
-                                    if (!senha) {
-                                        Swal.showValidationMessage('A senha é obrigatória');
-                                    }
-                                    return senha;
-                                }
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    // Formulário invisível via POST
-                                    let form = document.createElement('form');
-                                    form.method = 'POST';
-                                    form.action = '/contasPagar/estorno';
+            // Garante que o modal fique ligado ao body, fora de card/datatable/containers com overflow.
+            $('#modal-veiculo-conta').appendTo('body').modal({
+                backdrop: true,
+                keyboard: true,
+                show: true
+            });
+        });
 
-                                    let csrfToken = document.createElement('input');
-                                    csrfToken.type = 'hidden';
-                                    csrfToken.name = '_token';
-                                    csrfToken.value = '{{ csrf_token() }}';
-                                    form.appendChild(csrfToken);
+        $(document).on('click', '#modal-veiculo-conta .btn-fechar-modal-veiculo', function (event) {
+            event.preventDefault();
+            fecharModalSeguroContasPagar('#modal-veiculo-conta');
+        });
 
-                                    let idInput = document.createElement('input');
-                                    idInput.type = 'hidden';
-                                    idInput.name = 'id';
-                                    idInput.value = id;
-                                    form.appendChild(idInput);
+        $(document).on('hidden.bs.modal', '#modal-veiculo-conta, #modal-baixa-parcial', function () {
+            limparBackdropsPresosContasPagar();
+        });
 
-                                    let senhaInput = document.createElement('input');
-                                    senhaInput.type = 'hidden';
-                                    senhaInput.name = 'senha';
-                                    senhaInput.value = result.value;
-                                    form.appendChild(senhaInput);
+        // Função que ativa o modo de seleção múltipla
+        $('#btn_seleciona_varios').click(function(){
+            BTNSELECIONA = !BTNSELECIONA;
+            if(BTNSELECIONA){
+                $(this).removeClass('btn-light-info').addClass('btn-info');
+                $('.td_check, #th_check, #div-valor-selecionado').show();
+            }else{
+                $(this).removeClass('btn-info').addClass('btn-light-info');
+                $('.td_check, #th_check, #div-valor-selecionado, #btn_pagar').hide();
+                $('.select-check, #check-todos').prop('checked', false);
+                SOMA = 0;
+                atualizaValorTexto();
+            }
+        });
 
-                                    document.body.appendChild(form);
-                                    form.submit();
-                                }
-                            });
-                        }
-                        function abrirModalBaixaParcial(id, total) {
-                            $('#baixa_parcial_id').val(id);
-                            $('#baixa_parcial_total').val(total);
-                            $('#modal-baixa-parcial').modal('show');
-                        }
+        // Função para Marcar/Desmarcar todos os itens da tabela de uma vez
+        $('#check-todos').click(function(){
+            var status = $(this).prop('checked');
+            $('.select-check').prop('checked', status);
+            calcularSoma();
+        });
 
-                        function confirmarBaixaParcial() {
-                            let dados = {
-                                _token: '{{ csrf_token() }}',
-                                id: $('#baixa_parcial_id').val(),
-                                valor_pago: $('#valor_pago_parcial').val(),
-                                data_pagamento: $('#data_pagamento_parcial').val(),
-                                nova_data_vencimento: $('#nova_data_vencimento').val(),
-                                conta_bancaria_id: $('#conta_bancaria_id').val(),
-                            };
+        // Quando o usuário clica em um checkbox individual
+        $('.select-check').change(function(){
+            calcularSoma();
+        });
 
-                            if(!dados.valor_pago || !dados.nova_data_vencimento || !dados.data_pagamento) {
-                                swal("Erro", "Preencha todos os campos obrigatórios!", "error");
-                                return;
-                            }
+        // Calcula o valor somado das contas marcadas
+        function calcularSoma(){
+            SOMA = 0;
+            var selecionados = 0;
+            $('.select-check:checked').each(function(){
+                SOMA += parseFloat($(this).data('valor'));
+                selecionados++;
+            });
 
-                            $.post('/contasPagar/baixarParcial', dados)
-                                .done(res => {
-                                    swal("Sucesso", res, "success").then(() => location.reload());
-                                })
-                                .fail(err => {
-                                    swal("Erro", err.responseText, "error");
-                                });
-                        }
-                    </script>
+            atualizaValorTexto();
+
+            // Se houver ao menos 1 selecionado, o botão de Pagar aparece
+            if(selecionados >= 1) $('#btn_pagar').show();
+            else $('#btn_pagar').hide();
+        }
+
+        // Formata o valor para Real (R$) e exibe no campo de Selecionado
+        function atualizaValorTexto(){
+            $('#valor-selecionado').html(SOMA.toLocaleString('pt-br',{style: 'currency', currency: 'BRL'}));
+        }
+
+        // Ao clicar em Pagar Selecionados, envia os IDs para a rota de pagar múltiplos
+        $('#btn_pagar').click(function(){
+            swal("Atenção!", "Deseja pagar as contas selecionadas?", "warning").then((sim) => {
+                if(sim){
+                    var ids = [];
+                    $('.select-check:checked').each(function(){ ids.push($(this).val()); });
+                    location.href = '/contasPagar/pagarMultiplos/' + ids.join(',');
+                }
+            });
+        });
+
+        // Função que abre o alerta de estorno pedindo a senha
+        function estornarConta(id) {
+            Swal.fire({
+                title: 'Estornar Pagamento?',
+                text: "Digite a senha de autorização:",
+                // TRUQUE ANTI-CHROME: Html customizado com readonly temporário e autocomplete desligado
+                html: '<input type="password" id="senha_estorno" class="swal2-input" autocomplete="new-password" readonly onfocus="this.removeAttribute(\'readonly\');" placeholder="Senha">',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar Estorno',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const senha = document.getElementById('senha_estorno').value;
+                    if (!senha) {
+                        Swal.showValidationMessage('A senha é obrigatória');
+                    }
+                    return senha;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Formulário invisível via POST
+                    let form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/contasPagar/estorno';
+
+                    let csrfToken = document.createElement('input');
+                    csrfToken.type = 'hidden';
+                    csrfToken.name = '_token';
+                    csrfToken.value = '{{ csrf_token() }}';
+                    form.appendChild(csrfToken);
+
+                    let idInput = document.createElement('input');
+                    idInput.type = 'hidden';
+                    idInput.name = 'id';
+                    idInput.value = id;
+                    form.appendChild(idInput);
+
+                    let senhaInput = document.createElement('input');
+                    senhaInput.type = 'hidden';
+                    senhaInput.name = 'senha';
+                    senhaInput.value = result.value;
+                    form.appendChild(senhaInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+        function abrirModalBaixaParcial(id, total) {
+            $('#baixa_parcial_id').val(id);
+            $('#baixa_parcial_total').val(total);
+            $('#modal-baixa-parcial').modal('show');
+        }
+
+        function confirmarBaixaParcial() {
+            let dados = {
+                _token: '{{ csrf_token() }}',
+                id: $('#baixa_parcial_id').val(),
+                valor_pago: $('#valor_pago_parcial').val(),
+                data_pagamento: $('#data_pagamento_parcial').val(),
+                nova_data_vencimento: $('#nova_data_vencimento').val(),
+                conta_bancaria_id: $('#conta_bancaria_id').val(),
+            };
+
+            if(!dados.valor_pago || !dados.nova_data_vencimento || !dados.data_pagamento) {
+                swal("Erro", "Preencha todos os campos obrigatórios!", "error");
+                return;
+            }
+
+            $.post('/contasPagar/baixarParcial', dados)
+                .done(res => {
+                    swal("Sucesso", res, "success").then(() => location.reload());
+                })
+                .fail(err => {
+                    swal("Erro", err.responseText, "error");
+                });
+        }
+    </script>
 @endsection
