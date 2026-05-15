@@ -340,22 +340,38 @@
 
                 {{-- (GRUPO) MODAIS: Janelas que abrem por cima da tela (Ex: Vincular Veículo) --}}
                 @foreach($contas as $c)
-                    <div class="modal fade" id="modal_veiculo_{{$c->id}}" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
+                    <div class="modal fade modal-veiculo-conta" id="modal_veiculo_{{$c->id}}" tabindex="-1" role="dialog" aria-labelledby="modal_veiculo_label_{{$c->id}}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
                             <div class="modal-content">
                                 <form method="post" action="{{ route('contasPagar.setVeiculo', [$c->id]) }}">
                                     @csrf
                                     @method('put')
-                                    <div class="modal-header"><h5 class="modal-title font-weight-bold">Vincular Veículo - {{ $c->referencia }}</h5></div>
-                                    <div class="modal-body">
-                                        <select name="veiculo_id" class="form-control">
-                                            <option value="">Nenhum</option>
-                                            @foreach($veiculos as $v)
-                                                <option @if($c->veiculo_id == $v->id) selected @endif value="{{$v->id}}">{{$v->placa}} - {{$v->modelo}}</option>
-                                            @endforeach
-                                        </select>
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title font-weight-bold" id="modal_veiculo_label_{{$c->id}}">
+                                            Vincular Veículo - {{ $c->referencia }}
+                                        </h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                                            <i aria-hidden="true" class="ki ki-close"></i>
+                                        </button>
                                     </div>
-                                    <div class="modal-footer"><button type="submit" class="btn btn-success font-weight-bold">Salvar</button></div>
+
+                                    <div class="modal-body">
+                                        <div class="form-group mb-0">
+                                            <label class="font-weight-bold">Veículo</label>
+                                            <select name="veiculo_id" class="form-control">
+                                                <option value="">Nenhum</option>
+                                                @foreach($veiculos as $v)
+                                                    <option @if($c->veiculo_id == $v->id) selected @endif value="{{$v->id}}">{{$v->placa}} - {{$v->modelo}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-success font-weight-bold">Salvar</button>
+                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -416,6 +432,15 @@
                     <script type="text/javascript">
                         var BTNSELECIONA = false;
                         var SOMA = 0;
+
+                        // Segurança visual: evita que o backdrop fique preso caso algum modal seja fechado
+                        // por navegação, submissão ou interferência de scripts do tema.
+                        $(document).on('hidden.bs.modal', '.modal-veiculo-conta, #modal-baixa-parcial', function () {
+                            if ($('.modal.show').length === 0) {
+                                $('.modal-backdrop').remove();
+                                $('body').removeClass('modal-open').css('padding-right', '');
+                            }
+                        });
 
                         // Função que ativa o modo de seleção múltipla
                         $('#btn_seleciona_varios').click(function(){
