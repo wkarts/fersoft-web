@@ -15,6 +15,8 @@ use App\Models\Certificado;
 use NFePHP\Common\Certificate;
 use NFePHP\MDFe\Common\Standardize;
 use NFePHP\MDFe\Tools;
+use App\Services\Fiscal\EmissionLogger;
+use App\Support\TransmissionMessageNormalizer;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -816,87 +818,152 @@ class MDFeService{
 		return $resp;
 	}
 
-	public function transmitir($signXml){
-		try{
-			$resp = $this->tools->sefazEnviaLote([$signXml], rand(1, 10000), 1);
+	public function transmitir($signXml, array $context = []){
+		$chave = $context['chave'] ?? $this->extractChaveFromXml($signXml);
+		$context = array_merge([
+			'document_type' => 'MDFe',
+		], $context);
 
-			$st = new Standardize();
+		$logger = new EmissionLogger($this->empresa_id);
+		$log = $logger->start($context, $signXml, $chave);
+		$payloads = [];
+		$st = new Standardize();
+
+		try{
+			$idLote = str_pad((string) random_int(1, 999999999999999), 15, '0', STR_PAD_LEFT);
+			$resp = $this->tools->sefazEnviaLote([$signXml], $idLote, 1);
+			$payloads[] = ['fase' => 'envio', 'conteudo' => $resp];
+
 			$std = $st->toStd($resp);
 
-			sleep(6);
-
-			if ($std->cStat != 100) {
-				
-				return [
-					'erro' => true, 
-					'message' => $std->xMotivo, 
-					'cStat' => $std->cStat
-				];
+			if(isset($std->protMDFe) && isset($std->protMDFe->infProt)){
+				return $this->handleTransmissionProtocolResponse($std->protMDFe->infProt, $signXml, $resp, $payloads, $logger, $log, null);
 			}
 
-			// return [
-			// 	'erro' => true, 
-			// 	'message' => $std, 
-			// 	'cStat' => '999'
-			// ];
-			// else{
-			// 	return [
-			// 		'erro' => true, 
-			// 		'message' => $std, 
-			// 		'cStat' => $std->cStat
-			// 	];
-			// }
-
-
-
-			// $resp = $this->tools->sefazConsultaRecibo($std->infRec->nRec);
-			
-			// $std = $st->toStd($resp);
-			// sleep(2);
-
-			if(!isset($std->protMDFe)){
-				return [
-					'erro' => true, 
-					'message' => 'Tente enviar novamente em minutos!', 
-					'cStat' => '999'
-				];
+			if(!isset($std->cStat)){
+				return $this->finishTransmissionError($logger, $log, $payloads, null, null, 'Retorno indefinido da SEFAZ.', 'erro_tecnico', 500);
 			}
 
-			$chave = $std->protMDFe->infProt->chMDFe;
-			$cStat = $std->protMDFe->infProt->cStat;
+			$cStat = (int) $std->cStat;
+			$xMotivo = (string) ($std->xMotivo ?? 'Retorno não informado.');
 
-			if($cStat == '100'){
+			if(in_array($cStat, [103, 105, 656], true) && isset($std->infRec->nRec)){
+				$recibo = (string) $std->infRec->nRec;
+				$payloads[] = ['fase' => 'recibo', 'conteudo' => $recibo];
+				sleep(6);
 
-				$xml = Complements::toAuthorize($signXml, $resp);
-				$xmlMdfePath = $this->resolveMdfeXmlPath('xml_mdfe');
-				if (!is_dir($xmlMdfePath)) {
-					mkdir($xmlMdfePath, 0755, true);
+				$protocolo = $this->tools->sefazConsultaRecibo($recibo);
+				$payloads[] = ['fase' => 'consulta_recibo', 'conteudo' => $protocolo];
+				$stdProtocolo = $st->toStd($protocolo);
+
+				if(isset($stdProtocolo->protMDFe) && isset($stdProtocolo->protMDFe->infProt)){
+					return $this->handleTransmissionProtocolResponse($stdProtocolo->protMDFe->infProt, $signXml, $protocolo, $payloads, $logger, $log, $recibo);
 				}
-				$fileName = $chave.'.xml';
-				safe_file_put_contents($xmlMdfePath.DIRECTORY_SEPARATOR.$fileName, $xml);
-				return [
-					'chave' => $chave, 
-					'protocolo' => $std->protMDFe->infProt->nProt, 
-					'cStat' => $cStat
-				];
-			}else{
-				return [
-					'erro' => true, 
-					'message' => $std->protMDFe->infProt->xMotivo, 
-					'cStat' => $cStat
-				];
-			}
-			return $std->protMDFe->infProt->chMDFe;
 
-		} catch(\Exception $e){
+				return $this->finishTransmissionError($logger, $log, $payloads, $cStat, $xMotivo, 'Retorno inválido da SEFAZ ao consultar recibo.', 'erro_tecnico', 500, $recibo, $protocolo);
+			}
+
+			if($cStat === 104){
+				return $this->finishTransmissionError($logger, $log, $payloads, $cStat, $xMotivo, 'Lote processado sem protocolo de MDF-e no retorno da SEFAZ.', 'erro_tecnico', 500, null, $resp);
+			}
+
+			$status = in_array($cStat, [204, 539], true) ? 'duplicidade' : 'rejeitado';
+			$httpStatus = $status === 'duplicidade' ? 409 : 422;
+			return $this->finishTransmissionError($logger, $log, $payloads, $cStat, $xMotivo, null, $status, $httpStatus, null, $resp);
+
+		} catch(\Throwable $e){
+			return $this->finishTransmissionError($logger, $log, $payloads, null, $e->getMessage(), $e->getMessage(), 'erro_tecnico', 500);
+		}
+	}
+
+	private function handleTransmissionProtocolResponse($infProt, string $signXml, string $rawResponse, array $payloads, EmissionLogger $logger, $log, ?string $recibo = null): array
+	{
+		$cStat = (int) ($infProt->cStat ?? 0);
+		$xMotivo = TransmissionMessageNormalizer::normalize((string) ($infProt->xMotivo ?? 'Retorno não informado.'));
+		$chave = (string) ($infProt->chMDFe ?? $this->extractChaveFromXml($signXml));
+		$mensagem = TransmissionMessageNormalizer::message($cStat ?: null, $xMotivo, 'Retorno não informado.');
+
+		if($cStat === 100){
+			$xml = Complements::toAuthorize($signXml, $rawResponse);
+			$xmlMdfePath = $this->resolveMdfeXmlPath('xml_mdfe');
+			if (!is_dir($xmlMdfePath)) {
+				mkdir($xmlMdfePath, 0755, true);
+			}
+			$fileName = $chave.'.xml';
+			$fullPath = $xmlMdfePath.DIRECTORY_SEPARATOR.$fileName;
+			safe_file_put_contents($fullPath, $xml);
+
+			$logger->finish($log, [
+				'status' => 'autorizado',
+				'retorno_codigo' => $cStat,
+				'retorno_mensagem' => $mensagem,
+				'recibo' => $recibo,
+				'chave' => $chave,
+			], $rawResponse, $payloads);
+
 			return [
-				'erro' => true, 
-				'message' => $e->getMessage(),
-				'cStat' => ''
+				'success' => true,
+				'status' => 'autorizado',
+				'chave' => $chave,
+				'protocolo' => (string) ($infProt->nProt ?? ''),
+				'recibo' => $recibo,
+				'cStat' => $cStat,
+				'xMotivo' => $xMotivo,
+				'mensagem' => $mensagem,
+				'xmlAutorizadoPath' => $fullPath,
+				'payload' => TransmissionMessageNormalizer::normalize($payloads),
 			];
 		}
 
-	}	
+		$status = in_array($cStat, [204, 539], true) ? 'duplicidade' : 'rejeitado';
+		$httpStatus = $status === 'duplicidade' ? 409 : 422;
+
+		return $this->finishTransmissionError($logger, $log, $payloads, $cStat, $xMotivo, null, $status, $httpStatus, $recibo, $rawResponse, $chave);
+	}
+
+	private function finishTransmissionError(EmissionLogger $logger, $log, array $payloads, ?int $cStat, ?string $xMotivo, ?string $fallback, string $status, int $httpStatus, ?string $recibo = null, ?string $rawResponse = null, ?string $chave = null): array
+	{
+		$mensagem = TransmissionMessageNormalizer::message($cStat, $xMotivo, $fallback ?? 'Falha ao transmitir MDF-e.');
+
+		$attributes = [
+			'status' => $status,
+			'retorno_codigo' => $cStat,
+			'retorno_mensagem' => $mensagem,
+			'recibo' => $recibo,
+		];
+
+		if($chave){
+			$attributes['chave'] = $chave;
+		}
+
+		$logger->finish($log, $attributes, $rawResponse, $payloads);
+
+		return [
+			'erro' => true,
+			'success' => false,
+			'status' => $status,
+			'message' => $mensagem,
+			'mensagem' => $mensagem,
+			'cStat' => $cStat,
+			'xMotivo' => TransmissionMessageNormalizer::normalize($xMotivo ?? $fallback),
+			'recibo' => $recibo,
+			'http_status' => $httpStatus,
+			'payload' => TransmissionMessageNormalizer::normalize($payloads),
+		];
+	}
+
+	private function extractChaveFromXml(?string $xml): ?string
+	{
+		if(!$xml){
+			return null;
+		}
+
+		if(preg_match('/Id=["\']MDFe(\d{44})["\']/', $xml, $matches)){
+			return $matches[1];
+		}
+
+		return null;
+	}
 
 
 	public function naoEncerrados(){

@@ -27,20 +27,72 @@ class EmiteMdfeController extends Controller
 	}
 
 	public function enviar(Request $request){
-
-		$mdfe = Mdfe::with(['pagamentos.componentes', 'pagamentos.parcelas'])->where('id', $request->id)
+		$mdfe = Mdfe::with(['pagamentos.componentes', 'pagamentos.parcelas'])
+		->where('id', $request->id)
+		->where('empresa_id', $this->empresa_id)
 		->first();
 
-		$config = ConfigNota::
-		where('empresa_id', $this->empresa_id)
-		->first();
+		if($mdfe == null){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'nao_encontrado',
+				'mensagem' => 'MDF-e não encontrado para transmissão.'
+			], 404);
+		}
+
+		if(!in_array($mdfe->estado, ['NOVO', 'REJEITADO'], true)){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'estado_invalido',
+				'mensagem' => 'MDF-e em estado ' . $mdfe->estado . ' não pode ser transmitido novamente.'
+			], 409);
+		}
+
+		$config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+		if($config == null){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'configuracao_fiscal_ausente',
+				'mensagem' => 'Configure os dados fiscais antes de transmitir MDF-e.'
+			], 422);
+		}
 
 		$isFilial = $mdfe->filial_id;
 		if($mdfe->filial_id != null){
-			$config = Filial::findOrFail($mdfe->filial_id);
+			$config = Filial::where('id', $mdfe->filial_id)
+			->where('empresa_id', $this->empresa_id)
+			->first();
+
+			if($config == null){
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'filial_nao_encontrada',
+					'mensagem' => 'Filial do MDF-e não encontrada para esta empresa.'
+				], 404);
+			}
+
 			if($config->arquivo_certificado == null){
-				echo "Necessário o certificado para realizar esta ação!";
-				die;
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'certificado_ausente',
+					'mensagem' => 'Necessário o certificado da filial para realizar esta ação.'
+				], 422);
+			}
+		}else{
+			$certificado = Certificado::where('empresa_id', $this->empresa_id)->first();
+			if($certificado == null){
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'certificado_ausente',
+					'mensagem' => 'Necessário configurar o certificado para realizar esta ação.'
+				], 422);
 			}
 		}
 
@@ -59,46 +111,49 @@ class EmiteMdfeController extends Controller
 			"versao" => '3.00'
 		]);
 
-		// $xml = $mdfe_service->gerar($mdfe);
-		$resultado = false;
-
-		if($mdfe->estado == 'NOVO' || $mdfe->estado == 'REJEITADO'){
-			header('Content-type: text/html; charset=UTF-8');
-			$xml = $mdfe_service->gerar($mdfe);
-			if(!isset($xml['erros_xml'])){
-
-				$signed = $mdfe_service->sign($xml['xml']);
-
-				$resultado = $mdfe_service->transmitir($signed);
-
-				if(!isset($resultado['erro'])){
-					$mdfe->chave = $resultado['chave'];
-					$mdfe->protocolo = $resultado['protocolo'];
-
-					$mdfe->estado = 'APROVADO';
-
-					$mdfe->mdfe_numero = $xml['numero'];
-					$mdfe->save();
-
-					$config->ultimo_numero_mdfe = $xml['numero'];
-					$config->save();
-
-					$this->enviarEmailAutomatico($mdfe);
-					return response()->json($resultado, 200);
-				}else{
-					$mdfe->estado = 'REJEITADO';
-					$mdfe->save();
-
-					return response()->json($resultado, 403);
-				}
-				echo json_encode($resultado);
-			}else{
-				return response()->json($xml['erros_xml'], 404);
-
-			}
-		}else{
-			return response()->json("erro", 401);
+		$xml = $mdfe_service->gerar($mdfe);
+		if(isset($xml['erros_xml'])){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'xml_invalido',
+				'mensagem' => 'Falha ao gerar XML do MDF-e.',
+				'payload' => $xml['erros_xml']
+			], 422);
 		}
+
+		$signed = $mdfe_service->sign($xml['xml']);
+
+		$value = session('user_logged');
+		$resultado = $mdfe_service->transmitir($signed, [
+			'document_type' => 'MDFe',
+			'document_id' => $mdfe->id,
+			'document_reference' => 'MDF-e #' . $mdfe->id,
+			'numero' => $xml['numero'],
+			'serie' => $config->numero_serie_mdfe,
+			'filial_id' => $mdfe->filial_id,
+			'ambiente' => (int) $config->ambiente,
+			'usuario_id' => $value['id'] ?? null,
+		]);
+
+		if(empty($resultado['erro'])){
+			$mdfe->chave = $resultado['chave'];
+			$mdfe->protocolo = $resultado['protocolo'];
+			$mdfe->estado = 'APROVADO';
+			$mdfe->mdfe_numero = $xml['numero'];
+			$mdfe->save();
+
+			$config->ultimo_numero_mdfe = $xml['numero'];
+			$config->save();
+
+			$this->enviarEmailAutomatico($mdfe);
+			return response()->json($resultado, 200);
+		}
+
+		$mdfe->estado = 'REJEITADO';
+		$mdfe->save();
+
+		return response()->json($resultado, $resultado['http_status'] ?? 422);
 	}
 
 	public function xmlTemp($id){
