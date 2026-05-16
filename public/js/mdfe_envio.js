@@ -1,4 +1,161 @@
 
+function stripBom(value){
+	if(typeof value !== 'string') return value;
+	return value.replace(/^\uFEFF/, '').trim();
+}
+
+function safeParseJson(value){
+	if(typeof value !== 'string') return value;
+	let parsed = stripBom(value);
+	for(let i=0;i<3;i++){
+		if(typeof parsed !== 'string') return parsed;
+		const t = parsed.trim();
+		if(!t) return t;
+		if(!((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']')))){
+			return parsed;
+		}
+		try{
+			parsed = JSON.parse(t);
+		}catch(e){
+			return value;
+		}
+	}
+	return parsed;
+}
+
+function normalizeMessageText(value){
+	if(value === null || value === undefined) return '';
+	let text = String(value);
+	text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+	text = text.replace(/\n{3,}/g, '\n\n');
+	text = text.replace(/[\t ]{2,}/g, ' ');
+	return text.trim();
+}
+
+function formatFiscalPayload(payload){
+	if(payload === null || payload === undefined) return '';
+	if(typeof payload === 'string'){
+		const parsed = safeParseJson(payload);
+		if(parsed !== payload){
+			return formatFiscalPayload(parsed);
+		}
+		return normalizeMessageText(payload);
+	}
+	if(Array.isArray(payload)){
+		try{
+			return JSON.stringify(payload, null, 2);
+		}catch(e){
+			return normalizeMessageText(String(payload));
+		}
+	}
+	if(typeof payload === 'object'){
+		try{
+			return JSON.stringify(payload, null, 2);
+		}catch(e){
+			return normalizeMessageText(String(payload));
+		}
+	}
+	return normalizeMessageText(String(payload));
+}
+
+function extractFiscalMessage(payload){
+	if(payload === null || payload === undefined) return '';
+	if(typeof payload === 'string'){
+		const parsed = safeParseJson(payload);
+		if(parsed !== payload){
+			return extractFiscalMessage(parsed);
+		}
+		return normalizeMessageText(payload);
+	}
+	if(Array.isArray(payload)){
+		for(const item of payload){
+			const msg = extractFiscalMessage(item);
+			if(msg) return msg;
+		}
+		return formatFiscalPayload(payload);
+	}
+	if(typeof payload === 'object'){
+		const preferredKeys = ['mensagem','message','xMotivo','error','erro','detail','details','title'];
+		for(const key of preferredKeys){
+			if(payload[key]){
+				const msg = extractFiscalMessage(payload[key]);
+				if(msg) return msg;
+			}
+		}
+
+		const grupos = [
+			payload.infProt,
+			payload.protMDFe && payload.protMDFe.infProt,
+			payload.infEvento,
+			payload.retEvento && payload.retEvento.infEvento,
+			payload
+		];
+
+		for(const grupo of grupos){
+			if(grupo && (grupo.cStat || grupo.xMotivo)){
+				return normalizeMessageText('[' + (grupo.cStat || '---') + '] - ' + (grupo.xMotivo || 'Sem detalhamento'));
+			}
+		}
+
+		if(payload.payload){
+			const msg = extractFiscalMessage(payload.payload);
+			if(msg) return msg;
+		}
+		if(payload.responseJSON){
+			const msg = extractFiscalMessage(payload.responseJSON);
+			if(msg) return msg;
+		}
+		if(payload.responseText){
+			const msg = extractFiscalMessage(payload.responseText);
+			if(msg) return msg;
+		}
+
+		return formatFiscalPayload(payload);
+	}
+	return '';
+}
+
+function showFiscalError(title, payload, fallback){
+	const msg = extractFiscalMessage(payload) || fallback || 'Algo deu errado';
+	return swal(title || 'Erro', msg, 'error');
+}
+
+function getSelectedMDFeId(){
+	let id = 0;
+	let cont = 0;
+	$('#body tr').each(function(){
+		if($(this).find('#checkbox input').is(':checked')){
+			id = $(this).find('#id').html();
+			cont++;
+		}
+	});
+
+	if(cont !== 1 || !id || Number(id) <= 0){
+		Materialize.toast('Selecione apenas um MDF-e para continuar!', 5000);
+		return null;
+	}
+
+	return id;
+}
+
+
+
+
+function formatMDFeConsultaMessage(js){
+	const msg = extractFiscalMessage(js);
+	const infProt = js && js.protMDFe && js.protMDFe.infProt ? js.protMDFe.infProt : null;
+	if(infProt){
+		let texto = msg || 'Consulta realizada com sucesso.';
+		if(infProt.chMDFe){
+			texto += "\nChave: " + infProt.chMDFe;
+		}
+		if(infProt.nProt){
+			texto += "\nProtocolo: " + infProt.nProt;
+		}
+		return texto;
+	}
+	return msg || 'Consulta realizada, mas a SEFAZ não retornou protocolo para este MDF-e.';
+}
 
 function redireciona(){
 	location.href= path + "mdfe";
@@ -8,11 +165,12 @@ function redireciona(){
 function enviar(){
 	$('#btn-enviar').addClass('spinner')
 	$('#btn-enviar').addClass('disabled')
-	let id = 0
-	$('#body tr').each(function(){
-		if($(this).find('#checkbox input').is(':checked'))
-			id = $(this).find('#id').html();
-	})
+	let id = getSelectedMDFeId();
+	if(!id){
+		$('#btn-enviar').removeClass('spinner')
+		$('#btn-enviar').removeClass('disabled')
+		return;
+	}
 
 	let token = $('#_token').val();
 	console.clear()
@@ -53,11 +211,8 @@ function enviar(){
 }
 
 $('#btn-xml-temp').click(() => {
-	let id = 0
-	$('#body tr').each(function(){
-		if($(this).find('#checkbox input').is(':checked'))
-			id = $(this).find('#id').html();
-	})
+	let id = getSelectedMDFeId();
+	if(!id) return;
 
 	window.open(path+'mdfeSefaz/xmlTemp/'+id)
 })
@@ -137,11 +292,11 @@ function consultarMDFe(id){
 			$('#btn_consulta_grid_'+id).removeClass('spinner');
 			$('#btn_consulta_grid_'+id).removeClass('disabled');
 
-			swal("Sucesso", "Status: " + js.xMotivo + " - chave: " + js.protMDFe.infProt.chMDFe + ", protocolo: " + js.protMDFe.infProt.nProt, "success")
+			swal("Sucesso", formatMDFeConsultaMessage(js), "success")
 
 		}, error: function(e){
 			console.log(e)
-			swal("Erro", "Veja o console do navegador!", "error")
+			showFiscalError("Erro", e, "Erro ao consultar MDF-e")
 			$('#btn_consulta_grid_'+id).removeClass('spinner');
 			$('#btn_consulta_grid_'+id).removeClass('disabled');
 		}
@@ -161,8 +316,10 @@ function consultar(){
 		}
 	})
 
-	if(cont > 1){
+	if(cont != 1 || !id || Number(id) <= 0){
 		Materialize.toast('Selecione apenas um documento para consultar!', 5000)
+		$('#btn-consultar').removeClass('spinner');
+		$('#btn-consultar').removeClass('disabled');
 	}else{
 		let token = $('#_token').val();
 		$.ajax
@@ -178,11 +335,11 @@ function consultar(){
 				$('#btn-consultar').removeClass('spinner');
 				$('#btn-consultar').removeClass('disabled');
 				
-				swal("Sucesso", "Status: " + js.xMotivo + " - chave: " + js.protMDFe.infProt.chMDFe + ", protocolo: " + js.protMDFe.infProt.nProt, "success")
+				swal("Sucesso", formatMDFeConsultaMessage(js), "success")
 
 			}, error: function(e){
 				console.log(e)
-				swal("Erro", "Veja o console do navegador!", "error")
+				showFiscalError("Erro", e, "Erro ao consultar MDF-e")
 				$('#btn-consultar').removeClass('spinner');
 				$('#btn-consultar').removeClass('disabled');
 			}
