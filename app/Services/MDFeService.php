@@ -1003,16 +1003,21 @@ class MDFeService{
 
 	public function consultar($chave){
 		try {
-			
-			$chave = $chave;
 			$resp = $this->tools->sefazConsultaChave($chave);
 
 			$st = new Standardize();
 			$std = $st->toStd($resp);
 
 			return $std;
-		} catch (Exception $e) {
-			echo $e->getMessage();
+		} catch (\Throwable $e) {
+			return [
+				'erro' => true,
+				'success' => false,
+				'status' => 'erro_tecnico',
+				'message' => $e->getMessage(),
+				'mensagem' => $e->getMessage(),
+				'http_status' => 500,
+			];
 		}
 	}
 

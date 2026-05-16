@@ -458,45 +458,93 @@ class EmiteMdfeController extends Controller
 	}
 
 	public function consultar(Request $request){
-		$mdfe = Mdfe::find($request->id);
+		$mdfe = Mdfe::where('id', $request->id)
+		->where('empresa_id', $this->empresa_id)
+		->first();
 
-		if($mdfe->estado == 'APROVADO' || $mdfe->estado == 'CANCELADO'){
+		if($mdfe == null){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'nao_encontrado',
+				'mensagem' => 'MDF-e não encontrado para consulta.'
+			], 404);
+		}
 
-			$config = ConfigNota::
-			where('empresa_id', $this->empresa_id)
+		if(!in_array($mdfe->estado, ['APROVADO', 'CANCELADO'], true)){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'estado_invalido',
+				'mensagem' => 'MDF-e em estado ' . $mdfe->estado . ' ainda não possui chave/protocolo para consulta na SEFAZ.'
+			], 422);
+		}
+
+		$config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+		if($config == null){
+			return response()->json([
+				'erro' => true,
+				'success' => false,
+				'status' => 'configuracao_fiscal_ausente',
+				'mensagem' => 'Configure os dados fiscais antes de consultar MDF-e.'
+			], 422);
+		}
+
+		$isFilial = $mdfe->filial_id;
+		if($mdfe->filial_id != null){
+			$config = Filial::where('id', $mdfe->filial_id)
+			->where('empresa_id', $this->empresa_id)
 			->first();
 
-			$cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
-
-			$isFilial = $mdfe->filial_id;
-			if($mdfe->filial_id != null){
-				$config = Filial::findOrFail($mdfe->filial_id);
-				if($config->arquivo_certificado == null){
-					echo "Necessário o certificado para realizar esta ação!";
-					die;
-				}
+			if($config == null){
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'filial_nao_encontrada',
+					'mensagem' => 'Filial do MDF-e não encontrada para esta empresa.'
+				], 404);
 			}
 
-			$mdfe_service = new MDFeService([
-				"atualizacao" => date('Y-m-d h:i:s'),
-				"tpAmb" => (int)$config->ambiente,
-				"razaosocial" => $config->razao_social,
-				"siglaUF" => $config->UF,
-				"cnpj" => $cnpj,
-				"inscricaomunicipal" => $config->inscricao_municipal,
-				"codigomunicipio" => $config->codMun,
-				"is_filial" => $isFilial,
-				"schemes" => config('fiscal.default_schemes_mdfe'),
-				"versao" => '3.00'
-			]);
-
-			$mdfe = Mdfe::find($request->id);
-			$result = $mdfe_service->consultar($mdfe->chave);
-
-			return response()->json($result, 200);
+			if($config->arquivo_certificado == null){
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'certificado_ausente',
+					'mensagem' => 'Necessário o certificado da filial para realizar esta ação.'
+				], 422);
+			}
 		}else{
-			return response()->json("Erro ao consultar", 404);
+			$certificado = Certificado::where('empresa_id', $this->empresa_id)->first();
+			if($certificado == null){
+				return response()->json([
+					'erro' => true,
+					'success' => false,
+					'status' => 'certificado_ausente',
+					'mensagem' => 'Necessário configurar o certificado para realizar esta ação.'
+				], 422);
+			}
 		}
+
+		$cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
+		$mdfe_service = new MDFeService([
+			"atualizacao" => date('Y-m-d h:i:s'),
+			"tpAmb" => (int)$config->ambiente,
+			"razaosocial" => $config->razao_social,
+			"siglaUF" => $config->UF,
+			"cnpj" => $cnpj,
+			"inscricaomunicipal" => $config->inscricao_municipal,
+			"codigomunicipio" => $config->codMun,
+			"is_filial" => $isFilial,
+			"schemes" => config('fiscal.default_schemes_mdfe'),
+			"versao" => '3.00'
+		]);
+
+		$result = $mdfe_service->consultar($mdfe->chave);
+		if(is_array($result) && !empty($result['erro'])){
+			return response()->json($result, $result['http_status'] ?? 500);
+		}
+
+		return response()->json($result, 200);
 	}
 
 	public function cancelar(Request $request){

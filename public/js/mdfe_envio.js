@@ -138,12 +138,25 @@ function getSelectedMDFeId(){
 	return id;
 }
 
-
+function formatMDFeConsultaMessage(js){
+	const msg = extractFiscalMessage(js);
+	const infProt = js && js.protMDFe && js.protMDFe.infProt ? js.protMDFe.infProt : null;
+	if(infProt){
+		let texto = msg || 'Consulta realizada com sucesso.';
+		if(infProt.chMDFe){
+			texto += "\nChave: " + infProt.chMDFe;
+		}
+		if(infProt.nProt){
+			texto += "\nProtocolo: " + infProt.nProt;
+		}
+		return texto;
+	}
+	return msg || 'Consulta realizada, mas a SEFAZ não retornou protocolo para este MDF-e.';
+}
 
 function redireciona(){
 	location.href= path + "mdfe";
 }
-
 
 function enviar(){
 	$('#btn-enviar').addClass('spinner')
@@ -275,11 +288,11 @@ function consultarMDFe(id){
 			$('#btn_consulta_grid_'+id).removeClass('spinner');
 			$('#btn_consulta_grid_'+id).removeClass('disabled');
 
-			swal("Sucesso", "Status: " + js.xMotivo + " - chave: " + js.protMDFe.infProt.chMDFe + ", protocolo: " + js.protMDFe.infProt.nProt, "success")
+			swal("Sucesso", formatMDFeConsultaMessage(js), "success")
 
 		}, error: function(e){
 			console.log(e)
-			swal("Erro", "Veja o console do navegador!", "error")
+			showFiscalError("Erro", e, "Erro ao consultar MDF-e")
 			$('#btn_consulta_grid_'+id).removeClass('spinner');
 			$('#btn_consulta_grid_'+id).removeClass('disabled');
 		}
@@ -299,8 +312,10 @@ function consultar(){
 		}
 	})
 
-	if(cont > 1){
+	if(cont != 1 || !id || Number(id) <= 0){
 		Materialize.toast('Selecione apenas um documento para consultar!', 5000)
+		$('#btn-consultar').removeClass('spinner');
+		$('#btn-consultar').removeClass('disabled');
 	}else{
 		let token = $('#_token').val();
 		$.ajax
@@ -316,7 +331,7 @@ function consultar(){
 				$('#btn-consultar').removeClass('spinner');
 				$('#btn-consultar').removeClass('disabled');
 				
-				swal("Sucesso", "Status: " + js.xMotivo + " - chave: " + js.protMDFe.infProt.chMDFe + ", protocolo: " + js.protMDFe.infProt.nProt, "success")
+				swal("Sucesso", formatMDFeConsultaMessage(js), "success")
 
 			}, error: function(e){
 				console.log(e)

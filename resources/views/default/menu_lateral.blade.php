@@ -1972,7 +1972,8 @@
 @endif
 
 @if(isset($mdfeEnvioJs))
-    <script type="text/javascript" src="/js/mdfe_envio.js"></script>
+    <script type="text/javascript" src="{{ asset('js/fiscal_error.js') }}?v={{ filemtime(public_path('js/fiscal_error.js')) }}"></script>
+    <script type="text/javascript" src="{{ asset('js/mdfe_envio.js') }}?v={{ filemtime(public_path('js/mdfe_envio.js')) }}"></script>
 @endif
 
 @if(isset($print))
