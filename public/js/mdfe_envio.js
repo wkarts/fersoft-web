@@ -138,9 +138,6 @@ function getSelectedMDFeId(){
 	return id;
 }
 
-
-
-
 function formatMDFeConsultaMessage(js){
 	const msg = extractFiscalMessage(js);
 	const infProt = js && js.protMDFe && js.protMDFe.infProt ? js.protMDFe.infProt : null;
@@ -160,7 +157,6 @@ function formatMDFeConsultaMessage(js){
 function redireciona(){
 	location.href= path + "mdfe";
 }
-
 
 function enviar(){
 	$('#btn-enviar').addClass('spinner')
