@@ -2978,6 +2978,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/recursos', 'Security\SecurityCrudResourceController@index')->name('security.resources.index');
         Route::post('/recursos/sincronizar', 'Security\SecurityCrudResourceController@sync')->name('security.resources.sync');
 
+        Route::get('/regras', 'Security\SecurityRuleController@index')->name('security.rules.index');
+        Route::post('/regras', 'Security\SecurityRuleController@store')->name('security.rules.store');
+        Route::post('/regras/limpar', 'Security\SecurityRuleController@cleanup')->name('security.rules.cleanup');
+        Route::post('/regras/recriar-padrao', 'Security\SecurityRuleController@recreateDefaults')->name('security.rules.recreate-defaults');
+        Route::delete('/regras/permissao/{id}', 'Security\SecurityRuleController@destroyPermission')->name('security.rules.permissions.destroy');
+        Route::delete('/regras/protecao/{id}', 'Security\SecurityRuleController@destroyProtection')->name('security.rules.protections.destroy');
+
         Route::get('/permissoes', 'Security\SecurityCrudPermissionController@index')->name('security.permissions.index');
         Route::post('/permissoes', 'Security\SecurityCrudPermissionController@store')->name('security.permissions.store');
         Route::delete('/permissoes/{id}', 'Security\SecurityCrudPermissionController@destroy')->name('security.permissions.destroy');

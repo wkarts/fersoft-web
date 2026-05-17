@@ -24,6 +24,9 @@ class SecurityCrudPermission extends BaseModel
         'can_export',
         'can_print',
         'enabled',
+        'source',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [

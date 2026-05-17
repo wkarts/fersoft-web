@@ -128,7 +128,7 @@ class SecuritySetupService
         return $this->scannerService->sync();
     }
 
-    public function generateDefaultPermissions(?int $empresaId = null): int
+    public function generateDefaultPermissions(?int $empresaId = null, string $source = 'auto'): int
     {
         $empresaId = $empresaId ?? $this->featureService->currentEmpresaId();
         $count = 0;
@@ -142,7 +142,7 @@ class SecuritySetupService
                     'perfil_acesso_id' => null,
                     'usuario_id' => null,
                 ],
-                array_merge($defaults, ['enabled' => true])
+                array_merge($defaults, ['enabled' => true, 'source' => $source, 'updated_by' => $this->featureService->currentUserId()])
             );
 
             $count++;
@@ -179,7 +179,7 @@ class SecuritySetupService
         return $count;
     }
 
-    public function generateSafeProtectionDrafts(?int $empresaId = null): int
+    public function generateSafeProtectionDrafts(?int $empresaId = null, string $source = 'auto'): int
     {
         $empresaId = $empresaId ?? $this->featureService->currentEmpresaId();
         $count = 0;
@@ -193,17 +193,17 @@ class SecuritySetupService
             $editEnabled = (bool) ($actions['edit'] ?? true);
 
             if ($resource->sensitive && $editEnabled) {
-                $this->upsertProtection($empresaId, $resource->id, 'edit', $defaultProtection, 'Edição de recurso sensível exige liberação por autorizador.');
+                $this->upsertProtection($empresaId, $resource->id, 'edit', $defaultProtection, 'Edição de recurso sensível exige liberação por autorizador.', $source);
                 $count++;
             }
 
             if ($deleteEnabled) {
-                $this->upsertProtection($empresaId, $resource->id, 'delete', $defaultProtection, 'Exclusão exige liberação por autorizador.');
+                $this->upsertProtection($empresaId, $resource->id, 'delete', $defaultProtection, 'Exclusão exige liberação por autorizador.', $source);
                 $count++;
             }
 
             if ($restoreEnabled) {
-                $this->upsertProtection($empresaId, $resource->id, 'restore', $defaultProtection, 'Restauração exige liberação por autorizador.');
+                $this->upsertProtection($empresaId, $resource->id, 'restore', $defaultProtection, 'Restauração exige liberação por autorizador.', $source);
                 $count++;
             }
         }
@@ -360,7 +360,7 @@ class SecuritySetupService
         })->values();
     }
 
-    protected function upsertProtection(?int $empresaId, int $resourceId, string $action, string $type, string $message): void
+    protected function upsertProtection(?int $empresaId, int $resourceId, string $action, string $type, string $message, string $source = 'auto'): void
     {
         SecurityCrudProtectionRule::updateOrCreate(
             [
@@ -376,6 +376,8 @@ class SecuritySetupService
                 'bypass_company_admin' => false,
                 'enabled' => true,
                 'message' => $message,
+                'source' => $source,
+                'updated_by' => $this->featureService->currentUserId(),
             ]
         );
     }

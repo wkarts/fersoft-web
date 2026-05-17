@@ -20,6 +20,9 @@ class SecurityCrudProtectionRule extends BaseModel
         'bypass_company_admin',
         'enabled',
         'message',
+        'source',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
