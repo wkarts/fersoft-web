@@ -2945,6 +2945,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::prefix('seguranca')->group(function () {
         Route::get('/', 'Security\SecurityDashboardController@index')->name('security.dashboard');
+        Route::get('/administracao', 'Security\SecurityAdminCenterController@index')->name('security.admin-center.index');
         Route::post('/habilitar', 'Security\SecurityDashboardController@enable')->name('security.enable');
 
         Route::get('/setup', 'Security\SecuritySetupController@index')->name('security.setup.index');

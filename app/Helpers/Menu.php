@@ -1041,35 +1041,22 @@ class Menu {
 
         if ($isSuper) {
             $subs = [
+                ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
                 ['nome' => 'Painel Global', 'rota' => '/seguranca/admin/painel-global'],
-                ['nome' => 'Diagnóstico Global', 'rota' => '/seguranca/diagnostico'],
-                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
                 ['nome' => 'Painel por Empresa', 'rota' => '/seguranca/admin/empresas'],
-                ['nome' => 'Painel', 'rota' => '/seguranca'],
+                ['nome' => 'Diagnóstico Global', 'rota' => '/seguranca/diagnostico'],
                 ['nome' => 'Assistente de Implantação', 'rota' => '/seguranca/setup'],
-                ['nome' => 'Recursos do Sistema', 'rota' => '/seguranca/recursos'],
-                ['nome' => 'Permissões CRUD', 'rota' => '/seguranca/permissoes'],
-                ['nome' => 'Proteções de Operação', 'rota' => '/seguranca/protecoes'],
-                ['nome' => 'Autorizadores', 'rota' => '/seguranca/autorizadores'],
-                ['nome' => 'Tokens de Liberação', 'rota' => '/seguranca/tokens'],
                 ['nome' => 'Auditoria', 'rota' => '/seguranca/auditoria'],
-                ['nome' => 'Políticas de Auditoria', 'rota' => '/seguranca/auditoria/politicas'],
-                ['nome' => 'Exportação JSON de Logs', 'rota' => '/seguranca/auditoria/exportar-json'],
                 ['nome' => 'Restauração por Auditoria', 'rota' => '/seguranca/auditoria/restaurar'],
+                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
                 ['nome' => 'Configurações de Segurança', 'rota' => '/seguranca/configuracoes'],
             ];
         } else {
             $subs = [
-                ['nome' => 'Painel', 'rota' => '/seguranca'],
+                ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
                 ['nome' => 'Assistente de Implantação', 'rota' => '/seguranca/setup'],
-                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
-                ['nome' => 'Recursos do Sistema', 'rota' => '/seguranca/recursos'],
-                ['nome' => 'Permissões CRUD', 'rota' => '/seguranca/permissoes'],
-                ['nome' => 'Proteções de Operação', 'rota' => '/seguranca/protecoes'],
-                ['nome' => 'Autorizadores', 'rota' => '/seguranca/autorizadores'],
-                ['nome' => 'Tokens de Liberação', 'rota' => '/seguranca/tokens'],
                 ['nome' => 'Auditoria', 'rota' => '/seguranca/auditoria'],
-                ['nome' => 'Políticas de Auditoria', 'rota' => '/seguranca/auditoria/politicas'],
+                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
                 ['nome' => 'Configurações de Segurança', 'rota' => '/seguranca/configuracoes'],
             ];
         }

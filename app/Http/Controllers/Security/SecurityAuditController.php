@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Log;
 use App\Models\Usuario;
 use App\Models\Filial;
+use App\Models\Empresa;
 use App\Services\Security\AuditPrivacyService;
 use App\Services\Security\SecurityAuditRestoreService;
 use App\Services\Security\SecurityFeatureService;
@@ -99,6 +100,8 @@ class SecurityAuditController extends Controller
             ->pluck('acao')
             ->toArray();
 
+        $empresas = $isSuper ? Empresa::query()->orderBy('nome')->get(['id', 'nome', 'cnpj']) : collect();
+
         return view($this->listView, [
             'title' => $this->formTitle,
             'logs' => $logs,
@@ -106,6 +109,8 @@ class SecurityAuditController extends Controller
             'filiais' => $filiais,
             'acoes' => $acoes,
             'isSuper' => $isSuper,
+            'empresas' => $empresas,
+            'totalFiltrado' => $logs->total(),
         ]);
     }
 
