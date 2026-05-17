@@ -8,18 +8,24 @@ use Illuminate\Http\Request;
 
 class SecuritySettingController extends Controller
 {
-    public function index(SecurityFeatureService $featureService)
+    public function index(Request $request, SecurityFeatureService $featureService)
     {
+        $isSuper = $featureService->isSuperAdmin();
+        $empresaId = $isSuper && $request->filled('empresa_id') ? (int) $request->empresa_id : $featureService->currentEmpresaId();
+
         return view('security.settings.index', [
             'title' => 'Configurações de Segurança',
-            'setting' => $featureService->getOrCreateSetting(),
-            'isSuper' => $featureService->isSuperAdmin(),
+            'setting' => $featureService->getOrCreateSetting($empresaId),
+            'isSuper' => $isSuper,
+            'empresaId' => $empresaId,
         ]);
     }
 
     public function update(Request $request, SecurityFeatureService $featureService)
     {
-        $setting = $featureService->getOrCreateSetting();
+        $isSuper = $featureService->isSuperAdmin();
+        $empresaId = $isSuper && $request->filled('empresa_id') ? (int) $request->empresa_id : $featureService->currentEmpresaId();
+        $setting = $featureService->getOrCreateSetting($empresaId);
 
         $setting->fill([
             'tenant_enabled' => $request->boolean('tenant_enabled'),
@@ -39,6 +45,6 @@ class SecuritySettingController extends Controller
         $setting->save();
 
         session()->flash('mensagem_sucesso', 'Configurações de Segurança atualizadas com sucesso.');
-        return redirect('/seguranca/configuracoes');
+        return redirect('/seguranca/configuracoes' . ($isSuper && $empresaId ? '?empresa_id=' . $empresaId : ''));
     }
 }

@@ -17,6 +17,7 @@
 
         <form method="post" action="/seguranca/configuracoes">
             @csrf
+            @if($isSuper && !empty($empresaId))<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif
             <div class="row">
                 <div class="col-md-6">
                     <label><input type="checkbox" name="tenant_enabled" value="1" {{ $setting->tenant_enabled ? 'checked' : '' }}> Habilitar Segurança de Operações</label><br>
