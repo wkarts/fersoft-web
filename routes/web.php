@@ -2880,7 +2880,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'PesagemController@list')->name('pesagens.list');
         Route::get('/list', 'PesagemController@list');
         Route::get('/new', 'PesagemController@register')->name('pesagens.register');
-        Route::get('/register', 'PesagemController@register')->name('pesagens.register');
+        Route::get('/register', 'PesagemController@register');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
         Route::put('/update/{id}', 'PesagemController@update')->name('pesagens.update');
@@ -2888,7 +2888,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::delete('/delete/{id}', 'PesagemController@delete')->name('pesagens.delete');
         Route::get('/getTotais/{id}', 'PesagemController@getTotais');
         Route::get('/getDados/{id}', 'PesagemController@getDados');
-        Route::get('/getPesagemInfo/{id}', 'PesagemController@edit')->name('pesagens.edit');
+        Route::get('/getPesagemInfo/{id}', 'PesagemController@edit');
         Route::get('/search/veiculo', 'PesagemController@searchVeiculo')->name('pesagens.search.veiculo');
         Route::get('/search/cliente', 'PesagemController@searchCliente')->name('pesagens.search.cliente');
         Route::get('/search/fornecedor', 'PesagemController@searchFornecedor')->name('pesagens.search.fornecedor');
@@ -2896,7 +2896,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/search/produto', 'PesagemController@searchProduto')->name('pesagens.search.produto');
         Route::post('/enviar-relatorio-whats/{id}', 'PesagemController@enviarRelatorioWhatsApp')->name('pesagens.enviarWhatsApp');
         Route::post('/toggle-publicacao/{id}/', 'PesagemController@togglePublicacao')->name('pesagens.togglePublicacao');
-        Route::post('/togglePublicacao/{id}', 'PesagemController@togglePublicacao')->name('pesagens.togglePublicacao');
+        Route::post('/togglePublicacao/{id}', 'PesagemController@togglePublicacao');
         Route::get('/gen/qrcode/{token}', 'PesagemController@gerarQRCode')->name('pesagens.qrcode');
         Route::get('/gen/criarVenda/{id}', 'PesagemController@criarVendaDePesagem')->name('pesagens.criarVenda');
         Route::get('/gen/criarCompra/{id}', 'PesagemController@criarCompraDePesagem')->name('pesagens.criarCompra');
@@ -2913,8 +2913,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'ticketsPesagem'], function () {
         Route::get('/', 'TicketPesagemController@list')->name('ticketsPesagem.list');
-        Route::get('/list', 'TicketPesagemController@list')->name('ticketsPesagem.list');
-        Route::get('/list/{pesagem_id}', 'TicketPesagemController@list')->name('ticketsPesagem.list');
+        Route::get('/list', 'TicketPesagemController@list');
+        Route::get('/list/{pesagem_id}', 'TicketPesagemController@list');
         Route::get('/new', 'TicketPesagemController@register')->name('ticketsPesagem.register');
         Route::post('/save', 'TicketPesagemController@save')->name('ticketsPesagem.save');
         Route::get('/edit/{id}', 'TicketPesagemController@edit')->name('ticketsPesagem.edit');
@@ -3071,10 +3071,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     */
 
     Route::group(['prefix' => 'nfe-numeracao-gaps'], function () {
-        Route::get('/', 'NFeNumeracaoGapController@index')->name('relatorios.nfe_numeracao_gaps.index');
-        Route::get('/pdf', 'NFeNumeracaoGapController@pdf')->name('relatorios.nfe_numeracao_gaps.pdf');
-        Route::post('/inutilizar', 'NFeNumeracaoGapController@inutilizarFaixa')->name('relatorios.nfe_numeracao_gaps.inutilizar');
-        Route::post('/acao-documento', 'NFeNumeracaoGapController@acaoDocumento')->name('relatorios.nfe_numeracao_gaps.acao_documento');
+        // Rotas standalone com nomes próprios para não colidir com /relatorios/nfe-numeracao-gaps.
+        Route::get('/', 'NFeNumeracaoGapController@index')->name('nfe_numeracao_gaps.index');
+        Route::get('/pdf', 'NFeNumeracaoGapController@pdf')->name('nfe_numeracao_gaps.pdf');
+        Route::post('/inutilizar', 'NFeNumeracaoGapController@inutilizarFaixa')->name('nfe_numeracao_gaps.inutilizar');
+        Route::post('/acao-documento', 'NFeNumeracaoGapController@acaoDocumento')->name('nfe_numeracao_gaps.acao_documento');
         Route::get('/nfe-inutilizacoes', 'NFeNumeracaoGapController@inutilizacoes')->name('relatorios.nfe_inutilizacoes.index');
         Route::get('/nfe-inutilizacoes/pdf', 'NFeNumeracaoGapController@inutilizacoesPdf')->name('relatorios.nfe_inutilizacoes.pdf');
         Route::post('/nfe-inutilizacoes/inutilizar-manual', 'NFeNumeracaoGapController@inutilizarFaixaManual')->name('relatorios.nfe_inutilizacoes.inutilizar_manual');
@@ -3173,8 +3174,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'dashboard-analitico'],function(){
-        //Novas Rotas Futuras Declare aqui
-        Route::get('/', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
+        // Alias sem reutilizar o mesmo nome da rota /graficos, para permitir route:cache.
+        Route::get('/', 'DashboardAnaliticoController@index')->name('dashboard.analitico.index');
     });
 
     Route::group(['prefix' => 'adiantamentos'], function () {
@@ -3248,7 +3249,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'PesagemController@list')->name('pesagens.list'); // Nomeando a rota
         Route::get('/list', 'PesagemController@list')->name('pesagens.list'); // Nomeando a rota
         Route::get('/new', 'PesagemController@register')->name('pesagens.register');
-        Route::get('/register', 'PesagemController@register')->name('pesagens.register');
+        Route::get('/register', 'PesagemController@register');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
         Route::post('/update/{id}', 'PesagemController@update')->name('pesagens.update');

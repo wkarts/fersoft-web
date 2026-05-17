@@ -3,6 +3,12 @@
 <head>
     <meta charset="utf-8" />
 
+    @php
+        $title = $title ?? config('app.name', 'Sistema');
+        $cor = $cor ?? '';
+        $tema_menu = $tema_menu ?? 0;
+    @endphp
+
     <title>{{$title}}</title>
     <meta name="description" content="Updates and statistics">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
