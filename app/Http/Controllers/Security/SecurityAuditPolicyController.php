@@ -37,7 +37,14 @@ class SecurityAuditPolicyController extends Controller
             ? Empresa::query()->orderBy('nome')->get()
             : collect();
 
-        return view('security.audit.policies.index', compact('policies', 'resources', 'empresas', 'empresaId', 'isSuper'));
+        return view('security.audit.policies.index', [
+            'title' => 'Políticas de Auditoria',
+            'policies' => $policies,
+            'resources' => $resources,
+            'empresas' => $empresas,
+            'empresaId' => $empresaId,
+            'isSuper' => $isSuper,
+        ]);
     }
 
     public function store(Request $request)

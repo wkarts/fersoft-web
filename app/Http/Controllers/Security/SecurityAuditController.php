@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Security;
 
-use App\Http\Controllers\LogController;
+use App\Http\Controllers\Controller;
 use App\Models\Log;
 use App\Models\Usuario;
 use App\Models\Filial;
@@ -13,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-class SecurityAuditController extends LogController
+class SecurityAuditController extends Controller
 {
     protected $listView = 'security.audit.index';
     protected $formTitle = 'Auditoria de Segurança';
@@ -118,7 +118,15 @@ class SecurityAuditController extends LogController
         $canExportJson = $privacyService->canExportJson($log, $isSuper, $empresaId, (bool) optional($setting)->audit_sensitive_export_enabled);
         $canRestore = $privacyService->canRestore($log, $isSuper, $empresaId, (bool) optional($setting)->restore_from_audit_enabled);
 
-        return view('security.audit.show', compact('log', 'payload', 'isSuper', 'canViewJson', 'canExportJson', 'canRestore'));
+        return view('security.audit.show', [
+            'title' => 'Detalhes do Log de Auditoria',
+            'log' => $log,
+            'payload' => $payload,
+            'isSuper' => $isSuper,
+            'canViewJson' => $canViewJson,
+            'canExportJson' => $canExportJson,
+            'canRestore' => $canRestore,
+        ]);
     }
 
     public function json(int $id)
@@ -204,7 +212,11 @@ class SecurityAuditController extends LogController
             ->get()
             ->filter(fn ($log) => $privacyService->canRestore($log, $isSuper, $empresaId, (bool) optional($setting)->restore_from_audit_enabled));
 
-        return view('security.audit.restore', compact('logs', 'isSuper'));
+        return view('security.audit.restore', [
+            'title' => 'Restauração por Auditoria',
+            'logs' => $logs,
+            'isSuper' => $isSuper,
+        ]);
     }
 
     public function previewRestore(Request $request, int $id)
@@ -219,7 +231,12 @@ class SecurityAuditController extends LogController
         $mode = $request->get('mode', 'auto');
         $preview = app(SecurityAuditRestoreService::class)->preview($log, $mode);
 
-        return view('security.audit.restore_preview', compact('log', 'preview', 'mode'));
+        return view('security.audit.restore_preview', [
+            'title' => 'Pré-visualização da Restauração',
+            'log' => $log,
+            'preview' => $preview,
+            'mode' => $mode,
+        ]);
     }
 
     public function restore(Request $request, int $id)
