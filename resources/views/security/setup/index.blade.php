@@ -1,7 +1,9 @@
 @extends('default.layout')
 
 @section('content')
-<div class="card card-custom gutter-b">
+<link rel="stylesheet" href="/css/security-admin.css">
+@php($securitySetupEmpresaHidden = ($isSuper ?? false) && !empty($empresaId))
+<div class="card card-custom gutter-b security-admin-page">
     <div class="card-body">
         @if(session('mensagem_sucesso'))<div class="alert alert-success">{{ session('mensagem_sucesso') }}</div>@endif
         @if(session('mensagem_erro'))<div class="alert alert-danger">{{ session('mensagem_erro') }}</div>@endif
@@ -35,7 +37,7 @@
         <div class="row mb-4">
             <div class="col-md-3"><div class="alert alert-light border"><strong>Recursos</strong><br>{{ $checklist['resources_count'] }}</div></div>
             <div class="col-md-3"><div class="alert alert-light border"><strong>Permissões</strong><br>{{ $checklist['permissions_count'] }}</div></div>
-            <div class="col-md-3"><div class="alert alert-light border"><strong>Proteções</strong><br>{{ $checklist['protections_count'] }}</div></div>
+            <div class="col-md-3"><div class="alert alert-light border"><strong>Regras unificadas</strong><br>{{ $checklist['protections_count'] }}</div></div>
             <div class="col-md-3"><div class="alert alert-light border"><strong>Autorizadores</strong><br>{{ $checklist['authorizers_count'] }}</div></div>
         </div>
 
@@ -68,17 +70,22 @@
                             <td>{{ $step['description'] }}</td>
                             <td>
                                 @if($key === 'enabled' && !$step['done'])
-                                    <form method="post" action="/seguranca/setup/habilitar">@csrf<button class="btn btn-sm btn-primary">Habilitar</button></form>
+                                    <form method="post" action="/seguranca/setup/habilitar">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-primary">Habilitar</button></form>
                                 @elseif($key === 'resources')
-                                    <form method="post" action="/seguranca/setup/sincronizar-recursos">@csrf<button class="btn btn-sm btn-primary">Sincronizar recursos</button></form>
+                                    <form method="post" action="/seguranca/setup/sincronizar-recursos">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-primary">Sincronizar recursos</button></form>
                                 @elseif($key === 'permissions')
-                                    <form method="post" action="/seguranca/setup/gerar-permissoes">@csrf<button class="btn btn-sm btn-primary">Gerar permissões padrão</button></form>
+                                    <form method="post" action="/seguranca/setup/gerar-permissoes">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-primary">Gerar permissões padrão</button></form>
                                 @elseif($key === 'audit_policies')
-                                    <form method="post" action="/seguranca/setup/gerar-politicas-auditoria">@csrf<button class="btn btn-sm btn-primary">Gerar políticas</button></form>
+                                    <form method="post" action="/seguranca/setup/gerar-politicas-auditoria">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-primary">Gerar políticas</button></form>
                                 @elseif($key === 'protections_review')
                                     <div class="d-flex flex-column">
-                                        <form method="post" action="/seguranca/setup/gerar-protecoes-seguras" class="mb-1">@csrf<button class="btn btn-sm btn-warning">Gerar proteções críticas</button></form>
-                                        <a class="btn btn-sm btn-light" href="/seguranca/protecoes">Revisar proteções</a>
+                                        <form method="post" action="/seguranca/setup/gerar-protecoes-seguras" class="mb-1">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-warning">Gerar proteções críticas</button></form>
+                                        <a class="btn btn-sm btn-light" href="/seguranca/regras">Revisar regras</a>
                                     </div>
                                 @elseif($key === 'authorizers')
                                     <a class="btn btn-sm btn-primary" href="/seguranca/autorizadores">Configurar autorizadores</a>
@@ -90,9 +97,11 @@
                                         <a class="btn btn-sm btn-light" href="/seguranca/tokens">Configurar tokens</a>
                                     </div>
                                 @elseif($key === 'setup_completed')
-                                    <form method="post" action="/seguranca/setup/concluir">@csrf<button class="btn btn-sm btn-success" {{ $checklist['can_complete_setup'] ? '' : 'disabled' }}>Concluir setup</button></form>
+                                    <form method="post" action="/seguranca/setup/concluir">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-success" {{ $checklist['can_complete_setup'] ? '' : 'disabled' }}>Concluir setup</button></form>
                                 @elseif($key === 'enforcement')
-                                    <form method="post" action="/seguranca/setup/ativar-enforcement">@csrf<button class="btn btn-sm btn-danger" {{ $checklist['can_enable_enforcement'] ? '' : 'disabled' }} onclick="return confirm('Confirma ativar a aplicação das regras nos CRUDs?')">Ativar regras</button></form>
+                                    <form method="post" action="/seguranca/setup/ativar-enforcement">@csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif<button class="btn btn-sm btn-danger" {{ $checklist['can_enable_enforcement'] ? '' : 'disabled' }} onclick="return confirm('Confirma ativar a aplicação das regras nos CRUDs?')">Ativar regras</button></form>
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif
@@ -111,6 +120,7 @@
                 <p class="text-muted">A senha antiga só deve ser ocultada/desabilitada nas telas legadas depois que a aplicação das regras estiver ativa.</p>
                 <form method="post" action="/seguranca/setup/desabilitar-senha-legada">
                     @csrf
+                                    @if($securitySetupEmpresaHidden)<input type="hidden" name="empresa_id" value="{{ $empresaId }}">@endif
                     <button class="btn btn-outline-danger" {{ $checklist['can_disable_legacy'] ? '' : 'disabled' }} onclick="return confirm('Confirma desabilitar a senha legada nas telas antigas?')">
                         Desabilitar senha legada
                     </button>
@@ -119,8 +129,7 @@
             <div class="col-md-6">
                 <h5>Atalhos</h5>
                 <a class="btn btn-light btn-sm mb-1" href="/seguranca/recursos">Recursos</a>
-                <a class="btn btn-light btn-sm mb-1" href="/seguranca/permissoes">Permissões CRUD</a>
-                <a class="btn btn-light btn-sm mb-1" href="/seguranca/protecoes">Proteções</a>
+                <a class="btn btn-light btn-sm mb-1" href="/seguranca/regras">Regras unificadas</a>
                 <a class="btn btn-light btn-sm mb-1" href="/seguranca/auditoria/politicas">Políticas de Auditoria</a>
                 <a class="btn btn-light btn-sm mb-1" href="/seguranca/diagnostico">Diagnóstico</a>
             </div>

@@ -15,7 +15,7 @@
         <div class="row">
             <div class="col-lg-3 col-md-6 mb-3"><div class="card bg-light"><div class="card-body"><h5>Recursos</h5><h2>{{ $resourcesCount }}</h2></div></div></div>
             <div class="col-lg-3 col-md-6 mb-3"><div class="card bg-light"><div class="card-body"><h5>Permissões</h5><h2>{{ $permissionsCount }}</h2></div></div></div>
-            <div class="col-lg-3 col-md-6 mb-3"><div class="card bg-light"><div class="card-body"><h5>Proteções</h5><h2>{{ $rulesCount }}</h2></div></div></div>
+            <div class="col-lg-3 col-md-6 mb-3"><div class="card bg-light"><div class="card-body"><h5>Regras unificadas</h5><h2>{{ $rulesCount }}</h2></div></div></div>
             <div class="col-lg-3 col-md-6 mb-3"><div class="card bg-light"><div class="card-body"><h5>Autorizadores</h5><h2>{{ $authorizersCount }}</h2></div></div></div>
         </div>
 
@@ -33,8 +33,8 @@
         </table>
 
         <div class="mt-4">
-            <a href="/seguranca/permissoes?empresa_id={{ $empresa->id }}" class="btn btn-primary">Permissões</a>
-            <a href="/seguranca/protecoes?empresa_id={{ $empresa->id }}" class="btn btn-primary">Proteções</a>
+            <a href="/seguranca/regras?empresa_id={{ $empresa->id }}" class="btn btn-primary">Permissões</a>
+            <a href="/seguranca/regras?empresa_id={{ $empresa->id }}" class="btn btn-primary">Regras unificadas</a>
             <a href="/seguranca/autorizadores?empresa_id={{ $empresa->id }}" class="btn btn-primary">Autorizadores</a>
             <a href="/seguranca/tokens?empresa_id={{ $empresa->id }}" class="btn btn-primary">Tokens</a>
         </div>

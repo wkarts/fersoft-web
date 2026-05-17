@@ -85,8 +85,8 @@
     <div class="sa-tabs mb-4" role="tablist">
         <button class="sa-tab active" data-sa-tab="visao">Visão Geral</button>
         <button class="sa-tab" data-sa-tab="autenticacao">Autenticação</button>
-        <button class="sa-tab" data-sa-tab="crud">CRUD por Módulo</button>
-        <button class="sa-tab" data-sa-tab="regras">Regras</button>
+        <button class="sa-tab" data-sa-tab="crud">Módulos</button>
+        <button class="sa-tab" data-sa-tab="regras">Regras Unificadas</button>
         <button class="sa-tab" data-sa-tab="autorizadores">Autorizadores</button>
         <button class="sa-tab" data-sa-tab="auditoria">Auditoria</button>
         <button class="sa-tab" data-sa-tab="guias">Guias</button>
@@ -204,8 +204,8 @@
             </div>
             <div class="sa-actions mt-3">
                 <a href="/seguranca/recursos" class="btn btn-light-primary">Gerenciar recursos</a>
-                <a href="/seguranca/permissoes" class="btn btn-light">Permissões detalhadas</a>
-                <a href="/seguranca/protecoes" class="btn btn-light">Proteções detalhadas</a>
+                <a href="/seguranca/regras" class="btn btn-light">Regras unificadas</a>
+                <a href="/seguranca/regras" class="btn btn-light">Editar permissões/proteções</a>
             </div>
         </div></div>
     </section>
@@ -213,7 +213,7 @@
     <section class="sa-section" id="sa-section-regras">
         <div class="sa-card"><div class="sa-card-body">
             <h4 class="sa-section-title">Permissões e regras de segurança</h4>
-            <p class="sa-section-help">Edite rapidamente proteções existentes e entenda qual método será solicitado.</p>
+            <p class="sa-section-help">A administração principal agora é feita em uma matriz única por módulo, juntando permissões CRUD e métodos de autenticação no mesmo lugar.</p>
             <div class="table-responsive sa-table-wrap">
                 <table class="table table-bordered table-hover sa-table">
                     <thead><tr><th>Recurso</th><th>Ação</th><th>Método</th><th>Escopo</th><th>Status</th><th>Ações</th></tr></thead>
@@ -240,7 +240,7 @@
                     <button type="button" class="btn btn-sm btn-primary mt-2" data-toggle="modal" data-target="#modalRule{{ $rule->id }}">Editar regra</button>
                 </div>
             @endforeach
-            <div class="sa-actions mt-3"><a href="/seguranca/protecoes" class="btn btn-light-primary">Criar nova proteção</a></div>
+            <div class="sa-actions mt-3"><a href="/seguranca/regras" class="btn btn-light-primary">Abrir regras unificadas</a></div>
         </div></div>
     </section>
 

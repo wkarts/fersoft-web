@@ -34,6 +34,8 @@ class SecurityCrudProtectionService
             'bypass_company_admin' => !empty($data['bypass_company_admin']),
             'enabled' => array_key_exists('enabled', $data) ? !empty($data['enabled']) : true,
             'message' => $data['message'] ?? null,
+            'source' => $data['source'] ?? 'manual',
+            'updated_by' => $data['updated_by'] ?? app(SecurityTenantContextService::class)->currentUserId(),
         ];
 
         $existing = SecurityCrudProtectionRule::query()
@@ -48,6 +50,7 @@ class SecurityCrudProtectionService
             return $existing;
         }
 
+        $values['created_by'] = $data['created_by'] ?? app(SecurityTenantContextService::class)->currentUserId();
         return SecurityCrudProtectionRule::create(array_merge($attributes, $values));
     }
 

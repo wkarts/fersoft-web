@@ -1042,6 +1042,7 @@ class Menu {
         if ($isSuper) {
             $subs = [
                 ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
+                ['nome' => 'Regras por Módulo', 'rota' => '/seguranca/regras'],
                 ['nome' => 'Painel Global', 'rota' => '/seguranca/admin/painel-global'],
                 ['nome' => 'Painel por Empresa', 'rota' => '/seguranca/admin/empresas'],
                 ['nome' => 'Diagnóstico Global', 'rota' => '/seguranca/diagnostico'],
@@ -1054,6 +1055,7 @@ class Menu {
         } else {
             $subs = [
                 ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
+                ['nome' => 'Regras por Módulo', 'rota' => '/seguranca/regras'],
                 ['nome' => 'Assistente de Implantação', 'rota' => '/seguranca/setup'],
                 ['nome' => 'Auditoria', 'rota' => '/seguranca/auditoria'],
                 ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],

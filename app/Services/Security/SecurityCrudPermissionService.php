@@ -53,6 +53,8 @@ class SecurityCrudPermissionService
             'can_export' => !empty($data['can_export']),
             'can_print' => !empty($data['can_print']),
             'enabled' => array_key_exists('enabled', $data) ? !empty($data['enabled']) : true,
+            'source' => $data['source'] ?? 'manual',
+            'updated_by' => $data['updated_by'] ?? app(SecurityTenantContextService::class)->currentUserId(),
         ]);
 
         $existing = SecurityCrudPermission::query()
@@ -68,6 +70,7 @@ class SecurityCrudPermissionService
             return $existing;
         }
 
+        $values['created_by'] = $data['created_by'] ?? app(SecurityTenantContextService::class)->currentUserId();
         return SecurityCrudPermission::create(array_merge($attributes, $values));
     }
 

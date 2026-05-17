@@ -16,53 +16,8 @@ class SecurityCrudPermissionController extends Controller
 {
     public function index(Request $request, SecurityFeatureService $featureService, SecurityCrudPermissionService $permissionService)
     {
-        $isSuper = $featureService->isSuperAdmin();
-        $empresaId = $isSuper && $request->filled('empresa_id') ? (int) $request->empresa_id : $featureService->currentEmpresaId();
-
-        $resources = SecurityCrudResource::query()
-            ->where('enabled', true)
-            ->when(!$isSuper, function ($query) {
-                $query->where('tenant_visible', true)->where('super_admin_only', false);
-            })
-            ->orderBy('module')
-            ->orderBy('display_name')
-            ->get();
-
-        $permissions = SecurityCrudPermission::query()
-            ->with(['resource', 'perfil', 'usuario', 'empresa'])
-            ->when(!$isSuper, function ($query) use ($empresaId) {
-                $query->where('empresa_id', $empresaId);
-            })
-            ->when($isSuper && $request->filled('empresa_id'), function ($query) use ($empresaId) {
-                $query->where('empresa_id', $empresaId);
-            })
-            ->when($request->filled('resource_id'), function ($query) use ($request) {
-                $query->where('security_crud_resource_id', (int) $request->resource_id);
-            })
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        $usuarios = Usuario::query()
-            ->when($empresaId, fn ($query) => $query->where('empresa_id', $empresaId))
-            ->orderBy('nome')
-            ->get(['id', 'nome', 'login', 'empresa_id']);
-
-        $perfis = PerfilAcesso::query()->orderBy('nome')->get(['id', 'nome']);
-        $empresas = $isSuper ? Empresa::query()->orderBy('nome')->get(['id', 'nome', 'cnpj']) : collect();
-
-        return view('security.permissions.index', [
-            'title' => 'Permissões CRUD',
-            'isSuper' => $isSuper,
-            'empresaId' => $empresaId,
-            'resources' => $resources,
-            'permissions' => $permissions,
-            'usuarios' => $usuarios,
-            'perfis' => $perfis,
-            'empresas' => $empresas,
-            'actions' => SecurityCrudPermissionService::ACTIONS,
-            'permissionService' => $permissionService,
-        ]);
+        $query = $request->getQueryString();
+        return redirect('/seguranca/regras' . ($query ? '?' . $query : ''));
     }
 
     public function store(Request $request, SecurityFeatureService $featureService, SecurityCrudPermissionService $permissionService)
@@ -88,7 +43,7 @@ class SecurityCrudPermissionController extends Controller
         $permissionService->createOrUpdate($data);
 
         session()->flash('mensagem_sucesso', 'Permissão CRUD salva com sucesso.');
-        return redirect('/seguranca/permissoes' . ($empresaId && $isSuper ? '?empresa_id=' . $empresaId : ''));
+        return redirect('/seguranca/regras' . ($empresaId && $isSuper ? '?empresa_id=' . $empresaId : ''));
     }
 
     public function destroy($id)

@@ -76,3 +76,26 @@
     .security-admin-page .sa-actions .btn { width:100%; }
     .security-admin-page .sa-tabs { position: relative; }
 }
+/* Etapa 21 - compactação e matriz unificada de regras */
+.security-admin-page .sa-hero-compact { padding: 14px 16px; border-radius: 14px; }
+.security-admin-page .sa-card-body-compact { padding: 12px 14px; }
+.security-admin-page .sa-compact-filter label { font-size: .76rem; font-weight: 700; color: #475569; margin-bottom: 3px; }
+.security-admin-page .sa-table-compact { min-width: 1120px; font-size: .82rem; }
+.security-admin-page .sa-table-compact th,
+.security-admin-page .sa-table-compact td { padding: .38rem .45rem; vertical-align: middle; }
+.security-admin-page .btn-xs { padding: .16rem .42rem; font-size: .74rem; border-radius: .25rem; }
+.security-admin-page .sa-rule-cell { min-width: 92px; }
+.security-admin-page .sa-dot { width: 10px; height: 10px; display: inline-block; border-radius: 999px; }
+.security-admin-page .sa-dot-ok { background: #16a34a; box-shadow: 0 0 0 3px #dcfce7; }
+.security-admin-page .sa-dot-off { background: #9ca3af; box-shadow: 0 0 0 3px #f3f4f6; }
+.security-admin-page .sa-mobile-rules { display: none; }
+.security-admin-page .modal-xl { max-width: 1180px; }
+.security-admin-page .modal-body { padding: 1rem; }
+.security-admin-page .modal-header, .security-admin-page .modal-footer { padding-left: 1rem; padding-right: 1rem; }
+@media (max-width: 991.98px) {
+    .security-admin-page .sa-table-wrap { display: none; }
+    .security-admin-page .sa-mobile-rules { display: block; }
+    .security-admin-page .sa-hero-compact .sa-actions { width: 100%; }
+    .security-admin-page .sa-hero-compact .sa-actions .btn,
+    .security-admin-page .sa-hero-compact .sa-actions form { width: 100%; }
+}

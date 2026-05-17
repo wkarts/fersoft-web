@@ -72,7 +72,7 @@
                     <div class="card-body">
                         <h5>Regras</h5>
                         <h2>{{ $rulesCount }}</h2>
-                        <a href="/seguranca/protecoes">Ver proteções</a>
+                        <a href="/seguranca/regras">Ver regras unificadas</a>
                     </div>
                 </div>
             </div>
