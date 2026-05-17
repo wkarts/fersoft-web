@@ -279,4 +279,29 @@ class ConfigNota extends BaseModel
         ];
     }
 
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Configurações',
+            'name' => 'Emitente',
+            'plural_name' => 'Emitentes',
+            'description' => 'Cadastro e configurações do emitente fiscal.',
+            'route_prefix' => 'configNF',
+            'icon' => 'building',
+            'sensitive' => true,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'actions' => [
+                'view' => true,
+                'create' => false,
+                'edit' => true,
+                'delete' => false,
+                'restore' => false,
+                'export' => false,
+                'print' => false,
+            ],
+        ]);
+    }
+
 }

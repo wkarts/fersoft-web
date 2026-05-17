@@ -948,18 +948,18 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'configNF'], function(){
-        Route::get('/', 'ConfigNotaController@index');
-        Route::post('/save', 'ConfigNotaController@save');
-        Route::get('/certificado', 'ConfigNotaController@certificado');
+        Route::get('/', 'ConfigNotaController@index')->middleware('security.crud:ConfigNota,view,id,/configNF');
+        Route::post('/save', 'ConfigNotaController@save')->middleware('security.crud:ConfigNota,edit,id,/configNF');
+        Route::get('/certificado', 'ConfigNotaController@certificado')->middleware('security.crud:ConfigNota,edit,id,/configNF');
         Route::get('/download', 'ConfigNotaController@download');
         Route::get('/senha', 'ConfigNotaController@senha');
         // Route::post('/certificado', 'ConfigNotaController@saveCertificado')->middleware('csv');
-        Route::post('/certificado', 'ConfigNotaController@saveCertificado');
+        Route::post('/certificado', 'ConfigNotaController@saveCertificado')->middleware('security.crud:ConfigNota,edit,id,/configNF');
         Route::get('/teste', 'ConfigNotaController@teste');
         Route::get('/testeEmail', 'ConfigNotaController@testeEmail');
-        Route::get('/deleteCertificado', 'ConfigNotaController@deleteCertificado');
-        Route::get('/removeLogo/{id}', 'ConfigNotaController@removeLogo');
-        Route::get('/removeSenha/{id}', 'ConfigNotaController@removeSenha');
+        Route::get('/deleteCertificado', 'ConfigNotaController@deleteCertificado')->middleware('security.crud:ConfigNota,edit,id,/configNF');
+        Route::get('/removeLogo/{id}', 'ConfigNotaController@removeLogo')->middleware('security.crud:ConfigNota,edit,id,/configNF');
+        Route::get('/removeSenha/{id}', 'ConfigNotaController@removeSenha')->middleware('security.crud:ConfigNota,edit,id,/configNF');
         Route::get('/verificaSenha', 'ConfigNotaController@verificaSenha');
         Route::get('/enviar-certificado', 'ConfigNotaController@enviarCertificado');
         Route::get('/verifica-senha-acesso', 'ConfigNotaController@verificaSenhaAcesso');
@@ -1259,18 +1259,18 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'contasPagar'],function(){
         Route::post('/salvarParcela', 'ContasPagarController@salvarParcela');
-        Route::get('/', 'ContasPagarController@index');
+        Route::get('/', 'ContasPagarController@index')->middleware('security.crud:ContaPagar,view,id,/contasPagar');
         Route::get('/filtro', 'ContasPagarController@filtro');
-        Route::get('/new', 'ContasPagarController@new');
-        Route::get('/edit/{id}', 'ContasPagarController@edit');
-        Route::get('/delete/{id}', 'ContasPagarController@delete');
-        Route::get('/pagar/{id}', 'ContasPagarController@pagar');
-        Route::get('/estorno/{id}', 'ContasPagarController@estorno');
+        Route::get('/new', 'ContasPagarController@new')->middleware('security.crud:ContaPagar,create,id,/contasPagar');
+        Route::get('/edit/{id}', 'ContasPagarController@edit')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
+        Route::get('/delete/{id}', 'ContasPagarController@delete')->middleware('security.crud:ContaPagar,delete,id,/contasPagar');
+        Route::get('/pagar/{id}', 'ContasPagarController@pagar')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
+        Route::get('/estorno/{id}', 'ContasPagarController@estorno')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
 
-        Route::post('/save', 'ContasPagarController@save');
-        Route::post('/update', 'ContasPagarController@update');
-        Route::post('/pagar', 'ContasPagarController@pagarConta');
-        Route::post('/estorno', 'ContasPagarController@estornoConta');
+        Route::post('/save', 'ContasPagarController@save')->middleware('security.crud:ContaPagar,create,id,/contasPagar');
+        Route::post('/update', 'ContasPagarController@update')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
+        Route::post('/pagar', 'ContasPagarController@pagarConta')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
+        Route::post('/estorno', 'ContasPagarController@estornoConta')->middleware('security.crud:ContaPagar,edit,id,/contasPagar');
         Route::get('/relatorio', 'ContasPagarController@relatorio');
         Route::get('/pagarMultiplos/{ds}', 'ContasPagarController@pagarMultiplos');
         Route::post('/pagar-multi', 'ContasPagarController@pagarMultiploStore');
@@ -1287,22 +1287,22 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'contasReceber'],function(){
         Route::post('/salvarParcela', 'ContaReceberController@salvarParcela');
-        Route::get('/', 'ContaReceberController@index');
+        Route::get('/', 'ContaReceberController@index')->middleware('security.crud:ContaReceber,view,id,/contasReceber');
         Route::get('/importacao', 'ContaReceberController@importacao');
         Route::post('/importacao', 'ContaReceberController@importacaoStore');
         Route::get('/downloadModelo', 'ContaReceberController@downloadModelo');
         Route::get('/filtro', 'ContaReceberController@filtro');
-        Route::get('/new', 'ContaReceberController@new');
-        Route::get('/edit/{id}', 'ContaReceberController@edit');
-        Route::get('/delete/{id}', 'ContaReceberController@delete');
-        Route::get('/receber/{id}', 'ContaReceberController@receber');
-        Route::get('/estorno/{id}', 'ContaReceberController@estorno');
+        Route::get('/new', 'ContaReceberController@new')->middleware('security.crud:ContaReceber,create,id,/contasReceber');
+        Route::get('/edit/{id}', 'ContaReceberController@edit')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
+        Route::get('/delete/{id}', 'ContaReceberController@delete')->middleware('security.crud:ContaReceber,delete,id,/contasReceber');
+        Route::get('/receber/{id}', 'ContaReceberController@receber')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
+        Route::get('/estorno/{id}', 'ContaReceberController@estorno')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
 
-        Route::post('/save', 'ContaReceberController@save');
-        Route::post('/update', 'ContaReceberController@update');
-        Route::post('/receber', 'ContaReceberController@receberConta');
+        Route::post('/save', 'ContaReceberController@save')->middleware('security.crud:ContaReceber,create,id,/contasReceber');
+        Route::post('/update', 'ContaReceberController@update')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
+        Route::post('/receber', 'ContaReceberController@receberConta')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
         Route::get('/relatorio', 'ContaReceberController@relatorio');
-        Route::post('/estorno', 'ContaReceberController@estornoConta');
+        Route::post('/estorno', 'ContaReceberController@estornoConta')->middleware('security.crud:ContaReceber,edit,id,/contasReceber');
 
         Route::post('/receberSomente', 'ContaReceberController@receberSomente');
         Route::post('/receberComDivergencia', 'ContaReceberController@receberComDivergencia');
@@ -1321,12 +1321,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'produtos'],function(){
         Route::get('/teste', 'ProductController@teste');
-        Route::get('/', 'ProductController@index');
-        Route::get('/delete/{id}', 'ProductController@delete');
+        Route::get('/', 'ProductController@index')->middleware('security.crud:Produto,view,id,/produtos');
+        Route::get('/delete/{id}', 'ProductController@delete')->middleware('security.crud:Produto,delete,id,/produtos');
         Route::get('/delete-all', 'ProductController@deleteAll');
-        Route::get('/edit/{id}', 'ProductController@edit');
+        Route::get('/edit/{id}', 'ProductController@edit')->middleware('security.crud:Produto,edit,id,/produtos');
         Route::get('/editGrade/{id}', 'ProductController@editGrade');
-        Route::get('/new', 'ProductController@new')->middleware('limiteProdutos');
+        Route::get('/new', 'ProductController@new')->middleware(['limiteProdutos', 'security.crud:Produto,create,id,/produtos']);
         Route::get('/all', 'ProductController@all');
         Route::get('/composto', 'ProductController@composto');
         Route::get('/naoComposto', 'ProductController@naoComposto');
@@ -1342,8 +1342,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/filtroCategoria', 'ProductController@filtroCategoria');
         Route::get('/getUnidadesMedida', 'ProductController@getUnidadesMedida');
         Route::post('/request', 'ProductController@request');
-        Route::post('/save', 'ProductController@save');
-        Route::post('/update', 'ProductController@update');
+        Route::post('/save', 'ProductController@save')->middleware('security.crud:Produto,create,id,/produtos');
+        Route::post('/update', 'ProductController@update')->middleware('security.crud:Produto,edit,id,/produtos');
         Route::post('/getValue', 'ProductController@getValue');
         Route::post('/salvarProdutoDaNota', 'ProductController@salvarProdutoDaNota');
         Route::post('/salvarProdutoDaNotaComEstoque', 'ProductController@salvarProdutoDaNotaComEstoque');
@@ -1679,15 +1679,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'clientes'],function(){
-        Route::get('/', 'ClienteController@index');
+        Route::get('/', 'ClienteController@index')->middleware('security.crud:Cliente,view,id,/clientes');
         Route::get('/buscar', 'ClienteController@buscar');
         Route::get('/upload/{id}', 'ClienteController@upload');
         Route::get('/download-documento/{id}', 'ClienteController@downloadDocumento');
         Route::post('/upload-store/{id}', 'ClienteController@uploadStore');
         Route::delete('/destroy-upload/{id}', 'ClienteController@destroyUpload')->name('clientes.destroy-upload');
-        Route::get('/delete/{id}', 'ClienteController@delete');
-        Route::get('/edit/{id}', 'ClienteController@edit');
-        Route::get('/new', 'ClienteController@new')->middleware('limiteClientes');
+        Route::get('/delete/{id}', 'ClienteController@delete')->middleware('security.crud:Cliente,delete,id,/clientes');
+        Route::get('/edit/{id}', 'ClienteController@edit')->middleware('security.crud:Cliente,edit,id,/clientes');
+        Route::get('/new', 'ClienteController@new')->middleware(['limiteClientes', 'security.crud:Cliente,create,id,/clientes']);
         Route::get('/all', 'ClienteController@all');
         Route::get('/verificaLimite', 'ClienteController@verificaLimite');
         Route::get('/find/{id}', 'ClienteController@find');
@@ -1696,8 +1696,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::post('/request', 'ClienteController@request');
         Route::post('/quickSave', 'ClienteController@quickSave');
-        Route::post('/save', 'ClienteController@save');
-        Route::post('/update', 'ClienteController@update');
+        Route::post('/save', 'ClienteController@save')->middleware('security.crud:Cliente,create,id,/clientes');
+        Route::post('/update', 'ClienteController@update')->middleware('security.crud:Cliente,edit,id,/clientes');
         Route::get('/cpfCnpjDuplicado', 'ClienteController@cpfCnpjDuplicado');
 
         Route::get('/importacao', 'ClienteController@importacao');
@@ -1775,20 +1775,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'compraManual'],function(){
-        Route::get('/', 'CompraManualController@index');
-        Route::get('/editar/{id}', 'CompraManualController@editar');
-        Route::post('/salvar', 'CompraManualController@salvar');
+        Route::get('/', 'CompraManualController@index')->middleware('security.crud:Compra,view,id,/compraManual');
+        Route::get('/editar/{id}', 'CompraManualController@editar')->middleware('security.crud:Compra,edit,id,/compraManual');
+        Route::post('/salvar', 'CompraManualController@salvar')->middleware('security.crud:Compra,create,id,/compraManual');
         Route::post('/salvarNfFiscal', 'CompraManualController@salvarNfFiscal');
         Route::post('/salvarItem', 'CompraManualController@salvarItem');
         Route::get('/read', 'CompraManualController@read');
 
         Route::get('/ultimaCompra/{produtoId}', 'CompraManualController@ultimaCompra');
 
-        Route::post('/update', 'CompraManualController@update');
+        Route::post('/update', 'CompraManualController@update')->middleware('security.crud:Compra,edit,id,/compraManual');
         Route::get('/custo-medio', 'CompraManualController@custoMedio');
         Route::post('/updateItem', 'CompraManualController@updateItem');
-        Route::post('/editarItem', 'CompraManualController@editarItem')->name('compraManual.editarItem');
-        Route::post('/excluirItem', 'CompraManualController@excluirItem')->name('compraManual.excluirItem');
+        Route::post('/editarItem', 'CompraManualController@editarItem')->name('compraManual.editarItem')->middleware('security.crud:Compra,edit,id,/compraManual');
+        Route::post('/excluirItem', 'CompraManualController@excluirItem')->name('compraManual.excluirItem')->middleware('security.crud:Compra,delete,id,/compraManual');
 
 
     });
@@ -2005,17 +2005,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     Route::post('vendas-balcao-store-nfce', 'VendaBalcaoController@storeNfce');
 
     Route::group(['prefix' => 'vendas'],function(){
-        Route::get('/', 'VendaController@index');
+        Route::get('/', 'VendaController@index')->middleware('security.crud:Venda,view,id,/vendas');
         Route::get('/detalhe-pagamento/{id}', 'VendaController@detalhesPagamento');
-        Route::get('/nova', 'VendaController@nova');
+        Route::get('/nova', 'VendaController@nova')->middleware('security.crud:Venda,create,id,/vendas');
         // Route::get('/lista', 'VendaController@lista');
         Route::get('/detalhar/{id}', 'VendaController@detalhar');
-        Route::get('/delete/{id}', 'VendaController@delete');
-        Route::get('/inutilizar/{id}', 'VendaController@inutilizar')->name('vendas.inutilizar');
-        Route::get('/edit/{id}', 'VendaController@edit');
+        Route::get('/delete/{id}', 'VendaController@delete')->middleware('security.crud:Venda,delete,id,/vendas');
+        Route::get('/inutilizar/{id}', 'VendaController@inutilizar')->name('vendas.inutilizar')->middleware('security.crud:Venda,edit,id,/vendas');
+        Route::get('/edit/{id}', 'VendaController@edit')->middleware('security.crud:Venda,edit,id,/vendas');
         Route::get('/find/{id}', 'VendaController@find');
-        Route::post('/salvar', 'VendaController@salvar');
-        Route::post('/atualizar', 'VendaController@atualizar');
+        Route::post('/salvar', 'VendaController@salvar')->middleware('security.crud:Venda,create,id,/vendas');
+        Route::post('/atualizar', 'VendaController@atualizar')->middleware('security.crud:Venda,edit,id,/vendas');
         Route::post('/salvarCrediario', 'VendaController@salvarCrediario');
         Route::get('/filtro', 'VendaController@filtro');
         Route::get('/rederizarDanfe/{id}', 'VendaController@rederizarDanfe');
@@ -2044,21 +2044,21 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'compras'],function(){
-        Route::get('/', 'PurchaseController@index');
+        Route::get('/', 'PurchaseController@index')->middleware('security.crud:Compra,view,id,/compras');
         Route::get('/filtro', 'PurchaseController@filtro');
-        Route::get('/view/{id}', 'PurchaseController@view');
-        Route::get('/delete/{id}', 'PurchaseController@delete');
-        Route::get('/detalhes/{id}', 'PurchaseController@detalhes');
+        Route::get('/view/{id}', 'PurchaseController@view')->middleware('security.crud:Compra,view,id,/compras');
+        Route::get('/delete/{id}', 'PurchaseController@delete')->middleware('security.crud:Compra,delete,id,/compras');
+        Route::get('/detalhes/{id}', 'PurchaseController@detalhes')->middleware('security.crud:Compra,view,id,/compras');
         Route::get('/pesquisa', 'PurchaseController@pesquisa');
         Route::get('/downloadXml/{id}', 'PurchaseController@downloadXml');
         Route::get('/downloadXmlCancela/{id}', 'PurchaseController@downloadXmlCancela');
-        Route::post('/save', 'PurchaseController@save');
+        Route::post('/save', 'PurchaseController@save')->middleware('security.crud:Compra,create,id,/compras');
 
         Route::get('/emitirEntrada/{id}', 'PurchaseController@emitirEntrada');
         Route::get('/danfeTemporaria', 'PurchaseController@danfeTemporaria');
         Route::get('/xmlTemporaria', 'PurchaseController@xmlTemporaria');
-        Route::post('/gerarEntrada', 'PurchaseController@gerarEntrada');
-        Route::post('/gerarEntradaWithXml', 'PurchaseController@gerarEntradaWithXml');
+        Route::post('/gerarEntrada', 'PurchaseController@gerarEntrada')->middleware('security.crud:Compra,edit,id,/compras');
+        Route::post('/gerarEntradaWithXml', 'PurchaseController@gerarEntradaWithXml')->middleware('security.crud:Compra,edit,id,/compras');
         Route::post('/cancelarEntrada', 'PurchaseController@cancelarEntrada');
         Route::post('/cartaCorrecao', 'PurchaseController@cartaCorrecao');
         Route::post('/consultar', 'PurchaseController@consultar');
@@ -2941,6 +2941,79 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::prefix('logs')->group(function () {
         Route::get('/', 'LogController@list')->name('logs.list');
+    });
+
+    Route::prefix('seguranca')->group(function () {
+        Route::get('/', 'Security\SecurityDashboardController@index')->name('security.dashboard');
+        Route::post('/habilitar', 'Security\SecurityDashboardController@enable')->name('security.enable');
+
+        Route::get('/setup', 'Security\SecuritySetupController@index')->name('security.setup.index');
+        Route::post('/setup/habilitar', 'Security\SecuritySetupController@enable')->name('security.setup.enable');
+        Route::post('/setup/sincronizar-recursos', 'Security\SecuritySetupController@syncResources')->name('security.setup.sync-resources');
+        Route::post('/setup/gerar-permissoes', 'Security\SecuritySetupController@generatePermissions')->name('security.setup.generate-permissions');
+        Route::post('/setup/gerar-politicas-auditoria', 'Security\SecuritySetupController@generateAuditPolicies')->name('security.setup.generate-audit-policies');
+        Route::post('/setup/gerar-protecoes-seguras', 'Security\SecuritySetupController@generateProtectionDrafts')->name('security.setup.generate-protection-drafts');
+        Route::post('/setup/concluir', 'Security\SecuritySetupController@complete')->name('security.setup.complete');
+        Route::post('/setup/ativar-enforcement', 'Security\SecuritySetupController@enableEnforcement')->name('security.setup.enable-enforcement');
+        Route::post('/setup/desabilitar-senha-legada', 'Security\SecuritySetupController@disableLegacyPassword')->name('security.setup.disable-legacy-password');
+
+        Route::post('/operacao/resolve', 'Security\SecurityOperationAuthorizationController@resolve')->name('security.operation.resolve');
+        Route::post('/operacao/autorizar', 'Security\SecurityOperationAuthorizationController@authorize')->name('security.operation.authorize');
+
+        Route::prefix('admin')->middleware('security.super_admin')->group(function () {
+            Route::get('/painel-global', 'Security\SecurityAdminDashboardController@index')->name('security.admin.dashboard');
+            Route::get('/empresas', 'Security\SecurityAdminCompanyController@index')->name('security.admin.companies');
+            Route::get('/empresas/{empresa}', 'Security\SecurityAdminCompanyController@show')->name('security.admin.companies.show');
+        });
+
+        Route::middleware('security.super_admin')->group(function () {
+            Route::get('/diagnostico', 'Security\SecurityHealthController@index')->name('security.health.index');
+            Route::get('/diagnostico/empresas/{empresa}', 'Security\SecurityHealthController@company')->name('security.health.company');
+        });
+
+        Route::get('/relatorios', 'Security\SecurityReportController@index')->name('security.reports.index');
+        Route::get('/relatorios/baixar', 'Security\SecurityReportController@download')->name('security.reports.download');
+
+        Route::get('/recursos', 'Security\SecurityCrudResourceController@index')->name('security.resources.index');
+        Route::post('/recursos/sincronizar', 'Security\SecurityCrudResourceController@sync')->name('security.resources.sync');
+
+        Route::get('/permissoes', 'Security\SecurityCrudPermissionController@index')->name('security.permissions.index');
+        Route::post('/permissoes', 'Security\SecurityCrudPermissionController@store')->name('security.permissions.store');
+        Route::delete('/permissoes/{id}', 'Security\SecurityCrudPermissionController@destroy')->name('security.permissions.destroy');
+
+        Route::get('/protecoes', 'Security\SecurityCrudProtectionController@index')->name('security.protections.index');
+        Route::post('/protecoes', 'Security\SecurityCrudProtectionController@store')->name('security.protections.store');
+        Route::delete('/protecoes/{id}', 'Security\SecurityCrudProtectionController@destroy')->name('security.protections.destroy');
+
+        Route::get('/autorizadores', 'Security\SecurityAuthorizerController@index')->name('security.authorizers.index');
+        Route::post('/autorizadores', 'Security\SecurityAuthorizerController@store')->name('security.authorizers.store');
+        Route::get('/autorizadores/{id}/otp', 'Security\SecurityAuthorizerOtpController@setup')->name('security.authorizers.otp.setup');
+        Route::post('/autorizadores/{id}/otp/confirmar', 'Security\SecurityAuthorizerOtpController@confirm')->name('security.authorizers.otp.confirm');
+        Route::post('/autorizadores/{id}/otp/desativar', 'Security\SecurityAuthorizerOtpController@disable')->name('security.authorizers.otp.disable');
+        Route::delete('/autorizadores/{id}', 'Security\SecurityAuthorizerController@destroy')->name('security.authorizers.destroy');
+
+        Route::get('/tokens', 'Security\SecurityAuthorizerTokenController@index')->name('security.tokens.index');
+        Route::post('/tokens', 'Security\SecurityAuthorizerTokenController@store')->name('security.tokens.store');
+        Route::post('/tokens/{id}/toggle', 'Security\SecurityAuthorizerTokenController@toggle')->name('security.tokens.toggle');
+        Route::delete('/tokens/{id}', 'Security\SecurityAuthorizerTokenController@destroy')->name('security.tokens.destroy');
+
+        Route::get('/configuracoes', 'Security\SecuritySettingController@index')->name('security.settings.index');
+        Route::post('/configuracoes', 'Security\SecuritySettingController@update')->name('security.settings.update');
+
+        Route::prefix('auditoria')->group(function () {
+            Route::get('/', 'Security\SecurityAuditController@list')->name('security.audit.index');
+            Route::get('/exportar-json', 'Security\SecurityAuditController@exportJson')->name('security.audit.export-json');
+            Route::get('/restaurar', 'Security\SecurityAuditController@restoreIndex')->name('security.audit.restore');
+
+            Route::get('/politicas', 'Security\SecurityAuditPolicyController@index')->name('security.audit.policies.index');
+            Route::post('/politicas', 'Security\SecurityAuditPolicyController@store')->name('security.audit.policies.store');
+            Route::delete('/politicas/{id}', 'Security\SecurityAuditPolicyController@destroy')->name('security.audit.policies.destroy');
+
+            Route::get('/{id}', 'Security\SecurityAuditController@show')->name('security.audit.show');
+            Route::get('/{id}/json', 'Security\SecurityAuditController@json')->name('security.audit.json');
+            Route::get('/{id}/restaurar/preview', 'Security\SecurityAuditController@previewRestore')->name('security.audit.restore.preview');
+            Route::post('/{id}/restaurar', 'Security\SecurityAuditController@restore')->name('security.audit.restore.execute');
+        });
     });
 
     Route::group(['prefix' => 'evo-instances'], function () {

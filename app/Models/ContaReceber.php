@@ -245,4 +245,29 @@ class ContaReceber extends BaseModel
             'Outros'
         ];
     }
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Financeiro',
+            'name' => 'Conta a Receber',
+            'plural_name' => 'Contas a Receber',
+            'description' => 'Controle financeiro de contas a receber.',
+            'route_prefix' => 'contasReceber',
+            'icon' => 'money-bill-wave',
+            'sensitive' => true,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'actions' => [
+                'view' => true,
+                'create' => true,
+                'edit' => true,
+                'delete' => true,
+                'restore' => false,
+                'export' => true,
+                'print' => true,
+            ],
+        ]);
+    }
+
 }

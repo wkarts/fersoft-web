@@ -6,6 +6,7 @@
     <title>{{$title}}</title>
     <meta name="description" content="Updates and statistics">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="{{ $cor }}">
 
     <!--begin::Fonts -->
@@ -2588,9 +2589,13 @@
     // $('#modal-pesquisa').modal('show')
 </script>
 
+@include('security.partials.operation_context')
+@include('security.partials.operation_modal')
+
 <!-- tour -->
 
 <script type="text/javascript" src="/js/main.js"></script>
+<script type="text/javascript" src="/js/security-operation.js"></script>
 <script type="text/javascript" src="/js/toastr.min.js"></script>
 
 </body>
