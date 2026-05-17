@@ -214,4 +214,29 @@ class ContaPagar extends BaseModel
             'Depósito Bancário', 'Pix', 'Outros'
         ];
     }
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Financeiro',
+            'name' => 'Conta a Pagar',
+            'plural_name' => 'Contas a Pagar',
+            'description' => 'Controle financeiro de contas a pagar.',
+            'route_prefix' => 'contasPagar',
+            'icon' => 'money-check-alt',
+            'sensitive' => true,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'actions' => [
+                'view' => true,
+                'create' => true,
+                'edit' => true,
+                'delete' => true,
+                'restore' => false,
+                'export' => true,
+                'print' => true,
+            ],
+        ]);
+    }
+
 }

@@ -682,4 +682,29 @@ use MultiEmpresaTrait;
     {
         return !$this->temVinculoNFe();
     }
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Vendas',
+            'name' => 'Venda',
+            'plural_name' => 'Vendas',
+            'description' => 'Movimentações comerciais e fiscais de vendas.',
+            'route_prefix' => 'vendas',
+            'icon' => 'shopping-cart',
+            'sensitive' => true,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'actions' => [
+                'view' => true,
+                'create' => true,
+                'edit' => true,
+                'delete' => true,
+                'restore' => false,
+                'export' => true,
+                'print' => true,
+            ],
+        ]);
+    }
+
 }

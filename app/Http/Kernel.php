@@ -99,6 +99,8 @@ class Kernel extends HttpKernel
         'authAppComanda' => \App\Http\Middleware\AuthAppComanda::class,
         'authDelivery' => \App\Http\Middleware\AuthDelivery::class,
         'cron.protected' => \App\Http\Middleware\ProtectCronRoute::class,
+        'security.crud' => \App\Http\Middleware\CheckCrudSecurity::class,
+        'security.super_admin' => \App\Http\Middleware\EnsureSecuritySuperAdmin::class,
     ];
     
     protected $middlewareAliases = [
@@ -122,5 +124,7 @@ class Kernel extends HttpKernel
         'validaNFCe' => \App\Http\Middleware\ValidaNFCe::class,
         'verificaMaster' => \App\Http\Middleware\VerificaMaster::class,
         'cron.protected' => \App\Http\Middleware\ProtectCronRoute::class,
+        'security.crud' => \App\Http\Middleware\CheckCrudSecurity::class,
+        'security.super_admin' => \App\Http\Middleware\EnsureSecuritySuperAdmin::class,
     ];
 }

@@ -16,6 +16,8 @@ use App\Services\OtpService;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Support\AuditContext;
+use App\Services\Security\SecurityCrudGuardService;
+use App\Services\Security\SecurityOperationContextService;
 
 abstract class BaseController extends Controller
 {
@@ -265,6 +267,13 @@ abstract class BaseController extends Controller
 
     public function list(Request $request)
     {
+        try {
+            $this->assertCrudSecurity($request, 'view');
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', $e->getMessage());
+            return redirect($this->redirectDeny);
+        }
+
         $query = $this->getTenantRecords();
 
         if (method_exists($this, 'defineFilters')) {
@@ -294,6 +303,7 @@ abstract class BaseController extends Controller
             'filters' => $this->getFilters($request),
             'configSystemWhats' => $configSystemWhats,
             'filiais' => $filiais,
+            'securityOperationContext' => $this->securityOperationContext(null, 'list'),
         ]);
     }
 
@@ -329,6 +339,7 @@ abstract class BaseController extends Controller
             'actionUpdate' => "{$this->redirectPage}/update",
             'actionCancel' => $this->redirectPage,
             'filiais' => $filiais,
+            'securityOperationContext' => $this->securityOperationContext($id ? (int) $id : null, $id ? 'edit' : 'create'),
         ]);
     }
 
@@ -368,6 +379,10 @@ abstract class BaseController extends Controller
         }
 
         try {
+            $securityAction = $request->filled('id') ? 'edit' : 'create';
+            $securityRecordId = $request->filled('id') ? (int) $request->id : null;
+            $this->assertCrudSecurity($request, $securityAction, $securityRecordId);
+
             $data = $request->all();
             $acao = 'create';
             $registroId = null;
@@ -455,6 +470,8 @@ abstract class BaseController extends Controller
     public function edit($id)
     {
         try {
+            $this->assertCrudSecurity(request(), 'edit', (int) $id);
+
             // 🔹 Busca o registro pertencente ao tenant
             $record = $this->getTenantRecords()->findOrFail($id);
             $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
@@ -495,6 +512,8 @@ abstract class BaseController extends Controller
     public function delete($id)
     {
         try {
+            $this->assertCrudSecurity(request(), 'delete', (int) $id);
+
             $record = $this->model::where('empresa_id', $this->empresa_id)
                 ->findOrFail($id);
 
@@ -563,6 +582,8 @@ abstract class BaseController extends Controller
     public function restore($id)
     {
         try {
+            $this->assertCrudSecurity(request(), 'restore', (int) $id);
+
             if (!$this->modelSupportsSoftDelete()) {
                 throw new \Exception('Esta tabela não suporta recuperação de registros.');
             }
@@ -964,6 +985,77 @@ abstract class BaseController extends Controller
             throw ValidationException::withMessages([
                 'code' => ['Código OTP inválido.'],
             ]);
+        }
+    }
+
+
+    /**
+     * Contexto técnico usado pelo layout global da Segurança de Operações.
+     *
+     * Não aplica regra, não bloqueia CRUD e não altera comportamento da view.
+     * Apenas informa ao JavaScript global qual Model/rota este BaseController está exibindo,
+     * para que o modal de autorização possa ser renderizado sem alterar cada Blade de CRUD.
+     */
+    protected function securityOperationContext(?int $recordId = null, ?string $screen = null): array
+    {
+        if (!$this->model) {
+            return ['enabled' => false];
+        }
+
+        $modelClass = is_string($this->model) ? $this->model : get_class($this->model);
+        $basePath = '/' . trim((string) $this->redirectPage, '/');
+
+        return app(SecurityOperationContextService::class)->make(
+            $modelClass,
+            $recordId,
+            $screen,
+            $basePath
+        );
+    }
+
+    /**
+     * Valida a nova Segurança de Operações sem interferir na aplicação quando
+     * o recurso estiver desabilitado ou sem enforcement ativo para o tenant.
+     */
+    protected function assertCrudSecurity(Request $request, string $action, ?int $recordId = null): void
+    {
+        if (!$this->model) {
+            return;
+        }
+
+        $modelClass = is_string($this->model) ? $this->model : get_class($this->model);
+        $perfilId = null;
+        $userLogged = session('user_logged', []);
+
+        foreach (['perfil_acesso_id', 'perfil_id', 'perfil'] as $key) {
+            if (!empty($userLogged[$key]) && is_numeric($userLogged[$key])) {
+                $perfilId = (int) $userLogged[$key];
+                break;
+            }
+        }
+
+        try {
+            app(SecurityCrudGuardService::class)->assertAllowed(
+                $modelClass,
+                $action,
+                $this->empresa_id ? (int) $this->empresa_id : null,
+                $this->usuario_id ? (int) $this->usuario_id : null,
+                $request,
+                $recordId,
+                $perfilId
+            );
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $message = 'Operação bloqueada pela Segurança de Operações.';
+
+            foreach ($errors as $fieldErrors) {
+                if (!empty($fieldErrors[0])) {
+                    $message = $fieldErrors[0];
+                    break;
+                }
+            }
+
+            throw new \Exception($message);
         }
     }
 

@@ -212,4 +212,29 @@ class Compra extends BaseModel
           return $this->belongsTo(NaturezaOperacao::class, 'natureza_id');
       }
   
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Compras',
+            'name' => 'Compra',
+            'plural_name' => 'Compras',
+            'description' => 'Movimentações comerciais e fiscais de compras.',
+            'route_prefix' => 'compras',
+            'icon' => 'truck-loading',
+            'sensitive' => true,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'actions' => [
+                'view' => true,
+                'create' => true,
+                'edit' => true,
+                'delete' => true,
+                'restore' => false,
+                'export' => true,
+                'print' => true,
+            ],
+        ]);
+    }
+
 }

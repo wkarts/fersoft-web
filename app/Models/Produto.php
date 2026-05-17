@@ -1573,4 +1573,20 @@ class Produto extends BaseModel
 
 
 
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Cadastros',
+            'name' => 'Produto',
+            'plural_name' => 'Produtos',
+            'description' => 'Cadastro de produtos.',
+            'route_prefix' => 'produtos',
+            'icon' => 'box',
+            'sensitive' => false,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+        ]);
+    }
+
 }

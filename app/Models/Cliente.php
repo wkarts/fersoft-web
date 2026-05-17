@@ -118,4 +118,20 @@ class Cliente extends BaseModel
             : env("PATH_URL") . "/imgs/no_clientes.png";
     }
 
+
+    public static function securityResource(): array
+    {
+        return array_replace_recursive(parent::securityResource(), [
+            'module' => 'Cadastros',
+            'name' => 'Cliente',
+            'plural_name' => 'Clientes',
+            'description' => 'Cadastro de clientes.',
+            'route_prefix' => 'clientes',
+            'icon' => 'users',
+            'sensitive' => false,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+        ]);
+    }
+
 }

@@ -229,6 +229,63 @@ abstract class BaseModel extends Model
         return $this->scopeWithoutDeleted($query);
     }
 
+
+
+    /**
+     * Identidade padrão de segurança do recurso.
+     *
+     * Este método é apenas metadado consultivo para o scanner de Segurança.
+     * Não executa bloqueio, validação, permissão ou regra de CRUD.
+     */
+    public static function securityResource(): array
+    {
+        $modelClass = static::class;
+        $shortName = class_basename($modelClass);
+        $instance = new static();
+
+        return [
+            'module' => 'Geral',
+            'name' => static::securityHumanModelName($shortName),
+            'plural_name' => static::securityHumanPluralModelName($shortName),
+            'description' => 'Recurso do sistema.',
+            'route_prefix' => static::securityDefaultRoutePrefix($shortName),
+            'icon' => 'default',
+            'sensitive' => false,
+            'tenant_visible' => true,
+            'super_admin_only' => false,
+            'table_name' => $instance->getTable(),
+            'actions' => static::securityDefaultActions(),
+        ];
+    }
+
+    protected static function securityDefaultActions(): array
+    {
+        return [
+            'view' => true,
+            'create' => true,
+            'edit' => true,
+            'delete' => true,
+            'restore' => false,
+            'export' => true,
+            'print' => true,
+        ];
+    }
+
+    protected static function securityHumanModelName(string $name): string
+    {
+        return trim((string) preg_replace('/(?<!^)[A-Z]/', ' $0', $name));
+    }
+
+    protected static function securityHumanPluralModelName(string $name): string
+    {
+        return \Illuminate\Support\Str::plural(static::securityHumanModelName($name));
+    }
+
+    protected static function securityDefaultRoutePrefix(string $name): string
+    {
+        return \Illuminate\Support\Str::kebab(\Illuminate\Support\Str::pluralStudly($name));
+    }
+
     public static function supportsSoftDelete(): bool
     {
         $instance = new static();
