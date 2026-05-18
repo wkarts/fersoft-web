@@ -6,7 +6,6 @@
 	<title>{{$title}}</title>
 	<meta name="description" content="Updates and statistics">
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
 
 	<!--begin::Fonts -->
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
@@ -1835,10 +1834,7 @@
         <!-- Atendimento e Suporte Online -->
         @include('layouts.support')
 
-		@include('security.partials.operation_context')
-@include('security.partials.operation_modal')
-
-<!-- tour -->
+		<!-- tour -->
 
 		<script type="text/javascript">
 
@@ -1937,8 +1933,7 @@
 		@endif
 	@endforeach
 
-	<script type="text/javascript" src="/js/security-operation.js"></script>
-</body>
+	</body>
 	<!-- end::Body -->
 
 	</html>

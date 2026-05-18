@@ -16,7 +16,6 @@ class Log extends Model
         'filial_id',
         'acao',
         'modelo',
-        'registro_id',
         'dados_anteriores',
         'dados_depois',
         'ip_address',

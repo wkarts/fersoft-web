@@ -33,6 +33,20 @@ class Menu {
                 ],
             ],
             */
+            [
+                'titulo' => 'Auditoria',
+                'icone' => $this->getIcone('Auditoria'),
+                'subs' => [
+                    [
+                        'nome' => 'Registro de Log\'s',
+                        'rota' => '/logs'
+                    ],
+                    [
+                    'nome' => 'Monitor de Pesagens',
+                    'rota' => '/monitor/pesagens'
+                    ]
+                ]
+            ],
 			[
 				'titulo' => 'Cadastros',
 				'icone' => $this->getIcone('Cadastros'),
@@ -965,8 +979,6 @@ class Menu {
 				]
 			],
 
-            $this->getMenuSeguranca(),
-
 			[
 				'titulo' => 'Configurações',
 				'icone' => $this->getIcone('Configurações'),
@@ -1032,43 +1044,6 @@ class Menu {
 
 		];
 	}
-
-
-    private function getMenuSeguranca()
-    {
-        $value = session('user_logged');
-        $isSuper = !empty($value['super']);
-
-        if ($isSuper) {
-            $subs = [
-                ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
-                ['nome' => 'Regras por Módulo', 'rota' => '/seguranca/regras'],
-                ['nome' => 'Painel Global', 'rota' => '/seguranca/admin/painel-global'],
-                ['nome' => 'Painel por Empresa', 'rota' => '/seguranca/admin/empresas'],
-                ['nome' => 'Diagnóstico Global', 'rota' => '/seguranca/diagnostico'],
-                ['nome' => 'Assistente de Implantação', 'rota' => '/seguranca/setup'],
-                ['nome' => 'Auditoria', 'rota' => '/seguranca/auditoria'],
-                ['nome' => 'Restauração por Auditoria', 'rota' => '/seguranca/auditoria/restaurar'],
-                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
-                ['nome' => 'Configurações de Segurança', 'rota' => '/seguranca/configuracoes'],
-            ];
-        } else {
-            $subs = [
-                ['nome' => 'Administração de Segurança', 'rota' => '/seguranca/administracao'],
-                ['nome' => 'Regras por Módulo', 'rota' => '/seguranca/regras'],
-                ['nome' => 'Assistente de Implantação', 'rota' => '/seguranca/setup'],
-                ['nome' => 'Auditoria', 'rota' => '/seguranca/auditoria'],
-                ['nome' => 'Relatórios', 'rota' => '/seguranca/relatorios'],
-                ['nome' => 'Configurações de Segurança', 'rota' => '/seguranca/configuracoes'],
-            ];
-        }
-
-        return [
-            'titulo' => 'Segurança',
-            'icone' => $this->getIcone('Segurança'),
-            'subs' => $subs,
-        ];
-    }
 
 	public function getMenu(){
 		return $this->menu;
@@ -1459,19 +1434,6 @@ class Menu {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="24px" height="24px">
                     <polygon points="32 2 42 22 62 22 46 36 52 56 32 44 12 56 18 36 2 22 22 22 32 2" fill="#1976D2"/>
                     <circle cx="32" cy="32" r="6" fill="#fff"/>
-                </svg>
-            </span>';
-        }
-
-        if($titulo == 'Segurança'){
-            return '<span class="svg-icon menu-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
-                    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                        <rect x="0" y="0" width="24" height="24"/>
-                        <path d="M12,2 L20,5.5 L20,11.5 C20,16.7 16.6,20.9 12,22 C7.4,20.9 4,16.7 4,11.5 L4,5.5 L12,2 Z" fill="#000000" opacity="0.3"/>
-                        <path d="M12,4.2 L17.8,6.7 L17.8,11.4 C17.8,15.4 15.4,18.5 12,19.7 C8.6,18.5 6.2,15.4 6.2,11.4 L6.2,6.7 L12,4.2 Z" fill="#000000"/>
-                        <path d="M10.8,13.7 L8.8,11.7 C8.4,11.3 7.8,11.3 7.4,11.7 C7,12.1 7,12.7 7.4,13.1 L10.1,15.8 C10.5,16.2 11.1,16.2 11.5,15.8 L16.6,10.7 C17,10.3 17,9.7 16.6,9.3 C16.2,8.9 15.6,8.9 15.2,9.3 L10.8,13.7 Z" fill="#FFFFFF"/>
-                    </g>
                 </svg>
             </span>';
         }
