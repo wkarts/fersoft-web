@@ -36,6 +36,8 @@ class Pesagem extends BaseModel
         'nf_numero',
         'nf_peso',
         'observacoes',
+        'camera_snapshots',
+        'camera_snapshot_at',
         'nf_data',
         'dt_entrada',
         'dt_saida',
@@ -60,6 +62,11 @@ class Pesagem extends BaseModel
         'view_public',
         'venda_id',
         'compra_id'
+    ];
+
+    protected $casts = [
+        'camera_snapshots' => 'array',
+        'camera_snapshot_at' => 'datetime',
     ];
 
     // Define um valor padrão caso não seja enviado

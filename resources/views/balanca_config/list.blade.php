@@ -248,6 +248,32 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="form-group col-lg-4">
+                                <label>Integrador:</label>
+                                <select name="integrador" class="form-control">
+                                    <option value="local">Local</option>
+                                    <option value="adp">A.D.P (ALL-DRIVER-PLATFORM)</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>UUID da balança no ADP:</label>
+                                <input type="text" name="adp_scale_uuid" class="form-control" placeholder="uuid da /api/scales">
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Usa câmeras?</label>
+                                <select name="usa_cameras" class="form-control">
+                                    <option value="0">Não</option>
+                                    <option value="1">Sim</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-lg-4">
+                                <label>Qtd. câmeras:</label>
+                                <input type="number" min="0" max="8" name="quantidade_cameras" value="0" class="form-control">
+                            </div>
+                            <div class="form-group col-lg-8">
+                                <label>UUIDs das câmeras ADP (separados por vírgula):</label>
+                                <input type="text" name="adp_camera_uuids[]" class="form-control" placeholder="uuid-camera-1,uuid-camera-2">
+                            </div>
                             <div class="form-group col-lg-12">
                                 <label>Observações:</label>
                                 <textarea name="observacoes" class="form-control" rows="3"></textarea>
@@ -323,6 +349,32 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                </div>
+                                <div class="form-group col-lg-4">
+                                    <label>Integrador:</label>
+                                    <select name="integrador" class="form-control">
+                                        <option value="local" {{ ($balanca->integrador ?? 'local') === 'local' ? 'selected' : '' }}>Local</option>
+                                        <option value="adp" {{ ($balanca->integrador ?? '') === 'adp' ? 'selected' : '' }}>A.D.P (ALL-DRIVER-PLATFORM)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-lg-4">
+                                    <label>UUID da balança no ADP:</label>
+                                    <input type="text" name="adp_scale_uuid" value="{{ $balanca->adp_scale_uuid ?? '' }}" class="form-control">
+                                </div>
+                                <div class="form-group col-lg-4">
+                                    <label>Usa câmeras?</label>
+                                    <select name="usa_cameras" class="form-control">
+                                        <option value="0" {{ !($balanca->usa_cameras ?? false) ? 'selected' : '' }}>Não</option>
+                                        <option value="1" {{ ($balanca->usa_cameras ?? false) ? 'selected' : '' }}>Sim</option>
+                                    </select>
+                                </div>
+                                <div class="form-group col-lg-4">
+                                    <label>Qtd. câmeras:</label>
+                                    <input type="number" min="0" max="8" name="quantidade_cameras" value="{{ $balanca->quantidade_cameras ?? 0 }}" class="form-control">
+                                </div>
+                                <div class="form-group col-lg-8">
+                                    <label>UUIDs das câmeras ADP (separados por vírgula):</label>
+                                    <input type="text" name="adp_camera_uuids[]" value="{{ is_array($balanca->adp_camera_uuids ?? null) ? implode(',', $balanca->adp_camera_uuids) : '' }}" class="form-control">
                                 </div>
 
                                 <div class="form-group col-lg-12">

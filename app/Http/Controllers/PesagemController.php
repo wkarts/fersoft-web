@@ -30,6 +30,7 @@ use App\Http\Controllers\RelatorioController;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 
@@ -304,6 +305,8 @@ class PesagemController extends BaseController
                 'status' => 'concluído',
             ]);
 
+            $this->capturarSnapshotsAdpNoFechamento($pesagem);
+
             // Captura os dados após a atualização para log
             $dadosDepois = $pesagem->toArray();
 
@@ -330,6 +333,55 @@ class PesagemController extends BaseController
             ]);
             return response()->json(['error' => 'Erro ao concluir a pesagem: ' . $e->getMessage()], 500);
         }
+    }
+
+    private function capturarSnapshotsAdpNoFechamento(Pesagem $pesagem): void
+    {
+        $balancaId = request()->input('balanca_id');
+        if (!$balancaId) {
+            return;
+        }
+
+        $balanca = BalancaConfig::where('empresa_id', $this->empresa_id)->find($balancaId);
+        if (!$balanca || $balanca->integrador !== 'adp' || !$balanca->usa_cameras) {
+            return;
+        }
+
+        $cameraUuids = collect($balanca->adp_camera_uuids ?? [])->filter()->values();
+        if ($cameraUuids->isEmpty()) {
+            return;
+        }
+
+        $token = $balanca->token;
+        $baseUrl = rtrim((string) $balanca->backend_server_address, '/');
+        $capturas = [];
+
+        foreach ($cameraUuids as $uuid) {
+            try {
+                $response = Http::timeout(10)
+                    ->withHeaders(['X-ADP-API-TOKEN' => $token])
+                    ->post("{$baseUrl}/api/cameras/{$uuid}/snapshot");
+
+                $capturas[] = [
+                    'camera_uuid' => $uuid,
+                    'status' => $response->status(),
+                    'ok' => $response->successful(),
+                    'body' => $response->json() ?? ['raw' => $response->body()],
+                ];
+            } catch (\Throwable $e) {
+                $capturas[] = [
+                    'camera_uuid' => $uuid,
+                    'status' => 500,
+                    'ok' => false,
+                    'body' => ['error' => $e->getMessage()],
+                ];
+            }
+        }
+
+        $pesagem->update([
+            'camera_snapshots' => $capturas,
+            'camera_snapshot_at' => now(),
+        ]);
     }
 
     /**
