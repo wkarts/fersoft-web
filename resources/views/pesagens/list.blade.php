@@ -2533,9 +2533,24 @@
                             if (evidenceResp.peso && evidenceResp.peso.valor > 0) {
                                 form.find('#peso').val(evidenceResp.peso.valor);
                             }
+                        } else if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                            abrirModalMensagem('Aviso', 'Não foi possível capturar evidência válida da balança. Verifique a conexão e tente novamente.');
+                            return;
                         }
                     } catch (err) {
                         console.warn('Falha ao capturar evidência ADP no submit do ticket.', err);
+                        if (BLOQUEAR_PESAGEM_MANUAL_BALANCA) {
+                            abrirModalMensagem('Aviso', 'Falha ao capturar evidência da balança. Tente novamente antes de salvar o ticket.');
+                            return;
+                        }
+                    }
+                }
+
+                if (BLOQUEAR_PESAGEM_MANUAL_BALANCA && origem === 'balanca') {
+                    const evidenceRaw = form.find('#balanca_evidence_json').val();
+                    if (!evidenceRaw) {
+                        abrirModalMensagem('Aviso', 'Pesagem da balança exige evidência. Capture novamente antes de salvar.');
+                        return;
                     }
                 }
 
