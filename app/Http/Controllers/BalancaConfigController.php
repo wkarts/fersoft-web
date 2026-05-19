@@ -48,12 +48,6 @@ class BalancaConfigController extends BaseController
             ],
             'ativo' => ['required', 'boolean'],
             'tipo' => ['required', 'string'],
-            'integrador' => ['nullable', 'in:local,adp'],
-            'adp_scale_uuid' => ['nullable', 'string', 'max:100'],
-            'usa_cameras' => ['nullable', 'boolean'],
-            'quantidade_cameras' => ['nullable', 'integer', 'min:0', 'max:8'],
-            'adp_camera_uuids' => ['nullable', 'array'],
-            'adp_camera_uuids.*' => ['nullable', 'string', 'max:100'],
             'observacoes' => ['nullable', 'string'],
         ];
     }
@@ -135,22 +129,6 @@ class BalancaConfigController extends BaseController
         $validatedData = $request->validate($this->rules($id), $this->messages());
         $validatedData['empresa_id'] = $this->empresa_id;
         $validatedData['usuario_id'] = $this->usuario_id;
-        $validatedData['integrador'] = $request->input('integrador', 'local');
-        $validatedData['adp_scale_uuid'] = $request->input('adp_scale_uuid');
-        $validatedData['usa_cameras'] = $request->boolean('usa_cameras');
-        $validatedData['quantidade_cameras'] = (int) $request->input('quantidade_cameras', 0);
-        $cameraUuids = $request->input('adp_camera_uuids', []);
-        if (!is_array($cameraUuids)) {
-            $cameraUuids = [$cameraUuids];
-        }
-        $cameraUuids = collect($cameraUuids)
-            ->flatMap(fn($item) => explode(',', (string) $item))
-            ->map(fn($item) => trim($item))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-        $validatedData['adp_camera_uuids'] = $cameraUuids;
 
         try {
             if ($id) {

@@ -37,20 +37,12 @@ class BalancaConfig extends BaseModel
         'tipo',
         'token',
         'backend_server_address',
-        'integrador',
-        'adp_scale_uuid',
-        'usa_cameras',
-        'quantidade_cameras',
-        'adp_camera_uuids',
     ];
 
     // Casting de tipos
     protected $casts = [
         'ativo' => 'boolean', // Converte ativo para booleano
         'data_install' => 'datetime:Y-m-d', // Formata a data de instalação
-        'usa_cameras' => 'boolean',
-        'quantidade_cameras' => 'integer',
-        'adp_camera_uuids' => 'array',
     ];
 
     /**
