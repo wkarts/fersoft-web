@@ -10,10 +10,10 @@ use Illuminate\Support\Str;
 class BalancaLeitorService
 {
     public function status(BalancaConfig $balanca): array { return $this->details($balanca); }
-    public function open(BalancaConfig $balanca): array { return $this->adpCall($balanca, '/open', 'post'); }
-    public function close(BalancaConfig $balanca): array { return $this->adpCall($balanca, '/close', 'post'); }
-    public function read(BalancaConfig $balanca): array { return $this->normalizeWeightResponse($this->adpCall($balanca, '/read'), $balanca); }
-    public function details(BalancaConfig $balanca): array { return $this->adpCall($balanca, '/scales/' . ($balanca->adp_scale_uuid ?? $balanca->id)); }
+    public function open(BalancaConfig $balanca): array { return $this->adpCall($balanca, $this->scalePath($balanca, 'open'), 'post'); }
+    public function close(BalancaConfig $balanca): array { return $this->adpCall($balanca, $this->scalePath($balanca, 'close'), 'post'); }
+    public function read(BalancaConfig $balanca): array { return $this->normalizeWeightResponse($this->adpCall($balanca, $this->scalePath($balanca, 'data')), $balanca); }
+    public function details(BalancaConfig $balanca): array { return $this->adpCall($balanca, $this->scalePath($balanca, 'health')); }
 
     public function snapshot(BalancaConfig $balanca, array $options = []): array
     {
@@ -62,16 +62,38 @@ class BalancaLeitorService
 
     public function normalizeSnapshotResponse(array $response, BalancaConfig $balanca): array { return ['success' => (bool) data_get($response, 'success', true), 'snapshots' => data_get($response, 'snapshots', [])]; }
 
+    private function scalePath(BalancaConfig $balanca, string $action): string
+    {
+        $uuid = trim((string) ($balanca->adp_scale_uuid ?? ''));
+        if ($uuid === '') {
+            $uuid = (string) $balanca->id;
+        }
+
+        return '/api/scales/' . rawurlencode($uuid) . '/' . ltrim($action, '/');
+    }
+
+    private function adpUrl(BalancaConfig $balanca, string $path): string
+    {
+        $baseUrl = rtrim((string) ($balanca->backend_server_address ?? ''), '/');
+        $path = '/' . ltrim($path, '/');
+
+        if (str_ends_with($baseUrl, '/api') && str_starts_with($path, '/api/')) {
+            $path = substr($path, 4);
+        }
+
+        return $baseUrl . $path;
+    }
+
     private function adpCall(BalancaConfig $balanca, string $path, string $method = 'get', array $payload = []): array
     {
         try {
-            $baseUrl = rtrim((string) ($balanca->backend_server_address ?? ''), '/');
+            $url = $this->adpUrl($balanca, $path);
             $auth = $this->buildAuthOptions($balanca);
             $http = Http::timeout((($balanca->timeout_ms ?? 5000) / 1000))->retry(2, 250)->withOptions(['verify' => false]);
             if (($auth['type'] ?? 'none') === 'x_adp_api_token' && !empty($auth['token'])) $http = $http->withHeaders([($auth['header'] ?? 'X-ADP-API-TOKEN') => $auth['token']]);
             if (($auth['type'] ?? 'none') === 'bearer' && !empty($auth['token'])) $http = $http->withToken($auth['token']);
             if (($auth['type'] ?? 'none') === 'query' && !empty($auth['token'])) $payload['token'] = $auth['token'];
-            $resp = $method === 'post' ? $http->post($baseUrl . $path, $payload) : $http->get($baseUrl . $path, $payload);
+            $resp = $method === 'post' ? $http->post($url, $payload) : $http->get($url, $payload);
             return is_array($resp->json()) ? $resp->json() : ['success' => false, 'message' => 'Resposta inválida'];
         } catch (\Throwable $e) {
             \Log::warning('Falha comunicação ADP', ['balanca_id' => $balanca->id, 'empresa_id' => $balanca->empresa_id, 'message' => $e->getMessage()]);

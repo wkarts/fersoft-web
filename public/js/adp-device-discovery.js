@@ -1,7 +1,17 @@
 (function () {
   function getJson(url, opts) {
     return fetch(url, Object.assign({ headers: { 'Accept': 'application/json' } }, opts || {})).then(function (r) {
-      return r.json();
+      return r.json().catch(function () {
+        return { success: false, message: 'Resposta inválida do servidor.' };
+      }).then(function (json) {
+        if (!r.ok && json && !json.message) {
+          json.message = 'Falha HTTP ' + r.status;
+        }
+        if (json && typeof json === 'object') {
+          json.http_status = r.status;
+        }
+        return json;
+      });
     });
   }
 
@@ -49,6 +59,24 @@
     hint.textContent = mask ? ('Token global mascarado: ' + mask) : '';
   }
 
+  function fillConfigEditorFromSelect(scope) {
+    var select = q(scope, 'integrador-config-id');
+    if (!select) return;
+
+    var selected = select.options[select.selectedIndex];
+    if (!selected || !selected.value || !selected.dataset) return;
+
+    var descricao = q(scope, 'cfg-descricao');
+    var baseUrl = q(scope, 'cfg-base-url');
+    var tokenType = q(scope, 'cfg-token-type');
+
+    if (descricao) descricao.value = selected.dataset.descricao || '';
+    if (baseUrl) baseUrl.value = selected.dataset.baseUrl || '';
+    if (tokenType) tokenType.value = selected.dataset.tokenType || 'x_adp_api_token';
+
+    updateConfigHint(scope);
+  }
+
   function syncDerivedFields(scope) {
     var camSelect = q(scope, 'camera-select');
     var selected = camSelect ? readSelectedValues(camSelect) : [];
@@ -93,9 +121,14 @@
           if (String(cfg.id) === String(defaultId)) option.selected = true;
           option.dataset.tokenMasked = cfg.global_token_masked || '';
           option.dataset.baseUrl = cfg.base_url || '';
+          option.dataset.descricao = cfg.descricao || '';
+          option.dataset.tokenType = cfg.global_token_type || 'x_adp_api_token';
+          option.dataset.tokenHeader = cfg.global_token_header || 'X-ADP-API-TOKEN';
+          option.dataset.timeoutMs = String(cfg.timeout_ms || 5000);
           select.appendChild(option);
         });
         updateConfigHint(scope);
+        fillConfigEditorFromSelect(scope);
       })
       .catch(function (err) {
         updateLog(scope, 'Erro ao carregar configs ADP: ' + err.message);
@@ -159,7 +192,7 @@
     updateLog(scope, 'Consultando dispositivos ADP...');
     return getJson('/adp/discovery/devices?integrador_config_id=' + encodeURIComponent(configId))
       .then(function (res) {
-        if (!res.success) throw new Error(res.message || 'Falha na listagem de dispositivos');
+        if (!res.success) throw new Error(res.message || (res.errors || []).join(' | ') || 'Falha na listagem de dispositivos');
 
         var devices = res.devices || [];
         var scales = devices.filter(function (d) { return d.type === 'scale'; });
@@ -236,7 +269,7 @@
       });
 
       cameraSelect && cameraSelect.addEventListener('change', function(){ syncDerivedFields(scope); });
-      configSelect && configSelect.addEventListener('change', function(){ updateConfigHint(scope); });
+      configSelect && configSelect.addEventListener('change', function(){ fillConfigEditorFromSelect(scope); });
       btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
       loadConfigs(scope);
     });
