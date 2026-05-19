@@ -9,6 +9,24 @@ use Illuminate\Http\Request;
 
 class AdpDeviceDiscoveryController extends BaseController
 {
+    protected $redirectPage = '/balancas';
+    protected $formTitle = 'Integração ADP';
+    protected $resource = 'adp_device_discovery';
+
+    /**
+     * O BaseController exige rules() e messages().
+     * Este controller usa endpoints JSON próprios e valida cada ação no próprio método.
+     */
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
     public function salvarConfig(Request $request)
     {
         $data = $request->validate([
@@ -21,6 +39,12 @@ class AdpDeviceDiscoveryController extends BaseController
             'global_token_header' => ['nullable', 'string', 'max:120'],
             'timeout_ms' => ['nullable', 'integer', 'min:1000', 'max:60000'],
             'ativo' => ['nullable', 'boolean'],
+        ], [
+            'descricao.required' => 'Informe a descrição da configuração ADP.',
+            'base_url.required' => 'Informe a URL base do ADP.',
+            'global_token_type.in' => 'Tipo de token global inválido.',
+            'timeout_ms.min' => 'O timeout mínimo é de 1000ms.',
+            'timeout_ms.max' => 'O timeout máximo é de 60000ms.',
         ]);
 
         $config = null;
@@ -55,7 +79,7 @@ class AdpDeviceDiscoveryController extends BaseController
                 'base_url' => $config->base_url,
                 'global_token_enabled' => (bool) $config->global_token_enabled,
                 'global_token_type' => $config->global_token_type ?? 'none',
-                'global_token_masked' => $config->tokenMascarado(),
+                'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
             ],
         ]);
     }
@@ -73,7 +97,7 @@ class AdpDeviceDiscoveryController extends BaseController
                     'base_url' => $config->base_url,
                     'global_token_enabled' => (bool) $config->global_token_enabled,
                     'global_token_type' => $config->global_token_type ?? 'none',
-                    'global_token_masked' => $config->tokenMascarado(),
+                    'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
                 ];
             })
             ->values();
@@ -87,6 +111,11 @@ class AdpDeviceDiscoveryController extends BaseController
     private function resolveConfig(Request $request): AdpIntegradorConfig
     {
         $configId = (int) $request->get('integrador_config_id');
+
+        if ($configId <= 0) {
+            abort(422, 'Informe ou selecione uma configuração ADP válida.');
+        }
+
         return AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
             ->findOrFail($configId);
@@ -103,7 +132,10 @@ class AdpDeviceDiscoveryController extends BaseController
         ]);
     }
 
-    public function status(Request $request) { return response()->json($this->service($this->resolveConfig($request))->testConnection()); }
+    public function status(Request $request)
+    {
+        return response()->json($this->service($this->resolveConfig($request))->testConnection());
+    }
 
     public function devices(Request $request)
     {
@@ -131,10 +163,16 @@ class AdpDeviceDiscoveryController extends BaseController
 
         $now = now();
         foreach (($result['devices'] ?? []) as $device) {
+            $deviceUuid = trim((string) ($device['uuid'] ?? ''));
+
+            if ($deviceUuid === '') {
+                continue;
+            }
+
             AdpDevice::updateOrCreate(
                 [
                     'empresa_id' => $this->empresa_id,
-                    'device_uuid' => (string) ($device['uuid'] ?? ''),
+                    'device_uuid' => $deviceUuid,
                 ],
                 [
                     'integrador_config_id' => $config->id,
