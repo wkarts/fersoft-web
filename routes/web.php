@@ -2943,6 +2943,28 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'LogController@list')->name('logs.list');
     });
 
+
+    Route::group(['prefix' => 'balancas/leitor'], function () {
+        Route::get('/', 'BalancaLeitorController@index')->name('balancas.leitor.index');
+        Route::get('/configuradas', 'BalancaLeitorController@configuradas')->name('balancas.leitor.configuradas');
+        Route::get('/{id}/status', 'BalancaLeitorController@status')->name('balancas.leitor.status');
+        Route::get('/{id}/details', 'BalancaLeitorController@details')->name('balancas.leitor.details');
+        Route::post('/{id}/open', 'BalancaLeitorController@open')->name('balancas.leitor.open');
+        Route::post('/{id}/close', 'BalancaLeitorController@close')->name('balancas.leitor.close');
+        Route::get('/{id}/read', 'BalancaLeitorController@read')->name('balancas.leitor.read');
+        Route::post('/{id}/snapshot', 'BalancaLeitorController@snapshot')->name('balancas.leitor.snapshot');
+        Route::post('/{id}/evidence', 'BalancaLeitorController@captureEvidence')->name('balancas.leitor.evidence');
+        Route::post('/ticket/apply', 'BalancaLeitorController@applyToTicket')->name('balancas.leitor.ticket.apply');
+    });
+
+    Route::group(['prefix' => 'adp/discovery'], function () {
+        Route::get('/status', 'AdpDeviceDiscoveryController@status')->name('adp.discovery.status');
+        Route::get('/devices', 'AdpDeviceDiscoveryController@devices')->name('adp.discovery.devices');
+        Route::get('/scales', 'AdpDeviceDiscoveryController@scales')->name('adp.discovery.scales');
+        Route::get('/cameras', 'AdpDeviceDiscoveryController@cameras')->name('adp.discovery.cameras');
+        Route::post('/sync-devices', 'AdpDeviceDiscoveryController@syncDevices')->name('adp.discovery.syncDevices');
+    });
+
     Route::group(['prefix' => 'evo-instances'], function () {
 
         Route::get('/',               'EvoApiInstanceController@list')->name('evo-instances.list');
