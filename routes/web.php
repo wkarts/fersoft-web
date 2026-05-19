@@ -2958,12 +2958,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'adp/discovery'], function () {
+        Route::get('/configs', 'AdpDeviceDiscoveryController@configuracoes')->name('adp.discovery.configs');
         Route::get('/status', 'AdpDeviceDiscoveryController@status')->name('adp.discovery.status');
         Route::get('/devices', 'AdpDeviceDiscoveryController@devices')->name('adp.discovery.devices');
         Route::get('/scales', 'AdpDeviceDiscoveryController@scales')->name('adp.discovery.scales');
         Route::get('/cameras', 'AdpDeviceDiscoveryController@cameras')->name('adp.discovery.cameras');
-        Route::get('/token-info', 'AdpDeviceDiscoveryController@tokenInfo')->name('adp.discovery.tokenInfo');
-        Route::post('/regenerate-token', 'AdpDeviceDiscoveryController@regenerateToken')->name('adp.discovery.regenerateToken');
         Route::post('/sync-devices', 'AdpDeviceDiscoveryController@syncDevices')->name('adp.discovery.syncDevices');
     });
 

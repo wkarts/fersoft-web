@@ -6,10 +6,33 @@ use App\Models\AdpDevice;
 use App\Models\AdpIntegradorConfig;
 use App\Services\Balanca\AdpDeviceDiscoveryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class AdpDeviceDiscoveryController extends BaseController
 {
+    public function configuracoes()
+    {
+        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function (AdpIntegradorConfig $config) {
+                return [
+                    'id' => $config->id,
+                    'descricao' => $config->descricao,
+                    'base_url' => $config->base_url,
+                    'global_token_enabled' => (bool) $config->global_token_enabled,
+                    'global_token_type' => $config->global_token_type ?? 'none',
+                    'global_token_masked' => $config->tokenMascarado(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'configs' => $configs,
+        ]);
+    }
+
     private function resolveConfig(Request $request): AdpIntegradorConfig
     {
         $configId = (int) $request->get('integrador_config_id');
@@ -20,8 +43,6 @@ class AdpDeviceDiscoveryController extends BaseController
 
     private function service(AdpIntegradorConfig $config): AdpDeviceDiscoveryService
     {
-        $config->garantirTokenGlobal();
-
         return new AdpDeviceDiscoveryService([
             'base_url' => $config->base_url,
             'global_token' => $config->global_token_enabled ? $config->global_token : null,
@@ -32,42 +53,6 @@ class AdpDeviceDiscoveryController extends BaseController
     }
 
     public function status(Request $request) { return response()->json($this->service($this->resolveConfig($request))->testConnection()); }
-
-    public function tokenInfo(Request $request)
-    {
-        $config = $this->resolveConfig($request);
-        $config->garantirTokenGlobal();
-
-        return response()->json([
-            'success' => true,
-            'token_enabled' => (bool) $config->global_token_enabled,
-            'token_type' => $config->global_token_type ?: 'x_adp_api_token',
-            'token_header' => $config->global_token_header ?: 'X-ADP-API-TOKEN',
-            'token_masked' => $config->tokenMascarado(),
-        ]);
-    }
-
-    public function regenerateToken(Request $request)
-    {
-        $config = $this->resolveConfig($request);
-        $config->global_token = AdpIntegradorConfig::gerarTokenSeguro();
-        $config->global_token_enabled = true;
-        $config->global_token_type = $config->global_token_type ?: 'x_adp_api_token';
-        $config->global_token_header = $config->global_token_header ?: 'X-ADP-API-TOKEN';
-        $config->save();
-
-        Log::warning('Token global ADP regenerado manualmente.', [
-            'empresa_id' => $config->empresa_id,
-            'integrador_config_id' => $config->id,
-            'user_id' => auth()->id(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Novo Token Global gerado com sucesso. Atualize integrações externas que usavam o token anterior.',
-            'token_masked' => $config->tokenMascarado(),
-        ]);
-    }
 
     public function devices(Request $request)
     {
