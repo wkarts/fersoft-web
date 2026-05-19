@@ -2496,7 +2496,7 @@
             bindCalculoValorTotalTicket(modalSelector);
 
             // Evento para salvar ou editar ticket
-            $(modalSelector).find('#formTicket').off('submit').on('submit', function (e) {
+            $(modalSelector).find('#formTicket').off('submit').on('submit', async function (e) {
                 e.preventDefault(); // Previne submissão padrão
 
                 const form = $(this);
@@ -2515,6 +2515,29 @@
                 }
 
                 calcularValorTotalTicket(modalSelector);
+
+                const balancaId = form.find('#balanca_config_id').val();
+                const origem = form.find('#peso_origem').val();
+                if (balancaId && origem === 'balanca') {
+                    try {
+                        const evidenceResp = await $.ajax({
+                            url: `/balancas/leitor/${balancaId}/evidence`,
+                            type: 'POST',
+                            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                        });
+
+                        if (evidenceResp && evidenceResp.success) {
+                            form.find('#balanca_evidence_json').val(JSON.stringify(evidenceResp));
+                            form.find('#camera_snapshots_json').val(JSON.stringify(evidenceResp.cameras || []));
+
+                            if (evidenceResp.peso && evidenceResp.peso.valor > 0) {
+                                form.find('#peso').val(evidenceResp.peso.valor);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Falha ao capturar evidência ADP no submit do ticket.', err);
+                    }
+                }
 
                 // Envia requisição AJAX
                 $.ajax({
@@ -2864,7 +2887,7 @@
                     return;
                 }
 
-                axios.get(`${balancaSelecionada.backend}/api/open?port=${balancaSelecionada.porta}`)
+                axios.post(`/balancas/leitor/${balancaSelecionada.id}/open`)
                     .then(() => {
                         autoState.conectado = true;
                         autoState.balancaId = String(balancaSelecionada.id);
@@ -2883,7 +2906,7 @@
                 const balancaParaDesconectar = autoState.balancaConectada || balancaSelecionada;
                 if (!balancaParaDesconectar) return;
 
-                axios.get(`${balancaParaDesconectar.backend}/api/close`)
+                axios.post(`/balancas/leitor/${balancaParaDesconectar.id}/close`)
                     .then(() => {
                         autoState.conectado = false;
                         autoState.balancaId = null;
@@ -2904,13 +2927,13 @@
             function iniciarLeitura(modalId, balancaSelecionada) {
                 clearInterval(intervaloLeitura);
                 intervaloLeitura = setInterval(() => {
-                    axios.get(`${balancaSelecionada.backend}/api/data?equip=${balancaSelecionada.modelo}`)
+                    axios.get(`/balancas/leitor/${balancaSelecionada.id}/read`)
                         .then(response => {
-                            const dados = response.data.data;
-                            const bruto = parseFloat(dados.peso_bruto ?? 0) || 0;
-                            const tara = parseFloat(dados.tara ?? dados.peso_tara ?? 0) || 0;
-                            const liquido = (dados.peso_liq !== undefined && dados.peso_liq !== null)
-                                ? (parseFloat(dados.peso_liq) || 0)
+                            const dados = response.data || {};
+                            const bruto = parseFloat(dados.peso ?? 0) || 0;
+                            const tara = parseFloat(dados.tara ?? 0) || 0;
+                            const liquido = (dados.peso_liquido !== undefined && dados.peso_liquido !== null)
+                                ? (parseFloat(dados.peso_liquido) || 0)
                                 : Math.max(0, bruto - tara);
 
                             $(modalId).find('#pesoAtual').text(bruto.toFixed(2));
