@@ -1,7 +1,7 @@
 window.AdpDeviceDiscovery = {
-  async list(baseUrl, token = '') {
-    const url = `/adp/discovery/devices?base_url=${encodeURIComponent(baseUrl)}&global_token=${encodeURIComponent(token)}&global_token_type=x_adp_api_token`;
-    const r = await fetch(url);
+  async list(integradorConfigId) {
+    const url = `/adp/discovery/devices?integrador_config_id=${encodeURIComponent(integradorConfigId)}`;
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
     return r.json();
   }
 };

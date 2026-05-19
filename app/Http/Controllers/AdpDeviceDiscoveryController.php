@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdpIntegradorConfig;
 use App\Services\Balanca\AdpDeviceDiscoveryService;
 use Illuminate\Http\Request;
 
@@ -9,12 +10,17 @@ class AdpDeviceDiscoveryController extends BaseController
 {
     private function service(Request $request): AdpDeviceDiscoveryService
     {
+        $configId = (int) $request->get('integrador_config_id');
+        $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->findOrFail($configId);
+
         return new AdpDeviceDiscoveryService([
-            'base_url' => $request->get('base_url'),
-            'global_token' => $request->get('global_token'),
-            'global_token_type' => $request->get('global_token_type', 'none'),
-            'global_token_header' => $request->get('global_token_header', 'X-ADP-API-TOKEN'),
-            'timeout_ms' => (int) $request->get('timeout_ms', 5000),
+            'base_url' => $config->base_url,
+            'global_token' => $config->global_token_enabled ? $config->global_token : null,
+            'global_token_type' => $config->global_token_type ?? 'none',
+            'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
+            'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
         ]);
     }
 
