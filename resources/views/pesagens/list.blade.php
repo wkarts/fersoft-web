@@ -899,6 +899,8 @@
                             <input type="hidden" name="token" id="token">
                             <input type="hidden" name="balanca_config_id" id="balanca_config_id">
                             <input type="hidden" name="peso_origem" id="peso_origem" value="manual">
+                            <input type="hidden" name="balanca_evidence_json" id="balanca_evidence_json">
+                            <input type="hidden" name="camera_snapshots_json" id="camera_snapshots_json">
 
                             <div class="row">
                                 <div class="form-group col-lg-6">
