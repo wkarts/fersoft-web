@@ -22,12 +22,46 @@ const backPortasEl = document.querySelector("#back-portas");
 // Variáveis globais
 let getDataInterval, config;
 
+function hasLegacyBalancaPanel() {
+    return !!(connectEl && disconnectEl && msgSerialEl);
+}
+
+function setDisabled(el, disabled) {
+    if (el) {
+        el.disabled = disabled;
+    }
+}
+
+function setHtml(el, value) {
+    if (el) {
+        el.innerHTML = value;
+    }
+}
+
+function setText(el, value) {
+    if (el) {
+        el.textContent = value;
+    }
+}
+
+function setDisplay(el, value) {
+    if (el) {
+        el.style.display = value;
+    }
+}
+
 // Inicializar a aplicação
 start();
 
 async function start() {
-    disconnectEl.disabled = true;
-    connectEl.disabled = false;
+    // Este JS é carregado em mais de uma tela. Se os elementos do painel legado
+    // não existirem, não deve quebrar a tela atual.
+    if (!hasLegacyBalancaPanel()) {
+        return;
+    }
+
+    setDisabled(disconnectEl, true);
+    setDisabled(connectEl, false);
 
     // Recuperar configurações salvas
     const porta = localStorage.getItem('porta') || "";
@@ -48,23 +82,27 @@ async function start() {
 }
 
 // Conectar
-connectEl.onclick = async () => {
-    if (!config.port) {
-        messageSerial("Nenhuma porta configurada!", "red");
-        return;
-    }
+if (connectEl) {
+    connectEl.onclick = async () => {
+        if (!config || !config.port) {
+            messageSerial("Nenhuma porta configurada!", "red");
+            return;
+        }
 
-    let response = await axios.get(`${backendURLL}/api/open?port=${config.port}`);
-    disconnectEl.disabled = !response.data.status.error;
-    connectEl.disabled = response.data.status.error;
-};
+        let response = await axios.get(`${backendURLL}/api/open?port=${config.port}`);
+        setDisabled(disconnectEl, !response.data.status.error);
+        setDisabled(connectEl, response.data.status.error);
+    };
+}
 
 // Desconectar
-disconnectEl.onclick = async () => {
-    let response = await axios.get(`${backendURLL}/api/close`);
-    disconnectEl.disabled = !response.data.status.error;
-    connectEl.disabled = response.data.status.error;
-};
+if (disconnectEl) {
+    disconnectEl.onclick = async () => {
+        let response = await axios.get(`${backendURLL}/api/close`);
+        setDisabled(disconnectEl, !response.data.status.error);
+        setDisabled(connectEl, response.data.status.error);
+    };
+}
 
 // Obter dados da balança
 async function obterDadosAPI() {
@@ -79,12 +117,12 @@ async function obterDadosAPI() {
             messageSerial(response.data.status.messageText, "red");
             portOpened(response.data.status.portOpened);
         } else {
-            pbElement.innerHTML = response.data.data.peso_bruto;
-            taraElement.innerHTML = response.data.data.tara;
-            plElement.innerHTML = response.data.data.peso_liq;
-            estabilidadeEl.innerHTML = response.data.data.estavel ? "Estável" : "Oscilando";
+            setHtml(pbElement, response.data.data.peso_bruto);
+            setHtml(taraElement, response.data.data.tara);
+            setHtml(plElement, response.data.data.peso_liq);
+            setHtml(estabilidadeEl, response.data.data.estavel ? "Estável" : "Oscilando");
             if (response.data.data.sobrecarga) {
-                estabilidadeEl.innerHTML = "Sobrecarga";
+                setHtml(estabilidadeEl, "Sobrecarga");
             }
             messageSerial(response.data.status.messageText, "green");
             portOpened(response.data.status.portOpened);
@@ -96,35 +134,43 @@ async function obterDadosAPI() {
 
 // Controle do botão de conexão
 function portOpened(statusPort) {
-    disconnectEl.disabled = !statusPort;
-    connectEl.disabled = statusPort;
+    setDisabled(disconnectEl, !statusPort);
+    setDisabled(connectEl, statusPort);
 }
 
 // Mensagens para o usuário
 function messageSerial(message, color = "blue") {
+    if (!msgSerialEl) {
+        return;
+    }
+
     msgSerialEl.style.color = color;
     msgSerialEl.innerHTML = message;
 }
 
 // LISTAR PORTAS - Integrado ao endpoint
-listarPortasEl.onclick = async () => {
-    try {
-        const response = await axios.get(`${backendURLL}/api/configinfo`);
-        const formattedData = JSON.stringify(response.data, null, 4);
-        portasContentEl.textContent = formattedData;
+if (listarPortasEl) {
+    listarPortasEl.onclick = async () => {
+        try {
+            const response = await axios.get(`${backendURLL}/api/configinfo`);
+            const formattedData = JSON.stringify(response.data, null, 4);
+            setText(portasContentEl, formattedData);
 
-        document.getElementById('principal').style.display = 'none';
-        listarPortasDivEl.style.display = 'block';
-    } catch (error) {
-        portasContentEl.textContent = "Erro ao carregar dados!";
-    }
-};
+            setDisplay(document.getElementById('principal'), 'none');
+            setDisplay(listarPortasDivEl, 'block');
+        } catch (error) {
+            setText(portasContentEl, "Erro ao carregar dados!");
+        }
+    };
+}
 
 // Botão voltar do listar portas
-backPortasEl.onclick = () => {
-    listarPortasDivEl.style.display = 'none';
-    document.getElementById('principal').style.display = 'block';
-};
+if (backPortasEl) {
+    backPortasEl.onclick = () => {
+        setDisplay(listarPortasDivEl, 'none');
+        setDisplay(document.getElementById('principal'), 'block');
+    };
+}
 
 // **Função para verificar o status de uma balança**
 async function verificarStatusBalanca(id, backendURL, equipamento) {

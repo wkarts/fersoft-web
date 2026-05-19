@@ -372,11 +372,45 @@
     <script src="{{ asset('js/axios.min.js') }}"></script>
     <script src="{{ asset('js/balancaMain.js') }}"></script>
     <script>
+        function setSectionControlsEnabled(section, enabled) {
+            if (!section) {
+                return;
+            }
+
+            section.querySelectorAll('input, select, textarea, button').forEach(function (control) {
+                if (control.type === 'button') {
+                    control.disabled = !enabled;
+                    return;
+                }
+
+                control.disabled = !enabled;
+
+                if (!enabled) {
+                    control.dataset.wasRequired = control.required ? '1' : '0';
+                    control.required = false;
+                    return;
+                }
+
+                if (control.dataset.wasRequired === '1') {
+                    control.required = true;
+                }
+            });
+        }
+
         function toggleIntegradorSections(prefix, integrador) {
             const adp = document.querySelector(`.js-adp-section[data-target-prefix="${prefix}"]`);
             const legacy = document.querySelector(`.js-legacy-section[data-target-prefix="${prefix}"]`);
-            if (adp) adp.style.display = integrador === 'adp' ? '' : 'none';
-            if (legacy) legacy.style.display = integrador === 'adp' ? 'none' : '';
+            const isAdp = integrador === 'adp';
+
+            if (adp) {
+                adp.style.display = isAdp ? '' : 'none';
+                setSectionControlsEnabled(adp, isAdp);
+            }
+
+            if (legacy) {
+                legacy.style.display = isAdp ? 'none' : '';
+                setSectionControlsEnabled(legacy, !isAdp);
+            }
         }
 
         document.querySelectorAll('.js-integrador-select').forEach(function (select) {
@@ -397,7 +431,8 @@
          */
         async function listarPortas(id) {
             try {
-                const backend = document.getElementById(`backendServerAddressEdit_${id}`).value || backendURL2;
+                const backendInput = document.getElementById(`backendServerAddressEdit_${id}`);
+                const backend = (backendInput ? backendInput.value : '') || backendURL2;
 
                 if (!backend) {
                     alert('Endereço do servidor backend não configurado!');
@@ -441,7 +476,8 @@
          */
         async function listarPortasNova() {
             try {
-                const backend = document.querySelector('[name="backend_server_address"]').value || backendURL2;
+                const backendInput = document.querySelector('[name="backend_server_address"]');
+                const backend = (backendInput ? backendInput.value : '') || backendURL2;
 
                 if (!backend) {
                     alert('Endereço do servidor backend não configurado!');
