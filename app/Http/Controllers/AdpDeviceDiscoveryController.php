@@ -80,6 +80,9 @@ class AdpDeviceDiscoveryController extends BaseController
                 'global_token_enabled' => (bool) $config->global_token_enabled,
                 'global_token_type' => $config->global_token_type ?? 'none',
                 'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
+                'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
+                'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
+                'ativo' => (bool) $config->ativo,
             ],
         ]);
     }
@@ -98,6 +101,9 @@ class AdpDeviceDiscoveryController extends BaseController
                     'global_token_enabled' => (bool) $config->global_token_enabled,
                     'global_token_type' => $config->global_token_type ?? 'none',
                     'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
+                    'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
+                    'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
+                    'ativo' => (bool) $config->ativo,
                 ];
             })
             ->values();
