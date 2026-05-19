@@ -29,10 +29,10 @@ class BalancaConfigController extends BaseController
             'empresa_id' => ['required', 'exists:empresas,id'],
             'usuario_id' => ['nullable', 'exists:usuarios,id'],
             'descricao' => ['required', 'string', 'max:100'],
-            'backend_server_address' => ['required', 'string', 'max:1000'],
-            'modelo' => ['required', 'string', 'max:100'],
+            'backend_server_address' => ['nullable', 'string', 'max:1000'],
+            'modelo' => ['nullable', 'string', 'max:100'],
             //'marca' => ['required', 'string', 'max:100'],
-            'port' => ['required', 'string', 'max:50'],
+            'port' => ['nullable', 'string', 'max:50'],
             //'port_custom' => ['nullable', 'string', 'max:50'],
             //'bits' => ['required', 'integer'],
             //'paridade' => ['required', 'string', 'max:10'],
@@ -42,7 +42,7 @@ class BalancaConfigController extends BaseController
             //'timeout' => ['required', 'integer'],
             //'serie_number' => ['required', 'string', 'max:100', 'unique:balanca_configs,serie_number'],
             'serie_number' => [
-                'required',
+                'nullable',
                 'string',
                 'max:100',
                 Rule::unique('balanca_configs', 'serie_number')
@@ -129,6 +129,15 @@ class BalancaConfigController extends BaseController
      */
     public function save(Request $request, $id = null)
     {
+        $integrador = (string) $request->input('integrador', 'legacy');
+        if ($integrador === '') {
+            $integrador = 'legacy';
+        }
+
+        $request->merge([
+            'integrador' => $integrador,
+        ]);
+
         $validatedData = $request->validate($this->rules($id), $this->messages());
         $validatedData['empresa_id'] = $this->empresa_id;
         $validatedData['usuario_id'] = $this->usuario_id;
@@ -140,6 +149,23 @@ class BalancaConfigController extends BaseController
         $validatedData['adp_camera_uuids'] = $request->input('adp_camera_uuids');
         $validatedData['quantidade_cameras'] = (int) ($request->input('quantidade_cameras', 0));
         $validatedData['usa_cameras'] = $request->boolean('usa_cameras');
+
+        if ($integrador === 'adp') {
+            if (empty($validatedData['integrador_config_id'])) {
+                return redirect()->back()->withInput()->with('mensagem_erro', 'Selecione a configuração global ADP.');
+            }
+            if (empty($validatedData['adp_scale_uuid'])) {
+                return redirect()->back()->withInput()->with('mensagem_erro', 'Selecione uma balança ADP descoberta.');
+            }
+            $validatedData['backend_server_address'] = $validatedData['backend_server_address'] ?? '';
+            $validatedData['port'] = $validatedData['port'] ?? ($validatedData['porta_serial'] ?? '');
+            $validatedData['modelo'] = $validatedData['modelo'] ?? 'ADP';
+            $validatedData['serie_number'] = $validatedData['serie_number'] ?: ('ADP-' . strtoupper(substr(md5($validatedData['adp_scale_uuid']), 0, 12)));
+        } else {
+            if (empty($validatedData['backend_server_address']) || empty($validatedData['modelo']) || empty($validatedData['port']) || empty($validatedData['serie_number'])) {
+                return redirect()->back()->withInput()->with('mensagem_erro', 'No modo legado, backend, equipamento, porta e serial number são obrigatórios.');
+            }
+        }
 
         if (!empty($validatedData['integrador_config_id'])) {
             $configValida = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
