@@ -37,12 +37,37 @@ class BalancaConfig extends BaseModel
         'tipo',
         'token',
         'backend_server_address',
+        'integrador',
+        'driver',
+        'porta_serial',
+        'baud_rate',
+        'adp_scale_uuid',
+        'connection_token',
+        'connection_token_enabled',
+        'connection_token_type',
+        'connection_token_header',
+        'timeout_ms',
+        'read_interval_ms',
+        'usa_cameras',
+        'quantidade_cameras',
+        'adp_camera_uuids',
+        'captura_snapshot_automatica',
+        'snapshot_retorno_base64',
+        'snapshot_baixa_visibilidade',
+        'exigir_peso_estavel',
     ];
 
     // Casting de tipos
     protected $casts = [
         'ativo' => 'boolean', // Converte ativo para booleano
         'data_install' => 'datetime:Y-m-d', // Formata a data de instalação
+        'connection_token' => 'encrypted',
+        'connection_token_enabled' => 'boolean',
+        'usa_cameras' => 'boolean',
+        'captura_snapshot_automatica' => 'boolean',
+        'snapshot_retorno_base64' => 'boolean',
+        'snapshot_baixa_visibilidade' => 'boolean',
+        'exigir_peso_estavel' => 'boolean',
     ];
 
     /**
