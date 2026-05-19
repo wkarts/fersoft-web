@@ -2958,6 +2958,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'adp/discovery'], function () {
+        Route::get('/configs', 'AdpDeviceDiscoveryController@configuracoes')->name('adp.discovery.configs');
         Route::get('/status', 'AdpDeviceDiscoveryController@status')->name('adp.discovery.status');
         Route::get('/devices', 'AdpDeviceDiscoveryController@devices')->name('adp.discovery.devices');
         Route::get('/scales', 'AdpDeviceDiscoveryController@scales')->name('adp.discovery.scales');

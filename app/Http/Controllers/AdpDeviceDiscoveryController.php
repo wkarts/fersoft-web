@@ -9,6 +9,30 @@ use Illuminate\Http\Request;
 
 class AdpDeviceDiscoveryController extends BaseController
 {
+    public function configuracoes()
+    {
+        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function (AdpIntegradorConfig $config) {
+                return [
+                    'id' => $config->id,
+                    'descricao' => $config->descricao,
+                    'base_url' => $config->base_url,
+                    'global_token_enabled' => (bool) $config->global_token_enabled,
+                    'global_token_type' => $config->global_token_type ?? 'none',
+                    'global_token_masked' => $config->tokenMascarado(),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'configs' => $configs,
+        ]);
+    }
+
     private function resolveConfig(Request $request): AdpIntegradorConfig
     {
         $configId = (int) $request->get('integrador_config_id');

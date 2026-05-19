@@ -37,6 +37,38 @@
     return i ? String(i.value || '').trim() : '';
   }
 
+  function loadConfigs() {
+    return getJson('/adp/discovery/configs')
+      .then(function (res) {
+        if (!res.success) throw new Error('Falha ao carregar configurações ADP');
+        var select = document.getElementById('integrador_config_id');
+        if (!select) return;
+        var defaultId = (document.getElementById('adp-cadastro-guided') || {}).dataset.defaultIntegradorConfigId || '';
+        select.innerHTML = '<option value="">Selecione...</option>';
+        (res.configs || []).forEach(function (cfg) {
+          var option = document.createElement('option');
+          option.value = String(cfg.id);
+          option.textContent = '#' + cfg.id + ' - ' + (cfg.descricao || cfg.base_url || 'Configuração ADP');
+          if (String(cfg.id) === String(defaultId)) option.selected = true;
+          option.dataset.tokenMasked = cfg.global_token_masked || '';
+          select.appendChild(option);
+        });
+        updateConfigHint();
+      })
+      .catch(function (err) {
+        updateLog('Erro ao carregar configs ADP: ' + err.message);
+      });
+  }
+
+  function updateConfigHint() {
+    var select = document.getElementById('integrador_config_id');
+    var hint = document.getElementById('adp-config-token-mask');
+    if (!select || !hint) return;
+    var selected = select.options[select.selectedIndex];
+    var mask = selected && selected.dataset ? selected.dataset.tokenMasked : '';
+    hint.textContent = mask ? ('Token global mascarado: ' + mask) : '';
+  }
+
   function syncDerivedFields() {
     var camSelect = document.getElementById('adp_camera_select');
     var selected = camSelect ? readSelectedValues(camSelect) : [];
@@ -112,6 +144,7 @@
     var btnSync = document.getElementById('btn-adp-sync');
     var scaleSelect = document.getElementById('adp_scale_select');
     var cameraSelect = document.getElementById('adp_camera_select');
+    var configSelect = document.getElementById('integrador_config_id');
 
     btnTestar && btnTestar.addEventListener('click', function () {
       var configId = getConfigId();
@@ -155,5 +188,7 @@
     });
 
     cameraSelect && cameraSelect.addEventListener('change', syncDerivedFields);
+    configSelect && configSelect.addEventListener('change', updateConfigHint);
+    loadConfigs();
   });
 })();

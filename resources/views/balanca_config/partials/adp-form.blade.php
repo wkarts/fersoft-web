@@ -7,8 +7,10 @@
     <div class="form-row">
       <div class="col-md-4">
         <label>Configuração Global ADP</label>
-        <input type="number" min="1" class="form-control" name="integrador_config_id" id="integrador_config_id"
-               value="{{ old('integrador_config_id', $balanca->integrador_config_id ?? '') }}" placeholder="ID da configuração ADP">
+        <select class="form-control" name="integrador_config_id" id="integrador_config_id">
+          <option value="">Selecione...</option>
+        </select>
+        <small class="text-muted" id="adp-config-token-mask"></small>
       </div>
       <div class="col-md-8 d-flex align-items-end">
         <button type="button" class="btn btn-outline-primary mr-2" id="btn-adp-testar">Testar conexão</button>
