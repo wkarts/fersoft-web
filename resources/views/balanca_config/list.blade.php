@@ -195,7 +195,7 @@
 
     <!-- Modal Nova Balança -->
     <div class="modal fade " id="modalRegisterBalanca" tabindex="-1" role="dialog" >
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Nova Balança</h5>
@@ -277,7 +277,7 @@
     <!-- Modal Editar Balança -->
     @foreach($balancas as $balanca)
         <div class="modal fade" id="modalEditBalanca{{ $balanca->id }}" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-header bg-warning text-white">
                         <h5 class="modal-title">Editar Balança #{{ $balanca->id }}</h5>

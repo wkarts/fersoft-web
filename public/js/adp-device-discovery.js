@@ -60,6 +60,50 @@
       });
   }
 
+  function salvarConfigAdp() {
+    var descricao = (document.getElementById('adp_cfg_descricao') || {}).value || '';
+    var baseUrl = (document.getElementById('adp_cfg_base_url') || {}).value || '';
+    var tokenType = (document.getElementById('adp_cfg_token_type') || {}).value || 'x_adp_api_token';
+    var token = (document.getElementById('adp_cfg_global_token') || {}).value || '';
+    var selectedId = getConfigId();
+
+    if (!descricao || !baseUrl) {
+      return updateLog('Informe descrição e base URL para salvar configuração ADP.');
+    }
+
+    var payload = {
+      id: selectedId || null,
+      descricao: descricao,
+      base_url: baseUrl,
+      global_token_type: tokenType,
+      global_token: token,
+      global_token_enabled: true,
+      global_token_header: tokenType === 'bearer' ? 'Authorization' : 'X-ADP-API-TOKEN',
+      timeout_ms: 5000,
+      ativo: true
+    };
+
+    updateLog('Salvando configuração ADP...');
+    return getJson('/adp/discovery/configs/save', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : ''
+      },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (!res.success) {
+        throw new Error(res.message || 'Falha ao salvar configuração ADP');
+      }
+      updateLog('Configuração ADP salva com sucesso.');
+      if (document.getElementById('adp_cfg_global_token')) document.getElementById('adp_cfg_global_token').value = '';
+      loadConfigs();
+    }).catch(function (err) {
+      updateLog('Erro ao salvar configuração ADP: ' + err.message);
+    });
+  }
+
   function updateConfigHint() {
     var select = document.getElementById('integrador_config_id');
     var hint = document.getElementById('adp-config-token-mask');
@@ -145,6 +189,7 @@
     var scaleSelect = document.getElementById('adp_scale_select');
     var cameraSelect = document.getElementById('adp_camera_select');
     var configSelect = document.getElementById('integrador_config_id');
+    var btnSalvarCfg = document.getElementById('btn-adp-salvar-config');
 
     btnTestar && btnTestar.addEventListener('click', function () {
       var configId = getConfigId();
@@ -189,6 +234,7 @@
 
     cameraSelect && cameraSelect.addEventListener('change', syncDerivedFields);
     configSelect && configSelect.addEventListener('change', updateConfigHint);
+    btnSalvarCfg && btnSalvarCfg.addEventListener('click', salvarConfigAdp);
     loadConfigs();
   });
 })();

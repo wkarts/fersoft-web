@@ -9,6 +9,57 @@ use Illuminate\Http\Request;
 
 class AdpDeviceDiscoveryController extends BaseController
 {
+    public function salvarConfig(Request $request)
+    {
+        $data = $request->validate([
+            'id' => ['nullable', 'integer'],
+            'descricao' => ['required', 'string', 'max:120'],
+            'base_url' => ['required', 'string', 'max:1000'],
+            'global_token' => ['nullable', 'string', 'max:2048'],
+            'global_token_enabled' => ['nullable', 'boolean'],
+            'global_token_type' => ['nullable', 'in:none,x_adp_api_token,bearer,query'],
+            'global_token_header' => ['nullable', 'string', 'max:120'],
+            'timeout_ms' => ['nullable', 'integer', 'min:1000', 'max:60000'],
+            'ativo' => ['nullable', 'boolean'],
+        ]);
+
+        $config = null;
+        if (!empty($data['id'])) {
+            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)->findOrFail((int) $data['id']);
+        } else {
+            $config = new AdpIntegradorConfig();
+            $config->empresa_id = $this->empresa_id;
+        }
+
+        $config->descricao = $data['descricao'];
+        $config->base_url = rtrim($data['base_url'], '/');
+        $config->global_token_enabled = (bool) ($data['global_token_enabled'] ?? true);
+        $config->global_token_type = $data['global_token_type'] ?? 'x_adp_api_token';
+        $config->global_token_header = $data['global_token_header'] ?? 'X-ADP-API-TOKEN';
+        $config->timeout_ms = (int) ($data['timeout_ms'] ?? 5000);
+        $config->ativo = array_key_exists('ativo', $data) ? (bool) $data['ativo'] : true;
+
+        // Regra: token vazio em edição mantém o token anterior.
+        if (array_key_exists('global_token', $data) && trim((string) $data['global_token']) !== '') {
+            $config->global_token = trim((string) $data['global_token']);
+        }
+
+        $config->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuração ADP salva com sucesso.',
+            'config' => [
+                'id' => $config->id,
+                'descricao' => $config->descricao,
+                'base_url' => $config->base_url,
+                'global_token_enabled' => (bool) $config->global_token_enabled,
+                'global_token_type' => $config->global_token_type ?? 'none',
+                'global_token_masked' => $config->tokenMascarado(),
+            ],
+        ]);
+    }
+
     public function configuracoes()
     {
         $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)

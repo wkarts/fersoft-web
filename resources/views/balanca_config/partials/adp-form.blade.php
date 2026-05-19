@@ -2,8 +2,38 @@
      data-default-integrador-config-id="{{ old('integrador_config_id', $balanca->integrador_config_id ?? '') }}"
      data-default-scale-uuid="{{ old('adp_scale_uuid', $balanca->adp_scale_uuid ?? '') }}"
      data-default-camera-uuids="{{ old('adp_camera_uuids', $balanca->adp_camera_uuids ?? '') }}">
-  <div class="card-header">Integração ADP (fluxo guiado)</div>
+  <div class="card-header py-2">Integração ADP (fluxo guiado)</div>
   <div class="card-body">
+    <div class="border rounded p-2 mb-3 bg-light">
+      <div class="form-row">
+        <div class="col-md-3">
+          <label class="mb-1">Descrição ADP</label>
+          <input class="form-control form-control-sm" id="adp_cfg_descricao" placeholder="Ex.: ADP Matriz">
+        </div>
+        <div class="col-md-4">
+          <label class="mb-1">Base URL ADP</label>
+          <input class="form-control form-control-sm" id="adp_cfg_base_url" placeholder="http://127.0.0.1:4789">
+        </div>
+        <div class="col-md-2">
+          <label class="mb-1">Token Type</label>
+          <select class="form-control form-control-sm" id="adp_cfg_token_type">
+            <option value="x_adp_api_token">x_adp_api_token</option>
+            <option value="bearer">bearer</option>
+            <option value="query">query</option>
+            <option value="none">none</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="mb-1">Token Global (opcional em edição)</label>
+          <input class="form-control form-control-sm" id="adp_cfg_global_token" placeholder="Deixe vazio para manter o atual">
+        </div>
+      </div>
+      <div class="mt-2">
+        <button type="button" class="btn btn-sm btn-dark" id="btn-adp-salvar-config">Salvar configuração ADP</button>
+      </div>
+      <small class="text-muted">Cada empresa/tenant pode ter múltiplas configurações ADP e escolher qual usar em cada balança.</small>
+    </div>
+
     <div class="form-row">
       <div class="col-md-4">
         <label>Configuração Global ADP</label>
