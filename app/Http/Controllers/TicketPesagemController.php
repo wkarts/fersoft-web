@@ -211,6 +211,25 @@ class TicketPesagemController extends BaseController
             return 'Pesagem manual bloqueada. Utilize a leitura da balança selecionada.';
         }
 
+        if (!$request->filled('balanca_evidence_json')) {
+            return 'Pesagem manual bloqueada. Capture a evidência da balança antes de salvar o ticket.';
+        }
+
+        $evidence = json_decode((string) $request->input('balanca_evidence_json'), true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($evidence)) {
+            return 'Evidência da balança inválida. Refaça a captura de peso.';
+        }
+
+        $evidenceBalancaId = (int) data_get($evidence, 'balanca.id', 0);
+        if ($evidenceBalancaId > 0 && $evidenceBalancaId !== $balancaSelecionadaId) {
+            return 'A evidência capturada não pertence à balança selecionada.';
+        }
+
+        $evidencePeso = (float) data_get($evidence, 'peso.valor', 0);
+        if ($evidencePeso <= 0) {
+            return 'Evidência da balança sem peso válido. Refaça a leitura.';
+        }
+
         return true;
     }
 
