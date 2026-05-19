@@ -195,7 +195,7 @@
 
     <!-- Modal Nova Balança -->
     <div class="modal fade " id="modalRegisterBalanca" tabindex="-1" role="dialog" >
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">Nova Balança</h5>
@@ -204,12 +204,25 @@
                 <div class="modal-body">
                     <form method="POST" action="{{ route('balancas.save') }}">
                         @csrf
+                        <div class="form-group">
+                            <label>Modo de integração</label>
+                            <select name="integrador" class="form-control js-integrador-select" data-target-prefix="new">
+                                <option value="adp" selected>ADP</option>
+                                @if(env('BALANCA_SHOW_LEGACY_FIELDS', false))
+                                <option value="legacy">Legado</option>
+                                @endif
+                            </select>
+                        </div>
                         <div class="row">
                             <!-- Campos do formulário -->
                             <div class="form-group col-lg-6">
                                 <label>Descrição:</label>
                                 <input type="text" name="descricao" class="form-control" required>
                             </div>
+                            <div class="col-12 js-adp-section" data-target-prefix="new">
+                                @include('balanca_config.partials.adp-form', ['balanca' => null])
+                            </div>
+                            <div class="col-12 js-legacy-section" data-target-prefix="new" style="{{ env('BALANCA_SHOW_LEGACY_FIELDS', false) ? 'display:none' : 'display:none' }}">
                             <div class="form-group col-lg-6">
                                 <label>Backend: https://127.0.0.1:3333 </label>
                                 <input type="text" name="backend_server_address" class="form-control" required>
@@ -252,6 +265,7 @@
                                 <label>Observações:</label>
                                 <textarea name="observacoes" class="form-control" rows="3"></textarea>
                             </div>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-success">Salvar</button>
                     </form>
@@ -263,7 +277,7 @@
     <!-- Modal Editar Balança -->
     @foreach($balancas as $balanca)
         <div class="modal fade" id="modalEditBalanca{{ $balanca->id }}" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-header bg-warning text-white">
                         <h5 class="modal-title">Editar Balança #{{ $balanca->id }}</h5>
@@ -273,12 +287,25 @@
                         <form method="POST" action="{{ route('balancas.update', $balanca->id) }}">
                             @csrf
                             @method('PUT')
+                            <div class="form-group">
+                                <label>Modo de integração</label>
+                                <select name="integrador" class="form-control js-integrador-select" data-target-prefix="edit-{{ $balanca->id }}">
+                                    <option value="adp" {{ ($balanca->integrador ?? 'legacy') === 'adp' ? 'selected' : '' }}>ADP</option>
+                                    @if(env('BALANCA_SHOW_LEGACY_FIELDS', false))
+                                    <option value="legacy" {{ ($balanca->integrador ?? 'legacy') !== 'adp' ? 'selected' : '' }}>Legado</option>
+                                    @endif
+                                </select>
+                            </div>
                             <div class="row">
                                 <!-- Campos do formulário -->
                                 <div class="form-group col-lg-6">
                                     <label>Descrição:</label>
                                     <input type="text" name="descricao" value="{{ $balanca->descricao }}" class="form-control" required>
                                 </div>
+                                <div class="col-12 js-adp-section" data-target-prefix="edit-{{ $balanca->id }}" style="{{ ($balanca->integrador ?? 'legacy') === 'adp' ? '' : 'display:none' }}">
+                                    @include('balanca_config.partials.adp-form', ['balanca' => $balanca])
+                                </div>
+                                <div class="col-12 js-legacy-section" data-target-prefix="edit-{{ $balanca->id }}" style="{{ ($balanca->integrador ?? 'legacy') === 'adp' ? 'display:none' : '' }}">
                                 <div class="form-group col-lg-6">
                                     <label>Backend Server Address: https://127.0.0.1:3333</label>
                                     <input type="text" id="backendServerAddressEdit_{{ $balanca->id }}" name="backend_server_address" value="{{ $balanca->backend_server_address }}" class="form-control" required>
@@ -329,6 +356,7 @@
                                     <label>Observações:</label>
                                     <textarea name="observacoes" class="form-control" rows="3">{{ $balanca->observacoes }}</textarea>
                                 </div>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-warning">Atualizar</button>
                         </form>
@@ -343,6 +371,22 @@
 @section('javascript')
     <script src="{{ asset('js/axios.min.js') }}"></script>
     <script src="{{ asset('js/balancaMain.js') }}"></script>
+    <script>
+        function toggleIntegradorSections(prefix, integrador) {
+            const adp = document.querySelector(`.js-adp-section[data-target-prefix="${prefix}"]`);
+            const legacy = document.querySelector(`.js-legacy-section[data-target-prefix="${prefix}"]`);
+            if (adp) adp.style.display = integrador === 'adp' ? '' : 'none';
+            if (legacy) legacy.style.display = integrador === 'adp' ? 'none' : '';
+        }
+
+        document.querySelectorAll('.js-integrador-select').forEach(function (select) {
+            const prefix = select.dataset.targetPrefix;
+            toggleIntegradorSections(prefix, select.value);
+            select.addEventListener('change', function () {
+                toggleIntegradorSections(prefix, this.value);
+            });
+        });
+    </script>
 
     <script>
         // Recupera o backendURL configurado no formulário
