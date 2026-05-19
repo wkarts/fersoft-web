@@ -33,6 +33,8 @@ class TicketPesagemController extends BaseController
             'peso' => 'required|numeric|min:0',
             'balanca_config_id' => 'nullable|exists:balanca_configs,id',
             'peso_origem' => 'nullable|in:manual,balanca',
+            'balanca_evidence_json' => 'nullable|string',
+            'camera_snapshots_json' => 'nullable|string',
             'valor_unitario' => 'nullable|numeric|min:0',
             'valor_total' => 'nullable|numeric|min:0',
             //'peso_bag' => 'nullable|numeric|min:0|max:10000',
@@ -68,6 +70,9 @@ class TicketPesagemController extends BaseController
             $data = $request->all();
             $data['peso_origem'] = $request->input('peso_origem', 'manual');
             $data['empresa_id'] = $this->empresa_id;
+            $data['balanca_evidence_json'] = $request->input('balanca_evidence_json');
+            $data['camera_snapshots_json'] = $request->input('camera_snapshots_json');
+            $data['camera_snapshot_at'] = $request->filled('camera_snapshots_json') ? now() : null;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
             $taraInformada = $request->input('tara', $request->input('peso_bag', 0));
