@@ -155,6 +155,9 @@
                                         class="status-led"
                                         data-backend="{{ $balanca->backend_server_address }}"
                                         data-equip="{{ $balanca->modelo }}"
+                                        data-integrador="{{ $balanca->integrador ?? 'legacy' }}"
+                                        data-integrador-config-id="{{ $balanca->integrador_config_id ?? '' }}"
+                                        data-adp-scale-uuid="{{ $balanca->adp_scale_uuid ?? '' }}"
                                         style="width: 25px; height: 25px;">
                                      </span>
                                 </td>
@@ -552,11 +555,7 @@
 
             // Iterar sobre todas as balanças carregadas
             window.balancas.data.forEach(balanca => {
-                verificarStatusBalanca(
-                    balanca.id,
-                    balanca.backend_server_address,
-                    balanca.modelo
-                ).then(() => {
+                verificarStatusBalanca(balanca).then(() => {
                     console.log(`Verificação automática concluída para balança ID ${balanca.id}`);
                 }).catch(err => {
                     console.error(`Erro na verificação automática da balança ID ${balanca.id}:`, err);
@@ -567,11 +566,8 @@
         // Atualizar automaticamente a cada 10 segundos
         setInterval(() => {
             window.balancas.data.forEach(balanca => {
-                verificarStatusBalanca(
-                    balanca.id,
-                    balanca.backend_server_address,
-                    balanca.modelo
-                ).catch(err => console.error(`Erro ao atualizar balança ID ${balanca.id}:`, err));
+                verificarStatusBalanca(balanca)
+                    .catch(err => console.error(`Erro ao atualizar balança ID ${balanca.id}:`, err));
             });
         }, 10000); // 10 segundos
     </script>

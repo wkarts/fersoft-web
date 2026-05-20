@@ -172,47 +172,266 @@ if (backPortasEl) {
     };
 }
 
+// Cache das configurações ADP usadas pela listagem.
+// O token global não fica exposto no HTML; é obtido sob demanda via rota autenticada do Laravel.
+const adpRuntimeConfigCache = new Map();
+
+function csrfTokenBalanca() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+async function fetchJsonBalanca(url, options = {}) {
+    const headers = Object.assign({
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+    }, options.headers || {});
+
+    const response = await fetch(url, Object.assign({}, options, { headers }));
+    let data = null;
+
+    try {
+        data = await response.json();
+    } catch (e) {
+        data = null;
+    }
+
+    if (!response.ok) {
+        const message = data && (data.message || data.error)
+            ? (data.message || data.error)
+            : `HTTP ${response.status}`;
+        throw new Error(message);
+    }
+
+    return data || {};
+}
+
+function appendApiPath(baseUrl, path) {
+    const base = String(baseUrl || '').replace(/\/+$/, '');
+    const cleanPath = '/' + String(path || '').replace(/^\/+/, '');
+
+    if (base.endsWith('/api') && cleanPath.startsWith('/api/')) {
+        return base + cleanPath.substring(4);
+    }
+
+    return base + cleanPath;
+}
+
+function buildAdpHeaders(config) {
+    const headers = { 'Accept': 'application/json' };
+    const type = config.global_token_type || 'x_adp_api_token';
+    const token = config.global_token || '';
+    const header = config.global_token_header || 'X-ADP-API-TOKEN';
+
+    if (!token || type === 'none') {
+        return headers;
+    }
+
+    if (type === 'bearer') {
+        headers.Authorization = `Bearer ${token}`;
+        return headers;
+    }
+
+    if (type === 'x_adp_api_token') {
+        headers[header] = token;
+        return headers;
+    }
+
+    return headers;
+}
+
+function appendAdpQueryToken(url, config) {
+    const type = config.global_token_type || 'x_adp_api_token';
+    const token = config.global_token || '';
+
+    if (type !== 'query' || !token) {
+        return url;
+    }
+
+    return url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+}
+
+async function getAdpRuntimeConfig(integradorConfigId) {
+    const id = String(integradorConfigId || '').trim();
+
+    if (!id) {
+        throw new Error('Configuração ADP não vinculada à balança.');
+    }
+
+    if (adpRuntimeConfigCache.has(id)) {
+        return adpRuntimeConfigCache.get(id);
+    }
+
+    const url = `/adp/discovery/configs/runtime?integrador_config_id=${encodeURIComponent(id)}`;
+    const data = await fetchJsonBalanca(url, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': csrfTokenBalanca()
+        }
+    });
+
+    if (!data.success || !data.config) {
+        throw new Error(data.message || 'Configuração ADP inválida.');
+    }
+
+    adpRuntimeConfigCache.set(id, data.config);
+    return data.config;
+}
+
+function normalizeAdpScaleStatus(payload) {
+    const health = payload.health || {};
+    const status = payload.status || {};
+    const data = payload.data || payload.weight || null;
+
+    const connected = Boolean(
+        health.connected ??
+        status.port_opened ??
+        status.portOpened ??
+        false
+    );
+
+    const receivingData = Boolean(
+        health.receiving_data ??
+        health.receivingData ??
+        false
+    );
+
+    const hasData = Boolean(data);
+    const error = Boolean(status.error ?? payload.error ?? false);
+    const message = String(
+        status.message_text ||
+        status.messageText ||
+        payload.message ||
+        health.last_error ||
+        ''
+    );
+
+    if (connected && (hasData || receivingData) && !error) {
+        return {
+            color: 'green',
+            title: 'Balança Online e Funcionando!'
+        };
+    }
+
+    if (connected && !hasData) {
+        return {
+            color: 'orange',
+            title: 'Balança Online, mas sem transmissão de dados.'
+        };
+    }
+
+    if (!connected && !payload.error) {
+        return {
+            color: 'white',
+            title: message || 'Balança Offline ou Porta Fechada.'
+        };
+    }
+
+    return {
+        color: 'red',
+        title: message || 'Erro no backend ADP.'
+    };
+}
+
+async function verificarStatusBalancaAdp(balanca, statusLed) {
+    const config = await getAdpRuntimeConfig(balanca.integrador_config_id);
+    const uuid = String(balanca.adp_scale_uuid || '').trim();
+
+    if (!uuid) {
+        statusLed.style.backgroundColor = 'white';
+        statusLed.title = 'Balança ADP sem UUID vinculado.';
+        return;
+    }
+
+    let url = appendApiPath(config.base_url, `/api/scales/${encodeURIComponent(uuid)}/data`);
+    url = appendAdpQueryToken(url, config);
+
+    const payload = await fetchJsonBalanca(url, {
+        method: 'GET',
+        headers: buildAdpHeaders(config)
+    });
+
+    const normalized = normalizeAdpScaleStatus(payload);
+    statusLed.style.backgroundColor = normalized.color;
+    statusLed.title = normalized.title;
+}
+
+async function verificarStatusBalancaLegacy(id, backendURL, equipamento, statusLed) {
+    let response = await axios.get(`${backendURL}/api/data?equip=${equipamento}`);
+    const status = response.data.status;
+
+    const portOpened = Boolean(status.portOpened ?? status.port_opened ?? false);
+    const messageText = String(status.messageText || status.message_text || '');
+    const error = Boolean(status.error ?? false);
+
+    // Status Verde (Online e funcionando)
+    if (portOpened && messageText === "Conexão funcionando corretamente" && !error) {
+        statusLed.style.backgroundColor = 'green';
+        statusLed.title = "Balança Online e Funcionando!";
+    }
+    // Status Laranja (Sem transmissão)
+    else if (portOpened && messageText === "Conectado. Sem transmissão de dados" && error) {
+        statusLed.style.backgroundColor = 'orange';
+        statusLed.title = "Balança Online, mas Sem Transmissão!";
+    }
+    // Status Branco (Porta fechada)
+    else if (!portOpened && messageText === "Sem conexão com a porta serial" && error) {
+        statusLed.style.backgroundColor = 'white';
+        statusLed.title = "Balança Offline ou Porta Fechada!";
+    } else {
+        // Status Vermelho (Erro no Backend)
+        statusLed.style.backgroundColor = 'red';
+        statusLed.title = "Erro no Backend!";
+    }
+}
+
+function normalizeBalancaArgs(arg1, backendURL, equipamento) {
+    if (arg1 && typeof arg1 === 'object') {
+        return arg1;
+    }
+
+    const statusLed = document.getElementById(`status-led-${arg1}`);
+
+    return {
+        id: arg1,
+        backend_server_address: backendURL || (statusLed ? statusLed.dataset.backend : ''),
+        modelo: equipamento || (statusLed ? statusLed.dataset.equip : ''),
+        integrador: statusLed ? statusLed.dataset.integrador : 'legacy',
+        integrador_config_id: statusLed ? statusLed.dataset.integradorConfigId : '',
+        adp_scale_uuid: statusLed ? statusLed.dataset.adpScaleUuid : ''
+    };
+}
+
 // **Função para verificar o status de uma balança**
-async function verificarStatusBalanca(id, backendURL, equipamento) {
-    const statusLed = document.getElementById(`status-led-${id}`);
+async function verificarStatusBalanca(arg1, backendURL, equipamento) {
+    const balanca = normalizeBalancaArgs(arg1, backendURL, equipamento);
+    const statusLed = document.getElementById(`status-led-${balanca.id}`);
+
     if (!statusLed) return;
 
     try {
-        let response = await axios.get(`${backendURL}/api/data?equip=${equipamento}`);
-        const status = response.data.status;
+        if ((balanca.integrador || 'legacy') === 'adp') {
+            await verificarStatusBalancaAdp(balanca, statusLed);
+            return;
+        }
 
-        // Status Verde (Online e funcionando)
-        if (status.portOpened && status.messageText === "Conexão funcionando corretamente" && !status.error) {
-            statusLed.style.backgroundColor = 'green';
-            statusLed.title = "Balança Online e Funcionando!";
-        }
-        // Status Laranja (Sem transmissão)
-        else if (status.portOpened && status.messageText === "Conectado. Sem transmissão de dados" && status.error) {
-            statusLed.style.backgroundColor = 'orange';
-            statusLed.title = "Balança Online, mas Sem Transmissão!";
-        }
-        // Status Branco (Porta fechada)
-        else if (!status.portOpened && status.messageText === "Sem conexão com a porta serial" && status.error) {
-            statusLed.style.backgroundColor = 'white';
-            statusLed.title = "Balança Offline ou Porta Fechada!";
-        } else {
-            // Status Vermelho (Erro no Backend)
-            statusLed.style.backgroundColor = 'red';
-            statusLed.title = "Erro no Backend!";
-        }
+        await verificarStatusBalancaLegacy(
+            balanca.id,
+            balanca.backend_server_address,
+            balanca.modelo,
+            statusLed
+        );
     } catch (error) {
-        console.error(`Erro ao verificar status da balança ${id}:`, error);
-        if (statusLed) {
-            statusLed.style.backgroundColor = 'red';
-            statusLed.title = "Backend Offline!";
-        }
+        console.error(`Erro ao verificar status da balança ${balanca.id}:`, error);
+        statusLed.style.backgroundColor = 'red';
+        statusLed.title = error && error.message ? error.message : 'Backend Offline!';
     }
 }
 
 // Função para verificar todas as balanças
 function verificarTodasAsBalancas() {
     balancas.forEach(balanca => {
-        verificarStatusBalanca(balanca.id, balanca.backend_server_address, balanca.modelo);
+        verificarStatusBalanca(balanca);
     });
 }
 
