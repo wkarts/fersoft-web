@@ -5,7 +5,7 @@
   <div class="card-header py-1" style="font-size:14px;">Integração ADP (fluxo guiado)</div>
   <div class="card-body p-2" style="font-size:13px;">
     <div class="border rounded p-2 mb-2 bg-light">
-      <small class="text-muted d-block mb-2">Informe a URL/porta da API ADP configurada para este ambiente.</small>
+      <small class="text-muted d-block mb-2">Informe a URL/porta da API ADP que será usada para localizar balanças e câmeras.</small>
       <div class="form-row">
         <div class="col-md-3">
           <label class="mb-1">Descrição ADP</label>
@@ -62,6 +62,9 @@
       </div>
     </div>
 
+    <input type="hidden" name="ativo" value="1">
+    <input type="hidden" name="tipo" value="{{ old('tipo', $balanca->tipo ?? 'plataforma') }}">
+
     <div class="form-row mt-2">
       <div class="col-md-3">
         <label>UUID Balança ADP</label>
@@ -99,7 +102,6 @@
     </div>
 
     <div class="mt-3">
-      <small class="text-muted">A view chama o Laravel, e o Laravel chama o ADP. Nenhum token é exposto no frontend.</small>
       <pre data-adp="log" class="mt-2 p-2" style="max-height: 140px; overflow:auto; background:#f8f9fa; border:1px solid #e9ecef; font-size:11px;">Aguardando ação...</pre>
     </div>
   </div>
