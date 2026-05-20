@@ -15,11 +15,11 @@ class BalancaLeitorController extends BaseController
 
     public function index()
     {
-        $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
+        $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->where('integrador', 'adp')->get();
         return view('balanca_leitor.index', compact('balancas'));
     }
 
-    public function configuradas() { return response()->json(BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->get()); }
+    public function configuradas() { return response()->json(BalancaConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->where('integrador', 'adp')->get()); }
     public function status($id) { return response()->json($this->service->status($this->balanca($id))); }
     public function details($id) { return response()->json($this->service->details($this->balanca($id))); }
     public function open($id) { return response()->json($this->service->open($this->balanca($id))); }
@@ -35,6 +35,6 @@ class BalancaLeitorController extends BaseController
 
     private function balanca($id): BalancaConfig
     {
-        return BalancaConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
+        return BalancaConfig::where('empresa_id', $this->empresa_id)->where('integrador', 'adp')->findOrFail($id);
     }
 }

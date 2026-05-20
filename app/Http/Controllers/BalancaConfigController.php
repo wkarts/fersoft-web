@@ -82,6 +82,7 @@ class BalancaConfigController extends BaseController
     public function list(Request $request)
     {
         $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
+            ->where('integrador', 'adp')
             ->paginate();
 
         return view($this->listView, [
@@ -113,7 +114,7 @@ class BalancaConfigController extends BaseController
      */
     public function edit($id)
     {
-        $balanca = BalancaConfig::findOrFail($id);
+        $balanca = BalancaConfig::where('empresa_id', $this->empresa_id)->where('integrador', 'adp')->findOrFail($id);
         $title = "Editar Balança - {$balanca->descricao}";
 
         return view($this->listView, [
@@ -129,10 +130,7 @@ class BalancaConfigController extends BaseController
      */
     public function save(Request $request, $id = null)
     {
-        $integrador = (string) $request->input('integrador', 'legacy');
-        if ($integrador === '') {
-            $integrador = 'legacy';
-        }
+        $integrador = 'adp';
 
         // No modo ADP alguns campos do bloco legado ficam desabilitados na view.
         // Mesmo assim a tabela/validação ainda precisa de valores mínimos para cadastro.
@@ -140,14 +138,12 @@ class BalancaConfigController extends BaseController
             'integrador' => $integrador,
         ];
 
-        if ($integrador === 'adp') {
-            if (!$request->has('ativo') || $request->input('ativo') === null || $request->input('ativo') === '') {
-                $mergeData['ativo'] = 1;
-            }
+        if (!$request->has('ativo') || $request->input('ativo') === null || $request->input('ativo') === '') {
+            $mergeData['ativo'] = 1;
+        }
 
-            if (!$request->filled('tipo')) {
-                $mergeData['tipo'] = 'plataforma';
-            }
+        if (!$request->filled('tipo')) {
+            $mergeData['tipo'] = 'plataforma';
         }
 
         $request->merge($mergeData);
@@ -155,7 +151,7 @@ class BalancaConfigController extends BaseController
         $validatedData = $request->validate($this->rules($id), $this->messages());
         $validatedData['empresa_id'] = $this->empresa_id;
         $validatedData['usuario_id'] = $this->usuario_id;
-        $validatedData['integrador'] = $request->input('integrador', $validatedData['integrador'] ?? null);
+        $validatedData['integrador'] = 'adp';
         $validatedData['integrador_config_id'] = $request->input('integrador_config_id');
         $validatedData['adp_scale_uuid'] = $request->input('adp_scale_uuid');
         $validatedData['porta_serial'] = $request->input('porta_serial');
@@ -183,10 +179,6 @@ class BalancaConfigController extends BaseController
                 $serieNumber = 'ADP-' . strtoupper(substr(md5((string) $validatedData['adp_scale_uuid']), 0, 12));
             }
             $validatedData['serie_number'] = $serieNumber;
-        } else {
-            if (empty($validatedData['backend_server_address']) || empty($validatedData['modelo']) || empty($validatedData['port']) || empty($validatedData['serie_number'])) {
-                return redirect()->back()->withInput()->with('mensagem_erro', 'No modo legado, backend, equipamento, porta e serial number são obrigatórios.');
-            }
         }
 
         if (!empty($validatedData['integrador_config_id'])) {
@@ -202,7 +194,7 @@ class BalancaConfigController extends BaseController
         try {
             if ($id) {
                 // Atualizar registro existente
-                $balanca = BalancaConfig::findOrFail($id);
+                $balanca = BalancaConfig::where('empresa_id', $this->empresa_id)->where('integrador', 'adp')->findOrFail($id);
                 $balanca->update($validatedData);
             } else {
                 // Criar nova balança
@@ -288,7 +280,7 @@ class BalancaConfigController extends BaseController
     public function delete($id)
     {
         try {
-            BalancaConfig::findOrFail($id)->delete();
+            BalancaConfig::where('empresa_id', $this->empresa_id)->where('integrador', 'adp')->findOrFail($id)->delete();
             session()->flash('mensagem_sucesso', 'Balança excluída com sucesso!');
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', 'Erro ao excluir: ' . $e->getMessage());
@@ -410,6 +402,7 @@ class BalancaConfigController extends BaseController
         // Carrega todas as balanças para seleção
         $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
+            ->where('integrador', 'adp')
             ->get();
 
         // Passa as balanças para a view

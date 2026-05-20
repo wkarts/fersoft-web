@@ -87,6 +87,9 @@
                     <button type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalRegisterBalanca">
                         <i class="fa fa-plus"></i> Nova Balança
                     </button>
+                    <a href="{{ route('adp.cameras.list') }}" class="btn btn-lg btn-info ml-2">
+                        <i class="fa fa-camera"></i> Câmeras ADP
+                    </a>
                 </div>
             </div>
             <br>
@@ -135,7 +138,9 @@
                         <tr class="datatable-row" style="left: 0px;">
                             <th style="width: 0%; white-space: nowrap;">ID</th>
                             <th style="width: 1%; white-space: nowrap;">Descrição</th>
-                            <th style="width: 1%; white-space: nowrap;">Backend Server Address</th>
+                            <th style="width: 1%; white-space: nowrap;">Integração ADP</th>
+                            <th style="width: 1%; white-space: nowrap;">Base URL ADP</th>
+                            <th style="width: 1%; white-space: nowrap;">Câmeras</th>
                             <th style="width: 0%; white-space: nowrap;">Online</th>
                             <th style="width: 1%; white-space: nowrap;">Tipo</th>
                             <th style="width: 0%; white-space: nowrap;">Status</th>
@@ -147,7 +152,12 @@
                             <tr class="datatable-row">
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->id }}</td>
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->descricao }}</td>
-                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->backend_server_address }}</td>
+                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">Config #{{ $balanca->integrador_config_id }}<br><small>{{ $balanca->adp_scale_uuid }}</small></td>
+                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->backend_server_address ?: '-' }}</td>
+                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">
+                                    <span class="badge {{ ($balanca->quantidade_cameras ?? 0) > 0 ? 'badge-info' : 'badge-secondary' }}">{{ (int) ($balanca->quantidade_cameras ?? 0) }} câmera(s)</span><br>
+                                    <small data-adp-camera-health-summary="{{ $balanca->id }}">Aguardando</small>
+                                </td>
                                 <td class="datatable-cell text-center">
                                     <!-- LED principal e legenda -->
                                      <span
@@ -207,15 +217,8 @@
                 <div class="modal-body">
                     <form method="POST" action="{{ route('balancas.save') }}">
                         @csrf
-                        <div class="form-group">
-                            <label>Modo de integração</label>
-                            <select name="integrador" class="form-control js-integrador-select" data-target-prefix="new">
-                                <option value="adp" selected>ADP</option>
-                                @if(env('BALANCA_SHOW_LEGACY_FIELDS', false))
-                                <option value="legacy">Legado</option>
-                                @endif
-                            </select>
-                        </div>
+                        <input type="hidden" name="integrador" value="adp">
+                        <div class="alert alert-info py-2 mb-2">Integração ADP ativa. O modo legado está desativado.</div>
                         <div class="row">
                             <!-- Campos do formulário -->
                             <div class="form-group col-lg-6">
@@ -290,25 +293,18 @@
                         <form method="POST" action="{{ route('balancas.update', $balanca->id) }}">
                             @csrf
                             @method('PUT')
-                            <div class="form-group">
-                                <label>Modo de integração</label>
-                                <select name="integrador" class="form-control js-integrador-select" data-target-prefix="edit-{{ $balanca->id }}">
-                                    <option value="adp" {{ ($balanca->integrador ?? 'legacy') === 'adp' ? 'selected' : '' }}>ADP</option>
-                                    @if(env('BALANCA_SHOW_LEGACY_FIELDS', false))
-                                    <option value="legacy" {{ ($balanca->integrador ?? 'legacy') !== 'adp' ? 'selected' : '' }}>Legado</option>
-                                    @endif
-                                </select>
-                            </div>
+                            <input type="hidden" name="integrador" value="adp">
+                            <div class="alert alert-info py-2 mb-2">Integração ADP ativa. O modo legado está desativado.</div>
                             <div class="row">
                                 <!-- Campos do formulário -->
                                 <div class="form-group col-lg-6">
                                     <label>Descrição:</label>
                                     <input type="text" name="descricao" value="{{ $balanca->descricao }}" class="form-control" required>
                                 </div>
-                                <div class="col-12 js-adp-section" data-target-prefix="edit-{{ $balanca->id }}" style="{{ ($balanca->integrador ?? 'legacy') === 'adp' ? '' : 'display:none' }}">
+                                <div class="col-12 js-adp-section" data-target-prefix="edit-{{ $balanca->id }}">
                                     @include('balanca_config.partials.adp-form', ['balanca' => $balanca])
                                 </div>
-                                <div class="col-12 js-legacy-section" data-target-prefix="edit-{{ $balanca->id }}" style="{{ ($balanca->integrador ?? 'legacy') === 'adp' ? 'display:none' : '' }}">
+                                <div class="col-12 js-legacy-section" data-target-prefix="edit-{{ $balanca->id }}" style="display:none">
                                 <div class="form-group col-lg-6">
                                     <label>Backend Server Address: https://127.0.0.1:3333</label>
                                     <input type="text" id="backendServerAddressEdit_{{ $balanca->id }}" name="backend_server_address" value="{{ $balanca->backend_server_address }}" class="form-control" required>
@@ -373,6 +369,7 @@
 
 @section('javascript')
     <script src="{{ asset('js/axios.min.js') }}"></script>
+    <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
     <script src="{{ asset('js/balancaMain.js') }}"></script>
     <script>
         function setSectionControlsEnabled(section, enabled) {
@@ -416,12 +413,14 @@
             }
         }
 
-        document.querySelectorAll('.js-integrador-select').forEach(function (select) {
-            const prefix = select.dataset.targetPrefix;
-            toggleIntegradorSections(prefix, select.value);
-            select.addEventListener('change', function () {
-                toggleIntegradorSections(prefix, this.value);
-            });
+        document.querySelectorAll('.js-adp-section').forEach(function (section) {
+            section.style.display = '';
+            setSectionControlsEnabled(section, true);
+        });
+
+        document.querySelectorAll('.js-legacy-section').forEach(function (section) {
+            section.style.display = 'none';
+            setSectionControlsEnabled(section, false);
         });
     </script>
 

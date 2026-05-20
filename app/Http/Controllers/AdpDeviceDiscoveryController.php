@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdpDevice;
+use App\Models\AdpCamera;
 use App\Models\AdpIntegradorConfig;
 use App\Services\Balanca\AdpDeviceDiscoveryService;
 use Illuminate\Http\Request;
@@ -209,6 +210,8 @@ class AdpDeviceDiscoveryController extends BaseController
             'devices.*.status' => ['nullable', 'string', 'max:80'],
             'devices.*.supports_stream' => ['nullable', 'boolean'],
             'devices.*.supports_snapshot' => ['nullable', 'boolean'],
+            'devices.*.snapshot_url' => ['nullable', 'string'],
+            'devices.*.stream_url' => ['nullable', 'string'],
             'devices.*.metadata' => ['nullable'],
             'source' => ['nullable', 'string', 'max:80'],
         ]);
@@ -230,6 +233,8 @@ class AdpDeviceDiscoveryController extends BaseController
                 continue;
             }
 
+            $deviceType = (string) ($device['type'] ?? 'unknown');
+
             AdpDevice::updateOrCreate(
                 [
                     'empresa_id' => $this->empresa_id,
@@ -237,7 +242,7 @@ class AdpDeviceDiscoveryController extends BaseController
                 ],
                 [
                     'integrador_config_id' => $config->id,
-                    'device_type' => (string) ($device['type'] ?? 'unknown'),
+                    'device_type' => $deviceType,
                     'name' => $device['name'] ?? null,
                     'model' => $device['model'] ?? null,
                     'driver' => $device['driver'] ?? null,
@@ -253,6 +258,33 @@ class AdpDeviceDiscoveryController extends BaseController
                     'ativo' => true,
                 ]
             );
+
+            if ($deviceType === 'camera') {
+                AdpCamera::updateOrCreate(
+                    [
+                        'empresa_id' => $this->empresa_id,
+                        'camera_uuid' => $deviceUuid,
+                    ],
+                    [
+                        'integrador_config_id' => $config->id,
+                        'descricao' => $device['name'] ?? $deviceUuid,
+                        'name' => $device['name'] ?? null,
+                        'model' => $device['model'] ?? null,
+                        'driver' => $device['driver'] ?? null,
+                        'protocol' => $device['protocol'] ?? null,
+                        'host' => $device['host'] ?? null,
+                        'port' => isset($device['port']) ? (string) $device['port'] : null,
+                        'stream_url' => $device['stream_url'] ?? null,
+                        'snapshot_url' => $device['snapshot_url'] ?? null,
+                        'supports_stream' => (bool) ($device['supports_stream'] ?? false),
+                        'supports_snapshot' => (bool) ($device['supports_snapshot'] ?? false),
+                        'status' => $device['status'] ?? 'offline',
+                        'ultimo_status_em' => $now,
+                        'ativo' => true,
+                        'metadata_json' => $device['metadata'] ?? $device,
+                    ]
+                );
+            }
 
             $synced++;
         }
