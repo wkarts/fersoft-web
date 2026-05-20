@@ -134,9 +134,23 @@ class BalancaConfigController extends BaseController
             $integrador = 'legacy';
         }
 
-        $request->merge([
+        // No modo ADP alguns campos do bloco legado ficam desabilitados na view.
+        // Mesmo assim a tabela/validação ainda precisa de valores mínimos para cadastro.
+        $mergeData = [
             'integrador' => $integrador,
-        ]);
+        ];
+
+        if ($integrador === 'adp') {
+            if (!$request->has('ativo') || $request->input('ativo') === null || $request->input('ativo') === '') {
+                $mergeData['ativo'] = 1;
+            }
+
+            if (!$request->filled('tipo')) {
+                $mergeData['tipo'] = 'plataforma';
+            }
+        }
+
+        $request->merge($mergeData);
 
         $validatedData = $request->validate($this->rules($id), $this->messages());
         $validatedData['empresa_id'] = $this->empresa_id;

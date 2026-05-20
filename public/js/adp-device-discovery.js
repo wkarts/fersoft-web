@@ -412,98 +412,56 @@
       return;
     }
 
-    var baseUrl = currentBaseUrl(scope);
     updateLog(scope, 'Consultando dispositivos ADP...');
 
-    if (isLoopbackUrl(baseUrl)) {
-      return runtimeConfig(scope).then(function (runtime) {
-        if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
-        return localListDevices(runtime.config);
-      }).then(function (res) {
-        if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
-        renderDevices(scope, res.devices || []);
-      }).catch(function (err) {
-        updateLog(scope, 'Erro no discovery: ' + err.message);
-      });
-    }
-
-    return getJson('/adp/discovery/devices?integrador_config_id=' + encodeURIComponent(configId))
-      .then(function (res) {
-        if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
-        renderDevices(scope, res.devices || []);
-      })
-      .catch(function (err) {
-        updateLog(scope, 'Erro no discovery: ' + err.message);
-      });
+    return runtimeConfig(scope).then(function (runtime) {
+      if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
+      return localListDevices(runtime.config);
+    }).then(function (res) {
+      if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
+      renderDevices(scope, res.devices || []);
+    }).catch(function (err) {
+      updateLog(scope, 'Erro no discovery: ' + err.message);
+    });
   }
 
   function testAdp(scope) {
     var configId = getConfigId(scope);
     if (!configId) return updateLog(scope, 'Salve ou selecione uma configuração ADP antes do teste.');
 
-    var baseUrl = currentBaseUrl(scope);
     updateLog(scope, 'Testando conexão ADP...');
 
-    if (isLoopbackUrl(baseUrl)) {
-      return runtimeConfig(scope).then(function (runtime) {
-        if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
-        return localGet(runtime.config, '/api/health');
-      }).then(function (res) {
-        updateLog(scope, (res.success ? 'Conexão ADP OK.' : 'Falha na conexão ADP.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
-      }).catch(function (err) {
-        updateLog(scope, 'Erro ao testar conexão: ' + err.message);
-      });
-    }
-
-    getJson('/adp/discovery/status?integrador_config_id=' + encodeURIComponent(configId))
-      .then(function (res) {
-        updateLog(scope, (res.success ? 'Conexão ADP OK.' : 'Falha na conexão ADP.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
-      })
-      .catch(function (err) {
-        updateLog(scope, 'Erro ao testar conexão: ' + err.message);
-      });
+    return runtimeConfig(scope).then(function (runtime) {
+      if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
+      return localGet(runtime.config, '/api/health');
+    }).then(function (res) {
+      updateLog(scope, (res.success ? 'Conexão ADP OK.' : 'Falha na conexão ADP.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
+    }).catch(function (err) {
+      updateLog(scope, 'Erro ao testar conexão: ' + err.message);
+    });
   }
 
   function syncDevices(scope) {
     var configId = getConfigId(scope);
     if (!configId) return updateLog(scope, 'Salve ou selecione uma configuração ADP antes da sincronização.');
 
-    var baseUrl = currentBaseUrl(scope);
     updateLog(scope, 'Sincronizando dispositivos ADP...');
 
-    if (isLoopbackUrl(baseUrl)) {
-      return runtimeConfig(scope).then(function (runtime) {
-        if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
-        return localListDevices(runtime.config);
-      }).then(function (res) {
-        if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
-        renderDevices(scope, res.devices || []);
-        return getJson('/adp/discovery/import-devices?integrador_config_id=' + encodeURIComponent(configId), {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken()
-          },
-          body: JSON.stringify({ devices: res.devices || [], source: 'browser_local_adp' })
-        });
-      }).then(function (res) {
-        if (!res.success) {
-          updateLog(scope, 'Sync com falha. ' + (res.devices_synced || 0) + ' dispositivos sincronizados. ' + errorText(res, ''));
-          return;
-        }
-        updateLog(scope, 'Sync concluído. ' + (res.devices_synced || 0) + ' dispositivos sincronizados.');
-      }).catch(function (err) {
-        updateLog(scope, 'Erro ao sincronizar dispositivos: ' + err.message);
+    return runtimeConfig(scope).then(function (runtime) {
+      if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
+      return localListDevices(runtime.config);
+    }).then(function (res) {
+      if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
+      renderDevices(scope, res.devices || []);
+      return getJson('/adp/discovery/import-devices?integrador_config_id=' + encodeURIComponent(configId), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken()
+        },
+        body: JSON.stringify({ devices: res.devices || [], source: 'browser_adp' })
       });
-    }
-
-    getJson('/adp/discovery/sync-devices?integrador_config_id=' + encodeURIComponent(configId), {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': csrfToken()
-      }
     }).then(function (res) {
       if (!res.success) {
         updateLog(scope, 'Sync com falha. ' + (res.devices_synced || 0) + ' dispositivos sincronizados. ' + errorText(res, ''));
@@ -511,7 +469,7 @@
       }
       updateLog(scope, 'Sync concluído. ' + (res.devices_synced || 0) + ' dispositivos sincronizados.');
     }).catch(function (err) {
-      updateLog(scope, 'Erro ao sincronizar: ' + err.message);
+      updateLog(scope, 'Erro ao sincronizar dispositivos: ' + err.message);
     });
   }
 
