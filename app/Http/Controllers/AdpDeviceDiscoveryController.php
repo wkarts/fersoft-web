@@ -114,6 +114,27 @@ class AdpDeviceDiscoveryController extends BaseController
         ]);
     }
 
+    public function runtimeConfig(Request $request)
+    {
+        $config = $this->resolveConfig($request);
+
+        return response()->json([
+            'success' => true,
+            'config' => [
+                'id' => $config->id,
+                'descricao' => $config->descricao,
+                'base_url' => $config->base_url,
+                'global_token_enabled' => (bool) $config->global_token_enabled,
+                'global_token_type' => $config->global_token_type ?? 'x_adp_api_token',
+                'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
+                // Necessário somente para modo local/browser: quando a Base URL é localhost/127.0.0.1,
+                // quem consegue acessar o ADP é o navegador do operador, não o servidor Laravel.
+                'global_token' => $config->global_token_enabled ? $config->global_token : null,
+                'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
+            ],
+        ]);
+    }
+
     private function resolveConfig(Request $request): AdpIntegradorConfig
     {
         $configId = (int) $request->get('integrador_config_id');
@@ -167,11 +188,45 @@ class AdpDeviceDiscoveryController extends BaseController
             return response()->json($result, 422);
         }
 
+        return response()->json($this->persistDevices($config, $result['devices'] ?? []));
+    }
+
+    public function importDevices(Request $request)
+    {
+        $config = $this->resolveConfig($request);
+
+        $data = $request->validate([
+            'devices' => ['required', 'array'],
+            'devices.*.uuid' => ['nullable', 'string', 'max:255'],
+            'devices.*.type' => ['nullable', 'string', 'max:50'],
+            'devices.*.name' => ['nullable', 'string', 'max:255'],
+            'devices.*.model' => ['nullable', 'string', 'max:255'],
+            'devices.*.driver' => ['nullable', 'string', 'max:255'],
+            'devices.*.protocol' => ['nullable', 'string', 'max:100'],
+            'devices.*.host' => ['nullable', 'string', 'max:255'],
+            'devices.*.port' => ['nullable'],
+            'devices.*.baud_rate' => ['nullable'],
+            'devices.*.status' => ['nullable', 'string', 'max:80'],
+            'devices.*.supports_stream' => ['nullable', 'boolean'],
+            'devices.*.supports_snapshot' => ['nullable', 'boolean'],
+            'devices.*.metadata' => ['nullable'],
+            'source' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        return response()->json($this->persistDevices($config, $data['devices'] ?? []));
+    }
+
+    private function persistDevices(AdpIntegradorConfig $config, array $devices): array
+    {
         $now = now();
-        foreach (($result['devices'] ?? []) as $device) {
+        $synced = 0;
+        $ignored = 0;
+
+        foreach ($devices as $device) {
             $deviceUuid = trim((string) ($device['uuid'] ?? ''));
 
             if ($deviceUuid === '') {
+                $ignored++;
                 continue;
             }
 
@@ -189,21 +244,24 @@ class AdpDeviceDiscoveryController extends BaseController
                     'protocol' => $device['protocol'] ?? null,
                     'host' => $device['host'] ?? null,
                     'port' => isset($device['port']) ? (string) $device['port'] : null,
-                    'baud_rate' => isset($device['baud_rate']) ? (int) $device['baud_rate'] : null,
+                    'baud_rate' => isset($device['baud_rate']) && is_numeric($device['baud_rate']) ? (int) $device['baud_rate'] : null,
                     'status' => $device['status'] ?? 'offline',
                     'supports_stream' => (bool) ($device['supports_stream'] ?? false),
                     'supports_snapshot' => (bool) ($device['supports_snapshot'] ?? false),
-                    'metadata_json' => $device['metadata'] ?? [],
+                    'metadata_json' => $device['metadata'] ?? $device,
                     'last_seen_at' => $now,
                     'ativo' => true,
                 ]
             );
+
+            $synced++;
         }
 
-        return response()->json([
+        return [
             'success' => true,
-            'devices_synced' => count($result['devices'] ?? []),
+            'devices_synced' => $synced,
+            'devices_ignored' => $ignored,
             'synced_at' => $now->format('Y-m-d H:i:s'),
-        ]);
+        ];
     }
 }

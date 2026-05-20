@@ -2959,12 +2959,14 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'adp/discovery'], function () {
         Route::get('/configs', 'AdpDeviceDiscoveryController@configuracoes')->name('adp.discovery.configs');
+        Route::get('/configs/runtime', 'AdpDeviceDiscoveryController@runtimeConfig')->name('adp.discovery.configs.runtime');
         Route::post('/configs/save', 'AdpDeviceDiscoveryController@salvarConfig')->name('adp.discovery.configs.save');
         Route::get('/status', 'AdpDeviceDiscoveryController@status')->name('adp.discovery.status');
         Route::get('/devices', 'AdpDeviceDiscoveryController@devices')->name('adp.discovery.devices');
         Route::get('/scales', 'AdpDeviceDiscoveryController@scales')->name('adp.discovery.scales');
         Route::get('/cameras', 'AdpDeviceDiscoveryController@cameras')->name('adp.discovery.cameras');
         Route::post('/sync-devices', 'AdpDeviceDiscoveryController@syncDevices')->name('adp.discovery.syncDevices');
+        Route::post('/import-devices', 'AdpDeviceDiscoveryController@importDevices')->name('adp.discovery.importDevices');
     });
 
     Route::group(['prefix' => 'evo-instances'], function () {

@@ -191,22 +191,20 @@ class AdpDeviceDiscoveryService
             $status = $response->status();
 
             if (!$response->successful()) {
-                return [
+                return $this->withDiagnostics([
                     'success' => false,
                     'message' => $this->statusMessage($status, $body),
                     'status_code' => $status,
-                    'url' => $url,
                     'body' => $body,
-                ];
+                ], $url);
             }
 
             if (!is_array($json)) {
-                return [
+                return $this->withDiagnostics([
                     'success' => false,
                     'message' => 'Resposta inválida do ADP.',
                     'status_code' => $status,
-                    'url' => $url,
-                ];
+                ], $url);
             }
 
             // Alguns endpoints retornam somente dados, sem success explícito.
@@ -219,13 +217,16 @@ class AdpDeviceDiscoveryService
 
             return $body;
         } catch (\Throwable $e) {
-            return [
+            $url = $this->url($path);
+            $message = $this->loopbackWarning()
+                ?: 'ADP offline ou inacessível a partir do servidor Laravel.';
+
+            return $this->withDiagnostics([
                 'success' => false,
-                'message' => 'ADP offline ou inacessível a partir do servidor Laravel.',
+                'message' => $message,
                 'error_code' => 'ADP_OFFLINE',
                 'exception' => $e->getMessage(),
-                'url' => $this->url($path),
-            ];
+            ], $url);
         }
     }
 
@@ -292,6 +293,43 @@ class AdpDeviceDiscoveryService
         }
 
         return [];
+    }
+
+
+    private function isLoopbackBaseUrl(): bool
+    {
+        $host = parse_url((string) ($this->config['base_url'] ?? ''), PHP_URL_HOST);
+        $host = strtolower((string) $host);
+
+        return in_array($host, ['127.0.0.1', 'localhost', '::1', '0.0.0.0'], true);
+    }
+
+    private function loopbackWarning(): ?string
+    {
+        if (!$this->isLoopbackBaseUrl()) {
+            return null;
+        }
+
+        return 'A Base URL ADP está usando 127.0.0.1/localhost. Essa URL é testada pelo servidor Laravel, não pelo navegador. Em homologação/nuvem, 127.0.0.1 aponta para o próprio servidor web, não para o PC onde o ADP está aberto. Use o IP LAN/VPN/túnel acessível pelo servidor Laravel ou instale o ADP no mesmo servidor.';
+    }
+
+    private function withDiagnostics(array $payload, string $url): array
+    {
+        $payload['url'] = $payload['url'] ?? $url;
+        $payload['base_url'] = $this->config['base_url'] ?? null;
+        $payload['diagnostics'] = array_filter([
+            'base_url' => $this->config['base_url'] ?? null,
+            'resolved_url' => $url,
+            'token_type' => $this->config['global_token_type'] ?? 'none',
+            'token_header' => $this->config['global_token_header'] ?? 'X-ADP-API-TOKEN',
+            'loopback_warning' => $this->loopbackWarning(),
+        ]);
+
+        if ($this->loopbackWarning() && empty($payload['message'])) {
+            $payload['message'] = $this->loopbackWarning();
+        }
+
+        return $payload;
     }
 
     private function statusMessage(int $status, array $body): string
