@@ -430,6 +430,48 @@
     });
   }
 
+
+  function novaConfigAdp(scope) {
+    var select = q(scope, 'integrador-config-id');
+    if (select) select.value = '';
+    ['cfg-descricao', 'cfg-base-url', 'cfg-global-token'].forEach(function (key) {
+      var el = q(scope, key);
+      if (el) el.value = '';
+    });
+    var tokenType = q(scope, 'cfg-token-type');
+    if (tokenType) tokenType.value = 'x_adp_api_token';
+    updateConfigHint(scope);
+    updateLog(scope, 'Nova configuração ADP. Informe os dados e salve.');
+  }
+
+  function excluirConfigAdp(scope) {
+    var configId = getConfigId(scope);
+    if (!configId) {
+      updateLog(scope, 'Selecione uma configuração ADP para excluir.');
+      return;
+    }
+
+    if (!confirm('Deseja excluir/inativar esta configuração ADP?')) {
+      return;
+    }
+
+    updateLog(scope, 'Removendo configuração ADP...');
+    return getJson('/adp/discovery/configs/delete/' + encodeURIComponent(configId), {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken()
+      }
+    }).then(function (res) {
+      if (!res.success) throw new Error(res.message || 'Falha ao remover configuração ADP.');
+      updateLog(scope, res.message || 'Configuração ADP removida com sucesso.');
+      novaConfigAdp(scope);
+      return loadConfigs(scope);
+    }).catch(function (err) {
+      updateLog(scope, 'Erro ao remover configuração ADP: ' + err.message);
+    });
+  }
+
   function loadDevices(scope) {
     var configId = getConfigId(scope);
     if (!configId) {
@@ -507,6 +549,8 @@
       var cameraSelect = q(scope, 'camera-select');
       var configSelect = q(scope, 'integrador-config-id');
       var btnSalvarCfg = q(scope, 'btn-salvar-config');
+      var btnNovaCfg = q(scope, 'btn-nova-config');
+      var btnExcluirCfg = q(scope, 'btn-excluir-config');
       var baseUrlInput = q(scope, 'cfg-base-url');
 
       btnTestar && btnTestar.addEventListener('click', function () { testAdp(scope); });
@@ -522,6 +566,8 @@
       configSelect && configSelect.addEventListener('change', function(){ fillConfigEditorFromSelect(scope); });
       baseUrlInput && baseUrlInput.addEventListener('input', function(){ updateConfigHint(scope); });
       btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
+      btnNovaCfg && btnNovaCfg.addEventListener('click', function(){ novaConfigAdp(scope); });
+      btnExcluirCfg && btnExcluirCfg.addEventListener('click', function(){ excluirConfigAdp(scope); });
       loadConfigs(scope);
     });
   });

@@ -28,14 +28,18 @@
     return value;
   }
 
-  async function config(id) {
-    return window.AdpRuntimeClient.getRuntimeConfig(id);
+  async function configFromRow(row) {
+    const configId = row.dataset.integradorConfigId || '';
+    if (configId) {
+      return window.AdpRuntimeClient.getRuntimeConfig(configId);
+    }
+
+    return window.AdpRuntimeClient.getRuntimeConfigByBaseUrl(row.dataset.baseUrl || '');
   }
 
   async function requestCamera(row, path, method, payload) {
-    const configId = row.dataset.integradorConfigId;
     const cameraUuid = row.dataset.cameraUuid;
-    const cfg = await config(configId);
+    const cfg = await configFromRow(row);
     return window.AdpRuntimeClient.adpRequest(cfg, '/api/cameras/' + encodeURIComponent(cameraUuid) + path, method || 'GET', payload);
   }
 

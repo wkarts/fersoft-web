@@ -37,8 +37,10 @@
                 </thead>
                 <tbody>
                 @forelse($cameras as $camera)
+                    @php($cameraConfig = ($configMap ?? collect())->get($camera->integrador_config_id))
                     <tr data-camera-row="{{ $camera->id }}"
                         data-integrador-config-id="{{ $camera->integrador_config_id }}"
+                        data-base-url="{{ $cameraConfig->base_url ?? '' }}"
                         data-camera-uuid="{{ $camera->camera_uuid }}">
                         <td>{{ $camera->id }}</td>
                         <td>

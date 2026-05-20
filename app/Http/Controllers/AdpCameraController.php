@@ -80,6 +80,7 @@ class AdpCameraController extends BaseController
             'title' => $this->formTitle,
             'cameras' => $cameras,
             'configs' => $configs,
+            'configMap' => $configs->keyBy('id'),
             'usuarios' => $usuarios,
             'permissoes' => $permissoes,
         ]);

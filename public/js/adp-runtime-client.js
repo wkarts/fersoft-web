@@ -220,11 +220,42 @@
     };
   }
 
-  async function configForBalanca(balanca) {
-    if (!balanca || !balanca.integrador_config_id) {
-      throw new Error('Balança ADP sem configuração global vinculada.');
+
+  async function getRuntimeConfigByBaseUrl(baseUrl) {
+    const target = cleanBaseUrl(baseUrl);
+    if (!target) {
+      throw new Error('Base URL ADP não informada para localizar configuração global.');
     }
-    return getRuntimeConfig(balanca.integrador_config_id);
+
+    const json = await fetchJson('/adp/discovery/configs', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    const configs = Array.isArray(json.configs) ? json.configs : [];
+    let found = configs.find(cfg => cleanBaseUrl(cfg.base_url) === target);
+
+    if (!found && configs.length === 1) {
+      found = configs[0];
+    }
+
+    if (!found) {
+      throw new Error('Balança ADP sem configuração global vinculada. Edite a balança e selecione a configuração ADP.');
+    }
+
+    return getRuntimeConfig(found.id);
+  }
+
+  async function configForBalanca(balanca) {
+    if (!balanca) {
+      throw new Error('Balança ADP não informada.');
+    }
+
+    if (balanca.integrador_config_id) {
+      return getRuntimeConfig(balanca.integrador_config_id);
+    }
+
+    return getRuntimeConfigByBaseUrl(balanca.backend || balanca.backend_server_address || balanca.base_url || '');
   }
 
   async function openScale(balanca) {
@@ -310,6 +341,7 @@
 
   window.AdpRuntimeClient = {
     getRuntimeConfig,
+    getRuntimeConfigByBaseUrl,
     adpRequest,
     readScale,
     healthScale,

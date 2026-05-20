@@ -81,6 +81,8 @@ class BalancaConfigController extends BaseController
      */
     public function list(Request $request)
     {
+        $this->repairAdpLinksForTenant();
+
         $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('integrador', 'adp')
             ->paginate();
@@ -181,14 +183,20 @@ class BalancaConfigController extends BaseController
             $validatedData['serie_number'] = $serieNumber;
         }
 
+        $configAdp = null;
         if (!empty($validatedData['integrador_config_id'])) {
-            $configValida = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            $configAdp = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
                 ->where('ativo', true)
                 ->where('id', (int) $validatedData['integrador_config_id'])
-                ->exists();
-            if (!$configValida) {
+                ->first();
+            if (!$configAdp) {
                 return redirect()->back()->withInput()->with('mensagem_erro', 'Configuração ADP inválida para esta empresa.');
             }
+        }
+
+        if ($configAdp) {
+            // Mantém a URL Base ADP gravada na própria balança para a grid/status e para auditoria operacional.
+            $validatedData['backend_server_address'] = rtrim((string) $configAdp->base_url, '/');
         }
 
         try {
@@ -208,6 +216,69 @@ class BalancaConfigController extends BaseController
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
             return redirect()->back()->withInput();
+        }
+    }
+
+
+    private function repairAdpLinksForTenant(): void
+    {
+        try {
+            $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->orderBy('id')
+                ->get();
+
+            if ($configs->isEmpty()) {
+                return;
+            }
+
+            $defaultConfig = $configs->count() === 1 ? $configs->first() : null;
+
+            $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
+                ->where('integrador', 'adp')
+                ->where(function ($query) {
+                    $query->whereNull('integrador_config_id')
+                        ->orWhere('integrador_config_id', 0)
+                        ->orWhereNull('backend_server_address')
+                        ->orWhere('backend_server_address', '');
+                })
+                ->get();
+
+            foreach ($balancas as $balanca) {
+                $config = null;
+                $baseUrl = rtrim((string) ($balanca->backend_server_address ?? ''), '/');
+
+                if ($baseUrl !== '') {
+                    $config = $configs->first(function ($item) use ($baseUrl) {
+                        return rtrim((string) $item->base_url, '/') === $baseUrl;
+                    });
+                }
+
+                if (!$config && $defaultConfig) {
+                    $config = $defaultConfig;
+                }
+
+                if (!$config) {
+                    continue;
+                }
+
+                $updates = [];
+                if (empty($balanca->integrador_config_id)) {
+                    $updates['integrador_config_id'] = $config->id;
+                }
+                if (empty($balanca->backend_server_address)) {
+                    $updates['backend_server_address'] = rtrim((string) $config->base_url, '/');
+                }
+
+                if (!empty($updates)) {
+                    $balanca->forceFill($updates)->save();
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Falha ao reparar vínculos ADP de balanças', [
+                'empresa_id' => $this->empresa_id,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 

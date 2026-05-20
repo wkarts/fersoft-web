@@ -115,6 +115,47 @@ class AdpDeviceDiscoveryController extends BaseController
         ]);
     }
 
+
+    public function excluirConfig(Request $request, $id)
+    {
+        try {
+            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)->findOrFail((int) $id);
+
+            $emUsoBalancas = \App\Models\BalancaConfig::where('empresa_id', $this->empresa_id)
+                ->where('integrador_config_id', $config->id)
+                ->exists();
+
+            $emUsoCameras = class_exists(AdpCamera::class)
+                ? AdpCamera::where('empresa_id', $this->empresa_id)->where('integrador_config_id', $config->id)->exists()
+                : false;
+
+            if ($emUsoBalancas || $emUsoCameras) {
+                $config->ativo = false;
+                $config->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuração ADP inativada, pois existem balanças ou câmeras vinculadas.',
+                    'deleted' => false,
+                    'inactive' => true,
+                ]);
+            }
+
+            $config->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuração ADP removida com sucesso.',
+                'deleted' => true,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao remover configuração ADP: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
     public function runtimeConfig(Request $request)
     {
         $config = $this->resolveConfig($request);
