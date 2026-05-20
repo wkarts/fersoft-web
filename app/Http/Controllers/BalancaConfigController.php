@@ -160,9 +160,10 @@ class BalancaConfigController extends BaseController
         $validatedData['adp_scale_uuid'] = $request->input('adp_scale_uuid');
         $validatedData['porta_serial'] = $request->input('porta_serial');
         $validatedData['baud_rate'] = $request->input('baud_rate');
-        $validatedData['adp_camera_uuids'] = $request->input('adp_camera_uuids');
-        $validatedData['quantidade_cameras'] = (int) ($request->input('quantidade_cameras', 0));
-        $validatedData['usa_cameras'] = $request->boolean('usa_cameras');
+        $cameraUuids = $this->normalizeAdpCameraUuids($request->input('adp_camera_uuids'));
+        $validatedData['adp_camera_uuids'] = json_encode($cameraUuids, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $validatedData['quantidade_cameras'] = (int) ($request->input('quantidade_cameras', count($cameraUuids)));
+        $validatedData['usa_cameras'] = $request->boolean('usa_cameras') || count($cameraUuids) > 0;
 
         if ($integrador === 'adp') {
             if (empty($validatedData['integrador_config_id'])) {
@@ -208,7 +209,7 @@ class BalancaConfigController extends BaseController
                 $balanca = BalancaConfig::create($validatedData);
             }
 
-            $this->syncCamerasAdp($balanca, (string) ($validatedData['adp_camera_uuids'] ?? ''));
+            $this->syncCamerasAdp($balanca, $validatedData['adp_camera_uuids'] ?? '[]');
 
             session()->flash('mensagem_sucesso', 'Configurações salvas com sucesso!');
             return redirect()->route('balancas.list');
@@ -218,7 +219,45 @@ class BalancaConfigController extends BaseController
         }
     }
 
-    private function syncCamerasAdp(BalancaConfig $balanca, string $cameraUuidsCsv): void
+    private function normalizeAdpCameraUuids($value): array
+    {
+        if (is_array($value)) {
+            $items = $value;
+        } else {
+            $raw = trim((string) ($value ?? ''));
+
+            if ($raw === '') {
+                return [];
+            }
+
+            $decoded = json_decode($raw, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $items = is_array($decoded) ? $decoded : [$decoded];
+            } else {
+                // Compatibilidade com a versão anterior da tela, que enviava CSV.
+                $items = explode(',', $raw);
+            }
+        }
+
+        return collect($items)
+            ->map(function ($item) {
+                if (is_array($item)) {
+                    return $item['uuid'] ?? $item['id'] ?? $item['camera_uuid'] ?? '';
+                }
+
+                return $item;
+            })
+            ->map(function ($item) {
+                return trim((string) $item);
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function syncCamerasAdp(BalancaConfig $balanca, $cameraUuids): void
     {
         if (!Schema::hasTable('balanca_config_cameras')) {
             return;
@@ -228,12 +267,7 @@ class BalancaConfigController extends BaseController
             ->where('balanca_config_id', $balanca->id)
             ->delete();
 
-        $uuids = collect(explode(',', $cameraUuidsCsv))
-            ->map(function ($item) {
-                return trim($item);
-            })
-            ->filter()
-            ->values();
+        $uuids = collect($this->normalizeAdpCameraUuids($cameraUuids));
 
         foreach ($uuids as $idx => $uuid) {
             BalancaConfigCamera::create([
