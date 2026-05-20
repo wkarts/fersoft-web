@@ -218,13 +218,11 @@ class AdpDeviceDiscoveryService
             return $body;
         } catch (\Throwable $e) {
             $url = $this->url($path);
-            $message = $this->loopbackWarning()
-                ?: 'ADP offline ou inacessível a partir do servidor Laravel.';
 
             return $this->withDiagnostics([
                 'success' => false,
-                'message' => $message,
-                'error_code' => 'ADP_OFFLINE',
+                'message' => 'Não foi possível acessar a API ADP. Verifique se o serviço está ativo, se a URL/porta estão corretas e se o token foi informado corretamente.',
+                'error_code' => 'ADP_CONNECTION_ERROR',
                 'exception' => $e->getMessage(),
             ], $url);
         }
@@ -296,23 +294,6 @@ class AdpDeviceDiscoveryService
     }
 
 
-    private function isLoopbackBaseUrl(): bool
-    {
-        $host = parse_url((string) ($this->config['base_url'] ?? ''), PHP_URL_HOST);
-        $host = strtolower((string) $host);
-
-        return in_array($host, ['127.0.0.1', 'localhost', '::1', '0.0.0.0'], true);
-    }
-
-    private function loopbackWarning(): ?string
-    {
-        if (!$this->isLoopbackBaseUrl()) {
-            return null;
-        }
-
-        return 'A Base URL ADP está usando 127.0.0.1/localhost. Essa URL é testada pelo servidor Laravel, não pelo navegador. Em homologação/nuvem, 127.0.0.1 aponta para o próprio servidor web, não para o PC onde o ADP está aberto. Use o IP LAN/VPN/túnel acessível pelo servidor Laravel ou instale o ADP no mesmo servidor.';
-    }
-
     private function withDiagnostics(array $payload, string $url): array
     {
         $payload['url'] = $payload['url'] ?? $url;
@@ -322,15 +303,11 @@ class AdpDeviceDiscoveryService
             'resolved_url' => $url,
             'token_type' => $this->config['global_token_type'] ?? 'none',
             'token_header' => $this->config['global_token_header'] ?? 'X-ADP-API-TOKEN',
-            'loopback_warning' => $this->loopbackWarning(),
         ]);
-
-        if ($this->loopbackWarning() && empty($payload['message'])) {
-            $payload['message'] = $this->loopbackWarning();
-        }
 
         return $payload;
     }
+
 
     private function statusMessage(int $status, array $body): string
     {
