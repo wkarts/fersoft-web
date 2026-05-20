@@ -5,7 +5,7 @@
   <div class="card-header py-1" style="font-size:14px;">Integração ADP (fluxo guiado)</div>
   <div class="card-body p-2" style="font-size:13px;">
     <div class="border rounded p-2 mb-2 bg-light">
-      <small class="text-muted d-block mb-2">Use a URL/porta da API ADP acessível a partir do servidor Laravel. Atenção: 127.0.0.1/localhost só funciona se o ADP estiver instalado no mesmo servidor do Laravel. Em homologação/nuvem, use IP LAN/VPN/túnel público acessível pelo servidor.</small>
+      <small class="text-muted d-block mb-2">Informe a URL/porta da API ADP configurada para este ambiente.</small>
       <div class="form-row">
         <div class="col-md-3">
           <label class="mb-1">Descrição ADP</label>
@@ -45,7 +45,7 @@
       <div class="col-md-8 d-flex align-items-end">
         <button type="button" class="btn btn-outline-primary btn-sm mr-2" data-adp="btn-testar">Testar conexão</button>
         <button type="button" class="btn btn-primary btn-sm mr-2" data-adp="btn-buscar">Buscar dispositivos</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-adp="btn-sync">Sincronizar local</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-adp="btn-sync">Sincronizar dispositivos</button>
       </div>
     </div>
 

@@ -27,9 +27,6 @@
     var parts = [];
     if (res.message) parts.push(res.message);
     if (Array.isArray(res.errors) && res.errors.length) parts.push(res.errors.join(' | '));
-    if (res.diagnostics && res.diagnostics.loopback_warning && parts.indexOf(res.diagnostics.loopback_warning) === -1) {
-      parts.push(res.diagnostics.loopback_warning);
-    }
     if (res.status_code || res.http_status) parts.push('HTTP ' + (res.status_code || res.http_status));
     return parts.filter(Boolean).join(' | ') || fallback || 'Falha na operação.';
   }
@@ -115,7 +112,6 @@
     var baseUrl = selected && selected.dataset ? selected.dataset.baseUrl : '';
     var text = [];
     if (mask) text.push('Token global mascarado: ' + mask);
-    if (baseUrl && isLoopbackUrl(baseUrl)) text.push('Modo local: o navegador chamará o ADP deste computador.');
     hint.textContent = text.join(' | ');
   }
 
@@ -241,7 +237,7 @@
     }).catch(function (err) {
       return {
         success: false,
-        message: 'Não foi possível acessar o ADP local pelo navegador. Verifique se o serviço está aberto, se CORS está liberado e se a URL/porta estão corretas.',
+        message: 'Não foi possível acessar a API ADP. Verifique se o serviço está ativo, se a URL/porta estão corretas e se o token foi informado corretamente.',
         error: err.message
       };
     });
@@ -302,7 +298,7 @@
 
       return {
         success: ok,
-        message: ok ? 'Dispositivos ADP listados pelo navegador.' : 'Falha na listagem local de dispositivos ADP.',
+        message: ok ? 'Dispositivos ADP listados com sucesso.' : 'Falha na listagem de dispositivos ADP.',
         devices: scales.concat(cameras),
         scales_count: scales.length,
         cameras_count: cameras.length,
@@ -420,7 +416,6 @@
     updateLog(scope, 'Consultando dispositivos ADP...');
 
     if (isLoopbackUrl(baseUrl)) {
-      updateLog(scope, 'Base URL local detectada. Consultando ADP pelo navegador deste computador...');
       return runtimeConfig(scope).then(function (runtime) {
         if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
         return localListDevices(runtime.config);
@@ -428,7 +423,7 @@
         if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
         renderDevices(scope, res.devices || []);
       }).catch(function (err) {
-        updateLog(scope, 'Erro no discovery local: ' + err.message);
+        updateLog(scope, 'Erro no discovery: ' + err.message);
       });
     }
 
@@ -450,14 +445,13 @@
     updateLog(scope, 'Testando conexão ADP...');
 
     if (isLoopbackUrl(baseUrl)) {
-      updateLog(scope, 'Base URL local detectada. Testando ADP pelo navegador deste computador...');
       return runtimeConfig(scope).then(function (runtime) {
         if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
         return localGet(runtime.config, '/api/health');
       }).then(function (res) {
-        updateLog(scope, (res.success ? 'Conexão ADP OK pelo navegador.' : 'Falha na conexão ADP local.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
+        updateLog(scope, (res.success ? 'Conexão ADP OK.' : 'Falha na conexão ADP.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
       }).catch(function (err) {
-        updateLog(scope, 'Erro ao testar conexão local: ' + err.message);
+        updateLog(scope, 'Erro ao testar conexão: ' + err.message);
       });
     }
 
@@ -475,15 +469,14 @@
     if (!configId) return updateLog(scope, 'Salve ou selecione uma configuração ADP antes da sincronização.');
 
     var baseUrl = currentBaseUrl(scope);
-    updateLog(scope, 'Sincronizando dispositivos ADP no banco local...');
+    updateLog(scope, 'Sincronizando dispositivos ADP...');
 
     if (isLoopbackUrl(baseUrl)) {
-      updateLog(scope, 'Base URL local detectada. Sincronizando via navegador deste computador...');
       return runtimeConfig(scope).then(function (runtime) {
         if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP.'));
         return localListDevices(runtime.config);
       }).then(function (res) {
-        if (!res.success) throw new Error(errorText(res, 'Falha na listagem local de dispositivos'));
+        if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
         renderDevices(scope, res.devices || []);
         return getJson('/adp/discovery/import-devices?integrador_config_id=' + encodeURIComponent(configId), {
           method: 'POST',
@@ -501,7 +494,7 @@
         }
         updateLog(scope, 'Sync concluído. ' + (res.devices_synced || 0) + ' dispositivos sincronizados.');
       }).catch(function (err) {
-        updateLog(scope, 'Erro ao sincronizar localmente: ' + err.message);
+        updateLog(scope, 'Erro ao sincronizar dispositivos: ' + err.message);
       });
     }
 
