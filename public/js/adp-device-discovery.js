@@ -133,16 +133,41 @@
     updateConfigHint(scope);
   }
 
+
+  function parseUuidList(value) {
+    if (Array.isArray(value)) {
+      return value.map(function (v) { return String(v || '').trim(); }).filter(Boolean);
+    }
+
+    var raw = String(value || '').trim();
+    if (!raw) return [];
+
+    if (raw.charAt(0) === '[') {
+      try {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map(function (v) { return String(v || '').trim(); }).filter(Boolean);
+        }
+      } catch (e) {}
+    }
+
+    return raw.split(',').map(function (v) { return String(v || '').trim(); }).filter(Boolean);
+  }
+
+  function encodeUuidList(values) {
+    return JSON.stringify(parseUuidList(values));
+  }
+
   function syncDerivedFields(scope) {
     var camSelect = q(scope, 'camera-select');
     var selected = camSelect ? readSelectedValues(camSelect) : [];
-    var csv = selected.join(',');
+    var json = JSON.stringify(selected);
 
     var camerasInput = q(scope, 'camera-uuids');
     var qtdInput = q(scope, 'quantidade-cameras');
     var usaCheck = q(scope, 'usa-cameras');
 
-    if (camerasInput) camerasInput.value = csv;
+    if (camerasInput) camerasInput.value = json;
     if (qtdInput) qtdInput.value = String(selected.length);
     if (usaCheck) usaCheck.checked = selected.length > 0;
   }
@@ -314,7 +339,7 @@
     var scaleSelect = q(scope, 'scale-select');
     var cameraSelect = q(scope, 'camera-select');
     var currentScale = (q(scope, 'scale-uuid') || {}).value || '';
-    var currentCameras = ((q(scope, 'camera-uuids') || {}).value || '').split(',').map(function(v){ return v.trim(); }).filter(Boolean);
+    var currentCameras = parseUuidList((q(scope, 'camera-uuids') || {}).value || '');
 
     fillSelect(scaleSelect, scales.map(mapOption), [currentScale]);
     fillSelect(cameraSelect, cameras.map(mapOption), currentCameras);

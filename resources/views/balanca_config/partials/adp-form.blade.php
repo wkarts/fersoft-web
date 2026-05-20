@@ -86,7 +86,7 @@
 
     <div class="form-row mt-2">
       <div class="col-md-6">
-        <label>UUIDs das câmeras ADP (csv)</label>
+        <label>UUIDs das câmeras ADP</label>
         <input class="form-control form-control-sm" name="adp_camera_uuids" data-adp="camera-uuids" value="{{ old('adp_camera_uuids', $balanca->adp_camera_uuids ?? '') }}">
       </div>
       <div class="col-md-3">
