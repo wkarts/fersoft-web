@@ -5,7 +5,7 @@
   <div class="card-header py-1" style="font-size:14px;">Integração ADP (fluxo guiado)</div>
   <div class="card-body p-2" style="font-size:13px;">
     <div class="border rounded p-2 mb-2 bg-light">
-      <small class="text-muted d-block mb-2">Use a URL/porta da API ADP acessível a partir do servidor da aplicação. Se a API ADP roda no PC local, informe o IP LAN desse PC (não usar 127.0.0.1 em nuvem).</small>
+      <small class="text-muted d-block mb-2">Use a URL/porta da API ADP acessível a partir do servidor Laravel. Atenção: 127.0.0.1/localhost só funciona se o ADP estiver instalado no mesmo servidor do Laravel. Em homologação/nuvem, use IP LAN/VPN/túnel público acessível pelo servidor.</small>
       <div class="form-row">
         <div class="col-md-3">
           <label class="mb-1">Descrição ADP</label>
