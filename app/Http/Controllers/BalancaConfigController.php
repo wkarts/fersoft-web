@@ -174,7 +174,14 @@ class BalancaConfigController extends BaseController
             $validatedData['backend_server_address'] = $validatedData['backend_server_address'] ?? '';
             $validatedData['port'] = $validatedData['port'] ?? ($validatedData['porta_serial'] ?? '');
             $validatedData['modelo'] = $validatedData['modelo'] ?? 'ADP';
-            $validatedData['serie_number'] = $validatedData['serie_number'] ?: ('ADP-' . strtoupper(substr(md5($validatedData['adp_scale_uuid']), 0, 12)));
+
+            // No modo ADP o campo serie_number pode não existir no payload, pois o bloco legado
+            // fica oculto/desabilitado. Nunca acessar a chave diretamente.
+            $serieNumber = trim((string) ($validatedData['serie_number'] ?? ''));
+            if ($serieNumber === '') {
+                $serieNumber = 'ADP-' . strtoupper(substr(md5((string) $validatedData['adp_scale_uuid']), 0, 12));
+            }
+            $validatedData['serie_number'] = $serieNumber;
         } else {
             if (empty($validatedData['backend_server_address']) || empty($validatedData['modelo']) || empty($validatedData['port']) || empty($validatedData['serie_number'])) {
                 return redirect()->back()->withInput()->with('mensagem_erro', 'No modo legado, backend, equipamento, porta e serial number são obrigatórios.');
