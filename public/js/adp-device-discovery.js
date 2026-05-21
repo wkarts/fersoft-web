@@ -158,11 +158,32 @@
     return i ? String(i.value || '').trim() : '';
   }
 
+  function getServerBoundConfigId(scope) {
+    return String(scope.dataset.serverIntegradorConfigId || scope.dataset.defaultIntegradorConfigId || '').trim();
+  }
+
+  function userChangedConfig(scope) {
+    return scope.dataset.userChangedIntegradorConfig === '1';
+  }
+
+  function markUserChangedConfig(scope) {
+    scope.dataset.userChangedIntegradorConfig = '1';
+  }
+
+  function getPreferredConfigId(scope) {
+    // Para balança em edição, o vínculo salvo no backend é prioridade absoluta
+    // enquanto o usuário não escolher outro ADP manualmente nesta abertura da modal.
+    if (!userChangedConfig(scope)) {
+      return getServerBoundConfigId(scope) || getHiddenConfigId(scope) || getVisibleConfigId(scope);
+    }
+
+    return getVisibleConfigId(scope) || getHiddenConfigId(scope) || getServerBoundConfigId(scope);
+  }
+
   function getConfigId(scope) {
-    // O select é apenas a interface visual. O hidden é o campo submetido ao Laravel.
-    // Durante edição, se o select ainda não foi carregado via AJAX, o hidden mantém
-    // o ADP já vinculado à balança e impede voltar para o primeiro cadastro.
-    return getVisibleConfigId(scope) || getHiddenConfigId(scope);
+    // O hidden é o campo submetido ao Laravel. Para edição, o ID salvo na balança
+    // é a fonte da verdade até que o operador troque o select manualmente.
+    return getPreferredConfigId(scope);
   }
 
   function selectedConfigDataset(scope) {
@@ -176,17 +197,31 @@
     var select = q(scope, 'integrador-config-id');
     var hidden = q(scope, 'integrador-config-id-hidden');
     var hiddenBase = q(scope, 'backend-server-address');
+    var preferredId = getPreferredConfigId(scope);
+
+    if (select && preferredId && String(select.value || '') !== String(preferredId)) {
+      var exists = Array.from(select.options || []).some(function (opt) {
+        return String(opt.value || '') === String(preferredId);
+      });
+      if (exists) {
+        select.value = preferredId;
+      }
+    }
+
     var selected = select ? select.options[select.selectedIndex] : null;
     var selectedValue = select ? String(select.value || '').trim() : '';
 
-    if (hidden) {
-      hidden.value = selectedValue || getHiddenConfigId(scope);
+    if (hidden && selectedValue) {
+      hidden.value = selectedValue;
+    } else if (hidden && preferredId && !hidden.value) {
+      hidden.value = preferredId;
     }
 
-    if (hiddenBase) {
-      hiddenBase.value = selected && selected.dataset ? (selected.dataset.baseUrl || '') : '';
+    if (hiddenBase && selected && selected.dataset && selected.dataset.baseUrl) {
+      hiddenBase.value = selected.dataset.baseUrl || '';
     }
   }
+
 
   function currentBaseUrl(scope) {
     var editorValue = (q(scope, 'cfg-base-url') || {}).value || '';
@@ -491,14 +526,24 @@
         if (!res.success) throw new Error('Falha ao carregar configurações ADP');
         var select = q(scope, 'integrador-config-id');
         if (!select) return;
-        var defaultId = String(scope.dataset.defaultIntegradorConfigId || getHiddenConfigId(scope) || '').trim();
+
+        var selectedBeforeReload = getPreferredConfigId(scope);
         select.innerHTML = '<option value="">Selecione...</option>';
+
         (res.configs || []).forEach(function (cfg) {
-          upsertConfigOption(scope, cfg, String(cfg.id) === String(defaultId));
+          upsertConfigOption(scope, cfg, false);
         });
-        if (defaultId && !select.value) {
-          select.value = defaultId;
+
+        var preferredId = selectedBeforeReload || getPreferredConfigId(scope);
+        if (preferredId) {
+          var exists = Array.from(select.options || []).some(function (opt) {
+            return String(opt.value || '') === String(preferredId);
+          });
+          if (exists) {
+            select.value = String(preferredId);
+          }
         }
+
         syncSelectedConfigBindings(scope);
         updateConfigHint(scope);
         fillConfigEditorFromSelect(scope);
@@ -507,6 +552,7 @@
         updateLog(scope, 'Erro ao carregar configs ADP: ' + err.message);
       });
   }
+
 
   function salvarConfigAdp(scope) {
     var descricao = (q(scope, 'cfg-descricao') || {}).value || '';
@@ -547,11 +593,14 @@
       updateLog(scope, 'Configuração ADP salva com sucesso.');
       if (q(scope, 'cfg-global-token')) q(scope, 'cfg-global-token').value = '';
 
-      // Seleciona imediatamente a configuração retornada pelo backend.
-      // Não depende do reload do combo, evitando perder o vínculo quando a listagem falhar momentaneamente.
-      upsertConfigOption(scope, res.config, true);
-      fillConfigEditorFromSelect(scope);
-      updateConfigHint(scope);
+      // Mantém o vínculo atual da balança. Só seleciona a configuração retornada
+      // automaticamente quando ela é nova ou quando o operador já escolheu esse ADP.
+      var mustSelectReturned = !getHiddenConfigId(scope) || userChangedConfig(scope) || String(getConfigId(scope)) === String(res.config && res.config.id);
+      upsertConfigOption(scope, res.config, mustSelectReturned);
+      if (mustSelectReturned) {
+        fillConfigEditorFromSelect(scope);
+        updateConfigHint(scope);
+      }
       loadConfigs(scope);
     }).catch(function (err) {
       updateLog(scope, 'Erro ao salvar configuração ADP: ' + err.message);
@@ -698,6 +747,7 @@
 
       cameraSelect && cameraSelect.addEventListener('change', function(){ syncDerivedFields(scope); });
       configSelect && configSelect.addEventListener('change', function(){
+        markUserChangedConfig(scope);
         syncSelectedConfigBindings(scope);
         fillConfigEditorFromSelect(scope);
       });

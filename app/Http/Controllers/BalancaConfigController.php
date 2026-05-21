@@ -87,8 +87,21 @@ class BalancaConfigController extends BaseController
             ->where('integrador', 'adp')
             ->paginate();
 
+        /*
+         * Carrega as configurações ADP no backend para que o select de cada
+         * modal já nasça com o ID correto selecionado. Isso evita que o JS
+         * assíncrono inicialize o combo no primeiro ADP ativo antes de aplicar
+         * o vínculo real da balança.
+         */
+        $adpConfigs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderBy('descricao')
+            ->orderBy('id')
+            ->get();
+
         return view($this->listView, [
             'balancas' => $balancas,
+            'adpConfigs' => $adpConfigs,
             'title' => $this->formTitle,
         ]);
     }
@@ -108,6 +121,11 @@ class BalancaConfigController extends BaseController
             'title' => $title,
             'actionSave' => route('balancas.save'),
             'actionCancel' => $this->redirectPage,
+            'adpConfigs' => AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->orderBy('descricao')
+                ->orderBy('id')
+                ->get(),
         ]);
     }
 
@@ -124,6 +142,11 @@ class BalancaConfigController extends BaseController
             'title' => $title,
             'actionSave' => route('balancas.save', $id),
             'actionCancel' => $this->redirectPage,
+            'adpConfigs' => AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->orderBy('descricao')
+                ->orderBy('id')
+                ->get(),
         ]);
     }
 
