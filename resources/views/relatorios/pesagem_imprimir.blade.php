@@ -1,3 +1,7 @@
+
+<style>
+.ticket-imagens{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.ticket-imagem-item{border:1px solid #ddd;padding:4px;border-radius:4px;page-break-inside:avoid}.ticket-imagem-item img{max-width:180px;max-height:120px;object-fit:contain}.ticket-imagem-caption{font-size:9px;color:#555;margin-top:2px}.ticket-imagens-80mm .ticket-imagem-item img{max-width:260px;max-height:180px}
+</style>
 @extends('relatorios.default')
 
 @section('content')
@@ -23,6 +27,7 @@
                     <ul>
                         @foreach($grupo['tickets'] as $ticket)
                             <li>ID: {{ $ticket->id }}, Peso: {{ number_format($ticket->peso, 2, ',', '.') }} kg</li>
+                            @include('relatorios.partials.ticket-imagens', ['ticket' => $ticket, 'tipoRelatorioImagem' => 'a4'])
                         @endforeach
                     </ul>
                 </td>

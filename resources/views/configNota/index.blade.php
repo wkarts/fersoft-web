@@ -5,7 +5,7 @@
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
-				<form method="post" action="/configNF/save" enctype="multipart/form-data">
+				<form id="config-nota-form" method="post" action="/configNF/save" enctype="multipart/form-data">
 					<input type="hidden" name="id" value="{{{ isset($config->id) ? $config->id : 0 }}}">
 
 					<div class="card card-custom gutter-b example example-compact">
@@ -144,7 +144,30 @@
                                                 <div class="col-12">
                                                     <div class="card card-custom gutter-b">
                                                         <div class="card-body">
-                                                            <h5 class="mb-4">Controle de Pesagem por Balança</h5>
+                                                            <div class="d-flex align-items-center justify-content-between flex-wrap mb-3">
+                                                                <div>
+                                                                    <h5 class="mb-1">Parâmetros de pesagem, balança e imagens</h5>
+                                                                    <small class="text-muted">As regras operacionais de pesagem ficam em uma janela própria para manter o cadastro do emitente limpo.</small>
+                                                                </div>
+                                                                <button type="button" class="btn btn-primary mt-2 mt-md-0" data-toggle="modal" data-target="#modalParametrosPesagemBalanca">
+                                                                    Configurar parâmetros da balança
+                                                                </button>
+                                                            </div>
+                                                            <div class="alert alert-light border mb-0">
+                                                                <strong>Resumo:</strong>
+                                                                @if(old('pesagem_auto_concluir_ticket', $config->pesagem_auto_concluir_ticket ?? 0))
+                                                                    <span class="badge badge-success ml-1">Ticket conclui automático</span>
+                                                                @endif
+                                                                @if(old('pesagem_habilitar_preview_cameras', $config->pesagem_habilitar_preview_cameras ?? 0))
+                                                                    <span class="badge badge-info ml-1">Preview de câmeras ativo</span>
+                                                                @endif
+                                                                @if(old('pesagem_enviar_email_ao_concluir', $config->pesagem_enviar_email_ao_concluir ?? 0) || old('pesagem_enviar_whatsapp_ao_concluir', $config->pesagem_enviar_whatsapp_ao_concluir ?? 0))
+                                                                    <span class="badge badge-primary ml-1">Notificações ativas</span>
+                                                                @endif
+                                                                <div class="text-muted mt-1">Clique em <strong>Configurar parâmetros da balança</strong> para editar regras, câmeras, relatórios, notificações e armazenamento externo.</div>
+                                                            </div>
+
+                                                            <div id="pesagem-parametros-fields" class="d-none">
                                                             <div class="form-group">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">
@@ -239,6 +262,272 @@
                                                                 </div>
                                                                 <small class="text-muted">Se desconectar manualmente, a reconexão automática é desativada até nova ação manual.</small>
                                                             </div>
+
+
+                                                            <hr>
+                                                            <h6 class="mb-3">ADP Pesagem com câmeras, ticket e notificações</h6>
+                                                            @foreach([
+                                                                'pesagem_habilitar_preview_cameras' => 'Habilitar preview de câmeras no ticket de pesagem',
+                                                                'pesagem_exigir_imagem_quando_balanca_tem_camera' => 'Exigir imagem quando a balança possuir câmeras vinculadas',
+                                                                'pesagem_auto_concluir_ticket' => 'Salvar ticket automaticamente como concluído',
+                                                                'pesagem_bloquear_edicao_ticket_concluido' => 'Bloquear edição de ticket concluído',
+                                                                'pesagem_imprimir_imagens_a4' => 'Exibir imagens nos relatórios A4',
+                                                                'pesagem_imprimir_imagens_80mm' => 'Exibir imagens no ticket 80mm quando disponível',
+                                                                'pesagem_enviar_email_ao_concluir' => 'Enviar e-mail ao concluir ticket de pesagem',
+                                                                'pesagem_enviar_whatsapp_ao_concluir' => 'Enviar WhatsApp ao concluir ticket de pesagem',
+                                                                'pesagem_enviar_imagens_notificacao' => 'Anexar/enviar imagens nas notificações de pesagem',
+                                                            ] as $campoPesagemAdp => $labelPesagemAdp)
+                                                                <div class="form-group mb-1">
+                                                                    <div class="checkbox-inline">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="{{ $campoPesagemAdp }}" value="1" {{ (old($campoPesagemAdp, $config->{$campoPesagemAdp} ?? in_array($campoPesagemAdp, ['pesagem_habilitar_preview_cameras', 'pesagem_imprimir_imagens_a4', 'pesagem_enviar_imagens_notificacao']))) ? 'checked' : '' }}>
+                                                                            <span></span>
+                                                                            {{ $labelPesagemAdp }}
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                            @php
+                                                                $emailsPesagemAdp = old('pesagem_email_destinos');
+                                                                if ($emailsPesagemAdp === null) {
+                                                                    $emailsPesagemAdp = isset($config) && method_exists($config, 'pesagemEmailsDestino')
+                                                                        ? implode("
+", $config->pesagemEmailsDestino())
+                                                                        : ($config->pesagem_email_destino ?? '');
+                                                                }
+
+                                                                $whatsPesagemAdp = old('pesagem_whatsapp_destinos');
+                                                                if ($whatsPesagemAdp === null) {
+                                                                    $whatsPesagemAdp = isset($config) && method_exists($config, 'pesagemWhatsappsDestino')
+                                                                        ? implode("
+", $config->pesagemWhatsappsDestino())
+                                                                        : ($config->pesagem_whatsapp_destino ?? '');
+                                                                }
+
+                                                                $storageProviderPesagem = old('pesagem_storage_provider', $config->pesagem_storage_provider ?? 'system');
+                                                                $storageConfigPesagem = $config->pesagem_storage_config_json ?? [];
+                                                                if (is_string($storageConfigPesagem)) {
+                                                                    $decodedStoragePesagem = json_decode($storageConfigPesagem, true);
+                                                                    $storageConfigPesagem = json_last_error() === JSON_ERROR_NONE ? $decodedStoragePesagem : [];
+                                                                }
+                                                                $storageConfigPesagem = is_array($storageConfigPesagem) ? $storageConfigPesagem : [];
+                                                            @endphp
+                                                            <div class="row mt-3">
+                                                                <div class="form-group col-md-6">
+                                                                    <label>E-mails para receber coletas/tickets</label>
+                                                                    <textarea name="pesagem_email_destinos" class="form-control" rows="3" placeholder="pesagem@empresa.com.br&#10;auditoria@empresa.com.br">{{ $emailsPesagemAdp }}</textarea>
+                                                                    <small class="text-muted">Informe um ou mais e-mails, separados por linha, vírgula ou ponto e vírgula.</small>
+                                                                </div>
+                                                                <div class="form-group col-md-6">
+                                                                    <label>WhatsApps para receber coletas/tickets</label>
+                                                                    <textarea name="pesagem_whatsapp_destinos" class="form-control" rows="3" placeholder="5575988883333&#10;557588887777">{{ $whatsPesagemAdp }}</textarea>
+                                                                    <small class="text-muted">Informe um ou mais números no formato DDI + DDD + número, separados por linha, vírgula ou ponto e vírgula. A aplicação mantém a normalização automática.</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="border rounded p-3 mt-3" id="pesagem-storage-proprio-box">
+                                                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                                                    <h6 class="mb-0">Armazenamento externo próprio do cliente</h6>
+                                                                    <div>
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#modalInstrucoesStoragePesagem">Instruções</button>
+                                                                        <button type="button" class="btn btn-sm btn-outline-secondary d-none" data-toggle="modal" data-target="#modalParametrosPesagemBalanca">Parâmetros da balança</button>
+                                                                    </div>
+                                                                </div>
+                                                                <p class="text-muted mb-3">Opcional. Quando configurado, as imagens dos tickets serão enviadas para o armazenamento do próprio cliente. Quando não configurado, o sistema usa o armazenamento padrão da aplicação.</p>
+
+                                                                <div class="row">
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Provedor</label>
+                                                                        <select name="pesagem_storage_provider" id="pesagem_storage_provider" class="form-control">
+                                                                            <option value="system" {{ $storageProviderPesagem === 'system' ? 'selected' : '' }}>Usar armazenamento padrão do sistema</option>
+                                                                            <option value="s3" {{ $storageProviderPesagem === 's3' ? 'selected' : '' }}>Amazon S3 / compatível</option>
+                                                                            <option value="minio" {{ $storageProviderPesagem === 'minio' ? 'selected' : '' }}>MinIO</option>
+                                                                            <option value="dropbox" {{ $storageProviderPesagem === 'dropbox' ? 'selected' : '' }}>Dropbox</option>
+                                                                            <option value="onedrive" {{ $storageProviderPesagem === 'onedrive' ? 'selected' : '' }}>OneDrive</option>
+                                                                            <option value="google_drive" {{ $storageProviderPesagem === 'google_drive' ? 'selected' : '' }}>Google Drive</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="form-group col-md-8 pesagem-storage-field pesagem-storage-common">
+                                                                        <label>Pasta/base no armazenamento externo</label>
+                                                                        <input type="text" name="pesagem_storage_base_path" class="form-control" value="{{ old('pesagem_storage_base_path', $storageConfigPesagem['base_path'] ?? 'pesagem_ticket_imagens') }}" placeholder="pesagem_ticket_imagens">
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="row pesagem-storage-field pesagem-storage-s3 pesagem-storage-minio">
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Bucket</label>
+                                                                        <input type="text" name="pesagem_storage_bucket" class="form-control" value="{{ old('pesagem_storage_bucket', $storageConfigPesagem['bucket'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Região</label>
+                                                                        <input type="text" name="pesagem_storage_region" class="form-control" value="{{ old('pesagem_storage_region', $storageConfigPesagem['region'] ?? 'us-east-1') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Endpoint</label>
+                                                                        <input type="text" name="pesagem_storage_endpoint" class="form-control" value="{{ old('pesagem_storage_endpoint', $storageConfigPesagem['endpoint'] ?? '') }}" placeholder="https://minio.empresa.com.br">
+                                                                    </div>
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Access key</label>
+                                                                        <input type="text" name="pesagem_storage_access_key" class="form-control" value="{{ old('pesagem_storage_access_key', $storageConfigPesagem['access_key'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>Secret key</label>
+                                                                        <input type="password" name="pesagem_storage_secret_key" class="form-control" value="{{ old('pesagem_storage_secret_key', $storageConfigPesagem['secret_key'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-4">
+                                                                        <label>URL pública</label>
+                                                                        <input type="text" name="pesagem_storage_url" class="form-control" value="{{ old('pesagem_storage_url', $storageConfigPesagem['url'] ?? '') }}" placeholder="https://cdn.empresa.com.br/bucket">
+                                                                    </div>
+                                                                    <div class="form-group col-md-12">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="pesagem_storage_use_path_style_endpoint" value="1" {{ old('pesagem_storage_use_path_style_endpoint', $storageConfigPesagem['use_path_style_endpoint'] ?? false) ? 'checked' : '' }}>
+                                                                            <span></span> Usar path-style endpoint
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="row pesagem-storage-field pesagem-storage-dropbox pesagem-storage-onedrive pesagem-storage-google_drive">
+                                                                    <div class="form-group col-md-6">
+                                                                        <label>Access token</label>
+                                                                        <input type="password" name="pesagem_storage_access_token" class="form-control" value="{{ old('pesagem_storage_access_token', $storageConfigPesagem['access_token'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-3 pesagem-storage-onedrive">
+                                                                        <label>Drive ID</label>
+                                                                        <input type="text" name="pesagem_storage_drive_id" class="form-control" value="{{ old('pesagem_storage_drive_id', $storageConfigPesagem['drive_id'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-3 pesagem-storage-google_drive">
+                                                                        <label>Folder ID Google Drive</label>
+                                                                        <input type="text" name="pesagem_storage_folder_id" class="form-control" value="{{ old('pesagem_storage_folder_id', $storageConfigPesagem['folder_id'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-3">
+                                                                        <label>Pasta</label>
+                                                                        <input type="text" name="pesagem_storage_folder" class="form-control" value="{{ old('pesagem_storage_folder', $storageConfigPesagem['folder'] ?? '') }}">
+                                                                    </div>
+                                                                    <div class="form-group col-md-12 pesagem-storage-google_drive">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="pesagem_storage_make_public" value="1" {{ old('pesagem_storage_make_public', $storageConfigPesagem['make_public'] ?? false) ? 'checked' : '' }}>
+                                                                            <span></span> Tornar arquivos públicos no Google Drive para facilitar preview externo
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            </div>
+
+                                                            <style>
+                                                                /* Mantém as modais dos parâmetros fora do contexto visual da aba/card do emitente. */
+                                                                #modalParametrosPesagemBalanca,
+                                                                #modalInstrucoesStoragePesagem {
+                                                                    z-index: 2050;
+                                                                }
+
+                                                                .modal-backdrop.show {
+                                                                    z-index: 2040;
+                                                                }
+
+                                                                #modalParametrosPesagemBalanca .modal-dialog {
+                                                                    max-width: min(1120px, calc(100vw - 32px));
+                                                                }
+
+                                                                #modalParametrosPesagemBalanca .modal-body {
+                                                                    max-height: calc(100vh - 190px);
+                                                                    overflow-y: auto;
+                                                                }
+                                                            </style>
+                                                            <script>
+                                                                document.addEventListener('DOMContentLoaded', function () {
+                                                                    const formId = 'config-nota-form';
+                                                                    const form = document.getElementById(formId);
+                                                                    const modalParametros = document.getElementById('modalParametrosPesagemBalanca');
+                                                                    const modalInstrucoes = document.getElementById('modalInstrucoesStoragePesagem');
+
+                                                                    // Modal dentro de cards/abas pode ficar presa abaixo do backdrop.
+                                                                    // Move para <body> e associa os campos ao form original via atributo form.
+                                                                    [modalParametros, modalInstrucoes].forEach(function (modal) {
+                                                                        if (modal && modal.parentElement !== document.body) {
+                                                                            document.body.appendChild(modal);
+                                                                        }
+                                                                    });
+
+                                                                    const origemParametros = document.getElementById('pesagem-parametros-fields');
+                                                                    const destinoParametros = document.getElementById('modalParametrosPesagemCamposBody');
+                                                                    if (origemParametros && destinoParametros && !destinoParametros.dataset.loaded) {
+                                                                        origemParametros.classList.remove('d-none');
+                                                                        destinoParametros.appendChild(origemParametros);
+                                                                        destinoParametros.dataset.loaded = '1';
+                                                                    }
+
+                                                                    function vincularCamposAoForm() {
+                                                                        if (!form || !modalParametros) {
+                                                                            return;
+                                                                        }
+
+                                                                        modalParametros
+                                                                            .querySelectorAll('input, select, textarea, button[type="submit"]')
+                                                                            .forEach(function (el) {
+                                                                                el.setAttribute('form', formId);
+                                                                            });
+                                                                    }
+
+                                                                    vincularCamposAoForm();
+
+                                                                    const select = document.getElementById('pesagem_storage_provider');
+                                                                    const fields = document.querySelectorAll('.pesagem-storage-field');
+                                                                    function refreshPesagemStorageFields() {
+                                                                        const provider = select ? select.value : 'system';
+                                                                        fields.forEach(function (el) {
+                                                                            const show = provider !== 'system' && (
+                                                                                el.classList.contains('pesagem-storage-common') ||
+                                                                                el.classList.contains('pesagem-storage-' + provider)
+                                                                            );
+                                                                            el.style.display = show ? '' : 'none';
+                                                                        });
+                                                                    }
+                                                                    if (select) {
+                                                                        select.addEventListener('change', refreshPesagemStorageFields);
+                                                                        refreshPesagemStorageFields();
+                                                                    }
+                                                                });
+                                                            </script>
+                                                            <div class="modal fade" id="modalInstrucoesStoragePesagem" tabindex="-1" role="dialog" aria-hidden="true">
+                                                                <div class="modal-dialog modal-lg" role="document">
+                                                                    <div class="modal-content">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title">Instruções de armazenamento externo</h5>
+                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                                                                        </div>
+                                                                        <div class="modal-body">
+                                                                            <p><strong>S3/compatível:</strong> informe bucket, região, access key, secret key e URL pública quando houver CDN/domínio próprio.</p>
+                                                                            <p><strong>MinIO:</strong> informe endpoint, bucket, access key, secret key e marque path-style quando o servidor exigir.</p>
+                                                                            <p><strong>Dropbox:</strong> informe um access token com permissão de escrita/leitura na pasta desejada.</p>
+                                                                            <p><strong>OneDrive:</strong> informe access token Microsoft Graph e, se necessário, Drive ID.</p>
+                                                                            <p><strong>Google Drive:</strong> informe access token Google Drive e, opcionalmente, o Folder ID. Para preview público, habilite a opção de tornar arquivos públicos.</p>
+                                                                            <p class="mb-0 text-muted">Se nenhum armazenamento externo for configurado, as imagens usam o armazenamento padrão do sistema.</p>
+                                                                        </div>
+                                                                        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button></div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="modal fade" id="modalParametrosPesagemBalanca" tabindex="-1" role="dialog" aria-hidden="true">
+                                                                <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+                                                                    <div class="modal-content">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title">Parâmetros da balança, câmeras e ticket</h5>
+                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                                                                        </div>
+                                                                        <div class="modal-body">
+                                                                            <div id="modalParametrosPesagemCamposBody"></div>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                                                                            <button type="submit" form="config-nota-form" class="btn btn-success">Salvar parâmetros</button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <input type="hidden" name="pesagem_email_destino" value="{{ collect(preg_split('/[\r\n,;]+/', (string) $emailsPesagemAdp))->map(fn($v) => trim($v))->filter()->first() }}">
+                                                            <input type="hidden" name="pesagem_whatsapp_destino" value="{{ collect(preg_split('/[\r\n,;]+/', (string) $whatsPesagemAdp))->map(fn($v) => trim($v))->filter()->first() }}">
                                                         </div>
                                                     </div>
                                                 </div>

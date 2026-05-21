@@ -30,7 +30,9 @@
         </div>
       </div>
       <div class="mt-2">
-        <button type="button" class="btn btn-sm btn-dark" data-adp="btn-salvar-config">Salvar configuração ADP</button>
+        <button type="button" class="btn btn-sm btn-dark" data-adp="btn-salvar-config">Salvar/Atualizar configuração ADP</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ml-1" data-adp="btn-nova-config">Nova configuração</button>
+        <button type="button" class="btn btn-sm btn-outline-danger ml-1" data-adp="btn-excluir-config">Excluir/Inativar</button>
       </div>
     </div>
 

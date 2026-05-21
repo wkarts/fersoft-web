@@ -1,18 +1,87 @@
 (function () {
-  function getJson(url, opts) {
-    return fetch(url, Object.assign({ headers: { 'Accept': 'application/json' } }, opts || {})).then(function (r) {
-      return r.json().catch(function () {
-        return { success: false, message: 'Resposta inválida do servidor.' };
-      }).then(function (json) {
-        if (!r.ok && json && !json.message) {
-          json.message = 'Falha HTTP ' + r.status;
+  function parseJsonSafe(text, fallbackMessage) {
+    if (!text) {
+      return { success: false, message: fallbackMessage || 'Resposta vazia do servidor.' };
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { success: false, message: fallbackMessage || 'Resposta inválida do servidor.', raw_response: text };
+    }
+  }
+
+  function normalizeLocalUrl(url) {
+    return new URL(url, window.location.origin).toString();
+  }
+
+  function xhrJson(url, opts) {
+    opts = opts || {};
+
+    return new Promise(function (resolve) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(opts.method || 'GET', normalizeLocalUrl(url), true);
+      xhr.withCredentials = true;
+      xhr.setRequestHeader('Accept', 'application/json');
+
+      var headers = opts.headers || {};
+      Object.keys(headers).forEach(function (key) {
+        if (headers[key] !== undefined && headers[key] !== null && headers[key] !== '') {
+          xhr.setRequestHeader(key, headers[key]);
         }
-        if (json && typeof json === 'object') {
-          json.http_status = r.status;
-        }
-        return json;
       });
+
+      xhr.onload = function () {
+        var json = parseJsonSafe(xhr.responseText, 'Resposta inválida do servidor.');
+        if (!xhr.status || xhr.status < 200 || xhr.status >= 300) {
+          json.success = false;
+          json.message = json.message || ('Falha HTTP ' + xhr.status);
+        }
+        json.http_status = xhr.status;
+        resolve(json);
+      };
+
+      xhr.onerror = function () {
+        resolve({ success: false, message: 'Falha de rede ao comunicar com o ERP.', http_status: 0 });
+      };
+
+      xhr.ontimeout = function () {
+        resolve({ success: false, message: 'Tempo esgotado ao comunicar com o ERP.', http_status: 0 });
+      };
+
+      xhr.timeout = opts.timeout || 30000;
+      xhr.send(opts.body || null);
     });
+  }
+
+  function getJson(url, opts) {
+    opts = opts || {};
+    var finalUrl = normalizeLocalUrl(url);
+    var fetchOpts = Object.assign({
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
+    }, opts || {});
+
+    fetchOpts.headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {});
+
+    if (window.fetch) {
+      return fetch(finalUrl, fetchOpts).then(function (r) {
+        return r.text().then(function (text) {
+          var json = parseJsonSafe(text, 'Resposta inválida do servidor.');
+          if (!r.ok) {
+            json.success = false;
+            json.message = json.message || ('Falha HTTP ' + r.status);
+          }
+          json.http_status = r.status;
+          return json;
+        });
+      }).catch(function () {
+        return xhrJson(finalUrl, opts);
+      });
+    }
+
+    return xhrJson(finalUrl, opts);
   }
 
   function q(scope, key) { return scope.querySelector('[data-adp="' + key + '"]'); }
@@ -129,6 +198,36 @@
     if (descricao) descricao.value = selected.dataset.descricao || '';
     if (baseUrl) baseUrl.value = selected.dataset.baseUrl || '';
     if (tokenType) tokenType.value = selected.dataset.tokenType || 'x_adp_api_token';
+
+    updateConfigHint(scope);
+  }
+
+  function upsertConfigOption(scope, cfg, selectIt) {
+    if (!cfg || !cfg.id) return;
+
+    var select = q(scope, 'integrador-config-id');
+    if (!select) return;
+
+    var value = String(cfg.id);
+    var option = Array.from(select.options).find(function (opt) { return String(opt.value) === value; });
+
+    if (!option) {
+      option = document.createElement('option');
+      option.value = value;
+      select.appendChild(option);
+    }
+
+    option.textContent = '#' + value + ' - ' + (cfg.descricao || cfg.base_url || 'Configuração ADP');
+    option.dataset.tokenMasked = cfg.global_token_masked || '';
+    option.dataset.baseUrl = cfg.base_url || '';
+    option.dataset.descricao = cfg.descricao || '';
+    option.dataset.tokenType = cfg.global_token_type || 'x_adp_api_token';
+    option.dataset.tokenHeader = cfg.global_token_header || 'X-ADP-API-TOKEN';
+    option.dataset.timeoutMs = String(cfg.timeout_ms || 5000);
+
+    if (selectIt) {
+      select.value = value;
+    }
 
     updateConfigHint(scope);
   }
@@ -362,17 +461,7 @@
         var defaultId = scope.dataset.defaultIntegradorConfigId || '';
         select.innerHTML = '<option value="">Selecione...</option>';
         (res.configs || []).forEach(function (cfg) {
-          var option = document.createElement('option');
-          option.value = String(cfg.id);
-          option.textContent = '#' + cfg.id + ' - ' + (cfg.descricao || cfg.base_url || 'Configuração ADP');
-          if (String(cfg.id) === String(defaultId)) option.selected = true;
-          option.dataset.tokenMasked = cfg.global_token_masked || '';
-          option.dataset.baseUrl = cfg.base_url || '';
-          option.dataset.descricao = cfg.descricao || '';
-          option.dataset.tokenType = cfg.global_token_type || 'x_adp_api_token';
-          option.dataset.tokenHeader = cfg.global_token_header || 'X-ADP-API-TOKEN';
-          option.dataset.timeoutMs = String(cfg.timeout_ms || 5000);
-          select.appendChild(option);
+          upsertConfigOption(scope, cfg, String(cfg.id) === String(defaultId));
         });
         updateConfigHint(scope);
         fillConfigEditorFromSelect(scope);
@@ -420,20 +509,63 @@
       }
       updateLog(scope, 'Configuração ADP salva com sucesso.');
       if (q(scope, 'cfg-global-token')) q(scope, 'cfg-global-token').value = '';
-      loadConfigs(scope).then(function(){
-        if (q(scope, 'integrador-config-id')) q(scope, 'integrador-config-id').value = String(res.config.id);
-        fillConfigEditorFromSelect(scope);
-        updateConfigHint(scope);
-      });
+
+      // Seleciona imediatamente a configuração retornada pelo backend.
+      // Não depende do reload do combo, evitando perder o vínculo quando a listagem falhar momentaneamente.
+      upsertConfigOption(scope, res.config, true);
+      fillConfigEditorFromSelect(scope);
+      updateConfigHint(scope);
+      loadConfigs(scope);
     }).catch(function (err) {
       updateLog(scope, 'Erro ao salvar configuração ADP: ' + err.message);
     });
   }
 
-  function loadDevices(scope) {
+
+  function novaConfigAdp(scope) {
+    var select = q(scope, 'integrador-config-id');
+    if (select) select.value = '';
+    ['cfg-descricao', 'cfg-base-url', 'cfg-global-token'].forEach(function (key) {
+      var el = q(scope, key);
+      if (el) el.value = '';
+    });
+    var tokenType = q(scope, 'cfg-token-type');
+    if (tokenType) tokenType.value = 'x_adp_api_token';
+    updateConfigHint(scope);
+    updateLog(scope, 'Nova configuração ADP. Informe os dados e salve.');
+  }
+
+  function excluirConfigAdp(scope) {
     var configId = getConfigId(scope);
     if (!configId) {
-      updateLog(scope, 'Salve ou selecione uma configuração ADP antes de buscar dispositivos.');
+      updateLog(scope, 'Selecione uma configuração ADP para excluir.');
+      return;
+    }
+
+    if (!confirm('Deseja excluir/inativar esta configuração ADP?')) {
+      return;
+    }
+
+    updateLog(scope, 'Removendo configuração ADP...');
+    return getJson('/adp/discovery/configs/delete/' + encodeURIComponent(configId), {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken()
+      }
+    }).then(function (res) {
+      if (!res.success) throw new Error(res.message || 'Falha ao remover configuração ADP.');
+      updateLog(scope, res.message || 'Configuração ADP removida com sucesso.');
+      novaConfigAdp(scope);
+      return loadConfigs(scope);
+    }).catch(function (err) {
+      updateLog(scope, 'Erro ao remover configuração ADP: ' + err.message);
+    });
+  }
+
+  function loadDevices(scope) {
+    if (!getConfigId(scope) && !currentBaseUrl(scope)) {
+      updateLog(scope, 'Informe a Base URL ADP ou selecione uma configuração antes de buscar dispositivos.');
       return;
     }
 
@@ -451,8 +583,9 @@
   }
 
   function testAdp(scope) {
-    var configId = getConfigId(scope);
-    if (!configId) return updateLog(scope, 'Salve ou selecione uma configuração ADP antes do teste.');
+    if (!getConfigId(scope) && !currentBaseUrl(scope)) {
+      return updateLog(scope, 'Informe a Base URL ADP ou selecione uma configuração antes do teste.');
+    }
 
     updateLog(scope, 'Testando conexão ADP...');
 
@@ -500,6 +633,8 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.adp-cadastro-guided').forEach(function (scope) {
+      if (scope.dataset.adpDiscoveryInitialized === '1') return;
+      scope.dataset.adpDiscoveryInitialized = '1';
       var btnTestar = q(scope, 'btn-testar');
       var btnBuscar = q(scope, 'btn-buscar');
       var btnSync = q(scope, 'btn-sync');
@@ -507,6 +642,8 @@
       var cameraSelect = q(scope, 'camera-select');
       var configSelect = q(scope, 'integrador-config-id');
       var btnSalvarCfg = q(scope, 'btn-salvar-config');
+      var btnNovaCfg = q(scope, 'btn-nova-config');
+      var btnExcluirCfg = q(scope, 'btn-excluir-config');
       var baseUrlInput = q(scope, 'cfg-base-url');
 
       btnTestar && btnTestar.addEventListener('click', function () { testAdp(scope); });
@@ -522,6 +659,8 @@
       configSelect && configSelect.addEventListener('change', function(){ fillConfigEditorFromSelect(scope); });
       baseUrlInput && baseUrlInput.addEventListener('input', function(){ updateConfigHint(scope); });
       btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
+      btnNovaCfg && btnNovaCfg.addEventListener('click', function(){ novaConfigAdp(scope); });
+      btnExcluirCfg && btnExcluirCfg.addEventListener('click', function(){ excluirConfigAdp(scope); });
       loadConfigs(scope);
     });
   });

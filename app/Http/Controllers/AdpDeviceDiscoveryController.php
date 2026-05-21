@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdpDevice;
+use App\Models\AdpCamera;
 use App\Models\AdpIntegradorConfig;
+use App\Models\BalancaConfig;
 use App\Services\Balanca\AdpDeviceDiscoveryService;
 use Illuminate\Http\Request;
 
@@ -25,6 +27,72 @@ class AdpDeviceDiscoveryController extends BaseController
     protected function messages(): array
     {
         return [];
+    }
+
+    public function index(Request $request)
+    {
+        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderBy('descricao')
+            ->get();
+
+        $devices = AdpDevice::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderByDesc('last_seen_at')
+            ->limit(20)
+            ->get();
+
+        $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
+            ->where('integrador', 'adp')
+            ->where('ativo', true)
+            ->count();
+
+        $cameras = AdpCamera::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->count();
+
+        $downloads = [
+            'windows_x86' => $this->adpDownloadUrl('ADP_DOWNLOAD_WINDOWS_X86', 'adp-windows-x86.7z'),
+            'windows_x64' => $this->adpDownloadUrl('ADP_DOWNLOAD_WINDOWS_X64', 'adp-windows-x64.7z'),
+            'macos' => $this->adpDownloadUrl('ADP_DOWNLOAD_MACOS', 'adp-macos.7z'),
+            'linux_debian' => $this->adpDownloadUrl('ADP_DOWNLOAD_LINUX_DEBIAN', 'adp-linux-debian.7z'),
+        ];
+
+        return view('adp.index', [
+            'title' => 'Dispositivos A.D.P.',
+            'configs' => $configs,
+            'configsTotal' => AdpIntegradorConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->count(),
+            'devices' => $devices,
+            'balancasCount' => $balancas,
+            'camerasCount' => $cameras,
+            'downloads' => $downloads,
+        ]);
+    }
+
+    private function adpDownloadUrl(string $envKey, string $defaultFileName): string
+    {
+        $value = trim((string) env($envKey, ''));
+
+        if ($value !== '') {
+            return $this->normalizeAdpDownloadValue($value);
+        }
+
+        return asset('adp/' . $defaultFileName);
+    }
+
+    private function normalizeAdpDownloadValue(string $value): string
+    {
+        $value = trim($value);
+
+        if ($value === '' || $value === '#') {
+            return '#';
+        }
+
+        if (preg_match('~^https?://~i', $value)) {
+            return $value;
+        }
+
+        return asset(ltrim($value, '/'));
     }
 
     public function salvarConfig(Request $request)
@@ -79,7 +147,8 @@ class AdpDeviceDiscoveryController extends BaseController
                 'base_url' => $config->base_url,
                 'global_token_enabled' => (bool) $config->global_token_enabled,
                 'global_token_type' => $config->global_token_type ?? 'none',
-                'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
+                'global_token_masked' => $this->maskTokenSafe($config),
+                'global_token_needs_reset' => method_exists($config, 'globalTokenNeedsReset') ? $config->globalTokenNeedsReset() : false,
                 'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
                 'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
                 'ativo' => (bool) $config->ativo,
@@ -89,29 +158,118 @@ class AdpDeviceDiscoveryController extends BaseController
 
     public function configuracoes()
     {
-        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
-            ->where('ativo', true)
-            ->orderBy('id', 'desc')
-            ->get()
-            ->map(function (AdpIntegradorConfig $config) {
-                return [
-                    'id' => $config->id,
-                    'descricao' => $config->descricao,
-                    'base_url' => $config->base_url,
-                    'global_token_enabled' => (bool) $config->global_token_enabled,
-                    'global_token_type' => $config->global_token_type ?? 'none',
-                    'global_token_masked' => method_exists($config, 'tokenMascarado') ? $config->tokenMascarado() : null,
-                    'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
-                    'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
-                    'ativo' => (bool) $config->ativo,
-                ];
-            })
-            ->values();
+        try {
+            $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->orderBy('id', 'desc')
+                ->get()
+                ->map(function (AdpIntegradorConfig $config) {
+                    return [
+                        'id' => $config->id,
+                        'descricao' => $config->descricao,
+                        'base_url' => $config->base_url,
+                        'global_token_enabled' => (bool) $config->global_token_enabled,
+                        'global_token_type' => $config->global_token_type ?? 'x_adp_api_token',
+                        'global_token_masked' => $this->maskTokenSafe($config),
+                        'global_token_needs_reset' => method_exists($config, 'globalTokenNeedsReset') ? $config->globalTokenNeedsReset() : false,
+                        'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
+                        'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
+                        'ativo' => (bool) $config->ativo,
+                    ];
+                })
+                ->values();
 
-        return response()->json([
-            'success' => true,
-            'configs' => $configs,
-        ]);
+            return response()->json([
+                'success' => true,
+                'configs' => $configs,
+            'configsTotal' => AdpIntegradorConfig::where('empresa_id', $this->empresa_id)->where('ativo', true)->count(),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Erro ao carregar configurações ADP', [
+                'empresa_id' => $this->empresa_id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Falha ao carregar configurações ADP.',
+            ], 500);
+        }
+    }
+
+
+    public function excluirConfig(Request $request, $id)
+    {
+        try {
+            $config = AdpIntegradorConfig::withTrashed()
+                ->where('empresa_id', $this->empresa_id)
+                ->findOrFail((int) $id);
+
+            $force = (bool) $request->boolean('force');
+
+            if ($force) {
+                $this->desvincularConfigAdp((int) $config->id);
+                $config->forceDelete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuração ADP excluída definitivamente.',
+                    'deleted' => true,
+                    'force_deleted' => true,
+                ]);
+            }
+
+            $emUsoBalancas = BalancaConfig::where('empresa_id', $this->empresa_id)
+                ->where('integrador_config_id', $config->id)
+                ->exists();
+
+            $emUsoCameras = class_exists(AdpCamera::class)
+                ? AdpCamera::where('empresa_id', $this->empresa_id)->where('integrador_config_id', $config->id)->exists()
+                : false;
+
+            if ($emUsoBalancas || $emUsoCameras) {
+                $config->ativo = false;
+                $config->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuração ADP inativada. Para apagar definitivamente, use Excluir definitivo.',
+                    'deleted' => false,
+                    'inactive' => true,
+                ]);
+            }
+
+            $config->forceDelete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuração ADP removida definitivamente.',
+                'deleted' => true,
+                'force_deleted' => true,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao remover configuração ADP: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    private function desvincularConfigAdp(int $configId): void
+    {
+        BalancaConfig::where('empresa_id', $this->empresa_id)
+            ->where('integrador_config_id', $configId)
+            ->update(['integrador_config_id' => null]);
+
+        if (class_exists(AdpCamera::class)) {
+            AdpCamera::where('empresa_id', $this->empresa_id)
+                ->where('integrador_config_id', $configId)
+                ->update(['integrador_config_id' => null]);
+        }
+
+        AdpDevice::where('empresa_id', $this->empresa_id)
+            ->where('integrador_config_id', $configId)
+            ->update(['integrador_config_id' => null, 'ativo' => false]);
     }
 
     public function runtimeConfig(Request $request)
@@ -129,30 +287,90 @@ class AdpDeviceDiscoveryController extends BaseController
                 'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
                 // Necessário somente para modo local/browser: quando a Base URL é localhost/127.0.0.1,
                 // quem consegue acessar o ADP é o navegador do operador, não o servidor Laravel.
-                'global_token' => $config->global_token_enabled ? $config->global_token : null,
+                'global_token' => $config->global_token_enabled ? $this->safeGlobalToken($config) : null,
                 'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
             ],
         ]);
     }
 
+
+    private function maskTokenSafe(AdpIntegradorConfig $config): ?string
+    {
+        $token = $this->safeGlobalToken($config);
+
+        if (!$token) {
+            return null;
+        }
+
+        return str_repeat('*', 8) . substr($token, -4);
+    }
+
+    private function safeGlobalToken(AdpIntegradorConfig $config): ?string
+    {
+        if (method_exists($config, 'globalTokenSafe')) {
+            return $config->globalTokenSafe();
+        }
+
+        try {
+            return $config->global_token ?: null;
+        } catch (\Throwable $e) {
+            return $config->getAttributes()['global_token'] ?? null;
+        }
+    }
+
     private function resolveConfig(Request $request): AdpIntegradorConfig
     {
         $configId = (int) $request->get('integrador_config_id');
+        $baseUrl = rtrim((string) ($request->get('base_url') ?: $request->get('backend_server_address') ?: ''), '/');
 
-        if ($configId <= 0) {
-            abort(422, 'Informe ou selecione uma configuração ADP válida.');
+        /*
+         * Importante para a migração ADP Full:
+         * algumas balanças antigas ficaram com integrador_config_id apontando para
+         * configuração inativada/antiga, enquanto a Base URL continuou válida.
+         * O runtime não deve quebrar com ModelNotFound; deve tentar reparar por Base URL
+         * ou pela única configuração ativa da empresa.
+         */
+        if ($configId > 0) {
+            $config = AdpIntegradorConfig::withTrashed()
+                ->where('empresa_id', $this->empresa_id)
+                ->where('id', $configId)
+                ->first();
+
+            if ($config) {
+                return $config;
+            }
         }
 
-        return AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+        if ($baseUrl !== '') {
+            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->get()
+                ->first(function (AdpIntegradorConfig $item) use ($baseUrl) {
+                    return rtrim((string) $item->base_url, '/') === $baseUrl;
+                });
+
+            if ($config) {
+                return $config;
+            }
+        }
+
+        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
-            ->findOrFail($configId);
+            ->orderBy('id')
+            ->get();
+
+        if ($configs->count() === 1) {
+            return $configs->first();
+        }
+
+        abort(422, 'Informe ou selecione uma configuração ADP válida.');
     }
 
     private function service(AdpIntegradorConfig $config): AdpDeviceDiscoveryService
     {
         return new AdpDeviceDiscoveryService([
             'base_url' => $config->base_url,
-            'global_token' => $config->global_token_enabled ? $config->global_token : null,
+            'global_token' => $config->global_token_enabled ? $this->safeGlobalToken($config) : null,
             'global_token_type' => $config->global_token_type ?? 'none',
             'global_token_header' => $config->global_token_header ?? 'X-ADP-API-TOKEN',
             'timeout_ms' => (int) ($config->timeout_ms ?? 5000),
@@ -209,6 +427,8 @@ class AdpDeviceDiscoveryController extends BaseController
             'devices.*.status' => ['nullable', 'string', 'max:80'],
             'devices.*.supports_stream' => ['nullable', 'boolean'],
             'devices.*.supports_snapshot' => ['nullable', 'boolean'],
+            'devices.*.snapshot_url' => ['nullable', 'string'],
+            'devices.*.stream_url' => ['nullable', 'string'],
             'devices.*.metadata' => ['nullable'],
             'source' => ['nullable', 'string', 'max:80'],
         ]);
@@ -230,6 +450,8 @@ class AdpDeviceDiscoveryController extends BaseController
                 continue;
             }
 
+            $deviceType = (string) ($device['type'] ?? 'unknown');
+
             AdpDevice::updateOrCreate(
                 [
                     'empresa_id' => $this->empresa_id,
@@ -237,7 +459,7 @@ class AdpDeviceDiscoveryController extends BaseController
                 ],
                 [
                     'integrador_config_id' => $config->id,
-                    'device_type' => (string) ($device['type'] ?? 'unknown'),
+                    'device_type' => $deviceType,
                     'name' => $device['name'] ?? null,
                     'model' => $device['model'] ?? null,
                     'driver' => $device['driver'] ?? null,
@@ -254,6 +476,42 @@ class AdpDeviceDiscoveryController extends BaseController
                 ]
             );
 
+            if ($deviceType === 'camera') {
+                $baseUrl = rtrim((string) $config->base_url, '/');
+                $streamUrl = $device['stream_url'] ?? null;
+                $snapshotUrl = $device['snapshot_url'] ?? null;
+
+                if ($baseUrl !== '') {
+                    $streamUrl = $streamUrl ?: $this->cameraEndpoint($baseUrl, $deviceUuid, 'stream');
+                    $snapshotUrl = $snapshotUrl ?: $this->cameraEndpoint($baseUrl, $deviceUuid, 'snapshot');
+                }
+
+                AdpCamera::updateOrCreate(
+                    [
+                        'empresa_id' => $this->empresa_id,
+                        'camera_uuid' => $deviceUuid,
+                    ],
+                    [
+                        'integrador_config_id' => $config->id,
+                        'descricao' => $device['name'] ?? $deviceUuid,
+                        'name' => $device['name'] ?? null,
+                        'model' => $device['model'] ?? null,
+                        'driver' => $device['driver'] ?? null,
+                        'protocol' => $device['protocol'] ?? null,
+                        'host' => $device['host'] ?? null,
+                        'port' => isset($device['port']) ? (string) $device['port'] : null,
+                        'stream_url' => $streamUrl,
+                        'snapshot_url' => $snapshotUrl,
+                        'supports_stream' => (bool) ($device['supports_stream'] ?? false),
+                        'supports_snapshot' => (bool) ($device['supports_snapshot'] ?? false),
+                        'status' => $device['status'] ?? 'offline',
+                        'ultimo_status_em' => $now,
+                        'ativo' => true,
+                        'metadata_json' => $device['metadata'] ?? $device,
+                    ]
+                );
+            }
+
             $synced++;
         }
 
@@ -263,5 +521,17 @@ class AdpDeviceDiscoveryController extends BaseController
             'devices_ignored' => $ignored,
             'synced_at' => $now->format('Y-m-d H:i:s'),
         ];
+    }
+
+    private function cameraEndpoint(string $baseUrl, string $uuid, string $action): string
+    {
+        $baseUrl = rtrim($baseUrl, '/');
+        $path = '/api/cameras/' . rawurlencode($uuid) . '/' . $action;
+
+        if (preg_match('~/api$~i', $baseUrl)) {
+            $path = preg_replace('~^/api~', '', $path);
+        }
+
+        return $baseUrl . $path;
     }
 }

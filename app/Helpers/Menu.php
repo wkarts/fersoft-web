@@ -40,10 +40,6 @@ class Menu {
                     [
                         'nome' => 'Registro de Log\'s',
                         'rota' => '/logs'
-                    ],
-                    [
-                    'nome' => 'Monitor de Pesagens',
-                    'rota' => '/monitor/pesagens'
                     ]
                 ]
             ],
@@ -575,20 +571,38 @@ class Menu {
                 'icone' => $this->getIcone('Pesagens'),
                 'subs' => [
                     [
-                        'nome' => 'Parametrização da Balança',
-                        'rota' => '/balancas',
-                    ],
-                    [
-                        'nome' => 'Balança',
-                        'rota' => '/balancas/balanca',
-                    ],
-                    [
                         'nome' => 'Pesagens',
                         'rota' => '/pesagens',
                     ],
                     [
-                        'nome' => 'Monitor Pesagens',
+                        'nome' => 'Monitor de Pesagens',
                         'rota' => '/monitor/pesagens',
+                    ],
+                ],
+            ],
+            [
+                'titulo' => 'Dispositivos A.D.P.',
+                'icone' => $this->getIcone('ADP'),
+                'subs' => [
+                    [
+                        'nome' => 'A.D.P.',
+                        'rota' => '/adp',
+                    ],
+                    [
+                        'nome' => 'Parâmetros de Balança',
+                        'rota' => '/balancas',
+                    ],
+                    [
+                        'nome' => 'Parâmetros de Câmeras',
+                        'rota' => '/adp/cameras_parametros',
+                    ],
+                    [
+                        'nome' => 'Balanças',
+                        'rota' => '/balancas/balanca',
+                    ],
+                    [
+                        'nome' => 'Câmeras',
+                        'rota' => '/adp/cameras',
                     ],
                 ],
             ],
@@ -1381,6 +1395,22 @@ class Menu {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" width="24px" height="24px">
                     <!-- Font Awesome Free 6.7.1 by @fontawesome -->
                     <path d="M408 120c0 54.6-73.1 151.9-105.2 192c-7.7 9.6-22 9.6-29.6 0C241.1 271.9 168 174.6 168 120C168 53.7 221.7 0 288 0s120 53.7 120 120zm8 80.4c3.5-6.9 6.7-13.8 9.6-20.6c.5-1.2 1-2.5 1.5-3.7l116-46.4C558.9 123.4 576 135 576 152l0 270.8c0 9.8-6 18.6-15.1 22.3L416 503l0-302.6zM137.6 138.3c2.4 14.1 7.2 28.3 12.8 41.5c2.9 6.8 6.1 13.7 9.6 20.6l0 251.4L32.9 502.7C17.1 509 0 497.4 0 480.4L0 209.6c0-9.8 6-18.6 15.1-22.3l122.6-49zM327.8 332c13.9-17.4 35.7-45.7 56.2-77l0 249.3L192 449.4 192 255c20.5 31.3 42.3 59.6 56.2 77c20.5 25.6 59.1 25.6 79.6 0zM288 152a40 40 0 1 0 0-80 40 40 0 1 0 0 80z" fill="currentColor"/>
+                </svg>
+            </span>';
+        }
+
+        if ($titulo == 'ADP') {
+            return '<span class="svg-icon menu-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="24px" height="24px" aria-hidden="true">
+                    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="7" y="10" width="20" height="16" rx="3"/>
+                        <rect x="37" y="10" width="20" height="16" rx="3"/>
+                        <rect x="22" y="38" width="20" height="16" rx="3"/>
+                        <path d="M27 18h10M17 26v8h30v-8M32 34v4"/>
+                        <circle cx="14" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+                        <circle cx="44" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+                        <circle cx="29" cy="46" r="1.5" fill="currentColor" stroke="none"/>
+                    </g>
                 </svg>
             </span>';
         }

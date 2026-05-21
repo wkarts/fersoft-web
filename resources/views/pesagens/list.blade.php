@@ -913,7 +913,11 @@
                                                 <option value="{{ $balanca->id }}" {{ (int) ($balancaPadraoUsuarioId ?? 0) === (int) $balanca->id ? 'selected' : '' }}
                                                         data-backend="{{ $balanca->backend_server_address }}"
                                                         data-modelo="{{ $balanca->modelo }}"
-                                                        data-port="{{ $balanca->port }}">
+                                                        data-port="{{ $balanca->port ?? $balanca->porta_serial }}"
+                                                        data-integrador="{{ $balanca->integrador ?? 'adp' }}"
+                                                        data-integrador-config-id="{{ $balanca->integrador_config_id ?? '' }}"
+                                                        data-adp-scale-uuid="{{ $balanca->adp_scale_uuid ?? '' }}"
+                                                        data-adp-camera-uuids='@json(json_decode((string) ($balanca->adp_camera_uuids ?? '[]'), true) ?: [])'>
                                                     {{ $balanca->descricao }}
                                                 </option>
                                             @endforeach
@@ -922,6 +926,7 @@
                                         <div class="input-group-append">
                                             <button id="connect" type="button" class="btn btn-success btn-sm" disabled>Conectar</button>
                                             <button id="disconnect" type="button" class="btn btn-danger btn-sm" disabled>Desconectar</button>
+                                            <button id="capture-evidence" type="button" class="btn btn-info btn-sm" disabled>Capturar câmeras</button>
                                         </div>
                                     </div>
 
@@ -934,6 +939,11 @@
                                         <span>   </span> <strong>Tara:</strong> <span id="pesoTara">----</span> kg
                                         <span>   </span> <strong>Peso Líquido:</strong> <span id="pesoLiquido">----</span> kg
                                     </div>
+                                </div>
+                                <div class="form-group col-lg-12 adp-camera-preview-area" style="display:none;">
+                                    <label>Imagens/arquivos das câmeras vinculadas à balança:</label>
+                                    <div class="adp-ticket-camera-list adp-camera-preview-list"></div>
+                                    <small class="form-text text-muted">Clique em uma miniatura para ampliar a imagem capturada.</small>
                                 </div>
                                 <!-- Dentro de cada modalTickets... -->
                                 <div class="form-group col-lg-6">
@@ -1241,6 +1251,7 @@
 
 {{--    Controle de Carregamento de Scripts     --}}
     <script src="{{ asset('js/axios.min.js') }}"></script>
+    <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
 
 {{--    Controle de Pesagens    --}}
     <script type="text/javascript">
@@ -2340,8 +2351,132 @@
 
     </script>
 
+
+    <style>
+        .adp-ticket-camera-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 190px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #f8fafc; }
+        .adp-ticket-camera-thumb { display: flex; gap: 8px; align-items: center; width: 260px; min-height: 78px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 6px; cursor: pointer; text-align: left; }
+        .adp-ticket-camera-thumb:hover { border-color: #3699ff; box-shadow: 0 0 0 2px rgba(54,153,255,.12); }
+        .adp-ticket-camera-thumb img { width: 82px; height: 62px; object-fit: cover; border-radius: 6px; background: #0f172a; }
+        .adp-ticket-camera-thumb-empty { width: 82px; height: 62px; border-radius: 6px; background:#f59e0b; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; text-align:center; line-height:1.1; }
+    </style>
+
+
+<div class="modal fade" id="modalAdpImagemAmplia" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" style="background:#0f172a;color:#fff;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Imagem da pesagem</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body d-flex align-items-center justify-content-center" style="min-height:70vh;">
+                <img id="adpImagemAmpliaImg" src="" alt="Imagem da pesagem" style="max-width:100%;max-height:72vh;object-fit:contain;border-radius:8px;">
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Controle dos Tickets de Pesagens     --}}
     <script type="text/javascript">
+
+
+        function getAdpSnapshotSrc(camera) {
+            if (!camera) return '';
+            const response = camera.response || {};
+            const candidates = [
+                camera.image_data_url,
+                camera.data_url,
+                camera.image_src,
+                camera.image_url,
+                response.image_data_url,
+                response.data_url,
+                response.snapshot_url,
+                response.url,
+                response.image_url,
+                response.base64,
+                response.image_base64,
+                response.data ? (response.data.image_data_url || response.data.data_url || response.data.snapshot_url || response.data.url || response.data.image_url || response.data.base64 || response.data.image_base64) : null,
+                response.result ? (response.result.image_data_url || response.result.data_url || response.result.snapshot_url || response.result.url || response.result.image_url || response.result.base64 || response.result.image_base64) : null,
+            ].filter(Boolean);
+            const value = String(candidates[0] || '').trim();
+            if (!value) return '';
+            if (value.startsWith('data:image')) return value;
+            if (value.length > 200 && !/^https?:\/\//i.test(value)) {
+                return 'data:image/jpeg;base64,' + value.replace(/^data:image\/\w+;base64,/, '');
+            }
+            return value;
+        }
+
+        function abrirImagemAdpEmJanela(src) {
+            if (!src) return;
+            const img = document.getElementById('adpImagemAmpliaImg');
+            if (img) img.src = src;
+            $('#modalAdpImagemAmplia').modal('show');
+        }
+
+        $(document).off('keydown.adpImagemAmplia').on('keydown.adpImagemAmplia', function (event) {
+            if (event.key === 'Escape') {
+                $('#modalAdpImagemAmplia').modal('hide');
+            }
+        });
+
+        function renderAdpCameraEvidence(modalSelector, evidenceResp) {
+            const $area = $(modalSelector).find('.adp-camera-preview-area');
+            const $list = $(modalSelector).find('.adp-camera-preview-list');
+            const cameras = (evidenceResp && evidenceResp.cameras) ? evidenceResp.cameras : [];
+
+            $list.empty();
+
+            if (!cameras.length) {
+                $area.hide();
+                return;
+            }
+
+            cameras.forEach(function (camera, index) {
+                const src = getAdpSnapshotSrc(camera);
+                const uuid = camera.uuid || camera.camera_uuid || '';
+                const label = src ? 'Imagem capturada' : (camera.message || 'Sem imagem capturada');
+                const img = src
+                    ? `<img src="${src}" alt="Snapshot câmera ADP">`
+                    : `<div class="adp-ticket-camera-thumb-empty">Sem<br>imagem</div>`;
+
+                $list.append(`
+                    <button type="button" class="adp-ticket-camera-thumb" data-adp-preview-src="${src}" data-adp-preview-uuid="${uuid}">
+                        ${img}
+                        <span><strong>Câmera ${index + 1}</strong><br><small>${uuid}</small><br><small>${label}</small></span>
+                    </button>
+                `);
+            });
+
+            $list.off('click.adpPreview').on('click.adpPreview', '.adp-ticket-camera-thumb', function () {
+                const src = $(this).attr('data-adp-preview-src');
+                if (src) {
+                    abrirImagemAdpEmJanela(src);
+                }
+            });
+
+            $area.show();
+        }
+
+        async function capturarEvidenciaAdpTicket(modalSelector, balancaAtual) {
+            const evidenceResp = await window.AdpRuntimeClient.captureEvidence(balancaAtual);
+            const $modal = $(modalSelector);
+            $modal.find('#balanca_evidence_json').val(JSON.stringify(evidenceResp));
+            $modal.find('#camera_snapshots_json').val(JSON.stringify(evidenceResp.cameras || []));
+            renderAdpCameraEvidence(modalSelector, evidenceResp);
+
+            if (evidenceResp.peso && evidenceResp.peso.valor > 0) {
+                $modal.find('#peso').val(evidenceResp.peso.valor);
+                $modal.find('#pesoBruto').text(Number(evidenceResp.peso.bruto || evidenceResp.peso.valor).toFixed(2));
+                $modal.find('#pesoLiquido').text(Number(evidenceResp.peso.liquido || evidenceResp.peso.valor).toFixed(2));
+                $modal.find('#pesoTara').text(Number(evidenceResp.peso.tara || 0).toFixed(2));
+                $modal.find('#pesoEstabilidade').text(evidenceResp.peso.estavel ? 'Estável' : 'Oscilando');
+            }
+
+            return evidenceResp;
+        }
 
         // Função para carregar tickets dinamicamente mantendo a estrutura de tabela
         function carregarTickets(pesagemId) {
@@ -2520,11 +2655,9 @@
                 const origem = form.find('#peso_origem').val();
                 if (balancaId && origem === 'balanca') {
                     try {
-                        const evidenceResp = await $.ajax({
-                            url: `/balancas/leitor/${balancaId}/evidence`,
-                            type: 'POST',
-                            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
-                        });
+                        const option = $(modalSelector).find('#balanca-select option:selected')[0];
+                        const balancaAtual = window.AdpRuntimeClient.buildBalancaFromSelectOption(option);
+                        const evidenceResp = await capturarEvidenciaAdpTicket(modalSelector, balancaAtual);
 
                         if (evidenceResp && evidenceResp.success) {
                             form.find('#balanca_evidence_json').val(JSON.stringify(evidenceResp));
@@ -2880,11 +3013,17 @@
                     id: select.val(),
                     backend: select.data('backend'),
                     modelo: select.data('modelo'),
-                    porta: select.data('port')
+                    porta: select.data('port'),
+                    integrador: select.data('integrador') || 'adp',
+                    integrador_config_id: select.data('integrador-config-id') || '',
+                    adp_scale_uuid: select.data('adp-scale-uuid') || '',
+                    adp_camera_uuids: select.attr('data-adp-camera-uuids') || '[]',
+                    descricao: select.text().trim()
                 };
                 $(modalId).find('#connect').prop('disabled', !balancaSelecionada.id || autoState.conectado);
                 $(modalId).find('#balanca_config_id').val(balancaSelecionada.id || '');
                 $(modalId).find('#disconnect').prop('disabled', !autoState.conectado);
+                $(modalId).find('#capture-evidence').prop('disabled', !balancaSelecionada.id || !autoState.conectado);
 
                 if (autoState.conectado && autoState.balancaId && String(autoState.balancaId) !== String(balancaSelecionada.id)) {
                     $(modalId).find('#balanca-select').val(String(autoState.balancaId));
@@ -2895,6 +3034,19 @@
                 tentarAutoConectar();
             });
 
+            $(modalId).find('#capture-evidence').off('click').on('click', async function () {
+                if (!balancaSelecionada || !balancaSelecionada.id) {
+                    abrirModalMensagem('Aviso', 'Selecione uma balança ADP.');
+                    return;
+                }
+                try {
+                    await capturarEvidenciaAdpTicket(modalId, balancaSelecionada);
+                    abrirModalMensagem('Sucesso', 'Evidência capturada com sucesso.');
+                } catch (err) {
+                    abrirModalMensagem('Erro', 'Falha ao capturar evidência ADP: ' + err.message);
+                }
+            });
+
             // Conectar
             $(modalId).find('#connect').off('click').on('click', function () {
                 if (!balancaSelecionada || !balancaSelecionada.id) {
@@ -2902,7 +3054,7 @@
                     return;
                 }
 
-                axios.post(`/balancas/leitor/${balancaSelecionada.id}/open`)
+                window.AdpRuntimeClient.openScale(balancaSelecionada)
                     .then(() => {
                         autoState.conectado = true;
                         autoState.balancaId = String(balancaSelecionada.id);
@@ -2910,10 +3062,11 @@
                         autoState.desconexaoManual = false;
                         $(modalId).find('#connect').prop('disabled', true);
                         $(modalId).find('#disconnect').prop('disabled', false);
+                        $(modalId).find('#capture-evidence').prop('disabled', false);
                         $(modalId).find('#balanca-select').prop('disabled', true);
                         iniciarLeitura(modalId, balancaSelecionada);
                     })
-                    .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar: ' + error.message));
+                    .catch(error => abrirModalMensagem('Erro', 'Erro ao conectar ADP: ' + error.message));
             });
 
             // Desconectar
@@ -2921,7 +3074,7 @@
                 const balancaParaDesconectar = autoState.balancaConectada || balancaSelecionada;
                 if (!balancaParaDesconectar) return;
 
-                axios.post(`/balancas/leitor/${balancaParaDesconectar.id}/close`)
+                window.AdpRuntimeClient.closeScale(balancaParaDesconectar)
                     .then(() => {
                         autoState.conectado = false;
                         autoState.balancaId = null;
@@ -2931,20 +3084,20 @@
                         }
                         $(modalId).find('#connect').prop('disabled', false);
                         $(modalId).find('#disconnect').prop('disabled', true);
+                        $(modalId).find('#capture-evidence').prop('disabled', true);
                         $(modalId).find('#balanca-select').prop('disabled', false);
                         clearInterval(intervaloLeitura);
                         $(modalId).find('#pesoAtual').text('----');
                     })
-                    .catch(error => abrirModalMensagem('Erro', 'Erro ao desconectar: ' + error.message));
+                    .catch(error => abrirModalMensagem('Erro', 'Erro ao desconectar ADP: ' + error.message));
             });
 
             // Iniciar leitura contínua
             function iniciarLeitura(modalId, balancaSelecionada) {
                 clearInterval(intervaloLeitura);
                 intervaloLeitura = setInterval(() => {
-                    axios.get(`/balancas/leitor/${balancaSelecionada.id}/read`)
-                        .then(response => {
-                            const dados = response.data || {};
+                    window.AdpRuntimeClient.readScale(balancaSelecionada)
+                        .then(dados => {
                             const bruto = parseFloat(dados.peso ?? 0) || 0;
                             const tara = parseFloat(dados.tara ?? 0) || 0;
                             const liquido = (dados.peso_liquido !== undefined && dados.peso_liquido !== null)
@@ -2956,9 +3109,9 @@
                             $(modalId).find('#pesoLiquido').text(liquido.toFixed(2));
                             $(modalId).find('#pesoTara').text(tara.toFixed(2));
                             $(modalId).find('#pesoEstabilidade').text(dados.estavel  ? "Estável" : "Oscilando");
-                            $(modalId).find('#peso').val(bruto); // Bruto
+                            $(modalId).find('#peso').val(bruto);
                             if (!DESBLOQUEAR_CAMPO_PESO_BAG_TICKET) {
-                                $(modalId).find('#peso_bag').val(tara.toFixed(2)); // Tara -> peso dos recipientes
+                                $(modalId).find('#peso_bag').val(tara.toFixed(2));
                             }
                             calcularValorTotalTicket(modalId);
                             $(modalId).find('#peso_origem').val('balanca');
@@ -2966,7 +3119,7 @@
                                 $(modalId).find('#pesoEstabilidade').text("Sobrecarga");
                             }
                         })
-                        .catch(error => console.error('Erro ao ler peso:', error));
+                        .catch(error => console.error('Erro ao ler peso ADP:', error));
                 }, 200); // Atualiza a cada 500ms
             }
         }

@@ -89,7 +89,128 @@ class ConfigNota extends BaseModel
         'desbloquear_campo_peso_bag_ticket',
         'conectar_automaticamente_balanca_padrao_usuario',
         'conectar_automaticamente_balanca_ao_selecionar',
+        'pesagem_habilitar_preview_cameras',
+        'pesagem_exigir_imagem_quando_balanca_tem_camera',
+        'pesagem_auto_concluir_ticket',
+        'pesagem_bloquear_edicao_ticket_concluido',
+        'pesagem_imprimir_imagens_a4',
+        'pesagem_imprimir_imagens_80mm',
+        'pesagem_email_destino',
+        'pesagem_email_destinos_json',
+        'pesagem_whatsapp_destino',
+        'pesagem_whatsapp_destinos_json',
+        'pesagem_enviar_email_ao_concluir',
+        'pesagem_enviar_whatsapp_ao_concluir',
+        'pesagem_enviar_imagens_notificacao',
+        'pesagem_snapshot_disk',
+        'pesagem_snapshot_base_path',
+        'pesagem_storage_provider',
+        'pesagem_storage_config_json',
     ];
+
+    protected $casts = [
+        'pesagem_email_destinos_json' => 'array',
+        'pesagem_whatsapp_destinos_json' => 'array',
+        'pesagem_habilitar_preview_cameras' => 'boolean',
+        'pesagem_exigir_imagem_quando_balanca_tem_camera' => 'boolean',
+        'pesagem_auto_concluir_ticket' => 'boolean',
+        'pesagem_bloquear_edicao_ticket_concluido' => 'boolean',
+        'pesagem_imprimir_imagens_a4' => 'boolean',
+        'pesagem_imprimir_imagens_80mm' => 'boolean',
+        'pesagem_enviar_email_ao_concluir' => 'boolean',
+        'pesagem_enviar_whatsapp_ao_concluir' => 'boolean',
+        'pesagem_enviar_imagens_notificacao' => 'boolean',
+        'pesagem_storage_config_json' => 'array',
+    ];
+
+
+
+    public function pesagemStorageProvider(): string
+    {
+        $provider = strtolower(trim((string) ($this->pesagem_storage_provider ?? 'system')));
+        return in_array($provider, ['s3', 'minio', 'dropbox', 'onedrive', 'google_drive'], true) ? $provider : 'system';
+    }
+
+    public function usaStorageProprioPesagem(): bool
+    {
+        return $this->pesagemStorageProvider() !== 'system';
+    }
+
+    public function pesagemStorageConfig(): array
+    {
+        $config = $this->pesagem_storage_config_json ?? [];
+        if (is_string($config)) {
+            $decoded = json_decode($config, true);
+            $config = json_last_error() === JSON_ERROR_NONE && is_array($decoded) ? $decoded : [];
+        }
+        return is_array($config) ? $config : [];
+    }
+
+    public function pesagemEmailsDestino(): array
+    {
+        return $this->normalizarListaDestinos($this->pesagem_email_destinos_json ?? null, $this->pesagem_email_destino ?? null, true);
+    }
+
+    public function pesagemWhatsappsDestino(): array
+    {
+        return $this->normalizarListaDestinos($this->pesagem_whatsapp_destinos_json ?? null, $this->pesagem_whatsapp_destino ?? null, false);
+    }
+
+    private function normalizarListaDestinos($json, ?string $legacy, bool $email): array
+    {
+        $items = [];
+
+        if (is_string($json)) {
+            $decoded = json_decode($json, true);
+            $json = json_last_error() === JSON_ERROR_NONE ? $decoded : $json;
+        }
+
+        if (is_array($json)) {
+            $items = array_merge($items, $json);
+        } elseif (is_string($json) && trim($json) !== '') {
+            $items[] = $json;
+        }
+
+        if (is_string($legacy) && trim($legacy) !== '') {
+            $items[] = $legacy;
+        }
+
+        $resultado = [];
+        foreach ($items as $item) {
+            if (is_array($item)) {
+                $item = $item['value'] ?? $item['email'] ?? $item['whatsapp'] ?? $item['numero'] ?? null;
+            }
+
+            if (!is_string($item)) {
+                continue;
+            }
+
+            foreach (preg_split('/[\r\n,;]+/', $item) as $valor) {
+                $valor = trim($valor);
+                if ($valor === '') {
+                    continue;
+                }
+
+                if ($email && !filter_var($valor, FILTER_VALIDATE_EMAIL)) {
+                    continue;
+                }
+
+                if (!$email) {
+                    $valor = preg_replace('/[^0-9]/', '', $valor);
+                    if ($valor === '') {
+                        continue;
+                    }
+                    if (!str_starts_with($valor, '55')) {
+                        $valor = '55' . $valor;
+                    }
+                }
+
+                $resultado[] = $valor;
+            }
+        }
+
+        return array_values(array_unique($resultado));
+    }
 
     public static function configStatic(){
         $value = session('user_logged');

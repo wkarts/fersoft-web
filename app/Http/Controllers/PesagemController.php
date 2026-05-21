@@ -391,7 +391,9 @@ class PesagemController extends BaseController
         $motoristas   = Funcionario::where('empresa_id', $this->empresa_id)
             ->where('status_motorista','Ativo')->get();
         $balancas     = BalancaConfig::where('empresa_id', $this->empresa_id)
-            ->where('ativo', true)->get();
+            ->where('ativo', true)
+            ->where('integrador', 'adp')
+            ->get();
         $tickets      = TicketPesagem::where('empresa_id', $this->empresa_id)
             ->with('produto')->get();
 
@@ -483,6 +485,7 @@ class PesagemController extends BaseController
             ->get();
         $balancas     = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
+            ->where('integrador', 'adp')
             ->get();
         $tickets      = TicketPesagem::where('empresa_id', $this->empresa_id)
             ->with('produto')
@@ -547,6 +550,7 @@ class PesagemController extends BaseController
         // Carrega todas as balanças para seleção
         $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
+            ->where('integrador', 'adp')
             ->get();
 
         $tickets = TicketPesagem::where('empresa_id', $this->empresa_id)
@@ -572,6 +576,7 @@ class PesagemController extends BaseController
         // Carrega todas as balanças para seleção
         $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
             ->where('ativo', true)
+            ->where('integrador', 'adp')
             ->get();
 
         // Passa as balanças para a view

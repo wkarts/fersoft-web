@@ -46,6 +46,10 @@
             margin-top: 10px;
         }
     </style>
+
+<style>
+.ticket-imagens{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.ticket-imagem-item{border:1px solid #ddd;padding:4px;border-radius:4px;page-break-inside:avoid}.ticket-imagem-item img{max-width:180px;max-height:120px;object-fit:contain}.ticket-imagem-caption{font-size:9px;color:#555;margin-top:2px}.ticket-imagens-80mm .ticket-imagem-item img{max-width:260px;max-height:180px}
+</style>
 </head>
 <body>
 <!-- Cabeçalho com Logo -->
@@ -90,6 +94,7 @@
                     <td>{{ number_format($ticket->peso, 2, ',', '.') }}</td>
                     <td>{{ $ticket->created_at->format('d/m/Y H:i') }}</td>
                 </tr>
+                <tr><td colspan="3">@include('relatorios.partials.ticket-imagens', ['ticket' => $ticket, 'tipoRelatorioImagem' => '80mm', 'limiteImagens' => 2])</td></tr>
             @endforeach
             </tbody>
         </table>

@@ -45,8 +45,19 @@ class BalancaLeitorService
             return ['type' => $balanca->connection_token_type ?: 'x_adp_api_token', 'token' => $balanca->connection_token, 'header' => $balanca->connection_token_header ?: 'X-ADP-API-TOKEN'];
         }
 
-        if ($global && $global->global_token_enabled && $global->global_token) {
-            return ['type' => $global->global_token_type ?: 'x_adp_api_token', 'token' => $global->global_token, 'header' => $global->global_token_header ?: 'X-ADP-API-TOKEN'];
+        $globalToken = null;
+        if ($global && method_exists($global, 'globalTokenSafe')) {
+            $globalToken = $global->globalTokenSafe();
+        } elseif ($global) {
+            try {
+                $globalToken = $global->global_token ?: null;
+            } catch (\Throwable $e) {
+                $globalToken = $global->getAttributes()['global_token'] ?? null;
+            }
+        }
+
+        if ($global && $global->global_token_enabled && $globalToken) {
+            return ['type' => $global->global_token_type ?: 'x_adp_api_token', 'token' => $globalToken, 'header' => $global->global_token_header ?: 'X-ADP-API-TOKEN'];
         }
 
         return ['type' => 'none', 'token' => null, 'header' => null];

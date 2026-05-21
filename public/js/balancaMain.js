@@ -251,21 +251,28 @@ function appendAdpQueryToken(url, config) {
     return url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
 }
 
-async function getAdpRuntimeConfig(integradorConfigId) {
+async function getAdpRuntimeConfig(integradorConfigId, baseUrl) {
     const id = String(integradorConfigId || '').trim();
+    const base = String(baseUrl || '').trim().replace(/\/+$/, '');
 
-    if (!id) {
+    if (!id && !base) {
         throw new Error('Configuração ADP não vinculada à balança.');
     }
 
-    if (adpRuntimeConfigCache.has(id)) {
-        return adpRuntimeConfigCache.get(id);
+    const cacheKey = id ? `id:${id}|base:${base}` : `base:${base}`;
+    if (adpRuntimeConfigCache.has(cacheKey)) {
+        return adpRuntimeConfigCache.get(cacheKey);
     }
 
-    const url = `/adp/discovery/configs/runtime?integrador_config_id=${encodeURIComponent(id)}`;
+    const params = new URLSearchParams();
+    if (id) params.set('integrador_config_id', id);
+    if (base) params.set('base_url', base);
+
+    const url = `/adp/discovery/configs/runtime?${params.toString()}`;
     const data = await fetchJsonBalanca(url, {
         method: 'GET',
         headers: {
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': csrfTokenBalanca()
         }
     });
@@ -274,7 +281,10 @@ async function getAdpRuntimeConfig(integradorConfigId) {
         throw new Error(data.message || 'Configuração ADP inválida.');
     }
 
-    adpRuntimeConfigCache.set(id, data.config);
+    adpRuntimeConfigCache.set(cacheKey, data.config);
+    if (data.config.id) {
+        adpRuntimeConfigCache.set(`id:${data.config.id}|base:${String(data.config.base_url || '').replace(/\/+$/, '')}`, data.config);
+    }
     return data.config;
 }
 
@@ -334,7 +344,7 @@ function normalizeAdpScaleStatus(payload) {
 }
 
 async function verificarStatusBalancaAdp(balanca, statusLed) {
-    const config = await getAdpRuntimeConfig(balanca.integrador_config_id);
+    const config = await getAdpRuntimeConfig(balanca.integrador_config_id, balanca.backend_server_address || balanca.backend);
     const uuid = String(balanca.adp_scale_uuid || '').trim();
 
     if (!uuid) {
@@ -354,6 +364,45 @@ async function verificarStatusBalancaAdp(balanca, statusLed) {
     const normalized = normalizeAdpScaleStatus(payload);
     statusLed.style.backgroundColor = normalized.color;
     statusLed.title = normalized.title;
+}
+
+
+async function verificarStatusCamerasAdp(balanca) {
+    const summary = document.querySelector(`[data-adp-camera-health-summary="${balanca.id}"]`);
+    if (!summary) return;
+
+    const uuids = window.AdpRuntimeClient && window.AdpRuntimeClient.parseUuidList
+        ? window.AdpRuntimeClient.parseUuidList(balanca.adp_camera_uuids || [])
+        : [];
+
+    if (!uuids.length) {
+        summary.textContent = 'Sem câmeras';
+        summary.className = 'text-muted';
+        return;
+    }
+
+    try {
+        const config = await getAdpRuntimeConfig(balanca.integrador_config_id, balanca.backend_server_address || balanca.backend);
+        let online = 0;
+
+        for (const uuid of uuids) {
+            let url = appendApiPath(config.base_url, `/api/cameras/${encodeURIComponent(uuid)}/health`);
+            url = appendAdpQueryToken(url, config);
+            const payload = await fetchJsonBalanca(url, {
+                method: 'GET',
+                headers: buildAdpHeaders(config)
+            });
+
+            const ok = payload.success !== false && payload.error !== true && payload.result?.success !== false;
+            if (ok) online++;
+        }
+
+        summary.textContent = `${online}/${uuids.length} online`;
+        summary.className = online === uuids.length ? 'text-success' : (online > 0 ? 'text-warning' : 'text-danger');
+    } catch (e) {
+        summary.textContent = 'Erro câmera';
+        summary.className = 'text-danger';
+    }
 }
 
 async function verificarStatusBalancaLegacy(id, backendURL, equipamento, statusLed) {
@@ -398,7 +447,8 @@ function normalizeBalancaArgs(arg1, backendURL, equipamento) {
         modelo: equipamento || (statusLed ? statusLed.dataset.equip : ''),
         integrador: statusLed ? statusLed.dataset.integrador : 'legacy',
         integrador_config_id: statusLed ? statusLed.dataset.integradorConfigId : '',
-        adp_scale_uuid: statusLed ? statusLed.dataset.adpScaleUuid : ''
+        adp_scale_uuid: statusLed ? statusLed.dataset.adpScaleUuid : '',
+        adp_camera_uuids: statusLed ? (statusLed.dataset.adpCameraUuids || '[]') : '[]'
     };
 }
 
@@ -412,6 +462,7 @@ async function verificarStatusBalanca(arg1, backendURL, equipamento) {
     try {
         if ((balanca.integrador || 'legacy') === 'adp') {
             await verificarStatusBalancaAdp(balanca, statusLed);
+            await verificarStatusCamerasAdp(balanca);
             return;
         }
 
