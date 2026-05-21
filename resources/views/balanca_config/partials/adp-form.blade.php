@@ -7,10 +7,15 @@
         ? (string) ($balanca->backend_server_address ?? '')
         : (string) old('backend_server_address', '');
     $serverAdpConfigs = isset($adpConfigs) ? $adpConfigs : collect();
+    $selectedAdpConfig = null;
+    if ($selectedIntegradorConfigId !== '' && $serverAdpConfigs && method_exists($serverAdpConfigs, 'firstWhere')) {
+        $selectedAdpConfig = $serverAdpConfigs->firstWhere('id', (int) $selectedIntegradorConfigId);
+    }
 @endphp
 <div class="card mt-2 adp-cadastro-guided"
      data-default-integrador-config-id="{{ $selectedIntegradorConfigId }}"
      data-server-integrador-config-id="{{ $selectedIntegradorConfigId }}"
+     data-balanca-id="{{ $balanca->id ?? '' }}"
      data-default-scale-uuid="{{ old('adp_scale_uuid', $balanca->adp_scale_uuid ?? '') }}"
      data-default-camera-uuids="{{ old('adp_camera_uuids', $balanca->adp_camera_uuids ?? '') }}">
   <div class="card-header py-1" style="font-size:14px;">Integração ADP (fluxo guiado)</div>
@@ -20,19 +25,19 @@
       <div class="form-row">
         <div class="col-md-3">
           <label class="mb-1">Descrição ADP</label>
-          <input class="form-control form-control-sm" data-adp="cfg-descricao" placeholder="Ex.: ADP Matriz">
+          <input class="form-control form-control-sm" data-adp="cfg-descricao" value="{{ $selectedAdpConfig->descricao ?? '' }}" placeholder="Ex.: ADP Matriz">
         </div>
         <div class="col-md-4">
           <label class="mb-1">Base URL ADP</label>
-          <input class="form-control form-control-sm" data-adp="cfg-base-url" placeholder="http://127.0.0.1:4789">
+          <input class="form-control form-control-sm" data-adp="cfg-base-url" value="{{ $selectedAdpConfig->base_url ?? '' }}" placeholder="http://127.0.0.1:4789">
         </div>
         <div class="col-md-2">
           <label class="mb-1">Token Type</label>
           <select class="form-control form-control-sm" data-adp="cfg-token-type">
-            <option value="x_adp_api_token">x_adp_api_token</option>
-            <option value="bearer">bearer</option>
-            <option value="query">query</option>
-            <option value="none">none</option>
+            <option value="x_adp_api_token" {{ ($selectedAdpConfig->global_token_type ?? 'x_adp_api_token') === 'x_adp_api_token' ? 'selected' : '' }}>x_adp_api_token</option>
+            <option value="bearer" {{ ($selectedAdpConfig->global_token_type ?? '') === 'bearer' ? 'selected' : '' }}>bearer</option>
+            <option value="query" {{ ($selectedAdpConfig->global_token_type ?? '') === 'query' ? 'selected' : '' }}>query</option>
+            <option value="none" {{ ($selectedAdpConfig->global_token_type ?? '') === 'none' ? 'selected' : '' }}>none</option>
           </select>
         </div>
         <div class="col-md-3">
@@ -50,9 +55,9 @@
     <div class="form-row">
       <div class="col-md-4">
         <label>Configuração Global ADP</label>
-        <input type="hidden" name="integrador_config_id" data-adp="integrador-config-id-hidden" value="{{ $selectedIntegradorConfigId }}">
+        <input type="hidden" name="adp_integrador_config_id_hidden" data-adp="integrador-config-id-hidden" value="{{ $selectedIntegradorConfigId }}">
         <input type="hidden" name="backend_server_address" data-adp="backend-server-address" value="{{ $selectedBackendAddress }}">
-        <select class="form-control form-control-sm" data-adp="integrador-config-id">
+        <select class="form-control form-control-sm" name="integrador_config_id" data-adp="integrador-config-id" required>
           <option value="">Selecione...</option>
           @foreach($serverAdpConfigs as $cfg)
               @php
