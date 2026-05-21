@@ -406,6 +406,10 @@ class Menu {
 						'nome' => 'Ordem de serviço',
 						'rota' => '/ordemServico'
 					],
+                    [
+                        'nome' => 'Ótica',
+                        'rota' => '/otica'
+                    ],
 					// [
 					// 	'nome' => 'Emissão de NFSe',
 					// 	'rota' => '/nfse'

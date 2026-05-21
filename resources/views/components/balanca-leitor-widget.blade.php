@@ -1,3 +1,21 @@
+
+<style>
+.adp-balanca-camera-thumbs{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;}
+.adp-camera-thumb-btn{display:flex;align-items:center;gap:8px;width:220px;max-width:100%;border:1px solid #d7dce6;background:#fff;border-radius:8px;padding:6px;text-align:left;cursor:pointer;transition:.15s ease;}
+.adp-camera-thumb-btn:hover{border-color:#3699ff;box-shadow:0 3px 10px rgba(54,153,255,.15);}
+.adp-camera-thumb-img{width:72px!important;height:48px!important;max-width:72px!important;max-height:48px!important;object-fit:cover;border-radius:6px;background:#111827;display:block;}
+.adp-camera-thumb-title{font-size:12px;font-weight:700;color:#2f3542;line-height:1.2;display:block;}
+.adp-camera-thumb-meta{font-size:10px;color:#6c757d;line-height:1.2;display:block;word-break:break-all;}
+.adp-camera-empty{font-size:12px;border-radius:8px;padding:8px 10px;margin:0;}
+.adp-balanca-image-modal{display:none;position:fixed;z-index:99999;inset:0;background:rgba(12,18,32,.86);align-items:center;justify-content:center;padding:24px;}
+.adp-balanca-image-modal.show{display:flex;}
+.adp-balanca-image-dialog{max-width:min(1100px,96vw);max-height:94vh;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+.adp-balanca-image-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#f4f7fb;border-bottom:1px solid #e5e9f2;}
+.adp-balanca-image-header button{border:0;background:#dc3545;color:#fff;border-radius:6px;width:32px;height:32px;font-size:20px;line-height:1;}
+.adp-balanca-image-body{padding:10px;text-align:center;background:#0b1220;}
+.adp-balanca-image-body img{max-width:94vw;max-height:82vh;object-fit:contain;}
+</style>
+
 <div class="card border-primary mb-3" data-balanca-widget="1" data-modo="{{ $modo ?? 'teste' }}">
   <div class="card-body p-3">
     <div class="d-flex justify-content-between align-items-start">
@@ -34,7 +52,7 @@
     <div class="row mt-3" data-camera-area style="display:none;">
       <div class="col-12">
         <strong>Câmeras da balança</strong>
-        <div class="row mt-2" data-camera-preview-list></div>
+        <div class="adp-balanca-camera-thumbs mt-2" data-camera-preview-list></div>
       </div>
     </div>
 
@@ -45,10 +63,22 @@
       <button class="btn btn-info btn-sm" data-action="evidence">Capturar evidência</button>
     </div>
 
-    <pre class="mt-2 p-2 bg-light border" style="max-height:120px;overflow:auto;font-size:11px;" id="balanca-log">Aguardando ação...</pre>
+    <pre class="mt-2 p-2 bg-light border" style="max-height:120px;overflow:auto;font-size:11px;" data-balanca-log>Aguardando ação...</pre>
 
     <input type="hidden" id="{{ $inputBalancaId ?? 'balanca_config_id' }}" name="balanca_config_id">
     <input type="hidden" id="{{ $inputPesoOrigemId ?? 'peso_origem' }}" name="peso_origem" value="balanca">
     <input type="hidden" id="{{ $inputEvidenceId ?? 'balanca_evidence_json' }}" name="balanca_evidence_json">
+  </div>
+</div>
+
+<div class="adp-balanca-image-modal" data-balanca-image-modal>
+  <div class="adp-balanca-image-dialog">
+    <div class="adp-balanca-image-header">
+      <strong data-balanca-image-title>Imagem da câmera</strong>
+      <button type="button" data-balanca-image-close aria-label="Fechar">&times;</button>
+    </div>
+    <div class="adp-balanca-image-body">
+      <img data-balanca-image-img alt="Imagem da câmera ADP">
+    </div>
   </div>
 </div>
