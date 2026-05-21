@@ -39,7 +39,9 @@
     <div class="form-row">
       <div class="col-md-4">
         <label>Configuração Global ADP</label>
-        <select class="form-control form-control-sm" name="integrador_config_id" data-adp="integrador-config-id">
+        <input type="hidden" name="integrador_config_id" data-adp="integrador-config-id-hidden" value="{{ old('integrador_config_id', $balanca->integrador_config_id ?? '') }}">
+        <input type="hidden" name="backend_server_address" data-adp="backend-server-address" value="{{ old('backend_server_address', $balanca->backend_server_address ?? '') }}">
+        <select class="form-control form-control-sm" data-adp="integrador-config-id">
           <option value="">Selecione...</option>
         </select>
         <small class="text-muted" data-adp="config-token-mask"></small>

@@ -148,9 +148,21 @@
     return Array.from(select && select.selectedOptions ? select.selectedOptions : []).map(function (o) { return o.value; }).filter(Boolean);
   }
 
-  function getConfigId(scope) {
+  function getVisibleConfigId(scope) {
     var i = q(scope, 'integrador-config-id');
     return i ? String(i.value || '').trim() : '';
+  }
+
+  function getHiddenConfigId(scope) {
+    var i = q(scope, 'integrador-config-id-hidden');
+    return i ? String(i.value || '').trim() : '';
+  }
+
+  function getConfigId(scope) {
+    // O select é apenas a interface visual. O hidden é o campo submetido ao Laravel.
+    // Durante edição, se o select ainda não foi carregado via AJAX, o hidden mantém
+    // o ADP já vinculado à balança e impede voltar para o primeiro cadastro.
+    return getVisibleConfigId(scope) || getHiddenConfigId(scope);
   }
 
   function selectedConfigDataset(scope) {
@@ -158,6 +170,22 @@
     if (!select) return null;
     var selected = select.options[select.selectedIndex];
     return selected && selected.dataset ? selected.dataset : null;
+  }
+
+  function syncSelectedConfigBindings(scope) {
+    var select = q(scope, 'integrador-config-id');
+    var hidden = q(scope, 'integrador-config-id-hidden');
+    var hiddenBase = q(scope, 'backend-server-address');
+    var selected = select ? select.options[select.selectedIndex] : null;
+    var selectedValue = select ? String(select.value || '').trim() : '';
+
+    if (hidden) {
+      hidden.value = selectedValue || getHiddenConfigId(scope);
+    }
+
+    if (hiddenBase) {
+      hiddenBase.value = selected && selected.dataset ? (selected.dataset.baseUrl || '') : '';
+    }
   }
 
   function currentBaseUrl(scope) {
@@ -199,6 +227,7 @@
     if (baseUrl) baseUrl.value = selected.dataset.baseUrl || '';
     if (tokenType) tokenType.value = selected.dataset.tokenType || 'x_adp_api_token';
 
+    syncSelectedConfigBindings(scope);
     updateConfigHint(scope);
   }
 
@@ -227,6 +256,7 @@
 
     if (selectIt) {
       select.value = value;
+      syncSelectedConfigBindings(scope);
     }
 
     updateConfigHint(scope);
@@ -461,11 +491,15 @@
         if (!res.success) throw new Error('Falha ao carregar configurações ADP');
         var select = q(scope, 'integrador-config-id');
         if (!select) return;
-        var defaultId = scope.dataset.defaultIntegradorConfigId || '';
+        var defaultId = String(scope.dataset.defaultIntegradorConfigId || getHiddenConfigId(scope) || '').trim();
         select.innerHTML = '<option value="">Selecione...</option>';
         (res.configs || []).forEach(function (cfg) {
           upsertConfigOption(scope, cfg, String(cfg.id) === String(defaultId));
         });
+        if (defaultId && !select.value) {
+          select.value = defaultId;
+        }
+        syncSelectedConfigBindings(scope);
         updateConfigHint(scope);
         fillConfigEditorFromSelect(scope);
       })
@@ -528,6 +562,10 @@
   function novaConfigAdp(scope) {
     var select = q(scope, 'integrador-config-id');
     if (select) select.value = '';
+    var hidden = q(scope, 'integrador-config-id-hidden');
+    if (hidden) hidden.value = '';
+    var hiddenBase = q(scope, 'backend-server-address');
+    if (hiddenBase) hiddenBase.value = '';
     ['cfg-descricao', 'cfg-base-url', 'cfg-global-token'].forEach(function (key) {
       var el = q(scope, key);
       if (el) el.value = '';
@@ -659,11 +697,22 @@
       });
 
       cameraSelect && cameraSelect.addEventListener('change', function(){ syncDerivedFields(scope); });
-      configSelect && configSelect.addEventListener('change', function(){ fillConfigEditorFromSelect(scope); });
+      configSelect && configSelect.addEventListener('change', function(){
+        syncSelectedConfigBindings(scope);
+        fillConfigEditorFromSelect(scope);
+      });
       baseUrlInput && baseUrlInput.addEventListener('input', function(){ updateConfigHint(scope); });
       btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
       btnNovaCfg && btnNovaCfg.addEventListener('click', function(){ novaConfigAdp(scope); });
       btnExcluirCfg && btnExcluirCfg.addEventListener('click', function(){ excluirConfigAdp(scope); });
+
+      var ownerForm = scope.closest('form');
+      if (ownerForm) {
+        ownerForm.addEventListener('submit', function () {
+          syncSelectedConfigBindings(scope);
+        });
+      }
+
       loadConfigs(scope);
     });
   });
