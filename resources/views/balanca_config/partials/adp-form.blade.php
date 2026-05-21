@@ -1,5 +1,16 @@
+@php
+    $isEditingBalanca = isset($balanca) && $balanca;
+    $selectedIntegradorConfigId = $isEditingBalanca
+        ? (string) ($balanca->integrador_config_id ?? '')
+        : (string) old('integrador_config_id', '');
+    $selectedBackendAddress = $isEditingBalanca
+        ? (string) ($balanca->backend_server_address ?? '')
+        : (string) old('backend_server_address', '');
+    $serverAdpConfigs = isset($adpConfigs) ? $adpConfigs : collect();
+@endphp
 <div class="card mt-2 adp-cadastro-guided"
-     data-default-integrador-config-id="{{ old('integrador_config_id', $balanca->integrador_config_id ?? '') }}"
+     data-default-integrador-config-id="{{ $selectedIntegradorConfigId }}"
+     data-server-integrador-config-id="{{ $selectedIntegradorConfigId }}"
      data-default-scale-uuid="{{ old('adp_scale_uuid', $balanca->adp_scale_uuid ?? '') }}"
      data-default-camera-uuids="{{ old('adp_camera_uuids', $balanca->adp_camera_uuids ?? '') }}">
   <div class="card-header py-1" style="font-size:14px;">Integração ADP (fluxo guiado)</div>
@@ -39,10 +50,26 @@
     <div class="form-row">
       <div class="col-md-4">
         <label>Configuração Global ADP</label>
-        <input type="hidden" name="integrador_config_id" data-adp="integrador-config-id-hidden" value="{{ old('integrador_config_id', $balanca->integrador_config_id ?? '') }}">
-        <input type="hidden" name="backend_server_address" data-adp="backend-server-address" value="{{ old('backend_server_address', $balanca->backend_server_address ?? '') }}">
+        <input type="hidden" name="integrador_config_id" data-adp="integrador-config-id-hidden" value="{{ $selectedIntegradorConfigId }}">
+        <input type="hidden" name="backend_server_address" data-adp="backend-server-address" value="{{ $selectedBackendAddress }}">
         <select class="form-control form-control-sm" data-adp="integrador-config-id">
           <option value="">Selecione...</option>
+          @foreach($serverAdpConfigs as $cfg)
+              @php
+                  $cfgId = (string) ($cfg->id ?? '');
+                  $isSelectedCfg = $cfgId !== '' && $cfgId === $selectedIntegradorConfigId;
+              @endphp
+              <option value="{{ $cfgId }}"
+                      data-token-masked="{{ $cfg->global_token_masked ?? '' }}"
+                      data-base-url="{{ $cfg->base_url ?? '' }}"
+                      data-descricao="{{ $cfg->descricao ?? '' }}"
+                      data-token-type="{{ $cfg->global_token_type ?? 'x_adp_api_token' }}"
+                      data-token-header="{{ $cfg->global_token_header ?? 'X-ADP-API-TOKEN' }}"
+                      data-timeout-ms="{{ $cfg->timeout_ms ?? 5000 }}"
+                      {{ $isSelectedCfg ? 'selected' : '' }}>
+                  #{{ $cfgId }} - {{ $cfg->descricao ?: ($cfg->base_url ?: 'Configuração ADP') }}
+              </option>
+          @endforeach
         </select>
         <small class="text-muted" data-adp="config-token-mask"></small>
       </div>
@@ -110,5 +137,3 @@
     </div>
   </div>
 </div>
-
-<script src="{{ asset('js/adp-device-discovery.js') }}"></script>
