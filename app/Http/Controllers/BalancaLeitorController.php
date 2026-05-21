@@ -8,9 +8,23 @@ use Illuminate\Http\Request;
 
 class BalancaLeitorController extends BaseController
 {
+    protected $redirectPage = '/balancas/balanca';
+    protected $formTitle = 'Leitor de Balança ADP';
+    protected $resource = 'balanca_leitor';
+
     public function __construct(private BalancaLeitorService $service)
     {
         parent::__construct();
+    }
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
     }
 
     public function index()

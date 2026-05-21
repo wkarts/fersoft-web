@@ -3261,6 +3261,27 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     //     Route::get('/', 'SiteViewController@list')->name('site.view.list');
     // });
 
+
+    Route::group(['prefix' => '/otica'], function(){
+        Route::get('/', 'OticaController@list')->name('otica.index');
+        Route::get('/list', 'OticaController@list')->name('otica.list');
+        Route::post('/list', 'OticaController@list');
+        Route::get('/new', 'OticaController@register')->name('otica.create');
+        Route::post('/save', 'OticaController@save')->name('otica.store');
+        Route::get('/edit/{id}', 'OticaController@register')->name('otica.edit');
+        Route::post('/update/{id}', 'OticaController@update')->name('otica.update');
+        Route::put('/update/{id}', 'OticaController@update');
+        Route::get('/delete/{id}', 'OticaController@delete')->name('otica.destroy');
+        Route::delete('/delete/{id}', 'OticaController@destroy');
+        Route::get('/buscar-clientes', 'OticaController@buscarClientes')->name('otica.buscarClientes');
+        Route::get('/buscar-produtos', 'OticaController@buscarProdutos')->name('otica.buscarProdutos');
+        Route::post('/cliente-rapido', 'OticaController@clienteRapido')->name('otica.clienteRapido');
+        Route::post('/alterar-status', 'OticaController@alterarStatus')->name('otica.alterarStatus');
+        Route::get('/faturar/{id}', 'OticaController@faturar')->name('otica.faturar');
+        Route::get('/imprimir-os/{id}', 'OticaController@imprimirOS')->name('otica.imprimirOS');
+        Route::get('/imprimir-recibo/{id}', 'OticaController@imprimirRecibo')->name('otica.imprimirRecibo');
+    });
+
 });
 
 Route::group(['prefix' => 'loja', 'middleware' => 'validaEcommerce'], function(){
