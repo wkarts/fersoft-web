@@ -187,38 +187,46 @@
   }
 
   function selectedConfigDataset(scope) {
-    var select = q(scope, 'integrador-config-id');
-    if (!select) return null;
-    var selected = select.options[select.selectedIndex];
+    var selected = currentSelectedOption(scope);
     return selected && selected.dataset ? selected.dataset : null;
   }
 
-  function syncSelectedConfigBindings(scope) {
+  function optionByValue(select, value) {
+    if (!select || value === undefined || value === null || String(value) === '') return null;
+    value = String(value);
+    return Array.from(select.options || []).find(function (opt) {
+      return String(opt.value || '') === value;
+    }) || null;
+  }
+
+  function currentSelectedOption(scope) {
+    var select = q(scope, 'integrador-config-id');
+    if (!select) return null;
+    return optionByValue(select, select.value) || select.options[select.selectedIndex] || null;
+  }
+
+  function syncSelectedConfigBindings(scope, forcedId) {
     var select = q(scope, 'integrador-config-id');
     var hidden = q(scope, 'integrador-config-id-hidden');
     var hiddenBase = q(scope, 'backend-server-address');
-    var preferredId = getPreferredConfigId(scope);
+    var preferredId = String(forcedId || getPreferredConfigId(scope) || '').trim();
 
-    if (select && preferredId && String(select.value || '') !== String(preferredId)) {
-      var exists = Array.from(select.options || []).some(function (opt) {
-        return String(opt.value || '') === String(preferredId);
-      });
-      if (exists) {
+    if (select && preferredId) {
+      var preferredOption = optionByValue(select, preferredId);
+      if (preferredOption) {
         select.value = preferredId;
       }
     }
 
-    var selected = select ? select.options[select.selectedIndex] : null;
+    var selected = currentSelectedOption(scope);
     var selectedValue = select ? String(select.value || '').trim() : '';
 
-    if (hidden && selectedValue) {
-      hidden.value = selectedValue;
-    } else if (hidden && preferredId && !hidden.value) {
-      hidden.value = preferredId;
+    if (hidden) {
+      hidden.value = selectedValue || preferredId || '';
     }
 
-    if (hiddenBase && selected && selected.dataset && selected.dataset.baseUrl) {
-      hiddenBase.value = selected.dataset.baseUrl || '';
+    if (hiddenBase && selected && selected.dataset) {
+      hiddenBase.value = String(selected.dataset.baseUrl || '').trim();
     }
   }
 
@@ -248,10 +256,7 @@
   }
 
   function fillConfigEditorFromSelect(scope) {
-    var select = q(scope, 'integrador-config-id');
-    if (!select) return;
-
-    var selected = select.options[select.selectedIndex];
+    var selected = currentSelectedOption(scope);
     if (!selected || !selected.value || !selected.dataset) return;
 
     var descricao = q(scope, 'cfg-descricao');
@@ -262,7 +267,7 @@
     if (baseUrl) baseUrl.value = selected.dataset.baseUrl || '';
     if (tokenType) tokenType.value = selected.dataset.tokenType || 'x_adp_api_token';
 
-    syncSelectedConfigBindings(scope);
+    syncSelectedConfigBindings(scope, selected.value);
     updateConfigHint(scope);
   }
 
@@ -527,24 +532,21 @@
         var select = q(scope, 'integrador-config-id');
         if (!select) return;
 
-        var selectedBeforeReload = getPreferredConfigId(scope);
+        var selectedBeforeReload = userChangedConfig(scope)
+          ? getVisibleConfigId(scope)
+          : (getServerBoundConfigId(scope) || getHiddenConfigId(scope) || getVisibleConfigId(scope));
+
         select.innerHTML = '<option value="">Selecione...</option>';
 
         (res.configs || []).forEach(function (cfg) {
           upsertConfigOption(scope, cfg, false);
         });
 
-        var preferredId = selectedBeforeReload || getPreferredConfigId(scope);
-        if (preferredId) {
-          var exists = Array.from(select.options || []).some(function (opt) {
-            return String(opt.value || '') === String(preferredId);
-          });
-          if (exists) {
-            select.value = String(preferredId);
-          }
+        if (selectedBeforeReload && optionByValue(select, selectedBeforeReload)) {
+          select.value = String(selectedBeforeReload);
         }
 
-        syncSelectedConfigBindings(scope);
+        syncSelectedConfigBindings(scope, selectedBeforeReload);
         updateConfigHint(scope);
         fillConfigEditorFromSelect(scope);
       })
@@ -559,7 +561,7 @@
     var baseUrl = (q(scope, 'cfg-base-url') || {}).value || '';
     var tokenType = (q(scope, 'cfg-token-type') || {}).value || 'x_adp_api_token';
     var token = (q(scope, 'cfg-global-token') || {}).value || '';
-    var selectedId = getConfigId(scope);
+    var selectedId = getVisibleConfigId(scope) || getConfigId(scope);
 
     if (!descricao || !baseUrl) {
       return updateLog(scope, 'Informe descrição e base URL para salvar configuração ADP.');
@@ -721,6 +723,24 @@
     });
   }
 
+
+  function disableLegacySections(form) {
+    if (!form) return;
+    form.querySelectorAll('.js-legacy-section input, .js-legacy-section select, .js-legacy-section textarea').forEach(function (el) {
+      el.disabled = true;
+      el.removeAttribute('required');
+    });
+  }
+
+  function ensureSubmitBindings(scope) {
+    var select = q(scope, 'integrador-config-id');
+    if (select && select.value) {
+      syncSelectedConfigBindings(scope, select.value);
+    } else {
+      syncSelectedConfigBindings(scope);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.adp-cadastro-guided').forEach(function (scope) {
       if (scope.dataset.adpDiscoveryInitialized === '1') return;
@@ -758,11 +778,15 @@
 
       var ownerForm = scope.closest('form');
       if (ownerForm) {
+        disableLegacySections(ownerForm);
         ownerForm.addEventListener('submit', function () {
-          syncSelectedConfigBindings(scope);
+          disableLegacySections(ownerForm);
+          ensureSubmitBindings(scope);
         });
       }
 
+      syncSelectedConfigBindings(scope);
+      fillConfigEditorFromSelect(scope);
       loadConfigs(scope);
     });
   });
