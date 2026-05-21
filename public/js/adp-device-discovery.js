@@ -310,9 +310,12 @@
       .then(function (res) {
         if (!res.success) return res;
         res.config = res.config || {};
-        if (tokenTyped) res.config.global_token = tokenTyped;
-        if (baseUrlTyped) res.config.base_url = baseUrlTyped;
-        if (tokenTypeTyped) res.config.global_token_type = tokenTypeTyped;
+
+        // Quando há configuração selecionada, o ID é a fonte da verdade.
+        // Não misturar token de uma configuração com Base URL digitada de outra.
+        if (tokenTyped) {
+          res.config.global_token = tokenTyped;
+        }
         return res;
       });
   }

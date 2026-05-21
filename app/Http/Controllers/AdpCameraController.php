@@ -182,7 +182,11 @@ class AdpCameraController extends BaseController
                 $camera->update($payload);
             } else {
                 $camera = AdpCamera::updateOrCreate(
-                    ['empresa_id' => $this->empresa_id, 'camera_uuid' => $payload['camera_uuid']],
+                    [
+                        'empresa_id' => $this->empresa_id,
+                        'integrador_config_id' => $payload['integrador_config_id'],
+                        'camera_uuid' => $payload['camera_uuid'],
+                    ],
                     $payload
                 );
             }
@@ -299,7 +303,11 @@ class AdpCameraController extends BaseController
             }
 
             AdpCamera::updateOrCreate(
-                ['empresa_id' => $this->empresa_id, 'camera_uuid' => $device->device_uuid],
+                [
+                    'empresa_id' => $this->empresa_id,
+                    'integrador_config_id' => $device->integrador_config_id,
+                    'camera_uuid' => $device->device_uuid,
+                ],
                 [
                     'integrador_config_id' => $device->integrador_config_id,
                     'descricao' => $device->name ?: $device->device_uuid,

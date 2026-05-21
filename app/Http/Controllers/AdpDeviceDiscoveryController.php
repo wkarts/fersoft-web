@@ -324,43 +324,43 @@ class AdpDeviceDiscoveryController extends BaseController
         $baseUrl = rtrim((string) ($request->get('base_url') ?: $request->get('backend_server_address') ?: ''), '/');
 
         /*
-         * Importante para a migração ADP Full:
-         * algumas balanças antigas ficaram com integrador_config_id apontando para
-         * configuração inativada/antiga, enquanto a Base URL continuou válida.
-         * O runtime não deve quebrar com ModelNotFound; deve tentar reparar por Base URL
-         * ou pela única configuração ativa da empresa.
+         * Regra ADP Full:
+         * quando o ID da configuração é informado, usar exatamente esse ADP
+         * e esse token. Não trocar por outro ADP por Base URL ou por ordem de cadastro.
          */
         if ($configId > 0) {
-            $config = AdpIntegradorConfig::withTrashed()
-                ->where('empresa_id', $this->empresa_id)
+            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
                 ->where('id', $configId)
                 ->first();
 
-            if ($config) {
-                return $config;
+            if (!$config) {
+                abort(422, 'Configuração ADP não encontrada ou inativa para esta empresa. Atualize o vínculo da balança/câmera.');
             }
+
+            if ($baseUrl !== '' && rtrim((string) $config->base_url, '/') !== $baseUrl) {
+                abort(422, 'A Base URL informada não pertence à configuração ADP selecionada.');
+            }
+
+            return $config;
         }
 
         if ($baseUrl !== '') {
-            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            $matches = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
                 ->where('ativo', true)
                 ->get()
-                ->first(function (AdpIntegradorConfig $item) use ($baseUrl) {
+                ->filter(function (AdpIntegradorConfig $item) use ($baseUrl) {
                     return rtrim((string) $item->base_url, '/') === $baseUrl;
-                });
+                })
+                ->values();
 
-            if ($config) {
-                return $config;
+            if ($matches->count() === 1) {
+                return $matches->first();
             }
-        }
 
-        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
-            ->where('ativo', true)
-            ->orderBy('id')
-            ->get();
-
-        if ($configs->count() === 1) {
-            return $configs->first();
+            if ($matches->count() > 1) {
+                abort(422, 'Há mais de uma configuração ADP com a mesma Base URL. Selecione a configuração pelo ID para usar o token correto.');
+            }
         }
 
         abort(422, 'Informe ou selecione uma configuração ADP válida.');
@@ -455,6 +455,7 @@ class AdpDeviceDiscoveryController extends BaseController
             AdpDevice::updateOrCreate(
                 [
                     'empresa_id' => $this->empresa_id,
+                    'integrador_config_id' => $config->id,
                     'device_uuid' => $deviceUuid,
                 ],
                 [
@@ -489,6 +490,7 @@ class AdpDeviceDiscoveryController extends BaseController
                 AdpCamera::updateOrCreate(
                     [
                         'empresa_id' => $this->empresa_id,
+                        'integrador_config_id' => $config->id,
                         'camera_uuid' => $deviceUuid,
                     ],
                     [
