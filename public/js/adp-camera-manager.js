@@ -21,6 +21,47 @@
     }
   }
 
+  function setCameraPreview(id, src) {
+    const img = document.querySelector('[data-camera-preview="' + id + '"]');
+    const empty = document.querySelector('[data-camera-preview-empty="' + id + '"]');
+
+    if (!img) {
+      return false;
+    }
+
+    if (!src) {
+      if (empty) {
+        empty.textContent = 'Imagem indisponível';
+        empty.style.display = '';
+      }
+      img.removeAttribute('src');
+      img.classList.remove('adp-camera-preview-loaded');
+      img.style.display = 'none';
+      return false;
+    }
+
+    img.onload = function () {
+      img.classList.add('adp-camera-preview-loaded');
+      img.style.display = 'block';
+      if (empty) empty.style.display = 'none';
+    };
+
+    img.onerror = function () {
+      img.classList.remove('adp-camera-preview-loaded');
+      img.style.display = 'none';
+      if (empty) {
+        empty.textContent = 'Imagem indisponível';
+        empty.style.display = '';
+      }
+    };
+
+    img.src = src;
+    img.classList.add('adp-camera-preview-loaded');
+    img.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    return true;
+  }
+
   function imageFromSnapshot(response) {
     if (window.AdpRuntimeClient && typeof window.AdpRuntimeClient.imageSrcFromSnapshotResponse === 'function') {
       return window.AdpRuntimeClient.imageSrcFromSnapshotResponse(response);
@@ -285,6 +326,9 @@
       let src = '';
       if (window.AdpRuntimeClient && typeof window.AdpRuntimeClient.snapshotCamera === 'function') {
         res = await window.AdpRuntimeClient.snapshotCamera(cfg, cameraUuid);
+        if (res && res.success === false) {
+          throw new Error(res.message || 'Falha ao capturar snapshot.');
+        }
         src = res.image_data_url || res.image_src || res.image_url || '';
       } else {
         res = await requestCamera(row, '/snapshot', 'POST', { return_base64: true, include_base64: true, return_data_url: true });
@@ -295,14 +339,7 @@
         src = await resolveSnapshotPreview(res.response || res);
       }
 
-      if (src && img) {
-        img.onload = function () { if (empty) empty.style.display = 'none'; };
-        img.onerror = function () { if (empty) { empty.textContent = 'Imagem indisponível'; empty.style.display = ''; } };
-        img.src = src;
-        img.style.display = 'block';
-        img.classList.add('adp-camera-preview-loaded');
-        if (empty) empty.style.display = 'none';
-      } else if (empty) {
+      if (!setCameraPreview(id, src) && empty) {
         empty.textContent = 'Snapshot sem imagem';
         empty.style.display = '';
       }
