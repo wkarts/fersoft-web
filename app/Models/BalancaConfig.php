@@ -38,6 +38,7 @@ class BalancaConfig extends BaseModel
         'token',
         'backend_server_address',
         'integrador',
+        'integrador_config_id',
         'driver',
         'porta_serial',
         'baud_rate',
@@ -69,6 +70,15 @@ class BalancaConfig extends BaseModel
         'snapshot_baixa_visibilidade' => 'boolean',
         'exigir_peso_estavel' => 'boolean',
     ];
+
+
+    /**
+     * Configuração ADP vinculada diretamente à balança.
+     */
+    public function adpIntegradorConfig(): BelongsTo
+    {
+        return $this->belongsTo(AdpIntegradorConfig::class, 'integrador_config_id');
+    }
 
     /**
      * Relacionamento com a empresa.
