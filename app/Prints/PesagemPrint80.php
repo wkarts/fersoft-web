@@ -4,6 +4,8 @@ namespace App\Prints;
 
 use App\Models\ConfigNota;
 use App\Models\Pesagem;
+use App\Models\PesagemTicketImagem;
+use App\Services\Pesagem\PesagemTicketImagemService;
 use NFePHP\DA\Legacy\Pdf;
 use NFePHP\DA\Legacy\Common;
 use Com\Tecnick\Barcode\Barcode;
@@ -18,6 +20,7 @@ class PesagemPrint80 extends Common
     protected $fontePadrao = 'Arial';
     protected $logomarca = '';
     protected $alturaBase = 80; // Altura mínima do PDF
+    protected array $tempImageFiles = [];
 
     public function __construct(Pesagem $pesagem)
     {
@@ -62,6 +65,138 @@ class PesagemPrint80 extends Common
         return $value;
     }
 
+
+
+    /**
+     * Indica se as imagens das câmeras devem sair nos tickets 80mm.
+     */
+    protected function deveImprimirImagens80mm(): bool
+    {
+        return (bool) ($this->config->pesagem_imprimir_imagens_80mm ?? true);
+    }
+
+    /**
+     * Carrega as imagens persistidas do ticket, sem usar relacionamento para evitar SELECT *.
+     */
+    protected function imagensTicket80mm($ticket, int $limite = 2)
+    {
+        if (!$this->deveImprimirImagens80mm() || empty($ticket->id)) {
+            return collect();
+        }
+
+        try {
+            return PesagemTicketImagem::query()
+                ->where('ticket_pesagem_id', $ticket->id)
+                ->where('ativo', true)
+                ->whereNull('deleted_at')
+                ->orderBy('id')
+                ->limit($limite)
+                ->get([
+                    'id', 'empresa_id', 'pesagem_id', 'ticket_pesagem_id', 'camera_uuid',
+                    'camera_descricao', 'arquivo_path', 'arquivo_url', 'mime_type',
+                    'metadata_json', 'storage_disk', 'storage_base_path', 'ativo', 'deleted_at'
+                ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Falha ao carregar imagens do ticket para impressão 80mm.', [
+                'ticket_id' => $ticket->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+            return collect();
+        }
+    }
+
+    protected function contarImagens80mm(int $limitePorTicket = 2): int
+    {
+        if (!$this->deveImprimirImagens80mm()) {
+            return 0;
+        }
+
+        $total = 0;
+        foreach ($this->pesagem->tickets ?? [] as $ticket) {
+            $total += $this->imagensTicket80mm($ticket, $limitePorTicket)->count();
+        }
+        return $total;
+    }
+
+    protected function imagemTicketParaArquivoTemporario(PesagemTicketImagem $imagem): ?string
+    {
+        try {
+            $src = app(PesagemTicketImagemService::class)->imagemSrcParaRelatorio($imagem, true);
+            if (!$src) {
+                return null;
+            }
+
+            if (preg_match('~^data:image/[^;]+;base64,(.+)$~', $src, $match)) {
+                $binario = base64_decode($match[1], true);
+                if ($binario === false || $binario === '') {
+                    return null;
+                }
+
+                $ext = str_contains((string) $imagem->mime_type, 'png') ? 'png' : 'jpg';
+                $tmp = sys_get_temp_dir() . '/pesagem_ticket_img_' . uniqid('', true) . '.' . $ext;
+                file_put_contents($tmp, $binario);
+                $this->tempImageFiles[] = $tmp;
+                return $tmp;
+            }
+
+            if (is_file($src)) {
+                return $src;
+            }
+
+            if (($imagem->storage_disk ?: 'public_path') === 'public_path' && $imagem->arquivo_path) {
+                $local = public_path(ltrim($imagem->arquivo_path, '/'));
+                return is_file($local) ? $local : null;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Falha ao preparar imagem do ticket para impressão 80mm.', [
+                'imagem_id' => $imagem->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return null;
+    }
+
+    protected function imprimirImagensTicket80mm($ticket, int $limite = 2): void
+    {
+        $imagens = $this->imagensTicket80mm($ticket, $limite);
+        if ($imagens->isEmpty()) {
+            return;
+        }
+
+        $this->pdf->Ln(2);
+        $this->pdf->SetFont('Arial', 'B', 7);
+        $this->pdf->Cell(0, 4, mb_convert_encoding('Imagem(ns) da pesagem - Ticket #' . $ticket->id, 'ISO-8859-1', 'UTF-8'), 0, 1, 'L');
+
+        foreach ($imagens as $imagem) {
+            $path = $this->imagemTicketParaArquivoTemporario($imagem);
+            if (!$path) {
+                continue;
+            }
+
+            $x = 6;
+            $w = 68;
+            $h = 38;
+            $y = $this->pdf->GetY();
+            $this->pdf->Image($path, $x, $y, $w, $h);
+            $this->pdf->Ln($h + 1);
+
+            $caption = $imagem->camera_descricao ?: $imagem->camera_uuid ?: 'Câmera';
+            $this->pdf->SetFont('Arial', '', 6);
+            $this->pdf->Cell(0, 3, mb_convert_encoding((string) $caption, 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
+            $this->pdf->Ln(1);
+        }
+    }
+
+    protected function limparImagensTemporarias(): void
+    {
+        foreach ($this->tempImageFiles as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
+        $this->tempImageFiles = [];
+    }
 
     private function moedaBr(float $valor): string
     {
@@ -124,6 +259,7 @@ class PesagemPrint80 extends Common
         }
 
         $altura += $exibirValoresTicket ? 56 : 40; // cálculos gerais
+        $altura += ($this->contarImagens80mm(2) * 45); // imagens das câmeras no 80mm completo
         $altura += 50; // carimbo e assinatura
 
         return max($altura, $this->alturaBase);
@@ -429,6 +565,8 @@ class PesagemPrint80 extends Common
 
                     $this->pdf->Cell(76, 4, mb_convert_encoding('  Valor Unitário: ' . $this->moedaBr($valorUnitarioTicket) . '  |  Valor Total: ' . $this->moedaBr($valorTotalTicket), 'ISO-8859-1', 'UTF-8'), 1, 1);
                 }
+
+                $this->imprimirImagensTicket80mm($ticket, 2);
             }
         }
 
@@ -485,6 +623,8 @@ class PesagemPrint80 extends Common
      */
     public function render()
     {
-        return $this->pdf->getPdf();
+        $pdf = $this->pdf->getPdf();
+        $this->limparImagensTemporarias();
+        return $pdf;
     }
 }

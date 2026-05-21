@@ -131,6 +131,12 @@ class BalancaConfigController extends BaseController
     {
         $configId = (int) $request->input('integrador_config_id', 0);
 
+        /*
+         * Regra ADP Full:
+         * cada balança deve ficar vinculada exatamente ao ADP selecionado.
+         * Não usar primeira configuração, última configuração ou fallback automático
+         * quando houver vários servidores ADP cadastrados no tenant.
+         */
         if ($configId > 0) {
             return AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
                 ->where('ativo', true)
@@ -141,24 +147,18 @@ class BalancaConfigController extends BaseController
         $baseUrl = rtrim((string) $request->input('backend_server_address', ''), '/');
 
         if ($baseUrl !== '') {
-            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
                 ->where('ativo', true)
                 ->get()
-                ->first(function ($item) use ($baseUrl) {
+                ->filter(function ($item) use ($baseUrl) {
                     return rtrim((string) $item->base_url, '/') === $baseUrl;
-                });
+                })
+                ->values();
 
-            if ($config) {
-                return $config;
-            }
+            return $configs->count() === 1 ? $configs->first() : null;
         }
 
-        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
-            ->where('ativo', true)
-            ->orderBy('id')
-            ->get();
-
-        return $configs->count() === 1 ? $configs->first() : null;
+        return null;
     }
 
     /**
@@ -187,8 +187,8 @@ class BalancaConfigController extends BaseController
         $resolvedAdpConfig = $this->resolveAdpConfigForRequest($request);
         if ($resolvedAdpConfig) {
             $request->merge([
-                'integrador_config_id' => $request->input('integrador_config_id') ?: $resolvedAdpConfig->id,
-                'backend_server_address' => $request->input('backend_server_address') ?: rtrim((string) $resolvedAdpConfig->base_url, '/'),
+                'integrador_config_id' => $resolvedAdpConfig->id,
+                'backend_server_address' => rtrim((string) $resolvedAdpConfig->base_url, '/'),
             ]);
         }
 
@@ -274,9 +274,7 @@ class BalancaConfigController extends BaseController
                 return;
             }
 
-            $defaultConfig = $configs->count() === 1 ? $configs->first() : null;
-
-            $activeConfigIds = $configs->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $configsById = $configs->keyBy('id');
 
             $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
                 ->where('integrador', 'adp')
@@ -285,42 +283,43 @@ class BalancaConfigController extends BaseController
             foreach ($balancas as $balanca) {
                 $currentConfigId = (int) ($balanca->integrador_config_id ?? 0);
                 $baseUrl = rtrim((string) ($balanca->backend_server_address ?? ''), '/');
+                $config = $currentConfigId > 0 ? $configsById->get($currentConfigId) : null;
 
-                $needsRepair = $currentConfigId <= 0
-                    || !in_array($currentConfigId, $activeConfigIds, true)
-                    || $baseUrl === '';
-
-                if (!$needsRepair) {
+                /*
+                 * Se o ID está válido, ele é a fonte da verdade. Apenas corrige a URL
+                 * gravada na balança para espelhar a configuração vinculada.
+                 */
+                if ($config) {
+                    $configBase = rtrim((string) $config->base_url, '/');
+                    if ($baseUrl !== $configBase) {
+                        $balanca->forceFill(['backend_server_address' => $configBase])->save();
+                    }
                     continue;
                 }
 
-                $config = null;
-
-                if ($baseUrl !== '') {
-                    $config = $configs->first(function ($item) use ($baseUrl) {
-                        return rtrim((string) $item->base_url, '/') === $baseUrl;
-                    });
-                }
-
-                if (!$config && $defaultConfig) {
-                    $config = $defaultConfig;
-                }
-
-                if (!$config) {
+                /*
+                 * Se o ID está ausente/inválido, só religa automaticamente quando a
+                 * Base URL da balança aponta para exatamente uma configuração ativa.
+                 * Se houver mais de uma configuração com a mesma URL, não é seguro
+                 * escolher token/ADP automaticamente.
+                 */
+                if ($baseUrl === '') {
                     continue;
                 }
 
-                $updates = [];
-                if ($currentConfigId !== (int) $config->id) {
-                    $updates['integrador_config_id'] = $config->id;
-                }
-                if ($baseUrl === '' || $baseUrl !== rtrim((string) $config->base_url, '/')) {
-                    $updates['backend_server_address'] = rtrim((string) $config->base_url, '/');
+                $matches = $configs->filter(function ($item) use ($baseUrl) {
+                    return rtrim((string) $item->base_url, '/') === $baseUrl;
+                })->values();
+
+                if ($matches->count() !== 1) {
+                    continue;
                 }
 
-                if (!empty($updates)) {
-                    $balanca->forceFill($updates)->save();
-                }
+                $matched = $matches->first();
+                $balanca->forceFill([
+                    'integrador_config_id' => $matched->id,
+                    'backend_server_address' => rtrim((string) $matched->base_url, '/'),
+                ])->save();
             }
         } catch (\Throwable $e) {
             \Log::warning('Falha ao reparar vínculos ADP de balanças', [

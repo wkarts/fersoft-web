@@ -5,6 +5,7 @@
     $emitente = $configEmitente ?? \App\Models\ConfigNota::configStatic();
     $primeiraPesagem = $dadosRelatorio[0]['pesagem'] ?? null;
     $logoBase64 = null;
+    $qrPesagemBase64 = null;
     $logoPath = null;
     if (!empty($emitente->logo)) {
         $logoPath = public_path('logos/' . $emitente->logo);
@@ -15,14 +16,43 @@
     if ($logoPath && is_file($logoPath)) {
         $logoBase64 = 'data:image/png;base64,' . base64_encode(function_exists('safe_file_get_contents') ? safe_file_get_contents($logoPath) : file_get_contents($logoPath));
     }
+
+    if ($primeiraPesagem) {
+        $qrUrl = url('/getTicket/withToken/relPrn80mm/' . ($primeiraPesagem->token ?? ''));
+        try {
+            if (class_exists(\SimpleSoftwareIO\QrCode\Facades\QrCode::class)) {
+                $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+                    ->size(92)
+                    ->margin(1)
+                    ->generate($qrUrl);
+                $qrPesagemBase64 = 'data:image/svg+xml;base64,' . base64_encode((string) $qrSvg);
+            } elseif (class_exists(\BaconQrCode\Writer::class)) {
+                $renderer = new \BaconQrCode\Renderer\ImageRenderer(
+                    new \BaconQrCode\Renderer\RendererStyle\RendererStyle(92),
+                    new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
+                );
+                $writer = new \BaconQrCode\Writer($renderer);
+                $qrSvg = $writer->writeString($qrUrl);
+                $qrPesagemBase64 = 'data:image/svg+xml;base64,' . base64_encode((string) $qrSvg);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Falha ao gerar QR Code da pesagem no relatório A4.', [
+                'pesagem_id' => $primeiraPesagem->id ?? null,
+                'message' => $e->getMessage(),
+            ]);
+            $qrPesagemBase64 = null;
+        }
+    }
 @endphp
 
 <style>
     body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #111827; }
     .rp-header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 14px; }
     .rp-header-table { width: 100%; border-collapse: collapse; }
-    .rp-logo-cell { width: 90px; vertical-align: top; }
+    .rp-logo-cell { width: 90px; vertical-align: top; text-align: center; }
     .rp-logo { max-width: 78px; max-height: 60px; object-fit: contain; }
+    .rp-qr { width: 74px; height: 74px; object-fit: contain; border: 1px solid #d1d5db; padding: 3px; border-radius: 4px; }
+    .rp-qr-caption { font-size: 7px; color: #4b5563; margin-top: 2px; text-align: center; }
     .rp-title { font-size: 20px; font-weight: 700; color: #1f2937; margin: 0 0 4px; }
     .rp-subtitle { font-size: 11px; color: #6b7280; margin: 0; }
     .rp-token { text-align: right; font-size: 10px; color: #374151; vertical-align: top; }
@@ -52,7 +82,12 @@
     <table class="rp-header-table">
         <tr>
             <td class="rp-logo-cell">
-                @if($logoBase64)<img class="rp-logo" src="{{ $logoBase64 }}" alt="Logo">@endif
+                @if($qrPesagemBase64)
+                    <img class="rp-qr" src="{{ $qrPesagemBase64 }}" alt="QR Code da Pesagem">
+                    <div class="rp-qr-caption">QR Code da pesagem</div>
+                @elseif($logoBase64)
+                    <img class="rp-logo" src="{{ $logoBase64 }}" alt="Logo">
+                @endif
             </td>
             <td>
                 <h1 class="rp-title">Relatório de Pesagem</h1>
