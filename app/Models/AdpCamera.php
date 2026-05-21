@@ -27,6 +27,7 @@ class AdpCamera extends BaseModel
         'supports_stream',
         'supports_snapshot',
         'status',
+        'camera_access_mode',
         'ultimo_status_em',
         'ativo',
         'metadata_json',

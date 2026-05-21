@@ -8,6 +8,9 @@ use App\Models\Pesagem;
 use App\Models\Produto;
 use App\Models\ConfigNota;
 use App\Models\BalancaConfig;
+use App\Services\Pesagem\PesagemTicketImagemService;
+use App\Services\Pesagem\PesagemTicketNotificacaoService;
+use Illuminate\Support\Facades\Schema;
 
 class TicketPesagemController extends BaseController
 {
@@ -75,11 +78,26 @@ class TicketPesagemController extends BaseController
             $data['camera_snapshot_at'] = $request->filled('camera_snapshots_json') ? now() : null;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
+
+            // Compatibilidade: algumas bases ainda não possuem esta coluna.
+            // A fonte oficial das imagens é a tabela pesagem_ticket_imagens.
+            $possuiColunaImagensPersistidas = Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json');
+            if ($possuiColunaImagensPersistidas && $request->filled('imagens_persistidas_json')) {
+                $data['imagens_persistidas_json'] = $request->input('imagens_persistidas_json');
+            }
+
             $taraInformada = $request->input('tara', $request->input('peso_bag', 0));
             $permiteEditarPesoBag = (bool) ($config->desbloquear_campo_peso_bag_ticket ?? false);
             $data['peso_bag'] = $permiteEditarPesoBag
                 ? max(0, (float) $request->input('peso_bag', 0))
                 : 0;
+
+            if ($config && (bool) ($config->pesagem_auto_concluir_ticket ?? false)) {
+                $data['status'] = 'concluído';
+                if (empty($data['fim'])) {
+                    $data['fim'] = now()->format('Y-m-d H:i:s');
+                }
+            }
 
             if ($config && $config->bloquear_pesagem_manual_balanca) {
                 $validacao = $this->validarPesagemSomenteBalanca($request);
@@ -140,6 +158,12 @@ class TicketPesagemController extends BaseController
             if ($request->filled('id')) {
                 // 🔹 Atualização do ticket
                 $ticket = TicketPesagem::findOrFail($request->id);
+
+                if ($config && (bool) ($config->pesagem_bloquear_edicao_ticket_concluido ?? false) && $ticket->status === 'concluído') {
+                    return response()->json([
+                        'error' => 'Este ticket já está concluído e não pode ser editado conforme a configuração da empresa.'
+                    ], 422);
+                }
                 $dadosAnteriores = $ticket->toArray(); // Captura os dados antes da alteração
                 $ticket->update($data);
                 $mensagem = 'Ticket atualizado!';
@@ -159,6 +183,44 @@ class TicketPesagemController extends BaseController
                 $mensagem = 'Ticket criado com sucesso!';
             }
 
+
+            // Persistência física das imagens capturadas pelas câmeras ADP.
+            // A imagem vem do navegador como data:image/base64 e o Laravel salva em public/S3/MinIO.
+            $imagensPersistidas = [];
+            if ($request->filled('camera_snapshots_json')) {
+                try {
+                    $imagensPersistidas = app(PesagemTicketImagemService::class)
+                        ->persistirDoTicket($ticket->fresh(), $request->input('camera_snapshots_json'));
+
+                    if (Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json')) {
+                        $ticket->imagens_persistidas_json = $imagensPersistidas;
+                    }
+                    $ticket->camera_snapshot_at = now();
+                    $ticket->save();
+                } catch (\Throwable $e) {
+                    \Log::error('Erro ao persistir imagens do ticket de pesagem', [
+                        'ticket_id' => $ticket->id,
+                        'pesagem_id' => $ticket->pesagem_id,
+                        'empresa_id' => $this->empresa_id,
+                        'exception' => $e->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'error' => 'O ticket foi processado, mas não foi possível salvar as imagens da pesagem: ' . $e->getMessage(),
+                    ], 500);
+                }
+            }
+
+            $ticket = $ticket->fresh();
+
+            if ($config && $ticket && $ticket->status === 'concluído') {
+                $statusAnterior = is_array($dadosAnteriores) ? ($dadosAnteriores['status'] ?? null) : null;
+                $temNovaColetaCamera = $request->filled('camera_snapshots_json');
+                if ($acao === 'create' || $statusAnterior !== 'concluído' || $temNovaColetaCamera) {
+                    app(PesagemTicketNotificacaoService::class)->notificarConclusao($ticket, $config);
+                }
+            }
+
             // 🔹 Obtém a instância correta da model TicketPesagem
             $modelInstance = is_string(TicketPesagem::class) ? app(TicketPesagem::class) : TicketPesagem::class;
 
@@ -167,10 +229,14 @@ class TicketPesagemController extends BaseController
                 'registro_id' => $registroId,
                 'dados_antes' => $dadosAnteriores,
                 'dados_depois' => $ticket->toArray(),
+                'imagens_persistidas' => $imagensPersistidas,
             ]);
 
             // Retorna como JSON para atualização dinâmica
-            return response()->json(['success' => $mensagem], 200);
+            return response()->json([
+                'success' => $mensagem,
+                'imagens_persistidas' => $imagensPersistidas,
+            ], 200);
         } catch (\Exception $e) {
             \Log::error('Erro ao salvar ticket', [
                 'usuario_id' => $this->usuario_id,
@@ -230,6 +296,36 @@ class TicketPesagemController extends BaseController
             return 'Evidência da balança sem peso válido. Refaça a leitura.';
         }
 
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        if ($config && (bool) ($config->pesagem_exigir_imagem_quando_balanca_tem_camera ?? false)) {
+            $balanca = BalancaConfig::where('empresa_id', $this->empresa_id)->find($balancaSelecionadaId);
+            $cameraUuids = json_decode((string) ($balanca->adp_camera_uuids ?? '[]'), true) ?: [];
+            if (!empty($cameraUuids)) {
+                $snapshots = json_decode((string) $request->input('camera_snapshots_json'), true) ?: [];
+                $comImagem = collect($snapshots)->contains(function ($snapshot) {
+                    return (bool) data_get($snapshot, 'success') && (
+                        data_get($snapshot, 'image_data_url') ||
+                        data_get($snapshot, 'data_url') ||
+                        data_get($snapshot, 'image_base64') ||
+                        data_get($snapshot, 'base64') ||
+                        data_get($snapshot, 'response.image_base64') ||
+                        data_get($snapshot, 'response.base64') ||
+                        data_get($snapshot, 'response.data.image_base64') ||
+                        data_get($snapshot, 'response.result.image_base64') ||
+                        data_get($snapshot, 'response.image_url') ||
+                        data_get($snapshot, 'response.snapshot_url') ||
+                        data_get($snapshot, 'response.snapshot.file_path') ||
+                        data_get($snapshot, 'snapshot.file_path') ||
+                        data_get($snapshot, 'file_path')
+                    );
+                });
+
+                if (!$comImagem) {
+                    return 'A balança possui câmera vinculada. Capture ao menos uma imagem válida antes de salvar o ticket.';
+                }
+            }
+        }
+
         return true;
     }
 
@@ -272,8 +368,12 @@ class TicketPesagemController extends BaseController
             $dadosAnteriores = $ticket->toArray();
             $registroId = $ticket->id;
 
+
             // 🔹 Obtém a instância correta da model TicketPesagem
             $modelInstance = is_string(TicketPesagem::class) ? app(TicketPesagem::class) : TicketPesagem::class;
+
+            // 🔹 Exclui imagens físicas e registros vinculados ao ticket antes da exclusão.
+            app(PesagemTicketImagemService::class)->excluirDoTicket($ticket, true);
 
             // 🔹 Exclui o ticket
             $ticket->delete();

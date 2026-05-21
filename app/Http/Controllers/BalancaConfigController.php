@@ -127,6 +127,40 @@ class BalancaConfigController extends BaseController
         ]);
     }
 
+    private function resolveAdpConfigForRequest(Request $request): ?AdpIntegradorConfig
+    {
+        $configId = (int) $request->input('integrador_config_id', 0);
+
+        if ($configId > 0) {
+            return AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->where('id', $configId)
+                ->first();
+        }
+
+        $baseUrl = rtrim((string) $request->input('backend_server_address', ''), '/');
+
+        if ($baseUrl !== '') {
+            $config = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+                ->where('ativo', true)
+                ->get()
+                ->first(function ($item) use ($baseUrl) {
+                    return rtrim((string) $item->base_url, '/') === $baseUrl;
+                });
+
+            if ($config) {
+                return $config;
+            }
+        }
+
+        $configs = AdpIntegradorConfig::where('empresa_id', $this->empresa_id)
+            ->where('ativo', true)
+            ->orderBy('id')
+            ->get();
+
+        return $configs->count() === 1 ? $configs->first() : null;
+    }
+
     /**
      * Salva ou atualiza uma balança.
      */
@@ -149,6 +183,14 @@ class BalancaConfigController extends BaseController
         }
 
         $request->merge($mergeData);
+
+        $resolvedAdpConfig = $this->resolveAdpConfigForRequest($request);
+        if ($resolvedAdpConfig) {
+            $request->merge([
+                'integrador_config_id' => $request->input('integrador_config_id') ?: $resolvedAdpConfig->id,
+                'backend_server_address' => $request->input('backend_server_address') ?: rtrim((string) $resolvedAdpConfig->base_url, '/'),
+            ]);
+        }
 
         $validatedData = $request->validate($this->rules($id), $this->messages());
         $validatedData['empresa_id'] = $this->empresa_id;
@@ -234,19 +276,25 @@ class BalancaConfigController extends BaseController
 
             $defaultConfig = $configs->count() === 1 ? $configs->first() : null;
 
+            $activeConfigIds = $configs->pluck('id')->map(fn ($id) => (int) $id)->all();
+
             $balancas = BalancaConfig::where('empresa_id', $this->empresa_id)
                 ->where('integrador', 'adp')
-                ->where(function ($query) {
-                    $query->whereNull('integrador_config_id')
-                        ->orWhere('integrador_config_id', 0)
-                        ->orWhereNull('backend_server_address')
-                        ->orWhere('backend_server_address', '');
-                })
                 ->get();
 
             foreach ($balancas as $balanca) {
-                $config = null;
+                $currentConfigId = (int) ($balanca->integrador_config_id ?? 0);
                 $baseUrl = rtrim((string) ($balanca->backend_server_address ?? ''), '/');
+
+                $needsRepair = $currentConfigId <= 0
+                    || !in_array($currentConfigId, $activeConfigIds, true)
+                    || $baseUrl === '';
+
+                if (!$needsRepair) {
+                    continue;
+                }
+
+                $config = null;
 
                 if ($baseUrl !== '') {
                     $config = $configs->first(function ($item) use ($baseUrl) {
@@ -263,10 +311,10 @@ class BalancaConfigController extends BaseController
                 }
 
                 $updates = [];
-                if (empty($balanca->integrador_config_id)) {
+                if ($currentConfigId !== (int) $config->id) {
                     $updates['integrador_config_id'] = $config->id;
                 }
-                if (empty($balanca->backend_server_address)) {
+                if ($baseUrl === '' || $baseUrl !== rtrim((string) $config->base_url, '/')) {
                     $updates['backend_server_address'] = rtrim((string) $config->base_url, '/');
                 }
 

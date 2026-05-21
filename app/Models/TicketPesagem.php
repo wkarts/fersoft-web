@@ -32,6 +32,7 @@ class TicketPesagem extends BaseModel
         'balanca_evidence_json',
         'camera_snapshots_json',
         'camera_snapshot_at',
+        'imagens_persistidas_json',
         'tipo',
         'status',
         'inicio',
@@ -43,6 +44,8 @@ class TicketPesagem extends BaseModel
     protected $casts = [
         'inicio' => 'datetime',
         'fim'    => 'datetime',
+        'camera_snapshot_at' => 'datetime',
+        'imagens_persistidas_json' => 'array',
     ];
 
     // Relacionamentos
@@ -78,6 +81,11 @@ class TicketPesagem extends BaseModel
     public function produto()
     {
         return $this->belongsTo(Produto::class, 'produto_id');
+    }
+
+    public function imagens()
+    {
+        return $this->hasMany(PesagemTicketImagem::class, 'ticket_pesagem_id');
     }
 
     // Mutator para formatar o status

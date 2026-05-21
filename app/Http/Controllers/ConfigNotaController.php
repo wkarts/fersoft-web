@@ -138,6 +138,27 @@ class ConfigNotaController extends Controller
 			'desbloquear_campo_peso_bag_ticket' => $request->boolean('desbloquear_campo_peso_bag_ticket'),
 			'conectar_automaticamente_balanca_padrao_usuario' => $request->boolean('conectar_automaticamente_balanca_padrao_usuario'),
 			'conectar_automaticamente_balanca_ao_selecionar' => $request->boolean('conectar_automaticamente_balanca_ao_selecionar'),
+            'pesagem_habilitar_preview_cameras' => $request->boolean('pesagem_habilitar_preview_cameras'),
+            'pesagem_exigir_imagem_quando_balanca_tem_camera' => $request->boolean('pesagem_exigir_imagem_quando_balanca_tem_camera'),
+            'pesagem_auto_concluir_ticket' => $request->boolean('pesagem_auto_concluir_ticket'),
+            'pesagem_bloquear_edicao_ticket_concluido' => $request->boolean('pesagem_bloquear_edicao_ticket_concluido'),
+            'pesagem_imprimir_imagens_a4' => $request->boolean('pesagem_imprimir_imagens_a4'),
+            'pesagem_imprimir_imagens_80mm' => $request->boolean('pesagem_imprimir_imagens_80mm'),
+            'pesagem_enviar_email_ao_concluir' => $request->boolean('pesagem_enviar_email_ao_concluir'),
+            'pesagem_enviar_whatsapp_ao_concluir' => $request->boolean('pesagem_enviar_whatsapp_ao_concluir'),
+            'pesagem_enviar_imagens_notificacao' => $request->boolean('pesagem_enviar_imagens_notificacao'),
+		]);
+
+
+		$request->merge([
+			'pesagem_email_destinos_json' => $this->normalizarDestinosPesagem($request->input('pesagem_email_destinos', $request->pesagem_email_destino ?? ''), true),
+			'pesagem_whatsapp_destinos_json' => $this->normalizarDestinosPesagem($request->input('pesagem_whatsapp_destinos', $request->pesagem_whatsapp_destino ?? ''), false),
+            // O storage local/sistema é técnico e não fica exposto ao usuário final.
+            // Se o tenant não configurar storage próprio, usa o storage padrão da aplicação/env.
+			'pesagem_snapshot_disk' => env('PESAGEM_SNAPSHOT_DISK', 'public_path'),
+			'pesagem_snapshot_base_path' => trim((string) env('PESAGEM_SNAPSHOT_BASE_PATH', 'pesagem_ticket_imagens'), '/'),
+            'pesagem_storage_provider' => $this->normalizarProviderStoragePesagem($request->input('pesagem_storage_provider', 'system')),
+            'pesagem_storage_config_json' => $this->normalizarConfigStoragePesagem($request),
 		]);
 
 		if ((int) $request->id > 0) {
@@ -278,6 +299,23 @@ class ConfigNotaController extends Controller
 				'desbloquear_campo_peso_bag_ticket' => $request->desbloquear_campo_peso_bag_ticket,
 				'conectar_automaticamente_balanca_padrao_usuario' => $request->conectar_automaticamente_balanca_padrao_usuario,
 				'conectar_automaticamente_balanca_ao_selecionar' => $request->conectar_automaticamente_balanca_ao_selecionar,
+                'pesagem_habilitar_preview_cameras' => $request->pesagem_habilitar_preview_cameras,
+                'pesagem_exigir_imagem_quando_balanca_tem_camera' => $request->pesagem_exigir_imagem_quando_balanca_tem_camera,
+                'pesagem_auto_concluir_ticket' => $request->pesagem_auto_concluir_ticket,
+                'pesagem_bloquear_edicao_ticket_concluido' => $request->pesagem_bloquear_edicao_ticket_concluido,
+                'pesagem_imprimir_imagens_a4' => $request->pesagem_imprimir_imagens_a4,
+                'pesagem_imprimir_imagens_80mm' => $request->pesagem_imprimir_imagens_80mm,
+                'pesagem_email_destino' => $request->pesagem_email_destino ?? '',
+                'pesagem_email_destinos_json' => $request->pesagem_email_destinos_json,
+                'pesagem_whatsapp_destino' => $request->pesagem_whatsapp_destino ?? '',
+                'pesagem_whatsapp_destinos_json' => $request->pesagem_whatsapp_destinos_json,
+                'pesagem_snapshot_disk' => $request->pesagem_snapshot_disk,
+                'pesagem_snapshot_base_path' => $request->pesagem_snapshot_base_path,
+                'pesagem_storage_provider' => $request->pesagem_storage_provider,
+                'pesagem_storage_config_json' => $request->pesagem_storage_config_json,
+                'pesagem_enviar_email_ao_concluir' => $request->pesagem_enviar_email_ao_concluir,
+                'pesagem_enviar_whatsapp_ao_concluir' => $request->pesagem_enviar_whatsapp_ao_concluir,
+                'pesagem_enviar_imagens_notificacao' => $request->pesagem_enviar_imagens_notificacao,
 				'permitir_estoque_negativo' => $request->permitir_estoque_negativo, // ADICIONE ESTA LINHA
 			]);
 		}else{
@@ -363,6 +401,23 @@ class ConfigNotaController extends Controller
 			$config->desbloquear_campo_peso_bag_ticket = $request->desbloquear_campo_peso_bag_ticket;
 			$config->conectar_automaticamente_balanca_padrao_usuario = $request->conectar_automaticamente_balanca_padrao_usuario;
 			$config->conectar_automaticamente_balanca_ao_selecionar = $request->conectar_automaticamente_balanca_ao_selecionar;
+            $config->pesagem_habilitar_preview_cameras = $request->pesagem_habilitar_preview_cameras;
+            $config->pesagem_exigir_imagem_quando_balanca_tem_camera = $request->pesagem_exigir_imagem_quando_balanca_tem_camera;
+            $config->pesagem_auto_concluir_ticket = $request->pesagem_auto_concluir_ticket;
+            $config->pesagem_bloquear_edicao_ticket_concluido = $request->pesagem_bloquear_edicao_ticket_concluido;
+            $config->pesagem_imprimir_imagens_a4 = $request->pesagem_imprimir_imagens_a4;
+            $config->pesagem_imprimir_imagens_80mm = $request->pesagem_imprimir_imagens_80mm;
+            $config->pesagem_email_destino = $request->pesagem_email_destino ?? '';
+            $config->pesagem_email_destinos_json = $request->pesagem_email_destinos_json;
+            $config->pesagem_whatsapp_destino = $request->pesagem_whatsapp_destino ?? '';
+            $config->pesagem_whatsapp_destinos_json = $request->pesagem_whatsapp_destinos_json;
+            $config->pesagem_snapshot_disk = $request->pesagem_snapshot_disk;
+            $config->pesagem_snapshot_base_path = $request->pesagem_snapshot_base_path;
+            $config->pesagem_storage_provider = $request->pesagem_storage_provider;
+            $config->pesagem_storage_config_json = $request->pesagem_storage_config_json;
+            $config->pesagem_enviar_email_ao_concluir = $request->pesagem_enviar_email_ao_concluir;
+            $config->pesagem_enviar_whatsapp_ao_concluir = $request->pesagem_enviar_whatsapp_ao_concluir;
+            $config->pesagem_enviar_imagens_notificacao = $request->pesagem_enviar_imagens_notificacao;
 			$config->permitir_estoque_negativo = $request->permitir_estoque_negativo; // ADICIONE ESTA LINHA
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';
@@ -392,6 +447,110 @@ class ConfigNotaController extends Controller
 	}
 
 
+
+
+
+    private function normalizarProviderStoragePesagem(?string $provider): string
+    {
+        $provider = strtolower(trim((string) $provider));
+        return in_array($provider, ['system', 's3', 'minio', 'dropbox', 'onedrive', 'google_drive'], true) ? $provider : 'system';
+    }
+
+    private function normalizarConfigStoragePesagem(Request $request): ?array
+    {
+        $provider = $this->normalizarProviderStoragePesagem($request->input('pesagem_storage_provider', 'system'));
+
+        if ($provider === 'system') {
+            return null;
+        }
+
+        $basePath = trim(str_replace('\\', '/', (string) $request->input('pesagem_storage_base_path', 'pesagem_ticket_imagens')), '/');
+        if ($basePath === '') {
+            $basePath = 'pesagem_ticket_imagens';
+        }
+
+        $config = [
+            'provider' => $provider,
+            'base_path' => $basePath,
+        ];
+
+        if (in_array($provider, ['s3', 'minio'], true)) {
+            $config += [
+                'bucket' => trim((string) $request->input('pesagem_storage_bucket')),
+                'region' => trim((string) $request->input('pesagem_storage_region', 'us-east-1')) ?: 'us-east-1',
+                'endpoint' => trim((string) $request->input('pesagem_storage_endpoint')) ?: null,
+                'url' => trim((string) $request->input('pesagem_storage_url')) ?: null,
+                'access_key' => trim((string) $request->input('pesagem_storage_access_key')),
+                'secret_key' => trim((string) $request->input('pesagem_storage_secret_key')),
+                'use_path_style_endpoint' => $request->boolean('pesagem_storage_use_path_style_endpoint'),
+            ];
+        }
+
+        if ($provider === 'dropbox') {
+            $config += [
+                'access_token' => trim((string) $request->input('pesagem_storage_access_token')),
+                'folder' => trim((string) $request->input('pesagem_storage_folder', $basePath)) ?: $basePath,
+            ];
+        }
+
+        if ($provider === 'onedrive') {
+            $config += [
+                'access_token' => trim((string) $request->input('pesagem_storage_access_token')),
+                'drive_id' => trim((string) $request->input('pesagem_storage_drive_id')) ?: null,
+                'folder' => trim((string) $request->input('pesagem_storage_folder', $basePath)) ?: $basePath,
+            ];
+        }
+
+        if ($provider === 'google_drive') {
+            $config += [
+                'access_token' => trim((string) $request->input('pesagem_storage_access_token')),
+                'folder_id' => trim((string) $request->input('pesagem_storage_folder_id')) ?: null,
+                'folder' => trim((string) $request->input('pesagem_storage_folder', $basePath)) ?: $basePath,
+                'make_public' => $request->boolean('pesagem_storage_make_public'),
+            ];
+        }
+
+        return $config;
+    }
+
+	private function normalizarDestinosPesagem($value, bool $email): array
+	{
+		if (is_array($value)) {
+			$items = $value;
+		} else {
+			$items = preg_split('/[\r\n,;]+/', (string) $value);
+		}
+
+		$resultado = [];
+		foreach ($items as $item) {
+			if (is_array($item)) {
+				$item = $item['value'] ?? $item['email'] ?? $item['whatsapp'] ?? $item['numero'] ?? '';
+			}
+
+			$item = trim((string) $item);
+			if ($item === '') {
+				continue;
+			}
+
+			if ($email) {
+				if (filter_var($item, FILTER_VALIDATE_EMAIL)) {
+					$resultado[] = $item;
+				}
+				continue;
+			}
+
+			$item = preg_replace('/[^0-9]/', '', $item);
+			if ($item === '') {
+				continue;
+			}
+			if (!str_starts_with($item, '55')) {
+				$item = '55' . $item;
+			}
+			$resultado[] = $item;
+		}
+
+		return array_values(array_unique($resultado));
+	}
 
 	private function validarAtivacaoBalancaPadrao(Request $request)
 	{

@@ -2959,11 +2959,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
 
 
+    Route::get('/adp', 'AdpDeviceDiscoveryController@index')->name('adp.index');
+
+    Route::get('/adp/cameras_parametros', 'AdpCameraController@parametros')->name('adp.cameras.parametros');
+
     Route::group(['prefix' => 'adp/cameras'], function () {
         Route::get('/', 'AdpCameraController@list')->name('adp.cameras.list');
+        Route::get('/parametros', 'AdpCameraController@parametros')->name('adp.cameras.parametros.inner');
         Route::post('/save/{id?}', 'AdpCameraController@save')->name('adp.cameras.save');
         Route::delete('/delete/{id}', 'AdpCameraController@delete')->name('adp.cameras.delete');
         Route::post('/import-from-devices', 'AdpCameraController@importFromDevices')->name('adp.cameras.importFromDevices');
+        Route::post('/snapshot-preview', 'AdpCameraController@snapshotPreview')->name('adp.cameras.snapshotPreview');
     });
 
     Route::group(['prefix' => 'adp/discovery'], function () {

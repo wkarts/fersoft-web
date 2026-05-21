@@ -152,7 +152,7 @@
                             <tr class="datatable-row">
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->id }}</td>
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->descricao }}</td>
-                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">Config #{{ $balanca->integrador_config_id }}<br><small>{{ $balanca->adp_scale_uuid }}</small></td>
+                                <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->integrador_config_id ? 'Config #' . $balanca->integrador_config_id : 'Config pendente' }}<br><small>{{ $balanca->adp_scale_uuid }}</small></td>
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">{{ $balanca->backend_server_address ?: '-' }}</td>
                                 <td class="datatable-cell" style="white-space: nowrap; font-size: 12px;">
                                     <span class="badge {{ ($balanca->quantidade_cameras ?? 0) > 0 ? 'badge-info' : 'badge-secondary' }}">{{ (int) ($balanca->quantidade_cameras ?? 0) }} câmera(s)</span><br>
@@ -168,6 +168,7 @@
                                         data-integrador="{{ $balanca->integrador ?? 'legacy' }}"
                                         data-integrador-config-id="{{ $balanca->integrador_config_id ?? '' }}"
                                         data-adp-scale-uuid="{{ $balanca->adp_scale_uuid ?? '' }}"
+                                        data-adp-camera-uuids='{{ $balanca->adp_camera_uuids ?? "[]" }}'
                                         style="width: 25px; height: 25px;">
                                      </span>
                                 </td>
