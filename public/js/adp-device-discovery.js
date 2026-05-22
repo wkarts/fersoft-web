@@ -741,53 +741,112 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.adp-cadastro-guided').forEach(function (scope) {
-      if (scope.dataset.adpDiscoveryInitialized === '1') return;
-      scope.dataset.adpDiscoveryInitialized = '1';
-      var btnTestar = q(scope, 'btn-testar');
-      var btnBuscar = q(scope, 'btn-buscar');
-      var btnSync = q(scope, 'btn-sync');
-      var scaleSelect = q(scope, 'scale-select');
-      var cameraSelect = q(scope, 'camera-select');
-      var configSelect = q(scope, 'integrador-config-id');
-      var btnSalvarCfg = q(scope, 'btn-salvar-config');
-      var btnNovaCfg = q(scope, 'btn-nova-config');
-      var btnExcluirCfg = q(scope, 'btn-excluir-config');
-      var baseUrlInput = q(scope, 'cfg-base-url');
+  function initAdpDiscoveryScope(scope) {
+    if (!scope || scope.dataset.adpDiscoveryInitialized === '1') return;
 
-      btnTestar && btnTestar.addEventListener('click', function () { testAdp(scope); });
-      btnBuscar && btnBuscar.addEventListener('click', function(){ loadDevices(scope); });
-      btnSync && btnSync.addEventListener('click', function () { syncDevices(scope); });
+    scope.dataset.adpDiscoveryInitialized = '1';
 
-      scaleSelect && scaleSelect.addEventListener('change', function () {
-        var scaleUuidInput = q(scope, 'scale-uuid');
-        if (scaleUuidInput) scaleUuidInput.value = scaleSelect.value;
-      });
+    var btnTestar = q(scope, 'btn-testar');
+    var btnBuscar = q(scope, 'btn-buscar');
+    var btnSync = q(scope, 'btn-sync');
+    var scaleSelect = q(scope, 'scale-select');
+    var cameraSelect = q(scope, 'camera-select');
+    var configSelect = q(scope, 'integrador-config-id');
+    var btnSalvarCfg = q(scope, 'btn-salvar-config');
+    var btnNovaCfg = q(scope, 'btn-nova-config');
+    var btnExcluirCfg = q(scope, 'btn-excluir-config');
+    var baseUrlInput = q(scope, 'cfg-base-url');
 
-      cameraSelect && cameraSelect.addEventListener('change', function(){ syncDerivedFields(scope); });
-      configSelect && configSelect.addEventListener('change', function(){
-        markUserChangedConfig(scope);
-        syncSelectedConfigBindings(scope);
-        fillConfigEditorFromSelect(scope);
-      });
-      baseUrlInput && baseUrlInput.addEventListener('input', function(){ updateConfigHint(scope); });
-      btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
-      btnNovaCfg && btnNovaCfg.addEventListener('click', function(){ novaConfigAdp(scope); });
-      btnExcluirCfg && btnExcluirCfg.addEventListener('click', function(){ excluirConfigAdp(scope); });
+    btnTestar && btnTestar.addEventListener('click', function () { testAdp(scope); });
+    btnBuscar && btnBuscar.addEventListener('click', function(){ loadDevices(scope); });
+    btnSync && btnSync.addEventListener('click', function () { syncDevices(scope); });
 
-      var ownerForm = scope.closest('form');
-      if (ownerForm) {
-        disableLegacySections(ownerForm);
-        ownerForm.addEventListener('submit', function () {
-          disableLegacySections(ownerForm);
-          ensureSubmitBindings(scope);
-        });
-      }
-
-      syncSelectedConfigBindings(scope);
-      fillConfigEditorFromSelect(scope);
-      loadConfigs(scope);
+    scaleSelect && scaleSelect.addEventListener('change', function () {
+      var scaleUuidInput = q(scope, 'scale-uuid');
+      if (scaleUuidInput) scaleUuidInput.value = scaleSelect.value;
     });
+
+    cameraSelect && cameraSelect.addEventListener('change', function(){ syncDerivedFields(scope); });
+    configSelect && configSelect.addEventListener('change', function(){
+      markUserChangedConfig(scope);
+      syncSelectedConfigBindings(scope, configSelect.value);
+      fillConfigEditorFromSelect(scope);
+      updateLog(scope, 'Configuração ADP selecionada: #' + (configSelect.value || ''));
+    });
+
+    baseUrlInput && baseUrlInput.addEventListener('input', function(){ updateConfigHint(scope); });
+    btnSalvarCfg && btnSalvarCfg.addEventListener('click', function(){ salvarConfigAdp(scope); });
+    btnNovaCfg && btnNovaCfg.addEventListener('click', function(){ novaConfigAdp(scope); });
+    btnExcluirCfg && btnExcluirCfg.addEventListener('click', function(){ excluirConfigAdp(scope); });
+
+    var ownerForm = scope.closest('form');
+    if (ownerForm && ownerForm.dataset.adpDiscoverySubmitBound !== '1') {
+      ownerForm.dataset.adpDiscoverySubmitBound = '1';
+      disableLegacySections(ownerForm);
+      ownerForm.addEventListener('submit', function () {
+        disableLegacySections(ownerForm);
+        ownerForm.querySelectorAll('.adp-cadastro-guided').forEach(function (formScope) {
+          ensureSubmitBindings(formScope);
+        });
+      });
+    }
+
+    syncSelectedConfigBindings(scope);
+    fillConfigEditorFromSelect(scope);
+    loadConfigs(scope);
+  }
+
+  function scanAdpDiscoveryScopes(root) {
+    root = root || document;
+
+    if (root.matches && root.matches('.adp-cadastro-guided')) {
+      initAdpDiscoveryScope(root);
+    }
+
+    if (root.querySelectorAll) {
+      root.querySelectorAll('.adp-cadastro-guided').forEach(function (scope) {
+        initAdpDiscoveryScope(scope);
+      });
+    }
+  }
+
+  window.initAdpDeviceDiscovery = scanAdpDiscoveryScopes;
+
+  document.addEventListener('DOMContentLoaded', function () {
+    scanAdpDiscoveryScopes(document);
   });
+
+  document.addEventListener('shown.bs.modal', function (event) {
+    scanAdpDiscoveryScopes(event.target || document);
+  });
+
+  if (window.jQuery) {
+    window.jQuery(document).on('shown.bs.modal', function (event) {
+      scanAdpDiscoveryScopes(event.target || document);
+    });
+
+    window.jQuery(document).ajaxComplete(function () {
+      scanAdpDiscoveryScopes(document);
+    });
+  }
+
+  if (window.MutationObserver) {
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        Array.from(mutation.addedNodes || []).forEach(function (node) {
+          if (node && node.nodeType === 1) {
+            scanAdpDiscoveryScopes(node);
+          }
+        });
+      });
+    });
+
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    } else {
+      document.addEventListener('DOMContentLoaded', function () {
+        observer.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+  }
 })();
