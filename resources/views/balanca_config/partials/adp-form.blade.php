@@ -46,9 +46,9 @@
         </div>
       </div>
       <div class="mt-2">
-        <button type="button" class="btn btn-sm btn-dark" data-adp="btn-salvar-config">Salvar/Atualizar configuração ADP</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary ml-1" data-adp="btn-nova-config">Nova configuração</button>
-        <button type="button" class="btn btn-sm btn-outline-danger ml-1" data-adp="btn-excluir-config">Excluir/Inativar</button>
+        <button type="button" class="btn btn-sm btn-dark" data-adp="btn-salvar-config" data-adp-action="salvar-config">Salvar/Atualizar configuração ADP</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ml-1" data-adp="btn-nova-config" data-adp-action="nova-config">Nova configuração</button>
+        <button type="button" class="btn btn-sm btn-outline-danger ml-1" data-adp="btn-excluir-config" data-adp-action="excluir-config">Excluir/Inativar</button>
       </div>
     </div>
 
@@ -57,7 +57,7 @@
         <label>Configuração Global ADP</label>
         <input type="hidden" name="adp_integrador_config_id_hidden" data-adp="integrador-config-id-hidden" value="{{ $selectedIntegradorConfigId }}">
         <input type="hidden" name="backend_server_address" data-adp="backend-server-address" value="{{ $selectedBackendAddress }}">
-        <select class="form-control form-control-sm" name="integrador_config_id" data-adp="integrador-config-id" required>
+        <select class="form-control form-control-sm" name="integrador_config_id" data-adp="integrador-config-id" data-current-value="{{ $selectedIntegradorConfigId }}" required>
           <option value="">Selecione...</option>
           @foreach($serverAdpConfigs as $cfg)
               @php
@@ -79,9 +79,9 @@
         <small class="text-muted" data-adp="config-token-mask"></small>
       </div>
       <div class="col-md-8 d-flex align-items-end">
-        <button type="button" class="btn btn-outline-primary btn-sm mr-2" data-adp="btn-testar">Testar conexão</button>
-        <button type="button" class="btn btn-primary btn-sm mr-2" data-adp="btn-buscar">Buscar dispositivos</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-adp="btn-sync">Sincronizar dispositivos</button>
+        <button type="button" class="btn btn-outline-primary btn-sm mr-2" data-adp="btn-testar" data-adp-action="testar-conexao">Testar conexão</button>
+        <button type="button" class="btn btn-primary btn-sm mr-2" data-adp="btn-buscar" data-adp-action="buscar-dispositivos">Buscar dispositivos</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-adp="btn-sync" data-adp-action="sincronizar-dispositivos">Sincronizar dispositivos</button>
       </div>
     </div>
 
