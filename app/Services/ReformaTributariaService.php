@@ -186,23 +186,7 @@ class ReformaTributariaService
             return false;
         }
 
-        // 1) Sinalização explícita no banco tem prioridade.
-        $enabled = $this->readRtEnableFlag($empresaId);
-        if ($enabled === true) {
-            return true;
-        }
-        if ($enabled === false) {
-            return false;
-        }
-
-        // 2) Fallback operacional: se os campos da RT já estiverem parametrizados,
-        // considera habilitado para não zerar cálculo nem XML por regra excessiva.
-        $hasRtFields = $this->hasRtFieldsFilled($empresaId);
-        if ($hasRtFields) {
-            return true;
-        }
-
-        // 3) Compatibilidade com a regra ambiente/regime.
+        // Regra fiscal oficial: decisão exclusivamente por ambiente/regime.
         $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
         $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
@@ -214,8 +198,7 @@ class ReformaTributariaService
             return true;
         }
 
-        // 4) Último fallback por ENV, preservando versões anteriores.
-        return (int) env('REFORMA_TRIBUTARIA', 0) === 1;
+        return false;
     }
 
     // ---------------------------------------------------------------------
