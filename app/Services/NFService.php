@@ -81,6 +81,33 @@ class NFService{
 		return '90';
 	}
 
+
+	private function normalizeCsosn(?string $csosn, int $vendaId, int $itemId): string
+	{
+		$csosn = trim((string)$csosn);
+		$valid = ['101', '102', '103', '201', '202', '203', '300', '400', '500', '900'];
+
+		if (in_array($csosn, $valid, true)) {
+			return $csosn;
+		}
+
+		if ($csosn === '00') {
+			Log::warning('NF-e: CST 00 informado para emissor do Simples. Aplicado fallback CSOSN 102.', [
+				'venda_id' => $vendaId,
+				'item' => $itemId,
+				'origem' => $csosn,
+			]);
+			return '102';
+		}
+
+		Log::warning('NF-e: CSOSN inválido para emissor do Simples. Aplicado fallback CSOSN 102 para evitar falha na geração do XML.', [
+			'venda_id' => $vendaId,
+			'item' => $itemId,
+			'origem' => $csosn,
+		]);
+
+		return '102';
+	}
 	private function normalizeTwoDigitCst($cst): string
 	{
 		$cst = preg_replace('/\D+/', '', (string)$cst);
@@ -1246,6 +1273,8 @@ class NFService{
 							$stdICMS->CSOSN = $i->produto->CST_CSOSN_EXP;
 						}
 					}
+
+					$stdICMS->CSOSN = $this->normalizeCsosn($stdICMS->CSOSN ?? null, (int)$venda->id, (int)$itemCont);
 
 					if($i->produto->CST_CSOSN == '500'){
 						$stdICMS->vBCSTRet = 0.00;
