@@ -179,6 +179,34 @@ class ReformaTributariaService
      * 2 = MEI
      */
 
+
+    private function getRegimesAplicacaoEmProducao(): array
+    {
+        $raw = env('REFORMA_TRIBUTARIA_REGIMES_PRODUCAO', '1');
+
+        $vals = is_array($raw) ? $raw : explode(',', (string)$raw);
+        $regimes = [];
+
+        foreach ($vals as $v) {
+            $v = trim((string)$v);
+            if ($v === '') {
+                continue;
+            }
+            if (is_numeric($v)) {
+                $regimes[] = (int)$v;
+                continue;
+            }
+
+            $n = $this->normalizeRegime($v);
+            if ($n !== null) {
+                $regimes[] = $n;
+            }
+        }
+
+        $regimes = array_values(array_unique($regimes));
+
+        return empty($regimes) ? [1] : $regimes;
+    }
     public function shouldApply(?int $empresaId = null): bool
     {
         $empresaId = $this->ctxEmpresaId($empresaId);
@@ -186,23 +214,7 @@ class ReformaTributariaService
             return false;
         }
 
-        // 1) Sinalização explícita no banco tem prioridade.
-        $enabled = $this->readRtEnableFlag($empresaId);
-        if ($enabled === true) {
-            return true;
-        }
-        if ($enabled === false) {
-            return false;
-        }
-
-        // 2) Fallback operacional: se os campos da RT já estiverem parametrizados,
-        // considera habilitado para não zerar cálculo nem XML por regra excessiva.
-        $hasRtFields = $this->hasRtFieldsFilled($empresaId);
-        if ($hasRtFields) {
-            return true;
-        }
-
-        // 3) Compatibilidade com a regra ambiente/regime.
+        // Regra fiscal oficial: decisão exclusivamente por ambiente/regime.
         $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
         $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
@@ -210,12 +222,12 @@ class ReformaTributariaService
             return true;
         }
 
-        if ((int)$ambiente === 1 && (int)($regime ?? -1) === 1) {
-            return true;
+        if ((int)$ambiente === 1) {
+            $regimesPermitidos = $this->getRegimesAplicacaoEmProducao();
+            return in_array((int)($regime ?? -1), $regimesPermitidos, true);
         }
 
-        // 4) Último fallback por ENV, preservando versões anteriores.
-        return (int) env('REFORMA_TRIBUTARIA', 0) === 1;
+        return false;
     }
 
     // ---------------------------------------------------------------------
