@@ -179,6 +179,39 @@ class ReformaTributariaService
      * 2 = MEI
      */
 
+
+    private function getRegimesAplicacaoPorAmbiente(int $ambiente): array
+    {
+        $envKey = ((int)$ambiente === 2)
+            ? 'REFORMA_TRIBUTARIA_REGIMES_HOMOLOGACAO'
+            : 'REFORMA_TRIBUTARIA_REGIMES_PRODUCAO';
+
+        $default = ((int)$ambiente === 2) ? '0,1,2' : '1';
+        $raw = env($envKey, $default);
+
+        $vals = is_array($raw) ? $raw : explode(',', (string)$raw);
+        $regimes = [];
+
+        foreach ($vals as $v) {
+            $v = trim((string)$v);
+            if ($v === '') {
+                continue;
+            }
+            if (is_numeric($v)) {
+                $regimes[] = (int)$v;
+                continue;
+            }
+
+            $n = $this->normalizeRegime($v);
+            if ($n !== null) {
+                $regimes[] = $n;
+            }
+        }
+
+        $regimes = array_values(array_unique($regimes));
+
+        return empty($regimes) ? [1] : $regimes;
+    }
     public function shouldApply(?int $empresaId = null): bool
     {
         $empresaId = $this->ctxEmpresaId($empresaId);
@@ -190,12 +223,9 @@ class ReformaTributariaService
         $ambiente = $this->getAmbienteEmpresa($empresaId); // 1/2 default 1
         $regime   = $this->getRegimeEmpresa($empresaId);   // 0/1/2 ou null
 
-        if ((int)$ambiente === 2) {
-            return true;
-        }
-
-        if ((int)$ambiente === 1 && (int)($regime ?? -1) === 1) {
-            return true;
+        if (in_array((int)$ambiente, [1, 2], true)) {
+            $regimesPermitidos = $this->getRegimesAplicacaoPorAmbiente((int)$ambiente);
+            return in_array((int)($regime ?? -1), $regimesPermitidos, true);
         }
 
         return false;
