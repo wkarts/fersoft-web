@@ -1190,7 +1190,7 @@ class FrontBoxController extends Controller
         orderBy('id', 'desc')
         ->where('empresa_id', $this->empresa_id)
         ->limit(20)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+        ->when(optional($config)->caixa_por_usuario == 1, function ($q) {
             return $q->where('usuario_id', get_id_user());
         })
         ->get();
@@ -1199,15 +1199,10 @@ class FrontBoxController extends Controller
         ->where('empresa_id', $this->empresa_id)
         ->orderBy('id', 'desc')->first();
 
-        $config = ConfigNota::
-        where('empresa_id', $this->empresa_id)
-        ->first();
-
-        if($caixa != null){
-            foreach($vendas as $v){
-                if(strtotime($v->created_at) < strtotime($caixa->updated_at)){
-                    $v->impedeDelete = true;
-                }
+        foreach($vendas as $v){
+            $v->impedeDelete = false;
+            if($caixa != null && strtotime($v->created_at) < strtotime($caixa->updated_at)){
+                $v->impedeDelete = true;
             }
         }
 
