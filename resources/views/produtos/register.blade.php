@@ -1777,7 +1777,7 @@
                                                                id="reducao_ibs"
                                                                class="form-control"
                                                                value="{{ old('reducao_ibs', $produto->reducao_ibs ?? 0) }}"
-                                                               readonly>
+                                                               >
                                                     </div>
 
                                                     <div class="col-md-2">
@@ -1787,7 +1787,7 @@
                                                                id="reducao_cbs"
                                                                class="form-control"
                                                                value="{{ old('reducao_cbs', $produto->reducao_cbs ?? 0) }}"
-                                                               readonly>
+                                                               >
                                                     </div>
                                                 </div>
 

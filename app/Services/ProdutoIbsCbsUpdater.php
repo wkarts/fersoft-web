@@ -204,9 +204,27 @@ class ProdutoIbsCbsUpdater
                         $currCstIs  = $p->{$colCstIs} ?? null;
                         $currAliqIs = $p->{$colAliqIs} ?? null;
 
-                        // valores calculados
-                        $valCst   = ($onlyMissing && $currCst !== '') ? $currCst : ($tip['cst'] !== '' ? $tip['cst'] : 'N');
-                        $valCls   = ($onlyMissing && $currCls !== '') ? $currCls : $tip['class'];
+                        // valores calculados (sem sobrescrever com valores inválidos)
+                        $tipCst = trim((string)($tip['cst'] ?? ''));
+                        $tipCls = trim((string)($tip['class'] ?? ''));
+
+                        $tipCstValido = $this->isValidRtCode($tipCst);
+                        $tipClsValido = $this->isValidRtCode($tipCls);
+
+                        $valCst = $currCst;
+                        $valCls = $currCls;
+
+                        if (!$onlyMissing || $currCst === '') {
+                            if ($tipCstValido) {
+                                $valCst = $tipCst;
+                            }
+                        }
+
+                        if (!$onlyMissing || $currCls === '') {
+                            if ($tipClsValido) {
+                                $valCls = $tipCls;
+                            }
+                        }
 
                         $valRed   = $tip['reducao'];
                         $valRedI  = ($onlyMissing && $currRedIbs !== null) ? (float)$currRedIbs : $valRed;
@@ -428,5 +446,20 @@ class ProdutoIbsCbsUpdater
             if (Schema::hasColumn($table, $c)) return $c;
         }
         return null;
+    }
+
+    private function isValidRtCode(string $code): bool
+    {
+        $code = trim($code);
+
+        if ($code === '') {
+            return false;
+        }
+
+        if (in_array(strtolower($code), ['n', 'null', 'undefined', '0'], true)) {
+            return false;
+        }
+
+        return true;
     }
 }

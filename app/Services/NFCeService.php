@@ -194,14 +194,11 @@ class NFCeService{
         }
 
         if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-            Log::warning('RT: grupo IBS/CBS será mantido no XML da NFC-e porque os valores do item já estão calculados, embora shouldApply() tenha retornado false.', [
+            Log::info('RT: grupo IBS/CBS não será anexado ao XML da NFC-e porque shouldApply() retornou false.', [
                 'empresa_id' => (int)($this->empresa_id ?? 0),
                 'item_id' => (int)($item->id ?? 0),
-                'base' => $base,
-                'valor_ibs' => $vIbs,
-                'valor_cbs' => $vCbs,
-                'valor_is' => $vIs,
             ]);
+            return false;
         }
 
         $std = new \stdClass();
@@ -314,6 +311,14 @@ class NFCeService{
         }
         $xp = new \DOMXPath($dom);
         $xp->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+		$rt = app(ReformaTributariaService::class);
+		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+			foreach ($xp->query('//nfe:IBSCBS | //nfe:IS | //nfe:IBSCBSTot | //nfe:ISTot') as $node) {
+				$node->parentNode?->removeChild($node);
+			}
+			return ['xml' => $dom->saveXML(), 'structured' => false];
+		}
+
         $detNodes = $xp->query('//nfe:det');
         $items = $venda->itens ?? [];
         $structured = false;

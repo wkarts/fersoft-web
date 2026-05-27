@@ -81,6 +81,33 @@ class NFService{
 		return '90';
 	}
 
+
+	private function normalizeCsosn(?string $csosn, int $vendaId, int $itemId): string
+	{
+		$csosn = trim((string)$csosn);
+		$valid = ['101', '102', '103', '201', '202', '203', '300', '400', '500', '900'];
+
+		if (in_array($csosn, $valid, true)) {
+			return $csosn;
+		}
+
+		if ($csosn === '00') {
+			Log::warning('NF-e: CST 00 informado para emissor do Simples. Aplicado fallback CSOSN 102.', [
+				'venda_id' => $vendaId,
+				'item' => $itemId,
+				'origem' => $csosn,
+			]);
+			return '102';
+		}
+
+		Log::warning('NF-e: CSOSN inválido para emissor do Simples. Aplicado fallback CSOSN 102 para evitar falha na geração do XML.', [
+			'venda_id' => $vendaId,
+			'item' => $itemId,
+			'origem' => $csosn,
+		]);
+
+		return '102';
+	}
 	private function normalizeTwoDigitCst($cst): string
 	{
 		$cst = preg_replace('/\D+/', '', (string)$cst);
@@ -235,14 +262,11 @@ class NFService{
 		}
 
 		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-			Log::warning('RT: grupo IBS/CBS será mantido no XML porque os valores do item já estão calculados, embora shouldApply() tenha retornado false.', [
+			Log::info('RT: grupo IBS/CBS não será anexado ao XML porque shouldApply() retornou false.', [
 				'empresa_id' => (int)($this->empresa_id ?? 0),
 				'item_id' => (int)($item->id ?? 0),
-				'base' => $base,
-				'valor_ibs' => $vIbs,
-				'valor_cbs' => $vCbs,
-				'valor_is' => $vIs,
 			]);
+			return false;
 		}
 
 		$norm = $this->normalizeReformaItemValues($item);
@@ -357,6 +381,14 @@ class NFService{
 		}
 		$xp = new \DOMXPath($dom);
 		$xp->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+		$rt = app(ReformaTributariaService::class);
+		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+			foreach ($xp->query('//nfe:IBSCBS | //nfe:IS | //nfe:IBSCBSTot | //nfe:ISTot') as $node) {
+				$node->parentNode?->removeChild($node);
+			}
+			return ['xml' => $dom->saveXML(), 'structured' => false];
+		}
+
 		$detNodes = $xp->query('//nfe:det');
 		$items = $venda->itens ?? [];
 		$structured = false;
@@ -1246,6 +1278,8 @@ class NFService{
 							$stdICMS->CSOSN = $i->produto->CST_CSOSN_EXP;
 						}
 					}
+
+					$stdICMS->CSOSN = $this->normalizeCsosn($stdICMS->CSOSN ?? null, (int)$venda->id, (int)$itemCont);
 
 					if($i->produto->CST_CSOSN == '500'){
 						$stdICMS->vBCSTRet = 0.00;
