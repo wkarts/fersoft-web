@@ -910,7 +910,9 @@ class FrontBoxController extends Controller
 
             ContaReceber::where('venda_caixa_id', $venda->id)
             ->delete();
-            if($venda->delete()){
+
+            $deleted = $venda->delete();
+            if($deleted || $venda->trashed()){
                 session()->flash("mensagem_sucesso", "Venda removida com sucesso!");
             }else{
                 session()->flash('mensagem_erro', 'Erro ao remover venda!');
@@ -1187,7 +1189,8 @@ class FrontBoxController extends Controller
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         $vendas = VendaCaixa::
-        orderBy('id', 'desc')
+        withoutDeleted()
+        ->orderBy('id', 'desc')
         ->where('empresa_id', $this->empresa_id)
         ->limit(20)
         ->when(optional($config)->caixa_por_usuario == 1, function ($q) {
@@ -1232,7 +1235,8 @@ class FrontBoxController extends Controller
         $permissaoAcesso = __getLocaisUsarioLogado();
 
         $vendas = VendaCaixa::
-        orderBy('id', 'desc')
+        withoutDeleted()
+        ->orderBy('id', 'desc')
         ->where(function($query) use ($permissaoAcesso){
             if($permissaoAcesso != null){
                 foreach ($permissaoAcesso as $value) {
