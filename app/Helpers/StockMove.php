@@ -60,7 +60,7 @@ class StockMove {
 		]);
 	}
   
-	public function pluStock($produto_id, $quantidade, $valor_unitario, $filial_id = null, $origem_tipo = null, $origem_id = null, $data_movimento = null)
+	public function pluStock($produto_id, $quantidade, $valor_unitario = 0, $filial_id = null, $origem_tipo = null, $origem_id = null, $data_movimento = null)
     {
         $quantidade_positiva = abs($quantidade); 
 
