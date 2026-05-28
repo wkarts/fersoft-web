@@ -263,14 +263,11 @@
 
     const base = balanca.backend || balanca.backend_server_address || balanca.base_url || '';
 
+    // Regra crítica: quando a balança possui integrador_config_id, esse ID é a
+    // fonte da verdade. Não fazer fallback silencioso para outro ADP por Base URL,
+    // pois empresas podem ter vários servidores ADP com tokens diferentes.
     if (balanca.integrador_config_id) {
-      try {
-        return await getRuntimeConfig(balanca.integrador_config_id, base);
-      } catch (e) {
-        if (!base) {
-          throw e;
-        }
-      }
+      return await getRuntimeConfig(balanca.integrador_config_id, base);
     }
 
     return getRuntimeConfigByBaseUrl(base);
@@ -523,6 +520,212 @@
     }
   }
 
+
+  function absoluteAdpUrl(config, pathOrUrl) {
+    const value = String(pathOrUrl || '').trim();
+
+    if (!value) {
+      return '';
+    }
+
+    if (/^https?:\/\//i.test(value) || /^rtsp:\/\//i.test(value)) {
+      return value;
+    }
+
+    return apiUrl(config, value);
+  }
+
+  function withBrowserToken(url, config) {
+    if (!url || /^rtsp:\/\//i.test(url)) {
+      return url || '';
+    }
+
+    const token = config.global_token || config.token || null;
+    const enabled = config.global_token_enabled !== false;
+
+    if (!enabled || !token) {
+      return url;
+    }
+
+    try {
+      const parsed = new URL(url, window.location.href);
+
+      // A documentação nova do ADP aceita token por header e também por query
+      // `token`/`api_token` nos endpoints de câmera. Para <img> MJPEG/proxy não
+      // é possível enviar header, então o preview ao vivo usa query string.
+      if (!parsed.searchParams.get('token')) {
+        parsed.searchParams.set('token', token);
+      }
+      if (!parsed.searchParams.get('api_token')) {
+        parsed.searchParams.set('api_token', token);
+      }
+
+      return parsed.toString();
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function collectStreamUrlCandidates(response) {
+    const candidates = [];
+    const preferredKeys = [
+      'proxy_url', 'stream_proxy_url', 'mjpeg_proxy_url',
+      'mjpeg_url', 'stream_mjpeg_url', 'native_mjpeg_url',
+      'stream_url', 'public_stream_url', 'url',
+      'internal_rtsp_url', 'rtsp_url', 'source_url'
+    ];
+
+    function push(value, type, priority) {
+      const url = String(value || '').trim();
+      if (!url) return;
+      candidates.push({ url, type, priority });
+    }
+
+    function classify(key, value) {
+      const lowerKey = String(key || '').toLowerCase();
+      const lowerValue = String(value || '').toLowerCase();
+
+      if (lowerKey.includes('proxy') || lowerValue.includes('/stream/proxy')) {
+        push(value, 'proxy', 10);
+        return;
+      }
+
+      if (lowerKey.includes('mjpeg') || lowerValue.includes('/stream/mjpeg') || lowerValue.includes('multipart')) {
+        push(value, 'mjpeg', 20);
+        return;
+      }
+
+      if (lowerValue.startsWith('rtsp://') || lowerKey.includes('rtsp')) {
+        push(value, 'rtsp', 40);
+        return;
+      }
+
+      if (lowerKey.includes('snapshot')) {
+        push(value, 'snapshot', 50);
+        return;
+      }
+
+      push(value, 'http', 30);
+    }
+
+    function walk(node) {
+      if (!node) return;
+
+      if (typeof node === 'string') {
+        if (/^(https?|rtsp):\/\//i.test(node) || node.indexOf('/api/cameras/') >= 0) {
+          classify('', node);
+        }
+        return;
+      }
+
+      if (Array.isArray(node)) {
+        node.forEach(walk);
+        return;
+      }
+
+      if (typeof node === 'object') {
+        preferredKeys.forEach(function (key) {
+          if (typeof node[key] === 'string' && node[key].trim()) {
+            classify(key, node[key]);
+          }
+        });
+
+        Object.keys(node).forEach(function (key) {
+          if (preferredKeys.indexOf(key) < 0) {
+            walk(node[key]);
+          }
+        });
+      }
+    }
+
+    walk(response || {});
+
+    const unique = [];
+    const seen = new Set();
+    candidates
+      .sort((a, b) => a.priority - b.priority)
+      .forEach(function (item) {
+        const key = item.type + '|' + item.url;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(item);
+        }
+      });
+
+    return unique;
+  }
+
+  function defaultCameraStreamCandidates(config, uuid) {
+    const encoded = encodeURIComponent(uuid);
+    return [
+      { type: 'proxy', priority: 10, url: apiUrl(config, '/api/cameras/' + encoded + '/stream/proxy') },
+      { type: 'mjpeg', priority: 20, url: apiUrl(config, '/api/cameras/' + encoded + '/stream/mjpeg') },
+      { type: 'stream', priority: 30, url: apiUrl(config, '/api/cameras/' + encoded + '/stream') },
+      { type: 'snapshot', priority: 50, url: apiUrl(config, '/api/cameras/' + encoded + '/snapshot') }
+    ];
+  }
+
+  function normalizeStreamCandidate(config, item) {
+    const type = item.type || 'http';
+    const absolute = absoluteAdpUrl(config, item.url);
+
+    return {
+      type,
+      url: absolute,
+      browser_url: type === 'rtsp' ? absolute : withBrowserToken(absolute, config),
+      priority: item.priority || 99
+    };
+  }
+
+  async function resolveCameraStream(config, uuid) {
+    if (!config) {
+      throw new Error('Configuração ADP não informada.');
+    }
+
+    if (!uuid) {
+      throw new Error('UUID da câmera não informado.');
+    }
+
+    let response = null;
+    let candidates = [];
+
+    try {
+      response = await adpRequest(config, '/api/cameras/' + encodeURIComponent(uuid) + '/stream', 'GET');
+      candidates = collectStreamUrlCandidates(response);
+    } catch (e) {
+      response = { success: false, message: e.message };
+    }
+
+    const defaults = defaultCameraStreamCandidates(config, uuid);
+    const all = candidates.concat(defaults)
+      .map(function (item) { return normalizeStreamCandidate(config, item); })
+      .filter(function (item) { return item.url; });
+
+    const seen = new Set();
+    const unique = all.filter(function (item) {
+      const key = item.type + '|' + item.url;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort(function (a, b) { return a.priority - b.priority; });
+
+    const preferred = unique.find(function (item) { return item.type === 'proxy'; })
+      || unique.find(function (item) { return item.type === 'mjpeg'; })
+      || unique.find(function (item) { return item.type !== 'rtsp'; })
+      || unique[0]
+      || null;
+
+    return {
+      success: Boolean(preferred),
+      response,
+      preferred,
+      candidates: unique,
+      proxy_url: (unique.find(function (item) { return item.type === 'proxy'; }) || {}).browser_url || '',
+      mjpeg_url: (unique.find(function (item) { return item.type === 'mjpeg'; }) || {}).browser_url || '',
+      rtsp_url: (unique.find(function (item) { return item.type === 'rtsp'; }) || {}).url || '',
+    };
+  }
+
   async function captureEvidence(balanca) {
     const config = await configForBalanca(balanca);
     const read = await readScale(balanca);
@@ -580,5 +783,7 @@
     snapshotCameraRaw,
     snapshotCamera,
     resolveSnapshotPreviewViaLaravel,
+    resolveCameraStream,
+    withBrowserToken,
   };
 })(window);

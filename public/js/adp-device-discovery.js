@@ -357,9 +357,16 @@
       status: device.status || device.state || (device.api_enabled === false ? 'disabled' : 'online'),
       supports_stream: Boolean(device.supports_stream || device.stream || type === 'camera'),
       supports_snapshot: Boolean(device.supports_snapshot || device.snapshot || type === 'camera'),
-      snapshot_url: device.snapshot_url || '',
-      stream_url: device.stream_url || '',
-      metadata: device.metadata || device
+      snapshot_url: device.snapshot_url || config.snapshot_url || '',
+      stream_url: device.stream_url || device.proxy_url || device.mjpeg_url || config.stream_url || config.proxy_url || config.mjpeg_url || '',
+      proxy_url: device.proxy_url || device.stream_proxy_url || config.proxy_url || '',
+      mjpeg_url: device.mjpeg_url || config.mjpeg_url || '',
+      internal_rtsp_url: device.internal_rtsp_url || device.rtsp_url || config.internal_rtsp_url || config.rtsp_url || '',
+      metadata: Object.assign({}, device.metadata || {}, {
+        proxy_url: device.proxy_url || device.stream_proxy_url || config.proxy_url || '',
+        mjpeg_url: device.mjpeg_url || config.mjpeg_url || '',
+        internal_rtsp_url: device.internal_rtsp_url || device.rtsp_url || config.internal_rtsp_url || config.rtsp_url || ''
+      }, device)
     };
   }
 
@@ -459,6 +466,9 @@
       opt.dataset.model = device.model || '';
       opt.dataset.streamUrl = device.stream_url || '';
       opt.dataset.snapshotUrl = device.snapshot_url || '';
+      opt.dataset.proxyUrl = device.proxy_url || '';
+      opt.dataset.mjpegUrl = device.mjpeg_url || '';
+      opt.dataset.internalRtspUrl = device.internal_rtsp_url || '';
       if (selectedValues.indexOf(device.uuid) >= 0) opt.selected = true;
       select.appendChild(opt);
     });

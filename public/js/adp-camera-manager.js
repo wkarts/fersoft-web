@@ -62,6 +62,62 @@
     return true;
   }
 
+  function setCameraLivePreview(id, src, mode) {
+    const img = document.querySelector('[data-camera-preview="' + id + '"]');
+    const empty = document.querySelector('[data-camera-preview-empty="' + id + '"]');
+    const modeBadge = document.querySelector('[data-camera-live-mode="' + id + '"]');
+
+    if (!img || !src) {
+      return false;
+    }
+
+    img.onload = function () {
+      img.classList.add('adp-camera-preview-loaded');
+      img.style.display = 'block';
+      if (empty) empty.style.display = 'none';
+      if (modeBadge) {
+        modeBadge.textContent = mode ? ('Ao vivo: ' + mode.toUpperCase()) : 'Ao vivo';
+        modeBadge.style.display = '';
+      }
+    };
+
+    img.onerror = function () {
+      img.classList.remove('adp-camera-preview-loaded');
+      img.style.display = 'none';
+      if (empty) {
+        empty.textContent = 'Preview ao vivo indisponível';
+        empty.style.display = '';
+      }
+      if (modeBadge) modeBadge.style.display = 'none';
+    };
+
+    img.src = src;
+    img.classList.add('adp-camera-preview-loaded');
+    img.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    if (modeBadge) {
+      modeBadge.textContent = mode ? ('Ao vivo: ' + mode.toUpperCase()) : 'Ao vivo';
+      modeBadge.style.display = '';
+    }
+    return true;
+  }
+
+  function stopCameraLivePreview(id) {
+    const img = document.querySelector('[data-camera-preview="' + id + '"]');
+    const modeBadge = document.querySelector('[data-camera-live-mode="' + id + '"]');
+
+    if (img) {
+      img.removeAttribute('src');
+      img.classList.remove('adp-camera-preview-loaded');
+      img.style.display = 'none';
+    }
+
+    if (modeBadge) {
+      modeBadge.style.display = 'none';
+      modeBadge.textContent = '';
+    }
+  }
+
   function imageFromSnapshot(response) {
     if (window.AdpRuntimeClient && typeof window.AdpRuntimeClient.imageSrcFromSnapshotResponse === 'function') {
       return window.AdpRuntimeClient.imageSrcFromSnapshotResponse(response);
@@ -124,8 +180,11 @@
       protocol: device?.protocol || device?.protocolo || device?.driver_type || '',
       host: device?.host || cfg.host || '',
       port: device?.port || cfg.http_port || cfg.rtsp_port || '',
-      stream_url: device?.stream_url || cfg.rtsp_url || cameraApiEndpoint(baseUrl, uuid, 'stream'),
+      stream_url: device?.stream_url || device?.proxy_url || device?.mjpeg_url || cfg.proxy_url || cfg.mjpeg_url || cfg.rtsp_url || cameraApiEndpoint(baseUrl, uuid, 'stream'),
       snapshot_url: device?.snapshot_url || cfg.snapshot_url || cameraApiEndpoint(baseUrl, uuid, 'snapshot'),
+      proxy_url: device?.proxy_url || device?.stream_proxy_url || cfg.proxy_url || '',
+      mjpeg_url: device?.mjpeg_url || cfg.mjpeg_url || '',
+      rtsp_url: device?.internal_rtsp_url || device?.rtsp_url || cfg.rtsp_url || '',
       supports_stream: device?.supports_stream !== false,
       supports_snapshot: device?.supports_snapshot !== false,
       status: device?.status || (device?.enabled === false ? 'offline' : 'online'),
@@ -252,29 +311,50 @@
     }
   }
 
-  async function stream(row) {
-    const badge = document.querySelector('[data-camera-status="' + row.dataset.cameraRow + '"]');
-    rowLog(row, 'Testando stream...');
+  async function live(row) {
+    const id = row.dataset.cameraRow;
+    const badge = document.querySelector('[data-camera-status="' + id + '"]');
+    rowLog(row, 'Iniciando preview ao vivo...');
+
     try {
-      const res = await requestCamera(row, '/stream', 'GET');
-      let url = findUrlDeep(res);
-      const ok = res.success !== false && res.error !== true;
-      setBadge(badge, ok ? 'online' : 'warning', ok ? 'Online' : 'Atenção');
-      if (!url && row.dataset.streamUrl && !/\/api\/cameras\/[^/]+\/stream$/i.test(row.dataset.streamUrl)) {
-        url = row.dataset.streamUrl;
+      const cameraUuid = row.dataset.cameraUuid;
+      const cfg = await configFromRow(row);
+      let resolved = null;
+
+      if (window.AdpRuntimeClient && typeof window.AdpRuntimeClient.resolveCameraStream === 'function') {
+        resolved = await window.AdpRuntimeClient.resolveCameraStream(cfg, cameraUuid);
       }
-      if (url) {
-        rowLog(row, 'Stream resolvido. Abrindo visualização.');
-        window.open(url, '_blank', 'noopener');
-      } else {
-        rowLog(row, ok
-          ? 'Stream respondeu. O ADP não retornou URL direta; para visualização use snapshot/preview ou configure stream público/RTSP na câmera.'
-          : 'Stream respondeu com atenção.');
+
+      const preferred = resolved && resolved.preferred ? resolved.preferred : null;
+
+      if (preferred && preferred.type !== 'rtsp' && preferred.browser_url) {
+        setCameraLivePreview(id, preferred.browser_url, preferred.type || 'proxy');
+        setBadge(badge, 'online', 'Online');
+        rowLog(row, 'Preview ao vivo iniciado via ' + String(preferred.type || 'proxy').toUpperCase() + '.');
+        return;
       }
+
+      if (preferred && preferred.type === 'rtsp' && preferred.url) {
+        setBadge(badge, 'warning', 'RTSP');
+        rowLog(row, 'ADP retornou RTSP direto. Navegador não renderiza RTSP nativo; abrindo URL técnica em nova aba/aplicativo.' );
+        window.open(preferred.url, '_blank', 'noopener');
+        return;
+      }
+
+      // Fallback: tenta snapshot caso o proxy/MJPEG ainda não esteja pronto.
+      rowLog(row, 'Preview ao vivo indisponível. Tentando snapshot como fallback...');
+      await snapshot(row);
     } catch (e) {
       setBadge(badge, 'offline', 'Erro');
-      rowLog(row, 'Falha no stream: ' + (e.message || e));
+      rowLog(row, 'Falha no preview ao vivo: ' + (e.message || e));
     }
+  }
+
+  async function stream(row) {
+    // O botão Stream passa a usar a visualização ao vivo. A preferência é o
+    // proxy interno do ADP, depois MJPEG, depois RTSP técnico quando não houver
+    // rota visual direta para navegador.
+    return live(row);
   }
 
 
@@ -339,6 +419,7 @@
         src = await resolveSnapshotPreview(res.response || res);
       }
 
+      stopCameraLivePreview(id);
       if (!setCameraPreview(id, src) && empty) {
         empty.textContent = 'Snapshot sem imagem';
         empty.style.display = '';
@@ -356,10 +437,12 @@
       const id = row.dataset.cameraRow;
       const btnTest = document.querySelector('[data-camera-test="' + id + '"]');
       const btnStream = document.querySelector('[data-camera-stream="' + id + '"]');
+      const btnLive = document.querySelector('[data-camera-live="' + id + '"]');
       const btnSnapshot = document.querySelector('[data-camera-snapshot="' + id + '"]');
 
       btnTest && btnTest.addEventListener('click', function () { health(row); });
       btnStream && btnStream.addEventListener('click', function () { stream(row); });
+      btnLive && btnLive.addEventListener('click', function () { live(row); });
       btnSnapshot && btnSnapshot.addEventListener('click', function () { snapshot(row); });
     });
 

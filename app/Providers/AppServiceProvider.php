@@ -75,7 +75,7 @@ class AppServiceProvider extends ServiceProvider
 
         Paginator::useBootstrap();
 
-        EncryptionHelper::initialize();
+        $this->initializeEncryptionHelperSafely();
 
         /*
         $encryptionKey = env('ENCRYPTION_KEY');
@@ -717,6 +717,36 @@ class AppServiceProvider extends ServiceProvider
         }
 
         return $soma;
+    }
+
+
+    /**
+     * Inicializa a criptografia auxiliar sem quebrar comandos de instalação/update.
+     *
+     * Em produção HTTP, a ausência de ENCRYPTION_KEY continua sendo erro crítico.
+     * Em Composer/Artisan, principalmente package:discover, o erro é apenas registrado
+     * para permitir que composer install, key:generate, config:clear e migrations terminem.
+     */
+    private function initializeEncryptionHelperSafely(): void
+    {
+        try {
+            EncryptionHelper::initialize();
+        } catch (\Throwable $e) {
+            if ($this->app->runningInConsole()) {
+                try {
+                    Log::warning('EncryptionHelper não foi inicializado durante execução em console.', [
+                        'mensagem' => $e->getMessage(),
+                        'comando' => implode(' ', $_SERVER['argv'] ?? []),
+                    ]);
+                } catch (\Throwable $inner) {
+                    // Evita falha secundária durante bootstrap do Composer/Artisan.
+                }
+
+                return;
+            }
+
+            throw $e;
+        }
     }
 
     private function applyDatabaseTimezone(): void

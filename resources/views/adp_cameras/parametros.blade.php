@@ -13,8 +13,10 @@
     .adp-camera-params-page .camera-card { background:#fff; border:1px solid #e8edf6; border-radius:14px; box-shadow:0 6px 18px rgba(15,23,42,.04); overflow:hidden; }
     .adp-camera-params-page .camera-card-head { display:flex; gap:12px; padding:14px; border-bottom:1px solid #eef2f7; }
     .adp-camera-params-page .preview-box { width:112px; min-width:112px; height:76px; background:#0b1220; color:#cbd5e1; border-radius:10px; display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:11px; text-align:center; }
+    .adp-camera-params-page .preview-box { position:relative; }
     .adp-camera-params-page .preview-box img { width:100%; height:100%; object-fit:cover; display:none; }
     .adp-camera-params-page .preview-box img.adp-camera-preview-loaded { display:block!important; }
+    .adp-camera-params-page .live-mode-badge { position:absolute; top:6px; left:6px; background:rgba(15,23,42,.82); color:#fff; font-size:9.5px; border-radius:999px; padding:3px 7px; display:none; }
     .adp-camera-params-page .camera-title { min-width:0; flex:1; }
     .adp-camera-params-page .camera-title strong { display:block; font-size:15px; color:#111827; line-height:1.25; }
     .adp-camera-params-page .camera-title .meta { color:#7e8299; font-size:11px; line-height:1.35; margin-top:3px; }
@@ -72,6 +74,7 @@
                 <div class="camera-card-head">
                     <div class="preview-box">
                         <img data-camera-preview="{{ $camera->id }}" alt="Preview da câmera">
+                        <span class="live-mode-badge" data-camera-live-mode="{{ $camera->id }}"></span>
                         <span data-camera-preview-empty="{{ $camera->id }}">Sem imagem</span>
                     </div>
                     <div class="camera-title">
@@ -101,7 +104,7 @@
 
                     <div class="camera-actions">
                         <button type="button" class="btn btn-outline-dark btn-sm" data-camera-test="{{ $camera->id }}" title="Testar câmera"><i class="fa fa-check-circle"></i></button>
-                        <button type="button" class="btn btn-outline-info btn-sm" data-camera-stream="{{ $camera->id }}" title="Testar stream"><i class="fa fa-rss"></i></button>
+                        <button type="button" class="btn btn-outline-info btn-sm" data-camera-stream="{{ $camera->id }}" title="Preview ao vivo via proxy/MJPEG"><i class="fa fa-play"></i></button>
                         <button type="button" class="btn btn-primary btn-sm" data-camera-snapshot="{{ $camera->id }}" title="Capturar snapshot"><i class="fa fa-camera"></i></button>
                         <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalAdpCameraEdit{{ $camera->id }}" title="Editar"><i class="fa fa-pencil"></i></button>
                         <form action="{{ route('adp.cameras.delete', $camera->id) }}" method="POST" style="display:inline-block">

@@ -429,6 +429,9 @@ class AdpDeviceDiscoveryController extends BaseController
             'devices.*.supports_snapshot' => ['nullable', 'boolean'],
             'devices.*.snapshot_url' => ['nullable', 'string'],
             'devices.*.stream_url' => ['nullable', 'string'],
+            'devices.*.proxy_url' => ['nullable', 'string'],
+            'devices.*.mjpeg_url' => ['nullable', 'string'],
+            'devices.*.internal_rtsp_url' => ['nullable', 'string'],
             'devices.*.metadata' => ['nullable'],
             'source' => ['nullable', 'string', 'max:80'],
         ]);
@@ -471,7 +474,11 @@ class AdpDeviceDiscoveryController extends BaseController
                     'status' => $device['status'] ?? 'offline',
                     'supports_stream' => (bool) ($device['supports_stream'] ?? false),
                     'supports_snapshot' => (bool) ($device['supports_snapshot'] ?? false),
-                    'metadata_json' => $device['metadata'] ?? $device,
+                    'metadata_json' => array_merge((array) ($device['metadata'] ?? []), array_filter([
+                        'proxy_url' => $device['proxy_url'] ?? null,
+                        'mjpeg_url' => $device['mjpeg_url'] ?? null,
+                        'internal_rtsp_url' => $device['internal_rtsp_url'] ?? null,
+                    ])) ?: $device,
                     'last_seen_at' => $now,
                     'ativo' => true,
                 ]
@@ -509,7 +516,11 @@ class AdpDeviceDiscoveryController extends BaseController
                         'status' => $device['status'] ?? 'offline',
                         'ultimo_status_em' => $now,
                         'ativo' => true,
-                        'metadata_json' => $device['metadata'] ?? $device,
+                        'metadata_json' => array_merge((array) ($device['metadata'] ?? []), array_filter([
+                        'proxy_url' => $device['proxy_url'] ?? null,
+                        'mjpeg_url' => $device['mjpeg_url'] ?? null,
+                        'internal_rtsp_url' => $device['internal_rtsp_url'] ?? null,
+                    ])) ?: $device,
                     ]
                 );
             }
