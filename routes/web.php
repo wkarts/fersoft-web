@@ -2928,9 +2928,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/save/{id?}', 'BalancaConfigController@save')->name('balancas.save');
         Route::put('/update/{id}', 'BalancaConfigController@save')->name('balancas.update');
         Route::delete('/delete/{id}', 'BalancaConfigController@delete')->name('balancas.delete');
-        Route::post('/lerPeso', 'BalancaConfigController@lerPesoBalança');
-        Route::get('/listarPortas', 'BalancaConfigController@listarPortas');
-        Route::post('/testarBalanca', 'BalancaConfigController@testarBalanca');
         Route::get('/balanca', 'BalancaConfigController@showBalanca');
     });
 

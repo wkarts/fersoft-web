@@ -219,7 +219,7 @@
                     <form method="POST" action="{{ route('balancas.save') }}">
                         @csrf
                         <input type="hidden" name="integrador" value="adp">
-                        <div class="alert alert-info py-2 mb-2">Integração ADP ativa. O modo legado está desativado.</div>
+                        <div class="alert alert-info py-2 mb-2">Integração ADP ativa para leitura e monitoramento da balança.</div>
                         <div class="row">
                             <!-- Campos do formulário -->
                             <div class="form-group col-lg-6">
@@ -228,50 +228,6 @@
                             </div>
                             <div class="col-12 js-adp-section" data-target-prefix="new">
                                 @include('balanca_config.partials.adp-form', ['balanca' => null])
-                            </div>
-                            <div class="col-12 js-legacy-section" data-target-prefix="new" style="{{ env('BALANCA_SHOW_LEGACY_FIELDS', false) ? 'display:none' : 'display:none' }}">
-                            <div class="form-group col-lg-6">
-                                <label>Backend: https://127.0.0.1:3333 </label>
-                                <input type="text" name="backend_server_address" class="form-control" required>
-                            </div>
-                            <!-- Porta -->
-                            <div class="form-group col-lg-6">
-                                <label>Porta:</label>
-                                <div class="input-group">
-                                    <select id="port-list" name="port" class="form-control"></select>
-                                    <div class="input-group-append">
-                                        <button type="button" id="listarPortas" class="btn btn-primary" onclick="listarPortasNova()">Listar</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Equipamento -->
-                            <div class="form-group col-lg-6">
-                                <label>Equipamento:</label>
-                                <select id="equip-list" name="modelo" class="form-control"></select>
-                            </div>
-                            <div class="form-group col-lg-6">
-                                <label>Serial Number:</label>
-                                <input type="text" name="serie_number" class="form-control" required>
-                            </div>
-                            <div class="form-group col-lg-6">
-                                <label>Status:</label>
-                                <select name="ativo" class="form-control" required>
-                                    <option value="1">Ativo</option>
-                                    <option value="0">Inativo</option>
-                                </select>
-                            </div>
-                            <div class="form-group col-lg-6">
-                                <label>Tipo da Balança:</label>
-                                <select name="tipo" class="form-control" required>
-                                    @foreach(App\Models\BalancaConfig::tipos() as $tipo => $descricao)
-                                        <option value="{{ $tipo }}">{{ $descricao }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group col-lg-12">
-                                <label>Observações:</label>
-                                <textarea name="observacoes" class="form-control" rows="3"></textarea>
-                            </div>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success">Salvar</button>
@@ -295,7 +251,7 @@
                             @csrf
                             @method('PUT')
                             <input type="hidden" name="integrador" value="adp">
-                            <div class="alert alert-info py-2 mb-2">Integração ADP ativa. O modo legado está desativado.</div>
+                            <div class="alert alert-info py-2 mb-2">Integração ADP ativa para leitura e monitoramento da balança.</div>
                             <div class="row">
                                 <!-- Campos do formulário -->
                                 <div class="form-group col-lg-6">
@@ -304,58 +260,6 @@
                                 </div>
                                 <div class="col-12 js-adp-section" data-target-prefix="edit-{{ $balanca->id }}">
                                     @include('balanca_config.partials.adp-form', ['balanca' => $balanca])
-                                </div>
-                                <div class="col-12 js-legacy-section" data-target-prefix="edit-{{ $balanca->id }}" style="display:none">
-                                <div class="form-group col-lg-6">
-                                    <label>Backend Server Address: https://127.0.0.1:3333</label>
-                                    <input type="text" id="backendServerAddressEdit_{{ $balanca->id }}" name="backend_server_address" value="{{ $balanca->backend_server_address }}" class="form-control" required>
-                                </div>
-                                <!-- Porta -->
-                                <div class="form-group col-lg-6">
-                                    <label>Porta:</label>
-                                    <div class="input-group">
-                                        <select id="port-list-edit-{{ $balanca->id }}" name="port" class="form-control">
-                                            <option value="{{ $balanca->port }}">{{ $balanca->port }}</option>
-                                        </select>
-                                        <div class="input-group-append">
-                                            <button type="button" id="listarPortasEdit_{{ $balanca->id }}" class="btn btn-primary"
-                                                    onclick="listarPortas({{ $balanca->id }})">Listar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Equipamento -->
-                                <div class="form-group col-lg-6">
-                                    <label>Equipamento:</label>
-                                    <select id="equip-list-edit-{{ $balanca->id }}" name="modelo" class="form-control">
-                                        <option value="{{ $balanca->modelo }}">{{ $balanca->modelo }}</option>
-                                    </select>
-                                </div>
-                                <div class="form-group col-lg-6">
-                                    <label>Serial Number:</label>
-                                    <input type="text" name="serie_number" value="{{ $balanca->serie_number }}" class="form-control" required>
-                                </div>
-                                <div class="form-group col-lg-6">
-                                    <label>Status:</label>
-                                    <select name="ativo" class="form-control" required>
-                                        <option value="1" {{ $balanca->ativo ? 'selected' : '' }}>Ativo</option>
-                                        <option value="0" {{ !$balanca->ativo ? 'selected' : '' }}>Inativo</option>
-                                    </select>
-                                </div>
-                                <div class="form-group col-lg-6">
-                                    <label>Tipo da Balança:</label>
-                                    <select name="tipo" class="form-control" required>
-                                        @foreach(App\Models\BalancaConfig::tipos() as $tipo => $descricao)
-                                            <option value="{{ $tipo }}" {{ $balanca->tipo == $tipo ? 'selected' : '' }}>
-                                                {{ $descricao }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <div class="form-group col-lg-12">
-                                    <label>Observações:</label>
-                                    <textarea name="observacoes" class="form-control" rows="3">{{ $balanca->observacoes }}</textarea>
-                                </div>
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-warning">Atualizar</button>
@@ -370,206 +274,11 @@
 
 @section('javascript')
     <script src="{{ asset('js/axios.min.js') }}"></script>
-    <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
-    <script src="{{ asset('js/balancaMain.js') }}"></script>
-    <script>
-        function setSectionControlsEnabled(section, enabled) {
-            if (!section) {
-                return;
-            }
-
-            section.querySelectorAll('input, select, textarea, button').forEach(function (control) {
-                if (control.type === 'button') {
-                    control.disabled = !enabled;
-                    return;
-                }
-
-                control.disabled = !enabled;
-
-                if (!enabled) {
-                    control.dataset.wasRequired = control.required ? '1' : '0';
-                    control.required = false;
-                    return;
-                }
-
-                if (control.dataset.wasRequired === '1') {
-                    control.required = true;
-                }
-            });
-        }
-
-        function toggleIntegradorSections(prefix, integrador) {
-            const adp = document.querySelector(`.js-adp-section[data-target-prefix="${prefix}"]`);
-            const legacy = document.querySelector(`.js-legacy-section[data-target-prefix="${prefix}"]`);
-            const isAdp = integrador === 'adp';
-
-            if (adp) {
-                adp.style.display = isAdp ? '' : 'none';
-                setSectionControlsEnabled(adp, isAdp);
-            }
-
-            if (legacy) {
-                legacy.style.display = isAdp ? 'none' : '';
-                setSectionControlsEnabled(legacy, !isAdp);
-            }
-        }
-
-        document.querySelectorAll('.js-adp-section').forEach(function (section) {
-            section.style.display = '';
-            setSectionControlsEnabled(section, true);
-        });
-
-        document.querySelectorAll('.js-legacy-section').forEach(function (section) {
-            section.style.display = 'none';
-            setSectionControlsEnabled(section, false);
-        });
-    </script>
-
-    <script>
-        // Recupera o backendURL configurado no formulário
-        const backendURL2 = "{{ $balanca->backend_server_address ?? '' }}";
-
-        /**
-         * Função para listar portas e equipamentos no modal de edição
-         */
-        async function listarPortas(id) {
-            try {
-                const backendInput = document.getElementById(`backendServerAddressEdit_${id}`);
-                const backend = (backendInput ? backendInput.value : '') || backendURL2;
-
-                if (!backend) {
-                    alert('Endereço do servidor backend não configurado!');
-                    return;
-                }
-
-                // Consulta ao backend
-                const response = await axios.get(`${backend}/api/configinfo`);
-                const ports = response.data.portsAvailable || [];
-                const equips = response.data.suportedEquipaments || [];
-
-                // Preencher portas
-                const portList = document.getElementById(`port-list-edit-${id}`);
-                portList.innerHTML = "";
-                ports.forEach(port => {
-                    let option = document.createElement("option");
-                    option.value = port;
-                    option.text = port;
-                    portList.appendChild(option);
-                });
-
-                // Preencher equipamentos
-                const equipList = document.getElementById(`equip-list-edit-${id}`);
-                equipList.innerHTML = "";
-                equips.forEach(equip => {
-                    let option = document.createElement("option");
-                    option.value = equip;
-                    option.text = equip;
-                    equipList.appendChild(option);
-                });
-
-                alert('Portas e equipamentos listados com sucesso!');
-            } catch (error) {
-                console.error('Erro ao listar portas:', error);
-                alert('Erro ao listar portas e equipamentos. Verifique o backend.');
-            }
-        }
-
-        /**
-         * Função para listar portas e equipamentos no modal de inclusão
-         */
-        async function listarPortasNova() {
-            try {
-                const backendInput = document.querySelector('[name="backend_server_address"]');
-                const backend = (backendInput ? backendInput.value : '') || backendURL2;
-
-                if (!backend) {
-                    alert('Endereço do servidor backend não configurado!');
-                    return;
-                }
-
-                // Consulta ao backend
-                const response = await axios.get(`${backend}/api/configinfo`);
-                const ports = response.data.portsAvailable || [];
-                const equips = response.data.suportedEquipaments || [];
-
-                // Preencher portas
-                const portList = document.getElementById('port-list');
-                portList.innerHTML = "";
-                ports.forEach(port => {
-                    let option = document.createElement("option");
-                    option.value = port;
-                    option.text = port;
-                    portList.appendChild(option);
-                });
-
-                // Preencher equipamentos
-                const equipList = document.getElementById('equip-list');
-                equipList.innerHTML = "";
-                equips.forEach(equip => {
-                    let option = document.createElement("option");
-                    option.value = equip;
-                    option.text = equip;
-                    equipList.appendChild(option);
-                });
-
-                alert('Portas e equipamentos listados com sucesso!');
-            } catch (error) {
-                console.error('Erro ao listar portas:', error);
-                alert('Erro ao listar portas e equipamentos. Verifique o backend.');
-            }
-        }
-
-        /**
-         * Atualiza os campos 'port' e 'modelo' ao selecionar os valores
-         */
-        function atualizarCamposNovo() {
-            const portaSelecionada = document.getElementById('port-list').value;
-            const equipamentoSelecionado = document.getElementById('equip-list').value;
-
-            document.querySelector('[name="port"]').value = portaSelecionada;
-            document.querySelector('[name="modelo"]').value = equipamentoSelecionado;
-        }
-
-        function atualizarCamposEditar(id) {
-            const portaSelecionada = document.getElementById(`port-list-edit-${id}`).value;
-            const equipamentoSelecionado = document.getElementById(`equip-list-edit-${id}`).value;
-
-            document.querySelector(`[name="port"]`).value = portaSelecionada;
-            document.querySelector(`[name="modelo"]`).value = equipamentoSelecionado;
-        }
-    </script>
-
     <script>
         window.balancas = @json($balancas);
     </script>
-
-    <!-- Script para Verificação Automática -->
-    <script>
-        // Verificar todas as balanças ao carregar o formulário
-        document.addEventListener('DOMContentLoaded', () => {
-            // Garante que os dados das balanças foram carregados
-            if (!window.balancas || !window.balancas.data) {
-                console.error("Nenhuma balança carregada!");
-                return;
-            }
-
-            // Iterar sobre todas as balanças carregadas
-            window.balancas.data.forEach(balanca => {
-                verificarStatusBalanca(balanca).then(() => {
-                    console.log(`Verificação automática concluída para balança ID ${balanca.id}`);
-                }).catch(err => {
-                    console.error(`Erro na verificação automática da balança ID ${balanca.id}:`, err);
-                });
-            });
-        });
-
-        // Atualizar automaticamente a cada 10 segundos
-        setInterval(() => {
-            window.balancas.data.forEach(balanca => {
-                verificarStatusBalanca(balanca)
-                    .catch(err => console.error(`Erro ao atualizar balança ID ${balanca.id}:`, err));
-            });
-        }, 10000); // 10 segundos
-    </script>
+    <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
+    <script src="{{ asset('js/adp-device-discovery.js') }}"></script>
+    <script src="{{ asset('js/balancaMain.js') }}"></script>
 
 @endsection

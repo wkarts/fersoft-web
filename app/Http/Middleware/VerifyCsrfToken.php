@@ -13,7 +13,5 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'sync/data',
-        //'balancas/listarPortas',
-        //'balancas/testarBalanca'
     ];
 }

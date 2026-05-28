@@ -63,10 +63,13 @@
               @php
                   $cfgId = (string) ($cfg->id ?? '');
                   $isSelectedCfg = $cfgId !== '' && $cfgId === $selectedIntegradorConfigId;
+                  $cfgTokenMasked = method_exists($cfg, 'tokenMascarado')
+                      ? ($cfg->tokenMascarado() ?? '')
+                      : ($cfg->global_token_masked ?? '');
               @endphp
               <option value="{{ $cfgId }}"
-                      data-token-masked="{{ $cfg->global_token_masked ?? '' }}"
-                      data-base-url="{{ $cfg->base_url ?? '' }}"
+                      data-token-masked="{{ $cfgTokenMasked }}"
+                      data-base-url="{{ rtrim((string) ($cfg->base_url ?? ''), '/') }}"
                       data-descricao="{{ $cfg->descricao ?? '' }}"
                       data-token-type="{{ $cfg->global_token_type ?? 'x_adp_api_token' }}"
                       data-token-header="{{ $cfg->global_token_header ?? 'X-ADP-API-TOKEN' }}"
