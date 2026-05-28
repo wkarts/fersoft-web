@@ -1,179 +1,10 @@
-// Configuração inicial
-const backendURLL = window.backendURL || "https://127.0.0.1:3333";
+// Monitoramento das balanças cadastradas via ADP.
+// O antigo fluxo serial local em PHP foi removido.
 
-// Carregar balanças do Blade
 const balancas = (window.balancas && Array.isArray(window.balancas.data))
     ? window.balancas.data
     : [];
 
-// Elementos do DOM
-const pbElement = document.querySelector("#pb");
-const taraElement = document.querySelector("#tara");
-const plElement = document.querySelector("#pl");
-const msgSerialEl = document.querySelector("#msgserial");
-const connectEl = document.querySelector("#connect");
-const disconnectEl = document.querySelector("#disconnect");
-const estabilidadeEl = document.querySelector("#estabilidade");
-const listarPortasEl = document.querySelector("#menu-listar-portas");
-const portasContentEl = document.querySelector("#portas-content");
-const listarPortasDivEl = document.querySelector("#listar-portas");
-const backPortasEl = document.querySelector("#back-portas");
-
-// Variáveis globais
-let getDataInterval, config;
-
-function hasLegacyBalancaPanel() {
-    return !!(connectEl && disconnectEl && msgSerialEl);
-}
-
-function setDisabled(el, disabled) {
-    if (el) {
-        el.disabled = disabled;
-    }
-}
-
-function setHtml(el, value) {
-    if (el) {
-        el.innerHTML = value;
-    }
-}
-
-function setText(el, value) {
-    if (el) {
-        el.textContent = value;
-    }
-}
-
-function setDisplay(el, value) {
-    if (el) {
-        el.style.display = value;
-    }
-}
-
-// Inicializar a aplicação
-start();
-
-async function start() {
-    // Este JS é carregado em mais de uma tela. Se os elementos do painel legado
-    // não existirem, não deve quebrar a tela atual.
-    if (!hasLegacyBalancaPanel()) {
-        return;
-    }
-
-    setDisabled(disconnectEl, true);
-    setDisabled(connectEl, false);
-
-    // Recuperar configurações salvas
-    const porta = localStorage.getItem('porta') || "";
-    const equipamento = localStorage.getItem('equipamento') || "";
-
-    // Configurar variáveis globais
-    config = { port: porta, equipament: equipamento };
-    console.log("Configuração carregada:", config); // Debug
-
-    // Validação
-    if (!config.port || !config.equipament) {
-        messageSerial("Configuração incompleta!", "red");
-        return;
-    }
-
-    await obterDadosAPI();
-    getDataInterval = setInterval(obterDadosAPI, 500);
-}
-
-// Conectar
-if (connectEl) {
-    connectEl.onclick = async () => {
-        if (!config || !config.port) {
-            messageSerial("Nenhuma porta configurada!", "red");
-            return;
-        }
-
-        let response = await axios.get(`${backendURLL}/api/open?port=${config.port}`);
-        setDisabled(disconnectEl, !response.data.status.error);
-        setDisabled(connectEl, response.data.status.error);
-    };
-}
-
-// Desconectar
-if (disconnectEl) {
-    disconnectEl.onclick = async () => {
-        let response = await axios.get(`${backendURLL}/api/close`);
-        setDisabled(disconnectEl, !response.data.status.error);
-        setDisabled(connectEl, response.data.status.error);
-    };
-}
-
-// Obter dados da balança
-async function obterDadosAPI() {
-    try {
-        // Gera URL dinamicamente
-        let apiUrl = `${backendURLL}/api/data?equip=${config.equipament}`;
-        console.log("URL gerada:", apiUrl); // Debug URL
-
-        let response = await axios.get(apiUrl);
-
-        if (response.data.status.error) {
-            messageSerial(response.data.status.messageText, "red");
-            portOpened(response.data.status.portOpened);
-        } else {
-            setHtml(pbElement, response.data.data.peso_bruto);
-            setHtml(taraElement, response.data.data.tara);
-            setHtml(plElement, response.data.data.peso_liq);
-            setHtml(estabilidadeEl, response.data.data.estavel ? "Estável" : "Oscilando");
-            if (response.data.data.sobrecarga) {
-                setHtml(estabilidadeEl, "Sobrecarga");
-            }
-            messageSerial(response.data.status.messageText, "green");
-            portOpened(response.data.status.portOpened);
-        }
-    } catch (error) {
-        console.error("Erro ao obter dados:", error);
-    }
-}
-
-// Controle do botão de conexão
-function portOpened(statusPort) {
-    setDisabled(disconnectEl, !statusPort);
-    setDisabled(connectEl, statusPort);
-}
-
-// Mensagens para o usuário
-function messageSerial(message, color = "blue") {
-    if (!msgSerialEl) {
-        return;
-    }
-
-    msgSerialEl.style.color = color;
-    msgSerialEl.innerHTML = message;
-}
-
-// LISTAR PORTAS - Integrado ao endpoint
-if (listarPortasEl) {
-    listarPortasEl.onclick = async () => {
-        try {
-            const response = await axios.get(`${backendURLL}/api/configinfo`);
-            const formattedData = JSON.stringify(response.data, null, 4);
-            setText(portasContentEl, formattedData);
-
-            setDisplay(document.getElementById('principal'), 'none');
-            setDisplay(listarPortasDivEl, 'block');
-        } catch (error) {
-            setText(portasContentEl, "Erro ao carregar dados!");
-        }
-    };
-}
-
-// Botão voltar do listar portas
-if (backPortasEl) {
-    backPortasEl.onclick = () => {
-        setDisplay(listarPortasDivEl, 'none');
-        setDisplay(document.getElementById('principal'), 'block');
-    };
-}
-
-// Cache das configurações ADP usadas pela listagem.
-// O token global não fica exposto no HTML; é obtido sob demanda via rota autenticada do Laravel.
 const adpRuntimeConfigCache = new Map();
 
 function csrfTokenBalanca() {
@@ -268,8 +99,7 @@ async function getAdpRuntimeConfig(integradorConfigId, baseUrl) {
     if (id) params.set('integrador_config_id', id);
     if (base) params.set('base_url', base);
 
-    const url = `/adp/discovery/configs/runtime?${params.toString()}`;
-    const data = await fetchJsonBalanca(url, {
+    const data = await fetchJsonBalanca(`/adp/discovery/configs/runtime?${params.toString()}`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -283,8 +113,12 @@ async function getAdpRuntimeConfig(integradorConfigId, baseUrl) {
 
     adpRuntimeConfigCache.set(cacheKey, data.config);
     if (data.config.id) {
-        adpRuntimeConfigCache.set(`id:${data.config.id}|base:${String(data.config.base_url || '').replace(/\/+$/, '')}`, data.config);
+        adpRuntimeConfigCache.set(
+            `id:${data.config.id}|base:${String(data.config.base_url || '').replace(/\/+$/, '')}`,
+            data.config
+        );
     }
+
     return data.config;
 }
 
@@ -317,34 +151,47 @@ function normalizeAdpScaleStatus(payload) {
     );
 
     if (connected && (hasData || receivingData) && !error) {
-        return {
-            color: 'green',
-            title: 'Balança Online e Funcionando!'
-        };
+        return { color: 'green', title: 'Balança Online e Funcionando!' };
     }
 
     if (connected && !hasData) {
-        return {
-            color: 'orange',
-            title: 'Balança Online, mas sem transmissão de dados.'
-        };
+        return { color: 'orange', title: 'Balança Online, mas sem transmissão de dados.' };
     }
 
     if (!connected && !payload.error) {
-        return {
-            color: 'white',
-            title: message || 'Balança Offline ou Porta Fechada.'
-        };
+        return { color: 'white', title: message || 'Balança Offline ou Driver Fechado.' };
     }
 
-    return {
-        color: 'red',
-        title: message || 'Erro no backend ADP.'
-    };
+    return { color: 'red', title: message || 'Erro no backend ADP.' };
+}
+
+function parseAdpUuidList(value) {
+    if (window.AdpRuntimeClient && typeof window.AdpRuntimeClient.parseUuidList === 'function') {
+        return window.AdpRuntimeClient.parseUuidList(value || []);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(String).map((item) => item.trim()).filter(Boolean);
+    }
+
+    const raw = String(value || '').trim();
+    if (!raw) {
+        return [];
+    }
+
+    try {
+        const decoded = JSON.parse(raw);
+        return parseAdpUuidList(decoded);
+    } catch (e) {
+        return raw.split(',').map((item) => item.trim()).filter(Boolean);
+    }
 }
 
 async function verificarStatusBalancaAdp(balanca, statusLed) {
-    const config = await getAdpRuntimeConfig(balanca.integrador_config_id, balanca.backend_server_address || balanca.backend);
+    const config = await getAdpRuntimeConfig(
+        balanca.integrador_config_id,
+        balanca.backend_server_address || balanca.backend
+    );
     const uuid = String(balanca.adp_scale_uuid || '').trim();
 
     if (!uuid) {
@@ -366,14 +213,11 @@ async function verificarStatusBalancaAdp(balanca, statusLed) {
     statusLed.title = normalized.title;
 }
 
-
 async function verificarStatusCamerasAdp(balanca) {
     const summary = document.querySelector(`[data-adp-camera-health-summary="${balanca.id}"]`);
     if (!summary) return;
 
-    const uuids = window.AdpRuntimeClient && window.AdpRuntimeClient.parseUuidList
-        ? window.AdpRuntimeClient.parseUuidList(balanca.adp_camera_uuids || [])
-        : [];
+    const uuids = parseAdpUuidList(balanca.adp_camera_uuids || []);
 
     if (!uuids.length) {
         summary.textContent = 'Sem câmeras';
@@ -382,7 +226,10 @@ async function verificarStatusCamerasAdp(balanca) {
     }
 
     try {
-        const config = await getAdpRuntimeConfig(balanca.integrador_config_id, balanca.backend_server_address || balanca.backend);
+        const config = await getAdpRuntimeConfig(
+            balanca.integrador_config_id,
+            balanca.backend_server_address || balanca.backend
+        );
         let online = 0;
 
         for (const uuid of uuids) {
@@ -398,43 +245,16 @@ async function verificarStatusCamerasAdp(balanca) {
         }
 
         summary.textContent = `${online}/${uuids.length} online`;
-        summary.className = online === uuids.length ? 'text-success' : (online > 0 ? 'text-warning' : 'text-danger');
+        summary.className = online === uuids.length
+            ? 'text-success'
+            : (online > 0 ? 'text-warning' : 'text-danger');
     } catch (e) {
         summary.textContent = 'Erro câmera';
         summary.className = 'text-danger';
     }
 }
 
-async function verificarStatusBalancaLegacy(id, backendURL, equipamento, statusLed) {
-    let response = await axios.get(`${backendURL}/api/data?equip=${equipamento}`);
-    const status = response.data.status;
-
-    const portOpened = Boolean(status.portOpened ?? status.port_opened ?? false);
-    const messageText = String(status.messageText || status.message_text || '');
-    const error = Boolean(status.error ?? false);
-
-    // Status Verde (Online e funcionando)
-    if (portOpened && messageText === "Conexão funcionando corretamente" && !error) {
-        statusLed.style.backgroundColor = 'green';
-        statusLed.title = "Balança Online e Funcionando!";
-    }
-    // Status Laranja (Sem transmissão)
-    else if (portOpened && messageText === "Conectado. Sem transmissão de dados" && error) {
-        statusLed.style.backgroundColor = 'orange';
-        statusLed.title = "Balança Online, mas Sem Transmissão!";
-    }
-    // Status Branco (Porta fechada)
-    else if (!portOpened && messageText === "Sem conexão com a porta serial" && error) {
-        statusLed.style.backgroundColor = 'white';
-        statusLed.title = "Balança Offline ou Porta Fechada!";
-    } else {
-        // Status Vermelho (Erro no Backend)
-        statusLed.style.backgroundColor = 'red';
-        statusLed.title = "Erro no Backend!";
-    }
-}
-
-function normalizeBalancaArgs(arg1, backendURL, equipamento) {
+function normalizeBalancaArgs(arg1) {
     if (arg1 && typeof arg1 === 'object') {
         return arg1;
     }
@@ -443,49 +263,38 @@ function normalizeBalancaArgs(arg1, backendURL, equipamento) {
 
     return {
         id: arg1,
-        backend_server_address: backendURL || (statusLed ? statusLed.dataset.backend : ''),
-        modelo: equipamento || (statusLed ? statusLed.dataset.equip : ''),
-        integrador: statusLed ? statusLed.dataset.integrador : 'legacy',
+        backend_server_address: statusLed ? statusLed.dataset.backend : '',
+        integrador: statusLed ? statusLed.dataset.integrador : 'adp',
         integrador_config_id: statusLed ? statusLed.dataset.integradorConfigId : '',
         adp_scale_uuid: statusLed ? statusLed.dataset.adpScaleUuid : '',
         adp_camera_uuids: statusLed ? (statusLed.dataset.adpCameraUuids || '[]') : '[]'
     };
 }
 
-// **Função para verificar o status de uma balança**
-async function verificarStatusBalanca(arg1, backendURL, equipamento) {
-    const balanca = normalizeBalancaArgs(arg1, backendURL, equipamento);
+async function verificarStatusBalanca(arg1) {
+    const balanca = normalizeBalancaArgs(arg1);
     const statusLed = document.getElementById(`status-led-${balanca.id}`);
 
     if (!statusLed) return;
 
     try {
-        if ((balanca.integrador || 'legacy') === 'adp') {
-            await verificarStatusBalancaAdp(balanca, statusLed);
-            await verificarStatusCamerasAdp(balanca);
-            return;
-        }
-
-        await verificarStatusBalancaLegacy(
-            balanca.id,
-            balanca.backend_server_address,
-            balanca.modelo,
-            statusLed
-        );
+        await verificarStatusBalancaAdp(balanca, statusLed);
+        await verificarStatusCamerasAdp(balanca);
     } catch (error) {
         console.error(`Erro ao verificar status da balança ${balanca.id}:`, error);
         statusLed.style.backgroundColor = 'red';
-        statusLed.title = error && error.message ? error.message : 'Backend Offline!';
+        statusLed.title = error && error.message ? error.message : 'Backend ADP offline.';
     }
 }
 
-// Função para verificar todas as balanças
 function verificarTodasAsBalancas() {
-    balancas.forEach(balanca => {
-        verificarStatusBalanca(balanca);
-    });
+    balancas.forEach((balanca) => verificarStatusBalanca(balanca));
 }
 
-// Atualiza status a cada 10 segundos
-setInterval(verificarTodasAsBalancas, 10000);
-verificarTodasAsBalancas(); // Primeira execução
+window.verificarStatusBalanca = verificarStatusBalanca;
+window.verificarTodasAsBalancas = verificarTodasAsBalancas;
+
+if (balancas.length) {
+    verificarTodasAsBalancas();
+    setInterval(verificarTodasAsBalancas, 10000);
+}
