@@ -165,9 +165,18 @@ class AdpDeviceDiscoveryService
             'clients' => (int) data_get($device, 'clients', data_get($device, 'clientes', 0)),
             'supports_stream' => (bool) data_get($device, 'supports_stream', data_get($device, 'stream', $type === 'camera')),
             'supports_snapshot' => (bool) data_get($device, 'supports_snapshot', data_get($device, 'snapshot', $type === 'camera')),
-            'snapshot_url' => data_get($device, 'snapshot_url'),
-            'stream_url' => data_get($device, 'stream_url'),
-            'metadata' => (array) data_get($device, 'metadata', []),
+            'snapshot_url' => data_get($device, 'snapshot_url', data_get($device, 'snapshot.url')),
+            'stream_url' => data_get($device, 'stream_url', data_get($device, 'stream.url')),
+            'proxy_url' => data_get($device, 'proxy_url', data_get($device, 'stream.proxy_url')),
+            'mjpeg_url' => data_get($device, 'mjpeg_url', data_get($device, 'stream.mjpeg_url')),
+            'internal_rtsp_url' => data_get($device, 'internal_rtsp_url', data_get($device, 'stream.internal_rtsp_url')),
+            'metadata' => array_merge((array) data_get($device, 'metadata', []), array_filter([
+                'proxy_url' => data_get($device, 'proxy_url', data_get($device, 'stream.proxy_url')),
+                'mjpeg_url' => data_get($device, 'mjpeg_url', data_get($device, 'stream.mjpeg_url')),
+                'internal_rtsp_url' => data_get($device, 'internal_rtsp_url', data_get($device, 'stream.internal_rtsp_url')),
+                'controller_status_url' => data_get($device, 'controller_status_url'),
+                'cache_status_url' => data_get($device, 'cache_status_url'),
+            ])),
         ];
     }
 

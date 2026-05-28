@@ -6,8 +6,10 @@
 <style>
     .adp-camera-page .camera-card { border:1px solid #e9eef7; border-radius:14px; background:#fff; box-shadow:0 6px 18px rgba(15,23,42,.04); overflow:hidden; height:100%; }
     .adp-camera-page .camera-preview { height:150px; background:#0b1220; display:flex; align-items:center; justify-content:center; color:#cbd5e1; overflow:hidden; }
+    .adp-camera-page .camera-preview { position:relative; }
     .adp-camera-page .camera-preview img { width:100%; height:100%; object-fit:cover; display:none; }
     .adp-camera-page .camera-preview img.adp-camera-preview-loaded { display:block !important; }
+    .adp-camera-page .live-mode-badge { position:absolute; top:8px; left:8px; background:rgba(15,23,42,.82); color:#fff; font-size:10px; border-radius:999px; padding:4px 8px; display:none; }
     .adp-camera-page .camera-body { padding:14px; }
     .adp-camera-page .camera-uuid { font-family:monospace; font-size:11px; color:#6b7280; word-break:break-all; }
     .adp-camera-page .camera-actions .btn { margin-right:4px; margin-bottom:4px; }
@@ -70,6 +72,7 @@
                      data-snapshot-url="{{ $camera->snapshot_url }}">
                     <div class="camera-preview">
                         <img data-camera-preview="{{ $camera->id }}" alt="Preview da câmera">
+                        <span class="live-mode-badge" data-camera-live-mode="{{ $camera->id }}"></span>
                         <span data-camera-preview-empty="{{ $camera->id }}">Sem imagem capturada</span>
                     </div>
                     <div class="camera-body">
@@ -91,7 +94,7 @@
 
                         <div class="camera-actions mb-2">
                             <button type="button" class="btn btn-outline-dark btn-sm" data-camera-test="{{ $camera->id }}">Testar</button>
-                            <button type="button" class="btn btn-outline-info btn-sm" data-camera-stream="{{ $camera->id }}">Testar stream</button>
+                            <button type="button" class="btn btn-outline-info btn-sm" data-camera-stream="{{ $camera->id }}">Ao vivo</button>
                             <button type="button" class="btn btn-primary btn-sm" data-camera-snapshot="{{ $camera->id }}">Snapshot</button>
                             <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#modalAdpCameraEdit{{ $camera->id }}">Editar</button>
                             <form action="{{ route('adp.cameras.delete', $camera->id) }}" method="POST" style="display:inline-block">
