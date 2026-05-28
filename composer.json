@@ -33,7 +33,6 @@
         "nfephp-org/sped-ibpt": "^v2.0.1",
         "nfephp-org/sped-mdfe": "^v4.1.1",
         "nfephp-org/sped-nfe": "^v5.1.27",
-        "phpclasses/php_serial": "^1.10",
         "phpmailer/phpmailer": "^v6.9.3",
         "picqer/php-barcode-generator": "^v3.2.0",
         "pragmarx/google2fa-laravel": "^2.3",
@@ -109,19 +108,6 @@
             "php-http/discovery": true
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "packages/phpclasses_php_serial",
-            "options": {
-                "symlink": false
-            }
-        },
-        {
-            "type": "composer",
-            "url": "https://www.phpclasses.org/"
-        }
-    ],
     "minimum-stability": "dev",
     "prefer-stable": true
 }
