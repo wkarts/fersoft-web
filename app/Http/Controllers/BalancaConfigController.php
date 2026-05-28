@@ -8,7 +8,6 @@ use App\Models\AdpIntegradorConfig;
 use App\Models\BalancaConfigCamera;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Schema;
-use PhpSerial\PhpSerial;
 
 class BalancaConfigController extends BaseController
 {
