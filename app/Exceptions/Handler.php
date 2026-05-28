@@ -44,15 +44,35 @@ class Handler extends ExceptionHandler
     {
         // 1) Report de toda exceção (arquivo + DB + flash)
         $this->reportable(function (Throwable $e) {
-            // pega o Request via helper
-            $request = request();
+            /*
+             * Não use request() diretamente aqui.
+             * Durante comandos Artisan executados pelo Composer, como package:discover,
+             * a aplicação pode ainda não ter um Request HTTP registrado no container.
+             * Se chamarmos request() nesse momento, o Laravel tenta resolver a classe
+             * "request" e o erro real fica mascarado por:
+             * Target class [request] does not exist.
+             */
+            $request = $this->safeRequest();
 
-            // dispara o log (arquivo + banco)
-            $this->logContext('error', $e->getMessage(), $e, $request);
+            if ($request instanceof Request) {
+                $this->logContext('error', $e->getMessage(), $e, $request);
 
-            // força o flash, mesmo em report
-            if (! $request->expectsJson()) {
-                session()->flash('mensagem_erro', $e->getMessage());
+                if (! $request->expectsJson()) {
+                    session()->flash('mensagem_erro', $e->getMessage());
+                }
+
+                return;
+            }
+
+            // Contexto CLI/Composer: registra no log sem depender de sessão/request/banco.
+            try {
+                \Log::error($e->getMessage(), [
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+            } catch (Throwable $inner) {
+                // Evita erro secundário no próprio handler de exceções.
             }
         });
 
@@ -161,6 +181,26 @@ class Handler extends ExceptionHandler
         session()->flash('mensagem_erro', $message);
 
         return redirect()->back()->withInput();
+    }
+
+
+    /**
+     * Retorna o Request apenas quando ele realmente já está registrado no container.
+     * Em execução de Composer/Artisan nem sempre existe request HTTP ativo.
+     */
+    protected function safeRequest(): ?Request
+    {
+        try {
+            if (function_exists('app') && app()->bound('request')) {
+                $request = app('request');
+
+                return $request instanceof Request ? $request : null;
+            }
+        } catch (Throwable $e) {
+            return null;
+        }
+
+        return null;
     }
 
     /**
