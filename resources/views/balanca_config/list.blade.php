@@ -278,6 +278,7 @@
         window.balancas = @json($balancas);
     </script>
     <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
+    <script src="{{ asset('js/adp-device-discovery.js') }}"></script>
     <script src="{{ asset('js/balancaMain.js') }}"></script>
 
 @endsection

@@ -388,6 +388,36 @@
     });
   }
 
+  function discoveryQuery(scope, endpoint) {
+    var cfg = currentConfig(scope);
+    if (!cfg || !cfg.id) {
+      return Promise.resolve({ success: false, message: 'Selecione uma configuração ADP salva.' });
+    }
+
+    var query = '?integrador_config_id=' + encodeURIComponent(cfg.id);
+    return getJson('/adp/discovery/' + endpoint + query, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken()
+      }
+    });
+  }
+
+  function serverTestAdp(scope) {
+    return discoveryQuery(scope, 'status');
+  }
+
+  function serverListDevices(scope) {
+    return discoveryQuery(scope, 'devices').then(function (res) {
+      if (!res || !res.success) return res;
+      res.devices = (res.devices || []).map(function (d) {
+        return normalizeDevice(d, d.type || d.device_type);
+      }).filter(function (d) { return d.uuid; });
+      return res;
+    });
+  }
+
   function parseUuidList(value) {
     if (Array.isArray(value)) {
       return value.map(function (v) { return String(v || '').trim(); }).filter(Boolean);
@@ -612,7 +642,21 @@
     updateLog(scope, 'Testando conexão ADP...');
     return runtimeConfig(scope).then(function (runtime) {
       if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP'));
-      return localGet(runtime.config, '/api/health');
+      return localGet(runtime.config, '/api/health').then(function (localRes) {
+        if (localRes.success) return localRes;
+
+        // Fallback: quando o ADP está acessível pelo servidor Laravel
+        // (IP de rede/VPS), mantém o discovery funcional mesmo que o
+        // navegador bloqueie CORS ou não alcance a URL local.
+        return serverTestAdp(scope).then(function (serverRes) {
+          if (serverRes && serverRes.success) {
+            serverRes.message = serverRes.message || 'Conexão ADP OK via servidor Laravel.';
+            return serverRes;
+          }
+
+          return localRes;
+        });
+      });
     }).then(function (res) {
       updateLog(scope, (res.success ? 'Conexão ADP OK.' : 'Falha na conexão ADP.') + ' ' + (res.success ? (res.message || '') : errorText(res, '')));
     }).catch(function (err) {
@@ -624,7 +668,18 @@
     updateLog(scope, 'Consultando dispositivos ADP...');
     return runtimeConfig(scope).then(function (runtime) {
       if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP'));
-      return localListDevices(runtime.config);
+      return localListDevices(runtime.config).then(function (localRes) {
+        if (localRes.success) return localRes;
+
+        return serverListDevices(scope).then(function (serverRes) {
+          if (serverRes && serverRes.success) {
+            serverRes.message = serverRes.message || 'Dispositivos listados via servidor Laravel.';
+            return serverRes;
+          }
+
+          return localRes;
+        });
+      });
     }).then(function (res) {
       if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
       renderDevices(scope, res.devices || []);
@@ -643,7 +698,14 @@
     updateLog(scope, 'Sincronizando dispositivos ADP...');
     return runtimeConfig(scope).then(function (runtime) {
       if (!runtime.success) throw new Error(errorText(runtime, 'Falha ao obter configuração ADP'));
-      return localListDevices(runtime.config);
+      return localListDevices(runtime.config).then(function (localRes) {
+        if (localRes.success) return localRes;
+
+        return serverListDevices(scope).then(function (serverRes) {
+          if (serverRes && serverRes.success) return serverRes;
+          return localRes;
+        });
+      });
     }).then(function (res) {
       if (!res.success) throw new Error(errorText(res, 'Falha na listagem de dispositivos'));
       renderDevices(scope, res.devices || []);
