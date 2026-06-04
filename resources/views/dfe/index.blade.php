@@ -192,7 +192,7 @@
 
                                                                     @if($d->tipo != 2)
                                                                         {{-- Botão Manifestar (Martelo) --}}
-                                                                        <button onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1" class="btn btn-icon btn-xs btn-warning" title="Manifestar"><i class="la la-legal"></i></button>
+                                                                        <a href="javascript:;" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1" class="btn btn-icon btn-xs btn-warning" title="Manifestar"><i class="la la-legal"></i></a>
                                                                     @endif
                                                                 </span>
                                                             </td>

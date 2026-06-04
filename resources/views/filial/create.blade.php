@@ -156,6 +156,31 @@
 											<span class="form-text text-muted">Vender/movimentar sem saldo nesta filial.</span>
 										</div>
 									</div>
+                                  <div class="row bg-light-primary p-4 mb-4 rounded">
+                                      <div class="col-12">
+                                          <h5 class="text-primary"><i class="fa fa-book"></i> Integração Contábil</h5>
+                                      </div>
+
+                                      <div class="form-group col-lg-3">
+                                          <label>Código Prosoft</label>
+                                          <input type="text" name="codigo_prosoft" class="form-control" maxlength="4" placeholder="0000"
+                                                 value="{{{ isset($config) ? $config->codigo_prosoft : old('codigo_prosoft') }}}">
+                                          <span class="form-text text-muted">ID na Prosoft (4 dígitos).</span>
+                                      </div>
+
+                                      <div class="form-group col-lg-9">
+                                          <label>Conta de Estoque</label>
+                                          <select name="conta_estoque" class="form-control select2">
+                                              <option value="">Selecione...</option>
+                                              @foreach($planoContas as $c)
+                                                  <option value="{{$c->id}}" {{ isset($config) && $config->conta_estoque == $c->id ? 'selected' : '' }}>
+                                                      {{$c->classificador}} - {{$c->nome}}
+                                                  </option>
+                                              @endforeach
+                                          </select>
+                                          <span class="form-text text-muted">Conta de Ativo para apuração desta filial.</span>
+                                      </div>
+                                  </div>
 
 									<hr>
 									<h5>Endereço</h5>
@@ -525,4 +550,15 @@
 	</div>
 </div>
 
+@endsection
+@section('javascript')
+<script>
+    $(document).ready(function() {
+        // Isso aqui vai ativar a busca em todos os selects que tiverem a classe 'select2'
+        $('.select2').select2({
+            width: '100%',
+            placeholder: "Selecione..."
+        });
+    });
+</script>
 @endsection

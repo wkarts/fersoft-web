@@ -789,82 +789,69 @@ class NFeEntradaService {
 		// 	$nfe->tagexporta($std);
 		// }
 
-	//Fatura
-        /*
-		if($tipoPagamento != '90'){
+	// ----------------------------------------------------
+        // FATURA E DUPLICATA
+        // ----------------------------------------------------
+        $isAPrazo = false; // Variável auxiliar para usarmos no indPag mais abaixo
 
-			$stdFat = new \stdClass();
-			$stdFat->nFat = $stdIde->nNF;
-			$stdFat->vOrig = $this->format($compra->valor);
-			$stdFat->vDesc = $this->format(0.00);
-			$stdFat->vLiq = $this->format($compra->valor);
+        // Regra 1: Não gera fatura se for Sem Pagamento/Devolução (90)
+        if ($tipoPagamento != '90') {
+            if (sizeof($compra->fatura) > 0) {
+                
+                $primeiroVencimento = substr($compra->fatura[0]->data_vencimento, 0, 10);
+                $dataHoje = date('Y-m-d');
+                
+                // Regra 2: Só gera as tags de cobrança se a data de vencimento for no futuro
+                if ($primeiroVencimento > $dataHoje) {
+                    $isAPrazo = true; // Confirma que é a prazo
+                    
+                    // Tag Fatura
+                    $stdFat = new \stdClass();
+                    $stdFat->nFat  = $stdIde->nNF;
+                    $stdFat->vOrig = $this->format($compra->valor);
+                    $stdFat->vDesc = $this->format(0.00);
+                    $stdFat->vLiq  = $this->format($compra->valor);
+                    $fatura = $nfe->tagfat($stdFat);
 
-			$fatura = $nfe->tagfat($stdFat);
-		}
-        */
-        if (sizeof($compra->fatura) > 0) {
-            $stdFat = new \stdClass();
-            $stdFat->nFat = $stdIde->nNF;
-            $stdFat->vOrig = $this->format($compra->valor);
-            $stdFat->vDesc = $this->format(0.00);
-            $stdFat->vLiq  = $this->format($compra->valor);
-            $fatura = $nfe->tagfat($stdFat);
-        }
-
-	//Duplicata
-        /*
-		if($tipoPagamento != '90'){
-			if(sizeof($compra->fatura) > 0){
-				$contFatura = 1;
-				foreach($compra->fatura as $ft){
-					$stdDup = new \stdClass();
-					$stdDup->nDup = "00".$contFatura;
-					$stdDup->dVenc = substr($ft->data_vencimento, 0, 10);
-					$stdDup->vDup = $this->format($ft->valor_integral);
-
-					$nfe->tagdup($stdDup);
-					$contFatura++;
-				}
-			}else{
-				$stdDup = new \stdClass();
-				$stdDup->nDup = '001';
-				$stdDup->dVenc = Date('Y-m-d');
-				$stdDup->vDup =  $this->format($compra->valor);
-
-				$nfe->tagdup($stdDup);
-			}
-		}
-        */
-        if (sizeof($compra->fatura) > 0) {
-            $contFatura = 1;
-            foreach ($compra->fatura as $ft) {
-                $stdDup = new \stdClass();
-                $stdDup->nDup = str_pad($contFatura, 3, '0', STR_PAD_LEFT);
-                $stdDup->dVenc = substr($ft->data_vencimento, 0, 10);
-                $stdDup->vDup  = $this->format($ft->valor_integral);
-                $nfe->tagdup($stdDup);
-                $contFatura++;
+                    // Tag Duplicatas
+                    $contFatura = 1;
+                    foreach ($compra->fatura as $ft) {
+                        $stdDup = new \stdClass();
+                        $stdDup->nDup  = str_pad($contFatura, 3, '0', STR_PAD_LEFT);
+                        $stdDup->dVenc = substr($ft->data_vencimento, 0, 10);
+                        $stdDup->vDup  = $this->format($ft->valor_integral);
+                        $nfe->tagdup($stdDup);
+                        $contFatura++;
+                    }
+                }
             }
         }
 
+        // ----------------------------------------------------
+        // PAGAMENTO
+        // ----------------------------------------------------
+        $stdPag = new \stdClass();
+        $pag = $nfe->tagpag($stdPag);
 
-		$stdPag = new \stdClass();
-		$pag = $nfe->tagpag($stdPag);
+        $stdDetPag = new \stdClass();
+        $stdDetPag->tPag = $tipoPagamento; 
 
-		$stdDetPag = new \stdClass();
-
-        /*
-		$stdDetPag->tPag = $tipoPagamento;
-		$stdDetPag->vPag = $tipoPagamento == '90' ? 0.00 : $this->format($compra->valor);
-		$stdDetPag->indPag = '0';
-        */
-
-        $stdDetPag->tPag  = $tipoPagamento; // 01=débito, 03=crédito, 17=PIX, etc.
-        $stdDetPag->vPag  = $this->format($compra->valor); // sempre o valor pago
-        $stdDetPag->indPag = '0'; // 0=à vista, 1=a prazo (mantém)
+        // Regra 3: Se for devolução/sem pagamento (90), o valor DEVE ser 0.00
+        if ($tipoPagamento == '90') {
+            $stdDetPag->vPag = $this->format(0.00);
+            $stdDetPag->indPag = '0'; // 90 não pode ser a prazo
+        } else {
+            $stdDetPag->vPag = $this->format($compra->valor);
+            
+            // Regra 4: Define o indicador de pagamento dinamicamente com base na nossa checagem lá de cima
+            if ($isAPrazo) {
+                $stdDetPag->indPag = '1'; // 1=a prazo
+            } else {
+                $stdDetPag->indPag = '0'; // 0=à vista
+            }
+        }
 
         $detPag = $nfe->tagdetPag($stdDetPag);
-
 		$stdInfoAdic = new \stdClass();
 		$obs = $this->retiraAcentos($compra->observacao);
 

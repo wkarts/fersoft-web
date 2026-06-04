@@ -738,30 +738,22 @@ class TransferenciaService{
             $nfe->tagtransporta($std);
         }
 
-        if($stdTransp->modFrete != 9){
-
-            $std = new \stdClass();
-            $placa = str_replace("-", "", $venda->placa);
-            $std->placa = strtoupper($placa);
-            $std->UF = $venda->uf;
-
-            // if($config->UF == $venda->cliente->cidade->uf){
-            if($venda->placa != "" && $venda->uf){
-                $nfe->tagveicTransp($std);
+        // =======================================================
+        // GERA A TAG DE VOLUMES E PESOS (Corrigido para $transferencia)
+        // =======================================================
+        if($transferencia->peso_liquido > 0 || $transferencia->peso_bruto > 0) {
+            $stdVol = new \stdClass();
+            $stdVol->item = 1;
+            $stdVol->qVol = 1; 
+            
+            if ($transferencia->peso_liquido > 0) {
+                $stdVol->pesoL = $this->format($transferencia->peso_liquido, 3);
             }
-
-            if($venda->qtd_volumes > 0 || $venda->peso_liquido > 0
-                || $venda->peso_bruto > 0 || $venda->especie){
-                $stdVol = new \stdClass();
-                $stdVol->item = 1;
-                $stdVol->qVol = $venda->qtd_volumes;
-                $stdVol->esp = $venda->especie;
-
-                $stdVol->nVol = $venda->numeracao_volumes;
-                $stdVol->pesoL = $venda->peso_liquido;
-                $stdVol->pesoB = $venda->peso_bruto;
-                $vol = $nfe->tagvol($stdVol);
+            if ($transferencia->peso_bruto > 0) {
+                $stdVol->pesoB = $this->format($transferencia->peso_bruto, 3);
             }
+            
+            $nfe->tagvol($stdVol);
         }
 
 

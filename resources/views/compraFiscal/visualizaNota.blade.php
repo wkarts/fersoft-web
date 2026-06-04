@@ -1,207 +1,218 @@
 @extends('default.layout')
 @section('content')
-<style type="text/css">
-	#focus-codigo:hover{
-		cursor: pointer
-	}
+    <style type="text/css">
+        #focus-codigo:hover{
+            cursor: pointer
+        }
 
-	.search-prod{
-		position: absolute;
-		top: 0;
-		margin-top: 80px;
-		left: 10;
-		width: 100%;
-		max-height: 200px;
-		overflow: auto;
-		z-index: 9999;
-		border: 1px solid #eeeeee;
-		border-radius: 4px;
-		background-color: #fff;
-		box-shadow: 0px 1px 6px 1px rgba(0, 0, 0, 0.4);
-	}
+        .search-prod{
+            position: absolute;
+            top: 0;
+            margin-top: 80px;
+            left: 10;
+            width: 100%;
+            max-height: 200px;
+            overflow: auto;
+            z-index: 9999;
+            border: 1px solid #eeeeee;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0px 1px 6px 1px rgba(0, 0, 0, 0.4);
+        }
 
-	.search-prod label:hover{
-		cursor: pointer;
-	}
+        .search-prod label:hover{
+            cursor: pointer;
+        }
 
-	.search-prod label{
-		margin-left: 10px;
-		width: 100%;
-		margin-top: 7px;
-		font-size: 14px;
-	}
+        .search-prod label{
+            margin-left: 10px;
+            width: 100%;
+            margin-top: 7px;
+            font-size: 14px;
+        }
 
-	.delete-parcela:hover{
-		cursor: pointer;
-	}
-</style>
+        .delete-parcela:hover{
+            cursor: pointer;
+        }
+    </style>
 
-<div class="row" id="anime" style="display: none">
-	<div class="col s8 offset-s2">
-		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay>
-		</lottie-player>
-	</div>
-</div>
+    <div class="row" id="anime" style="display: none">
+        <div class="col s8 offset-s2">
+            <lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay>
+            </lottie-player>
+        </div>
+    </div>
 
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 
-	<div id="content" style="display: block">
+        <div id="content" style="display: block">
 
-		<div class="card card-custom gutter-b example example-compact">
-			<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__bounce">
+            <div class="card card-custom gutter-b example example-compact">
+                <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__bounce">
 
-				<div class="col-lg-12">
+                    <div class="col-lg-12">
 
-					<input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
-							<h3 class="card-title">Importando XML</h3>
-						</div>
-					</div>
-					@csrf
+                        <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
+                        <div class="card card-custom gutter-b example example-compact">
+                            <div class="card-header">
+                                <h3 class="card-title">Importando XML</h3>
+                            </div>
+                        </div>
+                        @csrf
 
-					<div class="row">
-						<div class="col-xl-12">
+                        <div class="row">
 
-							<h4 class="center-align">Nota Fiscal: <strong class="text-primary">{{$dadosNf['nNf']}}</strong></h4>
-							<h4 class="center-align">Data de emissão: <strong class="text-primary">{{ \Carbon\Carbon::parse($dadosNf['data_emissao'])->format('d/m/Y H:i')}}</strong></h4>
-							<h4 class="center-align">Chave: <strong class="text-primary">{{$dadosNf['chave']}}</strong></h4>
-							@if(count($dadosAtualizados) > 0)
-							<div class="row">
-								<div class="col-xl-12">
-									<h5 class="text-success">Dados atualizados do fornecedor</h5>
-									@foreach($dadosAtualizados as $d)
-									<p class="red-text">{{$d}}</p>
-									@endforeach
-								</div>
-							</div>
-							@endif
+                            <div class="col-xl-12">
 
-							<div class="row">
-								<div class="col s8">
-									<h5>Fornecedor: <strong>{{$dadosEmitente['razaoSocial']}}</strong></h5>
-									<h5>Nome Fantasia: <strong>{{$dadosEmitente['nomeFantasia']}}</strong></h5>
-								</div>
-								<div class="col s4">
-									<h5>CNPJ: <strong>{{$dadosEmitente['cnpj']}}</strong></h5>
-									<h5>IE: <strong>{{$dadosEmitente['ie']}}</strong></h5>
-								</div>
-							</div>
-							<div class="row">
-								<div class="col s8">
-									<h5>Logradouro: <strong>{{$dadosEmitente['logradouro']}}</strong></h5>
-									<h5>Numero: <strong>{{$dadosEmitente['numero']}}</strong></h5>
-									<h5>Bairro: <strong>{{$dadosEmitente['bairro']}}</strong></h5>
-								</div>
-								<div class="col s4">
-									<h5>CEP: <strong>{{$dadosEmitente['cep']}}</strong></h5>
-									<h5>Fone: <strong>{{$dadosEmitente['fone']}}</strong></h5>
-									<h5>Cidade: <strong>{{$dadosEmitente['cidade']}}</strong></h5>
-								</div>
-							</div>
+                                <h4 class="center-align">Nota Fiscal: <strong class="text-primary">{{$dadosNf['nNf']}}</strong></h4>
+                                <h4 class="center-align">Data de emissão: <strong class="text-primary">{{ \Carbon\Carbon::parse($dadosNf['data_emissao'])->format('d/m/Y H:i')}}</strong></h4>
+                                <h4 class="center-align">Chave: <strong class="text-primary">{{$dadosNf['chave']}}</strong></h4>
 
-                            @if(isset($saldo_credito) && $saldo_credito > 0)
-                            <div class="col-xl-12 mt-4">
-                                <div class="card card-custom gutter-b bg-light-warning">
-                                    <div class="card-body">
-                                        <h4 class="text-warning">Crédito de Adiantamento Disponível: <strong>R$ {{ number_format($saldo_credito, 2, ',', '.') }}</strong></h4>
-                                        <div class="form-group row">
-                                            <label class="col-3 col-form-label">Deseja aproveitar este crédito?</label>
-                                            <div class="col-3">
+                                @if(count($dadosAtualizados) > 0)
+
+                                    <div class="row">
+                                        <div class="col-xl-12">
+                                            <h5 class="text-success">Dados atualizados do fornecedor</h5>
+                                            @foreach($dadosAtualizados as $d)
+                                                <p class="red-text">{{$d}}</p>
+                                            @endforeach
+                                        </div>
+                                    </div>
+
+                                @endif
+
+                                <div class="row">
+
+                                    <div class="col s8">
+                                        <h5>Fornecedor: <strong>{{$dadosEmitente['razaoSocial']}}</strong></h5>
+                                        <h5>Nome Fantasia: <strong>{{$dadosEmitente['nomeFantasia']}}</strong></h5>
+                                    </div>
+
+                                    <div class="col s4">
+                                        <h5>CNPJ: <strong>{{$dadosEmitente['cnpj']}}</strong></h5>
+                                        <h5>IE: <strong>{{$dadosEmitente['ie']}}</strong></h5>
+                                    </div>
+
+                                </div>
+
+                                <div class="row">
+
+                                    <div class="col s8">
+                                        <h5>Logradouro: <strong>{{$dadosEmitente['logradouro']}}</strong></h5>
+                                        <h5>Numero: <strong>{{$dadosEmitente['numero']}}</strong></h5>
+                                        <h5>Bairro: <strong>{{$dadosEmitente['bairro']}}</strong></h5>
+                                    </div>
+
+                                    <div class="col s4">
+                                        <h5>CEP: <strong>{{$dadosEmitente['cep']}}</strong></h5>
+                                        <h5>Fone: <strong>{{$dadosEmitente['fone']}}</strong></h5>
+                                        <h5>Cidade: <strong>{{$dadosEmitente['cidade']}}</strong></h5>
+                                    </div>
+
+                                </div>
+
+                                @if(isset($saldo_credito) && $saldo_credito > 0)
+                                    <div class="col-xl-12 mt-4">
+                                        <div class="card card-custom gutter-b bg-light-warning">
+                                            <div class="card-body">
+                                                <h4 class="text-warning">Crédito de Adiantamento Disponível: <strong>R$ {{ number_format($saldo_credito, 2, ',', '.') }}</strong></h4>
+                                                <div class="form-group row">
+                                                    <label class="col-3 col-form-label">Deseja aproveitar este crédito?</label>
+                                                    <div class="col-3">
                                                 <span class="switch switch-outline switch-icon switch-primary">
                                                     <label>
                                                         <input type="checkbox" id="usar_credito">
                                                         <span></span>
                                                     </label>
                                                 </span>
-                                            </div>
-                                            <div class="col-4 div-valor-credito" style="display: none">
-                                                <input type="text" class="form-control" id="valor_credito_usar" value="{{ $saldo_credito }}" placeholder="Valor a descontar">
+                                                    </div>
+                                                    <div class="col-4 div-valor-credito" style="display: none">
+                                                        <input type="text" class="form-control" id="valor_credito_usar" value="{{ $saldo_credito }}" placeholder="Valor a descontar">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                @endif
+
+                                <input type="hidden" id="pathXml" value="{{$pathXml}}">
+                                <input type="hidden" id="idFornecedor" value="{{$idFornecedor}}">
+                                <input type="hidden" id="nNf" value="{{$dadosNf['nNf']}}">
+                                <input type="hidden" id="data_emissao" value="{{$dadosNf['data_emissao']}}">
+                                <input type="hidden" id="vDesc" value="{{$dadosNf['vDesc']}}">
+                                <input type="hidden" id="prodSemRegistro" value="{{$dadosNf['contSemRegistro']}}">
+                                <input type="hidden" id="chave" value="{{$dadosNf['chave']}}">
+
+                                {{-- CAMPOS DE TOTAIS PARA O SPED --}}
+                                <input type="hidden" id="vbc_icms_total" value="{{$dadosNf['vbc_icms']}}">
+                                <input type="hidden" id="v_icms_total" value="{{$dadosNf['v_icms']}}">
+                                <input type="hidden" id="v_ipi_total" value="{{$dadosNf['v_ipi']}}">
+                                <input type="hidden" id="v_pis_total" value="{{$dadosNf['v_pis']}}">
+                                <input type="hidden" id="v_cofins_total" value="{{$dadosNf['v_cofins']}}">
+
                             </div>
-                            @endif
+                            <div class="col-xl-12">
+                                <div class="row">
+                                    {!! __view_locais_select() !!}
 
-							<input type="hidden" id="pathXml" value="{{$pathXml}}">
-							<input type="hidden" id="idFornecedor" value="{{$idFornecedor}}">
-							<input type="hidden" id="nNf" value="{{$dadosNf['nNf']}}">
-							<input type="hidden" id="data_emissao" value="{{$dadosNf['data_emissao']}}">
-							<input type="hidden" id="vDesc" value="{{$dadosNf['vDesc']}}">
-							<input type="hidden" id="prodSemRegistro" value="{{$dadosNf['contSemRegistro']}}">
-							<input type="hidden" id="chave" value="{{$dadosNf['chave']}}">
+                                    <div class="col-xl-12">
 
-							{{-- CAMPOS DE TOTAIS PARA O SPED --}}
-							<input type="hidden" id="vbc_icms_total" value="{{$dadosNf['vbc_icms']}}">
-							<input type="hidden" id="v_icms_total" value="{{$dadosNf['v_icms']}}">
-							<input type="hidden" id="v_ipi_total" value="{{$dadosNf['v_ipi']}}">
-							<input type="hidden" id="v_pis_total" value="{{$dadosNf['v_pis']}}">
-							<input type="hidden" id="v_cofins_total" value="{{$dadosNf['v_cofins']}}">
+                                        <p class="text-danger">* Produtos em vermelho ainda não cadastrado no sistma</p>
+                                        <p> Produtos sem registro no sistema: <strong class="prodSemRegistro">
+                                                {{$dadosNf['contSemRegistro']}}</strong></p>
 
-						</div>
-						<div class="col-xl-12">
-							<div class="row">
-								{!! __view_locais_select() !!}
+                                        <h4>Itens da NFe: <strong class="text-info">{{sizeof($itens)}}</strong></h4>
+                                        <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+                                            <table class="datatable-table" style="max-width: 100%;overflow: scroll">
+                                                <thead class="datatable-head">
+                                                <tr class="datatable-row" style="left: 0px;">
+                                                    <th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 70px;">#</span></th>
+                                                    <th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Produto</span></th>
+                                                    <th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">NCM</span></th>
+                                                    <th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CEST</span></th>
+                                                    <th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP XML</span></th>
 
-								<div class="col-xl-12">
-
-									<p class="text-danger">* Produtos em vermelho ainda não cadastrado no sistma</p>
-									<p> Produtos sem registro no sistema: <strong class="prodSemRegistro">
-									{{$dadosNf['contSemRegistro']}}</strong></p>
-
-									<h4>Itens da NFe: <strong class="text-info">{{sizeof($itens)}}</strong></h4>
-									<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
-										<table class="datatable-table" style="max-width: 100%;overflow: scroll">
-											<thead class="datatable-head">
-												<tr class="datatable-row" style="left: 0px;">
-													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 70px;">#</span></th>
-													<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Produto</span></th>
-													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">NCM</span></th>
-													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CEST</span></th>
-													<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP XML</span></th>
-													
-													<th class="datatable-cell"><span style="width: 80px;">CFOP Ent.</span></th>
+                                                    <th class="datatable-cell"><span style="width: 80px;">CFOP Ent.</span></th>
                                                     <th class="datatable-cell"><span style="width: 80px;">CST ICMS</span></th>
                                                     <th class="datatable-cell"><span style="width: 80px;">CST PIS/COF</span></th>
 
-                                                   
-													<th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 90px;">Cod Barra</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Un. Compra</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Qtd</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
-													<th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
-												</tr>
-											</thead>
 
-											<tbody class="datatable-body">
-												@foreach($itens as $i)
+                                                    <th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 90px;">Cod Barra</span></th>
+                                                    <th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Un. Compra</span></th>
+                                                    <th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
+                                                    <th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Qtd</span></th>
+                                                    <th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
+                                                    <th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
+                                                </tr>
+                                                </thead>
 
-												<tr class="datatable-row" id="tr_{{$i['codigo']}}" style="left: 0px;">
-													<td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$i['codigo']}}</span></td>
-													<td class="datatable-cell"><span style="width: 180px;" id="n_{{$i['codigo']}}" class="{{$i['produtoNovo'] ? 'text-danger' : ''}} nome">{{$i['xProd']}}</span></td>
-													<td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
-													<td class="datatable-cell"><span class="" style="width: 80px;">{{$i['CEST']}}</span></td>
-													<td class="datatable-cell"><span class="cfop" style="width: 80px;">{{$i['CFOP']}}</span></td>
-													
-													<td class="datatable-cell">
+                                                <tbody class="datatable-body">
+                                                @foreach($itens as $i)
+
+                                                    <tr class="datatable-row" id="tr_{{$i['codigo']}}" style="left: 0px;">
+                                                        <td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$i['codigo']}}</span></td>
+                                                        <td class="datatable-cell"><span style="width: 180px;" id="n_{{$i['codigo']}}" class="{{$i['produtoNovo'] ? 'text-danger' : ''}} nome">{{$i['xProd']}}</span></td>
+                                                        <td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
+                                                        <td class="datatable-cell"><span class="" style="width: 80px;">{{$i['CEST']}}</span></td>
+                                                        <td class="datatable-cell"><span class="cfop" style="width: 80px;">{{$i['CFOP']}}</span></td>
+
+                                                        <td class="datatable-cell">
 														<span style="width: 80px;">
 															<input class="cfop_entrada_input form-control" style="width: 70px;" type="text" value="{{$i['CFOP_entrada']}}">
 														</span>
-													</td>
-													<td class="datatable-cell">
+                                                        </td>
+                                                        <td class="datatable-cell">
 														<span style="width: 80px;">
 															<input class="cst_icms_input form-control" style="width: 60px;" type="text" value="{{$i['cst_icms']}}">
-															
+
 															{{-- CAMPOS DE IMPOSTOS OCULTOS --}}
 															<input type="hidden" class="vbc_icms" value="{{$i['vbc_icms']}}">
 															<input type="hidden" class="p_icms" value="{{$i['p_icms'] ?? 0}}">
 															<input type="hidden" class="v_icms" value="{{$i['v_icms']}}">
                                                 		</span>
-													</td>
+                                                        </td>
 
-                                                  <td class="datatable-cell">
+                                                        <td class="datatable-cell">
                                                         <span style="width: 80px;">
                                                             <!-- Inputs visíveis e editáveis pelo usuário -->
                                                             <input class="cst_pis_input form-control" style="width: 60px;" type="text" value="{{$i['cst_pis'] ?? ''}}" title="CST PIS" placeholder="PIS">
@@ -224,22 +235,22 @@
                                                             <input type="hidden" class="valor_cbs" value="{{$i['valor_cbs'] ?? 0}}">
                                                           	<input type="hidden" class="class_trib_ibs_cbs" value="{{$i['class_trib'] ?? ''}}">
                                                         </span>
-													</td>
-                                                  
-                                                  
-													<td class="datatable-cell"><span class="codBarras" style="width: 90px;">{{$i['codBarras']}}</span></td>
-													<td class="datatable-cell"><span class="unidade" style="width: 80px;">{{$i['uCom']}}</span></td>
-													<td class="datatable-cell"><span class="valor" style="width: 80px;">{{number_format((float)$i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
-													<td class="datatable-cell"><span id="qtd_aux_{{$i['codigo']}}" class="quantidade" style="width: 80px;">{{$i['qCom']}}</span></td>
+                                                        </td>
 
-													<th class="cod" id="th_prod_id_{{$i['codigo']}}" style="visibility: hidden">{{$i['produtoId']}}</th>
-													<th class="valor_venda" id="th_prod_valor_venda_{{$i['codigo']}}" style="display: none">-1</th>
-													<th style="visibility: hidden" class="conv_estoque" id="th_prod_conv_unit_{{$i['codigo']}}">{{$i['conversao_unitaria'] ?? 1}}</th>
-													<th style="display: none" class="valor_compra" id="th_prod_valor_compra_{{$i['codigo']}}">-1</th>
 
-													<td class="datatable-cell quantidade"><span style="width: 80px;">{{number_format((float) $i['qCom'] * (float) $i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
+                                                        <td class="datatable-cell"><span class="codBarras" style="width: 90px;">{{$i['codBarras']}}</span></td>
+                                                        <td class="datatable-cell"><span class="unidade" style="width: 80px;">{{$i['uCom']}}</span></td>
+                                                        <td class="datatable-cell"><span class="valor" style="width: 80px;">{{number_format((float)$i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
+                                                        <td class="datatable-cell"><span id="qtd_aux_{{$i['codigo']}}" class="quantidade" style="width: 80px;">{{$i['qCom']}}</span></td>
 
-													<th class="datatable-cell">
+                                                        <th class="cod" id="th_prod_id_{{$i['codigo']}}" style="visibility: hidden">{{$i['produtoId']}}</th>
+                                                        <th class="valor_venda" id="th_prod_valor_venda_{{$i['codigo']}}" style="display: none">-1</th>
+                                                        <th style="visibility: hidden" class="conv_estoque" id="th_prod_conv_unit_{{$i['codigo']}}">{{$i['conversao_unitaria'] ?? 1}}</th>
+                                                        <th style="display: none" class="valor_compra" id="th_prod_valor_compra_{{$i['codigo']}}">-1</th>
+
+                                                        <td class="datatable-cell quantidade"><span style="width: 80px;">{{number_format((float) $i['qCom'] * (float) $i['vUnCom'], $casasDecimais, ',', '.')}}</span></td>
+
+                                                        <th class="datatable-cell">
 														<span style="width: 80px;">
 															<a id="th_acao1_{{$i['codigo']}}" @if($i['produtoNovo']) style="display: block" @else style="display: none" @endif onclick="cadProd('{{$i['codigo']}}','{{$i['xProd']}}','{{$i['codBarras']}}','{{$i['NCM']}}','{{$i['CFOP']}}','{{$i['uCom']}}','{{$i['vUnCom']}}','{{$i['qCom']}}','{{$i['CFOP_entrada']}}','{{$i['CEST']}}')" href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
 																<span class="svg-icon svg-icon-success">
@@ -263,676 +274,676 @@
 															</span>
 														</a>
 													</span>
-												</th>
+                                                        </th>
 
-											</tr>
-											@endforeach
-										</tbody>
-									</table>
-									<br><br>
+                                                    </tr>
+                                                @endforeach
+                                                </tbody>
+                                            </table>
+                                            <br><br>
 
-									@if($dadosNf['contSemRegistro'] > 0)
-									<div class="row sem-registro">
-										<div class="col-xl-12">
-											<p class="text-danger">*Esta nota possui produto(s) sem cadastro inclua antes de continuar</p>
-										</div>
-									</div>
-									@endif
-								</div>
+                                            @if($dadosNf['contSemRegistro'] > 0)
+                                                <div class="row sem-registro">
+                                                    <div class="col-xl-12">
+                                                        <p class="text-danger">*Esta nota possui produto(s) sem cadastro inclua antes de continuar</p>
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        </div>
 
-							</div>
-						</div>
-					</div>
+                                    </div>
+                                </div>
+                            </div>
 
-					<div class="col-xl-12">
-						<div class="card card-custom gutter-b example example-compact">
+                            <div class="col-xl-12">
+                                <div class="card card-custom gutter-b example example-compact">
 
-							<div class="card-body">
-								<div class="row">
-									<div class="form-group validated col-sm-2 col-lg-2">
-										<label class="col-form-label">Data de Vencimento</label>
-										<div class="">
-											<div class="input-group date">
-												<input type="text" class="form-control data-input" id="kt_datepicker_3">
-												<div class="input-group-append">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="form-group validated col-sm-2 col-lg-2">
+                                                <label class="col-form-label">Data de Vencimento</label>
+                                                <div class="">
+                                                    <div class="input-group date">
+                                                        <input type="text" class="form-control data-input" id="kt_datepicker_3">
+                                                        <div class="input-group-append">
 													<span class="input-group-text">
 														<i class="la la-calendar"></i>
 													</span>
-												</div>
-											</div>
-										</div>
-									</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-									<div class="form-group validated col-sm-2 col-lg-2">
-										<label class="col-form-label">Valor da parcela</label>
-										<div class="">
-											<input type="text" class="form-control" id="valor_parcela">
+                                            <div class="form-group validated col-sm-2 col-lg-2">
+                                                <label class="col-form-label">Valor da parcela</label>
+                                                <div class="">
+                                                    <input type="text" class="form-control" id="valor_parcela">
 
-										</div>
-									</div>
+                                                </div>
+                                            </div>
 
-									<div class="form-group validated col-sm-3 col-lg-3">
-										<label class="col-form-label">Forma de Pagamento</label>
-										<select class="form-control" id="forma_pagamento_fatura">
-											<option value="boleto">Boleto</option>
-											<option value="pix">Pix</option>
-											<option value="transferencia">Transferência</option>
-											<option value="adiantamento">Adiantamento de Fornecedor</option>
-										</select>
-									</div>
+                                            <div class="form-group validated col-sm-3 col-lg-3">
+                                                <label class="col-form-label">Forma de Pagamento</label>
+                                                <select class="form-control" id="forma_pagamento_fatura">
+                                                    <option value="boleto">Boleto</option>
+                                                    <option value="pix">Pix</option>
+                                                    <option value="transferencia">Transferência</option>
+                                                    <option value="adiantamento">Adiantamento de Fornecedor</option>
+                                                </select>
+                                            </div>
 
-									<div class="form-group validated col-sm-4 col-lg-4">
-										<br>
-										<a style="margin-top: 13px;" id="add-pag" class="btn btn-primary font-weight-bold text-uppercase px-9 py-4">
-											Adicionar Pag.
-										</a>
-									</div>
-								</div>
-								<div class="">
-									<h2 style="margin-left: 10px;">Fatura</h2>
-									<input type="hidden" id="fatura" value="{{json_encode($fatura)}}">
-									<div class="row" id="fatura-html">
+                                            <div class="form-group validated col-sm-4 col-lg-4">
+                                                <br>
+                                                <a style="margin-top: 13px;" id="add-pag" class="btn btn-primary font-weight-bold text-uppercase px-9 py-4">
+                                                    Adicionar Pag.
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div class="">
+                                            <h2 style="margin-left: 10px;">Fatura</h2>
+                                            <input type="hidden" id="fatura" value="{{json_encode($fatura)}}">
+                                            <div class="row" id="fatura-html">
 
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-					<input type="hidden" id="total" value="{{$dadosNf['vProd']}}" name="">
-					<div class="col-xl-12">
-						<div class="row">
-							<div class="col-xl-3">
-								<h4>Total: <strong id="valorDaNF" class="blue-text">R$ {{ number_format((float)$dadosNf['vProd'], 2, ',', '.') }}</strong></h4>
-							</div>
+                            <input type="hidden" id="total" value="{{$dadosNf['vProd']}}" name="">
+                            <div class="col-xl-12">
+                                <div class="row">
+                                    <div class="col-xl-3">
+                                        <h4>Total: <strong id="valorDaNF" class="blue-text">R$ {{ number_format((float)$dadosNf['vProd'], 2, ',', '.') }}</strong></h4>
+                                    </div>
 
-							<div class="col-xl-3">
-								<select class="custom-select form-control" id="categoria_conta_id" name="categoria_conta_id">
-									<option value="">Selecione a categoria de conta</option>
-									@foreach($categoriasDeConta as $c)
-									<option value="{{$c->id}}">
-										{{$c->nome}}
-									</option>
-									@endforeach
-								</select>
-							</div>
-                             <div class="form-group col-lg-3">
-                             <select name="veiculo_id" id="veiculo_id" class="form-control custom-select">
-                             <option value="">Selecione um veículo</option>
-                             @foreach($veiculos as $v)
-                             <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
-                              @endforeach
-                             </select>
-                          </div>
-                          
-							<div class="col-xl-3">
-								<input type="text" class="form-control" id="lote" placeholder="Lote">
-							</div>
-                          
-							<div class="col-xl-3 mt-4">
-								<button id="salvarNF" disabled style="width: 100%" type="submit" class="btn btn-success spinner-white spinner-right">
-									<i class="la la-check"></i>
-									<span class="">Salvar</span>
-								</button>
-							</div>
-						</div>
-					</div>
+                                    <div class="col-xl-3">
+                                        <select class="custom-select form-control" id="categoria_conta_id" name="categoria_conta_id">
+                                            <option value="">Selecione a categoria de conta</option>
+                                            @foreach($categoriasDeConta as $c)
+                                                <option value="{{$c->id}}">
+                                                    {{$c->nome}}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-lg-3">
+                                        <select name="veiculo_id" id="veiculo_id" class="form-control custom-select">
+                                            <option value="">Selecione um veículo</option>
+                                            @foreach($veiculos as $v)
+                                                <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-				</div>
-				<br>
-			</div>
-		</div>
-	</div>
-</div>
+                                    <div class="col-xl-3">
+                                        <input type="text" class="form-control" id="lote" placeholder="Lote">
+                                    </div>
 
-<input type="hidden" id="subs" value="{{json_encode($subs)}}">
+                                    <div class="col-xl-3 mt-4">
+                                        <button id="salvarNF" disabled style="width: 100%" type="submit" class="btn btn-success spinner-white spinner-right">
+                                            <i class="la la-check"></i>
+                                            <span class="">Salvar</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="exampleModalLabel">Adicionar produto</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					x
-				</button>
-			</div>
-			<div class="modal-body">
+                        </div>
+                        <br>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-				<div class="wizard wizard-3" id="kt_wizard_v4" data-wizard-state="between" data-wizard-clickable="true">
-					<div class="wizard-nav">
+        <input type="hidden" id="subs" value="{{json_encode($subs)}}">
 
-						<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-							<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-								<div class="wizard-label">
-									<h3 class="wizard-title">
+        <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Adicionar produto</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="wizard wizard-3" id="kt_wizard_v4" data-wizard-state="between" data-wizard-clickable="true">
+                            <div class="wizard-nav">
+
+                                <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
+                                    <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
+                                        <div class="wizard-label">
+                                            <h3 class="wizard-title">
 										<span>
 											IDENTIFICAÇÃO
 										</span>
-									</h3>
-									<div class="wizard-bar"></div>
-								</div>
-							</div>
-							<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-								<div class="wizard-label">
-									<h3 class="wizard-title">
+                                            </h3>
+                                            <div class="wizard-bar"></div>
+                                        </div>
+                                    </div>
+                                    <div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
+                                        <div class="wizard-label">
+                                            <h3 class="wizard-title">
 										<span>
 											ALÍQUOTAS
 										</span>
-									</h3>
-									<div class="wizard-bar"></div>
-								</div>
-							</div>
-						</div>
-					</div>
+                                            </h3>
+                                            <div class="wizard-bar"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-					<div class="card-body">
-						<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
+                            <div class="card-body">
+                                <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-							<form class="form fv-plugins-bootstrap fv-plugins-framework form-prod" id="kt_form">
-								<div class="pb-5" data-wizard-type="step-content">
-									<div class="row">
-										<div class="form-group validated col-sm-10 col-lg-10">
-											<label class="col-form-label">Nome do Produto <strong class="text-danger">*</strong></label>
-											<div class="input-group">
-												<input id="nome" type="text" class="form-control" name="nome" value="">
-												<div class="input-group-append">
-													<button onclick="linkProduto()" class="btn btn-info" type="button">
-														<i class="la la-search"></i>
+                                    <form class="form fv-plugins-bootstrap fv-plugins-framework form-prod" id="kt_form">
+                                        <div class="pb-5" data-wizard-type="step-content">
+                                            <div class="row">
+                                                <div class="form-group validated col-sm-10 col-lg-10">
+                                                    <label class="col-form-label">Nome do Produto <strong class="text-danger">*</strong></label>
+                                                    <div class="input-group">
+                                                        <input id="nome" type="text" class="form-control" name="nome" value="">
+                                                        <div class="input-group-append">
+                                                            <button onclick="linkProduto()" class="btn btn-info" type="button">
+                                                                <i class="la la-search"></i>
 
-													</button>
-												</div>
-											</div>
-										</div>
-									</div>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-									<div class="row">
-										<div class="form-group validated col-sm-3 col-lg-2">
-											<label class="col-form-label">NCM <strong class="text-danger">*</strong></label>
-											<div class="">
-												<input id="ncm" type="text" class="form-control" name="ncm" value="">
-											</div>
-										</div>
+                                            <div class="row">
+                                                <div class="form-group validated col-sm-3 col-lg-2">
+                                                    <label class="col-form-label">NCM <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <input id="ncm" type="text" class="form-control" name="ncm" value="">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-2 col-lg-3">
-											<label class="col-form-label">CEST</label>
-											<div class="">
-												<input type="text" id="CEST" class="form-control @if($errors->has('CEST')) is-invalid @endif">
-											</div>
-										</div>
-										<div class="form-group validated col-sm-3 col-lg-2">
-											<label class="col-form-label">CFOP <strong class="text-danger">*</strong></label>
-											<div class="">
-												<input id="cfop" type="text" class="form-control" name="cfop" value="">
-											</div>
-										</div>
+                                                <div class="form-group validated col-sm-2 col-lg-3">
+                                                    <label class="col-form-label">CEST</label>
+                                                    <div class="">
+                                                        <input type="text" id="CEST" class="form-control @if($errors->has('CEST')) is-invalid @endif">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group validated col-sm-3 col-lg-2">
+                                                    <label class="col-form-label">CFOP <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <input id="cfop" type="text" class="form-control" name="cfop" value="">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-2">
-											<label class="col-form-label">Referência</label>
-											<div class="">
-												<input id="referencia" type="text" class="form-control" name="referencia" value="">
-											</div>
-										</div>
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Conversão unitária para estoque</label>
-											<div class="">
-												<input id="conv_estoque" type="text" class="form-control" name="conv_estoque" value="">
-											</div>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-2">
+                                                    <label class="col-form-label">Referência</label>
+                                                    <div class="">
+                                                        <input id="referencia" type="text" class="form-control" name="referencia" value="">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Conversão unitária para estoque</label>
+                                                    <div class="">
+                                                        <input id="conv_estoque" type="text" class="form-control" name="conv_estoque" value="">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Quantidade <strong class="text-danger">*</strong></label>
-											<div class="">
-												<input id="quantidade" type="text" class="form-control" name="quantidade" value="">
-											</div>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Quantidade <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <input id="quantidade" type="text" class="form-control" name="quantidade" value="">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Valor de compra <strong class="text-danger">*</strong></label>
-											<div class="">
-												<input id="valor" type="text" class="form-control" name="valor" value="">
-											</div>
-										</div>
-
-
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">% lucro</label>
-											<div class="">
-												<input type="text" id="percentual_lucro" class="form-control money" name="percentual_lucro" value="{{$config->percentual_lucro_padrao }}">
-											</div>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Valor de compra <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <input id="valor" type="text" class="form-control" name="valor" value="">
+                                                    </div>
+                                                </div>
 
 
-										<input type="hidden" id="_token" name="_token" value="{{ csrf_token() }}">
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">% lucro</label>
+                                                    <div class="">
+                                                        <input type="text" id="percentual_lucro" class="form-control money" name="percentual_lucro" value="{{$config->percentual_lucro_padrao }}">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Valor de Venda <strong class="text-danger">*</strong></label>
-											<div class="">
-												<input id="valor_venda" type="text" class="form-control" name="valor_venda" value="">
-											</div>
-										</div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Unidade de Compra <strong class="text-danger">*</strong></label>
-											<div class="">
-												<select class="custom-select form-control" name="un_compra" id="un_compra">
-													@foreach($unidadesDeMedida as $u)
-													<option value="{{$u}}">{{$u}}</option>
-													@endforeach
-												</select>
-											</div>
-										</div>
+                                                <input type="hidden" id="_token" name="_token" value="{{ csrf_token() }}">
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Unidade de Venda <strong class="text-danger">*</strong></label>
-											<select class="custom-select form-control" id="unidade_venda">
-												@foreach($unidadesDeMedida as $u)
-												<option value="{{$u}}">{{$u}}</option>
-												@endforeach
-											</select>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Valor de Venda <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <input id="valor_venda" type="text" class="form-control" name="valor_venda" value="">
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Categoria</label>
-											<select class="custom-select form-control" id="categoria_id">
-												@foreach($categorias as $cat)
-												<option value="{{$cat->id}}">{{$cat->nome}}</option>
-												@endforeach
-											</select>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Unidade de Compra <strong class="text-danger">*</strong></label>
+                                                    <div class="">
+                                                        <select class="custom-select form-control" name="un_compra" id="un_compra">
+                                                            @foreach($unidadesDeMedida as $u)
+                                                                <option value="{{$u}}">{{$u}}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Sub Categoria</label>
-											<select class="custom-select form-control" id="sub_categoria_id">
-												<option value="">selecione</option>
-											</select>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Unidade de Venda <strong class="text-danger">*</strong></label>
+                                                    <select class="custom-select form-control" id="unidade_venda">
+                                                        @foreach($unidadesDeMedida as $u)
+                                                            <option value="{{$u}}">{{$u}}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Marca</label>
-											<select class="custom-select form-control" id="marca_id">
-												<option value="">selecione</option>
-												@foreach($marcas as $m)
-												<option value="{{$m->id}}">{{$m->nome}}</option>
-												@endforeach
-											</select>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Categoria</label>
+                                                    <select class="custom-select form-control" id="categoria_id">
+                                                        @foreach($categorias as $cat)
+                                                            <option value="{{$cat->id}}">{{$cat->nome}}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Estoque minimo</label>
-											<div class="">
-												<input type="text" id="estoque_minimo" class="form-control @if($errors->has('∂')) is-invalid @endif">
-											</div>
-										</div>
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Sub Categoria</label>
+                                                    <select class="custom-select form-control" id="sub_categoria_id">
+                                                        <option value="">selecione</option>
+                                                    </select>
+                                                </div>
 
-										<div class="form-group validated col-sm-6 col-lg-3">
-											<label class="col-form-label">Gerenciar estoque</label>
-											<div class="col-6">
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Marca</label>
+                                                    <select class="custom-select form-control" id="marca_id">
+                                                        <option value="">selecione</option>
+                                                        @foreach($marcas as $m)
+                                                            <option value="{{$m->id}}">{{$m->nome}}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Estoque minimo</label>
+                                                    <div class="">
+                                                        <input type="text" id="estoque_minimo" class="form-control @if($errors->has('∂')) is-invalid @endif">
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group validated col-sm-6 col-lg-3">
+                                                    <label class="col-form-label">Gerenciar estoque</label>
+                                                    <div class="col-6">
 												<span class="switch switch-outline switch-primary">
 													<label>
 														<input value="true" @if($config->gerenciar_estoque_produto == 1) checked @endif type="checkbox" id="gerenciar_estoque">
 														<span></span>
 													</label>
 												</span>
-											</div>
-										</div>
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Inativo</label>
-											<div class="col-6">
+                                                <div class="form-group validated col-sm-6 col-lg-2">
+                                                    <label class="col-form-label">Inativo</label>
+                                                    <div class="col-6">
 												<span class="switch switch-outline switch-danger">
 													<label>
 														<input value="true" type="checkbox" id="inativo">
 														<span></span>
 													</label>
 												</span>
-											</div>
-										</div>
+                                                    </div>
+                                                </div>
 
-										<div class="form-group validated col-sm-3 col-lg-3">
-											<label class="col-form-label">Código de barras</label>
-											<div class="input-group">
-												<input id="codBarras" type="text" class="form-control" name="codBarras" value="">
-												<div class="input-group-prepend">
+                                                <div class="form-group validated col-sm-3 col-lg-3">
+                                                    <label class="col-form-label">Código de barras</label>
+                                                    <div class="input-group">
+                                                        <input id="codBarras" type="text" class="form-control" name="codBarras" value="">
+                                                        <div class="input-group-prepend">
 													<span class="input-group-text btn-info btn" onclick="gerarCode()">
 														<i class="la la-barcode"></i>
 													</span>
-												</div>
-											</div>
-										</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-										<hr>
-										<div class="form-group validated col-12">
-											<h3>Derivado Petróleo</h3>
-										</div>
+                                                <hr>
+                                                <div class="form-group validated col-12">
+                                                    <h3>Derivado Petróleo</h3>
+                                                </div>
 
-										<div class="form-group validated col-lg-6 col-md-10 col-sm-10">
-											<label class="col-form-label">ANP</label>
+                                                <div class="form-group validated col-lg-6 col-md-10 col-sm-10">
+                                                    <label class="col-form-label">ANP</label>
 
-											<select class="custom-select form-control" id="anp">
-												<option value="">--</option>
-												@foreach($anps as $key => $a)
-												<option value="{{$key}}">[{{$key}}] - {{$a}}
-												</option>
-												@endforeach
-											</select>
-										</div>
+                                                    <select class="custom-select form-control" id="anp">
+                                                        <option value="">--</option>
+                                                        @foreach($anps as $key => $a)
+                                                            <option value="{{$key}}">[{{$key}}] - {{$a}}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">%GLP</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">%GLP</label>
 
-											<input type="text" id="perc_glp" class="form-control @if($errors->has('perc_glp')) is-invalid @endif trib">
-										</div>
+                                                    <input type="text" id="perc_glp" class="form-control @if($errors->has('perc_glp')) is-invalid @endif trib">
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">%GNn</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">%GNn</label>
 
-											<input type="text" id="perc_gnn" class="form-control @if($errors->has('perc_gnn')) is-invalid @endif trib">
-										</div>
+                                                    <input type="text" id="perc_gnn" class="form-control @if($errors->has('perc_gnn')) is-invalid @endif trib">
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">%GNi</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">%GNi</label>
 
-											<input type="text" id="perc_gni" class="form-control @if($errors->has('perc_gni')) is-invalid @endif trib">
-										</div>
+                                                    <input type="text" id="perc_gni" class="form-control @if($errors->has('perc_gni')) is-invalid @endif trib">
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">Valor de partida</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Valor de partida</label>
 
-											<input type="text" id="valor_partida" class="form-control @if($errors->has('valor_partida')) is-invalid @endif money">
-										</div>
+                                                    <input type="text" id="valor_partida" class="form-control @if($errors->has('valor_partida')) is-invalid @endif money">
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">Un. tributável</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Un. tributável</label>
 
-											<input type="text" id="unidade_tributavel" class="form-control @if($errors->has('unidade_tributavel')) is-invalid @endif" data-mask="AAAA">
-										</div>
+                                                    <input type="text" id="unidade_tributavel" class="form-control @if($errors->has('unidade_tributavel')) is-invalid @endif" data-mask="AAAA">
+                                                </div>
 
-										<div class="form-group validated col-lg-3 col-md-4 col-sm-4">
-											<label class="col-form-label">Qtd. tributável</label>
+                                                <div class="form-group validated col-lg-3 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Qtd. tributável</label>
 
-											<input type="text" id="quantidade_tributavel" class="form-control @if($errors->has('quantidade_tributavel')) is-invalid @endif" data-mask="00000,00" data-mask-reverse="true">
-										</div>
-
-
-										<hr>
-										<div class="form-group validated col-12">
-											<h3>Dados de dimensão e peso do produto (Opcional)</h3>
-										</div>
+                                                    <input type="text" id="quantidade_tributavel" class="form-control @if($errors->has('quantidade_tributavel')) is-invalid @endif" data-mask="00000,00" data-mask-reverse="true">
+                                                </div>
 
 
-										<div class="form-group validated col-lg-2 col-md-4 col-sm-4">
-											<label class="col-form-label">Largura (cm)</label>
-
-											<input type="text" id="largura" class="form-control @if($errors->has('largura')) is-invalid @endif">
-
-										</div>
-
-										<div class="form-group validated col-lg-2 col-md-4 col-sm-4">
-											<label class="col-form-label">Altura (cm)</label>
-
-											<input type="text" id="altura" class="form-control @if($errors->has('altura')) is-invalid @endif">
-										</div>
-
-										<div class="form-group validated col-lg-2 col-md-4 col-sm-4">
-											<label class="col-form-label">Comprimento (cm)</label>
-
-											<input type="text" id="comprimento" class="form-control @if($errors->has('comprimento')) is-invalid @endif">
-										</div>
-
-										<div class="form-group validated col-lg-2 col-md-4 col-sm-4">
-											<label class="col-form-label">Peso liquido</label>
-
-											<input type="text" id="peso_liquido" class="form-control @if($errors->has('peso_liquido')) is-invalid @endif">
-										</div>
-
-										<div class="form-group validated col-lg-2 col-md-4 col-sm-4">
-											<label class="col-form-label">Peso bruto</label>
-
-											<input type="text" id="peso_bruto" class="form-control @if($errors->has('peso_bruto')) is-invalid @endif">
-										</div>
-
-										<div class="col-lg-12 col-xl-12">
-											<p class="text-danger">*Se atente a preencher todos os dados para utilizar a Api dos correios.</p>
-										</div>
-
-									</div>
-
-								</div>
-								<div class="pb-5" data-wizard-type="step-content">
-									<div class="row">
-
-										<div class="form-group validated col-sm-6 col-lg-12">
-											<label class="col-form-label">CST/CSOSN</label>
-											<select class="custom-select form-control" id="CST_CSOSN">
-												@foreach($listaCSTCSOSN as $key => $c)
-												<option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_CSOSN)
-													selected
-													@endif
-													@else
-													@if($key == $config->CST_CSOSN_padrao)
-													selected
-													@endif
-													@endif
-
-													@endif
-													>{{$key}} - {{$c}}
-												</option>
-												@endforeach
-											</select>
-										</div>
-
-										<div class="form-group validated col-sm-4 col-lg-6">
-											<label class="col-form-label">CST PIS</label>
-											<select class="custom-select form-control" id="CST_PIS">
-												@foreach($listaCST_PIS_COFINS as $key => $c)
-												<option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_PIS)
-													selected
-													@endif
-													@else
-													@if($key == $config->CST_PIS_padrao)
-													selected
-													@endif
-													@endif
-
-													@endif
-													>{{$key}} - {{$c}}
-												</option>
-												@endforeach
-											</select>
-										</div>
-
-										<div class="form-group validated col-sm-3 col-lg-6">
-											<label class="col-form-label">CST COFINS</label>
-											<select class="custom-select form-control" id="CST_COFINS">
-												@foreach($listaCST_PIS_COFINS as $key => $c)
-												<option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_COFINS)
-													selected
-													@endif
-													@else
-													@if($key == $config->CST_COFINS_padrao)
-													selected
-													@endif
-													@endif
-
-													@endif
-													>{{$key}} - {{$c}}
-												</option>
-												@endforeach
-											</select>
-										</div>
-
-										<div class="form-group validated col-sm-3 col-lg-6">
-											<label class="col-form-label">CST IPI</label>
-											<select class="custom-select form-control" id="CST_IPI">
-												@foreach($listaCST_IPI as $key => $c)
-												<option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_IPI)
-													selected
-													@endif
-													@else
-													@if($key == $config->CST_IPI_padrao)
-													selected
-													@endif
-													@endif
-
-													@endif
-													>{{$key}} - {{$c}}
-												</option>
-												@endforeach
-											</select>
-										</div>
-										<div class="form-group validated col-sm-2 col-lg-2">
-											<label class="col-form-label">%ICMS</label>
-											<div class="">
-												<input id="perc_icms" type="text" class="form-control trib" name="perc_icms" value="0">
-											</div>
-										</div>
-										<div class="form-group validated col-sm-2 col-lg-2">
-											<label class="col-form-label">%PIS</label>
-											<div class="">
-												<input id="perc_pis" type="text" class="form-control trib" name="perc_pis" value="0">
-											</div>
-										</div>
-										<div class="form-group validated col-sm-2 col-lg-2">
-											<label class="col-form-label">%COFINS</label>
-											<div class="">
-												<input id="perc_cofins" type="text" class="form-control trib" name="perc_cofins" value="0">
-											</div>
-										</div>
-										<div class="form-group validated col-sm-2 col-lg-2">
-											<label class="col-form-label">%IPI</label>
-											<div class="">
-												<input id="perc_ipi" type="text" class="form-control trib" name="perc_ipi" value="0">
-											</div>
-										</div>
-
-									</div>
-								</div>
-							</form>
-						</div>
-					</div>
-				</div>
+                                                <hr>
+                                                <div class="form-group validated col-12">
+                                                    <h3>Dados de dimensão e peso do produto (Opcional)</h3>
+                                                </div>
 
 
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-				<button type="button" id="salvar" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
-			</div>
-		</div>
-	</div>
-</div>
+                                                <div class="form-group validated col-lg-2 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Largura (cm)</label>
+
+                                                    <input type="text" id="largura" class="form-control @if($errors->has('largura')) is-invalid @endif">
+
+                                                </div>
+
+                                                <div class="form-group validated col-lg-2 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Altura (cm)</label>
+
+                                                    <input type="text" id="altura" class="form-control @if($errors->has('altura')) is-invalid @endif">
+                                                </div>
+
+                                                <div class="form-group validated col-lg-2 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Comprimento (cm)</label>
+
+                                                    <input type="text" id="comprimento" class="form-control @if($errors->has('comprimento')) is-invalid @endif">
+                                                </div>
+
+                                                <div class="form-group validated col-lg-2 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Peso liquido</label>
+
+                                                    <input type="text" id="peso_liquido" class="form-control @if($errors->has('peso_liquido')) is-invalid @endif">
+                                                </div>
+
+                                                <div class="form-group validated col-lg-2 col-md-4 col-sm-4">
+                                                    <label class="col-form-label">Peso bruto</label>
+
+                                                    <input type="text" id="peso_bruto" class="form-control @if($errors->has('peso_bruto')) is-invalid @endif">
+                                                </div>
+
+                                                <div class="col-lg-12 col-xl-12">
+                                                    <p class="text-danger">*Se atente a preencher todos os dados para utilizar a Api dos correios.</p>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+                                        <div class="pb-5" data-wizard-type="step-content">
+                                            <div class="row">
+
+                                                <div class="form-group validated col-sm-6 col-lg-12">
+                                                    <label class="col-form-label">CST/CSOSN</label>
+                                                    <select class="custom-select form-control" id="CST_CSOSN">
+                                                        @foreach($listaCSTCSOSN as $key => $c)
+                                                            <option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_CSOSN)
+                                                                selected
+                                                                    @endif
+                                                                    @else
+                                                                        @if($key == $config->CST_CSOSN_padrao)
+                                                                            selected
+                                                                @endif
+                                                                @endif
+
+                                                                @endif
+                                                            >{{$key}} - {{$c}}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group validated col-sm-4 col-lg-6">
+                                                    <label class="col-form-label">CST PIS</label>
+                                                    <select class="custom-select form-control" id="CST_PIS">
+                                                        @foreach($listaCST_PIS_COFINS as $key => $c)
+                                                            <option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_PIS)
+                                                                selected
+                                                                    @endif
+                                                                    @else
+                                                                        @if($key == $config->CST_PIS_padrao)
+                                                                            selected
+                                                                @endif
+                                                                @endif
+
+                                                                @endif
+                                                            >{{$key}} - {{$c}}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group validated col-sm-3 col-lg-6">
+                                                    <label class="col-form-label">CST COFINS</label>
+                                                    <select class="custom-select form-control" id="CST_COFINS">
+                                                        @foreach($listaCST_PIS_COFINS as $key => $c)
+                                                            <option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_COFINS)
+                                                                selected
+                                                                    @endif
+                                                                    @else
+                                                                        @if($key == $config->CST_COFINS_padrao)
+                                                                            selected
+                                                                @endif
+                                                                @endif
+
+                                                                @endif
+                                                            >{{$key}} - {{$c}}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group validated col-sm-3 col-lg-6">
+                                                    <label class="col-form-label">CST IPI</label>
+                                                    <select class="custom-select form-control" id="CST_IPI">
+                                                        @foreach($listaCST_IPI as $key => $c)
+                                                            <option value="{{$key}}" @if($config !=null) @if(isset($produto)) @if($key==$produto->CST_IPI)
+                                                                selected
+                                                                    @endif
+                                                                    @else
+                                                                        @if($key == $config->CST_IPI_padrao)
+                                                                            selected
+                                                                @endif
+                                                                @endif
+
+                                                                @endif
+                                                            >{{$key}} - {{$c}}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="form-group validated col-sm-2 col-lg-2">
+                                                    <label class="col-form-label">%ICMS</label>
+                                                    <div class="">
+                                                        <input id="perc_icms" type="text" class="form-control trib" name="perc_icms" value="0">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group validated col-sm-2 col-lg-2">
+                                                    <label class="col-form-label">%PIS</label>
+                                                    <div class="">
+                                                        <input id="perc_pis" type="text" class="form-control trib" name="perc_pis" value="0">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group validated col-sm-2 col-lg-2">
+                                                    <label class="col-form-label">%COFINS</label>
+                                                    <div class="">
+                                                        <input id="perc_cofins" type="text" class="form-control trib" name="perc_cofins" value="0">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group validated col-sm-2 col-lg-2">
+                                                    <label class="col-form-label">%IPI</label>
+                                                    <div class="">
+                                                        <input id="perc_ipi" type="text" class="form-control trib" name="perc_ipi" value="0">
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
 
 
-<div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="exampleModalLabel">Editar produto</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					x
-				</button>
-			</div>
-			<div class="modal-body">
-
-				<input id="idEdit" type="hidden" class="form-control" name="idEdit" value="">
-
-				<div class="row">
-					<div class="form-group validated col-sm-12 col-lg-12">
-						<label class="col-form-label">Nome do Produto</label>
-						<div class="">
-							<input id="nomeEdit" type="text" class="form-control" name="nomeEdit" value="">
-
-						</div>
-					</div>
-				</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                        <button type="button" id="salvar" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
 
-				<div class="row">
+        <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Editar produto</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
 
-					<div class="form-group validated col-sm-3 col-lg-3">
-						<label class="col-form-label">Conv. unit. estoque</label>
-						<div class="">
-							<input id="conv_estoqueEdit" type="text" class="form-control" name="conv_estoqueEdit" value="">
-						</div>
-					</div>
+                        <input id="idEdit" type="hidden" class="form-control" name="idEdit" value="">
 
-					<div class="form-group validated col-sm-3 col-lg-3">
-						<label class="col-form-label">Valor de venda</label>
-						<div class="">
-							<input id="valorVendaEdit" type="text" class="form-control money" name="valorVendaEdit" value="">
-						</div>
-					</div>
+                        <div class="row">
+                            <div class="form-group validated col-sm-12 col-lg-12">
+                                <label class="col-form-label">Nome do Produto</label>
+                                <div class="">
+                                    <input id="nomeEdit" type="text" class="form-control" name="nomeEdit" value="">
 
-					<div class="form-group validated col-sm-3 col-lg-3">
-						<label class="col-form-label">Valor de compra</label>
-						<div class="">
-							<input id="valorCompraEdit" type="text" class="form-control money" name="valorCompraEdit" value="">
-						</div>
-					</div>
-				</div>
+                                </div>
+                            </div>
+                        </div>
 
 
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-				<button type="button" id="salvarEdit" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
-			</div>
-		</div>
-	</div>
-</div>
+                        <div class="row">
 
-<div class="modal fade" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="exampleModalLabel">Atribuir ao produto</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-					x
-				</button>
-			</div>
-			<div class="modal-body">
+                            <div class="form-group validated col-sm-3 col-lg-3">
+                                <label class="col-form-label">Conv. unit. estoque</label>
+                                <div class="">
+                                    <input id="conv_estoqueEdit" type="text" class="form-control" name="conv_estoqueEdit" value="">
+                                </div>
+                            </div>
 
-				<div class="row">
-					<div class="form-group validated col-sm-12 col-lg-12 col-12">
-						<label class="col-form-label" id="">Produto</label><br>
-						<input placeholder="Digite para buscar o produto por nome ou referência" type="search" id="produto-search" class="form-control">
-						<div class="search-prod" style="display: none">
-						</div>
-					</div>
-				</div>
+                            <div class="form-group validated col-sm-3 col-lg-3">
+                                <label class="col-form-label">Valor de venda</label>
+                                <div class="">
+                                    <input id="valorVendaEdit" type="text" class="form-control money" name="valorVendaEdit" value="">
+                                </div>
+                            </div>
 
-				<div class="row">
-					<div class="form-group validated col-sm-3 col-lg-3 col-12">
-						<label class="col-form-label">Quantidade</label>
-						<div class="">
-							<input id="estoque" type="text" class="form-control" name="estoque" value="">
-						</div>
-					</div>
+                            <div class="form-group validated col-sm-3 col-lg-3">
+                                <label class="col-form-label">Valor de compra</label>
+                                <div class="">
+                                    <input id="valorCompraEdit" type="text" class="form-control money" name="valorCompraEdit" value="">
+                                </div>
+                            </div>
+                        </div>
 
-					<div class="form-group validated col-sm-3 col-lg-3 col-12">
-						<label class="col-form-label">Valor de venda</label>
-						<div class="">
-							<input id="valor_venda2" type="text" class="form-control money" name="valor_venda2" value="">
-						</div>
-					</div>
 
-					<div class="form-group validated col-sm-3 col-lg-3 col-12">
-						<label class="col-form-label">Valor de compra</label>
-						<div class="">
-							<input id="valor_compra2" type="text" class="form-control money" name="valor_compra2" value="">
-						</div>
-					</div>
-				</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                        <button type="button" id="salvarEdit" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-				<button type="button" id="salvarLink" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
-			</div>
-		</div>
-	</div>
-</div>
+        <div class="modal fade" id="modal-link" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Atribuir ao produto</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
 
-<script src="/js/compraFiscal.js?v=2.1"></script>
+                        <div class="row">
+                            <div class="form-group validated col-sm-12 col-lg-12 col-12">
+                                <label class="col-form-label" id="">Produto</label><br>
+                                <input placeholder="Digite para buscar o produto por nome ou referência" type="search" id="produto-search" class="form-control">
+                                <div class="search-prod" style="display: none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group validated col-sm-3 col-lg-3 col-12">
+                                <label class="col-form-label">Quantidade</label>
+                                <div class="">
+                                    <input id="estoque" type="text" class="form-control" name="estoque" value="">
+                                </div>
+                            </div>
+
+                            <div class="form-group validated col-sm-3 col-lg-3 col-12">
+                                <label class="col-form-label">Valor de venda</label>
+                                <div class="">
+                                    <input id="valor_venda2" type="text" class="form-control money" name="valor_venda2" value="">
+                                </div>
+                            </div>
+
+                            <div class="form-group validated col-sm-3 col-lg-3 col-12">
+                                <label class="col-form-label">Valor de compra</label>
+                                <div class="">
+                                    <input id="valor_compra2" type="text" class="form-control money" name="valor_compra2" value="">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                        <button type="button" id="salvarLink" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="/js/compraFiscal.js?v=2.1"></script>
 
 @endsection

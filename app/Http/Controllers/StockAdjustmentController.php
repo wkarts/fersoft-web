@@ -10,6 +10,8 @@ use App\Models\Estoque; // Importado para atualizar o saldo
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\AlteracaoEstoque;
+use Carbon\Carbon;
 
 class StockAdjustmentController extends BaseController
 {
@@ -202,11 +204,40 @@ class StockAdjustmentController extends BaseController
                         ]);
                     }
                 }
-            }
+                      
+                      $alteracao = new AlteracaoEstoque();
+                      $alteracao->empresa_id = $this->empresa_id;
+                      $alteracao->filial_id  = $filial_id_estoque;
+                      $alteracao->usuario_id = $this->usuario_id;
+                      $alteracao->produto_id = $item['produto_id'];
+                      $alteracao->quantidade = $item['quantidade'];
+                      $alteracao->tipo       = $item['tipo'];
+                      $alteracao->observacao = $request->observacao;
 
-            session()->flash('mensagem_sucesso', 'Ajuste de estoque registrado com sucesso.');
-            return redirect('/estoque/ajustes/' . $ajuste->id);
-        });
+                      // Pegando o motivo (ajuste conforme seu HTML envia: pelo request geral ou por item)
+                      $alteracao->motivo     = $request->input('motivo') ?? ($item['motivo'] ?? null);
+
+                      // Tratando a data informada no form para forçar no created_at
+                      $dataLancamento = Carbon::parse($request->data_ref);
+
+                      // Opcional: Se a data informada no form vier apenas como "22/05/2026", 
+                      // a hora ficará 00:00:00. O trecho abaixo injeta a hora atual do momento em que 
+                      // o usuário clicou em salvar, para que os relatórios não fiquem todos meia-noite.
+                      if ($dataLancamento->format('H:i:s') === '00:00:00') {
+                          $dataLancamento->setTimeFrom(Carbon::now());
+                      }
+
+                      $alteracao->created_at = $dataLancamento;
+                      $alteracao->updated_at = $dataLancamento;
+
+                      // Salva o registro
+                      $alteracao->save();
+                  }
+
+                  session()->flash('mensagem_sucesso', 'Ajuste de estoque registrado com sucesso.');
+                  return redirect('/estoque/ajustes/' . $ajuste->id);
+              });
+              
     }
 
     public function show($id)

@@ -37,8 +37,7 @@
 		</lottie-player>
 	</div>
 </div>
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-
+<input type="hidden" id="fornecedor_id" value="{{ isset($forn->id) ? $forn->id : (isset($fornecedor['id']) ? $fornecedor['id'] : 0) }}">
 	<div id="content" style="display: block">
 
 		<div class="card card-custom gutter-b example example-compact">
@@ -52,256 +51,39 @@
 					</div>
 
 					<div class="row">
-						<div class="col-xl-2"></div>
-						<div class="col-xl-8">
+                        <div class="col-xl-12">
+                            <div class="card card-custom gutter-b">
+                                <div class="card-body">
+                                    <h4 class="text-center">Nota Fiscal: <strong class="text-primary">{{ $infos['nNf'] }}</strong></h4>
+                                    <h4 class="text-center">Chave: <strong class="text-primary" style="font-size: 15px;">{{ $infos['chave'] }}</strong></h4>
+                                    
+                                    <hr>
 
-							<h4 class="center-align">Nota Fiscal: <strong class="text-primary">{{$infos['nNf']}}</strong></h4>
-							<h4 class="center-align">Chave: <strong class="text-primary">{{$infos['chave']}}</strong></h4>
-							
-							@if($fornecedor['novo_cadastrado'])
-							<h5 class="text-danger center-align">Fornecedor Cadastrado com Sucesso!</h5>
-							@endif
-
-							<div class="row">
-								<div class="col s8">
-									<h5>Fornecedor: <strong>{{$fornecedor['razaoSocial']}}</strong></h5>
-									<h5>Nome Fantasia: <strong>{{$fornecedor['nomeFantasia']}}</strong></h5>
-								</div>
-								<div class="col s4">
-									@if($fornecedor['cnpj'])
-									<h5>CNPJ: <strong>{{$fornecedor['cnpj']}}</strong></h5>
-									@else
-									<h5>CPF: <strong>{{$fornecedor['cpf']}}</strong></h5>
-									@endif
-									<h5>IE: <strong>{{$fornecedor['ie']}}</strong></h5>
-								</div>
-							</div>
-							<div class="row">
-								<div class="col s8">
-									<h5>Logradouro: <strong>{{$fornecedor['logradouro']}}</strong></h5>
-									<h5>Numero: <strong>{{$fornecedor['numero']}}</strong></h5>
-									<h5>Bairro: <strong>{{$fornecedor['bairro']}}</strong></h5>
-								</div>
-								<div class="col s4">
-									<h5>CEP: <strong>{{$fornecedor['cep']}}</strong></h5>
-									<h5>Fone: <strong>{{$fornecedor['fone']}}</strong></h5>
-								</div>
-							</div>
-
-						</div>
-						
-						<div class="col-xl-12">
-							<form class="row" method="post" action="/dfe/salvar" id="form-salvar-compra">
-								@csrf
-								<input type="hidden" value="{{$dfe->id}}" name="dfe_id">
-								<input type="hidden" value="{{ $forn ? $forn->id : '' }}" name="fornecedor">
-								<input type="hidden" value="{{json_encode($itens)}}" name="itens">
-								<input type="hidden" value="{{$vDesc}}" name="vDesc">
-								<input type="hidden" value="{{$nNf}}" name="nNf">
-
-								<div class="col-xl-12">
-									{!! __view_locais_select() !!}
-									
-									<h4>Itens da NFe</h4>
-									
-									<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
-										<table class="datatable-table" style="max-width: 100%;overflow: scroll">
-											<thead class="datatable-head">
-												<tr class="datatable-row" style="left: 0px;">
-													<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 70px;">#</span></th>
-													<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Produto</span></th>
-													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">NCM</span></th>
-													<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CEST</span></th>
-													<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP</span></th>
-													<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST ICMS</span></th>
-													<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST PIS</span></th>
-													<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST COFINS</span></th>
-													<th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 90px;">Cod Barra</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Un. Compra</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Qtd</span></th>
-													<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
-													<th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
-												</tr>
-											</thead>
-
-											@php
-											$contaSemRegistro = 0;
-											@endphp
-											<tbody class="datatable-body">
-												@foreach($itens as $i)
-												@php
-												if($i['produtoNovo'])
-												$contaSemRegistro++;;
-												@endphp
-												<tr class="datatable-row" id="tr_{{$i['codigo']}}" style="left: 0px;">
-													<td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$i['codigo']}}</span></td>
-													<td class="datatable-cell" id="th_{{$i['codigo']}}"><span style="width: 180px;" class="{{$i['produtoNovo'] == true ? 'text-danger' : ''}}">{{$i['xProd']}}</span></td>
-													<td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
-													<td class="datatable-cell"><span class="" style="width: 80px;">{{$i['CEST']}}</span></td>
-													
-                                                    <td class="datatable-cell">
-                                                        <input type="text" class="form-control cfop-input" data-codigo="{{$i['codigo']}}" style="width: 80px;" name="cfop_entrada[{{$i['codigo']}}]" value="{{$i['CFOP']}}">
-                                                    </td>
-                                                    <td class="datatable-cell">
-                                                        <input type="text" class="form-control" style="width: 80px;" name="cst_icms_entrada[{{$i['codigo']}}]" value="{{$i['CST_ICMS']}}">
-                                                    </td>
-                                                    <td class="datatable-cell">
-                                                        <input type="text" class="form-control" style="width: 80px;" name="cst_pis_entrada[{{$i['codigo']}}]" value="{{$i['CST_PIS']}}">
-                                                    </td>
-                                                    <td class="datatable-cell">
-                                                        <input type="text" class="form-control" style="width: 80px;" name="cst_cofins_entrada[{{$i['codigo']}}]" value="{{$i['CST_COFINS']}}">
-                                                    </td>
-
-													<td class="datatable-cell"><span class="codBarras" style="width: 90px;">{{$i['codBarras']}}</span></td>
-													<td class="datatable-cell"><span class="unidade" style="width: 80px;">{{$i['uCom']}}</span></td>
-													<td class="datatable-cell"><span class="valor" style="width: 80px;">{{$i['vUnCom']}}</span></td>
-													<td class="datatable-cell"><span class="quantidade" style="width: 80px;">{{$i['qCom']}}</span></td>
-
-													<th class="cod" id="th_prod_id_{{$i['codigo']}}" style="display: none">{{$i['produtoId']}}</th>
-													<th style="display: none" class="conv_estoque" id="th_prod_conv_unit_{{$i['codigo']}}">
-														{{$i['conversao_unitaria']}}
-													</th>
-
-													<td class="datatable-cell quantidade"><span style="width: 80px;">{{number_format((float) $i['qCom'] * (float) $i['vUnCom'], 2, ',', '.')}}</span></td>
-
-													<th class="datatable-cell">
-														<span style="width: 80px;">
-															<a id="th_acao1_{{$i['codigo']}}" @if($i['produtoNovo']) style="display: block" @else style="display: none" @endif onclick="cadProd('{{$i['codigo']}}','{{$i['xProd']}}','{{$i['codBarras']}}','{{$i['NCM']}}','{{$i['CFOP']}}','{{$i['uCom']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$i['vUnCom']}}', '{{$infos['nNf']}}','{{$i['CEST']}}')" href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
-																<span class="svg-icon svg-icon-success">
-																	<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" xmlns:xlink="[http://www.w3.org/1999/xlink](http://www.w3.org/1999/xlink)" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
-																		<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-																			<rect fill="#000000" x="4" y="11" width="16" height="2" rx="1" />
-																			<rect fill="#000000" opacity="0.3" transform="translate(12.000000, 12.000000) rotate(-270.000000) translate(-12.000000, -12.000000) " x="4" y="11" width="16" height="2" rx="1" />
-																		</g>
-																	</svg>
-																</span>
-															</a>
-
-															@if(!$i['produtoNovo'])
-															@if(!$i['produtoSetadoEstoque'])
-
-															<a title="Setar Estoque" onclick="salvarEstoque('{{$i['produto_id']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$infos['nNf']}}')" href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
-																<span class="svg-icon svg-icon-warning">
-																	<svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" xmlns:xlink="[http://www.w3.org/1999/xlink](http://www.w3.org/1999/xlink)" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
-																		<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-																			<rect x="0" y="0" width="24" height="24"/>
-																			<path d="M4,9.67471899 L10.880262,13.6470401 C10.9543486,13.689814 11.0320333,13.7207107 11.1111111,13.740321 L11.1111111,21.4444444 L4.49070127,17.526473 C4.18655139,17.3464765 4,17.0193034 4,16.6658832 L4,9.67471899 Z M20,9.56911707 L20,16.6658832 C20,17.0193034 19.8134486,17.3464765 19.5092987,17.526473 L12.8888889,21.4444444 L12.8888889,13.6728275 C12.9050191,13.6647696 12.9210067,13.6561758 12.9368301,13.6470401 L20,9.56911707 Z" fill="#000000"/>
-																			<path d="M4.21611835,7.74669402 C4.30015839,7.64056877 4.40623188,7.55087574 4.5299008,7.48500698 L11.5299008,3.75665466 C11.8237589,3.60013944 12.1762411,3.60013944 12.4700992,3.75665466 L19.4700992,7.48500698 C19.5654307,7.53578262 19.6503066,7.60071528 19.7226939,7.67641889 L12.0479413,12.1074394 C11.9974761,12.1365754 11.9509488,12.1699127 11.9085461,12.2067543 C11.8661433,12.1699127 11.819616,12.1365754 11.7691509,12.1074394 L4.21611835,7.74669402 Z" fill="#000000" opacity="0.3"/>
-																		</g>
-																	</svg>
-																</span>
-															</a>
-
-															@endif
-															@endif
-														</span>
-													</th>
-
-												</tr>
-												@endforeach
-											</tbody>
-										</table>
-										<br><br>
-									</div>
-								</div>
-						</div>
-					</div>
-
-					<div class="col-xl-12">
-						<div class="">
-							<h2 style="margin-left: 10px;">Fatura</h2>
-							<input type="hidden" id="fatura" name="fatura" value="{{json_encode($fatura)}}">
-							<div class="row">
-
-								@foreach($fatura as $f)
-								<div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-									<div class="card card-custom gutter-b example example-compact">
-										<div class="card-header">
-											<div class="card-title">
-												<h3 style="width: 230px; font-size: 20px; height: 10px;" class="card-title">R$ {{$f['valor_parcela']}}</h3>
-											</div>
-										</div>
-
-										<div class="card-body">
-											<div class="kt-widget__info">
-												<span class="kt-widget__label">Número:</span>
-												<a target="_blank" class="kt-widget__data text-success">{{$f['numero']}}</a>
-											</div>
-											<div class="kt-widget__info">
-												<span class="kt-widget__label">Vencimento:</span>
-												<a target="_blank" class="kt-widget__data text-success">{{$f['vencimento']}}</a>
-											</div>
-										</div>
-									</div>
-								</div>
-								@endforeach
-
-							</div>
-
-							@if(count($fatura) > 0)
-                            <div class="row">
-                                <div class="col-sm-12 col-lg-8 col-md-8 col-xl-6">
-                                    <form method="get" action="/dfe/salvarFatura" class="row">
-                                        <input type="hidden" value="{{$infos['chave']}}" name="chave">
-                                        <input type="hidden" value="{{json_encode($fatura)}}" name="fatura">
-                                        <input type="hidden" value="{{ $forn ? $forn->id : '' }}" name="fornecedor">
-
-                                        <div class="col-xl-4 form-group">
-                                            <label>Categoria da Conta *</label>
-                                            <select class="custom-select form-control" name="categoria_conta_id" required @if($fatura_salva) disabled @endif>
-                                                <option value="">-- Selecione --</option>
-                                                @foreach($categoriasConta as $cat)
-                                                    <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
-                                                @endforeach
-                                            </select>
+                                    <div class="row mt-5">
+                                        <div class="col-md-8">
+                                            <h5>Fornecedor: <strong>{{ $fornecedor['razaoSocial'] }}</strong></h5>
+                                            <h5>Nome Fantasia: <strong>{{ $fornecedor['nomeFantasia'] }}</strong></h5>
+                                            <h5>Logradouro: <strong>{{ $fornecedor['logradouro'] }}, {{ $fornecedor['numero'] }}</strong></h5>
+                                            <h5>Bairro: <strong>{{ $fornecedor['bairro'] }}</strong></h5>
                                         </div>
-
-                                        <div class="col-xl-4 form-group">
-                                            <label>Veículo *</label>
-                                            <select class="custom-select form-control" name="veiculo_id" @if($fatura_salva) disabled @endif>
-                                                <option value="">-- Selecione --</option>
-                                                @foreach($veiculos as $v)
-                                                    <option value="{{ $v->id }}">{{ $v->placa }}</option>
-                                                @endforeach
-                                            </select>
+                                        <div class="col-md-4">
+                                            @if($fornecedor['cnpj'])
+                                                <h5>CNPJ: <strong>{{ $fornecedor['cnpj'] }}</strong></h5>
+                                            @else
+                                                <h5>CPF: <strong>{{ $fornecedor['cpf'] }}</strong></h5>
+                                            @endif
+                                            <h5>IE: <strong>{{ $fornecedor['ie'] }}</strong></h5>
+                                            <h5>CEP: <strong>{{ $fornecedor['cep'] }}</strong></h5>
+                                            <h5>Cidade/UF: <strong class="text-success">{{ $fornecedor['cidade'] ?? '' }} / {{ $fornecedor['uf'] ?? '' }}</strong></h5>
                                         </div>
-
-                                        <div class="col-xl-4 form-group mt-7">
-                                            <button @if($fatura_salva) disabled @endif class="btn btn-light-primary w-100">Salvar Fatura</button>
-                                        </div>
-                                    </form>
-
-                                    @if($fatura_salva)
-                                    <div class="col-12 mt-0 mb-4 p-0">
-                                        <p class="text-danger">*As parcelas deste documento já foram salvas no Contas a Pagar!</p>
                                     </div>
-                                    @endif
-
                                 </div>
                             </div>
-                            @endif
-						</div>
-					</div>
-
+                        </div>
+                    </div>
+						
 					<div class="col-xl-12">
-						<br>
-						<div class="row">
-							<div class="col-xl-6">
-								<h4>Valor total de NFe: <strong id="valorDaNF" class="blue-text">R$ {{ moeda((float)$infos['vProd']) }}</strong></h4>
-								<h5>Desconto: <strong id="vDesc" class="blue-text">R$ {{ moeda((float)$infos['vDesc']) }}</strong></h5>
-								<h5>Valor liquído: <strong id="vNF" class="blue-text">R$ {{ moeda((float)$infos['vNF']) }}</strong></h5>
-							</div>
-							<div class="col-xl-3"></div>
-							<div class="col-xl-2">
-								<a href="/dfe/downloadXml/{{$infos['chave']}}" style="width: 100%" class="btn btn-light-info">
-									<i class="la la-file"></i>
-									Baixar XML
-								</a>
-							</div>
-						</div>
-
-						<form class="row" method="post" action="/dfe/salvar" id="form-salvar-compra-final">
+						<form class="row" method="post" action="/dfe/salvar" id="form-salvar-compra">
 							@csrf
 							<input type="hidden" value="{{$dfe->id}}" name="dfe_id">
 							<input type="hidden" value="{{ $forn ? $forn->id : '' }}" name="fornecedor">
@@ -309,60 +91,251 @@
 							<input type="hidden" value="{{$vDesc}}" name="vDesc">
 							<input type="hidden" value="{{$nNf}}" name="nNf">
 
-							@if($dfe->compra_id == 0)
-                            <div class="col-xl-12 mb-4 mt-2">
-                                <div class="row">
-                                    <div class="form-group col-xl-4">
-                                        <label>Categoria da Compra *</label>
-                                        <select class="custom-select form-control" name="categoria_id" required>
-                                            <option value="">-- Selecione --</option>
-                                            @foreach($categoriasConta as $cat)
-                                                <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
-                                            @endforeach
-                                        </select>
+							<div class="col-xl-12">
+								{!! __view_locais_select() !!}
+								
+								<h4>Itens da NFe</h4>
+								
+								<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+									<table class="datatable-table" style="max-width: 100%;overflow: scroll">
+										<thead class="datatable-head">
+											<tr class="datatable-row" style="left: 0px;">
+												<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 70px;">#</span></th>
+												<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Produto</span></th>
+												<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">NCM</span></th>
+												<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CEST</span></th>
+												<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CFOP</span></th>
+												<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST ICMS</span></th>
+												<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST PIS</span></th>
+												<th class="datatable-cell datatable-cell-sort"><span style="width: 80px;">CST COFINS</span></th>
+												<th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 90px;">Cod Barra</span></th>
+												<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Un. Compra</span></th>
+												<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
+												<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Qtd</span></th>
+												<th data-field="Type" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
+												<th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
+											</tr>
+										</thead>
+
+										@php
+										$contaSemRegistro = 0;
+										@endphp
+										<tbody class="datatable-body">
+    @foreach($itens as $i)
+    @php
+    if($i['produtoNovo'])
+    $contaSemRegistro++;
+    @endphp
+    <tr class="datatable-row" id="tr_{{$loop->index}}" style="left: 0px;">
+        <td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$i['codigo']}}</span></td>
+        <td class="datatable-cell" id="th_{{$loop->index}}"><span style="width: 180px;" class="{{$i['produtoNovo'] == true ? 'text-danger' : ''}}">{{$i['xProd']}}</span></td>
+        
+        <td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
+        <td class="datatable-cell"><span class="" style="width: 80px;">{{$i['CEST']}}</span></td>
+        
+        <td class="datatable-cell">
+            <input type="text" class="form-control cfop-input" data-codigo="{{$i['codigo']}}" style="width: 80px;" name="cfop_entrada[{{$i['codigo']}}]" value="{{$i['CFOP']}}">
+        </td>
+        <td class="datatable-cell">
+            <input type="text" class="form-control" style="width: 80px;" name="cst_icms_entrada[{{$i['codigo']}}]" value="{{$i['CST_ICMS']}}">
+        </td>
+        <td class="datatable-cell">
+            <input type="text" class="form-control" style="width: 80px;" name="cst_pis_entrada[{{$i['codigo']}}]" value="{{$i['CST_PIS']}}">
+        </td>
+        <td class="datatable-cell">
+            <input type="text" class="form-control" style="width: 80px;" name="cst_cofins_entrada[{{$i['codigo']}}]" value="{{$i['CST_COFINS']}}">
+        </td>
+
+        <td class="datatable-cell"><span class="codBarras" style="width: 90px;">{{$i['codBarras']}}</span></td>
+        <td class="datatable-cell"><span class="unidade" style="width: 80px;">{{$i['uCom']}}</span></td>
+        <td class="datatable-cell"><span class="valor" style="width: 80px;">{{$i['vUnCom']}}</span></td>
+        <td class="datatable-cell"><span class="quantidade" style="width: 80px;">{{$i['qCom']}}</span></td>
+
+        <th class="cod" id="th_prod_id_{{$loop->index}}" style="display: none">{{$i['produtoId']}}</th>
+        <th style="display: none" class="conv_estoque" id="th_prod_conv_unit_{{$loop->index}}">
+            {{$i['conversao_unitaria']}}
+        </th>
+
+        <td class="datatable-cell quantidade"><span style="width: 80px;">{{number_format((float) $i['qCom'] * (float) $i['vUnCom'], 2, ',', '.')}}</span></td>
+
+        <th class="datatable-cell">
+            <span style="width: 80px;">
+                <!-- ATENÇÃO AQUI: Note que adicionei o {{$loop->index}} como último parâmetro da função cadProd -->
+                <a id="th_acao1_{{$loop->index}}" @if($i['produtoNovo']) style="display: block" @else style="display: none" @endif onclick="cadProd('{{$i['codigo']}}','{{$i['xProd']}}','{{$i['codBarras']}}','{{$i['NCM']}}','{{$i['CFOP']}}','{{$i['uCom']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$i['vUnCom']}}', '{{$infos['nNf']}}','{{$i['CEST']}}', '{{$loop->index}}')" href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
+                    <span class="svg-icon svg-icon-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                            <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                <rect fill="#000000" x="4" y="11" width="16" height="2" rx="1" />
+                                <rect fill="#000000" opacity="0.3" transform="translate(12.000000, 12.000000) rotate(-270.000000) translate(-12.000000, -12.000000) " x="4" y="11" width="16" height="2" rx="1" />
+                            </g>
+                        </svg>
+                    </span>
+                </a>
+
+                @if(!$i['produtoNovo'])
+                @if(!$i['produtoSetadoEstoque'])
+
+														<a title="Setar Estoque" onclick="salvarEstoque('{{$i['produto_id']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$infos['nNf']}}')" href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
+															<span class="svg-icon svg-icon-warning">
+																<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+																	<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+																		<rect x="0" y="0" width="24" height="24"/>
+																		<path d="M4,9.67471899 L10.880262,13.6470401 C10.9543486,13.689814 11.0320333,13.7207107 11.1111111,13.740321 L11.1111111,21.4444444 L4.49070127,17.526473 C4.18655139,17.3464765 4,17.0193034 4,16.6658832 L4,9.67471899 Z M20,9.56911707 L20,16.6658832 C20,17.0193034 19.8134486,17.3464765 19.5092987,17.526473 L12.8888889,21.4444444 L12.8888889,13.6728275 C12.9050191,13.6647696 12.9210067,13.6561758 12.9368301,13.6470401 L20,9.56911707 Z" fill="#000000"/>
+																		<path d="M4.21611835,7.74669402 C4.30015839,7.64056877 4.40623188,7.55087574 4.5299008,7.48500698 L11.5299008,3.75665466 C11.8237589,3.60013944 12.1762411,3.60013944 12.4700992,3.75665466 L19.4700992,7.48500698 C19.5654307,7.53578262 19.6503066,7.60071528 19.7226939,7.67641889 L12.0479413,12.1074394 C11.9974761,12.1365754 11.9509488,12.1699127 11.9085461,12.2067543 C11.8661433,12.1699127 11.819616,12.1365754 11.7691509,12.1074394 L4.21611835,7.74669402 Z" fill="#000000" opacity="0.3"/>
+																	</g>
+																</svg>
+															</span>
+														</a>
+
+														@endif
+														@endif
+													</span>
+												</th>
+
+											</tr>
+											@endforeach
+										</tbody>
+									</table>
+									<br><br>
+								</div>
+							</div>
+
+							<div class="col-xl-12">
+								<div class="card card-custom gutter-b">
+									<div class="card-header">
+										<h3 class="card-title">Financeiro da Nota</h3>
+									</div>
+									<div class="card-body">
+										<div class="table-responsive">
+											<table class="table table-head-custom table-vertical-center" id="tabela-fatura">
+												<thead>
+													<tr class="text-left">
+														<th style="width: 150px">Número</th>
+														<th style="width: 200px">Vencimento</th>
+														<th style="width: 200px">Valor</th>
+														<th>Ações</th>
+													</tr>
+												</thead>
+												<tbody>
+													@foreach($fatura as $key => $f)
+													<tr>
+														<td>
+															<input type="text" class="form-control" name="fat_num[]" value="{{$f['numero']}}">
+														</td>
+														<td>
+															<input type="text" class="form-control datepicker" name="fat_venc[]" value="{{$f['vencimento']}}">
+														</td>
+														<td>
+															<input type="text" class="form-control money" name="fat_val[]" value="{{$f['valor_parcela']}}">
+														</td>
+														<td>
+															<button type="button" class="btn btn-danger btn-sm btn-remover-fat">
+																<i class="la la-trash"></i> Excluir
+															</button>
+														</td>
+													</tr>
+													@endforeach
+												</tbody>
+											</table>
+										</div>
+
+										<input type="hidden" name="fatura" id="fatura_json_input" value="{{json_encode($fatura)}}">
+
+										@if(count($fatura) > 0)
+										<div class="row mt-5">
+											<div class="col-md-4">
+												<label>Categoria da Conta *</label>
+												<select class="custom-select form-control" name="categoria_conta_id" required>
+													<option value="">-- Selecione --</option>
+													@foreach($categoriasConta as $cat)
+														<option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+													@endforeach
+												</select>
+											</div>
+											<div class="col-md-4">
+												<label>Veículo</label>
+												<select class="custom-select form-control" name="veiculo_id">
+													<option value="">-- Selecione --</option>
+													@foreach($veiculos as $v)
+														<option value="{{ $v->id }}">{{ $v->placa }}</option>
+													@endforeach
+												</select>
+											</div>
+										</div>
+										@endif
+									</div>
+								</div>
+							</div>
+
+							<div class="col-xl-12">
+								<br>
+								<div class="row">
+									<div class="col-xl-6">
+										<h4>Valor total de NFe: <strong id="valorDaNF" class="blue-text">R$ {{ moeda((float)$infos['vProd']) }}</strong></h4>
+										<h5>Desconto: <strong id="vDesc" class="blue-text">R$ {{ moeda((float)$infos['vDesc']) }}</strong></h5>
+										<h5>Valor liquído: <strong id="vNF" class="blue-text">R$ {{ moeda((float)$infos['vNF']) }}</strong></h5>
+									</div>
+									<div class="col-xl-1"></div>
+                                    <div class="col-xl-2">
+                                        <a href="/dfe" style="width: 100%" class="btn btn-light-danger">
+                                            <i class="la la-arrow-left"></i>
+                                            Voltar
+                                        </a>
                                     </div>
-
-                                    <div class="form-group col-xl-4">
-                                        <label>Vincular Veículo (Frota)</label>
-                                        <select class="custom-select form-control" name="veiculo_id">
-                                            <option value="">-- Nenhum --</option>
-                                            @foreach($veiculos as $v)
-                                                <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
-                                            @endforeach
-                                        </select>
+                                    <div class="col-xl-2">
+                                        <a href="/dfe/downloadXml/{{$infos['chave']}}" style="width: 100%" class="btn btn-light-info">
+                                            <i class="la la-file"></i>
+                                            Baixar XML
+                                        </a>
                                     </div>
-                                </div>
-                            </div>
+								</div>
 
-                            <div class="col-xl-4">
-                                <button @if($contaSemRegistro > 0) disabled @endif style="width: 100%" type="submit" class="btn btn-light-success">
-                                    <i class="la la-check"></i>
-                                    Salvar como compra
-                                </button>
-                            </div>
-                            @endif
+								@if($dfe->compra_id == 0)
+								<div class="col-xl-12 mb-4 mt-2">
+									<div class="row">
+										<div class="form-group col-xl-4">
+											<label>Categoria da Compra *</label>
+											<select class="custom-select form-control" name="categoria_id" required>
+												<option value="">-- Selecione --</option>
+												@foreach($categoriasConta as $cat)
+													<option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+												@endforeach
+											</select>
+										</div>
 
-							@if($contaSemRegistro > 0)
-							<div class="col-12">
-								<p class="text-danger">*Para salvar como compra é preciso ter todos os produtos cadastrados no sistema!</p>
+										<div class="form-group col-xl-4">
+											<label>Vincular Veículo (Frota)</label>
+											<select class="custom-select form-control" name="veiculo_id_frota">
+												<option value="">-- Nenhum --</option>
+												@foreach($veiculos as $v)
+													<option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
+												@endforeach
+											</select>
+										</div>
+									</div>
+								</div>
+
+								<div class="col-xl-4">
+									<button @if($contaSemRegistro > 0) disabled @endif style="width: 100%" type="submit" class="btn btn-light-success">
+										<i class="la la-check"></i>
+										Salvar como compra
+									</button>
+								</div>
+								@endif
+
+								@if($contaSemRegistro > 0)
+								<div class="col-12">
+									<p class="text-danger mt-3">*Para salvar como compra é preciso ter todos os produtos cadastrados no sistema!</p>
+								</div>
+								@endif
+
+								@if($dfe->compra_id > 0)
+								<div class="col-12">
+									<p class="text-danger mt-3">*Este documento já esta salvo em compras!</p>
+								</div>
+								@endif
+
 							</div>
-							@endif
-
-							@if($dfe->compra_id > 0)
-							<div class="col-12">
-								<p class="text-danger">*Este documento já esta salvo em compras!</p>
-							</div>
-							@endif
-
-							@if($dfe->compra_id == 0)
-							<div class="col-xl-4">
-								<button @if($contaSemRegistro > 0) disabled @endif style="width: 100%" type="button" onclick="$('#form-salvar-compra').submit()" class="btn btn-light-success">
-									<i class="la la-check"></i>
-									Salvar como compra
-								</button>
-							</div>
-							@endif
-
 						</form> @if($dfe->venda_id == 0)
 						<div class="col-xl-12">
 							<a href="/dfe/gerar-venda/{{$dfe->id}}" @if($contaSemRegistro > 0) disabled @endif type="submit" class="btn btn-info float-right mt-3">
@@ -1094,24 +1067,15 @@
 @endsection
 @section('javascript')
 <script type="text/javascript">
-
     $(document).ready(function() {
         
-        // --- 1. TRAVA DE DUPLICIDADE (O que você pediu agora) ---
-        // Isso impede que o usuário clique duas vezes no botão de salvar
-        $('form').submit(function() {
+        // --- 1. TRAVA DE DUPLICIDADE ---
+        $('#form-salvar-compra').submit(function() {
             let btn = $(this).find('button[type="submit"]');
             btn.attr('disabled', 'disabled');
             btn.addClass('spinner spinner-white spinner-right');
         });
 
-         $('#salvarFatura').click(function() {
-            // Altera o destino do formulário para a função específica de fatura
-            let form = $('#form-importar');
-            form.attr('action', '/dfe/salvarFatura'); // Verifique se sua rota é essa
-            form.submit();
-        });
-      
         // --- 2. REGRA FISCAL AUTOMÁTICA ---
         $('.cfop-input').on('keyup blur', function() {
             let cfop = $(this).val();
@@ -1123,6 +1087,36 @@
                 $('input[name="cst_cofins_entrada['+codigo+']"]').val('70');
             }
         });
+
+        // --- 3. CONTROLE DE EDIÇÃO/EXCLUSÃO DE FATURA ---
+        $(document).on('click', '.btn-remover-fat', function() {
+            if(confirm("Deseja remover esta parcela do financeiro?")) {
+                $(this).closest('tr').remove();
+                atualizarFaturaJson();
+            }
+        });
+
+        $(document).on('blur', 'input[name="fat_venc[]"], input[name="fat_val[]"], input[name="fat_num[]"]', function() {
+            atualizarFaturaJson();
+        });
+
+        function atualizarFaturaJson() {
+            let faturas = [];
+            $('#tabela-fatura tbody tr').each(function() {
+                let num = $(this).find('input[name="fat_num[]"]').val();
+                let venc = $(this).find('input[name="fat_venc[]"]').val();
+                let val = $(this).find('input[name="fat_val[]"]').val();
+                
+                if(num && venc && val) {
+                    faturas.push({
+                        numero: num,
+                        vencimento: venc,
+                        valor_parcela: val
+                    });
+                }
+            });
+            $('#fatura_json_input').val(JSON.stringify(faturas));
+        }
     });
 </script>
 @endsection

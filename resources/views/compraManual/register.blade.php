@@ -22,6 +22,20 @@
 							{!! __view_locais_select() !!}
 						</div>
 
+                      <div class="alert alert-custom alert-light-info fade show mb-5" role="alert" style="margin: 20px;">
+                            <div class="alert-icon"><i class="flaticon-warning"></i></div>
+                            <div class="alert-text">
+                                <h5 class="font-weight-bold">Instruções de Uso - Compra Manual</h5>
+                                <ul class="mb-0" style="padding-left: 20px;">
+                                    <li><strong>1. Número da NF:</strong> Informe apenas se já emitida. Em nota de compra de entrada, deixe em branco. <strong>Veículo (Opcional):</strong> Use para rateio de custos de frota.</li>
+                                    <li><strong>2. Categoria Obrigatória:</strong> Selecione a categoria que corresponde à sua despesa.</li>
+                                    <li><strong>3. Entrada Própria:</strong> A data de emissão não pode ser igual à da fatura (risco de rejeição SEFAZ). Caso seja pago no mesmo dia, use a opção <strong>'A vista'</strong>.</li>
+                                    <li><strong>4. Botão Finalizar:</strong> Só é habilitado ao adicionar Fornecedor, Produto e Pagamento. Use o botão (+) se precisar cadastrar novos.</li>
+                                    <li><strong>5. Cuidado com o Chrome:</strong> Não use o preenchimento automático do navegador na busca de itens/fornecedores. Ele mascara o campo e impede o botão de salvar de funcionar.</li>
+                                </ul>
+                            </div>
+                        </div>
+                      
 						<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 							<!--begin: Wizard Nav-->
 							<div class="wizard-nav">

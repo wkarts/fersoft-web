@@ -6,7 +6,7 @@ namespace App\Models;
 class AlteracaoEstoque extends BaseModel
 {
     protected $fillable = [
-		'produto_id', 'usuario_id', 'quantidade', 'tipo', 'observacao', 'empresa_id', 'motivo'
+		'produto_id', 'usuario_id', 'filial_id', 'quantidade', 'tipo', 'observacao', 'empresa_id', 'motivo'
 	];
 
 	public function produto(){

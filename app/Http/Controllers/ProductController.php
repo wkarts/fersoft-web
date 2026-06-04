@@ -2155,6 +2155,26 @@ class ProductController extends Controller
             'locais' => $produto['filial_id'] ? '["'.$produto['filial_id'].'"]' : '["-1"]'
 
         ]);
+      
+        // 👇 ADICIONE ESTE BLOCO AQUI 👇
+          // --- INÍCIO DA MEMÓRIA DE PRODUTO DO FORNECEDOR ---
+          if(isset($produto['fornecedor_id']) && isset($produto['codigo_fornecedor'])) {
+              \App\Models\ProdutoFornecedor::updateOrCreate(
+                  [
+                      'fornecedor_id'     => $produto['fornecedor_id'],
+                      'codigo_fornecedor' => $produto['codigo_fornecedor']
+                  ],
+                  [
+                      'empresa_id'               => $this->empresa_id,
+                      'usuario_id'               => session('user_logged')['id'] ?? null,
+                      'produto_id'               => $result->id, // Usa o ID do produto que acabou de ser criado
+                      'descricao_fornecedor'     => $produto['descricao_fornecedor'] ?? '',
+                      'codigo_barras_fornecedor' => $produto['codigo_barras_fornecedor'] ?? ''
+                  ]
+              );
+          }
+          // --- FIM DA MEMÓRIA ---
+          // 👆 FIM DO BLOCO ADICIONADO 👆
 
     ItemDfe::create(
         [
@@ -2179,8 +2199,28 @@ class ProductController extends Controller
             $produto->valor_venda = __replace($arr['valor_venda']);
             $produto->valor_compra = __replace($arr['valor_compra']);
             $produto->referencia = $arr['referencia'];
+          
 
             $produto->save();
+          
+            // --- INÍCIO DA MEMÓRIA DE PRODUTO DO FORNECEDOR ---
+              if(isset($arr['fornecedor_id']) && isset($arr['codigo_fornecedor'])) {
+                  \App\Models\ProdutoFornecedor::updateOrCreate(
+                      [
+                          'fornecedor_id'     => $arr['fornecedor_id'],
+                          'codigo_fornecedor' => $arr['codigo_fornecedor']
+                      ],
+                      [
+                          'empresa_id'               => $this->empresa_id,
+                          'usuario_id'               => session('user_logged')['id'] ?? null,
+                          'produto_id'               => $produto->id,
+                          'descricao_fornecedor'     => $arr['descricao_fornecedor'] ?? '',
+                          'codigo_barras_fornecedor' => $arr['codigo_barras_fornecedor'] ?? ''
+                      ]
+                  );
+              }
+              // --- FIM DA MEMÓRIA ---
+          
             $qtd = $arr['estoque'];
             $stockMove = new StockMove();
             $stockMove->pluStock($produto->id, ($qtd*(float)$produto->conversao_unitaria), $produto->valor_compra);

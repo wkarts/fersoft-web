@@ -14,7 +14,12 @@ class CategoriaConta extends BaseModel
         'usuario_id',
         'tipo',
         'dre_grupo',
-        'incluir_resultado'
+        'incluir_resultado',
+        // Novos campos adicionados:
+        'conta_contabil_despesa_id',
+        'conta_contabil_provisao_id',
+        'ignora_terceiro',
+        'gera_provisao'
     ];
 
     protected $casts = [
@@ -22,7 +27,23 @@ class CategoriaConta extends BaseModel
         'filial_id' => 'integer',
         'usuario_id' => 'integer',
         'incluir_resultado' => 'boolean',
+        // Casting dos novos campos para facilitar o uso no Laravel:
+        'conta_contabil_despesa_id' => 'integer',
+        'conta_contabil_provisao_id' => 'integer',
+        'ignora_terceiro' => 'boolean',
+        'gera_provisao' => 'boolean',
     ];
+
+    // Relacionamentos com o plano de contas (ajuda a buscar o nome da conta na view)
+    public function contaDespesa()
+    {
+        return $this->belongsTo(PlanoContasContabil::class, 'conta_contabil_despesa_id');
+    }
+
+    public function contaProvisao()
+    {
+        return $this->belongsTo(PlanoContasContabil::class, 'conta_contabil_provisao_id');
+    }
 
     public static function gruposDRE()
     {

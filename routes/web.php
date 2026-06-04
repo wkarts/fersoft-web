@@ -1279,6 +1279,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::put('/setVeiculo/{id}', 'ContasPagarController@setVeiculo')->name('contasPagar.setVeiculo');
         Route::post('/fecharMesRetencoes', 'ContasPagarController@fecharMesRetencoes')->name('compras.fecharMesRetencoes');
         Route::post('/baixarParcial', 'ContasPagarController@baixarParcial')->name('contasPagar.baixarParcial');
+        Route::get('/detalhes/{id}', 'ContasPagarController@detalhes');
     });
 
     Route::resource('retencoes', 'RetencaoController');
@@ -2101,6 +2102,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/gerarContasRetencao', 'ContaPagarController@gerarContasRetencao');
         Route::post('/baixarParcial', 'ContaPagarController@baixarParcial');
 
+        Route::group(['prefix' => 'apuracao-difal'], function() {
+            Route::get('/', 'ApuracaoDifalController@index')->name('compraFiscal.difal.index');
+            Route::get('/novo', 'ApuracaoDifalController@create')->name('compraFiscal.difal.create');
+            Route::post('/processar', 'ApuracaoDifalController@processar')->name('compraFiscal.difal.processar');
+            Route::post('/financeiro/{id}', 'ApuracaoDifalController@gerarFinanceiro')->name('compraFiscal.difal.financeiro');
+            Route::get('/cancelar/{id}', 'ApuracaoDifalController@cancelar')->name('compraFiscal.difal.cancelar');
+
+            // Se quiser uma rota para visualizar uma apuração antiga específica
+            Route::get('/detalhes/{id}', 'ApuracaoDifalController@show')->name('compraFiscal.difal.show');
+            Route::get('/imprimir/{id}', 'ApuracaoDifalController@imprimir')->name('compraFiscal.difal.imprimir');
+        });
     });
 
     Route::group(['prefix' => 'inventario'],function(){
@@ -2185,6 +2197,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/ajustes/create', 'StockAdjustmentController@create')->name('estoque.ajustes.create');
         Route::post('/ajustes', 'StockAdjustmentController@store')->name('estoque.ajustes.store');
         Route::get('/ajustes/{id}', 'StockAdjustmentController@show')->name('estoque.ajustes.show');
+
+        Route::get('/saldo-real', 'RelatorioEstoqueController@relatorioSaldoReal');
+        Route::get('/extrato/{produto_id}', 'RelatorioEstoqueController@extratoMovimentacao');
     });
 
     Route::group(['prefix' => 'cotacao'],function(){
@@ -3169,6 +3184,47 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     Route::group(['prefix' => 'compras-lote'],function () {
         Route::get('/', 'CompraLoteController@index')->name('compras.lote.index');
         Route::post('/importar', 'CompraLoteController@importar')->name('compras.lote.importar');
+    });
+
+    Route::group(['prefix' => 'contabilidade'], function(){
+
+        // Plano de Contas
+        Route::get('/plano-contas', 'ContabilidadeController@index')->name('contabilidade.plano.index');
+        Route::post('/plano-contas/importar', 'ContabilidadeController@importarPlanoContas')->name('contabilidade.plano.importar');
+
+        // Configurações
+        Route::get('/configuracoes', 'ContabilidadeConfigController@index')->name('contabilidade.configuracoes.index');
+        Route::post('/configuracoes/save', 'ContabilidadeConfigController@save')->name('contabilidade.configuracoes.save');
+
+        // EXPORTAÇÃO
+        Route::get('/exportacao', 'ExportacaoContabilController@index')->name('contabilidade.exportacao.index');
+        Route::post('/exportacao/previa', 'ExportacaoContabilController@processarPrevia')->name('contabilidade.exportacao.previa');
+        Route::post('/exportacao/gerar', 'ExportacaoContabilController@gerarArquivo')->name('contabilidade.exportacao.gerar');
+
+        // NOVA ROTA PARA EXPORTAÇÃO EXCEL
+        Route::post('/exportacao/excel', 'ExportacaoContabilController@gerarExcel')->name('contabilidade.exportacao.excel');
+
+    });
+
+    Route::group(['prefix' => 'nfse-tomadas'], function(){
+
+        // --- Módulo de NFS-e Tomadas Nacional ---
+        Route::get('/', 'NFSeTomadaController@index');
+        Route::get('/sincronizar', 'NFSeTomadaController@sincronizarManual');
+        Route::get('/sincronizar-data', 'NFSeTomadaController@sincronizarPorData');
+
+        // 🔥 CORRIGIDO: Se você já tiver uma tela de detalhes da nota antiga, mantenha essa rota:
+        Route::get('/visualizar/{id}', 'NFSeTomadaController@detalhes');
+
+        // 🚀 ESSA É A ROTA DO BOTÃO "LANÇAR" DA SUA TABELA:
+        Route::get('/detalhes/{id}', 'NFSeTomadaController@detalhesLançamento');
+
+        // 🔒 PROCESSAMENTO DO FINANCEIRO (POST):
+        Route::post('/salvar-importacao/{id}', 'NFSeTomadaController@salvarImportacaoPainel');
+
+        // 🖨️ IMPRESSÃO DO ESPELHO DA NOTA:
+        Route::get('/espelho/{id}', 'NFSeTomadaController@imprimirEspelho');
+
     });
 
     /*

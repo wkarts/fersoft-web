@@ -927,16 +927,17 @@
 									</div>
 								</div>
 							</div>
+                          
 							<div class="col-sm-8 col-lg-8 col-md-12 col-xl-5">
-								<div class="form-group col-lg-12 col-md-12 col-sm-12 col-12">
-									<label class="col-form-label">Informação Adicional</label>
-									<div class="">
-										<div class="input-group">
-											<input type="text" name="obs" class="form-control" value="" id="obs"/>
-										</div>
-									</div>
-								</div>
-							</div>
+                                <div class="form-group col-lg-12 col-md-12 col-sm-12 col-12">
+                                    <label class="col-form-label">Informação Adicional</label>
+                                    <div class="">
+                                        <div class="input-group">
+                                            <textarea name="obs" class="form-control" id="obs" rows="4" style="width: 15cm; max-width: 100%;"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 						</div>
 						<div class="row">
 							<div class="col-md-6 col-12"></div>

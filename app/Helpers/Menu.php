@@ -211,7 +211,16 @@ class Menu {
 				'titulo' => 'Entradas',
 				'icone' => $this->getIcone('Entradas'),
 				'subs' => [
+					
 					[
+						'nome' => 'Compras',
+						'rota' => '/compras'
+					],
+                  	[
+						'nome' => 'Manifesto NFe',
+						'rota' => '/dfe'
+					],
+                    [
 						'nome' => 'Importação de XML',
 						'rota' => '/compraFiscal'
 					],
@@ -219,30 +228,27 @@ class Menu {
 						'nome' => 'Compra manual',
 						'rota' => '/compraManual'
 					],
-					[
-						'nome' => 'Compras',
-						'rota' => '/compras'
-					],
                     [
-						'nome' => 'Importação em Lote',
+						'nome' => 'Emissão NFe Lote',
 						'rota' => '/compras-lote'
 					],
                   	[
-						'nome' => 'Importação XML Serviço',
+						'nome' => 'NFSe Recebidas',
+						'rota' => '/nfse-tomadas'
+					],
+                  	[
+						'nome' => 'Importação XML NFSe Lote',
 						'rota' => '/compras/importacaoNfse'
 					],
-                    [
+                  	[
 						'nome' => 'Conferência NF-e',
 						'rota' => '/compraconferencia'
 					],
 					[
 						'nome' => 'Cotações',
 						'rota' => '/cotacao'
-					],
-					[
-						'nome' => 'Manifesto',
-						'rota' => '/dfe'
 					]
+					
 				]
 			],
 
@@ -327,12 +333,16 @@ class Menu {
 						'nome' => 'Ajuste de estoque',
 						'rota' => '/estoque'
 					],
-					[
-						'nome' => 'Requisição',
-						'rota' => 'requisicoes'
+                  	[
+						'nome' => 'Saldo estoque',
+						'rota' => '/estoque/saldo-real'
 					],
 					[
-						'nome' => 'Apontameto de produçao',
+						'nome' => 'Requisição',
+						'rota' => '/requisicoes'
+					],
+					[
+						'nome' => 'Apontamento de produçao',
 						'rota' => '/estoque/apontamentoProducao'
 					],
 					[
@@ -385,6 +395,10 @@ class Menu {
 						'nome' => 'Vendas PDV',
 						'rota' => '/frenteCaixa/list'
 					],
+                  	[
+                        'nome' => 'Receita Ótica',
+                        'rota' => '/otica'
+                    ],
 					[
 						'nome' => 'Devolução PDV',
 						'rota' => '/frenteCaixa/devolucao'
@@ -406,10 +420,6 @@ class Menu {
 						'nome' => 'Ordem de serviço',
 						'rota' => '/ordemServico'
 					],
-                    [
-                        'nome' => 'Ótica',
-                        'rota' => '/otica'
-                    ],
 					// [
 					// 	'nome' => 'Emissão de NFSe',
 					// 	'rota' => '/nfse'
@@ -513,18 +523,15 @@ class Menu {
 						'nome' => 'Contas caixa',
 						'rota' => '/contas-empresa'
 					],
-					[
-						'nome' => 'Apuração',
-						'rota' => '/apuracao'
-					],
+					
 					[
 						'nome' => 'Adiantamentos',
 						'rota' => '/adiantamentos'
 					],
-					[
-						'nome' => 'Plano de contas',
-						'rota' => '/plano-contas'
-					],
+					// [
+					//	'nome' => 'Plano de contas',
+					//	'rota' => '/plano-contas'
+					// ],
 
 					// [
 					// 	'nome' => 'Emitir - DAS',
@@ -715,6 +722,52 @@ class Menu {
 				]
 			],
 
+          [
+				'titulo' => 'Arquivos Contábil',
+				'icone' => $this->getIcone('Contábil'),
+				'subs' => [
+					[
+						'nome' => 'Plano de contas',
+						'rota' => '/contabilidade/plano-contas'
+					],
+                  	[
+						'nome' => 'Configurações',
+						'rota' => '/contabilidade/configuracoes'
+					],
+                  	[
+						'nome' => 'Exportação Contábil',
+						'rota' => '/contabilidade/exportacao'
+					],
+					[
+						'nome' => 'Dados do contador',
+						'rota' => '/escritorio'
+					],
+					[
+						'nome' => 'Enviar XML',
+						'rota' => '/enviarXml'
+					],
+				]
+			],
+          	
+          [
+				'titulo' => 'Apurações',
+				'icone' => $this->getIcone('Contábil'),
+				'subs' => [
+					[
+						'nome' => 'ICMS Difal',
+						'rota' => '/compras/apuracao-difal'
+					],
+                  	[
+						'nome' => 'Retenções PCC/ISS',
+						'rota' => '/retencoes'
+					],
+                  	[
+						'nome' => 'Fechamento Mensal',
+						'rota' => '/apuracao'
+					],
+				]
+			],
+          
 			[
 				'titulo' => 'Catraca',
 				'icone' => $this->getIcone('Catraca'),
@@ -1327,6 +1380,19 @@ class Menu {
 			</span>';
 		}
 
+      	 if($titulo == 'Contábil' || $titulo == 'Integração Contábil' || $titulo == 'Arquivos Contábil'){
+            return '<span class="svg-icon menu-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                    <rect x="0" y="0" width="24" height="24"/>
+                    <path d="M4,4 L20,4 C21.1045695,4 22,4.8954305 22,6 L22,18 C22,19.1045695 21.1045695,20 20,20 L4,20 C2.8954305,20 2,19.1045695 2,18 L2,6 C2,4.8954305 2.8954305,4 4,4 Z M4,6 L4,18 L20,18 L20,6 L4,6 Z" fill="#000000" fill-rule="nonzero"/>
+                    <rect fill="#000000" opacity="0.3" x="6" y="8" width="12" height="2" rx="1"/>
+                    <rect fill="#000000" opacity="0.3" x="6" y="12" width="8" height="2" rx="1"/>
+                </g>
+            </svg>
+            </span>';
+        }
+      
 		if($titulo == 'Locacao'){
 			return '<span class="svg-icon menu-icon">
 			<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">

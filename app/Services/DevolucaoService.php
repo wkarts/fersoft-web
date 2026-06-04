@@ -456,15 +456,15 @@ class DevolucaoService{
 						// $stdICMS->pICMSEfet = 17;
 						// $stdICMS->vICMSEfet = 4088.50;
 					}else{
-						if($devolucao->altera_manual == 0){
-							$stdICMS->vBC = $stdProd->vProd + $stdProd->vOutro + $i->vFrete - $stdProd->vDesc;
-						}else{
-							$stdICMS->vBC = $i->vbc_manual;
-						}
+                        if($devolucao->altera_manual == 0){
+                            $stdICMS->vBC = $stdProd->vProd + ($stdProd->vOutro ?? 0) + $i->vFrete - ($stdProd->vDesc ?? 0);
+                        }else{
+                            $stdICMS->vBC = $i->vbc_manual;
+                        }
 
-						if($i->cst_csosn == 61){
-							$stdICMS->vBC = 0;
-						}
+                        if($i->cst_csosn == 61){
+                            $stdICMS->vBC = 0;
+                        }
 
 						if($i->cst_csosn == 40 || $i->cst_csosn == 41){
 							$stdICMS->vBCSTRet = 0;
@@ -599,30 +599,28 @@ class DevolucaoService{
 			$stdPIS->item = $itemCont;
 			$stdPIS->CST = $i->cst_pis;
 			if($devolucao->altera_manual == 0){
-				$stdPIS->vBC = $i->perc_pis > 0 ? (($stdProd->vProd-$stdProd->vDesc) + $stdProd->vOutro) : 0.00;
-				$stdPIS->pPIS = $this->format($i->perc_pis);
-				$stdPIS->vPIS = $this->format($stdPIS->vBC *
-					($i->perc_pis/100));
-			}else{
-				$stdPIS->vBC = $i->vbc_manual;
-				$stdPIS->pPIS = $this->format($i->perc_pis);
-				$stdPIS->vPIS = $i->vpis_manual;
-			}
+                $stdPIS->vBC = $i->perc_pis > 0 ? (($stdProd->vProd - ($stdProd->vDesc ?? 0)) + ($stdProd->vOutro ?? 0)) : 0.00;
+                $stdPIS->pPIS = $this->format($i->perc_pis);
+                $stdPIS->vPIS = $this->format($stdPIS->vBC * ($i->perc_pis/100));
+            }else{
+                $stdPIS->vBC = $i->vbc_manual;
+                $stdPIS->pPIS = $this->format($i->perc_pis);
+                $stdPIS->vPIS = $i->vpis_manual;
+            }
 			$PIS = $nfe->tagPIS($stdPIS);
 
 			$stdCOFINS = new \stdClass();//COFINS
 			$stdCOFINS->item = $itemCont;
 			$stdCOFINS->CST = $i->cst_cofins;
 			if($devolucao->altera_manual == 0){
-				$stdCOFINS->vBC = $i->perc_cofins > 0 ? (($stdProd->vProd-$stdProd->vDesc) + $stdProd->vOutro) : 0.00;
-				$stdCOFINS->pCOFINS = $this->format($i->perc_cofins);
-				$stdCOFINS->vCOFINS = $this->format($stdCOFINS->vBC *
-					($i->perc_cofins/100));
-			}else{
-				$stdCOFINS->vBC = $i->vbc_manual;
-				$stdCOFINS->pCOFINS = $this->format($i->perc_cofins);
-				$stdCOFINS->vCOFINS = $i->vcofins_manual;
-			}
+                $stdCOFINS->vBC = $i->perc_cofins > 0 ? (($stdProd->vProd - ($stdProd->vDesc ?? 0)) + ($stdProd->vOutro ?? 0)) : 0.00;
+                $stdCOFINS->pCOFINS = $this->format($i->perc_cofins);
+                $stdCOFINS->vCOFINS = $this->format($stdCOFINS->vBC * ($i->perc_cofins/100));
+            }else{
+                $stdCOFINS->vBC = $i->vbc_manual;
+                $stdCOFINS->pCOFINS = $this->format($i->perc_cofins);
+                $stdCOFINS->vCOFINS = $i->vcofins_manual;
+            }
 			$COFINS = $nfe->tagCOFINS($stdCOFINS);
 
 			if($i->perc_ipi > 0){

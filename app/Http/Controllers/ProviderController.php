@@ -49,7 +49,11 @@ class ProviderController extends BaseController
     }
 
     public function index(){
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
+    	
+        $fornecedores = Fornecedor::with('cidade')
+            ->where('empresa_id', $this->empresa_id)
+            ->paginate(30); 
+            
         return view('fornecedores/list')
             ->with('fornecedores', $fornecedores)
             ->with('title', 'Fornecedores');
@@ -58,9 +62,11 @@ class ProviderController extends BaseController
     public function pesquisa(Request $request){
         $pesquisa = $request->input('pesquisa');
 
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+        $fornecedores = Fornecedor::with('cidade') // Eager Loading
+            ->where('empresa_id', $this->empresa_id)
             ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
-            ->get();
+            ->paginate(30)
+            ->appends($request->except('page'));
 
         return view('fornecedores/list')
             ->with('fornecedores', $fornecedores)

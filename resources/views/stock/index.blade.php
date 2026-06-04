@@ -31,34 +31,33 @@
             </a>
 
             <a href="/estoque/relatorioPdf?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-danger btn-sm">
-  				  <i class="la la-file-pdf"></i> Gerar PDF
-			</a>
+                  <i class="la la-file-pdf"></i> Gerar PDF
+            </a>
           
-          	<a href="/estoque/relatorioFiscal?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-success btn-sm ml-2">
-   				 <i class="la la-file-invoice"></i> Relatório Fiscal
-			</a>
+            <a href="/estoque/relatorioFiscal?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-success btn-sm ml-2">
+                 <i class="la la-file-invoice"></i> Relatório Fiscal
+            </a>
           
         </div>
     </div>
 
-    <div class="card-body">
-        <div class="row mb-5">
-            <div class="col-md-4">
-                <div class="card card-custom bg-light-danger gutter-b" style="height: 120px">
-                    <div class="card-body">
-                        <span class="text-danger font-weight-bold">Total em Estoque (CUSTO)</span>
-                        <span class="card-title font-weight-boldest text-danger font-size-h2 mb-0 d-block">
-                            R$ {{ number_format($somaEstoque['compra'], 2, ',', '.') }}
+    <div class="row mb-5">
+            <div class="col-md-3">
+                <div class="card card-custom bg-light-danger gutter-b">
+                    <div class="card-body py-4">
+                        <span class="text-danger font-weight-bold font-size-sm">Total em Estoque (CUSTO)</span>
+                        <span class="card-title font-weight-boldest text-danger font-size-h3 mb-0 d-block">
+                            R$ {{ number_format($somaEstoque['compra'] ?? 0, 2, ',', '.') }}
                         </span>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="card card-custom bg-light-success gutter-b" style="height: 120px">
-                    <div class="card-body">
-                        <span class="text-success font-weight-bold">Total em Estoque (VENDA)</span>
-                        <span class="card-title font-weight-boldest text-success font-size-h2 mb-0 d-block">
-                            R$ {{ number_format($somaEstoque['venda'], 2, ',', '.') }}
+            <div class="col-md-3">
+                <div class="card card-custom bg-light-success gutter-b">
+                    <div class="card-body py-4">
+                        <span class="text-success font-weight-bold font-size-sm">Total em Estoque (VENDA)</span>
+                        <span class="card-title font-weight-boldest text-success font-size-h3 mb-0 d-block">
+                            R$ {{ number_format($somaEstoque['venda'] ?? 0, 2, ',', '.') }}
                         </span>
                     </div>
                 </div>
@@ -67,43 +66,28 @@
 
         <form method="get" action="/estoque" id="form-filtro" class="mb-8">
             <div class="row align-items-end">
-                <div class="col-lg-3">
+                <div class="col-lg-4">
                     <label>Produto</label>
-                    <input type="text" name="pesquisa" class="form-control" value="{{ $pesquisa }}" placeholder="Nome do produto...">
+                    <input type="text" name="pesquisa" class="form-control" value="{{ $pesquisa ?? '' }}" placeholder="Nome do produto...">
                 </div>
                 <div class="col-lg-3">
                     <label>Categoria</label>
                     <select name="categoria_id" class="form-control custom-select" onchange="$('#form-filtro').submit()">
                         <option value="">Todas</option>
                         @foreach($categorias as $c)
-                            <option value="{{$c->id}}" {{$categoria_id == $c->id ? 'selected' : ''}}>{{$c->nome}}</option>
+                            <option value="{{$c->id}}" {{(isset($categoria_id) && $categoria_id == $c->id) ? 'selected' : ''}}>{{$c->nome}}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-lg-2">
+                <div class="col-lg-3">
                     <label>Local</label>
                     <select name="filial_id" class="form-control custom-select" onchange="$('#form-filtro').submit()">
                         <option value="">Todos</option>
-                        <option value="matriz" {{$filial_id == 'matriz' ? 'selected' : ''}}>Matriz</option>
+                        <option value="matriz" {{(isset($filial_id) && $filial_id == 'matriz') ? 'selected' : ''}}>Matriz</option>
                         @foreach($filiais as $f)
-                            <option value="{{$f->id}}" {{$filial_id == $f->id ? 'selected' : ''}}>{{$f->descricao}}</option>
+                            <option value="{{$f->id}}" {{(isset($filial_id) && $filial_id == $f->id) ? 'selected' : ''}}>{{$f->descricao}}</option>
                         @endforeach
                     </select>
-                </div>
-                <div class="col-lg-2">
-                    <label>Mês / Ano</label>
-                    <div class="d-flex">
-                        <select name="mes" class="form-control custom-select mr-1" onchange="$('#form-filtro').submit()">
-                            @for($m=1;$m<=12;$m++)
-                                <option value="{{$m}}" {{$mes==$m?'selected':''}}>{{str_pad($m,2,'0',STR_PAD_LEFT)}}</option>
-                            @endfor
-                        </select>
-                        <select name="ano" class="form-control custom-select" onchange="$('#form-filtro').submit()">
-                            @for($a=date('Y')-2;$a<=date('Y')+2;$a++)
-                                <option value="{{$a}}" {{$ano==$a?'selected':''}}>{{$a}}</option>
-                            @endfor
-                        </select>
-                    </div>
                 </div>
                 <div class="col-lg-2">
                     <button class="btn btn-primary btn-block" type="submit">Filtrar</button>
@@ -124,11 +108,7 @@
                         <th>Produto</th>
                         <th>Categoria</th>
                         <th>Local</th>
-                        <th class="text-right">S. Inicial</th>
-                        <th class="text-right">Entradas (+)</th>
-                        <th class="text-right">Saídas (-)</th>
-                      	<th class="text-right">Saldo</th>
-                        
+                        <th class="text-right">Saldo Atual</th>
                         <th class="text-right">Vl. Venda</th>
                         <th class="text-right">Vl. Custo</th> 
                         <th class="text-right">Ações</th>
@@ -151,38 +131,19 @@
                         <td class="datatable-cell">
                           <span style="width: 100px;">
                               @if($e->filial_id == null)
-                                  {{-- Se o ID for nulo, é a Matriz --}}
                                   <span class="label label-inline label-light-primary font-weight-bold">MATRIZ</span>
                               @else
-                                  {{-- Se tiver ID, busca a descrição da filial que carregamos no Controller --}}
                                   <span class="label label-inline label-light-success font-weight-bold">
                                       {{ $e->filial->descricao ?? 'FILIAL' }}
                                   </span>
                               @endif
                           </span>
                       </td>
-                        <th class="text-right">{{ number_format($e->saldo_inicial ?? 0, 2, ',', '.') }}</td>
-                        <td class="text-right text-success">+{{ number_format($e->total_entradas ?? 0, 2, ',', '.') }}</td>
-                        <td class="text-right text-danger">-{{ number_format($e->total_saidas ?? 0, 2, ',', '.') }}</td>
-                        @php
-                          // Verifica se o filtro é para o mês/ano presente
-                          $hoje = date('m/Y');
-                          $filtro = str_pad($mes, 2, '0', STR_PAD_LEFT) . '/' . $ano;
-                          $ehMesAtual = ($hoje == $filtro);
-                      @endphp
-
+                      
                       <td class="text-right font-weight-boldest">
-                          @if($ehMesAtual)
-                              {{-- Se for o mês atual, mostra o Saldo Físico Real (quantidade atual no banco) --}}
-                              <span class="{{ $e->quantidade < 0 ? 'text-danger' : 'text-primary' }}" title="Saldo Físico Atual">
-                                  {{ number_format($e->quantidade, 2, ',', '.') }}
-                              </span>
-                          @else
-                              {{-- Se for mês retroativo, mostra o Saldo Calculado daquele período --}}
-                              <span class="{{ $e->saldo_no_periodo < 0 ? 'text-danger' : 'text-dark' }}" title="Saldo Fechamento do Período">
-                                  {{ number_format($e->saldo_no_periodo, 2, ',', '.') }}
-                              </span>
-                          @endif
+                          <span class="{{ $e->quantidade < 0 ? 'text-danger' : 'text-primary' }}" title="Saldo Físico Atual">
+                              {{ number_format($e->quantidade, 2, ',', '.') }}
+                          </span>
                       </td>
                         <td class="text-right">R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
                         <td class="text-right">R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 

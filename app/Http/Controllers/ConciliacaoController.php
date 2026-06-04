@@ -404,9 +404,11 @@ class ConciliacaoController extends BaseController
 
     public function transferir(Request $request)
     {
+        // 1. Validando a categoria obrigatória
         $request->validate([
             'extrato_id' => 'required', 
-            'conta_destino_id' => 'required'
+            'conta_destino_id' => 'required',
+            'categoria_id' => 'required' 
         ]);
         
         DB::beginTransaction();
@@ -417,41 +419,49 @@ class ConciliacaoController extends BaseController
             $cOrigem = ContaEmpresa::lockForUpdate()->findOrFail($extrato->conta_bancaria_id);
             $cDestino = ContaEmpresa::lockForUpdate()->findOrFail($request->conta_destino_id);
             
+            // Tira da Origem
             $cOrigem->saldo -= $extrato->valor; 
             $cOrigem->save();
             
             ItemContaEmpresa::create([
                 'empresa_id' => $empresaId, 
                 'conta_id' => $cOrigem->id, 
+                'categoria_id' => $request->categoria_id, // Inserindo a Categoria
                 'tipo' => 'saida', 
-                'descricao' => 'Transf. Saída (Conciliação)', 
+                'descricao' => 'Transf. Saída (Conciliação): ' . $extrato->descricao, // Melhor descritivo
                 'valor' => $extrato->valor, 
-                'saldo_atual' => $cOrigem->saldo
+                'data_pagamento' => $extrato->data_transacao, // CORREÇÃO: Usar a data do extrato e não a de hoje
+                'saldo_atual' => $cOrigem->saldo,
+                'user_id' => $this->getUsuarioId() // Gravando o usuário da ação
             ]);
             
+            // Coloca no Destino
             $cDestino->saldo += $extrato->valor; 
             $cDestino->save();
             
             ItemContaEmpresa::create([
                 'empresa_id' => $empresaId, 
                 'conta_id' => $cDestino->id, 
+                'categoria_id' => $request->categoria_id, // Inserindo a Categoria
                 'tipo' => 'entrada', 
-                'descricao' => 'Transf. Entrada (Conciliação)', 
+                'descricao' => 'Transf. Entrada (Conciliação): ' . $extrato->descricao, // Melhor descritivo
                 'valor' => $extrato->valor, 
-                'saldo_atual' => $cDestino->saldo
+                'data_pagamento' => $extrato->data_transacao, // CORREÇÃO: Usar a data do extrato
+                'saldo_atual' => $cDestino->saldo,
+                'user_id' => $this->getUsuarioId() // Gravando o usuário da ação
             ]);
             
             $extrato->update(['status' => 'reconciled']);
             
             DB::commit();
-            return redirect()->back()->with('mensagem_sucesso', 'Transferência efetivada!');
+            return redirect()->back()->with('mensagem_sucesso', 'Transferência efetivada com categoria e datas corretas!');
             
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return redirect()->back()->with('mensagem_erro', 'Erro: ' . $e->getMessage()); 
         }
     }
-
+  
     public function arquivar(Request $request)
     {
         $request->validate(['extrato_id' => 'required']);

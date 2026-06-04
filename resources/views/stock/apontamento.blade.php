@@ -9,24 +9,31 @@
 				<!--begin::Portlet-->
 
 				<form method="post" action="/estoque/saveApontamento" enctype="multipart/form-data">
-
 					<div class="card card-custom gutter-b example example-compact">
 						<div class="card-header">
-
 							<h3 class="card-title">Apontamento de produção</h3>
 						</div>
 					</div>
 					@csrf
 
-					<div class="row">
+					<div class="row px-6"> <div class="form-group validated col-lg-3 col-md-4 col-sm-12">
+                            <label class="col-form-label">Local / Filial</label>
+                            <select name="filial_id" class="form-control custom-select">
+                                <option value="">Matriz</option>
+                                @foreach($filiais as $f)
+                                    <option value="{{ $f->id }}" {{ request('filial_id') == $f->id ? 'selected' : '' }}>
+                                        {{ $f->descricao }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-						<div class="col-xl-8">
-
+						<div class="col-xl-9">
 							<div class="kt-section kt-section--first">
 								<div class="kt-section__body">
-
 									<div class="row">
-										<div class="form-group validated col-lg-8 col-md-8 col-sm-10">
+                                        
+										<div class="form-group validated col-lg-8 col-md-8 col-sm-12">
 											<label class="col-form-label">Produto tipo composto</label>
 											<select required class="form-control select2" id="kt_select2_2" name="produto">
 												<option value="">Selecione</option>
@@ -41,7 +48,7 @@
 											@endif
 										</div>
 										
-										<div class="form-group validated col-sm-6 col-lg-4">
+										<div class="form-group validated col-lg-4 col-md-4 col-sm-12">
 											<label class="col-form-label">Quantidade</label>
 											<div class="">
 												<input type="text" id="quantidade" class="form-control @if($errors->has('quantidade')) is-invalid @endif" name="quantidade" value="{{{ old('quantidade') }}}">
@@ -54,7 +61,6 @@
 										</div>
 
 									</div>
-
 								</div>
 							</div>
 						</div>

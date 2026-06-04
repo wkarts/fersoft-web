@@ -164,8 +164,42 @@
                 @endif
             </tbody>
             <tfoot>
+                @php
+                    // Calcula os totais de forma segura para o PDF
+                    $total_entradas = 0;
+                    $total_saidas = 0;
+                    if(isset($movimentacoes) && count($movimentacoes) > 0) {
+                        foreach($movimentacoes as $m) {
+                            if($m->tipo == 'entrada') {
+                                $total_entradas += $m->valor;
+                            } else {
+                                $total_saidas += $m->valor;
+                            }
+                        }
+                    }
+                @endphp
+
+                {{-- Linha 1: Totais do Período --}}
+                <tr class="bold">
+                    <td colspan="2" class="text-right" style="padding: 10px 5px; border-top: 1px solid #000;">
+                        TOTAIS DO PERÍODO:
+                    </td>
+                    <td class="text-right" style="border-top: 1px solid #000; color: #198754;">
+                        {{ number_format($total_entradas, 2, ',', '.') }}
+                    </td>
+                    <td class="text-right debito" style="border-top: 1px solid #000;">
+                        {{ number_format($total_saidas, 2, ',', '.') }}
+                    </td>
+                    <td style="border-top: 1px solid #000;">
+                        {{-- Célula vazia embaixo do saldo para manter o alinhamento --}}
+                    </td>
+                </tr>
+
+                {{-- Linha 2: Saldo Final (A sua original) --}}
                 <tr class="bold" style="background-color: #f8f9fa;">
-                    <td colspan="4" class="text-right" style="padding: 12px 5px;">SALDO FINAL EM {{ date('d/m/Y', strtotime($data_final ?? date('Y-m-d'))) }}:</td>
+                    <td colspan="4" class="text-right" style="padding: 12px 5px;">
+                        SALDO FINAL EM {{ date('d/m/Y', strtotime($data_final ?? date('Y-m-d'))) }}:
+                    </td>
                     <td class="text-right" style="font-size: 13px;">
                         {{ number_format(abs($saldo_acumulado), 2, ',', '.') }}
                         {{ $saldo_acumulado >= 0 ? 'C' : 'D' }}

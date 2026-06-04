@@ -25,6 +25,7 @@ class ContaEmpresa extends BaseModel
         'status',
         'saldo',
         'exibir_dashboard_analitico',
+      	'conta_contabil_id',
     ];
 
     protected $casts = [
@@ -78,4 +79,8 @@ class ContaEmpresa extends BaseModel
 
         return $query;
     }
+  public function contaContabil()
+	{
+    return $this->belongsTo(PlanoContasContabil::class, 'conta_contabil_id');
+	}
 }

@@ -8,7 +8,7 @@
     </div>
     
     <div class="card-body">
-        <form method="POST" action="{{ isset($item) ? route('otica.update', $item->id) : route('otica.store') }}" id="form-otica">
+        <form method="POST" action="{{ isset($item) ? route('otica.update', $item->id) : route('otica.store') }}" id="form-otica" enctype="multipart/form-data">
             @csrf
             
             @if(isset($item)) 
@@ -135,7 +135,22 @@
                 <div class="col-md-3 form-group"><label>Tratamento</label><input type="text" name="tratamento" class="form-control" value="{{ $item->tratamento ?? '' }}"></div>
                 <div class="col-md-3 form-group"><label>Pagamento</label><input type="text" name="forma_pagamento" class="form-control" value="{{ $item->forma_pagamento ?? '' }}"></div>
                 <div class="col-md-3 form-group"><label>Previsão (Dias)</label><input type="number" name="previsao_retorno_dias" class="form-control" value="{{ $item->previsao_retorno_dias ?? 30 }}"></div>
-                <div class="col-md-8 form-group"><label>Observações Gerais</label><textarea name="observacao" class="form-control" rows="2">{{ $item->observacao ?? '' }}</textarea></div>
+                
+                <div class="col-md-5 form-group">
+                    <label>Observações Gerais</label>
+                    <textarea name="observacao" class="form-control" rows="2">{{ $item->observacao ?? '' }}</textarea>
+                </div>
+
+                <div class="col-md-3 form-group">
+                    <label class="font-weight-bold text-dark">Foto/PDF da Receita</label>
+                    <input type="file" name="anexo_receita" class="form-control-file" accept="image/*,application/pdf">
+                    @if(isset($item) && $item->anexo_receita)
+                        <a href="{{ asset('storage/' . $item->anexo_receita) }}" target="_blank" class="btn btn-xs btn-light-info font-weight-bold mt-2">
+                            <i class="fa fa-eye"></i> Ver Receita Anexada
+                        </a>
+                    @endif
+                </div>
+
                 <div class="col-md-4 form-group"><label class="font-weight-bolder text-danger font-size-h5">TOTAL (R$)</label><input type="text" id="total_os" name="total_os" class="form-control form-control-solid font-weight-bolder text-danger font-size-h3 bg-light-danger text-right" readonly value="0,00"></div>
             </div>
 
