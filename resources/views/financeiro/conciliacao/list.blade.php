@@ -83,8 +83,13 @@
             <h5 class="mb-0 text-secondary font-weight-bold"><i class="fas fa-list-ul mr-2"></i> Extrato</h5>
             
             <div class="d-flex">
-                {{-- NOVO BOTÃO: ZERO-CLICK --}}
-                <form action="{{ url('financeiro/conciliacao/processar-automaticos') }}" method="POST" class="mr-2">
+                    {{-- NOVO BOTÃO DE MANUAL --}}
+                    <button type="button" class="btn btn-sm btn-info font-weight-bold shadow-sm mr-2" data-toggle="modal" data-target="#modalManualConciliacao">
+                        <i class="fas fa-question-circle mr-1"></i> Como Funciona
+                    </button>
+
+                    {{-- BOTÃO: ZERO-CLICK --}}
+                    <form action="{{ url('financeiro/conciliacao/processar-automaticos') }}" method="POST" class="mr-2">
                     @csrf
                     <button type="submit" class="btn btn-sm btn-success font-weight-bold shadow-sm" title="Rodar regras memorizadas">
                         <i class="fas fa-robot mr-1"></i> Rodar Automação
@@ -244,11 +249,23 @@
                         </div>
                         
                         <div class="col-md-9">
-                            <label class="font-weight-bold text-muted small">Títulos Encontrados (Marque os correspondentes)</label>
-                            <div id="lista_checkboxes" class="border rounded bg-white p-2" style="max-height: 280px; overflow-y: auto;">
-                                </div>
-                            <small id="msg_feedback" class="form-text mt-2 font-weight-bold"></small>
-                        </div>
+    <div class="d-flex justify-content-between align-items-end mb-2">
+        <label class="font-weight-bold text-muted small mb-0">Títulos Encontrados</label>
+        
+        {{-- NOVA BARRA DE BUSCA MANUAL --}}
+        <div class="input-group input-group-sm w-50">
+            <div class="input-group-prepend">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
+            </div>
+            <input type="text" id="busca_vinculo" class="form-control" placeholder="Pesquisar nome ou valor..." onkeyup="filtrarSugestoes()">
+        </div>
+    </div>
+    
+    <div id="lista_checkboxes" class="border rounded bg-white p-2 shadow-sm" style="max-height: 280px; overflow-y: auto;">
+        <!-- Lista injetada pelo JS -->
+    </div>
+    <small id="msg_feedback" class="form-text mt-2 font-weight-bold"></small>
+</div>
                     </div>
                 </div>
                 <div class="modal-footer bg-white border-0">
@@ -353,13 +370,25 @@
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body bg-light">
-                    <div class="alert bg-white mb-4" style="border-left: 4px solid #8b5cf6;" id="info_extrato_transf"></div>
-                    <div class="form-group">
-                        <label class="font-weight-bold text-muted small">Para qual conta foi o dinheiro?</label>
+                    <div class="alert bg-white mb-4 shadow-sm" style="border-left: 4px solid #8b5cf6;" id="info_extrato_transf"></div>
+
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold text-muted small">Para qual conta foi/veio o dinheiro?</label>
                         <select name="conta_destino_id" class="form-control" required>
-                            <option value="">Selecione...</option>
+                            <option value="">Selecione a conta bancária...</option>
                             @foreach($contasBancarias as $conta)
                                 <option value="{{ $conta->id }}">{{ $conta->nome }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- NOVO CAMPO DE CATEGORIA --}}
+                    <div class="form-group">
+                        <label class="font-weight-bold text-muted small">Categoria Financeira</label>
+                        <select name="categoria_id" id="select_cat_transf" class="form-control" required>
+                            <option value="">Selecione a categoria...</option>
+                            @foreach($categorias as $c)
+                                <option value="{{ $c->id }}">{{ $c->nome }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -369,6 +398,54 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+{{-- MODAL MANUAL DE INSTRUÇÕES DA CONCILIAÇÃO --}}
+<div class="modal fade" id="modalManualConciliacao" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header text-white" style="background-color: #8b5cf6;">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-book-open mr-2"></i> Manual: Conciliação Bancária Inteligente</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body bg-light" style="max-height: 70vh; overflow-y: auto;">
+                
+                <h5 class="text-primary font-weight-bold">1. Qual o objetivo desta tela?</h5>
+                <p>A conciliação bancária serve para "bater" (comparar) o que aconteceu no seu banco real com o que está lançado no ERP. Isso evita fraudes, esquecimentos e garante que o saldo do sistema seja idêntico ao saldo do banco.</p>
+
+                <hr>
+
+                <h5 class="text-primary font-weight-bold">2. Importando o Arquivo (Passo a Passo)</h5>
+                <ol>
+                    <li>Acesse o seu internet banking (Itaú, Caixa, etc.) e procure pela opção "Exportar Extrato".</li>
+                    <li>Escolha o formato <strong>OFX</strong> (é o padrão universal para integração de sistemas).</li>
+                    <li>No sistema, escolha a conta bancária correspondente, selecione o arquivo OFX baixado e clique em <strong>Processar Arquivo</strong>.</li>
+                    <li>O sistema lerá as transações e as listará na tabela de extrato como "Pendentes".</li>
+                </ol>
+
+                <hr>
+
+                <h5 class="text-primary font-weight-bold">3. Como analisar e baixar os lançamentos</h5>
+                <p>Na coluna "Ações", você tem 4 opções para lidar com cada linha do extrato bancário:</p>
+                <ul>
+                    <li><strong class="text-primary">Vincular:</strong> Use quando o boleto/conta já foi lançado no sistema (Contas a Pagar/Receber), mas ainda está em aberto. O sistema buscará opções similares. Você marca a correta e ele faz a baixa automática, calculando inclusive juros e descontos.</li>
+                    <li><strong class="text-dark">+ Novo:</strong> Use para despesas/receitas que caíram no banco, mas esqueceram de lançar no sistema (ex: Tarifas bancárias, PIX de última hora). Ele já cria a conta, faz a baixa e ajusta o saldo na mesma hora.</li>
+                    <li><strong style="color: #8b5cf6;">Transf.:</strong> Use para movimentações de dinheiro entre suas próprias contas (ex: enviou do Itaú para o Caixa Fundo Fixo).</li>
+                    <li><strong class="text-success">OK (Arquivar):</strong> Use para limpar a linha da tela caso ela já tenha sido baixada manualmente no passado ou seja um erro de exportação do banco.</li>
+                </ul>
+
+                <hr>
+
+                <h5 class="text-primary font-weight-bold">4. Robô e Regras Automáticas</h5>
+                <p>Ao usar o botão "+ Novo", você verá uma caixinha chamada <strong>"Salvar Regra"</strong>. Se você marcá-la (ideal para tarifas, energia, internet), no mês seguinte você não precisará fazer nada manualmente!</p>
+                <p>Basta importar o OFX e clicar no botão verde superior <strong>"Rodar Automação"</strong>. O sistema lembrará da regra, criará as contas, fará a baixa e atualizará o saldo automaticamente para todas as linhas que tiverem o mesmo nome.</p>
+
+            </div>
+            <div class="modal-footer bg-white">
+                <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal">Entendi</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -493,7 +570,28 @@ function abrirModalNovo(dados) {
 
 function abrirModalTransferir(dados) {
     document.getElementById('transf_extrato_id').value = dados.id;
-    document.getElementById('info_extrato_transf').innerHTML = `<strong>${dados.descricao}</strong><br>R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+    document.getElementById('info_extrato_transf').innerHTML = `
+        <span class="small text-muted font-weight-bold">Descrição do Banco:</span><br>
+        <strong class="text-dark">${dados.descricao}</strong><br>
+        <strong class="h5" style="color: #8b5cf6;">R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+    `;
+
+    // INTELIGÊNCIA DE UX: Auto-selecionar a categoria de transferência
+    let selectCat = document.getElementById('select_cat_transf');
+    selectCat.value = ""; // Reseta o campo
+    
+    // Procura nas options alguma que contenha as palavras-chave exatas que você usa
+    for (let i = 0; i < selectCat.options.length; i++) {
+        // Converte para maiúsculo para ignorar acentos e letras minúsculas
+        let nomeCat = selectCat.options[i].text.toUpperCase();
+        
+        // Busca por TRANSF, CAIXA ou FUNDO (de fundo fixo)
+        if (nomeCat.includes('TRANSF') || nomeCat.includes('CAIXA') || nomeCat.includes('FUNDO')) {
+            selectCat.selectedIndex = i;
+            break; // Para no primeiro que achar e já deixa selecionado na tela
+        }
+    }
+
     $('#modalTransferir').modal('show');
 }
 
@@ -558,6 +656,7 @@ function filtrarSugestoes() {
     const tipo = document.getElementById('vincular_tipo').value;
     const divCheckboxes = document.getElementById('lista_checkboxes');
     const msg = document.getElementById('msg_feedback');
+    const termoBusca = document.getElementById('busca_vinculo').value.toLowerCase().trim(); // Pega o que o usuário digitou
     const listaOriginal = (tipo === 'pagar') ? pagarSugestoes : receberSugestoes;
     
     const valorExtrato = parseFloat(dadoExtratoAtual.valor);
@@ -565,15 +664,13 @@ function filtrarSugestoes() {
 
     divCheckboxes.innerHTML = '';
     let itensOrdenados = [];
-
-    // === NOVO: INTELIGÊNCIA DE COMBOS (SOMA POR FORNECEDOR) ===
     let somaPorFornecedor = {};
+
+    // Preparação para Combo de soma exata
     listaOriginal.forEach(item => {
-        if (item.status == 0) { // Soma apenas os pendentes
+        if (item.status == 0) { 
             let nomeForn = (item.nome_parceiro || 'SEM_NOME').trim().toUpperCase();
-            if (!somaPorFornecedor[nomeForn]) {
-                somaPorFornecedor[nomeForn] = { soma: 0, count: 0 };
-            }
+            if (!somaPorFornecedor[nomeForn]) somaPorFornecedor[nomeForn] = { soma: 0, count: 0 };
             somaPorFornecedor[nomeForn].soma += parseFloat(item.valor_integral);
             somaPorFornecedor[nomeForn].count++;
         }
@@ -582,79 +679,95 @@ function filtrarSugestoes() {
     let comboPerfeito = null;
     for (const [nomeForn, dados] of Object.entries(somaPorFornecedor)) {
         if (Math.abs(dados.soma - valorExtrato) < 0.01 && dados.count > 1) {
-            comboPerfeito = nomeForn; // Descobriu que a soma de 2+ títulos desse cara dá o valor exato!
+            comboPerfeito = nomeForn; 
         }
     }
 
+    // Lógica principal de Match e Filtro
     listaOriginal.forEach(item => {
         let score = 0;
         const valorTitulo = parseFloat(item.valor_integral || 0);
         const parceiroNome = (item.nome_parceiro || '').toLowerCase().trim();
         const parceiroUpper = (item.nome_parceiro || '').toUpperCase().trim();
+        const dataFmt = item.data_vencimento ? item.data_vencimento.split('-').reverse().join('/') : '';
         
-        let diferencaValor = Math.abs(valorTitulo - valorExtrato);
-        let diferencaPercentual = valorTitulo > 0 ? (diferencaValor / valorTitulo) * 100 : 100;
-
-        // Tenta achar qualquer palavra grande (ex: MOVESA) do banco no nome do fornecedor
-        let palavrasBanco = descBanco.split(' ').filter(p => p.length > 3);
-        let bateuNome = false;
-        for(let palavra of palavrasBanco) {
-            if (parceiroNome.includes(palavra)) {
-                bateuNome = true;
-                score += 2000; // Agrupa todo mundo com nome parecido no topo
-                break;
+        // --- 1. FILTRO MANUAL (Se o usuário digitou algo na barra de pesquisa) ---
+        if (termoBusca !== '') {
+            // Se o que ele digitou não existe nem no nome, nem no valor e nem na data, ignora este item
+            if (!parceiroNome.includes(termoBusca) && !valorTitulo.toString().includes(termoBusca) && !dataFmt.includes(termoBusca)) {
+                return; // Pula para o próximo (não mostra na tela)
+            } else {
+                score += 50000; // Força o item pesquisado a ficar no topo
             }
         }
+
+        // --- 2. INTELIGÊNCIA: Nomes parecidos e fragmentados (Adriano Santos Silva) ---
+        // Pega palavras maiores que 3 letras do extrato do banco
+        let palavrasBanco = descBanco.split(/[\s-]+/).filter(p => p.length > 3);
+        let bateuNome = false;
         
-        if (diferencaValor < 0.01) {
-            score += 1000; // Valor individual bateu
-            if (bateuNome) score += 5000; // Ouro: Nome e Valor bateram 1 pra 1
-        } else if (diferencaPercentual <= 10) {
-            score += 30; // Aproximado
+        for(let palavra of palavrasBanco) {
+            // Se a palavra do banco estiver no nome cadastrado no ERP, ganha ponto
+            if (parceiroNome.includes(palavra)) {
+                bateuNome = true;
+                score += 2000; 
+            }
         }
 
-        // Se esse título faz parte do Combo Perfeito descoberto lá em cima
+        // --- 3. INTELIGÊNCIA: Valores Exatos ---
+        let diferencaValor = Math.abs(valorTitulo - valorExtrato);
+        if (diferencaValor < 0.01) {
+            score += 1000; 
+            if (bateuNome) score += 5000; // Match Perfeito: Bateu Nome e Valor!
+        } else if (diferencaValor <= 5.00) {
+            score += 100; // Pode ser juros pequeno ou tarifa retida (Aproximado)
+        }
+
+        // --- 4. INTELIGÊNCIA: Faz parte do Combo Perfeito? ---
         let fazParteDoCombo = false;
         if (comboPerfeito !== null && parceiroUpper === comboPerfeito && item.status == 0) {
-            score += 10000; // Prioridade Diamante
+            score += 10000; 
             fazParteDoCombo = true;
         }
 
         itensOrdenados.push({ item: item, score: score, isCombo: fazParteDoCombo });
     });
 
+    // Ordena do maior Score (mais parecido/pesquisado) para o menor
     itensOrdenados.sort((a, b) => b.score - a.score);
 
     if (itensOrdenados.length === 0) {
-        divCheckboxes.innerHTML = '<div class="p-2 text-muted text-center">Nenhum título cadastrado.</div>';
+        divCheckboxes.innerHTML = '<div class="p-3 text-muted text-center font-weight-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block"></i> Nenhum título corresponde à pesquisa.</div>';
         msg.innerHTML = '';
         recalcularSoma();
         return;
     }
 
-    let selecionouAlgo = false;
-
+    // Desenha na tela
     itensOrdenados.forEach((c, index) => {
         const i = c.item;
         const dataVenc = i.data_vencimento ? i.data_vencimento.split('-').reverse().join('/') : 'S/D';
         const valorFmt = parseFloat(i.valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2});
-        
         const badgeStatus = (i.status == 1) ? '<span class="badge badge-warning text-dark ml-2">Já Pago</span>' : '';
         const corLinha = (i.status == 1) ? 'bg-light' : '';
         
-        // Auto-check se faz parte de um combo OU se for o primeiro da lista com score de perfeição individual
-        const checkAttribute = (c.isCombo || (index === 0 && c.score >= 6000 && i.status == 0)) ? 'checked' : '';
-        if (checkAttribute) selecionouAlgo = true;
+        // Se o usuário não digitou nada, aplica as regras de Auto-Check
+        let checkAttribute = '';
+        if (termoBusca === '') {
+            if (c.isCombo || (index === 0 && c.score >= 6000 && i.status == 0)) {
+                checkAttribute = 'checked';
+            }
+        }
 
         const html = `
-            <div class="custom-control custom-checkbox p-2 border-bottom ${corLinha}">
+            <div class="custom-control custom-checkbox p-2 border-bottom ${corLinha} hover-bg-light">
                 <input type="checkbox" class="custom-control-input check-titulo" name="conta_ids[]" value="${i.id}" id="chk_${i.id}" data-valor="${i.valor_integral}" onchange="recalcularSoma()" ${checkAttribute}>
                 <label class="custom-control-label w-100" for="chk_${i.id}" style="cursor: pointer;">
                     <div class="d-flex justify-content-between">
-                        <span><strong>${i.nome_parceiro || 'Sem Fornecedor'}</strong> ${badgeStatus}</span>
-                        <strong class="text-primary">R$ ${valorFmt}</strong>
+                        <span><strong class="${c.score > 1000 ? 'text-primary' : 'text-dark'}">${i.nome_parceiro || 'Sem Nome Vinculado'}</strong> ${badgeStatus}</span>
+                        <strong class="text-primary h6 mb-0">R$ ${valorFmt}</strong>
                     </div>
-                    <small class="text-muted">Ref: ${i.referencia || '-'} | Venc: ${dataVenc}</small>
+                    <small class="text-muted"><i class="far fa-calendar-alt"></i> Venc: ${dataVenc} ${i.referencia ? '| Ref: '+i.referencia : ''}</small>
                 </label>
             </div>
         `;
@@ -663,14 +776,19 @@ function filtrarSugestoes() {
 
     recalcularSoma();
 
-    if (itensOrdenados[0].score >= 10000) {
-        msg.innerHTML = `<i class="fas fa-boxes text-success"></i> Combo Inteligente: O sistema agrupou vários boletos deste fornecedor que somam o valor exato do banco!`;
-    } else if (itensOrdenados[0].score >= 6000) {
-        msg.innerHTML = `<i class="fas fa-bullseye text-success"></i> Combinação exata de título único!`;
-    } else if (itensOrdenados[0].score >= 2000) {
-        msg.innerHTML = `<i class="fas fa-search text-primary"></i> Fornecedor localizado pelo nome. Marque os títulos correspondentes.`;
+    // Mensagens de Feedback só aparecem se não estiver buscando manualmente
+    if (termoBusca === '') {
+        if (itensOrdenados[0].score >= 10000) {
+            msg.innerHTML = `<i class="fas fa-boxes text-success"></i> Combo Inteligente: O sistema encontrou vários títulos deste fornecedor que somam o valor exato!`;
+        } else if (itensOrdenados[0].score >= 6000) {
+            msg.innerHTML = `<i class="fas fa-bullseye text-success"></i> Combinação exata de título único (Nome e Valor conferem)!`;
+        } else if (itensOrdenados[0].score >= 2000) {
+            msg.innerHTML = `<i class="fas fa-search text-primary"></i> Encontramos nomes parecidos com a descrição do banco.`;
+        } else {
+            msg.innerHTML = `<i class="fas fa-info-circle text-info"></i> Selecione os títulos manualmente ou use a barra de pesquisa acima.`;
+        }
     } else {
-        msg.innerHTML = `<i class="fas fa-info-circle text-info"></i> Selecione os títulos manualmente.`;
+        msg.innerHTML = `<i class="fas fa-filter text-primary"></i> Mostrando resultados para: "${termoBusca}"`;
     }
 }
 </script>

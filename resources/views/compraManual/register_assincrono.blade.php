@@ -47,35 +47,40 @@
 			<div class="">
 				<div class="col-lg-12">
 					<div class="card card-custom gutter-b example example-compact m-3">
-						<div class="card-header">
-							<h3 class="card-title">DADOS INICIAIS</h3>
-							{!! __view_locais_select() !!}
-						</div>
+						<div class="card-header d-flex justify-content-between align-items-center">
+                            <h3 class="card-title">DADOS INICIAIS</h3>
+
+                            <button type="button" class="btn btn-info font-weight-bold" data-toggle="modal" data-target="#modal-ajuda">
+                                <i class="la la-question-circle"></i> Como emitir a nota?
+                            </button>
+
+                            {!! __view_locais_select() !!}
+                        </div>
 
 						<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
-							<div class="col-xl-12">
-								<div class="row">
-									<div class="form-group col-lg-2 col-md-4 col-sm-6">
-										<label class="col-form-label">Data retroativa</label>
-										<div class="input-group date">
-											<input type="text" name="data_retroativa" class="form-control date-input"
-												value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa') }}" id="data_retroativa_dynamic" />
-											<div class="input-group-append">
-												<span class="input-group-text"><i class="la la-calendar"></i></span>
-											</div>
-										</div>
-									</div>
+                              <div class="col-xl-12">
+                                  <div class="row">
+                                      <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                                          <label class="col-form-label">Data retroativa</label>
+                                          <div class="input-group date">
+                                              <input type="text" name="data_retroativa" class="form-control date-input"
+                                                  value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa', date('d/m/Y')) }}" id="data_retroativa_dynamic" />
+                                              <div class="input-group-append">
+                                                  <span class="input-group-text"><i class="la la-calendar"></i></span>
+                                              </div>
+                                          </div>
+                                      </div>
 
-									<div class="form-group col-lg-2 col-md-4 col-sm-6">
-										<label class="col-form-label">Data saída</label>
-										<div class="input-group date">
-											<input type="text" name="data_saida" class="form-control date-input"
-												value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida') }}" id="data_saida_dynamic" />
-											<div class="input-group-append">
-												<span class="input-group-text"><i class="la la-calendar"></i></span>
-											</div>
-										</div>
-									</div>
+                                      <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                                          <label class="col-form-label">Data saída</label>
+                                          <div class="input-group date">
+                                              <input type="text" name="data_saida" class="form-control date-input"
+                                                  value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida', date('d/m/Y')) }}" id="data_saida_dynamic" />
+                                              <div class="input-group-append">
+                                                  <span class="input-group-text"><i class="la la-calendar"></i></span>
+                                              </div>
+                                          </div>
+                                      </div>
 
 									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
 										<label class="col-form-label">Nota Fiscal</label>
@@ -1517,10 +1522,92 @@
 		</div>
 	</div>
 </div>
+<div class="modal fade" id="modal-ajuda" tabindex="-1" role="dialog" aria-labelledby="modalAjudaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title text-white" id="modalAjudaLabel"><i class="la la-info-circle text-white mr-2"></i> Instruções: Compra Manual e Emissão de NF-e</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    x
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <h6 class="font-weight-bold text-primary">Passo 1: Preenchendo os Dados Iniciais</h6>
+                    <ul class="text-dark-75 mb-0">
+                        <li>Selecione o <strong>Fornecedor</strong> e os <strong>Produtos</strong>. Caso não existam, use o botão azul <strong>(+)</strong> para cadastrar na hora.</li>
+                        <li>Se a nota for de <strong>Entrada Própria</strong>, deixe o campo "Número da NF" em branco (ele será gerado automaticamente).</li>
+                    </ul>
+                </div>
 
+                <div class="mb-4 p-3 bg-light rounded border-left border-info border-3">
+                    <h6 class="font-weight-bold text-info"><i class="la la-gavel"></i> Passo 2: Seleção da Natureza de Operação</h6>
+                    <ul class="text-dark-75 mb-0" style="padding-left: 20px;">
+                        <li><strong>Compra de Mercadoria:</strong> Selecione sempre as naturezas de <u>"Compras"</u> correspondentes.</li>
+                        <li><strong>Notas de Devolução:</strong> Selecione obrigatoriamente a <u>"Natureza de Devolução"</u> correta para que os impostos sejam calculados de forma inversa.</li>
+                    </ul>
+                </div>
+
+                <div class="mb-4 p-3 bg-light rounded border-left border-warning border-3">
+                    <h6 class="font-weight-bold text-warning"><i class="la la-money-bill"></i> Passo 3: Forma de Pagamento e Regras da SEFAZ</h6>
+                    <ul class="text-dark-75 mb-0" style="padding-left: 20px;">
+                        <li><strong>Operações Normais:</strong> Selecione a forma real utilizada (PIX, Dinheiro, Boleto, etc.).</li>
+                        <li><strong class="text-danger">Regra para Devolução / Simples Remessa:</strong> Nestes casos, você DEVE selecionar a opção <strong>"Sem Pagamento" (Código 90)</strong>. Isso zera o pagamento no XML e evita rejeição.</li>
+                        <li><strong>Evitando duplicidade de data:</strong> Se o pagamento for no mesmo dia da emissão da nota, selecione a opção de prazo <strong>"À Vista"</strong>. A opção "A Prazo" só deve ser usada para datas futuras.</li>
+                    </ul>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="font-weight-bold text-primary">Passo 4: Finalizar a Compra</h6>
+                    <ul class="text-dark-75 mb-0">
+                        <li>Desça até o final da tela, confira o valor total e clique em <strong>"Finalizar"</strong>.</li>
+                        <li>O sistema vai salvar a compra e gerar as faturas no financeiro (caso não seja à vista ou sem pagamento).</li>
+                    </ul>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="font-weight-bold text-primary">Passo 5: Emitir a Nota Fiscal (Próxima Tela)</h6>
+                    <ul class="text-dark-75 mb-0">
+                        <li>Após salvar, você será levado para a tela de detalhes da compra.</li>
+                        <li>Verifique se há itens marcados em <strong class="text-danger">vermelho</strong>. Se houver, clique em "Editar Produto" para corrigir impostos (CST e CFOP).</li>
+                        <li>Tudo certo? Basta clicar no botão verde <strong>"Transmitir para Sefaz"</strong>.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light-primary font-weight-bold" data-dismiss="modal">Entendi</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
 // Este código aguarda o JS velho carregar e sobrescreve ele na memória
 document.addEventListener("DOMContentLoaded", function() {
+  
+ // AVISO DE INSTRUÇÕES AO ABRIR A TELA (MOSTRA APENAS 1 VEZ)
+setTimeout(function() {
+    // Verifica se o usuário já leu o aviso antes
+    if (!localStorage.getItem('avisoCompraManualLido')) {
+        swal({
+            title: "Instruções Importantes",
+            text: "<div style='text-align: left; font-size: 14px;'>" +
+                  "<p><strong>1. Número da NF:</strong> Informe apenas se já emitida. Em nota de entrada, deixe em branco.</p>" +
+                  "<p><strong>2. Categoria:</strong> Selecione a categoria que corresponde à despesa.</p>" +
+                  "<p><strong>3. Pagamento À Vista:</strong> Se o pagamento for hoje, use 'À Vista' para evitar rejeição da SEFAZ por duplicidade de data.</p>" +
+                  "<p><strong>4. Botão Finalizar:</strong> Só é habilitado após adicionar Fornecedor, Produto e Pagamento.</p>" +
+                  "<p><strong>5. Preenchimento Automático:</strong> Evite usar o preenchimento automático do Chrome nas buscas. Ele pode travar o botão de salvar.</p>" +
+                  "</div>",
+            html: true, // Habilita o HTML no SweetAlert
+            type: "info",
+            confirmButtonText: "Entendi e não mostrar novamente"
+        }, function() {
+            // Quando o usuário clica no botão, gravamos no navegador que ele já leu
+            localStorage.setItem('avisoCompraManualLido', 'true');
+        });
+    }
+}, 500);
+    
+  
     setTimeout(function() {
         console.log("Forçando a captura da NF e Veículo!");
 
@@ -1577,6 +1664,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     return;
                 }
 
+              	var categoria = $('#categoria_conta_id').val();
+                if (!categoria || categoria == '') {
+                    swal({title: "Aviso", text: "Selecione uma categoria de conta para finalizar!", type: "warning"});
+                    salvando = false;
+                    $('#preloader2').css('display', 'none');
+                    $('#salvar-venda').removeAttr('disabled');
+                    return;
+                }
+              
                 var transportadora = $('#kt_select2_3').val();
                 transportadora = transportadora == 'null' ? null : transportadora;
                 
@@ -1648,6 +1744,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     return;
                 } 
                 
+              	var categoria = $('#categoria_conta_id').val();
+                  if (!categoria || categoria == '') {
+                      swal({title: "Aviso", text: "Selecione uma categoria de conta para atualizar!", type: "warning"});
+                      salvando = false;
+                      $('#preloader2').css('display', 'none');
+                      return;
+                  }
+              
                 var transportadora = $('#kt_select2_3').val();
                 transportadora = transportadora == 'null' ? null : transportadora;
                 

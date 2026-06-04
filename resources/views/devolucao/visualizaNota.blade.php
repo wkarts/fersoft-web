@@ -37,9 +37,13 @@
 
                         <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
                         <div class="card card-custom gutter-b example example-compact">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h3 class="card-title">Importando XML</h3>
+                                <button type="button" class="btn btn-light-primary font-weight-bold btn-sm" data-toggle="modal" data-target="#modal-manual-devolucao">
+                                    <i class="la la-book icon-sm"></i> Manual de Uso da Rotina
+                                </button>
                             </div>
+                        </div>
                         </div>
                         <input type="hidden" value="{{csrf_token()}}" id="_token">
 

@@ -68,6 +68,7 @@ class ContaEmpresaController extends BaseController
 
     public function create()
     {
+        // 1. Busca os planos de conta do sistema
         $planos = PlanoConta::where('empresa_id', $this->empresa_id)
             ->orderBy('descricao', 'asc')
             ->get();
@@ -77,11 +78,16 @@ class ContaEmpresaController extends BaseController
             return redirect()->route('plano-contas.index');
         }
 
-        return view('conta_empresa/register', compact('planos'));
+        // 2. Busca as contas contábeis para a integração Prosoft
+        $planoContasContabeis = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get(); 
+
+        // 3. Envia tudo para a view
+        return view('conta_empresa/register', compact('planos', 'planoContasContabeis'));
     }
 
     public function edit($id)
     {
+        // 1. Busca a conta empresa que será editada
         $item = ContaEmpresa::withoutGlobalScopes()
             ->where('id', $id)
             ->where('empresa_id', $this->empresa_id)
@@ -91,6 +97,7 @@ class ContaEmpresaController extends BaseController
             return redirect('/403');
         }
 
+        // 2. Busca os planos de conta do sistema
         $planos = PlanoConta::where('empresa_id', $this->empresa_id)
             ->orderBy('descricao', 'asc')
             ->get();
@@ -100,7 +107,11 @@ class ContaEmpresaController extends BaseController
             return redirect()->route('plano-contas.index');
         }
 
-        return view('conta_empresa/register', compact('planos', 'item'));
+        // 3. Busca as contas contábeis para a integração Prosoft
+        $planoContasContabeis = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get();
+
+        // 4. Envia o item e as listas para a view
+        return view('conta_empresa/register', compact('planos', 'item', 'planoContasContabeis'));
     }
 
     public function store(Request $request)
@@ -135,6 +146,7 @@ class ContaEmpresaController extends BaseController
             $item->empresa_id = $this->empresa_id;
             $item->usuario_id = $this->usuario_id ?? get_id_user();
             $item->filial_id = $filial_final; // Atribuição direta e forçada
+          	$item->conta_contabil_id = $request->conta_contabil_id;
 
             $item->save();
 
@@ -185,6 +197,7 @@ class ContaEmpresaController extends BaseController
             $item->exibir_dashboard_analitico = $request->has('exibir_dashboard_analitico') ? 1 : 0;
             $item->filial_id = $filial_final; // <--- Forçamos o ID (ex: 8) aqui!
             $item->usuario_id = $this->usuario_id ?? get_id_user();
+          	$item->conta_contabil_id = $request->conta_contabil_id;
 
             $item->save();
 

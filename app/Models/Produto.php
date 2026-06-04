@@ -332,42 +332,52 @@ class Produto extends BaseModel
 		}
 	}
 
-	public static function verificaCadastrado($ean, $nome, $referencia){
+	// Adicionamos o $fornecedor_id como parâmetro opcional (padrão null)
+	public static function verificaCadastrado($ean, $nome, $referencia, $fornecedor_id = null){
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
 		$result = null;
-		$result = Produto::
-		where('referencia', $referencia)
-		->where('empresa_id', $empresa_id)
-		->first();
 
-		if($result != null) return $result;
+        // 1º TENTATIVA: Procura na nossa tabela de memória De/Para
+        if ($fornecedor_id != null && $referencia != null) {
+            $vinculo = \App\Models\ProdutoFornecedor::where('fornecedor_id', $fornecedor_id)
+                ->where('codigo_fornecedor', $referencia)
+                ->where('empresa_id', $empresa_id) // <-- TRAVA DE SEGURANÇA ADICIONADA AQUI
+                ->first();
 
-		if(!$result){
-			$result = Produto::
-			where('nome', $nome)
+            if ($vinculo && $vinculo->produto) {
+                return $vinculo->produto;
+            }
+        }
+
+        // 2º TENTATIVA (CÓDIGO DE BARRAS)
+		if($ean != '' && $ean != 'SEM GTIN'){
+			$result = Produto::where('codBarras', $ean)
 			->where('empresa_id', $empresa_id)
 			->first();
-			if($result){
-				return $result;
-			}
+            
+            if($result) return $result;
 		}
 
+        // 3º TENTATIVA (NOME EXATO)
 		if(!$result){
-			$result = Produto::
-			where('codBarras', $ean)
-			->where('codBarras', '!=', 'SEM GTIN')
+			$result = Produto::where('nome', $nome)
 			->where('empresa_id', $empresa_id)
 			->first();
-		}else{
-			if($result->codBarras != $ean){
-				return null;
-			}
+            
+			if($result) return $result;
 		}
+
+        // 4º TENTATIVA (SISTEMA ANTIGO - CÓDIGO DA REFERÊNCIA)
+        if(!$result){
+            $result = Produto::where('referencia', $referencia)
+            ->where('empresa_id', $empresa_id)
+            ->first();
+        }
 
 		return $result;
 	}
-
+  
 	public static function getUFs(){
 		return [
 			'11' => 'RO',

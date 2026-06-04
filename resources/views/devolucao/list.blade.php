@@ -130,7 +130,7 @@
 															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Motivo</span></th>
 
 															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Tipo</span></th>
-															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">NFe entrada</span></th>
+															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">NFe entrada/saída</span></th>
 															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">NFe devolução</span></th>
 															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 280px;">Ações</span></th>
 														</tr>

@@ -7,16 +7,16 @@
         <hr>
         <div class="row">
             <div class="col-md-6">
-                <p><strong>Referência:</strong> {{ $conta->referencia }}</p>
+                <p><strong>ReferÃªncia:</strong> {{ $conta->referencia }}</p>
                 <p><strong>Valor Integral:</strong> R$ {{ number_format($conta->valor_integral, 2, ',', '.') }}</p>
                 <p><strong>Criado por:</strong> {{ $conta->usuario->nome ?? 'Sistema' }}</p>
-                <p><strong>Data de Criação:</strong> {{ $conta->created_at->format('d/m/Y H:i') }}</p>
+                <p><strong>Data de CriaÃ§Ã£o:</strong> {{ $conta->created_at->format('d/m/Y H:i') }}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>Última alteração:</strong> {{ $conta->updated_at->format('d/m/Y H:i') }}</p>
+                <p><strong>Ãšltima alteraÃ§Ã£oo:</strong> {{ $conta->updated_at->format('d/m/Y H:i') }}</p>
                 @if($conta->usuarioBaixa)
                     <p><strong>Baixado por:</strong> {{ $conta->usuarioBaixa->nome }}</p>
-                    <p><strong>Data da Baixa:</strong> {{ $conta->data_baixa ? \Carbon\Carbon::parse($conta->data_baixa)->format('d/m/Y H:i') : 'N/A' }}</p>
+                    <p><strong>Data da Baixa:</strong> {{ $conta->data_pagamento ? \Carbon\Carbon::parse($conta->data_pagamento)->format('d/m/Y H:i') : 'N/A' }}</p> : 'N/A' }}</p>
                 @else
                     <p><strong>Status:</strong> <span class="badge badge-warning">Pendente</span></p>
                 @endif

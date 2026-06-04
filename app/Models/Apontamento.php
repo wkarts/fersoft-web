@@ -6,7 +6,7 @@ namespace App\Models;
 class Apontamento extends BaseModel
 {
     protected $fillable = [
-        'usuario_id', 'produto_id', 'quantidade', 'empresa_id'
+        'usuario_id', 'produto_id', 'quantidade', 'empresa_id', 'filial_id'
     ];
 
     public function produto(){

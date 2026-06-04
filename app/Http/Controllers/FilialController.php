@@ -12,6 +12,7 @@ use NFePHP\Common\Certificate;
 class FilialController extends Controller
 {
     protected $empresa_id = null;
+
     public function __construct(){
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
@@ -27,44 +28,45 @@ class FilialController extends Controller
 
         $data = Filial::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         return view('filial.index')
-        ->with('title', 'Filiais')
-        ->with('data', $data);
+            ->with('title', 'Filiais')
+            ->with('data', $data);
+
     }
 
     public function create(){
+
         $cidades = Cidade::all();
-        $naturezas = NaturezaOperacao::
-        where('empresa_id', $this->empresa_id)
-        ->get();
+        $naturezas = NaturezaOperacao::where('empresa_id', $this->empresa_id)->get();
+        $planoContas = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get();
         $infoCertificado = null;
+
         return view('filial.create', ['title' => 'Nova Localização'],
-            compact('cidades', 'naturezas', 'infoCertificado'))
+            compact('cidades', 'naturezas', 'infoCertificado', 'planoContas'))
         ->with('testeJs', true);
+
     }
 
     public function edit($id){
-
         $config = Filial::findOrFail($id);
         if(valida_objeto($config)){
 
+            $planoContas = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get();
             $cidades = Cidade::all();
-            $naturezas = NaturezaOperacao::
-            where('empresa_id', $this->empresa_id)
-            ->get();
-
+            $naturezas = NaturezaOperacao::where('empresa_id', $this->empresa_id)->get();
             $infoCertificado = null;
+
             if($config->arquivo_certificado != null){
                 $infoCertificado = $this->getInfoCertificado($config);
             }
 
-
             return view('filial.create', ['title' => 'Editar Localização'],
-                compact('cidades', 'naturezas', 'config', 'infoCertificado'))
+                compact('cidades', 'naturezas', 'config', 'infoCertificado', 'planoContas'))
             ->with('testeJs', true);
-        }else{
+
+        } else {
             return redirect('/403');
         }
     }
@@ -72,10 +74,9 @@ class FilialController extends Controller
     private function getInfoCertificado($config){
 
         try{
+
             $infoCertificado = Certificate::readPfx($config->arquivo_certificado, $config->senha_certificado);
-
             $publicKey = $infoCertificado->publicKey;
-
             $inicio =  $publicKey->validFrom->format('Y-m-d H:i:s');
             $expiracao =  $publicKey->validTo->format('Y-m-d H:i:s');
 
@@ -85,6 +86,7 @@ class FilialController extends Controller
                 'expiracao' => \Carbon\Carbon::parse($expiracao)->format('d-m-Y H:i'),
                 'id' => $publicKey->commonName
             ];
+
         }catch(\Exception $e){
             return null;
         }
@@ -92,12 +94,13 @@ class FilialController extends Controller
     }
 
     public function store(Request $request){
+        
         $this->_validate($request);
 
         $logo_name = "";
+
         if($request->hasFile('file')){
             $file = $request->file('file');
-
             $extensao = $file->getClientOriginalExtension();
             $rand = rand(0, 999999);
             $logo_name = md5($file->getClientOriginalName()).$rand.".".$extensao;
@@ -119,7 +122,7 @@ class FilialController extends Controller
         $request->merge([
             'numero_serie_cte' => $request->numero_serie_cte ?? 0,
             'numero_serie_mdfe' => $request->numero_serie_mdfe ?? 0,
-            'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0, 
+            'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0,
             'ultimo_numero_mdfe' => $request->ultimo_numero_mdfe ?? 0,
             'email' => $request->email ?? '',
             'municipio' => strtoupper($municipio),
@@ -186,7 +189,7 @@ class FilialController extends Controller
         $request->merge([
             'numero_serie_cte' => $request->numero_serie_cte ?? 0,
             'numero_serie_mdfe' => $request->numero_serie_mdfe ?? 0,
-            'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0, 
+            'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0,
             'ultimo_numero_mdfe' => $request->ultimo_numero_mdfe ?? 0,
             'email' => $request->email ?? '',
             'municipio' => strtoupper($municipio),

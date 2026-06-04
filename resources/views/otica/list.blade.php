@@ -117,14 +117,24 @@
 <script>
 $('.status-rapido').change(function() {
     let select = $(this);
+    let valorAnterior = select.data('atual'); // Guardar o valor anterior no elemento
+
     $.post("{{ route('otica.alterarStatus') }}", {
-        _token: "{{ csrf_token() }}", id: select.data('id'), status: select.val()
+        _token: "{{ csrf_token() }}", 
+        id: select.data('id'), 
+        status: select.val()
     }, function(res) {
         if(res.success) {
-            // Pequeno feedback visual ao alterar status
-            select.css('background-color', '#e1f0ff').animate({ backgroundColor: "#f3f6f9" }, 1000);
+            select.css('background-color', '#e1f0ff');
+            // Atualiza o estado atual do componente
+            select.data('atual', select.val());
+            if(select.val() == 'entregue') {
+                select.prop('disabled', true);
+                window.location.reload(); // Recarrega para aplicar as travas visuais dos botões
+            }
         } else {
-            alert('Erro ao atualizar status.');
+            alert(res.message || 'Erro ao atualizar status.');
+            select.val(select.data('atual')); // Desfaz a seleção no HTML
         }
     });
 });

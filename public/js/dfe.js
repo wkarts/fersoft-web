@@ -11,7 +11,8 @@ var codBarras = "";
 var cest = "";
 var nNf = 0;
 var semRegitro;
-var PRODUTO = null
+var PRODUTO = null;
+var linha_global = "";
 
 $(function () {
 	let uri = window.location.pathname;
@@ -142,22 +143,24 @@ function setarEvento(chave){
 
 }
 
-function _construct(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade, valorCompra, nNf, cest){
-	this.codigo = codigo;
-	this.nome = nome;
-	this.ncm = ncm;
-	this.cfop = cfop;
-	this.unidade = unidade;
-	this.valor = valor;
-	this.valorCompra = valorCompra;
-	this.quantidade = quantidade;
-	this.nNf = nNf;
-	this.cest = cest;
-	this.codBarras = codBarras.substring(0, 13);
+function _construct(codigo_, nome_, codBarras_, ncm_, cfop_, unidade_, valor_, quantidade_, valorCompra_, nNf_, cest_, linha_){
+	codigo = codigo_;
+	nome = nome_;
+	ncm = ncm_;
+	cfop = cfop_;
+	unidade = unidade_;
+	valor = valor_;
+	valorCompra = valorCompra_;
+	quantidade = quantidade_;
+	nNf = nNf_;
+	cest = cest_;
+	codBarras = codBarras_.substring(0, 13);
+  	linha_global = linha_ || codigo_; // Trava de segurança ativada
 }
 
-function cadProd(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade, valorCompra, nNf, cest){
-	_construct(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade, valorCompra, nNf, cest);
+// AQUI ESTAVA FALTANDO A PALAVRA "linha" NO FINAL:
+function cadProd(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade, valorCompra, nNf, cest, linha){
+	_construct(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade, valorCompra, nNf, cest, linha);
 
 	$('#nome').val(nome);
 	$("#nome").focus();
@@ -276,75 +279,82 @@ $('#kt_select2_1').change(() => {
 })
 
 $('#salvarLink').click(() => {
-	let id = this.codigo;
+	let estoque = $('#estoque').val();
+	let valor = $('#valor_venda2').val();
+	let valorCompra = $('#valor_compra2').val();
 
-	let estoque = $('#estoque').val()
-	let valor = $('#valor_venda2').val()
-	let referencia = $('#referencia').val()
-	let valorCompra = $('#valor_compra2').val()
 	if(PRODUTO != null){
-		let produto = PRODUTO
-		let js = {
-			estoque: estoque,
-			valor_venda: valor,
-			referencia: referencia,
-			valor_compra: valorCompra,
-			produto_id: produto.id,
-			numero_nfe: this.nNf
-		}
+        let produto = PRODUTO;
+        let fornecedor_id = $('#fornecedor_id').val() || 0;
 
-		let token = $('#_token').val();
+        let js = {
+            estoque: estoque,
+            valor_venda: valor,
+            referencia: produto.referencia, // Mantém a ref original
+            valor_compra: valorCompra,
+            produto_id: produto.id,
+            numero_nfe: nNf, // Usando a variável global corrigida
+            fornecedor_id: fornecedor_id,
+            codigo_fornecedor: codigo, 
+            descricao_fornecedor: nome, 
+            codigo_barras_fornecedor: codBarras 
+        };
 
-		$.ajax
-		({
-			type: 'POST',
-			data: {
-				produto: js,
-				_token: token
-			},
-			url: path + 'produtos/updateProdutoDaNotaComEstoque',
-			dataType: 'json',
-			success: function(e){
+        let token = $('#_token').val();
 
-				swal("Sucesso", "Produto Salvo, e inserido o estoque quantidade: " + js.estoque, "success")
-				.then(sim => {
-					location.reload();
-				});
+        $.ajax({
+            type: 'POST',
+            data: { produto: js, _token: token },
+            url: path + 'produtos/updateProdutoDaNotaComEstoque',
+            dataType: 'json',
+            success: (e) => {
+                $("#th_prod_id_" + linha_global).html(e.id);
+                $("#th_" + linha_global).removeClass("text-danger red-text");
+                $("#th_acao1_" + linha_global).css('display', 'none');
+                $("#th_estoque_" + linha_global).addClass('disabled');
 
-			}, error: function(e){
-				console.log(e)
-				swal("Erro", "Algo deu errado!", "error")
-			}
-		});
+                $('#preloader').css('display', 'none');
+                $('#modal1').modal('hide');
+                $('#modal-link').modal('hide'); // Fecha o modal de vínculo também
 
-	}else{
-		swal("Erro", "Selecione o produto", "error");
-	}
-})
+                swal("Sucesso", "Produto Vinculado, e estoque inserido: " + js.estoque, "success")
+                .then(sim => {
+                    location.reload();
+                });
+            }, 
+            error: function(e){
+                console.log(e);
+                $('#preloader').css('display', 'none');
+                document.write(e.responseText);
+            }
+        }); // <-- AQUI ERA ONDE FALTAVA FECHAR ANTES
+    }else{
+        swal("Erro", "Selecione o produto", "error");
+    }
+});
 
 $('#salvar').click(() => {
 	$('#preloader').css('display', 'block');
-	$("#th_"+this.codigo).removeClass("red-text");
-	$("#th_"+this.codigo).html($('#nome').val());
+	$("#th_" + linha_global).removeClass("red-text text-danger");
+	$("#th_" + linha_global).html($('#nome').val());
 	let valorVenda = $('#valor_venda').val();
 
 	if(valorVenda <= 0){
-		swal("Erro", "Informe um valor de venda", "warning")
+		swal("Erro", "Informe um valor de venda", "warning");
+		$('#preloader').css('display', 'none');
 	}else{
 		let valorCompra = $('#valor').val();
 		let unidadeVenda = $('#unidade_venda').val();
-		let conversaoEstoque =$('#conv_estoque').val();
-		let categoria_id =$('#categoria_id').val();
+		let conversaoEstoque = $('#conv_estoque').val();
+		let categoria_id = $('#categoria_id').val();
 		let cor = $('#cor').val();
-
-		let CST_CSOSN =$('#CST_CSOSN').val();
-		let CST_PIS =$('#CST_PIS').val();
-		let CST_COFINS =$('#CST_COFINS').val();
-		let CST_IPI =$('#CST_IPI').val();
+		let CST_CSOSN = $('#CST_CSOSN').val();
+		let CST_PIS = $('#CST_PIS').val();
+		let CST_COFINS = $('#CST_COFINS').val();
+		let CST_IPI = $('#CST_IPI').val();
 		let cfop = $('#cfop').val();
 		let percentual_lucro = $('#percentual_lucro').val();
-		let codBarras = $('#codBarras').val();
-
+		let codBarrasT = $('#codBarras').val();
 		let perc_icms = $('#perc_icms').val();
 		let perc_pis = $('#perc_pis').val();
 		let perc_cofins = $('#perc_cofins').val();
@@ -359,26 +369,24 @@ $('#salvar').click(() => {
 			categoria_id: categoria_id,
 			cor: cor,
 			nome: $('#nome').val(),
-			ncm: this.ncm,
+			ncm: ncm, // Variável global corrigida
 			cfop: cfop,
-			unidadeCompra: this.unidade,
-			valor: this.valor,
-			quantidade: this.quantidade,
-			codBarras: codBarras,
-			numero_nfe: this.nNf,
+			unidadeCompra: unidade, // Variável global corrigida
+			valor: valor, // Variável global corrigida
+			quantidade: quantidade, // Variável global corrigida
+			codBarras: codBarrasT,
+			numero_nfe: nNf, // Variável global corrigida
 			CST_CSOSN: CST_CSOSN,
 			CST_PIS: CST_PIS,
 			CST_COFINS: CST_COFINS,
 			CST_IPI: CST_IPI,
-			referencia: this.codigo,
+			referencia: codigo, // Variável global corrigida
 			gerenciar_estoque: $('#gerenciar_estoque').is(':checked') ? 1 : 0,
 			perc_icms: perc_icms,
 			perc_pis: perc_pis,
 			perc_cofins: perc_cofins,
 			perc_ipi: perc_ipi,
-
 			estoque_minimo: $('#estoque_minimo').val(),
-			gerenciar_estoque: $('#gerenciar_estoque').is(':checked') ? 1 : 0,
 			inativo: $('#inativo').is(':checked'),
 			CEST: $('#CEST').val(),
 			anp: $('#anp').val(),
@@ -393,7 +401,6 @@ $('#salvar').click(() => {
 			comprimento: $('#comprimento').val(),
 			peso_liquido: $('#peso_liquido').val(),
 			peso_bruto: $('#peso_bruto').val(),
-
 			cenq_ipi: $('#cenq_ipi').val(),
 			perc_iss: $('#perc_iss').val(),
 			pRedBC: $('#pRedBC').val(),
@@ -414,26 +421,25 @@ $('#salvar').click(() => {
 			perc_frete: $('#perc_frete').val(),
 			perc_outros: $('#perc_outros').val(),
 			perc_mlv: $('#perc_mlv').val(),
-			filial_id: $('#filial_id') ? $('#filial_id').val() : -1,
-
-		}
+			filial_id: $('#filial_id').length > 0 ? $('#filial_id').val() : -1,
+			fornecedor_id: $('#fornecedor_id').val() || 0,
+			codigo_fornecedor: codigo, 
+			descricao_fornecedor: nome, 
+			codigo_barras_fornecedor: codBarras 
+		};
 
 		let token = $('#_token').val();
 
-		$.ajax
-		({
+		$.ajax({
 			type: 'POST',
-			data: {
-				produto: prod,
-				_token: token
-			},
+			data: { produto: prod, _token: token },
 			url: path + 'produtos/salvarProdutoDaNotaComEstoque',
 			dataType: 'json',
-			success: function(e){
-				$("#th_prod_id_"+codigo).html(e.id);
-				$("#th_acao1_"+codigo).css('display', 'none');
-				$("#th_acao2_"+codigo).css('display', 'block');
-				$("#th_estoque_"+codigo).addClass('disabled');
+			success: function(e) { 
+				$("#th_prod_id_" + linha_global).html(e.id);
+				$("#th_" + linha_global).removeClass("text-danger red-text"); 
+				$("#th_acao1_" + linha_global).css('display', 'none');
+				$("#th_estoque_" + linha_global).addClass('disabled');
 
 				$('#preloader').css('display', 'none');
 				$('#modal1').modal('hide');
@@ -441,16 +447,16 @@ $('#salvar').click(() => {
 				swal("Sucesso", "Produto Salvo, e inserido o estoque quantidade: " + prod.quantidade, "success")
 				.then(sim => {
 					location.reload();
-
 				});
-
-			}, error: function(e){
-				console.log(e)
+			}, 
+			error: function(e){
+				console.log(e);
 				$('#preloader').css('display', 'none');
+				document.write(e.responseText);
 			}
 		});
 	}
-})
+});
 
 function salvarEstoque(id, valor, quantidade, numero_nfe){
 	swal("Alerta", "Deseja atribuir estoque a este produto?", "warning")
@@ -531,30 +537,27 @@ function formatReal(v){
 	return v.toLocaleString('pt-br', {style: 'currency', currency: 'BRL', minimumFractionDigits: casas_decimais});
 }
 
-$('#produto-search').keyup(() => {
-	console.clear()
-	let pesquisa = $('#produto-search').val();
+var searchTimeout = null; // Variável para controlar o tempo de digitação
 
+$('#produto-search').keyup(() => {
+	let pesquisa = $('#produto-search').val();
+	
 	if(pesquisa.length > 1){
 		montaAutocomplete(pesquisa, (res) => {
-			if(res){
-				if(res.length > 0){
-					montaHtmlAutoComplete(res, (html) => {
-						$('.search-prod').html(html)
-						$('.search-prod').css('display', 'block')
-					})
-
-				}else{
-					$('.search-prod').css('display', 'none')
-				}
+			if(res && res.length > 0){
+				montaHtmlAutoComplete(res, (html) => {
+					$('.search-prod').html(html);
+					$('.search-prod').css('display', 'block');
+				});
 			}else{
-				$('.search-prod').css('display', 'none')
+				$('.search-prod').css('display', 'none');
 			}
-		})
+		});
 	}else{
-		$('.search-prod').css('display', 'none')
+		$('.search-prod').css('display', 'none');
 	}
-})
+});
+
 
 function montaAutocomplete(pesquisa, call){
 	$.get(path + 'produtos/autocomplete', {pesquisa: pesquisa})

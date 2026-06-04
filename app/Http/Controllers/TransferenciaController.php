@@ -102,7 +102,11 @@ class TransferenciaController extends Controller
                     'usuario_id' => get_id_user()
                 ]);
 
+                // =======================================================
+                // É EXATAMENTE AQUI QUE ELE FICA! 👇
+                // =======================================================
                 $stockMove = new StockMove();
+                $agora = now(); // Captura a data/hora para o stock_movements
 
                 for($i=0; $i<sizeof($request->produto); $i++){
 
@@ -116,34 +120,85 @@ class TransferenciaController extends Controller
                         })
                         ->first();
 
-                    $p = Produto::findOrFail($produto); // <- aqui é a CORREÇÃO
+                    $p = Produto::findOrFail($produto);
 
                     $locais = json_decode($p->locais);
-                    array_push($locais, $entrada);
-
+                    if(!is_array($locais)) $locais = [];
+                    
                     if(!in_array($entrada, $locais)){
                         array_push($locais, $entrada);
                     }
                     $p->locais = $locais;
                     $p->save();
 
+                    // 1. Atualiza o saldo físico chamando o seu helper atual
                     $stockMove->downStock($produto, $quantidade, $saida);
                     $stockMove->pluStock($produto, $quantidade, -1, $entrada);
+
+                    // 2. Cria o item da transferência
+                    $custoUnitario = $p->valor_compra ?? 0;
+                    $valorTotal = $custoUnitario * $quantidade;
 
                     ItemTransferencia::create([
                         'transferencia_id' => $item->id,
                         'produto_id' => $produto,
                         'quantidade' => $quantidade,
-                        'valor_unitario' => $p->valor_compra ?? 0, // preço de custo
-                        'sub_total' => ($p->valor_compra ?? 0) * $quantidade,
+                        'valor_unitario' => $custoUnitario,
+                        'sub_total' => $valorTotal,
+                    ]);
+
+                    // =========================================================================
+                    // 3. REGISTRO NA TABELA STOCK_MOVEMENTS (HISTÓRICO EXATO)
+                    // =========================================================================
+                    
+                    // Busca os saldos atualizados após a movimentação para gravar no histórico
+                    $saldoSaida = Estoque::where('produto_id', $produto)->where('filial_id', $saida)->value('quantidade') ?? 0;
+                    $saldoEntrada = Estoque::where('produto_id', $produto)->where('filial_id', $entrada)->value('quantidade') ?? 0;
+
+                    // A. Grava a SAÍDA (Origem: Matriz ou Filial)
+                    DB::table('stock_movements')->insert([
+                        'empresa_id' => $this->empresa_id,
+                        'filial_id' => $saida, 
+                        'usuario_id' => get_id_user(),
+                        'produto_id' => $produto,
+                        'contexto' => 'transferencia',
+                        'tipo' => 'saida',
+                        'quantidade' => $quantidade,
+                        'custo_unitario' => $custoUnitario,
+                        'valor_total' => $valorTotal,
+                        'origem_tipo' => 'App\Models\Transferencia',
+                        'origem_id' => $item->id,
+                        'idempotency_key' => 'transf_' . $item->id . '_saida_' . $produto . '_' . time(),
+                        'movimentado_em' => $agora,
+                        'saldo_momento' => $saldoSaida,
+                        'created_at' => $agora,
+                        'updated_at' => $agora
+                    ]);
+
+                    // B. Grava a ENTRADA (Destino: Matriz ou Filial)
+                    DB::table('stock_movements')->insert([
+                        'empresa_id' => $this->empresa_id,
+                        'filial_id' => $entrada, 
+                        'usuario_id' => get_id_user(),
+                        'produto_id' => $produto,
+                        'contexto' => 'transferencia',
+                        'tipo' => 'entrada',
+                        'quantidade' => $quantidade,
+                        'custo_unitario' => $custoUnitario,
+                        'valor_total' => $valorTotal,
+                        'origem_tipo' => 'App\Models\Transferencia',
+                        'origem_id' => $item->id,
+                        'idempotency_key' => 'transf_' . $item->id . '_entrada_' . $produto . '_' . time(),
+                        'movimentado_em' => $agora,
+                        'saldo_momento' => $saldoEntrada,
+                        'created_at' => $agora,
+                        'updated_at' => $agora
                     ]);
                 }
             });
             session()->flash("mensagem_sucesso", "Transferência realizada!");
 
         }catch(\Exception $e){
-            // echo $e->getMessage();
-            // die;
             __saveError($e, $this->empresa_id);
             session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
         }
@@ -229,6 +284,9 @@ class TransferenciaController extends Controller
             $item->finNFe = $request->finNFe;
             $item->tpNF = $request->tpNF;
             $item->transportadora_id = $request->transportadora_id;
+            // Novos campos de peso
+            $item->peso_bruto = $request->peso_bruto ? __replace($request->peso_bruto) : 0;
+            $item->peso_liquido = $request->peso_liquido ? __replace($request->peso_liquido) : 0;
             $item->save();
             session()->flash("mensagem_sucesso", "Dados salvos!");
         }catch(\Exception $e){
@@ -1059,6 +1117,108 @@ class TransferenciaController extends Controller
             return response()->json(['success' => false, 'mensagem' => $e->getMessage()]);
         }
     }
+    private function gerarEntradaDestinatario(Transferencia $transferencia, $chave, $numeroNfe)
+    {
+        // 1. Verifica se já não gerou a compra para evitar duplicidade
+        $existe = \App\Models\Compra::where('chave', $chave)->first();
+        if ($existe) return;
+
+        // 2. Carrega os dados da Origem (Quem emitiu a nota)
+        if ($transferencia->filial_saida_id == null) {
+            $emitente = \App\Models\ConfigNota::where('empresa_id', $transferencia->empresa_id)->first();
+        } else {
+            $emitente = \App\Models\Filial::find($transferencia->filial_saida_id);
+        }
+        
+        // Carrega os dados do Destino (Quem recebeu a nota)
+        if ($transferencia->filial_entrada_id == null) {
+            $destinatario = \App\Models\ConfigNota::where('empresa_id', $transferencia->empresa_id)->first();
+        } else {
+            $destinatario = \App\Models\Filial::find($transferencia->filial_entrada_id);
+        }
+
+        $cnpjEmitente = preg_replace('/[^0-9]/', '', $emitente->cnpj);
+
+        // 3. Busca ou cadastra o Emitente como Fornecedor
+        $fornecedor = \App\Models\Fornecedor::where('cpf_cnpj', $cnpjEmitente)->first();
+        if (!$fornecedor) {
+            $cidade = \App\Models\Cidade::where('nome', $emitente->municipio)->first();
+            $fornecedor = \App\Models\Fornecedor::create([
+                'razao_social' => $emitente->razao_social,
+                'nome_fantasia' => $emitente->nome_fantasia ?? $emitente->razao_social,
+                'cpf_cnpj' => $cnpjEmitente,
+                'rua' => $emitente->logradouro,
+                'numero' => $emitente->numero,
+                'bairro' => $emitente->bairro,
+                'cidade_id' => $cidade ? $cidade->id : 1,
+                'empresa_id' => $transferencia->empresa_id,
+            ]);
+        }
+
+        // 4. Calcula o total da nota
+        $total = 0;
+        foreach($transferencia->itens as $i) {
+            $total += $i->sub_total;
+        }
+
+        // 5. Gera o cabeçalho da Compra (Entrada) - Sem gerar financeiro e sem duplicar estoque
+        $compra = \App\Models\Compra::create([
+            'fornecedor_id' => $fornecedor->id,
+            'usuario_id' => $transferencia->usuario_id,
+            'empresa_id' => $transferencia->empresa_id,
+            // Graças ao seu Mutator na model Compra, passar -1 converte para null (Matriz)
+            'filial_id' => $transferencia->filial_entrada_id != null ? $transferencia->filial_entrada_id : -1,
+            'nf' => $numeroNfe,
+            'chave' => $chave,
+            'valor' => $total,
+            'estado' => 'aprovado',
+            'observacao' => 'Entrada automática gerada por Transf. Interna #' . $transferencia->id,
+            'data_emissao' => date('Y-m-d H:i:s')
+        ]);
+
+        // ========================================================
+        // REGRAS FISCAIS: CFOP E TRIBUTOS 
+        // ========================================================
+        $ufEmitente = $emitente->UF ?? '';
+        $ufDestino = $destinatario->UF ?? '';
+        
+        // Define se é 1000 (Dentro do Estado) ou 2000 (Fora do Estado)
+        $prefixoCfop = ($ufEmitente == $ufDestino) ? '1' : '2';
+
+        // 6. Gera os itens da compra
+        foreach($transferencia->itens as $i) {
+            $produto = \App\Models\Produto::find($i->produto_id);
+            $unidadeCompra = $produto ? $produto->unidade_compra : 'UN';
+            
+            // Lógica inteligente para CFOP de Transferência
+            // Assume 152 (Com ST). Se o produto for tributação normal, altera para 151 (Sem ST)
+            $cfopEntrada = $prefixoCfop . '152'; // Padrão ex: 2152 ou 1152
+            
+            if ($produto) {
+                // Códigos de ICMS que geralmente NÃO têm ST (Tributação normal ou isenções simples)
+                $cstNormais = ['00', '20', '90', '101', '102', '400', '41', '041'];
+                if (in_array($produto->CST_CSOSN, $cstNormais)) {
+                    $cfopEntrada = $prefixoCfop . '151'; // Muda para ex: 2151 ou 1151
+                }
+            }
+
+            \App\Models\ItemCompra::create([
+                'compra_id' => $compra->id,
+                'produto_id' => $i->produto_id,
+                'quantidade' => $i->quantidade,
+                'valor_unitario' => $i->valor_unitario,
+                'unidade_compra' => $unidadeCompra,
+                'cfop_entrada' => $cfopEntrada,
+                
+                // Impostos fiscais fixados conforme sua regra (041 / 74)
+                'cst_icms' => '041',
+                'cst_pis' => '74',
+                'cst_cofins' => '74',
+                'cst_ipi' => '99',
+            ]);
+        }
+    }
+
 
 
 }

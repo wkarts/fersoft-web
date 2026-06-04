@@ -44,7 +44,7 @@
                 </form>
                 <br>
                 <h4>Lista de Fornecedores</h4>
-                <label>Total de registros: {{count($fornecedores)}}</label>
+                <label>Total de registros: {{ $fornecedores->total() }}</label>
 
                 <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                     <div class="wizard-nav">
@@ -191,6 +191,10 @@
             </div>
         </div>
     </div>
+
+<div class="d-flex justify-content-center mt-5">
+    {{ $fornecedores->links() }}
+</div>
 
     <div class="modal fade" id="modal_historico" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">

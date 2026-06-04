@@ -158,15 +158,15 @@ class DevolucaoController extends Controller
             // Formatação de valores
             $vFrete = number_format((double)($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
             $vDesc  = number_format((double)($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0),  2, ",", ".");
-            $vOutro = (float)($icmsTot->vOutro ?? 0); // Aqui está o segredo
+            $vOutro = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0); // Aqui está o segredo
 
             // --- CADASTRA/ATUALIZA FORNECEDOR DESTINATÁRIO (padrão) ---
             $fornecedorEncontrado = $this->verificaFornecedor($dadosDestinatario['cnpj'] ?: $dadosDestinatario['cpf']);
             $dadosAtualizados = [];
             if ($fornecedorEncontrado) {
                 $idFornecedor = $fornecedorEncontrado->id;
-                // Atualiza dados se necessário (mantém sua lógica original)
-                $dadosAtualizados = $this->verificaAtualizacao($fornecedorEncontrado, $dadosEmitente);
+                // CORREÇÃO: Aqui passamos $dadosDestinatario e não mais $dadosEmitente
+                $dadosAtualizados = $this->verificaAtualizacao($fornecedorEncontrado, $dadosDestinatario);
             } else {
                 array_push($dadosAtualizados, "Fornecedor cadastrado com sucesso");
                 $idFornecedor = $this->cadastrarFornecedor($dadosDestinatario);
@@ -188,6 +188,9 @@ class DevolucaoController extends Controller
             $emitenteEncontrado = $this->verificaFornecedor($dadosEmitente['cnpj'] ?: $dadosEmitente['cpf']);
             if ($emitenteEncontrado) {
                 $idEmitente = $emitenteEncontrado->id;
+                // CORREÇÃO: Agora o sistema também atualiza os dados do Emitente se houver mudança
+                $dadosAtualizadosEmit = $this->verificaAtualizacao($emitenteEncontrado, $dadosEmitente);
+                $dadosAtualizados = array_merge($dadosAtualizados, $dadosAtualizadosEmit);
             } else {
                 $idEmitente = $this->cadastrarFornecedor($dadosEmitente);
             }
@@ -698,34 +701,34 @@ class DevolucaoController extends Controller
 		return $temp;
 	}
 
-	private function verificaAtualizacao($fornecedorEncontrado, $dadosEmitente){
+	private function verificaAtualizacao($fornecedorEncontrado, $novosDados){
 		$dadosAtualizados = [];
 
 		$verifica = $this->dadosAtualizados('Razao Social', $fornecedorEncontrado->razao_social,
-			$dadosEmitente['razaoSocial']);
+			$novosDados['razaoSocial']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
 		$verifica = $this->dadosAtualizados('Nome Fantasia', $fornecedorEncontrado->nome_fantasia,
-			$dadosEmitente['nomeFantasia']);
+			$novosDados['nomeFantasia']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
 		$verifica = $this->dadosAtualizados('Rua', $fornecedorEncontrado->rua,
-			$dadosEmitente['logradouro']);
+			$novosDados['logradouro']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
 		$verifica = $this->dadosAtualizados('Numero', $fornecedorEncontrado->numero,
-			$dadosEmitente['numero']);
+			$novosDados['numero']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
 		$verifica = $this->dadosAtualizados('Bairro', $fornecedorEncontrado->bairro,
-			$dadosEmitente['bairro']);
+			$novosDados['bairro']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
 		$verifica = $this->dadosAtualizados('IE', $fornecedorEncontrado->ie_rg,
-			$dadosEmitente['ie']);
+			$novosDados['ie']);
 		if($verifica) array_push($dadosAtualizados, $verifica);
 
-		$this->atualizar($fornecedorEncontrado, $dadosEmitente);
+		$this->atualizar($fornecedorEncontrado, $novosDados);
 		return $dadosAtualizados;
 	}
 
@@ -736,16 +739,16 @@ class DevolucaoController extends Controller
 		return false;
 	}
 
-	private function atualizar($fornecedor, $dadosEmitente){
-		$fornecedor->razao_social = $dadosEmitente['razaoSocial'];
-		$fornecedor->nome_fantasia = $dadosEmitente['nomeFantasia'];
-		$fornecedor->rua = $dadosEmitente['logradouro'];
-		$fornecedor->ie_rg = $dadosEmitente['ie'];
-		$fornecedor->bairro = $dadosEmitente['bairro'];
-		$fornecedor->numero = $dadosEmitente['numero'];
+	private function atualizar($fornecedor, $novosDados){
+		$fornecedor->razao_social = $novosDados['razaoSocial'];
+		$fornecedor->nome_fantasia = $novosDados['nomeFantasia'];
+		$fornecedor->rua = $novosDados['logradouro'];
+		$fornecedor->ie_rg = $novosDados['ie'];
+		$fornecedor->bairro = $novosDados['bairro'];
+		$fornecedor->numero = $novosDados['numero'];
 		$fornecedor->save();
 	}
-
+  
     /**
      * Salva a devolução, persistindo todos os dados do cabeçalho de acordo com a escolha do usuário (emitente ou destinatário).
      * @param \Illuminate\Http\Request $request
@@ -772,7 +775,7 @@ class DevolucaoController extends Controller
                     'nNf' => $data['nNf'],
                     'vFrete' => str_replace(",", ".", $data['vFrete']),
                     'vDesc' => str_replace(",", ".", $data['vDesc']),
-                    'vOutro' => str_replace(',', '.', $request->vOutro ?? 0),
+                    'vOutro' => isset($data['vOutros']) ? str_replace(',', '.', $data['vOutros']) : 0,
                     'chave_gerada' => '',
                     'numero_gerado' => 0,
                     'tipo' => $data['tipo'],
@@ -1289,7 +1292,7 @@ class DevolucaoController extends Controller
 
             $vFrete =number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
             $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
-            $vOutro = (float)($icmsTot->vOutro ?? 0);
+            $vOutro = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0);
 
             $chave = substr($xml->NFe->infNFe->attributes()->Id, 3, 44);
             $dadosNf = [
@@ -1348,7 +1351,10 @@ class DevolucaoController extends Controller
                     $produto = Produto::where('nome', $i->nome)->first();
                     if($produto != null){
                         $stockMove->pluStock(
-                            (int) $produto->id, (float) str_replace(",", ".", $i->quantidade));
+                            (int) $produto->id, 
+                            (float) str_replace(",", ".", $i->quantidade),
+                            (float) str_replace(",", ".", $i->valor_unit)
+                        );
                     }
                 }
             }
@@ -1441,25 +1447,30 @@ class DevolucaoController extends Controller
     //envio sefaz
 
     public function enviarSefaz(Request $request)
-    {
-        $devolucao = Devolucao::
-        where('id', $request->devolucao_id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
+{
+    // Buscamos primeiro pelo ID direto para isolar falhas se a empresa_id do middleware oscilar
+    $devolucao = Devolucao::find($request->devolucao_id);
 
-        // —————————————
-        // 1) Detecta filial ou matriz
-        // —————————————
-        if ($devolucao->filial_id) {
-            $config = Filial::findOrFail($devolucao->filial_id);
-            if (! $config->arquivo_certificado) {
-                return response()->json(['erro' => 'Certificado não configurado nesta filial'], 400);
-            }
-        } else {
-            $config = ConfigNota::
-            where('empresa_id', $this->empresa_id)
-                ->firstOrFail();
+    // Proteção 1: Se não encontrar a devolução no banco, avisa o usuário com segurança
+    if (!$devolucao) {
+        return response()->json(['erro' => 'Erro: Registro de devolução não encontrado no sistema (ID: ' . $request->devolucao_id . ').'], 404);
+    }
+
+    // —————————————
+    // 1) Detecta filial ou matriz (Agora totalmente protegido)
+    // —————————————
+    if (!empty($devolucao->filial_id)) {
+        $config = Filial::find($devolucao->filial_id);
+        if (!$config || !$config->arquivo_certificado) {
+            return response()->json(['erro' => 'Certificado não configurado nesta filial'], 400);
         }
+    } else {
+        // Se filial_id for null (Matriz), busca a configuração usando a empresa_id da própria devolução
+        $config = ConfigNota::where('empresa_id', $devolucao->empresa_id)->first();
+        if (!$config) {
+            return response()->json(['erro' => 'Configuração da Matriz não encontrada para a empresa ID ' . $devolucao->empresa_id], 400);
+        }
+    }
 
         // —————————————
         // 2) Normaliza CNPJ
@@ -2257,7 +2268,7 @@ class DevolucaoController extends Controller
             $vFrete = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
 
             $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
-            $vOutro = (float)($icmsTot->vOutro ?? 0);
+            $vOutro = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0);
 
             $idFornecedor = 0;
             $fornecedorEncontrado = $this->verificaFornecedor($dadosEmitente['cnpj'] == '' ? $dadosEmitente['cpf'] : $dadosEmitente['cnpj']);
@@ -2472,7 +2483,7 @@ class DevolucaoController extends Controller
             $vFrete = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vFrete ?? 0), 2, ",", ".");
 
             $vDesc = number_format((double) ($xml->NFe->infNFe->total->ICMSTot->vDesc ?? 0), 2, ",", ".");
-            $vOutro = (float)($icmsTot->vOutro ?? 0); // Aqui está o segredo
+            $vOutro = (float)($xml->NFe->infNFe->total->ICMSTot->vOutro ?? 0); // Aqui está o segredo
 
             $idFornecedor = 0;
             $fornecedorEncontrado = $this->verificaFornecedor($dadosEmitente['cnpj'] == '' ? $dadosEmitente['cpf'] : $dadosEmitente['cnpj']);

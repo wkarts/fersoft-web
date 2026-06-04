@@ -17,15 +17,30 @@
                 </div>
 
                 <div class="row">
-					<div class="form-group col-md-6">
-						<label>Plano de Contas</label>
-						<select name="plano_conta_id" class="form-control custom-select" required>
-							<option value="">Selecione</option>
-							@foreach($planos as $p)
-								<option value="{{ $p->id }}" {{ (isset($item) && $item->plano_conta_id == $p->id) ? 'selected' : '' }}>{{ $p->descricao }}</option>
-							@endforeach
-						</select>
-					</div>
+    <div class="form-group col-md-6">
+        <label>Plano de Contas (Sistema)</label>
+        <select name="plano_conta_id" class="form-control custom-select" required>
+            <option value="">Selecione</option>
+            @foreach($planos as $p)
+                <option value="{{ $p->id }}" {{ (isset($item) && $item->plano_conta_id == $p->id) ? 'selected' : '' }}>{{ $p->descricao }}</option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="form-group col-md-6">
+        <label>Conta Contábil (Exportação Prosoft)</label>
+        <select name="conta_contabil_id" class="form-control custom-select">
+            <option value="">Selecione a conta...</option>
+            @isset($planoContasContabeis)
+                @foreach($planoContasContabeis as $c)
+                    <option value="{{ $c->id }}" {{ (isset($item) && $item->conta_contabil_id == $c->id) ? 'selected' : '' }}>
+                        {{ $c->classificador }} - {{ $c->nome }}
+                    </option>
+                @endforeach
+            @endisset
+        </select>
+    </div>
+
 					<div class="form-group col-md-4">
 						<label>Filial / Matriz</label>
 							@php

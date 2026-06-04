@@ -44,9 +44,13 @@
             <input type="hidden" name="destinoPadrao" id="destinoPadrao" value="{{ $destinoPadrao }}">
 
             <div class="card shadow-sm">
-                <div class="card-header bg-white border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0 font-weight-bold">Importação de XML da NF-e</h5>
+                    <button type="button" class="btn btn-light-primary font-weight-bold btn-sm" data-toggle="modal" data-target="#modal-manual-devolucao">
+                        <i class="la la-book icon-sm"></i> Manual de Uso da Rotina
+                    </button>
                 </div>
+              
                 <div class="card-body">
                     {{-- UPLOAD DE XML --}}
                     <div class="form-group row align-items-center">
@@ -390,4 +394,91 @@
             });
         });
     </script>
+<div class="modal fade" id="modal-manual-devolucao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title text-primary font-weight-bold">
+                    <i class="la la-book text-primary icon-lg"></i> Manual Operacional: Módulo de Devolução NF-e
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <div class="alert alert-custom alert-light-primary fade show mb-5" role="alert">
+                    <div class="alert-icon"><i class="la la-info-circle"></i></div>
+                    <div class="alert-text">
+                        <strong>Automação Inteligente:</strong> Este módulo simplifica a emissão de Notas Fiscais de Devolução através da leitura do arquivo XML original. O sistema calcula impostos, preenche itens e faz a gestão correta dos cadastros de forma automática com base nas suas seleções.
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card card-custom gutter-b border shadow-none">
+                            <div class="card-body">
+                                <h4 class="font-weight-bold text-dark mb-4">1. Importação e Tipo de Alvo</h4>
+                                <ol class="list-timeline list-timeline-light">
+                                    <li class="mb-4">
+                                        <span class="font-weight-bold text-primary">Carregar o XML:</span> Clique em <em>Escolher arquivo</em> e selecione a NF-e original.
+                                    </li>
+                                    <li class="mb-4">
+                                        <span class="font-weight-bold text-danger">Definição do Destinatário:</span> Este é o passo mais importante!
+                                        <div class="bg-light p-3 rounded mt-2 border-left border-danger">
+                                            <p class="mb-1"><strong>• Emitente da Nota:</strong> Selecione se estiver a devolver uma mercadoria compradada ao seu <u>Fornecedor</u> (Devolução de Compra).</p>
+                                            <p class="mb-0"><strong>• Destinatário da Nota:</strong> Selecione se um <u>Cliente</u> devolveu uma mercadoria sua e você está a emitir uma Nota de Entrada.</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <span class="font-weight-bold text-success">Executar:</span> Clique em <em>Importar XML</em> para processar as informações.
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card card-custom gutter-b border shadow-none">
+                            <div class="card-body">
+                                <h4 class="font-weight-bold text-dark mb-4">2. Conferência de Itens e Frete</h4>
+                                <ul class="list-unstyled">
+                                    <li class="mb-4 d-flex align-items-start">
+                                        <i class="la la-check-circle text-success icon-lg mr-2 mt-1"></i>
+                                        <div>
+                                            <strong class="text-dark">Revisão de Produtos:</strong> O sistema carrega todos os itens. Se precisar de alterar o CFOP, CST/CSOSN ou a quantidade (em caso de devolução parcial), clique no botão de ações ao lado do subtotal do produto.
+                                        </div>
+                                    </li>
+                                    <li class="mb-4 d-flex align-items-start">
+                                        <i class="la la-truck text-warning icon-lg mr-2 mt-1"></i>
+                                        <div>
+                                            <strong class="text-dark">Dados de Transporte:</strong> Escolha a transportadora. Se for nova, clique no botão <span class="badge badge-warning font-weight-bold">+</span> para cadastrá-la no momento apenas com o CNPJ. Configure a modalidade do frete, pesos e placa do veículo.
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-custom border shadow-none bg-light-success">
+                    <div class="card-body">
+                        <h4 class="font-weight-bold text-success mb-3">3. Guardar e Emitir</h4>
+                        <p class="text-dark-75">
+                            Insira o <strong>Motivo da Devolução</strong> e as <strong>Observações</strong> necessárias nos campos de texto (esses dados vão sair impressos nas Informações Complementares do DANFE). 
+                            Confira o valor total exibido no rodapé e clique em <span class="badge badge-success">Salvar</span>.
+                        </p>
+                        <p class="mb-0 text-muted font-size-sm">
+                            <i class="la la-arrow-right font-size-sm"></i> O sistema fará a atualização automática do stock (caso esteja configurado) e enviará o arquivo XML gerado ao seu escritório de contabilidade assim que a transmissão for concluída com sucesso.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-primary font-weight-bold" data-dismiss="modal">Entendi, Fechar Manual</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

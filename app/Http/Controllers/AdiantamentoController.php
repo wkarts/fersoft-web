@@ -154,7 +154,8 @@ class AdiantamentoController extends BaseController
                     'categoria_id' => $request->categoria_id,
                     'saldo_atual' => $conta->saldo,
                     'empresa_id' => $this->empresa_id,
-                    'user_id' => $this->usuario_id
+                    'user_id' => $this->usuario_id,
+                  	'origem' => 'Adiantamento'
                 ]);
 
                 Adiantamento::create([
@@ -199,7 +200,8 @@ class AdiantamentoController extends BaseController
                     'categoria_id' => $itemOrig->categoria_id,
                     'saldo_atual' => $conta->saldo,
                     'empresa_id' => $this->empresa_id,
-                    'user_id' => $this->usuario_id
+                    'user_id' => $this->usuario_id,
+                  	'origem' => 'Adiantamento'
                 ]);
                 $adv->update(['status' => 'cancelado']);
                 return redirect()->back()->with('success', 'Adiantamento estornado!');
@@ -587,7 +589,8 @@ class AdiantamentoController extends BaseController
                       'categoria_id' => $request->categoria_id ?? null,
                       'saldo_atual' => $conta->saldo,
                       'empresa_id' => $this->empresa_id,
-                      'user_id' => $this->usuario_id
+                      'user_id' => $this->usuario_id,
+                      'origem' => 'Adiantamento'
                   ]);
 
                   return redirect()->back()->with('success', 'Devolução de R$ ' . number_format($valorDevolucao, 2, ',', '.') . ' realizada!');
