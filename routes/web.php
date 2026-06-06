@@ -1317,6 +1317,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::get('/export', 'ContaReceberController@exportExcel');
         Route::get('/syncNotaFiscal','ContaReceberController@syncNotaFiscal');
+        Route::get('/visualizarDanfe/{id}', 'ContaReceberController@visualizarDanfe');
 
     });
 
@@ -2098,9 +2099,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/importacaoNfse/importarLote', 'ImportacaoNfseController@importarLote');
         Route::get('/importacaoNfse/visualizar/{id}', 'ImportacaoNfseController@visualizar');
         Route::get('/visualizarNfse/{id}', 'ImportacaoNfseController@visualizar');
-        Route::post('/gerarContasRetencao', 'ContaPagarController@gerarContasRetencao');
-        Route::post('/gerarContasRetencao', 'ContaPagarController@gerarContasRetencao');
-        Route::post('/baixarParcial', 'ContaPagarController@baixarParcial');
+        //Route::post('/gerarContasRetencao', 'ContasPagarController@gerarContasRetencao');
+        Route::post('/gerarContasRetencao', 'ContasPagarController@gerarContasRetencao');
+        Route::post('/baixarParcial', 'ContasPagarController@baixarParcial');
 
         Route::group(['prefix' => 'apuracao-difal'], function() {
             Route::get('/', 'ApuracaoDifalController@index')->name('compraFiscal.difal.index');
@@ -2112,6 +2113,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
             // Se quiser uma rota para visualizar uma apuração antiga específica
             Route::get('/detalhes/{id}', 'ApuracaoDifalController@show')->name('compraFiscal.difal.show');
             Route::get('/imprimir/{id}', 'ApuracaoDifalController@imprimir')->name('compraFiscal.difal.imprimir');
+            Route::post('/corrigir-cfops', 'ApuracaoDifalController@corrigirCfops')->name('compraFiscal.difal.corrigirCfops');
         });
     });
 
@@ -2955,7 +2957,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'LogController@list')->name('logs.list');
     });
 
-
     Route::group(['prefix' => 'balancas/leitor'], function () {
         Route::get('/', 'BalancaLeitorController@index')->name('balancas.leitor.index');
         Route::get('/configuradas', 'BalancaLeitorController@configuradas')->name('balancas.leitor.configuradas');
@@ -2968,8 +2969,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/{id}/evidence', 'BalancaLeitorController@captureEvidence')->name('balancas.leitor.evidence');
         Route::post('/ticket/apply', 'BalancaLeitorController@applyToTicket')->name('balancas.leitor.ticket.apply');
     });
-
-
 
     Route::get('/adp', 'AdpDeviceDiscoveryController@index')->name('adp.index');
 

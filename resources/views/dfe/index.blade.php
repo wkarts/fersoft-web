@@ -1,6 +1,10 @@
 @extends('default.layout')
 @section('content')
 
+<button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#modalAjudaDfe">
+    <i class="fa fa-info-circle"></i> Entender a Rotina (Manual de Operações)
+</button>
+
 <div class="card card-custom gutter-b">
     <div class="card-body">
         <form method="get" action="/dfe/filtro">
@@ -341,4 +345,70 @@
 	</form>
 </div>
 
+<!-- Modal de Instruções Técnicas - DF-e e SPED Fiscal -->
+<div class="modal fade" id="modalManualDfe" tabindex="-1" role="dialog" aria-labelledby="modalManualDfeLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalManualDfeLabel">
+                    <i class="fa fa-info-circle"></i> Manual Técnico: Rotina DF-e e Impacto no SPED Fiscal
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                
+                <p class="text-muted">Este guia orienta a operação correta do módulo de DF-e, detalhando como o sistema processa os impostos, estoque e financeiro para garantir que a geração do <b>SPED Fiscal (EFD ICMS/IPI)</b> não sofra rejeições.</p>
+                
+                <hr>
+
+                <h4 class="text-info"><i class="fa fa-cogs"></i> 1. O que a Rotina Faz</h4>
+                <p>A rotina de DF-e realiza a comunicação direta com o ambiente nacional da SEFAZ para gerenciar as notas emitidas por terceiros contra o CNPJ da empresa.</p>
+                <ul>
+                    <li><b>Manifestação Obrigatória:</b> Permite registrar os eventos exigidos pela fiscalização: <i>Ciência da Operação, Confirmação, Desconhecimento</i> ou <i>Operação Não Realizada</i>.</li>
+                    <li><b>Download e Guarda Digital:</b> Baixa o arquivo XML oficial diretamente da SEFAZ assim que a nota é manifestada, armazenando-o na pasta física segura do servidor.</li>
+                    <li><b>Conferência Visual:</b> Permite renderizar a DANFE em PDF na tela para checagem rápida antes de qualquer lançamento no sistema.</li>
+                </ul>
+
+                <hr>
+
+                <h4 class="text-info"><i class="fa fa-exchange"></i> 2. Inteligência Fiscal na Importação (CFOP e ICMS)</h4>
+                <p>Ao avançar para a tela de importação, o sistema lê a estrutura interna do XML e aplica regras automáticas para adequar a nota do fornecedor às diretrizes de entrada da empresa:</p>
+                <ul>
+                    <li><b>Conversão de CFOP (De/Para):</b> O sistema converte CFOPs de venda interestaduais ou específicos para o formato de entrada correto. Por exemplo, o CFOP de combustível <b>1929</b> é convertido de forma automática para <b>1653</b>.</li>
+                    <li><b>Blindagem de Uso e Consumo (CFOP 1556):</b> Para mercadorias destinadas ao uso ou consumo, a legislação veda o crédito de ICMS. O sistema zera de forma compulsória as colunas de <b>Base de Cálculo, Alíquota e Valor do ICMS</b> (<code class="highlighter-rouge">vbc_icms = 0</code>, <code class="highlighter-rouge">p_icms = 0</code>, <code class="highlighter-rouge">v_icms = 0</code>) para que a escrituração não gere autuações na Receita Federal.</li>
+                    <li><b>Junção de CST/CSOSN:</b> O sistema captura a tag de impostos e une automaticamente o dígito indicador de <b>Origem da Mercadoria</b> com a Situação Tributária (gerando códigos estáveis de 3 dígitos, ex: <b>060</b>), garantindo que o Registro C170 do SPED seja preenchido corretamente.</li>
+                </ul>
+
+                <hr>
+
+                <h4 class="text-info"><i class="fa fa-cubes"></i> 3. Integração com Estoque, Financeiro e Entidades</h4>
+                <p>A finalização e o salvamento da nota alimentam de maneira unificada e imediata os seguintes módulos do ERP:</p>
+                <ul>
+                    <li><b>Movimentação de Estoque:</b> Calcula a entrada fracionada real com base na <b>Conversão Unitária</b> parametrizada (ex: se comprou em Caixa e vende em Unidade), alimentando o histórico de movimentações e recalculando o custo de compra do produto.</li>
+                    <li><b>Gestão Flexível de Faturas:</b> O sistema pré-carrega as parcelas originais contidas no XML. O operador tem total liberdade na tela para <b>incluir novas parcelas ou excluir duplicatas</b>, adequando o Contas a Pagar ao acordo financeiro real feito com o fornecedor.</li>
+                    <li><b>Vínculo de Fornecedores:</b> Se o emitente da nota for novo, o sistema realiza o <b>cadastro automatizado</b>, localizando inclusive o código IBGE correto do município pelo nome da cidade presente no XML.</li>
+                    <li><b>Memória de Associação:</b> Ao vincular o item do XML a um produto do seu estoque pela primeira vez, o sistema grava essa associação. Nas próximas compras desse fornecedor, o sistema lembrará do vínculo sozinho.</li>
+                </ul>
+
+                <hr>
+
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading"><i class="fa fa-exclamation-triangle"></i> Cuidados Críticos para a Geração do SPED Fiscal</h5>
+                    <p class="mb-0">Para que o arquivo gerado pelo <b>SpedController</b> seja validado com sucesso pelo contador, valide sempre se:</p>
+                    <ul class="mt-2 mb-0">
+                        <li>O produto vinculado possui um código <b>NCM</b> válido e a classificação do <b>Tipo do Item</b> (ex: 00 para Revenda, 07 para Consumo) configurada no cadastro de produtos.</li>
+                        <li>A chave de acesso possui 44 dígitos numéricos. Notas de serviços municipais (NFS-e) que vêm no lote são ignoradas por não pertencerem ao SPED Fiscal (EFD ICMS/IPI).</li>
+                        <li>A nota está sendo salva com a marcação interna correta de origem de terceiros (<b>xml_importado = 1</b>), o que instrui o gerador do SPED a extrair os itens detalhadamente das tabelas de compras.</li>
+                    </ul>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar Manual</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

@@ -11,13 +11,13 @@ use Illuminate\Http\Request;
 use PDF;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Storage;
 
 class OticaController extends BaseController
 {
     public function __construct()
     {
-        $this->model = new ReceitaOtica();
+        $this->model        = new ReceitaOtica();
         $this->formTitle    = 'Ordem de Serviço - Ótica';
         $this->Prefix_Route = 'otica';
         $this->listView     = 'otica.list';
@@ -55,12 +55,12 @@ class OticaController extends BaseController
         return view($this->registerView, compact('item', 'title', 'formTitle', 'data'));
     }
 
-    // --- SALVAMENTO E ATUALIZAÇÃO BLINDADOS ---
-
+    // --- SALVAMENTO E ATUALIZAÇÃO ---
     public function store(Request $request)
     {
         return $this->salvarOrdemDeServico($request);
     }
+
     public function save(Request $request)
     {
         return $this->salvarOrdemDeServico($request);
@@ -77,7 +77,7 @@ class OticaController extends BaseController
             $id = $id ?? $request->id;
             $os = $id ? \App\Models\ReceitaOtica::find($id) : null;
 
-            // Proteção contra alteração pós-venda
+            // Proteção contra alteração pós-venda faturada
             if ($os && ($os->status == 'entregue' || $os->venda_id)) {
                 return redirect()->route('otica.index')->with('error', 'Esta OS está faturada e não pode receber alterações.');
             }
@@ -85,9 +85,8 @@ class OticaController extends BaseController
             $dados = $request->except(['_token', '_method', 'total_os', 'anexo_receita']);
             $dados['empresa_id'] = session('user_logged')['empresa'] ?? 1;
 
-            // Upload do PDF/Foto da Receita
+            // Upload do PDF/Foto da Receita no disco público do Laravel
             if ($request->hasFile('anexo_receita') && $request->file('anexo_receita')->isValid()) {
-                // Remove o anexo antigo se existir
                 if ($os && $os->anexo_receita) {
                     Storage::disk('public')->delete($os->anexo_receita);
                 }
@@ -95,10 +94,11 @@ class OticaController extends BaseController
                 $dados['anexo_receita'] = $path;
             }
 
-            // Tratamento de valores decimais
+            // Corrige o formato do dinheiro
             if (!empty($dados['valor_armacao'])) $dados['valor_armacao'] = str_replace(['.', ','], ['', '.'], $dados['valor_armacao']);
             if (!empty($dados['valor_lente'])) $dados['valor_lente'] = str_replace(['.', ','], ['', '.'], $dados['valor_lente']);
 
+            // Nomes dos produtos
             if (!empty($dados['armacao_id'])) {
                 $prod = \App\Models\Produto::find($dados['armacao_id']);
                 if ($prod) $dados['armacao'] = $prod->nome;
@@ -108,6 +108,7 @@ class OticaController extends BaseController
                 if ($prod) $dados['lente'] = $prod->nome;
             }
 
+            // Calcula data de entrega
             if (!empty($dados['previsao_retorno_dias'])) {
                 $dados['data_entrega'] = date('Y-m-d', strtotime('+' . $dados['previsao_retorno_dias'] . ' days'));
             }
@@ -128,14 +129,11 @@ class OticaController extends BaseController
         }
     }
 
-
     // --- IMPRESSÕES ---
     public function imprimirOS($id)
     {
         $os = ReceitaOtica::with(['cliente'])->findOrFail($id);
         $config = DB::table('empresas')->where('id', session('user_logged')['empresa'] ?? 1)->first();
-
-        // Retorna a view HTML direta (o navegador cuida da impressão)
         return view('otica.print_os', compact('os', 'config'));
     }
 
@@ -143,19 +141,21 @@ class OticaController extends BaseController
     {
         $os = ReceitaOtica::with(['cliente'])->findOrFail($id);
         $config = DB::table('empresas')->where('id', session('user_logged')['empresa'] ?? 1)->first();
-
-        // Retorna a view HTML direta
         return view('otica.print_recibo', compact('os', 'config'));
     }
 
-    // --- MUDANÇA DE STATUS RÁPIDA NA LISTAGEM ---
+    // --- MUDANÇA DE STATUS RÁPIDA COM DISPARO DE WHATSAPP ---
     public function alterarStatus(Request $request)
     {
         try {
-            $os = ReceitaOtica::findOrFail($request->id);
+            $item = \App\Models\ClienteOtica::find($request->id);
 
-            // Definição da hierarquia de passos
-            $pesos = [
+            if (!$item) {
+                return response()->json(['success' => false, 'message' => 'Ordem de Serviço não encontrada.']);
+            }
+
+            // --- INÍCIO DA TRAVA LINEAR DE STATUS ---
+            $hierarquia = [
                 'orcamento'   => 1,
                 'pendente'    => 2,
                 'laboratorio' => 3,
@@ -164,26 +164,52 @@ class OticaController extends BaseController
                 'entregue'    => 6
             ];
 
-            if ($os->status == 'entregue' || $os->venda_id) {
-                return response()->json(['success' => false, 'message' => 'Esta OS já foi faturada e não pode ser alterada.']);
-            }
+            $nivelAtual = $hierarquia[$item->status] ?? 0;
+            $nivelNovo  = $hierarquia[$request->status] ?? 0;
 
-            $pesoAtual = $pesos[$os->status] ?? 0;
-            $pesoNovo  = $pesos[$request->status] ?? 0;
-
-            // REGRA: Só pode ir para frente no fluxo
-            if ($pesoNovo < $pesoAtual) {
+            if ($nivelNovo < $nivelAtual) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Movimentação bloqueada! O status só pode avançar no fluxo operacional.'
+                    'message' => 'O sistema não permite retroceder o status da Ordem de Serviço para garantir a integridade.'
                 ]);
             }
+            // --- FIM DA TRAVA LINEAR DE STATUS ---
 
-            $os->status = $request->status;
-            $os->save();
+            $item->status = $request->status;
+            $item->save();
+
+            // SE O STATUS FOR PRONTO, DISPARA O WHATSAPP AUTOMÁTICO
+            if ($request->status === 'pronto') {
+                if ($item->cliente) {
+                    $numeroOriginal = !empty($item->cliente->whatsapp) ? $item->cliente->whatsapp : ($item->cliente->telefone ?? '');
+                    $numero = preg_replace('/[^0-9]/', '', $numeroOriginal);
+
+                    if (strlen($numero) >= 10) {
+                        if (substr($numero, 0, 2) !== '55') {
+                            $numero = "55" . $numero;
+                        }
+
+                        $nomeCliente = $item->cliente->razao_social ?? 'Cliente';
+                        $mensagem = "Olá, {$nomeCliente}! Sua Ordem de Serviço #{$item->id} está PRONTA e já pode ser retirada em nossa ótica.";
+
+                        try {
+                            $instanciaWhats = app(\App\Utils\WhatsAppUtil::class);
+                            $instanciaWhats->sendMessage($numero, $mensagem, $item->empresa_id);
+                        } catch (\Throwable $e) {
+                            \Log::error("Erro ao enviar Whats automático (OS {$item->id}): " . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
             return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+
+        } catch (\Throwable $e) {
+            \Log::error("Erro fatal ao alterar o status da OS {$request->id}: " . $e->getMessage() . " na linha " . $e->getLine());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro interno detectado: ' . $e->getMessage() . ' (Linha: ' . $e->getLine() . ')'
+            ]);
         }
     }
 
@@ -202,11 +228,9 @@ class OticaController extends BaseController
             $usuario_id   = $user_session['id'] ?? 1;
             $filial_id    = !empty($user_session['filial']) ? $user_session['filial'] : null;
 
-            // 1. BUSCA A NATUREZA PADRÃO NA TABELA config_notas
             $configNota = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
             $natureza_id = $configNota->nat_op_padrao ?? null;
 
-            // Se não achou na config, tenta pegar a primeira disponível para não dar erro
             if (!$natureza_id) {
                 $n = \App\Models\NaturezaOperacao::where('empresa_id', $empresa_id)->first();
                 $natureza_id = $n->id ?? null;
@@ -220,7 +244,6 @@ class OticaController extends BaseController
             $valorTotal = $os->valor_lente + $os->valor_armacao;
 
             if ($tipo == 'pdv') {
-                // 2. LANÇA COMO PRÉ-VENDA NÍVEL 2 (PARA APARECER NO PDV)
                 $preVenda = \App\Models\VendaCaixaPreVenda::create([
                     'empresa_id'     => $empresa_id,
                     'filial_id'      => $filial_id,
@@ -229,11 +252,10 @@ class OticaController extends BaseController
                     'natureza_id'    => $natureza_id,
                     'valor_total'    => $valorTotal,
                     'estado'         => 'DISPONIVEL',
-                    'prevenda_nivel' => 2, // Ajuste solicitado para aparecer no PDV
+                    'prevenda_nivel' => 2,
                     'observacao'     => "Origem OS Ótica #" . $os->id
                 ]);
 
-                // Itens da Pré-venda
                 if ($os->lente_id && $os->valor_lente > 0) {
                     \App\Models\ItemVendaCaixaPreVenda::create([
                         'venda_caixa_prevenda_id' => $preVenda->id,
@@ -256,7 +278,6 @@ class OticaController extends BaseController
                 return redirect('/frenteCaixa')->with('success', 'Pré-venda gerada com sucesso!');
 
             } else {
-                // 3. FLUXO NF-E (RETAGUARDA)
                 $venda = \App\Models\Venda::create([
                     'empresa_id'  => $empresa_id,
                     'filial_id'   => $filial_id,
@@ -268,7 +289,6 @@ class OticaController extends BaseController
                     'observacao'  => "Origem OS Ótica #" . $os->id
                 ]);
 
-                // Itens da Venda
                 if ($os->lente_id && $os->valor_lente > 0) {
                     \App\Models\ItemVenda::create([
                         'empresa_id' => $empresa_id, 'venda_id' => $venda->id,
@@ -290,8 +310,6 @@ class OticaController extends BaseController
             }
         });
     }
-
-
 
     // --- BUSCA INTELIGENTE DE CLIENTES (SELECT2) ---
     public function buscarClientes(Request $request)
@@ -340,23 +358,86 @@ class OticaController extends BaseController
         }
     }
 
-    // --- CADASTRO RÁPIDO DE CLIENTE (MODAL) ---
-    public function clienteRapido(Request $request)
+    public function buscarCidades(Request $request)
+    {
+        try {
+            $search = $request->q;
+            $uf = $request->uf;
+
+            $query = \App\Models\Cidade::query();
+
+            if (!empty($uf)) {
+                $query->where('uf', $uf);
+            }
+
+            $query->where(function($q) use ($search) {
+                $q->where('nome', 'like', "%{$search}%")
+                    ->orWhere('codigo', 'like', "%{$search}%");
+            });
+
+            $data = $query->orderByRaw("CASE WHEN nome = ? THEN 0 ELSE 1 END", [$search])
+                ->limit(20)
+                ->get();
+
+            return response()->json($data->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'text' => $item->nome . " (" . $item->uf . ")"
+                ];
+            }));
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function cadastroRapidoCliente(Request $request)
     {
         try {
             $empresa_id = session('user_logged')['empresa'] ?? 1;
+
+            if (empty($request->cidade_id)) {
+                return response()->json(['success' => false, 'message' => 'A cidade é obrigatória para emissão de Notas Fiscais.']);
+            }
+
+            $whatsLimpo = preg_replace('/[^0-9]/', '', $request->whatsapp);
+            if (empty($whatsLimpo) || intval($whatsLimpo) === 0) {
+                $whatsappFinal = null;
+            } else {
+                if (strlen($whatsLimpo) == 11) {
+                    $whatsappFinal = "(" . substr($whatsLimpo, 0, 2) . ") " . substr($whatsLimpo, 2, 5) . "-" . substr($whatsLimpo, 7);
+                } elseif (strlen($whatsLimpo) == 10) {
+                    $whatsappFinal = "(" . substr($whatsLimpo, 0, 2) . ") " . substr($whatsLimpo, 2, 4) . "-" . substr($whatsLimpo, 6);
+                } else {
+                    $whatsappFinal = $request->whatsapp;
+                }
+            }
+
+            $telLimpo = preg_replace('/[^0-9]/', '', $request->telefone);
+            if (empty($telLimpo) || intval($telLimpo) === 0) {
+                $telefoneFinal = null;
+            } else {
+                if (strlen($telLimpo) == 11) {
+                    $telefoneFinal = "(" . substr($telLimpo, 0, 2) . ") " . substr($telLimpo, 2, 5) . "-" . substr($telLimpo, 7);
+                } elseif (strlen($telLimpo) == 10) {
+                    $telefoneFinal = "(" . substr($telLimpo, 0, 2) . ") " . substr($telLimpo, 2, 4) . "-" . substr($telLimpo, 6);
+                } else {
+                    $telefoneFinal = $request->telefone;
+                }
+            }
 
             $cliente = Cliente::create([
                 'empresa_id'       => $empresa_id,
                 'razao_social'     => $request->razao_social,
                 'nome_fantasia'    => $request->razao_social,
                 'cpf_cnpj'         => $request->cpf_cnpj ?? '000.000.000-00',
-                'telefone'         => $request->telefone,
-                'data_nascimento'  => $request->data_nascimento,
+                'telefone'         => $telefoneFinal,
+                'whatsapp'         => $whatsappFinal,
+                'cep'              => $request->cep,
+                'data_nascimento'  => !empty($request->data_nascimento) ? $request->data_nascimento : null,
                 'rua'              => $request->rua ?? '',
                 'bairro'           => $request->bairro ?? '',
                 'numero'           => $request->numero ?? 'S/N',
-                'cidade_id'        => 1, // ID padrão para evitar erro de banco
+                'cidade_id'        => $request->cidade_id,
                 'consumidor_final' => 1,
                 'contribuinte'     => 0,
                 'inativo'          => 0
@@ -368,32 +449,66 @@ class OticaController extends BaseController
         }
     }
 
-    // --- EXCLUSÃO COM TRAVA DE SEGURANÇA ---
-    public function delete($id) {
-        return $this->removerOS($id);
-    }
-
-    // --- EXCLUSÃO COM TRAVA DE SEGURANÇA ---
-    public function destroy($id) {
-        return $this->removerOS($id);
-    }
-
-    // --- BLOCO DE EXCLUSÃO SEGURO ---
-    private function removerOS($id)
+    public function enviarWhatsAppDireto(Request $request)
     {
         try {
-            $os = \App\Models\ReceitaOtica::find($id);
-            if ($os) {
-                if ($os->venda_id || $os->status == 'entregue') {
-                    return redirect()->route('otica.index')->with('error', 'Ação Bloqueada: Não pode excluir uma OS que já foi para o Caixa.');
-                }
-                $os->delete();
-                return redirect()->route('otica.index')->with('success', 'Ordem de Serviço excluída com sucesso!');
+            set_time_limit(10);
+
+            $empresaId = session('user_logged')['empresa'] ?? 1;
+            $usuarioId = session('user_logged')['id'] ?? 1;
+
+            $this->empresa_id = $empresaId;
+            $this->usuario_id = $usuarioId;
+
+            if (empty($this->logService)) {
+                $this->logService = new \App\Services\LogService($this->empresa_id, $this->usuario_id, $this->filial_id);
             }
-            return redirect()->route('otica.index');
-        } catch (\Exception $e) {
-            return redirect()->route('otica.index')->with('error', 'Erro ao excluir: ' . $e->getMessage());
+
+            $numero = preg_replace('/[^0-9]/', '', $request->whatsapp);
+            if (strlen($numero) < 10) {
+                return response()->json(['success' => false, 'message' => 'O número de WhatsApp do cliente é inválido.']);
+            }
+
+            if (substr($numero, 0, 2) !== '55') {
+                $numero = "55" . $numero;
+            }
+
+            if (!class_exists('\App\Utils\WhatsAppUtil')) {
+                return response()->json(['success' => false, 'message' => 'A classe \App\Utils\WhatsAppUtil não foi encontrada no projeto.']);
+            }
+
+            $instanciaWhats = app('\App\Utils\WhatsAppUtil');
+
+            if (method_exists($instanciaWhats, 'send')) {
+                $instanciaWhats->send($numero, $request->mensagem);
+            } elseif (method_exists($instanciaWhats, 'sendMessage')) {
+                $instanciaWhats->sendMessage($numero, $request->mensagem, $empresaId);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Nenhum método de envio válido (send ou sendMessage) foi encontrado na classe WhatsAppUtil.']);
+            }
+
+            $this->logService->registrar('whatsapp_send', 'WhatsApp_Otica', [
+                'registro_id' => null,
+                'dados_antes' => null,
+                'dados_depois' => json_encode([
+                    'empresa_id' => $empresaId,
+                    'usuario_id' => $usuarioId,
+                    'numero'     => $numero,
+                    'mensagem'   => $request->mensagem,
+                    'status'     => 'sucesso'
+                ], JSON_UNESCAPED_UNICODE)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mensagem processada pelo servidor com sucesso!'
+            ]);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falha fatal na execução do PHP: ' . $e->getMessage() . ' na linha ' . $e->getLine()
+            ]);
         }
     }
-
 }

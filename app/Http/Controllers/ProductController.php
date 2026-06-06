@@ -2191,35 +2191,43 @@ class ProductController extends Controller
     }
 
     public function updateProdutoDaNotaComEstoque(Request $request){
-            //echo json_encode($request->produto);
         try{
             $arr = $request->produto;
             $produto = Produto::find($arr['produto_id']);
 
             $produto->valor_venda = __replace($arr['valor_venda']);
             $produto->valor_compra = __replace($arr['valor_compra']);
-            $produto->referencia = $arr['referencia'];
-          
+            
+            // 🔒 BLINDAGEM DA REFERÊNCIA:
+            // Só altera a referência se ela for enviada e não for vazia.
+            // Como removemos do JS, ela NUNCA mais vai mudar o seu cadastro antigo!
+            if (isset($arr['referencia']) && $arr['referencia'] != '') {
+                $produto->referencia = $arr['referencia'];
+            }
 
             $produto->save();
           
-            // --- INÍCIO DA MEMÓRIA DE PRODUTO DO FORNECEDOR ---
-              if(isset($arr['fornecedor_id']) && isset($arr['codigo_fornecedor'])) {
-                  \App\Models\ProdutoFornecedor::updateOrCreate(
-                      [
-                          'fornecedor_id'     => $arr['fornecedor_id'],
-                          'codigo_fornecedor' => $arr['codigo_fornecedor']
-                      ],
-                      [
-                          'empresa_id'               => $this->empresa_id,
-                          'usuario_id'               => session('user_logged')['id'] ?? null,
-                          'produto_id'               => $produto->id,
-                          'descricao_fornecedor'     => $arr['descricao_fornecedor'] ?? '',
-                          'codigo_barras_fornecedor' => $arr['codigo_barras_fornecedor'] ?? ''
-                      ]
-                  );
-              }
-              // --- FIM DA MEMÓRIA ---
+            // 📝 GRAVAÇÃO DO VÍNCULO DIRETO NO BANCO (Sem chance de erro de Model)
+            if(isset($arr['fornecedor_id']) && isset($arr['codigo_fornecedor']) && $arr['fornecedor_id'] > 0) {
+                
+                // Limpa o código tirando espaços ou pontos para garantir a busca
+                $codigoLimpo = str_replace([" ", ".", "(", ")"], ["", "_", "", ""], $arr['codigo_fornecedor']);
+
+                \DB::table('produto_fornecedors')->updateOrInsert(
+                    [
+                        'produto_id'        => $produto->id,
+                        'fornecedor_id'     => (int)$arr['fornecedor_id'],
+                        'codigo_fornecedor' => (string)$codigoLimpo
+                    ],
+                    [
+                        'empresa_id'               => $this->empresa_id,
+                        'usuario_id'               => session('user_logged')['id'] ?? null,
+                        'descricao_fornecedor'     => $arr['descricao_fornecedor'] ?? '',
+                        'codigo_barras_fornecedor' => $arr['codigo_barras_fornecedor'] ?? '',
+                        'updated_at'               => now()
+                    ]
+                );
+            }
           
             $qtd = $arr['estoque'];
             $stockMove = new StockMove();
