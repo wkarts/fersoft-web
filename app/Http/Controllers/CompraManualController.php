@@ -979,7 +979,7 @@ class CompraManualController extends Controller
                                     'valor_integral'  => $valorAdiantamento,
                                     'valor_pago'      => $valorAdiantamento,
                                     'status'          => true,
-                                    'tipo_pagamento'  => 'adiantamento',
+                                    'tipo_pagamento'  => 'Adiantamento',
                                     'categoria_id'    => $categoria_id,
                                     'numero_nota_fiscal' => $res->nf,
                                     'fornecedor_id'   => $res->fornecedor_id
@@ -998,7 +998,7 @@ class CompraManualController extends Controller
                                     'valor_integral'  => $valorAdiantamento,
                                     'valor_pago'      => $valorAdiantamento,
                                     'status'          => true,
-                                    'tipo_pagamento'  => 'adiantamento',
+                                    'tipo_pagamento'  => 'Adiantamento',
                                     'referencia'      => "Parcela {$parcela['numero']} (Adiantamento) da Compra {$res->id}",
                                     'categoria_id'    => $categoria_id,
                                     'empresa_id'      => $this->empresa_id,

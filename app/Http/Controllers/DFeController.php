@@ -625,7 +625,28 @@ class DFeController extends Controller
         $itens = [];
         foreach($xml->NFe->infNFe->det as $item) {
 
-            $produto = Produto::verificaCadastrado($item->prod->cEAN, $item->prod->xProd, $item->prod->cProd, $fornecedor_id);
+            $codigoItem = str_replace([" ", ".", "(", ")"], ["", "_", "", ""], $item->prod->cProd);
+            $produto = null;
+
+            // 1. PRIMEIRA BUSCA: Tabela de Relacionamento de Fornecedores
+            if ($fornecedor_id > 0) {
+                $vinculoFornecedor = \DB::table('produto_fornecedors')
+                    ->where('fornecedor_id', $fornecedor_id)
+                    ->where('codigo_fornecedor', $codigoItem)
+                    ->first();
+
+                if ($vinculoFornecedor) {
+                    $produto = \App\Models\Produto::find($vinculoFornecedor->produto_id);
+                }
+            }
+
+            // 2. SEGUNDA BUSCA (Suplente): Código de barras global CORRIGIDO
+            if (!$produto && !empty($item->prod->cEAN) && $item->prod->cEAN != 'SEM GTIN') {
+                $produto = \App\Models\Produto::where('empresa_id', $this->empresa_id)
+                    ->where('codBarras', $item->prod->cEAN) // 🟢 Alterado aqui para 'codBarras'
+                    ->first();
+            }
+
             $produtoNovo = !$produto ? true : false;
 
             $tp = null;
@@ -639,7 +660,9 @@ class DFeController extends Controller
 
                 $vVenda = $item->prod->vUnCom + (($item->prod->vUnCom*$produto->percentual_lucro)/100);
             }
-
+            
+                       
+            
             // --- REGRA FISCAL DE/PARA: CFOP ---
             $cfop_xml = (string) $item->prod->CFOP;
             $cfop_entrada = $cfop_xml;
@@ -1085,6 +1108,7 @@ class DFeController extends Controller
                 'valor' => (float) ($request->vProd ?? $dfe->valor), 
                 'desconto' => (float) str_replace(',', '.', (string)($request->vDesc ?? 0)), 
                 'estado' => 'IMPORTADO',
+              	'xml_importado' => 1,
                 'chave' => $chave,
                 'xml_path' => $chave . '.xml',
                 'empresa_id' => $this->empresa_id,
@@ -1231,6 +1255,24 @@ class DFeController extends Controller
                     'p_cofins' => $p_cofins,
                     'v_cofins' => $v_cofins,
                 ]);
+              
+              // 🔥 MEMÓRIA EM LOTE AO FINALIZAR A NOTA
+                if ($produtoId > 0 && $request->fornecedor > 0) {
+                    \DB::table('produto_fornecedors')->updateOrInsert(
+                        [
+                            'produto_id'        => $produtoId,
+                            'fornecedor_id'     => $request->fornecedor,
+                            'codigo_fornecedor' => $codigoItem
+                        ],
+                        [
+                            'empresa_id'               => $this->empresa_id,
+                            'descricao_fornecedor'     => $getStr($i->xProd ?? ''),
+                            'codigo_barras_fornecedor' => $getStr($i->codBarras ?? ''),
+                            'usuario_id'               => get_id_user(),
+                            'updated_at'               => now()
+                        ]
+                    );
+                }
 
                 // --- MOVIMENTAÇÃO DE ESTOQUE ---
                 if ($produtoId > 0) {

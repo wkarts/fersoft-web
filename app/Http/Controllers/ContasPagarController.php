@@ -34,11 +34,11 @@ class ContasPagarController extends Controller
             }
             // Pega o ID da empresa que está na sessão do usuário
             $this->empresa_id = $value['empresa'];
-            
+
             // <-- ADICIONADO: Pega a filial logada
             $localPadrao = $value['local_padrao'] ?? null;
             $this->filial_id = (is_numeric($localPadrao) && $localPadrao > 0) ? (int)$localPadrao : null;
-            
+
             return $next($request);
         });
     }
@@ -107,7 +107,7 @@ class ContasPagarController extends Controller
         $filial_id = $this->filial_id;
 
         return view('contaPagar/list', compact(
-            'contas', 'comRetencoes', 'categorias', 'fornecedores', 'veiculos', 
+            'contas', 'comRetencoes', 'categorias', 'fornecedores', 'veiculos',
             'somaContas', 'dataInicial', 'dataFinal', 'contasEmpresa', 'tiposPagamento', 'filial_id'
         ))
         ->with('graficoJs', true)
@@ -168,7 +168,7 @@ class ContasPagarController extends Controller
     if($request->conta_id && $request->conta_id != 'todos') $c->where('ice.conta_id', $request->conta_id);
     if($request->compra_id_filtro) $c->where('conta_pagars.compra_id', $request->compra_id_filtro);
     if($request->veiculo_id_filtro && $request->veiculo_id_filtro != 'todos') $c->where('conta_pagars.veiculo_id', $request->veiculo_id_filtro);
-    
+
     // Filtro de Fornecedor Unificado (Conta OU Compra)
     if($request->fornecedorId && $request->fornecedorId != "null"){
         $c->where(function($q) use ($request) {
@@ -198,7 +198,7 @@ class ContasPagarController extends Controller
 
     // O distinct() remove a duplicidade causada pelo leftJoin com itens de conta
     $contas = $c->distinct()->orderBy('conta_pagars.data_vencimento', 'asc')->get();
-      
+
     $comRetencoes = $this->comRetencoes();
 
     // Finalização igual a anterior
@@ -207,11 +207,11 @@ class ContasPagarController extends Controller
     $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
     $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
     $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
-    
+
     $filial_id = $this->filial_id != null ? $this->filial_id : $request->filial_id;
 
     return view('contaPagar/list', compact(
-        'contas', 'comRetencoes', 'categorias', 'fornecedores', 'veiculos', 
+        'contas', 'comRetencoes', 'categorias', 'fornecedores', 'veiculos',
         'contasEmpresa', 'somaContas', 'filial_id', 'url'
     ))
     ->with('fornecedorId', $request->fornecedorId)
@@ -229,7 +229,7 @@ class ContasPagarController extends Controller
     ->with('title', 'Filtro Contas a Pagar');
 }
 
-    
+
     public function salvarParcela(Request $request)
     {
         $parcela = $request->parcela;
@@ -244,10 +244,10 @@ class ContasPagarController extends Controller
         $numeroNota = isset($parcela['numero_nota_fiscal']) ? $parcela['numero_nota_fiscal'] : null;
         if (empty($numeroNota) && isset($parcela['compra_id']) && !empty($parcela['compra_id'])) {
             $compra = \App\Models\Compra::find($parcela['compra_id']);
-            if ($compra) $numeroNota = $compra->nf; 
+            if ($compra) $numeroNota = $compra->nf;
         }
-        if (empty($numeroNota)) $numeroNota = 0; 
-        
+        if (empty($numeroNota)) $numeroNota = 0;
+
         $filialParaSalvar = $this->filial_id != null ? $this->filial_id : ($parcela['filial_id'] != -1 ? $parcela['filial_id'] : null);
 
         $result = ContaPagar::create([
@@ -279,7 +279,7 @@ class ContasPagarController extends Controller
         $data['valor_integral'] = $request->valor_final ? __replace($request->valor_final) : __replace($request->valor);
         $data['usuario_id'] = session('user_logged')['id'];
         $data['empresa_id'] = $this->empresa_id;
-        
+
         // Aplica a trava de filial no salvamento
         if ($this->filial_id != null) {
             $data['filial_id'] = $this->filial_id;
@@ -367,7 +367,7 @@ class ContasPagarController extends Controller
         $this->_validate($request);
 
         $conta = ContaPagar::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-        
+
         // Trava: Impede o usuário de editar conta de outra filial
         if ($this->filial_id != null && $conta->filial_id != $this->filial_id) {
             session()->flash('mensagem_erro', 'Acesso negado: Este registro pertence a outra unidade.');
@@ -543,7 +543,7 @@ class ContasPagarController extends Controller
 
         try {
             $conta = ContaPagar::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-            
+
             // Trava Filial
             if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
 
@@ -580,7 +580,7 @@ class ContasPagarController extends Controller
 
         try {
             $conta = ContaPagar::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-            
+
             // Trava Filial
             if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
 
@@ -633,7 +633,7 @@ class ContasPagarController extends Controller
         $conta->valor_pago = $valor;
         $conta->juros = $juros;
         $conta->multa = $multa;
-        $conta->usuario_baixa_id = session('user_logged')['id']; 
+        $conta->usuario_baixa_id = session('user_logged')['id'];
 
         if (strlen($request->data_pagamento) == 10) {
             $dtPag = \Carbon\Carbon::createFromFormat('d/m/Y', $request->data_pagamento)->format('Y-m-d') . " " . date("H:i:s");
@@ -702,7 +702,7 @@ class ContasPagarController extends Controller
 
     private function parseDate($date, $plusDay = false)
     {
-        if (empty($date)) return null; 
+        if (empty($date)) return null;
         $date = str_replace("/", "-", $date);
         $timestamp = strtotime($date);
         if ($plusDay) $timestamp = strtotime("+1 day", $timestamp);
@@ -738,7 +738,7 @@ class ContasPagarController extends Controller
             });
 
         if($fornecedorId != "null") $c->where('fornecedor_id', $fornecedorId);
-        
+
         if($dataInicial && $dataFinal){
             if($request->tipo_filtro_data == 1) $c->whereBetween('conta_pagars.data_vencimento', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, 1)]);
             else if($request->tipo_filtro_data == 2) $c->whereBetween('conta_pagars.created_at', [$this->parseDate($dataInicial), $this->parseDate($dataFinal, true)]);
@@ -758,7 +758,7 @@ class ContasPagarController extends Controller
 
         if($request->tipo_filtro_data == 1) $c->orderBy('conta_pagars.data_vencimento', 'asc');
         if($request->numero_nota_fiscal) $c->where('conta_pagars.numero_nota_fiscal', $request->numero_nota_fiscal);
-        
+
         $temp = $c->get();
         foreach($temp as $t) array_push($contas, $t);
 
@@ -824,7 +824,7 @@ class ContasPagarController extends Controller
         foreach($ids as $id){
             $conta = ContaPagar::findOrFail($id);
             if($conta->empresa_id != $this->empresa_id) return redirect()->back()->with('mensagem_erro', 'Erro inesperado!');
-            
+
             // Trava Filial
             if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
 
@@ -876,10 +876,10 @@ class ContasPagarController extends Controller
                             'tipo_pagamento' => $tipoPagamento,
                             'valor'          => $conta->valor_integral,
                             'tipo'           => 'saida',
-                            'data_pagamento' => \Carbon\Carbon::parse($dtPag)->format('Y-m-d'), 
-                            'categoria_id'   => $conta->categoria_id,                           
-                            'user_id'        => session('user_logged')['id'],                  
-                            'origem'         => 'Conta Pagar',                                  
+                            'data_pagamento' => \Carbon\Carbon::parse($dtPag)->format('Y-m-d'),
+                            'categoria_id'   => $conta->categoria_id,
+                            'user_id'        => session('user_logged')['id'],
+                            'origem'         => 'Conta Pagar',
                             'conta_pagar_id' => $conta->id,
                         ];
                         $itemContaEmpresa = \App\Models\ItemContaEmpresa::create($data);
@@ -919,23 +919,23 @@ class ContasPagarController extends Controller
             ->leftJoin('conta_empresas as ce', 'ice.conta_id', '=', 'ce.id')
             ->select(
                 'cp.id',
-                \DB::raw("COALESCE(forn_direto.razao_social, forn_compra.razao_social) as fornecedor_razao"), 
-                \DB::raw("COALESCE(forn_direto.cpf_cnpj, forn_compra.cpf_cnpj) as fornecedor_cpf_cnpj"), 
+                \DB::raw("COALESCE(forn_direto.razao_social, forn_compra.razao_social) as fornecedor_razao"),
+                \DB::raw("COALESCE(forn_direto.cpf_cnpj, forn_compra.cpf_cnpj) as fornecedor_cpf_cnpj"),
                 'cc.nome as categoria_nome',
                 'cp.referencia',
-                'cp.observacao', 
+                'cp.observacao',
                 'cp.valor_integral',
                 'cp.valor_pago',
-                'cp.juros', 
-                'cp.multa', 
-                \DB::raw('0 as desconto'), 
+                'cp.juros',
+                'cp.multa',
+                \DB::raw('0 as desconto'),
                 'cp.data_vencimento',
                 'cp.data_pagamento',
                 'cp.status',
                 'cp.tipo_pagamento',
-                'ce.nome as conta_empresa', 
+                'ce.nome as conta_empresa',
                 'cp.numero_nota_fiscal',
-                'cp.data_emissao as data_emissao_nfe', 
+                'cp.data_emissao as data_emissao_nfe',
                 \DB::raw("COALESCE(fil.descricao, 'Matriz') as filial_nome")
             )
             ->where('cp.empresa_id', $this->empresa_id);
@@ -1028,7 +1028,7 @@ class ContasPagarController extends Controller
             ->findOrFail($id);
 
         if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
-      
+
      	$title = 'Detalhes da Conta a Pagar';
 
         return view('contaPagar.detalhes', compact('conta', 'title'));
@@ -1037,7 +1037,7 @@ class ContasPagarController extends Controller
     public function setVeiculo(Request $request, $id){
         try{
             $conta = \App\Models\ContaPagar::where('id', $id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-            
+
             if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
 
             $conta->veiculo_id = $request->veiculo_id;
@@ -1075,8 +1075,8 @@ class ContasPagarController extends Controller
         return response($domPdf->output())
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="Recibo_'.$id.'.pdf"');
-    } 
-  
+    }
+
     public function retencoes(Request $request)
     {
         $data_inicio = $request->data_inicio;
@@ -1093,7 +1093,7 @@ class ContasPagarController extends Controller
                     ->orWhere('valor_ir', '>', 0)
                     ->orWhere('valor_pis', '>', 0)
                     ->orWhere('valor_cofins', '>', 0)
-                    ->orWhere('valor_csll', '>', 0) 
+                    ->orWhere('valor_csll', '>', 0)
                     ->orWhere('valor_inss', '>', 0);
             });
 
@@ -1112,7 +1112,7 @@ class ContasPagarController extends Controller
 
         return view('retencoes.index', compact('data', 'fornecedores', 'categorias'));
     }
-  
+
     public function fecharMesRetencoes(Request $request)
     {
         try {
@@ -1168,7 +1168,11 @@ class ContasPagarController extends Controller
             'usuario_id'      => session('user_logged')['id']
         ]);
     }
-  
+
+    public function gerarContasRetencao(Request $request)
+    {
+    }
+
     public function baixarParcial(Request $request)
     {
         try {
@@ -1187,14 +1191,14 @@ class ContasPagarController extends Controller
             $residuo->valor_original = $valorRestante;
             $residuo->status = false;
             $residuo->data_vencimento = $request->nova_data_vencimento;
-            $residuo->conta_id_origem = $conta->id; 
+            $residuo->conta_id_origem = $conta->id;
             $residuo->referencia .= " (Resíduo de Baixa Parcial)";
             $residuo->save();
 
             $conta->status = true;
             $conta->valor_pago = $valorPago;
             $conta->data_pagamento = $request->data_pagamento;
-            $conta->usuario_baixa_id = session('user_logged')['id']; 
+            $conta->usuario_baixa_id = session('user_logged')['id'];
             $conta->save();
 
             $nomeForn = $conta->fornecedor->razao_social ?? 'N/A';

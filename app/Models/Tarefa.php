@@ -14,7 +14,7 @@ class Tarefa extends BaseModel
         'empresa_id',
         'filial_id',
         'funcionario_id',
-        'user_id', // Chave de identificação do usuário responsável
+        'user_id',
         'titulo',
         'descricao',
         'data',
@@ -25,7 +25,9 @@ class Tarefa extends BaseModel
         'tempo_gasto_minutos',
         'is_recorrente',
         'frequencia',
-        'data_limite'
+        'data_limite',
+      	'hora_limite',
+    	'prioridade',
     ];
 
     /**

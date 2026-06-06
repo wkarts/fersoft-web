@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class RelatorioEstoqueController extends BaseController
 {
@@ -27,66 +28,61 @@ class RelatorioEstoqueController extends BaseController
 
     public function relatorioSaldoReal(Request $request)
     {
-        // 1. Captura correta da empresa logada conforme a sessão
-        $userLogged = session('user_logged');
-        $empresaId = $userLogged['empresa'] ?? null;
+        $empresaId = $this->getEmpresaIdSessao();
 
         if (!$empresaId) {
             return "Erro: Empresa não identificada na sessão.";
         }
 
-        $dataInicial = $request->data_inicial ? Carbon::parse($request->data_inicial)->startOfDay()->toDateTimeString() : Carbon::now()->startOfMonth()->toDateTimeString();
-        $dataFinal = $request->data_final ? Carbon::parse($request->data_final)->endOfDay()->toDateTimeString() : Carbon::now()->endOfDay()->toDateTimeString();
+        $dataInicial = $this->parseDataInicio(
+            $request->input('data_inicial'),
+            Carbon::now()->startOfMonth()
+        );
 
-        // 2. Construção das subqueries em formato RAW
-        $comprasSql = "SELECT item_compras.produto_id, COALESCE(compras.filial_id, -1) as filial_id, item_compras.quantidade as qtd, compras.data_emissao as data, 'entrada' as tipo
-                       FROM item_compras
-                       JOIN compras ON compras.id = item_compras.compra_id
-                       WHERE compras.empresa_id = {$empresaId} AND compras.estado IN ('APROVADO', 'IMPORTADO')";
+        $dataFinal = $this->parseDataFim(
+            $request->input('data_final'),
+            Carbon::now()->endOfDay()
+        );
 
-        $vendasSql = "SELECT item_vendas.produto_id, COALESCE(vendas.filial_id, -1) as filial_id, item_vendas.quantidade as qtd, vendas.data_emissao as data, 'saida' as tipo
-                      FROM item_vendas
-                      JOIN vendas ON vendas.id = item_vendas.venda_id
-                      WHERE vendas.empresa_id = {$empresaId} AND vendas.estado = 'APROVADO'";
+        $movimentacoes = $this->movimentacoesUnificadasEstoque($empresaId);
 
-        $vendasCaixaSql = "SELECT item_venda_caixas.produto_id, COALESCE(venda_caixas.filial_id, -1) as filial_id, item_venda_caixas.quantidade as qtd, venda_caixas.data_emissao as data, 'saida' as tipo
-                           FROM item_venda_caixas
-                           JOIN venda_caixas ON venda_caixas.id = item_venda_caixas.venda_caixa_id
-                           WHERE venda_caixas.empresa_id = {$empresaId} AND venda_caixas.estado = 'APROVADO'";
+        $saldos = DB::query()
+            ->fromSub($movimentacoes, 'mov')
+            ->select('produto_id', 'filial_id')
+            ->selectRaw(
+                "SUM(
+                    CASE
+                        WHEN data < ?
+                        THEN CASE WHEN tipo = 'entrada' THEN qtd ELSE -qtd END
+                        ELSE 0
+                    END
+                ) as saldo_inicial",
+                [$dataInicial]
+            )
+            ->selectRaw(
+                "SUM(
+                    CASE
+                        WHEN data BETWEEN ? AND ? AND tipo = 'entrada'
+                        THEN qtd
+                        ELSE 0
+                    END
+                ) as total_entradas",
+                [$dataInicial, $dataFinal]
+            )
+            ->selectRaw(
+                "SUM(
+                    CASE
+                        WHEN data BETWEEN ? AND ? AND tipo = 'saida'
+                        THEN qtd
+                        ELSE 0
+                    END
+                ) as total_saidas",
+                [$dataInicial, $dataFinal]
+            )
+            ->groupBy('produto_id', 'filial_id');
 
-        $alteracoesSql = "SELECT produto_id, COALESCE(filial_id, -1) as filial_id, quantidade as qtd, created_at as data, IF(tipo = 'incremento', 'entrada', 'saida') as tipo
-                          FROM alteracao_estoques
-                          WHERE empresa_id = {$empresaId}";
-
-        // AJUSTE: Apenas a SAÍDA da transferência é contabilizada aqui (a entrada vem via Nota de Compra)
-        $transfSaidaSql = "SELECT item_transferencias.produto_id, COALESCE(transferencias.filial_saida_id, -1) as filial_id, item_transferencias.quantidade as qtd, transferencias.created_at as data, 'saida' as tipo
-                           FROM item_transferencias
-                           JOIN transferencias ON transferencias.id = item_transferencias.transferencia_id
-                           WHERE transferencias.empresa_id = {$empresaId}";
-
-        // DEVOLUÇÕES: Vincula pelo primeiro ID que encontrar combinando referência e descrição
-        $devolucoesSql = "SELECT p.produto_id, COALESCE(devolucaos.filial_id, -1) as filial_id, item_devolucaos.quantidade as qtd, devolucaos.data_registro as data, 'saida' as tipo
-                          FROM item_devolucaos
-                          JOIN devolucaos ON devolucaos.id = item_devolucaos.devolucao_id
-                          JOIN (SELECT MIN(id) as produto_id, referencia, nome FROM produtos WHERE empresa_id = {$empresaId} GROUP BY referencia, nome) p
-                            ON p.referencia = item_devolucaos.cod AND p.nome = item_devolucaos.nome
-                          WHERE devolucaos.empresa_id = {$empresaId}";
-
-        // Unificando a matriz de movimentações sem a entrada de transferência
-        $unifiedSql = "($comprasSql) UNION ALL ($vendasSql) UNION ALL ($vendasCaixaSql) UNION ALL ($alteracoesSql) UNION ALL ($transfSaidaSql) UNION ALL ($devolucoesSql)";
-
-        $saldosSql = "SELECT
-                        produto_id,
-                        filial_id,
-                        SUM(CASE WHEN data < '{$dataInicial}' THEN IF(tipo = 'entrada', qtd, -qtd) ELSE 0 END) as saldo_inicial,
-                        SUM(CASE WHEN data BETWEEN '{$dataInicial}' AND '{$dataFinal}' AND tipo = 'entrada' THEN qtd ELSE 0 END) as total_entradas,
-                        SUM(CASE WHEN data BETWEEN '{$dataInicial}' AND '{$dataFinal}' AND tipo = 'saida' THEN qtd ELSE 0 END) as total_saidas
-                      FROM ({$unifiedSql}) as mov
-                      GROUP BY produto_id, filial_id";
-
-        // 3. Query principal utilizando um JOIN nativo seguro
         $query = DB::table('produtos')
-            ->join(DB::raw("({$saldosSql}) as saldos"), function ($join) {
+            ->joinSub($saldos, 'saldos', function ($join) {
                 $join->on('produtos.id', '=', 'saldos.produto_id');
             })
             ->leftJoin('filials', 'filials.id', '=', 'saldos.filial_id')
@@ -95,91 +91,189 @@ class RelatorioEstoqueController extends BaseController
             ->select(
                 'produtos.id',
                 'produtos.referencia',
-                DB::raw("CONCAT(produtos.nome, ' - ', IF(saldos.filial_id = -1, 'MATRIZ', UPPER(filials.descricao))) as descricao"),
-                'produtos.valor_compra as custo_medio',
-                'saldos.filial_id',
-                DB::raw('COALESCE(saldos.saldo_inicial, 0) as saldo_inicial'),
-                DB::raw('COALESCE(saldos.total_entradas, 0) as entradas'),
-                DB::raw('COALESCE(saldos.total_saidas, 0) as saidas'),
-                DB::raw('(COALESCE(saldos.saldo_inicial, 0) + COALESCE(saldos.total_entradas, 0) - COALESCE(saldos.total_saidas, 0)) as saldo_final'),
-                DB::raw('(COALESCE(saldos.saldo_inicial, 0) + COALESCE(saldos.total_entradas, 0) - COALESCE(saldos.total_saidas, 0)) * produtos.valor_compra as valor_total')
-            );
+                'saldos.filial_id'
+            )
+            ->selectRaw("
+                CONCAT(
+                    produtos.nome,
+                    ' - ',
+                    CASE
+                        WHEN saldos.filial_id = -1 THEN 'MATRIZ'
+                        ELSE UPPER(COALESCE(filials.descricao, 'SEM FILIAL'))
+                    END
+                ) as descricao
+            ")
+            ->selectRaw('COALESCE(produtos.valor_compra, 0) as custo_medio')
+            ->selectRaw('COALESCE(saldos.saldo_inicial, 0) as saldo_inicial')
+            ->selectRaw('COALESCE(saldos.total_entradas, 0) as entradas')
+            ->selectRaw('COALESCE(saldos.total_saidas, 0) as saidas')
+            ->selectRaw('
+                (
+                    COALESCE(saldos.saldo_inicial, 0)
+                    + COALESCE(saldos.total_entradas, 0)
+                    - COALESCE(saldos.total_saidas, 0)
+                ) as saldo_final
+            ')
+            ->selectRaw('
+                (
+                    COALESCE(saldos.saldo_inicial, 0)
+                    + COALESCE(saldos.total_entradas, 0)
+                    - COALESCE(saldos.total_saidas, 0)
+                ) * COALESCE(produtos.valor_compra, 0) as valor_total
+            ');
 
-        // 4. Aplicação dos filtros dinâmicos
         if ($request->filled('filial_id')) {
-            $query->where('saldos.filial_id', $request->filial_id);
+            $query->where('saldos.filial_id', (int) $request->input('filial_id'));
         }
+
         if ($request->filled('categoria_id')) {
-            $query->where('produtos.categoria_id', $request->categoria_id);
+            $query->where('produtos.categoria_id', (int) $request->input('categoria_id'));
         }
+
         if ($request->filled('sub_categoria_id')) {
-            $query->where('produtos.sub_categoria_id', $request->sub_categoria_id);
+            $query->where('produtos.sub_categoria_id', (int) $request->input('sub_categoria_id'));
         }
+
         if ($request->filled('produto_id')) {
-            $query->where('produtos.id', $request->produto_id);
+            $query->where('produtos.id', (int) $request->input('produto_id'));
         }
 
-        $resultados = $query->paginate(50);
+        $resultados = $query
+            ->orderBy('produtos.nome')
+            ->paginate(50)
+            ->appends($request->query());
 
-        // Listagens para preencher os componentes Select2 da View
-        $filiais = DB::table('filials')->where('empresa_id', $empresaId)->select('id', 'descricao as nome')->get();
-        $categorias = DB::table('categorias')->where('empresa_id', $empresaId)->select('id', 'nome')->orderBy('nome')->get();
-        $subCategorias = DB::table('sub_categorias')->select('id', 'nome')->orderBy('nome')->get();
-        $produtos_filtro = DB::table('produtos')->where('empresa_id', $empresaId)->where('gerenciar_estoque', 1)->select('id', 'nome', 'referencia')->orderBy('nome')->get();
+        $filiais = DB::table('filials')
+            ->where('empresa_id', $empresaId)
+            ->select('id', 'descricao as nome')
+            ->orderBy('descricao')
+            ->get();
+
+        $categorias = DB::table('categorias')
+            ->where('empresa_id', $empresaId)
+            ->select('id', 'nome')
+            ->orderBy('nome')
+            ->get();
+
+        $subCategorias = DB::table('sub_categorias')
+            ->when($request->filled('categoria_id'), function ($query) use ($request) {
+                return $query->where('categoria_id', (int) $request->input('categoria_id'));
+            })
+            ->select('id', 'nome', 'categoria_id')
+            ->orderBy('nome')
+            ->get();
+
+        $produtos_filtro = DB::table('produtos')
+            ->where('empresa_id', $empresaId)
+            ->where('gerenciar_estoque', 1)
+            ->select('id', 'nome', 'referencia')
+            ->orderBy('nome')
+            ->get();
 
         $title = $titulo = 'Saldo Real de Estoque';
-        return view('relatorios.estoque', compact('title', 'titulo', 'resultados', 'dataInicial', 'dataFinal', 'filiais', 'categorias', 'subCategorias', 'produtos_filtro'));
+
+        return view('relatorios.estoque', compact(
+            'title',
+            'titulo',
+            'resultados',
+            'dataInicial',
+            'dataFinal',
+            'filiais',
+            'categorias',
+            'subCategorias',
+            'produtos_filtro'
+        ));
     }
 
     public function extratoMovimentacao(Request $request, $produto_id)
     {
-        $produto = DB::table('produtos')->where('id', $produto_id)->first();
+        $empresaId = $this->getEmpresaIdSessao();
 
-        $dataInicial = $request->data_inicial ? Carbon::parse($request->data_inicial)->startOfDay()->toDateTimeString() : Carbon::now()->startOfMonth()->toDateTimeString();
-        $dataFinal = $request->data_final ? Carbon::parse($request->data_final)->endOfDay()->toDateTimeString() : Carbon::now()->endOfDay()->toDateTimeString();
-        $filialId = $request->filial_id;
+        if (!$empresaId) {
+            return "Erro: Empresa não identificada na sessão.";
+        }
 
-        // Queries base com filtros de estado exigidos
+        $produto = DB::table('produtos')
+            ->where('empresa_id', $empresaId)
+            ->where('id', (int) $produto_id)
+            ->first();
+
+        if (!$produto) {
+            abort(404, 'Produto não encontrado.');
+        }
+
+        $dataInicial = $this->parseDataInicio(
+            $request->input('data_inicial'),
+            Carbon::now()->startOfMonth()
+        );
+
+        $dataFinal = $this->parseDataFim(
+            $request->input('data_final'),
+            Carbon::now()->endOfDay()
+        );
+
+        $filialId = $request->filled('filial_id') ? (int) $request->input('filial_id') : null;
+
         $comprasQuery = DB::table('item_compras')
             ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
             ->leftJoin('fornecedors', 'fornecedors.id', '=', 'compras.fornecedor_id')
-            ->where('item_compras.produto_id', $produto_id)
+            ->where('compras.empresa_id', $empresaId)
+            ->where('item_compras.produto_id', (int) $produto_id)
             ->whereIn('compras.estado', ['APROVADO', 'IMPORTADO']);
 
         $vendasQuery = DB::table('item_vendas')
             ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
             ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
-            ->where('item_vendas.produto_id', $produto_id)
+            ->where('vendas.empresa_id', $empresaId)
+            ->where('item_vendas.produto_id', (int) $produto_id)
             ->where('vendas.estado', 'APROVADO');
 
         $vendasCaixaQuery = DB::table('item_venda_caixas')
             ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
             ->leftJoin('clientes', 'clientes.id', '=', 'venda_caixas.cliente_id')
-            ->where('item_venda_caixas.produto_id', $produto_id)
+            ->where('venda_caixas.empresa_id', $empresaId)
+            ->where('item_venda_caixas.produto_id', (int) $produto_id)
             ->where('venda_caixas.estado', 'APROVADO');
 
-        $alteracoesQuery = DB::table('alteracao_estoques')->where('produto_id', $produto_id);
+        $alteracoesQuery = DB::table('alteracao_estoques')
+            ->where('empresa_id', $empresaId)
+            ->where('produto_id', (int) $produto_id);
 
-        // AJUSTE: Mantido apenas a query de Saída da Transferência no extrato individual
         $transfSaidaQuery = DB::table('item_transferencias')
             ->join('transferencias', 'transferencias.id', '=', 'item_transferencias.transferencia_id')
             ->leftJoin('filials', 'filials.id', '=', 'transferencias.filial_entrada_id')
-            ->where('item_transferencias.produto_id', $produto_id);
+            ->where('transferencias.empresa_id', $empresaId)
+            ->where('transferencias.estado', 'aprovado')
+            ->where('item_transferencias.produto_id', (int) $produto_id);
+
+        $transfEntradaQuery = DB::table('item_transferencias')
+            ->join('transferencias', 'transferencias.id', '=', 'item_transferencias.transferencia_id')
+            ->leftJoin('filials', 'filials.id', '=', 'transferencias.filial_saida_id')
+            ->where('transferencias.empresa_id', $empresaId)
+            ->where('transferencias.estado', 'aprovado')
+            ->where('item_transferencias.produto_id', (int) $produto_id);
 
         $devolucoesQuery = DB::table('item_devolucaos')
             ->join('devolucaos', 'devolucaos.id', '=', 'item_devolucaos.devolucao_id')
             ->leftJoin('fornecedors', 'fornecedors.id', '=', 'devolucaos.fornecedor_id')
+            ->where('devolucaos.empresa_id', $empresaId)
+            ->where('devolucaos.estado', 1)
             ->where('item_devolucaos.cod', $produto->referencia)
             ->where('item_devolucaos.nome', $produto->nome);
 
-        // Aplica o filtro da filial correspondente à linha clicada
         if ($request->filled('filial_id')) {
-            if ($filialId == '-1') {
+            if ($filialId === -1) {
                 $comprasQuery->whereNull('compras.filial_id');
                 $vendasQuery->whereNull('vendas.filial_id');
                 $vendasCaixaQuery->whereNull('venda_caixas.filial_id');
-                $alteracoesQuery->where(function($q) { $q->whereNull('filial_id')->orWhere('filial_id', -1); });
+
+                $alteracoesQuery->where(function ($query) {
+                    $query->whereNull('filial_id')
+                        ->orWhere('filial_id', -1);
+                });
+
                 $transfSaidaQuery->whereNull('transferencias.filial_saida_id');
+                $transfEntradaQuery->whereNull('transferencias.filial_entrada_id');
                 $devolucoesQuery->whereNull('devolucaos.filial_id');
             } else {
                 $comprasQuery->where('compras.filial_id', $filialId);
@@ -187,47 +281,316 @@ class RelatorioEstoqueController extends BaseController
                 $vendasCaixaQuery->where('venda_caixas.filial_id', $filialId);
                 $alteracoesQuery->where('filial_id', $filialId);
                 $transfSaidaQuery->where('transferencias.filial_saida_id', $filialId);
+                $transfEntradaQuery->where('transferencias.filial_entrada_id', $filialId);
                 $devolucoesQuery->where('devolucaos.filial_id', $filialId);
             }
         }
 
-        // 1. Buscando o Saldo Inicial do período
         $saldoInicial = 0;
-        $saldoInicial += (clone $comprasQuery)->where('compras.data_emissao', '<', $dataInicial)->sum('item_compras.quantidade');
-        $saldoInicial -= (clone $vendasQuery)->where('vendas.data_emissao', '<', $dataInicial)->sum('item_vendas.quantidade');
-        $saldoInicial -= (clone $vendasCaixaQuery)->where('venda_caixas.data_emissao', '<', $dataInicial)->sum('item_venda_caixas.quantidade');
-        $saldoInicial += (clone $alteracoesQuery)->where('created_at', '<', $dataInicial)->where('tipo', 'incremento')->sum('quantidade');
-        $saldoInicial -= (clone $alteracoesQuery)->where('created_at', '<', $dataInicial)->where('tipo', '!=', 'incremento')->sum('quantidade');
 
-        // Ajuste no histórico retroativo: apenas deduz as saídas de transferência
-        $saldoInicial -= (clone $transfSaidaQuery)->where('transferencias.created_at', '<', $dataInicial)->sum('item_transferencias.quantidade');
-        $saldoInicial -= (clone $devolucoesQuery)->where('devolucaos.data_registro', '<', $dataInicial)->sum('item_devolucaos.quantidade');
+        $saldoInicial += (clone $comprasQuery)
+            ->where($this->rawDataCompras(), '<', $dataInicial)
+            ->sum('item_compras.quantidade');
 
-        // 2. Detalhamento das movimentações
-        $compras = $comprasQuery->whereBetween('compras.data_emissao', [$dataInicial, $dataFinal])
-            ->select('item_compras.quantidade as qtd', 'compras.data_emissao as data', DB::raw("'Entrada (Compra)' as operacao"), DB::raw("'entrada' as tipo"), 'compras.id as numero_nota', DB::raw("COALESCE(fornecedors.razao_social, 'Não Informado') as pessoa"));
+        $saldoInicial -= (clone $vendasQuery)
+            ->where($this->rawDataVendas(), '<', $dataInicial)
+            ->sum('item_vendas.quantidade');
 
-        $vendas = $vendasQuery->whereBetween('vendas.data_emissao', [$dataInicial, $dataFinal])
-            ->select('item_vendas.quantidade as qtd', 'vendas.data_emissao as data', DB::raw("'Saída (Venda)' as operacao"), DB::raw("'saida' as tipo"), 'vendas.id as numero_nota', DB::raw("COALESCE(clientes.razao_social, 'Não Informado') as pessoa"));
+        $saldoInicial -= (clone $vendasCaixaQuery)
+            ->where($this->rawDataVendasCaixa(), '<', $dataInicial)
+            ->sum('item_venda_caixas.quantidade');
 
-        $vendasCaixa = $vendasCaixaQuery->whereBetween('venda_caixas.data_emissao', [$dataInicial, $dataFinal])
-            ->select('item_venda_caixas.quantidade as qtd', 'venda_caixas.data_emissao as data', DB::raw("'Saída (PDV)' as operacao"), DB::raw("'saida' as tipo"), 'venda_caixas.id as numero_nota', DB::raw("COALESCE(clientes.razao_social, 'Consumidor Final') as pessoa"));
+        $saldoInicial += (clone $alteracoesQuery)
+            ->where('created_at', '<', $dataInicial)
+            ->where('tipo', 'incremento')
+            ->sum('quantidade');
 
-        $alteracoes = $alteracoesQuery->whereBetween('created_at', [$dataInicial, $dataFinal])
-            ->select('quantidade as qtd', 'created_at as data', DB::raw("CONCAT('Ajuste: ', COALESCE(observacao, motivo, '')) as operacao"), DB::raw("IF(tipo = 'incremento', 'entrada', 'saida') as tipo"), DB::raw("'-' as numero_nota"), DB::raw("'-' as pessoa"));
+        $saldoInicial -= (clone $alteracoesQuery)
+            ->where('created_at', '<', $dataInicial)
+            ->where('tipo', '!=', 'incremento')
+            ->sum('quantidade');
 
-        $transfSaida = $transfSaidaQuery->whereBetween('transferencias.created_at', [$dataInicial, $dataFinal])
-            ->select('item_transferencias.quantidade as qtd', 'transferencias.created_at as data', DB::raw("CONCAT('Transferência (Saída para ', COALESCE(filials.descricao, 'Matriz'), ')') as operacao"), DB::raw("'saida' as tipo"), 'transferencias.id as numero_nota', DB::raw("'-' as pessoa"));
+        $saldoInicial -= (clone $transfSaidaQuery)
+            ->where($this->rawDataTransferencias(), '<', $dataInicial)
+            ->sum('item_transferencias.quantidade');
 
-        $devolucoes = $devolucoesQuery->whereBetween('devolucaos.data_registro', [$dataInicial, $dataFinal])
-            ->select('item_devolucaos.quantidade as qtd', 'devolucaos.data_registro as data', DB::raw("'Devolução ao Fornecedor' as operacao"), DB::raw("'saida' as tipo"), 'devolucaos.id as numero_nota', DB::raw("COALESCE(fornecedors.razao_social, 'Não Informado') as pessoa"));
+        $saldoInicial += (clone $transfEntradaQuery)
+            ->where($this->rawDataTransferencias(), '<', $dataInicial)
+            ->sum('item_transferencias.quantidade');
 
-        // Unindo a coleção de dados sem o bloco de entradas de transferência
-        $movimentacoes = $compras->unionAll($vendas)->unionAll($vendasCaixa)->unionAll($alteracoes)->unionAll($transfSaida)->unionAll($devolucoes)->orderBy('data', 'asc')->get();
+        $saldoInicial += (clone $devolucoesQuery)
+            ->where('devolucaos.data_registro', '<', $dataInicial)
+            ->where('devolucaos.tipo', 0)
+            ->sum('item_devolucaos.quantidade');
+
+        $saldoInicial -= (clone $devolucoesQuery)
+            ->where('devolucaos.data_registro', '<', $dataInicial)
+            ->where('devolucaos.tipo', 1)
+            ->sum('item_devolucaos.quantidade');
+
+        $compras = $comprasQuery
+            ->whereBetween($this->rawDataCompras(), [$dataInicial, $dataFinal])
+            ->select(
+                'item_compras.quantidade as qtd',
+                DB::raw('COALESCE(compras.data_emissao, compras.created_at) as data'),
+                DB::raw("'Entrada (Compra)' as operacao"),
+                DB::raw("'entrada' as tipo"),
+                'compras.id as numero_nota',
+                DB::raw("COALESCE(fornecedors.razao_social, 'Não Informado') as pessoa")
+            );
+
+        $vendas = $vendasQuery
+            ->whereBetween($this->rawDataVendas(), [$dataInicial, $dataFinal])
+            ->select(
+                'item_vendas.quantidade as qtd',
+                DB::raw('COALESCE(vendas.data_emissao, vendas.data_registro, vendas.created_at) as data'),
+                DB::raw("'Saída (Venda)' as operacao"),
+                DB::raw("'saida' as tipo"),
+                'vendas.NfNumero as numero_nota',
+                DB::raw("COALESCE(clientes.razao_social, 'Não Informado') as pessoa")
+            );
+
+        $vendasCaixa = $vendasCaixaQuery
+            ->whereBetween($this->rawDataVendasCaixa(), [$dataInicial, $dataFinal])
+            ->select(
+                'item_venda_caixas.quantidade as qtd',
+                DB::raw('COALESCE(venda_caixas.data_emissao, venda_caixas.data_registro, venda_caixas.created_at) as data'),
+                DB::raw("'Saída (PDV)' as operacao"),
+                DB::raw("'saida' as tipo"),
+                'venda_caixas.id as numero_nota',
+                DB::raw("COALESCE(clientes.razao_social, 'Consumidor Final') as pessoa")
+            );
+
+        $alteracoes = $alteracoesQuery
+            ->whereBetween('created_at', [$dataInicial, $dataFinal])
+            ->select(
+                'quantidade as qtd',
+                'created_at as data',
+                DB::raw("CONCAT('Ajuste: ', COALESCE(observacao, motivo, '')) as operacao"),
+                DB::raw("CASE WHEN tipo = 'incremento' THEN 'entrada' ELSE 'saida' END as tipo"),
+                DB::raw("'-' as numero_nota"),
+                DB::raw("'-' as pessoa")
+            );
+
+        $transfSaida = $transfSaidaQuery
+            ->whereBetween($this->rawDataTransferencias(), [$dataInicial, $dataFinal])
+            ->select(
+                'item_transferencias.quantidade as qtd',
+                DB::raw('COALESCE(transferencias.data_emissao, transferencias.created_at) as data'),
+                DB::raw("CONCAT('Transferência (Saída para ', COALESCE(filials.descricao, 'Matriz'), ')') as operacao"),
+                DB::raw("'saida' as tipo"),
+                'transferencias.id as numero_nota',
+                DB::raw("'-' as pessoa")
+            );
+
+        $transfEntrada = $transfEntradaQuery
+            ->whereBetween($this->rawDataTransferencias(), [$dataInicial, $dataFinal])
+            ->select(
+                'item_transferencias.quantidade as qtd',
+                DB::raw('COALESCE(transferencias.data_emissao, transferencias.created_at) as data'),
+                DB::raw("CONCAT('Transferência (Entrada de ', COALESCE(filials.descricao, 'Matriz'), ')') as operacao"),
+                DB::raw("'entrada' as tipo"),
+                'transferencias.id as numero_nota',
+                DB::raw("'-' as pessoa")
+            );
+
+        $devolucoes = $devolucoesQuery
+            ->whereBetween('devolucaos.data_registro', [$dataInicial, $dataFinal])
+            ->select(
+                'item_devolucaos.quantidade as qtd',
+                'devolucaos.data_registro as data',
+                DB::raw("CASE WHEN devolucaos.tipo = 0 THEN 'Devolução (Entrada)' ELSE 'Devolução (Saída)' END as operacao"),
+                DB::raw("CASE WHEN devolucaos.tipo = 0 THEN 'entrada' ELSE 'saida' END as tipo"),
+                'devolucaos.numero_gerado as numero_nota',
+                DB::raw("COALESCE(fornecedors.razao_social, 'Não Informado') as pessoa")
+            );
+
+        $movimentacoesBase = $compras
+            ->unionAll($vendas)
+            ->unionAll($vendasCaixa)
+            ->unionAll($alteracoes)
+            ->unionAll($transfSaida)
+            ->unionAll($transfEntrada)
+            ->unionAll($devolucoes);
+
+        $movimentacoes = DB::query()
+            ->fromSub($movimentacoesBase, 'mov')
+            ->orderBy('data', 'asc')
+            ->get();
 
         $title = 'Extrato de Movimentação - ' . $produto->nome;
         $titulo = 'Extrato de Movimentação - ' . $produto->nome;
 
-        return view('relatorios.extrato_estoque', compact('title', 'titulo', 'produto', 'movimentacoes', 'saldoInicial', 'dataInicial', 'dataFinal'));
+        return view('relatorios.extrato_estoque', compact(
+            'title',
+            'titulo',
+            'produto',
+            'movimentacoes',
+            'saldoInicial',
+            'dataInicial',
+            'dataFinal'
+        ));
+    }
+
+    private function getEmpresaIdSessao(): ?int
+    {
+        $userLogged = session('user_logged');
+        $empresaId = $userLogged['empresa'] ?? null;
+
+        return $empresaId ? (int) $empresaId : null;
+    }
+
+    private function movimentacoesUnificadasEstoque(int $empresaId): Builder
+    {
+        $compras = DB::table('item_compras')
+            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
+            ->where('compras.empresa_id', $empresaId)
+            ->whereIn('compras.estado', ['APROVADO', 'IMPORTADO'])
+            ->select(
+                'item_compras.produto_id',
+                DB::raw('COALESCE(compras.filial_id, -1) as filial_id'),
+                DB::raw('item_compras.quantidade as qtd'),
+                DB::raw('COALESCE(compras.data_emissao, compras.created_at) as data'),
+                DB::raw("'entrada' as tipo")
+            );
+
+        $vendas = DB::table('item_vendas')
+            ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+            ->where('vendas.empresa_id', $empresaId)
+            ->where('vendas.estado', 'APROVADO')
+            ->select(
+                'item_vendas.produto_id',
+                DB::raw('COALESCE(vendas.filial_id, -1) as filial_id'),
+                DB::raw('item_vendas.quantidade as qtd'),
+                DB::raw('COALESCE(vendas.data_emissao, vendas.data_registro, vendas.created_at) as data'),
+                DB::raw("'saida' as tipo")
+            );
+
+        $vendasCaixa = DB::table('item_venda_caixas')
+            ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+            ->where('venda_caixas.empresa_id', $empresaId)
+            ->where('venda_caixas.estado', 'APROVADO')
+            ->select(
+                'item_venda_caixas.produto_id',
+                DB::raw('COALESCE(venda_caixas.filial_id, -1) as filial_id'),
+                DB::raw('item_venda_caixas.quantidade as qtd'),
+                DB::raw('COALESCE(venda_caixas.data_emissao, venda_caixas.data_registro, venda_caixas.created_at) as data'),
+                DB::raw("'saida' as tipo")
+            );
+
+        $alteracoes = DB::table('alteracao_estoques')
+            ->where('empresa_id', $empresaId)
+            ->whereNotNull('produto_id')
+            ->select(
+                'produto_id',
+                DB::raw('COALESCE(filial_id, -1) as filial_id'),
+                DB::raw('quantidade as qtd'),
+                DB::raw('created_at as data'),
+                DB::raw("CASE WHEN tipo = 'incremento' THEN 'entrada' ELSE 'saida' END as tipo")
+            );
+
+        $transferenciasSaida = DB::table('item_transferencias')
+            ->join('transferencias', 'transferencias.id', '=', 'item_transferencias.transferencia_id')
+            ->where('transferencias.empresa_id', $empresaId)
+            ->where('transferencias.estado', 'aprovado')
+            ->select(
+                'item_transferencias.produto_id',
+                DB::raw('COALESCE(transferencias.filial_saida_id, -1) as filial_id'),
+                DB::raw('item_transferencias.quantidade as qtd'),
+                DB::raw('COALESCE(transferencias.data_emissao, transferencias.created_at) as data'),
+                DB::raw("'saida' as tipo")
+            );
+
+        $transferenciasEntrada = DB::table('item_transferencias')
+            ->join('transferencias', 'transferencias.id', '=', 'item_transferencias.transferencia_id')
+            ->where('transferencias.empresa_id', $empresaId)
+            ->where('transferencias.estado', 'aprovado')
+            ->select(
+                'item_transferencias.produto_id',
+                DB::raw('COALESCE(transferencias.filial_entrada_id, -1) as filial_id'),
+                DB::raw('item_transferencias.quantidade as qtd'),
+                DB::raw('COALESCE(transferencias.data_emissao, transferencias.created_at) as data'),
+                DB::raw("'entrada' as tipo")
+            );
+
+        $produtosDevolucao = DB::table('produtos')
+            ->where('empresa_id', $empresaId)
+            ->selectRaw('MIN(id) as produto_id, referencia, nome')
+            ->groupBy('referencia', 'nome');
+
+        $devolucoes = DB::table('item_devolucaos')
+            ->join('devolucaos', 'devolucaos.id', '=', 'item_devolucaos.devolucao_id')
+            ->joinSub($produtosDevolucao, 'p', function ($join) {
+                $join->on('p.referencia', '=', 'item_devolucaos.cod')
+                    ->on('p.nome', '=', 'item_devolucaos.nome');
+            })
+            ->where('devolucaos.empresa_id', $empresaId)
+            ->where('devolucaos.estado', 1)
+            ->select(
+                'p.produto_id',
+                DB::raw('COALESCE(devolucaos.filial_id, -1) as filial_id'),
+                DB::raw('item_devolucaos.quantidade as qtd'),
+                DB::raw('devolucaos.data_registro as data'),
+                DB::raw("CASE WHEN devolucaos.tipo = 0 THEN 'entrada' ELSE 'saida' END as tipo")
+            );
+
+        return $compras
+            ->unionAll($vendas)
+            ->unionAll($vendasCaixa)
+            ->unionAll($alteracoes)
+            ->unionAll($transferenciasSaida)
+            ->unionAll($transferenciasEntrada)
+            ->unionAll($devolucoes);
+    }
+
+    private function rawDataCompras()
+    {
+        return DB::raw('COALESCE(compras.data_emissao, compras.created_at)');
+    }
+
+    private function rawDataVendas()
+    {
+        return DB::raw('COALESCE(vendas.data_emissao, vendas.data_registro, vendas.created_at)');
+    }
+
+    private function rawDataVendasCaixa()
+    {
+        return DB::raw('COALESCE(venda_caixas.data_emissao, venda_caixas.data_registro, venda_caixas.created_at)');
+    }
+
+    private function rawDataTransferencias()
+    {
+        return DB::raw('COALESCE(transferencias.data_emissao, transferencias.created_at)');
+    }
+
+    private function parseDataInicio(?string $data, Carbon $fallback): string
+    {
+        return $this->parseData($data, $fallback)->startOfDay()->toDateTimeString();
+    }
+
+    private function parseDataFim(?string $data, Carbon $fallback): string
+    {
+        return $this->parseData($data, $fallback)->endOfDay()->toDateTimeString();
+    }
+
+    private function parseData(?string $data, Carbon $fallback): Carbon
+    {
+        if (!$data) {
+            return $fallback->copy();
+        }
+
+        try {
+            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $data)) {
+                return Carbon::createFromFormat('d/m/Y', $data);
+            }
+
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
+                return Carbon::createFromFormat('Y-m-d', $data);
+            }
+
+            return Carbon::parse($data);
+        } catch (\Throwable $e) {
+            return $fallback->copy();
+        }
     }
 }

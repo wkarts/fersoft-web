@@ -9,7 +9,7 @@ use App\Models\ManifestaNfseTomada;
 use App\Models\Fornecedor;
 use App\Models\Compra;
 
-class NFSeTomadaController extends BaseController 
+class NFSeTomadaController extends BaseController
 {
     protected $model;
     protected $formTitle;
@@ -33,8 +33,8 @@ class NFSeTomadaController extends BaseController
 
         $numero_nota = $request->numero_nota;
         $fornecedor = $request->fornecedor;
-        $data_inicial = $request->data_inicial ?: date('01/m/Y'); 
-        $data_final = $request->data_final ?: date('t/m/Y');      
+        $data_inicial = $request->data_inicial ?: date('01/m/Y');
+        $data_final = $request->data_final ?: date('t/m/Y');
 
         if ($numero_nota) {
             $query->where('manifesta_nfse_tomadas.numero_nota', $numero_nota);
@@ -42,7 +42,7 @@ class NFSeTomadaController extends BaseController
 
         if ($fornecedor) {
             $cnpjLimpo = preg_replace('/[^0-9]/', '', $fornecedor);
-            
+
             $query->where(function($q) use ($fornecedor, $cnpjLimpo) {
                 $q->where('manifesta_nfse_tomadas.prestador_nome', 'LIKE', "%{$fornecedor}%");
                 if (!empty($cnpjLimpo)) {
@@ -62,35 +62,35 @@ class NFSeTomadaController extends BaseController
         // 🔥 CORREÇÃO DOS ÍCONES 'C' e 'F' 🔥
         // Agora verifica diretamente se o ID da compra está vinculado, forçando a luz acender
         $docs = $query->select([
-                'manifesta_nfse_tomadas.*', 
-                'filials.descricao as nome_filial', 
-                
-                DB::raw("IF(manifesta_nfse_tomadas.fatura_salva = 1, 1, EXISTS(
-                    SELECT 1 FROM conta_pagars 
+            'manifesta_nfse_tomadas.*',
+            'filials.descricao as nome_filial',
+
+            DB::raw("IF(manifesta_nfse_tomadas.fatura_salva = 1, 1, EXISTS(
+                    SELECT 1 FROM conta_pagars
                     INNER JOIN fornecedors ON fornecedors.id = conta_pagars.fornecedor_id
-                    WHERE conta_pagars.empresa_id = $emp_id 
+                    WHERE conta_pagars.empresa_id = $emp_id
                     AND DATE(conta_pagars.data_emissao) = DATE(manifesta_nfse_tomadas.data_emissao)
                     AND CAST(conta_pagars.numero_nota_fiscal AS UNSIGNED) = CAST(manifesta_nfse_tomadas.numero_nota AS UNSIGNED)
-                    AND REPLACE(REPLACE(REPLACE(fornecedors.cpf_cnpj, '.', ''), '/', ''), '-', '') COLLATE utf8mb4_unicode_ci = 
-                    (CASE 
+                    AND REPLACE(REPLACE(REPLACE(fornecedors.cpf_cnpj, '.', ''), '/', ''), '-', '') COLLATE utf8mb4_unicode_ci =
+                    (CASE
                         WHEN CHAR_LENGTH(manifesta_nfse_tomadas.chave) = 50 THEN SUBSTRING(manifesta_nfse_tomadas.chave, 10, 14)
-                        ELSE '' 
+                        ELSE ''
                     END) COLLATE utf8mb4_unicode_ci
                 )) as ja_no_pagar"),
-                
-                DB::raw("IF(manifesta_nfse_tomadas.compra_servico_id > 0, 1, EXISTS(
-                    SELECT 1 FROM compras 
+
+            DB::raw("IF(manifesta_nfse_tomadas.compra_servico_id > 0, 1, EXISTS(
+                    SELECT 1 FROM compras
                     INNER JOIN fornecedors ON fornecedors.id = compras.fornecedor_id
-                    WHERE compras.empresa_id = $emp_id 
+                    WHERE compras.empresa_id = $emp_id
                     AND DATE(compras.data_emissao) = DATE(manifesta_nfse_tomadas.data_emissao)
                     AND CAST(compras.nf AS UNSIGNED) = CAST(manifesta_nfse_tomadas.numero_nota AS UNSIGNED)
-                    AND REPLACE(REPLACE(REPLACE(fornecedors.cpf_cnpj, '.', ''), '/', ''), '-', '') COLLATE utf8mb4_unicode_ci = 
-                    (CASE 
+                    AND REPLACE(REPLACE(REPLACE(fornecedors.cpf_cnpj, '.', ''), '/', ''), '-', '') COLLATE utf8mb4_unicode_ci =
+                    (CASE
                         WHEN CHAR_LENGTH(manifesta_nfse_tomadas.chave) = 50 THEN SUBSTRING(manifesta_nfse_tomadas.chave, 10, 14)
-                        ELSE '' 
+                        ELSE ''
                     END) COLLATE utf8mb4_unicode_ci
                 )) as ja_comprado")
-            ])
+        ])
             ->orderBy('manifesta_nfse_tomadas.data_emissao', 'desc')
             ->paginate(20);
 
@@ -100,32 +100,32 @@ class NFSeTomadaController extends BaseController
             ->with(['title' => 'NFS-e Tomadas']);
     }
 
-    public function sincronizarManual(Request $request) 
+    public function sincronizarManual(Request $request)
     {
         try {
             $emp_id = session('user_logged')['empresa'];
-            $local = $request->local ?? 'matriz'; 
+            $local = $request->local ?? 'matriz';
             $filial_id = ($local == 'matriz') ? null : $local;
 
             if ($local == 'matriz') {
                 $cert = DB::table('certificados')->where('empresa_id', $emp_id)->first();
                 $conf = DB::table('config_notas')->where('empresa_id', $emp_id)->first();
-                
+
                 if (!$cert || !$conf) {
                     throw new \Exception("Configurações de notas ou certificado da Matriz não encontrados para a empresa ID: " . $emp_id);
                 }
-                
+
                 $servico = new NFSeNacionalService($conf->cnpj, $cert->arquivo, $cert->senha);
             } else {
                 $f = DB::table('filials')->where('id', $local)->first();
-                
+
                 if (!$f) {
                     throw new \Exception("Filial não encontrada no sistema.");
                 }
-                
+
                 $servico = new NFSeNacionalService($f->cnpj, $f->arquivo_certificado, $f->senha_certificado);
             }
-          
+
             $nsuAtual = (int)(ManifestaNfseTomada::where('empresa_id', $emp_id)
                 ->where('filial_id', $filial_id)
                 ->max('nsu') ?? 0);
@@ -162,14 +162,14 @@ class NFSeTomadaController extends BaseController
 
                         $xmlGzip = base64_decode($doc['ArquivoXml']);
                         $xmlString = gzdecode($xmlGzip);
-                        
+
                         // 🔥 SALVA O XML FISICAMENTE NO SERVIDOR PARA O FINANCEIRO PODER IMPRIMIR
                         try {
                             $pastaServico = public_path('xml_servico');
 
                             // Cria a pasta se ela ainda não existir
-                            if (!file_exists($pastaServico)) { 
-                                @mkdir($pastaServico, 0777, true); 
+                            if (!file_exists($pastaServico)) {
+                                @mkdir($pastaServico, 0777, true);
                             }
 
                             // Salva o XML exatamente onde o sistema já costuma ler
@@ -178,11 +178,11 @@ class NFSeTomadaController extends BaseController
                         } catch (\Exception $e) {
                             \Log::error("Erro ao salvar XML físico da NFS-e: " . $e->getMessage());
                         }
-                        
+
                         $xmlStringLimpo = preg_replace('/xmlns="[^"]+"/', '', $xmlString);
                         $xmlStringLimpo = preg_replace('/xmlns:[^=]+="[^"]+"/', '', $xmlStringLimpo);
                         $xml = simplexml_load_string($xmlStringLimpo);
-                        
+
                         if (!$xml) {
                             continue;
                         }
@@ -237,7 +237,7 @@ class NFSeTomadaController extends BaseController
                         if (isset($inf->valores->vLiq)) {
                             $vLiquido = (float)$inf->valores->vLiq;
                         } else {
-                            $vLiquido = $vServicoBruto; 
+                            $vLiquido = $vServicoBruto;
                         }
 
                         if ($vServicoBruto == 0 && $vLiquido > 0) {
@@ -254,22 +254,22 @@ class NFSeTomadaController extends BaseController
                         } elseif (isset($doc['DataHoraGeracao'])) {
                             $dataEmissao = date('Y-m-d', strtotime((string)$doc['DataHoraGeracao']));
                         } else {
-                            $dataEmissao = date('Y-m-d'); 
+                            $dataEmissao = date('Y-m-d');
                         }
 
                         if (!empty($prestadorCnpj) && $prestadorNome != 'Fornecedor sem Nome') {
-    
+
                             // 1. Formata o CNPJ no padrão do ERP (com pontos e traço)
                             $cnpjNumeros = preg_replace('/[^0-9]/', '', $prestadorCnpj);
-                            $cnpjFormatado = strlen($cnpjNumeros) == 14 
-                                ? substr($cnpjNumeros,0,2).'.'.substr($cnpjNumeros,2,3).'.'.substr($cnpjNumeros,5,3).'/'.substr($cnpjNumeros,8,4).'-'.substr($cnpjNumeros,12,2) 
+                            $cnpjFormatado = strlen($cnpjNumeros) == 14
+                                ? substr($cnpjNumeros,0,2).'.'.substr($cnpjNumeros,2,3).'.'.substr($cnpjNumeros,5,3).'/'.substr($cnpjNumeros,8,4).'-'.substr($cnpjNumeros,12,2)
                                 : $prestadorCnpj;
 
                             // 2. Busca o fornecedor tentando com e sem pontuação
                             $fornecedor = Fornecedor::where('empresa_id', $emp_id)
                                 ->where(function($q) use ($cnpjFormatado, $cnpjNumeros) {
                                     $q->where('cpf_cnpj', $cnpjFormatado)
-                                      ->orWhere('cpf_cnpj', $cnpjNumeros);
+                                        ->orWhere('cpf_cnpj', $cnpjNumeros);
                                 })->first();
 
                             if (!$fornecedor) {
@@ -285,7 +285,7 @@ class NFSeTomadaController extends BaseController
                                     'rua'          => isset($inf->emit->enderNac->xLgr) ? (string)$inf->emit->enderNac->xLgr : 'Não Informada',
                                     'numero'       => isset($inf->emit->enderNac->nro) ? (string)$inf->emit->enderNac->nro : 'S/N',
                                     'bairro'       => isset($inf->emit->enderNac->xBairro) ? (string)$inf->emit->enderNac->xBairro : 'Não Informado',
-                                    'cidade_id'    => 1, 
+                                    'cidade_id'    => 1,
                                     'cep'          => isset($inf->emit->enderNac->CEP) ? (string)$inf->emit->enderNac->CEP : '00000000',
                                     'contribuinte' => 1,
                                     'cod_pais'     => '1058'
@@ -297,7 +297,7 @@ class NFSeTomadaController extends BaseController
 
                         ManifestaNfseTomada::updateOrCreate(
                             [
-                                'chave' => $chave, 
+                                'chave' => $chave,
                                 'empresa_id' => $emp_id
                             ],
                             [
@@ -311,7 +311,7 @@ class NFSeTomadaController extends BaseController
                                 'data_emissao'       => $dataEmissao,
                             ]
                         );
-                        
+
                         $notasNesseLote++;
                         $totalNotasProcessadas++;
                     }
@@ -321,12 +321,12 @@ class NFSeTomadaController extends BaseController
                     $nsuAtual = $maiorNsuEncontradoNoLote;
                 } else {
                     $nsuAtual++;
-                    
+
                     $this->disableNextModelAudit();
-                    
+
                     ManifestaNfseTomada::updateOrCreate(
                         [
-                            'chave' => 'AVANCO_COMPAT_FILA_' . $nsuAtual, 
+                            'chave' => 'AVANCO_COMPAT_FILA_' . $nsuAtual,
                             'empresa_id' => $emp_id
                         ],
                         [
@@ -359,10 +359,10 @@ class NFSeTomadaController extends BaseController
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', 'Erro na sincronização: ' . $e->getMessage());
         }
-        
+
         return redirect($this->redirectPage);
     }
-  
+
     public function detalhesLançamento($id)
     {
         $nota = ManifestaNfseTomada::findOrFail($id);
@@ -377,7 +377,7 @@ class NFSeTomadaController extends BaseController
         // 🔥 BUSCA A DESCRIÇÃO DIRETAMENTE NO ARQUIVO FÍSICO 🔥
         $descricaoServico = 'Prestação de serviços gerais discriminada no corpo do documento nacional.';
         $caminhoXml = public_path('xml_servico/' . $nota->chave . '.xml');
-        
+
         if (file_exists($caminhoXml)) {
             $xmlString = file_get_contents($caminhoXml);
             $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
@@ -405,7 +405,7 @@ class NFSeTomadaController extends BaseController
             'descricao_servico' => $descricaoServico
         ])->with(['title' => $this->formTitle]);
     }
-  
+
     public function salvarImportacaoPainel(Request $request, $id)
     {
         $request->validate([
@@ -422,8 +422,8 @@ class NFSeTomadaController extends BaseController
             $usuario_id = session('user_logged')['id'];
 
             $cnpjNumeros = preg_replace('/[^0-9]/', '', $nota->prestador_cnpj_cpf);
-            $cnpjFormatado = strlen($cnpjNumeros) == 14 
-                ? substr($cnpjNumeros,0,2).'.'.substr($cnpjNumeros,2,3).'.'.substr($cnpjNumeros,5,3).'/'.substr($cnpjNumeros,8,4).'-'.substr($cnpjNumeros,12,2) 
+            $cnpjFormatado = strlen($cnpjNumeros) == 14
+                ? substr($cnpjNumeros,0,2).'.'.substr($cnpjNumeros,2,3).'.'.substr($cnpjNumeros,5,3).'/'.substr($cnpjNumeros,8,4).'-'.substr($cnpjNumeros,12,2)
                 : $nota->prestador_cnpj_cpf;
 
             $fornecedor = \App\Models\Fornecedor::where('empresa_id', $emp_id)->where('cpf_cnpj', $cnpjFormatado)->first();
@@ -489,36 +489,48 @@ class NFSeTomadaController extends BaseController
                 $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
                 $xmlObj = simplexml_load_string($xmlClean);
 
+                // Variável para identificar se a nota seguiu o Padrão Nacional
+                $isPadraoNacional = false;
+
                 // A. Tenta Padrão Nacional (NFS-e Nacional / DPS)
                 // tpRetISSQN: 1 = Não retido, 2 = Retido pelo Tomador
                 $tpRetISSQN = null;
                 if (isset($xmlObj->infNFSe->DPS->infDPS->valores->trib->tribMun->tpRetISSQN)) {
                     $tpRetISSQN = (string)$xmlObj->infNFSe->DPS->infDPS->valores->trib->tribMun->tpRetISSQN;
+                    $isPadraoNacional = true;
                 } elseif (isset($xmlObj->DPS->infDPS->valores->trib->tribMun->tpRetISSQN)) {
                     $tpRetISSQN = (string)$xmlObj->DPS->infDPS->valores->trib->tribMun->tpRetISSQN;
+                    $isPadraoNacional = true;
                 }
 
-                if ($tpRetISSQN == '2') {
-                    if (isset($xmlObj->infNFSe->valores->vISSQN)) {
-                        $valorIssRetido = (float)$xmlObj->infNFSe->valores->vISSQN;
-                    } elseif (isset($xmlObj->valores->vISSQN)) {
-                        $valorIssRetido = (float)$xmlObj->valores->vISSQN;
-                    }
-                }
-
-                // B. Tenta Padrão ABRASF (Prefeituras antigas locais)
-                // IssRetido: 1 = Sim, 2 = Não
-                if (isset($xmlObj->Nfse->InfNfse->Servico->Valores->IssRetido)) {
-                    if ((string)$xmlObj->Nfse->InfNfse->Servico->Valores->IssRetido == '1') {
-                        if (isset($xmlObj->Nfse->InfNfse->Servico->Valores->ValorIssRetido)) {
-                            $valorIssRetido = (float)$xmlObj->Nfse->InfNfse->Servico->Valores->ValorIssRetido;
-                        } elseif (isset($xmlObj->Nfse->InfNfse->Servico->Valores->ValorIss)) {
-                            $valorIssRetido = (float)$xmlObj->Nfse->InfNfse->Servico->Valores->ValorIss;
+                // Se foi identificado como Padrão Nacional, processa estritamente a regra dele
+                if ($isPadraoNacional) {
+                    if ($tpRetISSQN == '2') { // Só grava o valor se for IGUAL a 2 (Retido)
+                        if (isset($xmlObj->infNFSe->valores->vISSQN)) {
+                            $valorIssRetido = (float)$xmlObj->infNFSe->valores->vISSQN;
+                        } elseif (isset($xmlObj->valores->vISSQN)) {
+                            $valorIssRetido = (float)$xmlObj->valores->vISSQN;
                         }
+                    } else {
+                        // Garante que se for '1' ou qualquer outra coisa, o valor continua 0
+                        $valorIssRetido = 0;
                     }
-                } elseif (isset($xmlObj->infNFSe->servico->valores->issRetido)) {
-                    if ((string)$xmlObj->infNFSe->servico->valores->issRetido == '1') {
-                        $valorIssRetido = (float)$xmlObj->infNFSe->servico->valores->valorIssRetido;
+                }
+                // B. Tenta Padrão ABRASF (Prefeituras antigas locais) - SÓ ENTRA SE NÃO FOR PADRÃO NACIONAL
+                else {
+                    // IssRetido: 1 = Sim, 2 = Não
+                    if (isset($xmlObj->Nfse->InfNfse->Servico->Valores->IssRetido)) {
+                        if ((string)$xmlObj->Nfse->InfNfse->Servico->Valores->IssRetido == '1') {
+                            if (isset($xmlObj->Nfse->InfNfse->Servico->Valores->ValorIssRetido)) {
+                                $valorIssRetido = (float)$xmlObj->Nfse->InfNfse->Servico->Valores->ValorIssRetido;
+                            } elseif (isset($xmlObj->Nfse->InfNfse->Servico->Valores->ValorIss)) {
+                                $valorIssRetido = (float)$xmlObj->Nfse->InfNfse->Servico->Valores->ValorIss;
+                            }
+                        }
+                    } elseif (isset($xmlObj->infNFSe->servico->valores->issRetido)) {
+                        if ((string)$xmlObj->infNFSe->servico->valores->issRetido == '1') {
+                            $valorIssRetido = (float)$xmlObj->infNFSe->servico->valores->valorIssRetido;
+                        }
                     }
                 }
             }
@@ -534,7 +546,7 @@ class NFSeTomadaController extends BaseController
                 $vPis = round($vServico * 0.0065, 2);
                 $vCofins = round($vServico * 0.03, 2);
                 $vCsll = round($vServico * 0.01, 2);
-                
+
                 $somaImpostos = $vPis + $vCofins + $vCsll;
                 $vIr = round($diffFederal - $somaImpostos, 2);
                 if ($vIr < 0) $vIr = 0;
@@ -542,10 +554,10 @@ class NFSeTomadaController extends BaseController
 
             $retencoes = [
                 'valor_iss' => $valorIssRetido, // <- AGORA RECEBE O VALOR REAL
-                'valor_pis' => $vPis, 
+                'valor_pis' => $vPis,
                 'valor_cofins' => $vCofins,
-                'valor_ir' => $vIr, 
-                'valor_csll' => $vCsll, 
+                'valor_ir' => $vIr,
+                'valor_csll' => $vCsll,
                 'valor_inss' => 0
             ];
 
@@ -575,7 +587,7 @@ class NFSeTomadaController extends BaseController
                     'veiculo_id' => $request->veiculo_id,
                     'numero_nota_fiscal' => ltrim($nota->numero_nota, '0'),
                     'usuario_id' => $usuario_id,
-                    ...($i == 1 ? $retencoes : []) 
+                    ...($i == 1 ? $retencoes : [])
                 ]);
             }
 
@@ -592,7 +604,7 @@ class NFSeTomadaController extends BaseController
             DB::rollBack();
             return redirect()->back()->with('mensagem_erro', 'Erro ao processar importação: ' . $e->getMessage());
         }
-    }  	
+    }
 
     public function imprimirEspelho($id)
     {
@@ -603,7 +615,7 @@ class NFSeTomadaController extends BaseController
             // 🔥 AGORA LÊ DA PASTA FÍSICA ONDE SALVAMOS O ARQUIVO 🔥
             $caminhoXml = public_path('xml_servico/' . $nota->chave . '.xml');
             $xmlString = null;
-            
+
             if (file_exists($caminhoXml)) {
                 $xmlString = file_get_contents($caminhoXml);
             } elseif (!empty($nota->xml_base64)) {
@@ -617,7 +629,7 @@ class NFSeTomadaController extends BaseController
                 $xml = simplexml_load_string($xmlClean);
 
                 $descricaoServico = 'Descrição não informada no XML.';
-                
+
                 // 🔥 NOVO MAPEAMENTO COM A TAG <cServ> DA IMAGEM 🔥
                 if (isset($xml->infNFSe->DPS->infDPS->serv->cServ->xDescServ)) {
                     $descricaoServico = (string)$xml->infNFSe->DPS->infDPS->serv->cServ->xDescServ;
@@ -632,7 +644,7 @@ class NFSeTomadaController extends BaseController
                 }
 
                 return view('nfse.visualizar', [
-                    'xml' => $xml, 
+                    'xml' => $xml,
                     'descricao_servico' => $descricaoServico,
                     'title' => 'DANFSE - Nota ' . $nota->numero_nota
                 ]);

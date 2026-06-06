@@ -77,14 +77,14 @@
                     </div>
 
                     <div class="col-md-4 mb-3">
-                        <label for="prioridade" class="form-label"><strong>Prioridade</strong></label>
-                        <select class="form-select" id="prioridade" name="prioridade">
-                            <option value="Baixa" {{ old('prioridade', $data->prioridade ?? '') == 'Baixa' ? 'selected' : '' }}>🟢 Baixa</option>
-                            <option value="Normal" {{ old('prioridade', $data->prioridade ?? 'Normal') == 'Normal' ? 'selected' : '' }}>🔵 Normal</option>
-                            <option value="Alta" {{ old('prioridade', $data->prioridade ?? '') == 'Alta' ? 'selected' : '' }}>🟠 Alta</option>
-                            <option value="Urgente" {{ old('prioridade', $data->prioridade ?? '') == 'Urgente' ? 'selected' : '' }}>🔴 Urgente</option>
-                        </select>
-                    </div>
+                      <label for="prioridade" class="form-label">Prioridade <span class="text-danger">*</span></label>
+                      <select class="form-select" id="prioridade" name="prioridade" required>
+                          <option value="Baixa" {{ old('prioridade', $data->prioridade ?? '') == 'Baixa' ? 'selected' : '' }}>🔵 Baixa</option>
+                          <option value="Normal" {{ old('prioridade', $data->prioridade ?? 'Normal') == 'Normal' ? 'selected' : '' }}>🟢 Normal</option>
+                          <option value="Alta" {{ old('prioridade', $data->prioridade ?? '') == 'Alta' ? 'selected' : '' }}>🟡 Alta</option>
+                          <option value="Urgente" {{ old('prioridade', $data->prioridade ?? '') == 'Urgente' ? 'selected' : '' }}>🔴 Urgente</option>
+                      </select>
+                  </div>
                 </div>
 
                 <div class="row">
