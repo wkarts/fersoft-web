@@ -168,6 +168,9 @@
 															$total = 0;
 															?>
 															@foreach($vendas as $v)
+																	@php
+																	$possuiNfce = ($v->NFcNumero > 0 || !empty($v->chave));
+																	@endphp
 
 															<tr class="datatable-row" style="left: 0px; @if($v->estado == 'REJEITADO') background: #ffcdd2; @elseif($v->estado == 'APROVADO') background: #a7ffeb; @endif">
 																<td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$v->id}}</span>
@@ -214,7 +217,7 @@
 																<td class="datatable-cell">
 																	<span class="codigo" style="width: 220px;">
 
-																		@if($v->estado == 'APROVADO')
+																		@if($possuiNfce && $v->estado != 'CANCELADO')
 																		<a href="#!" onclick="modalCancelar({{$v->id}})" class="btn btn-warning ">
 																			<i class="la la-close"></i>
 																		</a>
@@ -264,6 +267,9 @@
 										<div class="row">
 
 											@foreach($vendas as $v)
+											@php
+											$possuiNfce = ($v->NFcNumero > 0 || !empty($v->chave));
+											@endphp
 											<div class="col-sm-6 col-lg-6 col-md-6 col-xl-6">
 
 												<div class="card card-custom gutter-b example example-compact">
@@ -338,7 +344,7 @@
 
 														<div class="row">
 
-															@if($v->estado == 'APROVADO')
+															@if($possuiNfce && $v->estado != 'CANCELADO')
 															<a href="#!" style="width: 100%; margin-top: 5px;" onclick="modalCancelar({{$v->id}})" class="btn btn-warning ">
 																<i class="la la-close"></i>
 																Cancelar NFCe

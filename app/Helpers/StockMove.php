@@ -60,7 +60,7 @@ class StockMove {
 		]);
 	}
   
-	public function pluStock($produto_id, $quantidade, $valor_unitario, $filial_id = null, $origem_tipo = null, $origem_id = null, $data_movimento = null)
+	public function pluStock($produto_id, $quantidade, $valor_unitario = null, $filial_id = null, $origem_tipo = null, $origem_id = null, $data_movimento = null)
     {
         $quantidade_positiva = abs($quantidade); 
 
@@ -73,23 +73,29 @@ class StockMove {
             // CORREÇÃO: Pega a empresa do produto ou da sessão, nunca deixa "1" fixo
             $empresa_id = $p->empresa_id ?? session('user_logged')['empresa_id'];
 
+            $valorUnitarioMovimento = $valor_unitario ?? $p->valor_compra ?? 0;
+
             \App\Models\Estoque::create([
                 'empresa_id'   => $empresa_id, 
                 'produto_id'   => $produto_id,
                 'filial_id'    => $filial_id > 0 ? $filial_id : null, // Garante NULL para Matriz
                 'quantidade'   => $quantidade_positiva,
-                'valor_compra' => $valor_unitario
+                'valor_compra' => $valorUnitarioMovimento
             ]);
         } else {
             // 2. Atualiza estoque existente
             $estoque->quantidade += $quantidade_positiva; 
-            $estoque->valor_compra = $valor_unitario;
+            if($valor_unitario !== null){
+                $estoque->valor_compra = $valor_unitario;
+            }
             $estoque->save();
+
+            $valorUnitarioMovimento = $valor_unitario ?? $estoque->valor_compra ?? 0;
         }
 
         // 3. Registra no histórico (tabela stock_movements)
         // Certifique-se que o método registarMovimentacao use a mesma lógica de empresa!
-        $this->registarMovimentacao($produto_id, $quantidade_positiva, 'entrada', $origem_tipo, $origem_id, $filial_id, $data_movimento, $valor_unitario);
+        $this->registarMovimentacao($produto_id, $quantidade_positiva, 'entrada', $origem_tipo, $origem_id, $filial_id, $data_movimento, $valorUnitarioMovimento);
     }
 
     public function downStock($produto_id, $quantidade, $filial_id = null, $origem_tipo = null, $origem_id = null, $data_movimento = null)

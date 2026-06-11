@@ -662,7 +662,8 @@ class NFCeController extends Controller
 		if(!isset($nfce['cStat'])){
 			return response()->json($nfce, 404);
 		}
-		if($nfce['retEvento']['infEvento']['cStat'] == 135){
+		$cStatEvento = (int)($nfce['retEvento']['infEvento']['cStat'] ?? 0);
+		if(in_array($cStatEvento, [101, 135, 155], true)){
 			$venda = VendaCaixa::
 			where('id', $request->id)
 			->first();
