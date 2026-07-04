@@ -6,8 +6,10 @@
 			<div class="col-lg-12">
 				<br>
 				<!--begin::Portlet-->
-				<form method="post" action="/fornecedores/{{{ isset($forn) ? 'update' : 'save' }}}">
-
+				<form method="post" action="/fornecedores/{{{ isset($forn) ? 'update' : 'save' }}}" id="form-fornecedor">
+					@if(!isset($forn))
+					<input type="hidden" name="_save_token" value="{{ session('fornecedor_save_token') }}">
+					@endif
 					<input type="hidden" name="id" value="{{{ isset($forn) ? $forn->id : 0 }}}">
 					<div class="card card-custom gutter-b example example-compact">
 						<div class="card-header">
@@ -328,7 +330,7 @@
 							</a>
 						</div>
 						<div class="col-lg-3 col-sm-6 col-md-4">
-							<button style="width: 100%" type="submit" class="btn btn-success">
+							<button style="width: 100%" type="submit" class="btn btn-success btn-salvar-cadastro">
 								<i class="la la-check"></i>
 								<span class="">Salvar</span>
 							</button>
@@ -497,6 +499,16 @@
             }
             $('#pix').on('keyup', pixDigita);
             pixDigita();
+
+            $('#form-fornecedor').on('submit', function () {
+                if(this.dataset.submitted === 'true'){
+                    return false;
+                }
+
+                this.dataset.submitted = 'true';
+                $('.btn-salvar-cadastro').prop('disabled', true).find('span').text('Salvando...');
+                return true;
+            });
         });
     </script>
 @endsection
