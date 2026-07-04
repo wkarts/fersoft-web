@@ -12,6 +12,9 @@
 			<div class="col-lg-12">
 				<br>
 				<form method="post" id="form-cliente" action="/clientes/{{{ isset($cliente) ? 'update' : 'save' }}}" enctype="multipart/form-data">
+					@if(!isset($cliente))
+					<input type="hidden" name="_save_token" value="{{ session('cliente_save_token') }}">
+					@endif
 					<input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
 					<div class="card card-custom gutter-b example example-compact">
 						<div class="card-header">
@@ -801,7 +804,7 @@
 							</a>
 						</div>
 						<div class="col-lg-3 col-sm-6 col-md-4">
-							<button style="width: 100%" type="submit" class="btn btn-success">
+							<button style="width: 100%" type="submit" class="btn btn-success btn-salvar-cadastro">
 								<i class="la la-check"></i>
 								<span class="">Salvar</span>
 							</button>
@@ -1212,6 +1215,12 @@
 	function salvarCliente(event){
 		event.preventDefault();
 		let form = document.getElementById('form-cliente');
+		if(form.dataset.submitted === 'true'){
+			return false;
+		}
+		form.dataset.submitted = 'true';
+		$('.btn-salvar-cadastro').prop('disabled', true).find('span').text('Salvando...');
+
 		let image = document.createElement('input');
 
 		if(blobFyle != null){

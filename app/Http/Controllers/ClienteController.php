@@ -19,6 +19,7 @@ use App\Models\ClienteOtica;
 use App\Models\ClienteUpload;
 use Dompdf\Dompdf;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClienteController extends Controller
@@ -168,6 +169,8 @@ class ClienteController extends Controller
         where('empresa_id', $this->empresa_id)
             ->get();
 
+        session(['cliente_save_token' => Str::uuid()->toString()]);
+
         return view('clientes/register')
             ->with('pessoaFisicaOuJuridica', true)
             ->with('cidadeJs', true)
@@ -182,6 +185,11 @@ class ClienteController extends Controller
 
     public function save(Request $request){
         $this->_validate($request);
+
+        if(!$this->registrarTokenCadastro($request)){
+            session()->flash("mensagem_erro", "Cadastro de cliente já está em processamento. Aguarde a conclusão antes de tentar novamente.");
+            return redirect('/clientes');
+        }
 
         try{
             $result = DB::transaction(function () use ($request) {
@@ -300,6 +308,17 @@ class ClienteController extends Controller
             session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
             return redirect('/clientes');
         }
+    }
+
+    private function registrarTokenCadastro(Request $request): bool
+    {
+        $token = $request->input('_save_token');
+
+        if(!$token){
+            return true;
+        }
+
+        return Cache::add('cliente_save_token_' . $token, true, now()->addMinutes(5));
     }
 
     private function criarReceitaOtica($request, $result){

@@ -10,6 +10,8 @@ use App\Models\Cliente;
 use App\Models\Pais;
 use App\Rules\ValidaDocumento;
 use App\Rules\ValidaCep;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class ProviderController extends BaseController
 {
@@ -80,6 +82,8 @@ class ProviderController extends BaseController
         $estados = Cliente::estados();
         $pais = Pais::all();
 
+        session(['fornecedor_save_token' => Str::uuid()->toString()]);
+
         return view('fornecedores/register')
             ->with('pessoaFisicaOuJuridica', true)
             ->with('cidadeJs', true)
@@ -92,6 +96,11 @@ class ProviderController extends BaseController
     public function save(Request $request){
         $this->normalizeDocumentoECep($request);
         $this->_validate($request);
+
+        if(!$this->registrarTokenCadastro($request)){
+            session()->flash("mensagem_erro", "Cadastro de fornecedor já está em processamento. Aguarde a conclusão antes de tentar novamente.");
+            return redirect('/fornecedores');
+        }
 
         try {
             $cidade = $request->input('cidade');
@@ -121,6 +130,17 @@ class ProviderController extends BaseController
             session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
         }
         return redirect('/fornecedores');
+    }
+
+    private function registrarTokenCadastro(Request $request): bool
+    {
+        $token = $request->input('_save_token');
+
+        if(!$token){
+            return true;
+        }
+
+        return Cache::add('fornecedor_save_token_' . $token, true, now()->addMinutes(5));
     }
 
     public function edit($id){
