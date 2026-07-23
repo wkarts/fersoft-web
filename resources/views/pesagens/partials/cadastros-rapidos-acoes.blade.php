@@ -1,4 +1,4 @@
-<div class="quick-actions d-flex align-items-center justify-content-end" role="group" aria-label="Cadastros rápidos">
+<div id="quick-actions-pesagens" class="quick-actions d-flex align-items-center justify-content-end" role="group" aria-label="Cadastros rápidos">
     <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="cliente" data-hint="Cadastrar cliente" title="Cadastrar cliente" aria-label="Cadastrar cliente"><i class="fa fa-user"></i></button>
     <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="fornecedor" data-hint="Cadastrar fornecedor" title="Cadastrar fornecedor" aria-label="Cadastrar fornecedor"><i class="fa fa-truck"></i></button>
     <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="veiculo" data-hint="Cadastrar veículo" title="Cadastrar veículo" aria-label="Cadastrar veículo"><i class="fa fa-car"></i></button>

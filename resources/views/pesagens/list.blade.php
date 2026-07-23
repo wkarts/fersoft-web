@@ -404,9 +404,17 @@
                                                     });
 
                                                     $valorUnitarioTicket = (float) ($ticketComValorUnitario->valor_unitario ?? 0);
-                                                    $valorTotalTicket = (float) $pesagem->tickets->sum(function ($ticket) {
-                                                        return max(0, (float) ($ticket->valor_total ?? 0));
-                                                    });
+                                                    // Entradas e avulsas compõem o mesmo sentido da pesagem;
+                                                    // saídas fazem o contrapeso. Quando há tickets de apenas
+                                                    // um tipo, o total é a soma deles; quando há ambos, exibe
+                                                    // o saldo monetário entre entrada e saída.
+                                                    $valorTotalEntradas = (float) $pesagem->tickets
+                                                        ->whereIn('tipo', ['entrada', 'avulsa'])
+                                                        ->sum(fn ($ticket) => max(0, (float) ($ticket->valor_total ?? 0)));
+                                                    $valorTotalSaidas = (float) $pesagem->tickets
+                                                        ->where('tipo', 'saida')
+                                                        ->sum(fn ($ticket) => max(0, (float) ($ticket->valor_total ?? 0)));
+                                                    $valorTotalTicket = abs($valorTotalEntradas - $valorTotalSaidas);
                                                 }
                                             @endphp
 
