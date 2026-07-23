@@ -24,12 +24,16 @@ $(function () {
         const type = $(this).data('quick-type'); const $pesagem = $('#modalPesagem');
         quickContext = $pesagem.hasClass('show') ? { field: type === 'funcionario' ? null : type } : null;
         $('#quick_type').val(type); $('#quick_title').text(type === 'motorista' ? 'Novo motorista' : 'Novo ' + type);
-        $('.quick-person,.quick-vehicle,.quick-employee').addClass('d-none');
-        if (type === 'cliente' || type === 'fornecedor') $('.quick-person').removeClass('d-none');
-        if (type === 'veiculo') $('.quick-vehicle').removeClass('d-none');
-        if (type === 'funcionario' || type === 'motorista') { $('.quick-employee').removeClass('d-none'); $('input[name="motorista"]').prop('checked', type === 'motorista'); }
+        const $sections = $('.quick-person,.quick-vehicle,.quick-employee');
+        $sections.addClass('d-none').find(':input').prop('disabled', true);
+        let $activeSection;
+        if (type === 'cliente' || type === 'fornecedor') $activeSection = $('.quick-person');
+        if (type === 'veiculo') $activeSection = $('.quick-vehicle');
+        if (type === 'funcionario' || type === 'motorista') $activeSection = $('.quick-employee');
+        $activeSection.removeClass('d-none').find(':input').prop('disabled', false);
+        if (type === 'funcionario' || type === 'motorista') $('input[name="motorista"]').prop('checked', type === 'motorista');
         $('.quick-cnh').toggle(type === 'motorista');
-        $('.quick-image').toggle(type === 'cliente' || type === 'fornecedor' || type === 'veiculo' || type === 'funcionario' || type === 'motorista');
+        $('.quick-image').toggle(true).find(':input').prop('disabled', false);
         const openQuick = () => $quick.modal('show');
         if (quickContext) { $pesagem.data('quick-preserve', true).one('hidden.bs.modal.quick', openQuick).modal('hide'); } else openQuick();
     });
@@ -47,7 +51,7 @@ $(function () {
         }).fail(function(xhr) {
             if (xhr.status === 419) { $('#quick_alert').removeClass('d-none').text('Sessão expirada. Atualize a página e tente novamente.'); return; }
             const errors=xhr.responseJSON && xhr.responseJSON.errors; $('#quick_alert').removeClass('d-none').text((xhr.responseJSON && xhr.responseJSON.message) || 'Não foi possível salvar o cadastro.');
-            if(errors) Object.keys(errors).forEach(function(field){ const $input=$('#quick_form [name="'+field+'"]').first(); $input.addClass('is-invalid').siblings('.invalid-feedback').text(errors[field][0]); });
+            if(errors) Object.keys(errors).forEach(function(field){ const $input=$('#quick_form [name="'+field+'"]:enabled').first(); $input.addClass('is-invalid').siblings('.invalid-feedback').text(errors[field][0]); });
         }).always(()=>$button.prop('disabled',false));
     });
 });
