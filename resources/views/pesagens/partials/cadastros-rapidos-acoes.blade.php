@@ -1,10 +1,17 @@
-<div class="btn-group ml-2 mt-1">
-    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="fa fa-plus"></i> Cadastros rápidos</button>
-    <div class="dropdown-menu">
-        <button class="dropdown-item quick-open" data-quick-type="cliente"><i class="fa fa-user mr-2"></i>Novo cliente</button>
-        <button class="dropdown-item quick-open" data-quick-type="fornecedor"><i class="fa fa-truck mr-2"></i>Novo fornecedor</button>
-        <button class="dropdown-item quick-open" data-quick-type="veiculo"><i class="fa fa-car mr-2"></i>Novo veículo</button>
-        <button class="dropdown-item quick-open" data-quick-type="funcionario"><i class="fa fa-users mr-2"></i>Novo colaborador</button>
-        <button class="dropdown-item quick-open" data-quick-type="motorista"><i class="fa fa-id-card mr-2"></i>Novo motorista</button>
-    </div>
+<div class="quick-actions d-flex flex-wrap align-items-center ml-2 mt-1" role="group" aria-label="Cadastros rápidos">
+    <span class="quick-actions-label text-muted small mr-1">Cadastros rápidos:</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary quick-open" data-quick-type="cliente"><i class="fa fa-user"></i> <span>Cliente</span></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary quick-open" data-quick-type="fornecedor"><i class="fa fa-truck"></i> <span>Fornecedor</span></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary quick-open" data-quick-type="veiculo"><i class="fa fa-car"></i> <span>Veículo</span></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary quick-open" data-quick-type="funcionario"><i class="fa fa-users"></i> <span>Colaborador</span></button>
+    <button type="button" class="btn btn-sm btn-outline-secondary quick-open" data-quick-type="motorista"><i class="fa fa-id-card"></i> <span>Motorista</span></button>
 </div>
+<style>
+    .quick-actions { gap: .35rem; }
+    .quick-actions .btn { white-space: nowrap; }
+    @media (max-width: 767.98px) {
+        .quick-actions { margin-left: 0 !important; margin-top: .5rem !important; width: 100%; }
+        .quick-actions-label { width: 100%; }
+        .quick-actions .btn { flex: 1 1 calc(50% - .35rem); }
+    }
+</style>
