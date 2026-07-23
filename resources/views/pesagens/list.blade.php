@@ -130,14 +130,15 @@
                     </button>
                 </div>
             @endif
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-                <div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
+            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft d-flex flex-wrap align-items-center justify-content-between mb-3">
+                <div>
                     <!-- Botão para abrir o modal de nova pesagem -->
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
                     @include('pesagens.partials.cadastros-rapidos-acoes')
                 </div>
+                @include('pesagens.partials.cadastros-rapidos-acoes')
             </div>
             <br>
 
