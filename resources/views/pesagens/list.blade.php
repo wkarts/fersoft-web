@@ -692,12 +692,10 @@
                                 <!-- Cliente -->
                                 <div id="cliente-container" class="form-group mb-1">
                                     <label>Cliente:</label>
-                                    <div class="input-group">
-                                        <!-- Cliente -->
-                                        <div class="d-flex"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
-                                            <option value="">Selecione um cliente</option>
-                                        </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button></div>
-                                    </div>
+                                    <br>
+                                    <div class="d-flex"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
+                                        <option value="">Selecione um cliente</option>
+                                    </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button></div>
                                 </div>
 
                                 <!-- Fornecedor -->
