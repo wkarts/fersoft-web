@@ -3,6 +3,7 @@ $(function () {
     const quickUrl = @json(route('pesagens.cadastros-rapidos.save', ['tipo' => '__tipo__']));
     let quickContext = null;
     const $quick = $('#modalCadastroRapido');
+    $('[data-toggle="tooltip"]').tooltip();
     function clearErrors() { $('#quick_form .is-invalid').removeClass('is-invalid'); $('#quick_form .invalid-feedback').text(''); $('#quick_alert').addClass('d-none').text(''); }
     function restorePesagem() {
         if (!quickContext) return;
@@ -20,6 +21,7 @@ $(function () {
         if (type === 'veiculo') $('.quick-vehicle').removeClass('d-none');
         if (type === 'funcionario' || type === 'motorista') { $('.quick-employee').removeClass('d-none'); $('input[name="motorista"]').prop('checked', type === 'motorista'); }
         $('.quick-cnh').toggle(type === 'motorista');
+        $('.quick-image').toggle(type === 'cliente' || type === 'fornecedor' || type === 'veiculo' || type === 'funcionario' || type === 'motorista');
         const openQuick = () => $quick.modal('show');
         if (quickContext) { $pesagem.data('quick-preserve', true).one('hidden.bs.modal.quick', openQuick).modal('hide'); } else openQuick();
     });
@@ -28,7 +30,7 @@ $(function () {
     $('#quick_form').on('submit', function (e) {
         e.preventDefault(); clearErrors(); const $button = $('#quick_submit').prop('disabled', true); const type=$('#quick_type').val();
         const target = type === 'motorista' ? 'funcionario' : type;
-        $.ajax({ url: quickUrl.replace('__tipo__', target), method: 'POST', dataType: 'json', data: $(this).serialize(), headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept':'application/json' } })
+        $.ajax({ url: quickUrl.replace('__tipo__', target), method: 'POST', dataType: 'json', data: new FormData(this), processData: false, contentType: false, headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'), 'Accept':'application/json' } })
         .done(function (response) {
             const item=response.data; let selector=null;
             if (quickContext) selector = quickContext.field === 'cliente' ? '#cliente_id' : quickContext.field === 'fornecedor' ? '#fornecedor_id' : quickContext.field === 'veiculo' ? '#veiculo_id' : quickContext.field === 'motorista' ? '#motorista_id' : null;
