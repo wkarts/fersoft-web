@@ -286,10 +286,13 @@ class PesagemController extends BaseController
                     'cpf' => preg_replace('/\D/', '', (string) $request->input('cpf')),
                     'cep' => preg_replace('/\D/', '', (string) $request->input('cep')),
                 ]);
-                $data=$request->validate(['nome'=>'required|string|max:50','cpf'=>'required|digits:11','rg'=>'nullable|string|max:15','rua'=>'nullable|string|max:80','numero'=>'nullable|string|max:10','bairro'=>'nullable|string|max:50','cep'=>'nullable|digits:8','telefone'=>'nullable|string|max:20','celular'=>'nullable|string|max:20','funcao_id'=>'nullable|integer','motorista'=>'nullable|boolean','cnh'=>'nullable|string|max:255','categoria_cnh'=>'nullable|in:A,B,C,D,E','vencimento_cnh'=>'nullable|date','imagem'=>'nullable|image|mimes:jpg,jpeg,png,webp|max:2048']); unset($data['imagem']); $motorista=$request->boolean('motorista');
-                if($motorista&&(!( $data['cnh'] ?? null)||!( $data['categoria_cnh'] ?? null)||!( $data['vencimento_cnh'] ?? null)))return response()->json(['message'=>'Informe todos os dados da CNH.','errors'=>['cnh'=>['CNH, categoria e vencimento são obrigatórios para motorista.']]],422);
-                if(!$this->documentoValido($data['cpf']))return response()->json(['message'=>'CPF inválido.','errors'=>['cpf'=>['Informe um CPF válido.']]],422);
-                if(Funcionario::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(cpf, '.', ''), '-', '') = ?",[$data['cpf']])->exists())return response()->json(['message'=>'CPF já cadastrado nesta empresa.','errors'=>['cpf'=>['Já existe funcionário com este CPF.']]],422);
+                $data=$request->validate(['nome'=>'required|string|max:50','cpf'=>'nullable|string|max:15','rg'=>'nullable|string|max:15','rua'=>'nullable|string|max:80','numero'=>'nullable|string|max:10','bairro'=>'nullable|string|max:50','cep'=>'nullable|digits:8','telefone'=>'nullable|string|max:20','celular'=>'nullable|string|max:20','funcao_id'=>'nullable|integer','motorista'=>'nullable|boolean','cnh'=>'nullable|string|max:255','categoria_cnh'=>'nullable|in:A,B,C,D,E','vencimento_cnh'=>'nullable|date','imagem'=>'nullable|image|mimes:jpg,jpeg,png,webp|max:2048']); unset($data['imagem']); $motorista=$request->boolean('motorista');
+                if (!empty($data['cpf'])) {
+                    if (strlen($data['cpf']) !== 11 || !$this->documentoValido($data['cpf'])) return response()->json(['message'=>'CPF inválido.','errors'=>['cpf'=>['Informe um CPF válido.']]],422);
+                    if(Funcionario::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(cpf, '.', ''), '-', '') = ?",[$data['cpf']])->exists())return response()->json(['message'=>'CPF já cadastrado nesta empresa.','errors'=>['cpf'=>['Já existe funcionário com este CPF.']]],422);
+                } else {
+                    $data['cpf'] = $this->gerarCpfTecnicoCadastroRapido();
+                }
                 if(!empty($data['funcao_id'])&&!\App\Models\Funcao::where('id',$data['funcao_id'])->where('empresa_id',$this->empresa_id)->exists())return response()->json(['message'=>'Função inválida.','errors'=>['funcao_id'=>['Selecione uma função desta empresa.']]],422);
                 $record=Funcionario::create(array_merge($data,['empresa_id'=>$this->empresa_id,'usuario_id'=>$this->usuario_id,'filial_id'=>$this->filial_id,'cpf'=>preg_replace('/\D/','',$data['cpf']),'rg'=>$data['rg'] ?? '','rua'=>$data['rua'] ?? '','numero'=>$data['numero'] ?? '','bairro'=>$data['bairro'] ?? '','telefone'=>$data['telefone'] ?? '','celular'=>$data['celular'] ?? '','data_registro'=>now()->toDateString(),'status_funcionario'=>'Ativo','status_motorista'=>$motorista?'Ativo':'Inativo'])); $this->salvarImagemCadastroRapido($request, $record, 'funcionario'); return response()->json(['message'=>$motorista?'Motorista cadastrado com sucesso.':'Colaborador cadastrado com sucesso.','data'=>$this->quickPayload($record,'funcionario')],201);
             });
@@ -309,6 +312,22 @@ class PesagemController extends BaseController
         $filename = Str::uuid()->toString().'.'.$request->file('imagem')->extension();
         $request->file('imagem')->move($path, $filename);
         $record->forceFill([$column => $filename])->save();
+    }
+
+    /** Gera um identificador técnico único quando o operador não possui o CPF. */
+    private function gerarCpfTecnicoCadastroRapido(): string
+    {
+        $base = now()->format('ymdHis');
+
+        for ($tentativa = 0; $tentativa < 100; $tentativa++) {
+            $codigo = $base . str_pad((string) random_int(0, 99), 2, '0', STR_PAD_LEFT);
+
+            if (!Funcionario::where('empresa_id', $this->empresa_id)->where('cpf', $codigo)->exists()) {
+                return $codigo;
+            }
+        }
+
+        throw new \RuntimeException('Não foi possível gerar o identificador técnico do funcionário.');
     }
 
     private function documentoValido(string $documento): bool
