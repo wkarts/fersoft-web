@@ -136,6 +136,7 @@
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
+                    @include('pesagens.partials.cadastros-rapidos-acoes')
                 </div>
             </div>
             <br>
@@ -684,9 +685,9 @@
                                     <label>Cliente:</label>
                                     <div class="input-group">
                                         <!-- Cliente -->
-                                        <select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
+                                        <div class="d-flex"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
                                             <option value="">Selecione um cliente</option>
-                                        </select>
+                                        </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button></div>
                                     </div>
                                 </div>
 
@@ -694,9 +695,9 @@
                                 <div id="fornecedor-container" class="form-group mb-1">
                                     <label>Fornecedor:</label>
                                     <br>
-                                    <select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 90%;">
+                                    <div class="d-flex"><select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 90%;">
                                         <option value="">Selecione um Fornecedor</option>
-                                    </select>
+                                    </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="fornecedor" title="Novo fornecedor"><i class="fa fa-plus"></i></button></div>
                                 </div>
                             </div>
                         </div>
@@ -736,9 +737,9 @@
                                 <label for="veiculo_id">Veículo:</label>
                                 <br>
                                 <!-- Veículo -->
-                                <select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 90%;">
+                                <div class="d-flex"><select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 90%;">
                                     <option value="">Selecione um veículo</option>
-                                </select>
+                                </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="veiculo" title="Novo veículo"><i class="fa fa-plus"></i></button></div>
                             </div>
 
                             <!-- Placa Veículo -->
@@ -760,9 +761,9 @@
                                 <label for="motorista_id">Motorista:</label>
                                 <br>
                                 <!-- Motorista -->
-                                <select id="motorista_id" name="motorista_id" class="form-control" style="width: 90%;">
+                                <div class="d-flex"><select id="motorista_id" name="motorista_id" class="form-control" style="width: 90%;">
                                     <option value="">Selecione um motorista</option>
-                                </select>
+                                </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="motorista" title="Novo motorista"><i class="fa fa-plus"></i></button></div>
                             </div>
 
                             <!-- Nome Motorista -->
@@ -1245,6 +1246,7 @@
         </div>
     </div>
 
+    @include('pesagens.partials.cadastros-rapidos-modal')
 @endsection
 
 @section('javascript')
@@ -1476,6 +1478,7 @@
 
             // Função para cancelar a edição/inserção
             $('#modalPesagem').on('hidden.bs.modal', function () {
+                if ($(this).data('quick-preserve')) return;
                 resetForm('#modalPesagem'); // Reseta o formulário ao fechar o modal
             });
 
@@ -3265,4 +3268,5 @@
     </script>
 
 
+@include('pesagens.partials.cadastros-rapidos-scripts')
 @endsection

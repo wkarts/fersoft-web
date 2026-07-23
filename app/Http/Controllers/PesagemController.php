@@ -15,6 +15,7 @@ use App\Models\Produto;
 use App\Models\TicketPesagem;
 use App\Models\BalancaConfig;
 use App\Models\Transportadora;
+use App\Models\Cidade;
 use App\Models\ItemCompra;
 use App\Models\Compra;
 use App\Models\Venda; // Adicione esta linha
@@ -242,6 +243,51 @@ class PesagemController extends BaseController
             return redirect()->back()->withInput()->withErrors(['error' => $e->getMessage()]);
         }
     }
+
+    /** Cria cadastros mínimos no tenant atual para a pesagem. */
+    public function cadastroRapido(Request $request, string $tipo)
+    {
+        if (!$this->empresa_id || !$this->usuario_id) abort(403);
+        try {
+            return DB::transaction(function () use ($request, $tipo) {
+                if (in_array($tipo, ['cliente', 'fornecedor'], true)) {
+                    $doc = preg_replace('/\D/', '', (string) $request->input('cpf_cnpj'));
+                    $exterior = $request->boolean('exterior');
+                    $data = $request->validate(['razao_social'=>'required|string|max:100','nome_fantasia'=>'nullable|string|max:80','telefone'=>'required|string|max:20','rua'=>'required|string|max:80','numero'=>'required|string|max:10','bairro'=>'required|string|max:50','cidade_id'=>'required|integer','cpf_cnpj'=>$exterior ? 'nullable|string|max:30' : 'required|digits_between:11,14']);
+                    if (!Cidade::whereKey($data['cidade_id'])->exists()) return response()->json(['message'=>'A cidade informada é inválida.','errors'=>['cidade_id'=>['Selecione uma cidade válida.']]],422);
+                    if (!$exterior && !$this->documentoValido($doc)) return response()->json(['message'=>'CPF/CNPJ inválido.','errors'=>['cpf_cnpj'=>['Informe um CPF ou CNPJ válido.']]],422);
+                    $model = $tipo === 'cliente' ? Cliente::class : Fornecedor::class;
+                    if (!$exterior && $model::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '-', ''), '/', '') = ?",[$doc])->exists()) return response()->json(['message'=>'Documento já cadastrado nesta empresa.','errors'=>['cpf_cnpj'=>['Já existe um cadastro com este CPF/CNPJ.']]],422);
+                    $common=array_merge($data,['cpf_cnpj'=>$doc,'nome_fantasia'=>$data['nome_fantasia'] ?: $data['razao_social'],'empresa_id'=>$this->empresa_id,'celular'=>$request->input('celular',''),'email'=>$request->input('email',''),'cep'=>preg_replace('/\D/','',(string)$request->input('cep')),'ie_rg'=>$request->input('ie_rg',''),'complemento'=>$request->input('complemento',''),'cod_pais'=>$exterior ? (int)$request->input('cod_pais',0) : 1058]);
+                    if ($tipo === 'cliente') $common += ['consumidor_final'=>1,'contribuinte'=>1,'limite_venda'=>0,'rua_cobranca'=>'','numero_cobranca'=>'','bairro_cobranca'=>'','cep_cobranca'=>'','rua_entrega'=>'','numero_entrega'=>'','bairro_entrega'=>'','cep_entrega'=>'','nome_entrega'=>'','cpf_cnpj_entrega'=>'']; else $common += ['contribuinte'=>1];
+                    $record=$model::create($common)->load('cidade'); return response()->json(['message'=>ucfirst($tipo).' cadastrado com sucesso.','data'=>$this->quickPayload($record,$tipo)],201);
+                }
+                if ($tipo === 'veiculo') {
+                    $data=$request->validate(['placa'=>'required|string|max:8','uf'=>'required|string|size:2','marca'=>'required|string|max:20','modelo'=>'required|string|max:20','cor'=>'required|string|max:10','tipo'=>'required|string|max:2','tara'=>'required|string|max:10','capacidade'=>'required|string|max:10','combustivel'=>'required|string|max:30','proprietario_nome'=>'required|string|max:40','proprietario_documento'=>'required|string|max:20','proprietario_ie'=>'required|string|max:13','proprietario_uf'=>'required|string|size:2','proprietario_tp'=>'required|integer','motorista_id'=>'nullable|integer']); $data['placa']=strtoupper(preg_replace('/[^A-Za-z0-9]/','',$data['placa']));
+                    $q=Veiculo::where('empresa_id',$this->empresa_id)->where('placa',$data['placa']); if($this->filial_id)$q->where('filial_id',$this->filial_id); if($q->exists()) return response()->json(['message'=>'Placa já cadastrada.','errors'=>['placa'=>['Já existe veículo com esta placa nesta filial.']]],422);
+                    if(!empty($data['motorista_id'])&&!Funcionario::where('id',$data['motorista_id'])->where('empresa_id',$this->empresa_id)->where('status_motorista','Ativo')->exists())return response()->json(['message'=>'Motorista inválido.','errors'=>['motorista_id'=>['Selecione um motorista ativo desta empresa.']]],422);
+                    $record=Veiculo::create(array_merge($data,['empresa_id'=>$this->empresa_id,'usuario_id'=>$this->usuario_id,'filial_id'=>$this->filial_id,'rntrc'=>'','taf'=>'','renavam'=>'','numero_registro_estadual'=>'','tipo_carroceira'=>'','tipo_rodado'=>'','ativo'=>'Sim','quilometragem'=>0])); return response()->json(['message'=>'Veículo cadastrado com sucesso.','data'=>$this->quickPayload($record,$tipo)],201);
+                }
+                $data=$request->validate(['nome'=>'required|string|max:50','cpf'=>'required|digits:11','rg'=>'required|string|max:15','rua'=>'required|string|max:80','numero'=>'required|string|max:10','bairro'=>'required|string|max:50','telefone'=>'required|string|max:20','celular'=>'required|string|max:20','funcao_id'=>'nullable|integer','motorista'=>'nullable|boolean','cnh'=>'nullable|string|max:255','categoria_cnh'=>'nullable|in:A,B,C,D,E','vencimento_cnh'=>'nullable|date']); $motorista=$request->boolean('motorista');
+                if($motorista&&(!( $data['cnh'] ?? null)||!( $data['categoria_cnh'] ?? null)||!( $data['vencimento_cnh'] ?? null)))return response()->json(['message'=>'Informe todos os dados da CNH.','errors'=>['cnh'=>['CNH, categoria e vencimento são obrigatórios para motorista.']]],422);
+                if(!$this->documentoValido($data['cpf']))return response()->json(['message'=>'CPF inválido.','errors'=>['cpf'=>['Informe um CPF válido.']]],422);
+                if(Funcionario::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(cpf, '.', ''), '-', '') = ?",[$data['cpf']])->exists())return response()->json(['message'=>'CPF já cadastrado nesta empresa.','errors'=>['cpf'=>['Já existe funcionário com este CPF.']]],422);
+                if(!empty($data['funcao_id'])&&!\App\Models\Funcao::where('id',$data['funcao_id'])->where('empresa_id',$this->empresa_id)->exists())return response()->json(['message'=>'Função inválida.','errors'=>['funcao_id'=>['Selecione uma função desta empresa.']]],422);
+                $record=Funcionario::create(array_merge($data,['empresa_id'=>$this->empresa_id,'usuario_id'=>$this->usuario_id,'filial_id'=>$this->filial_id,'cpf'=>preg_replace('/\D/','',$data['cpf']),'data_registro'=>now()->toDateString(),'status_funcionario'=>'Ativo','status_motorista'=>$motorista?'Ativo':'Inativo'])); return response()->json(['message'=>$motorista?'Motorista cadastrado com sucesso.':'Colaborador cadastrado com sucesso.','data'=>$this->quickPayload($record,'funcionario')],201);
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) { throw $e; } catch (\Throwable $e) { Log::error('Erro no cadastro rápido da pesagem.', ['tipo'=>$tipo,'empresa_id'=>$this->empresa_id,'exception'=>$e]); return response()->json(['message'=>'Não foi possível concluir o cadastro. Tente novamente.'],500); }
+    }
+    private function documentoValido(string $documento): bool
+    {
+        $d = preg_replace('/\D/', '', $documento);
+        if (preg_match('/^(\d)\1+$/', $d)) return false;
+        if (strlen($d) === 11) { for ($i = 9; $i < 11; $i++) { $sum = 0; for ($j = 0; $j < $i; $j++) $sum += $d[$j] * (($i + 1) - $j); $digit = (($sum * 10) % 11) % 10; if ((int) $d[$i] !== $digit) return false; } return true; }
+        if (strlen($d) === 14) { foreach ([12,13] as $i) { $sum=0; $weight=$i===12?5:6; for($j=0;$j<$i;$j++){ $sum+=(int)$d[$j]*$weight; if(--$weight<2)$weight=9; } $digit=$sum%11<2?0:11-($sum%11); if((int)$d[$i]!==$digit)return false; } return true; }
+        return false;
+    }
+
+    private function quickPayload($record, string $tipo): array
+    { if($tipo==='veiculo')return ['id'=>$record->id,'text'=>$record->placa,'placa'=>$record->placa]; if($tipo==='funcionario')return ['id'=>$record->id,'text'=>$record->nome.' | '.$record->cpf,'nome'=>$record->nome,'status_motorista'=>$record->status_motorista]; return ['id'=>$record->id,'text'=>$record->razao_social,'razao_social'=>$record->razao_social,'nome_fantasia'=>$record->nome_fantasia,'cpf_cnpj'=>$record->cpf_cnpj,'telefone'=>$record->telefone,'cidade'=>optional($record->cidade)->info]; }
 
     /**
      * Concluir a pesagem.
