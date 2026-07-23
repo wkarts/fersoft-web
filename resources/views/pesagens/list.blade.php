@@ -136,6 +136,7 @@
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
+                    @include('pesagens.partials.cadastros-rapidos-acoes')
                 </div>
                 @include('pesagens.partials.cadastros-rapidos-acoes')
             </div>
