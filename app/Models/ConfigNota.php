@@ -106,6 +106,10 @@ class ConfigNota extends BaseModel
         'pesagem_snapshot_base_path',
         'pesagem_storage_provider',
         'pesagem_storage_config_json',
+        'pesagem_permitir_cadastro_rapido_cliente',
+        'pesagem_permitir_cadastro_rapido_fornecedor',
+        'pesagem_permitir_cadastro_rapido_veiculo',
+        'pesagem_permitir_cadastro_rapido_motorista',
     ];
 
     protected $casts = [
@@ -121,6 +125,10 @@ class ConfigNota extends BaseModel
         'pesagem_enviar_whatsapp_ao_concluir' => 'boolean',
         'pesagem_enviar_imagens_notificacao' => 'boolean',
         'pesagem_storage_config_json' => 'array',
+        'pesagem_permitir_cadastro_rapido_cliente' => 'boolean',
+        'pesagem_permitir_cadastro_rapido_fornecedor' => 'boolean',
+        'pesagem_permitir_cadastro_rapido_veiculo' => 'boolean',
+        'pesagem_permitir_cadastro_rapido_motorista' => 'boolean',
     ];
 
 
