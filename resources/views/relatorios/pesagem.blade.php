@@ -110,6 +110,9 @@
         $entrada = $pesagem->tickets->where('tipo', 'entrada')->sum('peso');
         $saida = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
         $liquido = max(0, $entrada - $saida);
+        $chavePix = $pesagem->tipo === 'compra'
+            ? ($pesagem->fornecedor->pix ?? '')
+            : ($pesagem->cliente->pix ?? '');
     @endphp
 
     <div class="rp-box">
@@ -126,6 +129,11 @@
                 <td><div class="rp-label">Tipo</div><div class="rp-value">{{ ucfirst((string) ($pesagem->tipo ?? '')) }}</div></td>
                 <td><div class="rp-label">Data</div><div class="rp-value">{{ optional($pesagem->created_at)->format('d/m/Y H:i') }}</div></td>
             </tr>
+            @if($chavePix !== '')
+                <tr>
+                    <td colspan="4"><div class="rp-label">Chave PIX</div><div class="rp-value">{{ $chavePix }}</div></td>
+                </tr>
+            @endif
         </table>
     </div>
 
