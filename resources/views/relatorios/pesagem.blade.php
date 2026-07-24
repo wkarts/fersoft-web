@@ -112,7 +112,7 @@
         $saida = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
         $liquido = max(0, $entrada - $saida);
         $exibirValoresTicket = (bool) ($emitente->usar_valores_ticket_pesagem ?? false);
-        $exibirChavePix = (bool) ($emitente->pesagem_exibir_chave_pix_relatorio ?? true);
+        $exibirChavePix = (bool) ($emitente->pesagem_exibir_chave_pix_relatorio ?? false);
         $valorDoTicket = static function ($ticket): float {
             $pesoLiquidoTicket = max(0, (float) $ticket->peso - (float) ($ticket->peso_bag ?? 0));
             $valorUnitario = (float) ($ticket->valor_unitario ?? 0) > 0

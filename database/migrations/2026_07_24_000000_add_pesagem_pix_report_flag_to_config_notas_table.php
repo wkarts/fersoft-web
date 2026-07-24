@@ -12,7 +12,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('config_notas') && !Schema::hasColumn('config_notas', self::COLUNA)) {
             Schema::table('config_notas', function (Blueprint $table) {
-                $table->boolean(self::COLUNA)->default(true);
+                $table->boolean(self::COLUNA)->default(false);
             });
         }
     }

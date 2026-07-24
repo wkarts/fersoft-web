@@ -206,7 +206,7 @@
                                                             <div class="form-group mb-0">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">
-                                                                        <input type="checkbox" name="pesagem_exibir_chave_pix_relatorio" value="1" {{ old('pesagem_exibir_chave_pix_relatorio', $config->pesagem_exibir_chave_pix_relatorio ?? true) ? 'checked' : '' }}>
+                                                                        <input type="checkbox" name="pesagem_exibir_chave_pix_relatorio" value="1" {{ old('pesagem_exibir_chave_pix_relatorio', $config->pesagem_exibir_chave_pix_relatorio ?? false) ? 'checked' : '' }}>
                                                                         <span></span>
                                                                         Exibir chave PIX da contraparte nos relatórios de pesagem A4 e 80 mm
                                                                     </label>

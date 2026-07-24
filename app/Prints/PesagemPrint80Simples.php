@@ -77,7 +77,7 @@ class PesagemPrint80Simples extends Common
 
     private function deveExibirChavePix(): bool
     {
-        return (bool) ($this->config->pesagem_exibir_chave_pix_relatorio ?? true);
+        return (bool) ($this->config->pesagem_exibir_chave_pix_relatorio ?? false);
     }
 
 
