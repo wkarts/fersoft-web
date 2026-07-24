@@ -62,6 +62,7 @@
     .rp-grid td { padding: 3px 4px; vertical-align: top; }
     .rp-label { color: #6b7280; font-size: 9px; text-transform: uppercase; }
     .rp-value { font-weight: 600; }
+    .rp-inline-pix { display: inline; margin-left: 8px; color: #374151; font-size: 10px; font-weight: 600; }
     .rp-kpis { width: 100%; border-collapse: collapse; margin: 8px 0 12px; }
     .rp-kpis td { border: 1px solid #dbeafe; background: #eff6ff; padding: 7px; text-align: center; }
     .rp-kpis .n { font-size: 15px; font-weight: 700; color: #1d4ed8; }
@@ -111,6 +112,7 @@
         $saida = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
         $liquido = max(0, $entrada - $saida);
         $exibirValoresTicket = (bool) ($emitente->usar_valores_ticket_pesagem ?? false);
+        $exibirChavePix = (bool) ($emitente->pesagem_exibir_chave_pix_relatorio ?? false);
         $valorDoTicket = static function ($ticket): float {
             $pesoLiquidoTicket = max(0, (float) $ticket->peso - (float) ($ticket->peso_bag ?? 0));
             $valorUnitario = (float) ($ticket->valor_unitario ?? 0) > 0
@@ -140,7 +142,7 @@
                 <td width="25%"><div class="rp-label">Motorista</div><div class="rp-value">{{ $pesagem->motorista->nome ?? 'N/A' }}</div></td>
             </tr>
             <tr>
-                <td colspan="2"><div class="rp-label">Cliente / Fornecedor</div><div class="rp-value">{{ $pesagem->cliente->razao_social ?? $pesagem->cliente->nome ?? $pesagem->fornecedor->razao_social ?? $pesagem->fornecedor->nome ?? 'N/A' }}</div></td>
+                <td colspan="2"><div class="rp-label">Cliente / Fornecedor</div><div class="rp-value">{{ $pesagem->cliente->razao_social ?? $pesagem->cliente->nome ?? $pesagem->fornecedor->razao_social ?? $pesagem->fornecedor->nome ?? 'N/A' }}@if($exibirChavePix)<span class="rp-inline-pix">| Chave PIX: {{ $chavePix !== '' ? $chavePix : 'Não informada' }}</span>@endif</div></td>
                 <td><div class="rp-label">Tipo</div><div class="rp-value">{{ ucfirst((string) ($pesagem->tipo ?? '')) }}</div></td>
                 <td><div class="rp-label">Data</div><div class="rp-value">{{ optional($pesagem->created_at)->format('d/m/Y H:i') }}</div></td>
             </tr>

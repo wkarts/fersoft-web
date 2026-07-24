@@ -110,6 +110,7 @@ class ConfigNota extends BaseModel
         'pesagem_permitir_cadastro_rapido_fornecedor',
         'pesagem_permitir_cadastro_rapido_veiculo',
         'pesagem_permitir_cadastro_rapido_motorista',
+        'pesagem_exibir_chave_pix_relatorio',
     ];
 
     protected $casts = [
@@ -129,6 +130,7 @@ class ConfigNota extends BaseModel
         'pesagem_permitir_cadastro_rapido_fornecedor' => 'boolean',
         'pesagem_permitir_cadastro_rapido_veiculo' => 'boolean',
         'pesagem_permitir_cadastro_rapido_motorista' => 'boolean',
+        'pesagem_exibir_chave_pix_relatorio' => 'boolean',
     ];
 
 

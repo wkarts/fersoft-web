@@ -248,6 +248,11 @@ class PesagemPrint80 extends Common
         return '';
     }
 
+    private function deveExibirChavePix(): bool
+    {
+        return (bool) ($this->config->pesagem_exibir_chave_pix_relatorio ?? false);
+    }
+
     /**
      * Calcula a altura necessária para o PDF com base no conteúdo.
      *
@@ -272,8 +277,8 @@ class PesagemPrint80 extends Common
             'Tipo: ' . ucfirst($this->pesagem->tipo ?? 'N/A'),
             'Status: ' . ucfirst($this->pesagem->status),
         ];
-        if ($this->chavePixContraparte() !== '') {
-            $informacoes[] = 'Chave PIX: ' . $this->chavePixContraparte();
+        if ($this->deveExibirChavePix()) {
+            $informacoes[] = 'Chave PIX: ' . ($this->chavePixContraparte() ?: 'Não informada');
         }
 
         foreach ($informacoes as $info) {
@@ -430,9 +435,9 @@ class PesagemPrint80 extends Common
             $this->pdf->Cell(0, 4, mb_convert_encoding( $cliente, 'ISO-8859-1', 'UTF-8'), 0, 1);
         }
 
-        $chavePix = $this->chavePixContraparte();
-        if ($chavePix !== '') {
-            $this->pdf->Cell(0, 4, mb_convert_encoding('Chave PIX: ' . $chavePix, 'ISO-8859-1', 'UTF-8'), 0, 1);
+        if ($this->deveExibirChavePix()) {
+            $chavePix = $this->chavePixContraparte();
+            $this->pdf->Cell(0, 4, mb_convert_encoding('Chave PIX: ' . ($chavePix ?: 'Não informada'), 'ISO-8859-1', 'UTF-8'), 0, 1);
         }
 
         if (!empty(trim($this->pesagem->observacoes))) {

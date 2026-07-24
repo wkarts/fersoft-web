@@ -151,6 +151,7 @@ class ConfigNotaController extends Controller
             'pesagem_permitir_cadastro_rapido_fornecedor' => $request->boolean('pesagem_permitir_cadastro_rapido_fornecedor'),
             'pesagem_permitir_cadastro_rapido_veiculo' => $request->boolean('pesagem_permitir_cadastro_rapido_veiculo'),
             'pesagem_permitir_cadastro_rapido_motorista' => $request->boolean('pesagem_permitir_cadastro_rapido_motorista'),
+            'pesagem_exibir_chave_pix_relatorio' => $request->boolean('pesagem_exibir_chave_pix_relatorio'),
 		]);
 
 
@@ -324,6 +325,7 @@ class ConfigNotaController extends Controller
                 'pesagem_permitir_cadastro_rapido_fornecedor' => $request->pesagem_permitir_cadastro_rapido_fornecedor,
                 'pesagem_permitir_cadastro_rapido_veiculo' => $request->pesagem_permitir_cadastro_rapido_veiculo,
                 'pesagem_permitir_cadastro_rapido_motorista' => $request->pesagem_permitir_cadastro_rapido_motorista,
+                'pesagem_exibir_chave_pix_relatorio' => $request->pesagem_exibir_chave_pix_relatorio,
 				'permitir_estoque_negativo' => $request->permitir_estoque_negativo, // ADICIONE ESTA LINHA
 			]);
 		}else{
@@ -430,6 +432,7 @@ class ConfigNotaController extends Controller
             $config->pesagem_permitir_cadastro_rapido_fornecedor = $request->pesagem_permitir_cadastro_rapido_fornecedor;
             $config->pesagem_permitir_cadastro_rapido_veiculo = $request->pesagem_permitir_cadastro_rapido_veiculo;
             $config->pesagem_permitir_cadastro_rapido_motorista = $request->pesagem_permitir_cadastro_rapido_motorista;
+            $config->pesagem_exibir_chave_pix_relatorio = $request->pesagem_exibir_chave_pix_relatorio;
 			$config->permitir_estoque_negativo = $request->permitir_estoque_negativo; // ADICIONE ESTA LINHA
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';

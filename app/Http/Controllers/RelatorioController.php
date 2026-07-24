@@ -4041,7 +4041,7 @@ class RelatorioController extends Controller
         $orientation = $formato === '80col' ? 'portrait' : 'portrait';
 
         $dompdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-        $dompdf->loadHtml($html);
+        $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper($paperSize, $orientation);
         $dompdf->render();
 
@@ -4207,7 +4207,7 @@ class RelatorioController extends Controller
 
         // Gera o PDF usando Dompdf
         $dompdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-        $dompdf->loadHtml($html);
+        $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
@@ -4329,7 +4329,7 @@ class RelatorioController extends Controller
 
         // Gera o PDF usando Dompdf
         $dompdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-        $dompdf->loadHtml($html);
+        $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
@@ -4463,7 +4463,7 @@ class RelatorioController extends Controller
 
         // Gera o PDF usando Dompdf
         $dompdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-        $dompdf->loadHtml($html);
+        $dompdf->loadHtml($html, 'UTF-8');
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 

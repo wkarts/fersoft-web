@@ -1,6 +1,9 @@
-<html>
+<!DOCTYPE html>
+<html lang="pt-BR">
 
 <head>
+	<meta charset="UTF-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 	<style type="text/css">
 
@@ -626,6 +629,8 @@
 
     </style>
 </head>
+
+<body>
 <header>
 	<div class="headReport" style="display:flex; justify-content: padding-top:1rem">
 
@@ -649,9 +654,7 @@
 
 	</div>
 </header>
-<body>
 	@yield('content')
-</body>
 <footer id="footer_imagem">
 	<table style="width: 100%;">
 		<tbody>
@@ -670,4 +673,5 @@
 		</tbody>
 	</table>
 </footer>
+</body>
 </html>
