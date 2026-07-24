@@ -249,6 +249,14 @@ class PesagemController extends BaseController
     public function cadastroRapido(Request $request, string $tipo)
     {
         if (!$this->empresa_id || !$this->usuario_id) abort(403);
+        $campoPermissao = [
+            'cliente' => 'pesagem_permitir_cadastro_rapido_cliente',
+            'fornecedor' => 'pesagem_permitir_cadastro_rapido_fornecedor',
+            'veiculo' => 'pesagem_permitir_cadastro_rapido_veiculo',
+            'funcionario' => 'pesagem_permitir_cadastro_rapido_motorista',
+        ][$tipo] ?? null;
+        $configPesagem = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        if (!$campoPermissao || !$configPesagem || !(bool) $configPesagem->{$campoPermissao}) abort(403);
         try {
             return DB::transaction(function () use ($request, $tipo) {
                 if (in_array($tipo, ['cliente', 'fornecedor'], true)) {

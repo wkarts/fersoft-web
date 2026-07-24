@@ -695,7 +695,7 @@
                                     <br>
                                     <div class="d-flex"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
                                         <option value="">Selecione um cliente</option>
-                                    </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button></div>
+                                    </select>@if($configNota->pesagem_permitir_cadastro_rapido_cliente ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
 
                                 <!-- Fornecedor -->
@@ -704,7 +704,7 @@
                                     <br>
                                     <div class="d-flex"><select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 90%;">
                                         <option value="">Selecione um Fornecedor</option>
-                                    </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="fornecedor" title="Novo fornecedor"><i class="fa fa-plus"></i></button></div>
+                                    </select>@if($configNota->pesagem_permitir_cadastro_rapido_fornecedor ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="fornecedor" title="Novo fornecedor"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
                             </div>
                         </div>
@@ -746,7 +746,7 @@
                                 <!-- Veículo -->
                                 <div class="d-flex"><select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 90%;">
                                     <option value="">Selecione um veículo</option>
-                                </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="veiculo" title="Novo veículo"><i class="fa fa-plus"></i></button></div>
+                                </select>@if($configNota->pesagem_permitir_cadastro_rapido_veiculo ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="veiculo" title="Novo veículo"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
 
                             <!-- Placa Veículo -->
@@ -770,7 +770,7 @@
                                 <!-- Motorista -->
                                 <div class="d-flex"><select id="motorista_id" name="motorista_id" class="form-control" style="width: 90%;">
                                     <option value="">Selecione um motorista</option>
-                                </select><button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="motorista" title="Novo motorista"><i class="fa fa-plus"></i></button></div>
+                                </select>@if($configNota->pesagem_permitir_cadastro_rapido_motorista ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="motorista" title="Novo motorista"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
 
                             <!-- Nome Motorista -->

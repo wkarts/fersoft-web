@@ -1,8 +1,8 @@
 <div id="quick-actions-pesagens" class="quick-actions d-flex align-items-center justify-content-end" role="group" aria-label="Cadastros rápidos">
-    <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="cliente" data-hint="Cadastrar cliente" title="Cadastrar cliente" aria-label="Cadastrar cliente"><i class="fa fa-user"></i></button>
-    <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="fornecedor" data-hint="Cadastrar fornecedor" title="Cadastrar fornecedor" aria-label="Cadastrar fornecedor"><i class="fa fa-truck"></i></button>
-    <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="veiculo" data-hint="Cadastrar veículo" title="Cadastrar veículo" aria-label="Cadastrar veículo"><i class="fa fa-car"></i></button>
-    <button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="motorista" data-hint="Cadastrar motorista" title="Cadastrar motorista" aria-label="Cadastrar motorista"><i class="fa fa-id-card"></i></button>
+    @if($configNota->pesagem_permitir_cadastro_rapido_cliente ?? false)<button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="cliente" data-hint="Cadastrar cliente" title="Cadastrar cliente" aria-label="Cadastrar cliente"><i class="fa fa-user"></i></button>@endif
+    @if($configNota->pesagem_permitir_cadastro_rapido_fornecedor ?? false)<button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="fornecedor" data-hint="Cadastrar fornecedor" title="Cadastrar fornecedor" aria-label="Cadastrar fornecedor"><i class="fa fa-truck"></i></button>@endif
+    @if($configNota->pesagem_permitir_cadastro_rapido_veiculo ?? false)<button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="veiculo" data-hint="Cadastrar veículo" title="Cadastrar veículo" aria-label="Cadastrar veículo"><i class="fa fa-car"></i></button>@endif
+    @if($configNota->pesagem_permitir_cadastro_rapido_motorista ?? false)<button type="button" class="btn btn-sm btn-outline-secondary quick-action-icon quick-open" data-quick-type="motorista" data-hint="Cadastrar motorista" title="Cadastrar motorista" aria-label="Cadastrar motorista"><i class="fa fa-id-card"></i></button>@endif
 </div>
 <style>
     .quick-actions { gap: .35rem; }

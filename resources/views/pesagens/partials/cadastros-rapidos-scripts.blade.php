@@ -107,7 +107,8 @@ $(function () {
         e.preventDefault();
         clearErrors();
         $('#quick_form')[0].reset();
-        $('#quick_cidade_id, #quick_motorista_id, #quick_proprietario_tp, #quick_categoria_cnh').val(null).trigger('change');
+        $('#quick_cidade_id, #quick_motorista_id, #quick_categoria_cnh').val(null).trigger('change');
+        $('#quick_proprietario_tp').val('0').trigger('change');
         const type = $(this).data('quick-type');
         const $pesagem = $('#modalPesagem');
         quickContext = $pesagem.hasClass('show') ? { field: type === 'funcionario' ? null : type } : null;

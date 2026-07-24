@@ -203,6 +203,26 @@
                                                                 </div>
                                                             </div>
 
+                                                            <hr>
+                                                            <h6 class="mb-2">Cadastros rápidos na pesagem</h6>
+                                                            <small class="text-muted d-block mb-2">Controle por empresa. Quando desabilitado, o atalho correspondente não é exibido na listagem, nem no modal de lançamento, e o endpoint também recusa a criação.</small>
+                                                            @foreach([
+                                                                'pesagem_permitir_cadastro_rapido_cliente' => 'Permitir cadastro rápido de cliente',
+                                                                'pesagem_permitir_cadastro_rapido_fornecedor' => 'Permitir cadastro rápido de fornecedor',
+                                                                'pesagem_permitir_cadastro_rapido_veiculo' => 'Permitir cadastro rápido de veículo',
+                                                                'pesagem_permitir_cadastro_rapido_motorista' => 'Permitir cadastro rápido de motorista',
+                                                            ] as $campoCadastroRapido => $labelCadastroRapido)
+                                                                <div class="form-group mb-1">
+                                                                    <div class="checkbox-inline">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="{{ $campoCadastroRapido }}" value="1" {{ old($campoCadastroRapido, $config->{$campoCadastroRapido} ?? false) ? 'checked' : '' }}>
+                                                                            <span></span>
+                                                                            {{ $labelCadastroRapido }}
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+
                                                             <div class="form-group mt-3 mb-0">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">
