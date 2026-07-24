@@ -9,6 +9,7 @@ class Funcionario extends BaseModel
     protected $fillable = [
         'nome',
         'bairro',
+        'cep',
         'numero',
         'rua',
         'cpf',

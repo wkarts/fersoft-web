@@ -2899,6 +2899,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/new', 'PesagemController@register')->name('pesagens.register');
         Route::get('/register', 'PesagemController@register');
         Route::post('/save', 'PesagemController@save')->name('pesagens.save');
+        Route::post('/cadastros-rapidos/{tipo}', 'PesagemController@cadastroRapido')->where('tipo', 'cliente|fornecedor|veiculo|funcionario')->name('pesagens.cadastros-rapidos.save');
         Route::get('/edit/{id}', 'PesagemController@edit')->name('pesagens.edit');
         Route::put('/update/{id}', 'PesagemController@update')->name('pesagens.update');
         Route::post('/concluir/{id}', 'PesagemController@concluir')->name('pesagens.concluir');

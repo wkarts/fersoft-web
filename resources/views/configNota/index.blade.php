@@ -203,6 +203,36 @@
                                                                 </div>
                                                             </div>
 
+                                                            <div class="form-group mb-0">
+                                                                <div class="checkbox-inline">
+                                                                    <label class="checkbox">
+                                                                        <input type="checkbox" name="pesagem_exibir_chave_pix_relatorio" value="1" {{ old('pesagem_exibir_chave_pix_relatorio', $config->pesagem_exibir_chave_pix_relatorio ?? true) ? 'checked' : '' }}>
+                                                                        <span></span>
+                                                                        Exibir chave PIX da contraparte nos relatórios de pesagem A4 e 80 mm
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+
+                                                            <hr>
+                                                            <h6 class="mb-2">Cadastros rápidos na pesagem</h6>
+                                                            <small class="text-muted d-block mb-2">Controle por empresa. Quando desabilitado, o atalho correspondente não é exibido na listagem, nem no modal de lançamento, e o endpoint também recusa a criação.</small>
+                                                            @foreach([
+                                                                'pesagem_permitir_cadastro_rapido_cliente' => 'Permitir cadastro rápido de cliente',
+                                                                'pesagem_permitir_cadastro_rapido_fornecedor' => 'Permitir cadastro rápido de fornecedor',
+                                                                'pesagem_permitir_cadastro_rapido_veiculo' => 'Permitir cadastro rápido de veículo',
+                                                                'pesagem_permitir_cadastro_rapido_motorista' => 'Permitir cadastro rápido de motorista',
+                                                            ] as $campoCadastroRapido => $labelCadastroRapido)
+                                                                <div class="form-group mb-1">
+                                                                    <div class="checkbox-inline">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="{{ $campoCadastroRapido }}" value="1" {{ old($campoCadastroRapido, $config->{$campoCadastroRapido} ?? false) ? 'checked' : '' }}>
+                                                                            <span></span>
+                                                                            {{ $labelCadastroRapido }}
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+
                                                             <div class="form-group mt-3 mb-0">
                                                                 <div class="checkbox-inline">
                                                                     <label class="checkbox">

@@ -62,6 +62,24 @@ class PesagemPrint80Simples extends Common
         return $value;
     }
 
+    private function chavePixContraparte(): string
+    {
+        if (($this->pesagem->tipo ?? '') === 'compra') {
+            return (string) ($this->pesagem->fornecedor->pix ?? '');
+        }
+
+        if (($this->pesagem->tipo ?? '') === 'venda') {
+            return (string) ($this->pesagem->cliente->pix ?? '');
+        }
+
+        return '';
+    }
+
+    private function deveExibirChavePix(): bool
+    {
+        return (bool) ($this->config->pesagem_exibir_chave_pix_relatorio ?? true);
+    }
+
 
     /**
      * Indica se as imagens das câmeras devem sair nos tickets 80mm.
@@ -212,6 +230,9 @@ class PesagemPrint80Simples extends Common
             'Tipo: ' . ucfirst($this->pesagem->tipo ?? 'N/A'),
             'Status: ' . ucfirst($this->pesagem->status),
         ];
+        if ($this->deveExibirChavePix()) {
+            $informacoes[] = 'Chave PIX: ' . ($this->chavePixContraparte() ?: 'Não informada');
+        }
 
         foreach ($informacoes as $info) {
             $larguraTexto = $tempPdf->GetStringWidth($info);
@@ -364,6 +385,10 @@ class PesagemPrint80Simples extends Common
             $this->pdf->Cell(0,4, mb_convert_encoding('Cliente:', 'ISO-8859-1','UTF-8'), 0,1,'L');
             $this->pdf->SetFont('Arial','B',7);
             $this->pdf->Cell(0,4, mb_convert_encoding($cli, 'ISO-8859-1','UTF-8'), 0,1,'L');
+        }
+        if ($this->deveExibirChavePix()) {
+            $chavePix = $this->chavePixContraparte();
+            $this->pdf->Cell(0,4, mb_convert_encoding('Chave PIX: ' . ($chavePix ?: 'Não informada'), 'ISO-8859-1','UTF-8'), 0,1,'L');
         }
         $this->pdf->SetFont('Arial','I',7);
 

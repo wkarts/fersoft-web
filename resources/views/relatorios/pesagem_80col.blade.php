@@ -69,10 +69,29 @@
 
 <!-- Conteúdo do Relatório -->
 @foreach($dadosRelatorio as $relatorio)
+    @php
+        $tickets = $relatorio['pesagem']->tickets;
+        $valorDoTicket = static function ($ticket): float {
+            $pesoLiquidoTicket = max(0, (float) $ticket->peso - (float) ($ticket->peso_bag ?? 0));
+            $valorUnitario = (float) ($ticket->valor_unitario ?? 0) > 0
+                ? (float) $ticket->valor_unitario
+                : (float) ($ticket->produto->valor_venda ?? $ticket->produto->valor_compra ?? 0);
+            return (float) ($ticket->valor_total ?? 0) > 0
+                ? (float) $ticket->valor_total
+                : ($pesoLiquidoTicket * max(0, $valorUnitario));
+        };
+        $valorTotalTicket = abs(
+            ($tickets->whereIn('tipo', ['entrada', 'avulsa'])->sum($valorDoTicket))
+            - $tickets->where('tipo', 'saida')->sum($valorDoTicket)
+        );
+    @endphp
     <p><strong>Pesagem ID:</strong> {{ $relatorio['pesagem']->id }}</p>
     <p><strong>Veículo:</strong> {{ $relatorio['pesagem']->veiculo->placa ?? 'N/A' }}</p>
     <p><strong>Status:</strong> {{ ucfirst($relatorio['pesagem']->status) }}</p>
     <p><strong>Peso Total:</strong> {{ number_format($relatorio['peso_total_pesagem'], 2, ',', '.') }} kg</p>
+    @if((bool) (($configEmitente ?? null)->usar_valores_ticket_pesagem ?? false))
+        <p><strong>Valor Total dos Tickets:</strong> R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}</p>
+    @endif
     <div class="line"></div>
 
     @foreach($relatorio['tickets_agrupados'] as $produtoId => $grupo)
