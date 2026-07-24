@@ -147,6 +147,10 @@ class ConfigNotaController extends Controller
             'pesagem_enviar_email_ao_concluir' => $request->boolean('pesagem_enviar_email_ao_concluir'),
             'pesagem_enviar_whatsapp_ao_concluir' => $request->boolean('pesagem_enviar_whatsapp_ao_concluir'),
             'pesagem_enviar_imagens_notificacao' => $request->boolean('pesagem_enviar_imagens_notificacao'),
+            'pesagem_permitir_cadastro_rapido_cliente' => $request->boolean('pesagem_permitir_cadastro_rapido_cliente'),
+            'pesagem_permitir_cadastro_rapido_fornecedor' => $request->boolean('pesagem_permitir_cadastro_rapido_fornecedor'),
+            'pesagem_permitir_cadastro_rapido_veiculo' => $request->boolean('pesagem_permitir_cadastro_rapido_veiculo'),
+            'pesagem_permitir_cadastro_rapido_motorista' => $request->boolean('pesagem_permitir_cadastro_rapido_motorista'),
 		]);
 
 
@@ -316,6 +320,10 @@ class ConfigNotaController extends Controller
                 'pesagem_enviar_email_ao_concluir' => $request->pesagem_enviar_email_ao_concluir,
                 'pesagem_enviar_whatsapp_ao_concluir' => $request->pesagem_enviar_whatsapp_ao_concluir,
                 'pesagem_enviar_imagens_notificacao' => $request->pesagem_enviar_imagens_notificacao,
+                'pesagem_permitir_cadastro_rapido_cliente' => $request->pesagem_permitir_cadastro_rapido_cliente,
+                'pesagem_permitir_cadastro_rapido_fornecedor' => $request->pesagem_permitir_cadastro_rapido_fornecedor,
+                'pesagem_permitir_cadastro_rapido_veiculo' => $request->pesagem_permitir_cadastro_rapido_veiculo,
+                'pesagem_permitir_cadastro_rapido_motorista' => $request->pesagem_permitir_cadastro_rapido_motorista,
 				'permitir_estoque_negativo' => $request->permitir_estoque_negativo, // ADICIONE ESTA LINHA
 			]);
 		}else{
@@ -418,6 +426,10 @@ class ConfigNotaController extends Controller
             $config->pesagem_enviar_email_ao_concluir = $request->pesagem_enviar_email_ao_concluir;
             $config->pesagem_enviar_whatsapp_ao_concluir = $request->pesagem_enviar_whatsapp_ao_concluir;
             $config->pesagem_enviar_imagens_notificacao = $request->pesagem_enviar_imagens_notificacao;
+            $config->pesagem_permitir_cadastro_rapido_cliente = $request->pesagem_permitir_cadastro_rapido_cliente;
+            $config->pesagem_permitir_cadastro_rapido_fornecedor = $request->pesagem_permitir_cadastro_rapido_fornecedor;
+            $config->pesagem_permitir_cadastro_rapido_veiculo = $request->pesagem_permitir_cadastro_rapido_veiculo;
+            $config->pesagem_permitir_cadastro_rapido_motorista = $request->pesagem_permitir_cadastro_rapido_motorista;
 			$config->permitir_estoque_negativo = $request->permitir_estoque_negativo; // ADICIONE ESTA LINHA
 			$config->inscricao_municipal = $request->inscricao_municipal ?? '';
 			$config->aut_xml = $request->aut_xml ?? '';

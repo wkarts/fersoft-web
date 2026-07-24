@@ -130,13 +130,14 @@
                     </button>
                 </div>
             @endif
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-                <div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
+            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft d-flex flex-wrap align-items-center justify-content-between mb-3">
+                <div>
                     <!-- Botão para abrir o modal de nova pesagem -->
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
                 </div>
+                @include('pesagens.partials.cadastros-rapidos-acoes')
             </div>
             <br>
 
@@ -402,9 +403,17 @@
                                                     });
 
                                                     $valorUnitarioTicket = (float) ($ticketComValorUnitario->valor_unitario ?? 0);
-                                                    $valorTotalTicket = (float) $pesagem->tickets->sum(function ($ticket) {
-                                                        return max(0, (float) ($ticket->valor_total ?? 0));
-                                                    });
+                                                    // Entradas e avulsas compõem o mesmo sentido da pesagem;
+                                                    // saídas fazem o contrapeso. Quando há tickets de apenas
+                                                    // um tipo, o total é a soma deles; quando há ambos, exibe
+                                                    // o saldo monetário entre entrada e saída.
+                                                    $valorTotalEntradas = (float) $pesagem->tickets
+                                                        ->whereIn('tipo', ['entrada', 'avulsa'])
+                                                        ->sum(fn ($ticket) => max(0, (float) ($ticket->valor_total ?? 0)));
+                                                    $valorTotalSaidas = (float) $pesagem->tickets
+                                                        ->where('tipo', 'saida')
+                                                        ->sum(fn ($ticket) => max(0, (float) ($ticket->valor_total ?? 0)));
+                                                    $valorTotalTicket = abs($valorTotalEntradas - $valorTotalSaidas);
                                                 }
                                             @endphp
 
@@ -634,6 +643,26 @@
         </div>
     </div>
 
+    <style>
+        #modalPesagem .pesagem-select-action {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            width: 100%;
+        }
+
+        #modalPesagem .pesagem-select-action .select2-container {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto !important;
+        }
+
+        #modalPesagem .pesagem-select-action .quick-open,
+        #modalPesagem .pesagem-select-action .clear-button {
+            flex: 0 0 auto;
+        }
+    </style>
+
     <!-- Modal Unificado para Pesagem -->
     <div class="modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
@@ -682,21 +711,19 @@
                                 <!-- Cliente -->
                                 <div id="cliente-container" class="form-group mb-1">
                                     <label>Cliente:</label>
-                                    <div class="input-group">
-                                        <!-- Cliente -->
-                                        <select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
-                                            <option value="">Selecione um cliente</option>
-                                        </select>
-                                    </div>
+                                    <br>
+                                    <div class="pesagem-select-action"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 100%;">
+                                        <option value="">Selecione um cliente</option>
+                                    </select>@if($configNota->pesagem_permitir_cadastro_rapido_cliente ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
 
                                 <!-- Fornecedor -->
                                 <div id="fornecedor-container" class="form-group mb-1">
                                     <label>Fornecedor:</label>
                                     <br>
-                                    <select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 90%;">
+                                    <div class="pesagem-select-action"><select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 100%;">
                                         <option value="">Selecione um Fornecedor</option>
-                                    </select>
+                                    </select>@if($configNota->pesagem_permitir_cadastro_rapido_fornecedor ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="fornecedor" title="Novo fornecedor"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
                             </div>
                         </div>
@@ -736,9 +763,9 @@
                                 <label for="veiculo_id">Veículo:</label>
                                 <br>
                                 <!-- Veículo -->
-                                <select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 90%;">
+                                <div class="pesagem-select-action"><select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 100%;">
                                     <option value="">Selecione um veículo</option>
-                                </select>
+                                </select>@if($configNota->pesagem_permitir_cadastro_rapido_veiculo ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="veiculo" title="Novo veículo"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
 
                             <!-- Placa Veículo -->
@@ -760,9 +787,9 @@
                                 <label for="motorista_id">Motorista:</label>
                                 <br>
                                 <!-- Motorista -->
-                                <select id="motorista_id" name="motorista_id" class="form-control" style="width: 90%;">
+                                <div class="pesagem-select-action"><select id="motorista_id" name="motorista_id" class="form-control" style="width: 100%;">
                                     <option value="">Selecione um motorista</option>
-                                </select>
+                                </select>@if($configNota->pesagem_permitir_cadastro_rapido_motorista ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="motorista" title="Novo motorista"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
 
                             <!-- Nome Motorista -->
@@ -1245,6 +1272,7 @@
         </div>
     </div>
 
+    @include('pesagens.partials.cadastros-rapidos-modal')
 @endsection
 
 @section('javascript')
@@ -1476,6 +1504,7 @@
 
             // Função para cancelar a edição/inserção
             $('#modalPesagem').on('hidden.bs.modal', function () {
+                if ($(this).data('quick-preserve')) return;
                 resetForm('#modalPesagem'); // Reseta o formulário ao fechar o modal
             });
 
@@ -3265,4 +3294,5 @@
     </script>
 
 
+@include('pesagens.partials.cadastros-rapidos-scripts')
 @endsection
