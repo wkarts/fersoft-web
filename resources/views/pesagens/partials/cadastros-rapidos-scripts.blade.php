@@ -1,6 +1,7 @@
 <script>
 $(function () {
     const quickUrl = @json(route('pesagens.cadastros-rapidos.save', ['tipo' => '__tipo__']));
+    const quickDefaultCityId = @json($cidadePadraoCadastroRapido->id ?? null);
     let quickContext = null;
     const $quick = $('#modalCadastroRapido');
     const onlyDigits = value => String(value || '').replace(/\D/g, '');
@@ -107,7 +108,8 @@ $(function () {
         e.preventDefault();
         clearErrors();
         $('#quick_form')[0].reset();
-        $('#quick_cidade_id, #quick_motorista_id, #quick_categoria_cnh').val(null).trigger('change');
+        $('#quick_cidade_id').val(quickDefaultCityId || null).trigger('change');
+        $('#quick_motorista_id, #quick_categoria_cnh').val(null).trigger('change');
         $('#quick_proprietario_tp').val('0').trigger('change');
         const type = $(this).data('quick-type');
         const $pesagem = $('#modalPesagem');

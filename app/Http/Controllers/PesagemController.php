@@ -16,6 +16,8 @@ use App\Models\TicketPesagem;
 use App\Models\BalancaConfig;
 use App\Models\Transportadora;
 use App\Models\Cidade;
+use App\Models\Empresa;
+use App\Models\Filial;
 use App\Models\ItemCompra;
 use App\Models\Compra;
 use App\Models\Venda; // Adicione esta linha
@@ -268,11 +270,17 @@ class PesagemController extends BaseController
                         'cpf_cnpj' => $doc,
                         'cep' => preg_replace('/\D/', '', (string) $request->input('cep')),
                     ]);
-                    $data = $request->validate(['razao_social'=>'required|string|max:100','nome_fantasia'=>'nullable|string|max:80','telefone'=>'nullable|string|max:20','rua'=>'nullable|string|max:80','numero'=>'nullable|string|max:10','bairro'=>'nullable|string|max:50','cidade_id'=>'required|integer','pix'=>'required|string|max:40','cpf_cnpj'=>$exterior ? 'nullable|string|max:30' : 'required|digits_between:11,14','imagem'=>'nullable|image|mimes:jpg,jpeg,png,webp|max:2048']); unset($data['imagem']);
-                    if (!Cidade::whereKey($data['cidade_id'])->exists()) return response()->json(['message'=>'A cidade informada é inválida.','errors'=>['cidade_id'=>['Selecione uma cidade válida.']]],422);
-                    if (!$exterior && !$this->documentoValido($doc)) return response()->json(['message'=>'CPF/CNPJ inválido.','errors'=>['cpf_cnpj'=>['Informe um CPF ou CNPJ válido.']]],422);
                     $model = $tipo === 'cliente' ? Cliente::class : Fornecedor::class;
-                    if (!$exterior && $model::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '-', ''), '/', '') = ?",[$doc])->exists()) return response()->json(['message'=>'Documento já cadastrado nesta empresa.','errors'=>['cpf_cnpj'=>['Já existe um cadastro com este CPF/CNPJ.']]],422);
+                    $data = $request->validate(['razao_social'=>'required|string|max:100','nome_fantasia'=>'nullable|string|max:80','telefone'=>'nullable|string|max:20','rua'=>'nullable|string|max:80','numero'=>'nullable|string|max:10','bairro'=>'nullable|string|max:50','cidade_id'=>'nullable|integer','pix'=>'required|string|max:40','cpf_cnpj'=>'nullable|string|max:19','imagem'=>'nullable|image|mimes:jpg,jpeg,png,webp|max:2048']); unset($data['imagem']);
+                    $cidadePadrao = $this->cidadePadraoCadastroRapido();
+                    $data['cidade_id'] = $data['cidade_id'] ?: optional($cidadePadrao)->id;
+                    if (!$data['cidade_id'] || !Cidade::whereKey($data['cidade_id'])->exists()) return response()->json(['message'=>'Não foi possível identificar a cidade padrão da empresa. Configure a cidade da empresa ou filial, ou selecione uma cidade.','errors'=>['cidade_id'=>['Selecione uma cidade válida.']]],422);
+                    if ($doc === '') {
+                        $doc = $this->gerarDocumentoTecnicoCadastroRapido($model);
+                    } elseif (!$exterior && (strlen($doc) < 11 || strlen($doc) > 14 || !$this->documentoValido($doc))) {
+                        return response()->json(['message'=>'CPF/CNPJ inválido.','errors'=>['cpf_cnpj'=>['Informe um CPF ou CNPJ válido.']]],422);
+                    }
+                    if ($model::where('empresa_id',$this->empresa_id)->whereRaw("REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '-', ''), '/', '') = ?",[$doc])->exists()) return response()->json(['message'=>'Documento já cadastrado nesta empresa.','errors'=>['cpf_cnpj'=>['Já existe um cadastro com este CPF/CNPJ.']]],422);
                     $common=array_merge($data,['cpf_cnpj'=>$doc,'nome_fantasia'=>$data['nome_fantasia'] ?: $data['razao_social'],'empresa_id'=>$this->empresa_id,'celular'=>$request->input('celular',''),'email'=>$request->input('email',''),'cep'=>preg_replace('/\D/','',(string)$request->input('cep')),'ie_rg'=>$request->input('ie_rg',''),'complemento'=>$request->input('complemento',''),'tipo_pix'=>$request->input('tipo_pix','cpf'),'cod_pais'=>$exterior ? (int)$request->input('cod_pais',0) : 1058]);
                     if ($tipo === 'cliente') $common += ['consumidor_final'=>1,'contribuinte'=>1,'limite_venda'=>0,'rua_cobranca'=>'','numero_cobranca'=>'','bairro_cobranca'=>'','cep_cobranca'=>'','rua_entrega'=>'','numero_entrega'=>'','bairro_entrega'=>'','cep_entrega'=>'','nome_entrega'=>'','cpf_cnpj_entrega'=>'']; else $common += ['contribuinte'=>1];
                     $record=$model::create($common); $this->salvarImagemCadastroRapido($request, $record, $tipo); $record->load('cidade'); return response()->json(['message'=>ucfirst($tipo).' cadastrado com sucesso.','data'=>$this->quickPayload($record,$tipo)],201);
@@ -336,6 +344,41 @@ class PesagemController extends BaseController
         }
 
         throw new \RuntimeException('Não foi possível gerar o identificador técnico do funcionário.');
+    }
+
+    private function gerarDocumentoTecnicoCadastroRapido(string $model): string
+    {
+        $base = now()->format('ymdHisv');
+
+        for ($tentativa = 0; $tentativa < 100; $tentativa++) {
+            $documento = $base . str_pad((string) random_int(0, 99), 2, '0', STR_PAD_LEFT);
+
+            if (!$model::where('empresa_id', $this->empresa_id)->where('cpf_cnpj', $documento)->exists()) {
+                return $documento;
+            }
+        }
+
+        throw new \RuntimeException('Não foi possível gerar o identificador técnico do cadastro.');
+    }
+
+    private function cidadePadraoCadastroRapido(): ?Cidade
+    {
+        if ($this->filial_id) {
+            $filial = Filial::where('id', $this->filial_id)->where('empresa_id', $this->empresa_id)->first();
+            if ($filial && $filial->codMun) {
+                $cidade = Cidade::where('codigo', $filial->codMun)->first();
+                if ($cidade) return $cidade;
+            }
+        }
+
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        if ($config && $config->codMun) {
+            $cidade = Cidade::where('codigo', $config->codMun)->first();
+            if ($cidade) return $cidade;
+        }
+
+        $empresa = Empresa::find($this->empresa_id);
+        return $empresa && $empresa->cidade_id ? Cidade::find($empresa->cidade_id) : null;
     }
 
     private function documentoValido(string $documento): bool
@@ -506,6 +549,7 @@ class PesagemController extends BaseController
 
         $usuarioLogado = \App\Models\Usuario::find(session('user_logged')['id']);
         $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $cidadePadraoCadastroRapido = $this->cidadePadraoCadastroRapido();
         $hasOtp = $usuarioLogado ? $usuarioLogado->hasOtp() : false;
 
         // **Aqui passamos de volta cada filtro usado**
@@ -521,6 +565,7 @@ class PesagemController extends BaseController
             'tickets'      => $tickets,
             'hasOtp'       => $hasOtp,
             'configNota'    => $configNota,
+            'cidadePadraoCadastroRapido' => $cidadePadraoCadastroRapido,
             'balancaPadraoUsuarioId' => $usuarioLogado->balanca_padrao_id ?? null,
 
             // filtros
