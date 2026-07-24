@@ -121,14 +121,13 @@ $(function () {
         if (type === 'veiculo') $activeSection = $('.quick-vehicle');
         if (type === 'funcionario' || type === 'motorista') $activeSection = $('.quick-employee');
         $activeSection.removeClass('d-none').find(':input').prop('disabled', false);
-        if (type === 'funcionario' || type === 'motorista') $('input[name="motorista"]').prop('checked', type === 'motorista');
+        $('#quick_motorista_flag').val(type === 'motorista' ? '1' : '0');
         $('.quick-cnh').toggle(type === 'motorista');
         $('.quick-image').toggle(true).find(':input').prop('disabled', false);
         const openQuick = () => $quick.modal('show');
         if (quickContext) $pesagem.data('quick-preserve', true).one('hidden.bs.modal.quick', openQuick).modal('hide'); else openQuick();
     });
 
-    $('input[name="motorista"]').on('change', function () { $('.quick-cnh').toggle(this.checked); });
     $quick.on('hidden.bs.modal', restorePesagem);
     $('#quick_form').on('submit', function (e) {
         e.preventDefault();

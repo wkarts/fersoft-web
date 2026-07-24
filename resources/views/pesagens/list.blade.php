@@ -644,6 +644,26 @@
         </div>
     </div>
 
+    <style>
+        #modalPesagem .pesagem-select-action {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            width: 100%;
+        }
+
+        #modalPesagem .pesagem-select-action .select2-container {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto !important;
+        }
+
+        #modalPesagem .pesagem-select-action .quick-open,
+        #modalPesagem .pesagem-select-action .clear-button {
+            flex: 0 0 auto;
+        }
+    </style>
+
     <!-- Modal Unificado para Pesagem -->
     <div class="modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
@@ -693,7 +713,7 @@
                                 <div id="cliente-container" class="form-group mb-1">
                                     <label>Cliente:</label>
                                     <br>
-                                    <div class="d-flex"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 90%;">
+                                    <div class="pesagem-select-action"><select id="cliente_id" name="cliente_id" class="form-control" style="width: 100%;">
                                         <option value="">Selecione um cliente</option>
                                     </select>@if($configNota->pesagem_permitir_cadastro_rapido_cliente ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="cliente" title="Novo cliente"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
@@ -702,7 +722,7 @@
                                 <div id="fornecedor-container" class="form-group mb-1">
                                     <label>Fornecedor:</label>
                                     <br>
-                                    <div class="d-flex"><select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 90%;">
+                                    <div class="pesagem-select-action"><select id="fornecedor_id" name="fornecedor_id" class="form-control" style="width: 100%;">
                                         <option value="">Selecione um Fornecedor</option>
                                     </select>@if($configNota->pesagem_permitir_cadastro_rapido_fornecedor ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="fornecedor" title="Novo fornecedor"><i class="fa fa-plus"></i></button>@endif</div>
                                 </div>
@@ -744,7 +764,7 @@
                                 <label for="veiculo_id">Veículo:</label>
                                 <br>
                                 <!-- Veículo -->
-                                <div class="d-flex"><select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 90%;">
+                                <div class="pesagem-select-action"><select id="veiculo_id" name="veiculo_id" class="form-control" style="width: 100%;">
                                     <option value="">Selecione um veículo</option>
                                 </select>@if($configNota->pesagem_permitir_cadastro_rapido_veiculo ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="veiculo" title="Novo veículo"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
@@ -768,7 +788,7 @@
                                 <label for="motorista_id">Motorista:</label>
                                 <br>
                                 <!-- Motorista -->
-                                <div class="d-flex"><select id="motorista_id" name="motorista_id" class="form-control" style="width: 90%;">
+                                <div class="pesagem-select-action"><select id="motorista_id" name="motorista_id" class="form-control" style="width: 100%;">
                                     <option value="">Selecione um motorista</option>
                                 </select>@if($configNota->pesagem_permitir_cadastro_rapido_motorista ?? false)<button type="button" class="btn btn-sm btn-outline-primary quick-open" data-quick-type="motorista" title="Novo motorista"><i class="fa fa-plus"></i></button>@endif</div>
                             </div>
