@@ -13,6 +13,7 @@ class Cliente extends BaseModel
 		'contador_nome', 'contador_telefone', 'funcionario_id', 'observacao',
 		'contador_email', 'data_aniversario', 'complemento', 'nuvemshop_id',
 		'imagem', 'data_nascimento', 'instagram', 'facebook', 'linkedin', 'tiktok', 'whatsapp',
+		'pix',
 		'inativo', 'acessor_id', 'rua_entrega', 'numero_entrega', 'bairro_entrega', 'cep_entrega',
 		'cidade_entrega_id', 'nome_entrega', 'cpf_cnpj_entrega', 'valor_cashback'
 	];
