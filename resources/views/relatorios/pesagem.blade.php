@@ -110,6 +110,21 @@
         $entrada = $pesagem->tickets->where('tipo', 'entrada')->sum('peso');
         $saida = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
         $liquido = max(0, $entrada - $saida);
+        $exibirValoresTicket = (bool) ($emitente->usar_valores_ticket_pesagem ?? false);
+        $valorDoTicket = static function ($ticket): float {
+            $pesoLiquidoTicket = max(0, (float) $ticket->peso - (float) ($ticket->peso_bag ?? 0));
+            $valorUnitario = (float) ($ticket->valor_unitario ?? 0) > 0
+                ? (float) $ticket->valor_unitario
+                : (float) ($ticket->produto->valor_venda ?? $ticket->produto->valor_compra ?? 0);
+
+            return (float) ($ticket->valor_total ?? 0) > 0
+                ? (float) $ticket->valor_total
+                : ($pesoLiquidoTicket * max(0, $valorUnitario));
+        };
+        $valorEntrada = $pesagem->tickets->where('tipo', 'entrada')->sum($valorDoTicket);
+        $valorSaida = $pesagem->tickets->where('tipo', 'saida')->sum($valorDoTicket);
+        $valorAvulsa = $pesagem->tickets->where('tipo', 'avulsa')->sum($valorDoTicket);
+        $valorTotalTicket = abs(($valorEntrada + $valorAvulsa) - $valorSaida);
         $chavePix = $pesagem->tipo === 'compra'
             ? ($pesagem->fornecedor->pix ?? '')
             : ($pesagem->cliente->pix ?? '');
@@ -144,6 +159,11 @@
             <td><div class="rp-label">Peso Líquido</div><div class="n">{{ number_format($liquido, 2, ',', '.') }} kg</div></td>
             <td><div class="rp-label">Peso Final</div><div class="n">{{ number_format($pesagem->peso_final ?? $relatorio['peso_total_pesagem'], 2, ',', '.') }} kg</div></td>
         </tr>
+        @if($exibirValoresTicket)
+            <tr>
+                <td colspan="4"><div class="rp-label">Valor Total dos Tickets</div><div class="n">R$ {{ number_format($valorTotalTicket, 2, ',', '.') }}</div></td>
+            </tr>
+        @endif
     </table>
 
     <div class="rp-section-title">Tickets / Produtos</div>
