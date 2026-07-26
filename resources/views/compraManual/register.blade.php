@@ -428,7 +428,9 @@
 
 
 										</div>
-										<!--end: Wizard Step 2-->
+										@include('compraManual.partials.fatura_avancada', ['mostrarCategoriaConta' => true, 'mostrarAdiantamento' => true, 'faturasIniciais' => []])
+
+											<!--end: Wizard Step 2-->
 
 										<!--begin: Wizard Actions-->
 										<div class="d-flex justify-content-between border-top mt-5 pt-10">
@@ -1484,6 +1486,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 let js = {
                     fornecedor: fornecedor,
                     formaPagamento: $('#formaPagamento').val(),
+                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
                     
                     // --- CAMPOS INJETADOS À FORÇA ---
                     nf: $('#numero_emissao').val(),
@@ -1495,6 +1498,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                     itens: ITENS,
                     fatura: FATURA,
+                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     total: TOTAL,
                     desconto: $('#desconto').val(),
                     acrescimo: $('#acrescimo').val(),
@@ -1552,6 +1556,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     id: $('#compra_id').val(),
                     fornecedor_id: fornecedor,
                     formaPagamento: $('#formaPagamento').val(),
+                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
 
                     // --- CAMPOS INJETADOS À FORÇA ---
                     nf: $('#numero_emissao').val(),
@@ -1562,6 +1567,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                     itens: ITENS,
                     fatura: FATURA,
+                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     faturas_removidas: PARCELAS_REMOVIDAS,
                     total: TOTAL,
                     desconto: $('#desconto').val(),

@@ -13,6 +13,21 @@
             {{-- Filtro de Pesquisa --}}
             <form method="get" action="">
                 <div class="row">
+                    <div class="form-group col-lg-2">
+                        <label>Matriz/Filial</label>
+                        {{-- O name "filial_id" deve bater com o Controller --}}
+                        <select name="filial_id" class="form-control">
+                            <option value="todos" {{ ($filial_id ?? request('filial_id')) === 'todos' ? 'selected' : '' }}>Todas</option>
+                            <option value="matriz" {{ ($filial_id ?? request('filial_id')) === 'matriz' ? 'selected' : '' }}>Matriz</option>
+                            @foreach($empresas as $emp)
+                                {{-- AQUI FOI CORRIGIDO: Usando 'descricao' ou 'razao_social' em vez de 'nome' --}}
+                                <option value="{{ $emp->id }}" {{ request()->filial_id == $emp->id ? 'selected' : '' }}>
+                                    {{ $emp->descricao ?? $emp->razao_social ?? 'Filial '.$emp->id }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="form-group col-lg-3">
                         <label>Fornecedor</label>
                         <input type="text" name="fornecedor" class="form-control" value="{{ request()->fornecedor }}" />
@@ -96,6 +111,7 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th width="30"><input type="checkbox" id="select-all"></th>
                             <th>Fornecedor</th>
                             <th>Data Emissão</th>
                             <th class="text-right">Vl Bruto</th>
@@ -111,8 +127,9 @@
                     <tbody>
                         @foreach($data as $item)
                         <tr>
+                            <td><input type="checkbox" class="check-item" value="{{ $item->id }}"></td>
                             <td>{{ $item->fornecedor->razao_social }}</td>
-                            <td>{{ __date($item->data_emissao) }}</td> {{-- Ajustado para Emissão --}}
+                            <td>{{ __date($item->data_emissao) }}</td>
                             <td class="text-right font-weight-bold">{{ moeda($item->valor_integral) }}</td>
                             <td class="text-right">{{ moeda($item->valor_inss) }}</td>
                             <td class="text-right">{{ moeda($item->valor_iss) }}</td>
@@ -141,7 +158,7 @@
                             <td class="text-right">{{ moeda($data->sum('outras_retencoes')) }}</td>
                         </tr>
                         <tr>
-                            <td colspan="10" class="text-right py-4">
+                            <td colspan="11" class="text-right py-4">
                                 <strong>Retenções Abatidas: <span class="text-danger">{{ moeda($t_ret) }}</span> | Valor Líquido Total Pago: <span class="text-success">{{ moeda($t_bruto - $t_ret) }}</span></strong>
                             </td>
                         </tr>
@@ -166,13 +183,30 @@
 @section('javascript')
 <script>
     $(document).ready(function() {
-        // Inicializa o Select2 para permitir a seleção correta dos fornecedores
+        // Inicializa o Select2 para os campos de formulário (opcional)
         $('.select2').select2({ width: '100%' });
-    });
 
+        // 1. Funcionalidade Marcar Todos (Corrigido dentro do document.ready)
+        $('#select-all').click(function() {
+            $('.check-item').prop('checked', this.checked);
+        });
+    }); // Faltava fechar as chaves do document.ready aqui!
+
+    // 2. Processamento dos IDs selecionados
     function processarFechamentoMensal() {
+        let idsSelecionados = [];
+        $('.check-item:checked').each(function() {
+            idsSelecionados.push($(this).val());
+        });
+
+        if(idsSelecionados.length === 0) {
+            swal("Atenção", "Selecione ao menos um lançamento na tabela.", "warning");
+            return;
+        }
+
         const dados = {
             _token: '{{ csrf_token() }}',
+            ids: idsSelecionados, // Array de IDs
             mes: $('#mes_fechamento').val(),
             ano: $('#ano_fechamento').val(),
             fornecedor_pcc_id: $('#fornecedor_pcc_id').val(),
@@ -183,14 +217,9 @@
             categoria_iss_id: $('#categoria_iss_id').val(),
         };
 
-        if(!dados.fornecedor_pcc_id || !dados.fornecedor_ir_id || !dados.fornecedor_iss_id) {
-            swal("Atenção", "Selecione todos os fornecedores e categorias antes de gerar.", "warning");
-            return;
-        }
-
         swal({ 
-            title: "Gerar Contas a Pagar?", 
-            text: "Isso criará as guias consolidadas de "+dados.mes+"/"+dados.ano+" no seu financeiro.", 
+            title: "Gerar Guias Consolidadas?",
+            text: "Serão geradas guias para os " + idsSelecionados.length + " itens selecionados.",
             icon: "info", 
             buttons: ["Cancelar", "Gerar Agora"]
         }).then(confirm => {

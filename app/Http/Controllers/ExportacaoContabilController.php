@@ -35,7 +35,9 @@ class ExportacaoContabilController extends BaseController
         $filial = ($request->filial_id == 'matriz') ? (object)['id' => 'matriz'] : Filial::findOrFail($request->filial_id);
         
         $dados = $service->processarAuditoria($request->data_inicio, $request->data_fim, $filial);
-        
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
+
         return response()->json($dados);
     }
   
@@ -46,6 +48,9 @@ class ExportacaoContabilController extends BaseController
         $dataFim = $request->input('data_fim');
 
         $dados = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
+
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
 
         $linhasTxt = [];
         $ordem = 1;
@@ -114,6 +119,7 @@ class ExportacaoContabilController extends BaseController
         $processarAba($dados['receber_prov']);
         $processarAba($dados['receber_baixa']);
         $processarAba($dados['manual']);
+        $processarAba($dados['adiantamentos'] ?? []);
 
         $conteudo = implode("\r\n", $linhasTxt);
         if (!empty($conteudo)) {
@@ -137,6 +143,9 @@ class ExportacaoContabilController extends BaseController
 
         $dados = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
 
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
+
         $linhasCsv = [];
         
         // Cabeçalho das Colunas
@@ -157,7 +166,10 @@ class ExportacaoContabilController extends BaseController
                 
                 // Terceiro: Pega o CNPJ/CPF onde ele estiver (débito ou crédito)
                 $terceiro = !empty($item['terceiro_debito']) ? $item['terceiro_debito'] : $item['terceiro_credito'];
-                
+                if (!empty($terceiro)) {
+                    $terceiro = '="' . $terceiro . '"';
+                }
+
                 $credito = $item['credito'] === '---' ? '' : $item['credito'];
                 $debito = $item['debito'] === '---' ? '' : $item['debito'];
                 
@@ -178,6 +190,7 @@ class ExportacaoContabilController extends BaseController
         $processarAba($dados['receber_prov']);
         $processarAba($dados['receber_baixa']);
         $processarAba($dados['manual']);
+        $processarAba($dados['adiantamentos'] ?? []);
 
         // Converte para ISO-8859-1 (Padrão do Excel no Brasil para não bugar os acentos)
         $conteudo = implode("\r\n", $linhasCsv);
@@ -189,5 +202,30 @@ class ExportacaoContabilController extends BaseController
             ->header('Content-Type', 'text/csv; charset=iso-8859-1')
             ->header('Content-Disposition', 'attachment; filename="' . $nomeArquivo . '"');
     }
-  
+
+    private function agruparProvisoes($provisoes): array
+    {
+        $agrupado = [];
+        $diretos = [];
+        foreach ($provisoes as $item) {
+            if (in_array($item['status'] ?? null, ['ERRO', 'SEM PROVISÃO'], true)) {
+                $diretos[] = $item;
+                continue;
+            }
+            $chave = implode('|', [$item['documento'] ?? 'SEM_DOC', $item['debito'] ?? '', $item['credito'] ?? '', $item['terceiro_debito'] ?? '', $item['terceiro_credito'] ?? '']);
+            $texto = str_replace(['R$', ' ', '.'], '', (string)($item['valor'] ?? 0));
+            $valor = (float)str_replace(',', '.', $texto);
+            if (!isset($agrupado[$chave])) {
+                $agrupado[$chave] = $item;
+                $agrupado[$chave]['_valor_soma'] = 0.0;
+            }
+            $agrupado[$chave]['_valor_soma'] += $valor;
+        }
+        foreach ($agrupado as &$item) {
+            $item['valor'] = number_format($item['_valor_soma'], 2, ',', '.');
+            unset($item['_valor_soma']);
+        }
+        unset($item);
+        return array_values(array_merge($diretos, $agrupado));
+    }
 }

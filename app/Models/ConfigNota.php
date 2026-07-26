@@ -89,6 +89,8 @@ class ConfigNota extends BaseModel
         'desbloquear_campo_peso_bag_ticket',
         'conectar_automaticamente_balanca_padrao_usuario',
         'conectar_automaticamente_balanca_ao_selecionar',
+        'codigo_prosoft',
+        'conta_estoque',
         'pesagem_habilitar_preview_cameras',
         'pesagem_exigir_imagem_quando_balanca_tem_camera',
         'pesagem_auto_concluir_ticket',

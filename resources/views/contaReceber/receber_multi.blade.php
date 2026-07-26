@@ -59,7 +59,16 @@
 							<div class="kt-section kt-section--first">
 								<div class="kt-section__body">
 
-									<div class="row">
+									<div class="row" id="container_adiantamento">
+										<div class="form-group col-sm-12 col-lg-8">
+											<label class="checkbox checkbox-lg">
+												<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento" value="1">
+												<span></span>&nbsp;&nbsp;Abater os saldos de adiantamento dos clientes
+											</label>
+										</div>
+									</div>
+
+									<div class="row" id="div_financeiro">
 										<div class="form-group validated col-sm-6 col-lg-2">
 											<label class="col-form-label">Valor Recebido</label>
 											<div class="">
@@ -97,7 +106,7 @@
 										@if(sizeof($contasEmpresa) > 0)
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label" id="">Conta</label>
-											<select required name="conta_id" class="select2-custom custom-select">
+											<select required name="conta_id" id="conta_id" class="select2-custom custom-select">
 												<option value=""></option>
 												@foreach($contasEmpresa as $c)
 												<option value="{{ $c->id }}">
@@ -138,4 +147,16 @@
 	</div>
 </div>
 
+@endsection
+
+@section('javascript')
+<script>
+    $(function () {
+        $('#usar_adiantamento').on('change', function () {
+            const usar = $(this).is(':checked');
+            $('#forma, #conta_id').prop('required', !usar);
+            $('#forma, #conta_id').closest('.form-group').toggle(!usar);
+        });
+    });
+</script>
 @endsection

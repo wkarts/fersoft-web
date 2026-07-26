@@ -56,16 +56,21 @@
                                 $saldo = $p->estoque ? $p->estoque->quantidade : 0; 
                             @endphp
                             
-                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $saldo }}">
+                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $saldo }}" data-ca="{{ $p->ca_numero ?? $p->ca ?? '' }}" data-fabricante="{{ $p->fabricante ?? '' }}">
                                 {{ $p->nome }} (Estoque: {{ number_format($saldo, 2, ',', '.') }})
                             </option>
                         @endforeach
                     </select>
                 </div>
                 
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label>Nº C.A.</label>
-                    <input type="text" id="ca_temp" class="form-control" placeholder="Ex: 13281">
+                    <input type="text" id="ca_temp" class="form-control" placeholder="Ex: 13281" readonly>
+                </div>
+
+                <div class="col-md-2">
+                    <label>Fabricante</label>
+                    <input type="text" id="fabricante_temp" class="form-control" placeholder="Fabricante" readonly>
                 </div>
 
                 <div class="col-md-2">
@@ -126,6 +131,12 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    $('#prod_temp').on('change', function() {
+        const option = $(this).find('option:selected');
+        $('#ca_temp').val(option.val() ? (option.data('ca') || '') : '');
+        $('#fabricante_temp').val(option.val() ? (option.data('fabricante') || '') : '');
+    });
+
     function adicionarItem() {
         let selectProd = $('#prod_temp');
         let id = selectProd.val();
@@ -140,6 +151,7 @@
         let estoque = parseFloat(option.data('estoque'));
         
         let ca = $('#ca_temp').val();
+        let fabricante = $('#fabricante_temp').val();
         let uso = $('#uso_temp').val();
         let motivo = $('#motivo_temp').val();
         let qtd = parseFloat($('#qtd_temp').val());
@@ -162,10 +174,11 @@
                 <td>
                     <input type="hidden" name="produtos[${id}][id]" value="${id}">
                     <input type="hidden" name="produtos[${id}][ca]" value="${ca}">
+                    <input type="hidden" name="produtos[${id}][fabricante]" value="${fabricante}">
                     <input type="hidden" name="produtos[${id}][uso]" value="${uso}">
                     <input type="hidden" name="produtos[${id}][motivo]" value="${motivo}">
                     <input type="hidden" name="produtos[${id}][qtd]" value="${qtd}">
-                    ${nome}
+                    ${nome}<br><small class="text-muted">Fabricante: ${fabricante || '-'}</small>
                 </td>
                 <td>${ca || '-'}</td>
                 <td>${uso}</td>

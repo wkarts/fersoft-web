@@ -419,77 +419,68 @@ $('#salvar').click(() => {
 	}
 })
 
-
+/* USANDO DA VIEW
 var salvando = false;
 $('#salvarNF').click(() => {
+    $('#salvarNF').addClass('spinner').attr('disabled', 'disabled');
 
-	$('#salvarNF').addClass('spinner')
-	$('#salvarNF').attr('disabled', 'disabled')
-	if(salvando == false){
-		salvando = true;
-		$('#preloader2').css('display', 'block');
+    if(salvando == false){
+        salvando = true;
+        $('#preloader2').css('display', 'block');
 
-		salvarNF((data) => {
-			if(data.id){
-				salvarItens(data.id, (v) => { //data.id codigo da compra
+        salvarNF((data) => {
+            if(data.id){
+                salvarItens(data.id, (v) => { // data.id = codigo da compra
+                    if(v){
+                        salvarFatura(data.id, (f) => {
+                            $('#modal1').modal('hide');
+                            $('#preloader2').css('display', 'none');
+                            sucesso();
+                        });
+                    }
+                });
+            }
+        });
+    }
+});
 
-					if(v){
-						salvarFatura(data.id, (f) => {
-							$('#modal1').modal('hide');
-							$('#preloader2').css('display', 'none');
-							sucesso();
+*/
 
-						})
-					}
-				})
-			}
-		})
-	}
-})
+	/*USANDO DA VIEW
+	function salvarFatura(compra_id, call){
+    let token = $('#_token').val();
+    // Pegando as faturas diretamente do input hidden (onde o rateio já salva o JSON pronto)
+    let faturas = JSON.parse($('#fatura').val() || '[]');
+    let faturasSalvas = 0;
 
-function salvarFatura(compra_id, call){
+    if(faturas.length > 0){
+        faturas.map((item) => {
+            item.compra_id = compra_id;
 
-	retorno = [];
-	let token = $('#_token').val();
-	let cont = 0;
-
-	if(fatura.length > 0){
-		fatura.map((item) => {
-			cont++;
-			item.numero = item.numero;
-			item.referencia = "Parcela "+cont+", da NF " + $('#nNf').val();
-			item.compra_id = compra_id;
-			item.categoria_conta_id = $('#categoria_conta_id').val();
-			item.numero_nota_fiscal = $('#nNf').val();
-            item.filial_id = $('#filial_id') ? $('#filial_id').val() : -1;
-            item.veiculo_id = $('#veiculo_id').val();
-            item.data_emissao = $('#data_emissao').val();
-            item.fornecedor_id = $('#idFornecedor').val(); // <--- muito importante!
-            $.ajax
-			({
-				type: 'POST',
-				data: {
-					parcela: item,
-					_token: token
-				},
-				url: path + 'contasPagar/salvarParcela',
-				dataType: 'json',
-				success: function(e){
-					call(e)
-
-				}, error: function(e){
-					console.log(e)
-					$('#preloader2').css('display', 'none');
-				}
-
-			});
-		})
-	}else{
-		sucesso();
-		$('#preloader2').css('display', 'none');
-	}
+            $.ajax({
+                type: 'POST',
+                data: { parcela: item, _token: token },
+                url: path + 'compraFiscal/salvarParcela',
+                dataType: 'json',
+                success: function(e){
+                    faturasSalvas++;
+                    if(faturasSalvas === faturas.length){
+                        call(true);
+                    }
+                },
+                error: function(e){
+                    console.log(e);
+                    $('#preloader2').css('display', 'none');
+                    salvando = false;
+                }
+            });
+        });
+    } else {
+        // Se a nota for zerada ou não tiver faturas, passa direto
+        call(true);
+    }
 }
-
+*/
 
 function sucesso(){
 	audioSuccess()
@@ -504,48 +495,47 @@ $('#filial_id').change(() => {
 	$('#salvarNF').removeAttr("disabled");
 })
 
-function salvarNF(call){
+	/*USANDO DA VIEW
 
-	let valor_nf = $('#valorDaNF').html()
-	valor_nf = valor_nf.replace('R$','');
-	valor_nf = valor_nf.replace(',','.');
-	let js = {
-		fornecedor_id: $('#idFornecedor').val(),
-		nNf: $('#nNf').val(),
-		data_emissao: $('#data_emissao').val(),
-		valor_nf: valor_nf,
-		observacao: '',
-		lote: $('#lote').val(),
-		desconto: $('#vDesc').val(),
-		xml_path: $('#pathXml').val(),
-		categoria_conta_id: $('#categoria_conta_id').val(),
-		chave: $('#chave').val(),
-		filial_id: $('#filial_id') ? $('#filial_id').val() : -1,
-        veiculo_id: $('#veiculo_id').val(),
-	}
-	console.log(js)
+	function salvarNF(call){
+    let valor_nf = $('#valorDaNF').html();
+    // Limpando formatação de moeda para salvar no BD
+    valor_nf = valor_nf.replace('R$','').replace(/\s/g, '').replace('.','').replace(',','.').trim();
 
-	let token = $('#_token').val();
+    let js = {
+        fornecedor_id: $('#idFornecedor').val(),
+        nNf: $('#nNf').val(),
+        data_emissao: $('#data_emissao').val(),
+        valor_nf: valor_nf,
+        observacao: '',
+        lote: $('#lote').val(),
+        desconto: $('#vDesc').val(),
+        xml_path: $('#pathXml').val(),
+        categoria_conta_id: $('#categoria_conta_id').val(),
+        chave: $('#chave').val(),
+        filial_id: $('#filial_id').length ? $('#filial_id').val() : -1,
+        veiculo_id: $('#veiculo_geral').val(), // Atualizado para pegar do select geral
+        conta_empresa_id: $('#conta_empresa_id').val() // Capturando a Conta Bancária
+    };
 
-	$.ajax
-	({
-		type: 'POST',
-		data: {
-			nf: js,
-			_token: token
-		},
-		url: path + 'compraFiscal/salvarNfFiscal',
-		dataType: 'json',
-		success: function(e){
-			call(e)
+    let token = $('#_token').val();
 
-		}, error: function(e){
-			console.log(e)
-			$('#preloader2').css('display', 'none');
-		}
-
-	});
+    $.ajax({
+        type: 'POST',
+        data: { nf: js, _token: token },
+        url: path + 'compraFiscal/salvarNfFiscal',
+        dataType: 'json',
+        success: function(e){
+            call(e);
+        },
+        error: function(e){
+            console.log(e);
+            $('#preloader2').css('display', 'none');
+            salvando = false;
+        }
+    });
 }
+*/
 
 function getUnidadeMedida(call){
 	$.ajax
@@ -589,47 +579,75 @@ $('#conv_estoque').blur(() => {
 	}
 })
 
-function salvarItens(id, call){
+/*USANDO DA VIEW
+	function salvarItens(id, call){
+    let token = $('#_token').val();
+    let totalItens = $('table tbody tr').length;
+    let itensSalvos = 0;
 
-	let token = $('#_token').val();
-	$('table tbody tr').each(function(){
-		let js = {
-			cod_barras : $(this).find('.codBarras').html(),
-			nome : $(this).find('.nome').html(),
-			produto_id : parseInt($(this).find('.cod').html()),
-			compra_id : id,
-			unidade : $(this).find('.unidade').html(),
-			quantidade : $(this).find('.quantidade').html(),
-			valor : $(this).find('.valor').html(),
-			valor_venda : $(this).find('.valor_venda').html(),
-			valor_compra : $(this).find('.valor_compra').html(),
-			cfop_entrada : $(this).find('#cfop_entrada_input').val(),
-			conversao_unitaria : $(this).find('.conv_estoque').html(),
-			said : $(this).find('#codigo_siad_input').val(),
-			filial_id: $('#filial_id') ? $('#filial_id').val() : -1,
-		}
+    $('table tbody tr').each(function(){
+        let tr = $(this);
+        let js = {
+            compra_id: id,
+            produto_id: parseInt(tr.find('.cod').html()),
+            codigo: tr.find('.codigo').html(),
+            xProd: tr.find('.nome').html(),
+            codBarras: tr.find('.codBarras').html(),
+            quantidade: tr.find('.quantidade').html() ? tr.find('.quantidade').html().replace(',','.') : tr.find('input[name="quantidade[]"]').val(),
+            valor: tr.find('.valor').html().replace('.','').replace(',','.'),
+            cfop: tr.find('.cfop').val(),
+            cfop_entrada: tr.find('.cfop_entrada_input').val(),
+            cst_icms: tr.find('.cst_icms_input').val(),
+            cst_pis: tr.find('.cst_pis_input').val(),
+            cst_cofins: tr.find('.cst_cofins_input').val(),
+            finalidade: tr.find('.finalidade_input').val(),
 
-		// alert('teste')
-		$.ajax
-		({
-			type: 'POST',
-			data: {
-				produto: js,
-				_token: token
-			},
-			url: path + 'compraFiscal/salvarItem',
-			dataType: 'json',
-			success: function(e){
+            // Impostos do XML
+            vbc_icms: tr.find('.vbc_icms').val(),
+            p_icms: tr.find('.p_icms').val(),
+            v_icms: tr.find('.v_icms').val(),
+            vbc_pis: tr.find('.vbc_pis').val(),
+            p_pis: tr.find('.p_pis').val(),
+            v_pis: tr.find('.v_pis').val(),
+            vbc_cofins: tr.find('.vbc_cofins').val(),
+            p_cofins: tr.find('.p_cofins').val(),
+            v_cofins: tr.find('.v_cofins').val(),
 
-			}, error: function(e){
-				console.log(e)
-				$('#preloader2').css('display', 'none');
-			}
+            // Reforma Tributária
+            cst_ibs_cbs: tr.find('.cst_ibs_cbs').val(),
+            bc_ibs_cbs: tr.find('.bc_ibs_cbs').val(),
+            aliq_ibs: tr.find('.aliq_ibs').val(),
+            aliq_cbs: tr.find('.aliq_cbs').val(),
+            valor_ibs: tr.find('.valor_ibs').val(),
+            valor_cbs: tr.find('.valor_cbs').val(),
+            class_trib_ibs_cbs: tr.find('.class_trib_ibs_cbs').val(),
 
-		});
-	});
-	call(true)
+            filial_id: $('#filial_id').length ? $('#filial_id').val() : -1,
+            unidade: tr.find('.unidade').val() || 'UN'
+        };
+
+        $.ajax({
+            type: 'POST',
+            data: { produto: js, _token: token },
+            url: path + 'compraFiscal/salvarItem',
+            dataType: 'json',
+            success: function(e){
+                itensSalvos++;
+                // Só chama a próxima etapa (Faturas) quando salvar o último item
+                if(itensSalvos === totalItens){
+                    call(true);
+                }
+            },
+            error: function(e){
+                console.log(e);
+                $('#preloader2').css('display', 'none');
+                salvando = false;
+            }
+        });
+    });
 }
+
+*/
 
 $('#add-pag').click(() => {
 	let vencimento = $('#kt_datepicker_3').val();

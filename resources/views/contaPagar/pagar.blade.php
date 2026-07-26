@@ -63,7 +63,17 @@
 										</div>
 									</div>
 
-									<div class="row">
+									<div class="row" id="container_adiantamento" style="display: none;">
+										<div class="form-group col-sm-12 col-lg-8">
+											<label class="checkbox checkbox-lg">
+												<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento" value="1">
+												<span></span>&nbsp;&nbsp;
+												<strong id="label_adiantamento" class="text-info">Usar saldo de adiantamento do fornecedor</strong>
+											</label>
+										</div>
+									</div>
+
+									<div class="row" id="div_financeiro">
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label">Tipo de Pagamento</label>
 											<select required class="custom-select form-control" id="forma" name="tipo_pagamento">
@@ -77,7 +87,7 @@
 										@if(sizeof($contasEmpresa) > 0)
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label">Conta Bancária (Origem)</label>
-											<select required name="conta_id" class="select2-custom custom-select">
+											<select required name="conta_id" id="conta_id" class="select2-custom custom-select">
 												<option value="">Selecione a conta</option>
 												@foreach($contasEmpresa as $c)
 												<option value="{{ $c->id }}">
@@ -116,7 +126,28 @@
 
 @section('javascript')
 <script type="text/javascript">
-	$(function () {
+		$(function () {
+			const fornecedorId = @json($conta->fornecedor_id);
+
+			if (fornecedorId) {
+				$.get('/adiantamentos/consulta-saldo/fornecedor/' + fornecedorId)
+					.done(function (res) {
+						const saldo = Number(res.saldo || 0);
+						if (saldo > 0) {
+							$('#label_adiantamento').text(
+								'Usar saldo de adiantamento do fornecedor (disponível: R$ ' +
+								saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ')'
+							);
+							$('#container_adiantamento').show();
+						}
+					});
+			}
+
+			$('#usar_adiantamento').on('change', function () {
+				const usar = $(this).is(':checked');
+				$('#div_financeiro').toggle(!usar);
+				$('#conta_id, #forma').prop('required', !usar);
+			});
 		// Monitora a digitação nos campos de acréscimo e desconto
 		$('input[name="juros"], input[name="multa"], input[name="desconto"]').on('keyup', function () {
 			calcularTotal();

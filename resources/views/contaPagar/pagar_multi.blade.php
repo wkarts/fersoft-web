@@ -56,9 +56,25 @@
 							<div class="kt-section kt-section--first">
 								<div class="kt-section__body">
 
-									<div class="row">
+									<div class="row mb-4">
+										<div class="form-group validated col-sm-12 col-lg-5">
+											<label class="col-form-label">Lançamento no extrato bancário</label>
+											<select name="tipo_lancamento" class="custom-select form-control">
+												<option value="analitico">Analítico — um lançamento por conta</option>
+												<option value="sintetico">Sintético — um lançamento consolidado</option>
+											</select>
+										</div>
+										<div class="form-group validated col-sm-12 col-lg-5 d-flex align-items-end">
+											<label class="checkbox checkbox-lg mb-3">
+												<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento" value="1">
+												<span></span>&nbsp;&nbsp;Abater os saldos de adiantamento dos fornecedores
+											</label>
+										</div>
+									</div>
+
+									<div class="row" id="div_financeiro">
 										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Valor Recebido</label>
+											<label class="col-form-label">Valor Total a Pagar</label>
 											<div class="">
 												<input required type="text" class="form-control @if($errors->has('valor')) is-invalid @endif money" name="valor" value="{{number_format($somaTotal, 2, ',', '')}}">
 												@if($errors->has('valor'))
@@ -70,7 +86,7 @@
 										</div>
 
 										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Data de recebimento</label>
+											<label class="col-form-label">Data de pagamento</label>
 											<div class="">
 												<input required type="text" name="data_pagamento" class="form-control @if($errors->has('vencimento')) is-invalid @endif date-input" value="{{ date('d/m/Y') }}" id="kt_datepicker_3" />
 												@if($errors->has('data_pagamento'))
@@ -85,7 +101,7 @@
 											<label class="col-form-label" id="">Tipo de Pagamento</label>
 											<select required class="custom-select form-control" id="forma" name="tipo_pagamento">
 												<option value="">Selecione o tipo de pagamento</option>
-												@foreach(App\Models\ContaReceber::tiposPagamento() as $c)
+												@foreach(App\Models\ContaPagar::tiposPagamento() as $c)
 												<option value="{{$c}}">{{$c}}</option>
 												@endforeach
 											</select>
@@ -94,7 +110,7 @@
 										@if(sizeof($contasEmpresa) > 0)
 										<div class="form-group validated col-sm-12 col-lg-4">
 											<label class="col-form-label" id="">Conta</label>
-											<select required name="conta_id" class="select2-custom custom-select">
+											<select required name="conta_id" id="conta_id" class="select2-custom custom-select">
 												<option value=""></option>
 												@foreach($contasEmpresa as $c)
 												<option value="{{ $c->id }}">
@@ -116,7 +132,7 @@
 
 							</div>
 							<div class="col-lg-3 col-sm-6 col-md-4">
-								<a style="width: 100%" class="btn btn-danger" href="/contasReceber">
+								<a style="width: 100%" class="btn btn-danger" href="/contasPagar">
 									<i class="la la-close"></i>
 									<span class="">Cancelar</span>
 								</a>
@@ -135,4 +151,16 @@
 	</div>
 </div>
 
+@endsection
+
+@section('javascript')
+<script>
+    $(function () {
+        $('#usar_adiantamento').on('change', function () {
+            const usar = $(this).is(':checked');
+            $('#div_financeiro').toggle(!usar);
+            $('#conta_id, #forma').prop('required', !usar);
+        });
+    });
+</script>
 @endsection

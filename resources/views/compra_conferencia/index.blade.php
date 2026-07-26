@@ -4,46 +4,49 @@
 <style>
     /* CONFIGURAÇÕES GERAIS DE IMPRESSÃO */
     @media print {
-        /* 1. Força as cores e fundos na impressão */
+        /* 1. Esconde agressivamente menus, topos escuros e rodapés do template base */
+        .no-print, form, button, .navbar, .aside, #kt_aside, .header, #kt_header, .header-mobile, .footer, .card-header, .subheader {
+            display: none !important;
+        }
+
+        /* 2. Reseta o fundo e remove preenchimentos inúteis para usar a folha toda */
+        body, .content, .d-flex, .wrapper {
+            background-color: #fff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+
+        .card { border: none !important; box-shadow: none !important; }
+        .card-body { padding: 0 !important; }
+
+        /* 3. Ajustes cruciais para a Tabela não quebrar errado */
+        table { width: 100% !important; border-collapse: collapse !important; }
+        thead { display: table-header-group !important; } /* Repete o cabeçalho no topo de cada página nova */
+        tr { page-break-inside: avoid !important; } /* Proíbe o navegador de cortar uma linha pela metade */
+        
+        th, td { 
+            font-size: 10px !important; /* Fonte um pouco menor para caber todas as colunas lado a lado */
+            padding: 4px 6px !important;
+            border: 1px solid #ddd !important; /* Borda cinza clara para guiar a leitura */
+        }
+
+        /* 4. Força a impressão exata das cores de fundo (badges) */
         * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
         }
 
-        /* 2. Esconde elementos inúteis no papel */
-        .no-print, form, button, .navbar, .aside, .footer, header, .card-header {
-            display: none !important;
-        }
-
-        /* 3. Configura página em Paisagem */
-        @page {
-            size: landscape;
-            margin: 0.5cm;
-        }
-
-        /* 4. Ajustes de layout para ocupar a folha toda */
-        body { background-color: #fff !important; }
-        .card { border: none !important; }
-        .container-fluid { padding: 0 !important; }
-        
-        table { width: 100% !important; border-collapse: collapse; }
-        th, td { 
-            font-size: 8pt !important; 
-            padding: 5px !important; 
-            border: 1px solid #eee !important;
-        }
-
-        /* Mantém o alinhamento à direita dos valores */
+        /* 5. Mantém as cores dos botõezinhos e textos alinhados */
         .text-right { text-align: right !important; }
-
-        /* Estilização manual para garantir que as cores dos badges apareçam */
-        .badge-danger { background-color: #F64E60 !important; color: #fff !important; }
-        .badge-warning { background-color: #FFA800 !important; color: #fff !important; }
-        .badge-success { background-color: #1BC5BD !important; color: #fff !important; }
-        .badge-primary { background-color: #3699FF !important; color: #fff !important; }
-        .label-light-success { background-color: #C9F7F5 !important; color: #1BC5BD !important; }
-        .label-light-info { background-color: #EEE5FF !important; color: #8950FC !important; }
+        .badge { padding: 4px 8px !important; border-radius: 4px !important; display: inline-block; font-size: 9px !important; font-weight: bold; }
+        .badge-danger { background-color: #F64E60 !important; color: #fff !important; border: none !important; }
+        .badge-warning { background-color: #FFA800 !important; color: #fff !important; border: none !important; }
+        .badge-success { background-color: #1BC5BD !important; color: #fff !important; border: none !important; }
+        .badge-primary { background-color: #3699FF !important; color: #fff !important; border: none !important; }
+        .label-light-success { background-color: #C9F7F5 !important; color: #1BC5BD !important; padding: 2px 6px; border-radius: 4px; }
+        .label-light-info { background-color: #EEE5FF !important; color: #8950FC !important; padding: 2px 6px; border-radius: 4px; }
     }
 </style>
 
@@ -63,10 +66,20 @@
                     <label>Data Final</label>
                     <input type="date" name="data_final" class="form-control" value="{{ $data_final }}">
                 </div>
+
                 <div class="col-md-2">
-                    <label>Nº Nota</label>
-                    <input type="text" name="numero_nota" class="form-control" value="{{ request('numero_nota') }}">
+                    <label>Filial</label>
+                    <select name="filial_id" class="form-control select2">
+                        <option value="todos">Todas</option>
+                        <option value="matriz" {{ request('filial_id') == 'matriz' ? 'selected' : '' }}>Matriz</option>
+                        @foreach($filiais as $f)
+                            <option value="{{ $f->id }}" {{ request('filial_id') == $f->id ? 'selected' : '' }}>
+                                {{ $f->descricao ?? $f->nome ?? 'Filial '.$f->id }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
+
                 <div class="col-md-3">
                     <label>Fornecedor</label>
                     <select name="fornecedor_id" class="form-control select2">
@@ -78,17 +91,24 @@
                         @endforeach
                     </select>
                 </div>
+
                 <div class="col-md-3">
-                    <label>Categoria</label>
-                    <select name="categoria_id" class="form-control select2">
-                        <option value="todos">Todas</option>
+                    <label>Categoria (Múltipla)</label>
+                    @php $cats = request('categoria_id', []); @endphp
+                    <select name="categoria_id[]" class="form-control select2" multiple="multiple" data-placeholder="Todas as categorias">
                         @foreach($categorias as $cat)
-                            <option value="{{ $cat->id }}" {{ request('categoria_id') == $cat->id ? 'selected' : '' }}>{{ $cat->nome }}</option>
+                            <option value="{{ $cat->id }}" {{ in_array($cat->id, $cats) ? 'selected' : '' }}>{{ $cat->nome }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
+
             <div class="row mt-3">
+                <div class="col-md-2">
+                    <label>Nº Nota</label>
+                    <input type="text" name="numero_nota" class="form-control" value="{{ request('numero_nota') }}">
+                </div>
+
                 <div class="col-md-2">
                     <label>Estado</label>
                     <select name="estado" class="form-control select2">
@@ -96,11 +116,12 @@
                         <option value="novo" {{ request('estado') == 'novo' ? 'selected' : '' }}>NOVO</option>
                         <option value="importado" {{ request('estado') == 'importado' ? 'selected' : '' }}>IMPORTADO</option>
                         <option value="emitida" {{ request('estado') == 'emitida' ? 'selected' : '' }}>EMITIDA</option>
+                        <option value="aprovado" {{ request('estado') == 'aprovado' ? 'selected' : '' }}>APROVADO</option>
                         <option value="rejeitado" {{ request('estado') == 'rejeitado' ? 'selected' : '' }}>REJEITADO</option>
                     </select>
                 </div>
-                <div class="col-md-10 text-right">
-                    <br>
+
+                <div class="col-md-8 text-right align-self-end">
                     <button class="btn btn-primary">Filtrar</button>
                     <button type="button" onclick="window.print()" class="btn btn-secondary">
                         <i class="fa fa-print"></i> Imprimir
@@ -146,6 +167,8 @@
                                 <span class="badge badge-warning">NOVO ⏳</span>
                             @elseif($estado == 'IMPORTADO')
                                 <span class="badge badge-primary">IMPORTADO</span>
+                            @elseif($estado == 'APROVADO')
+                                <span class="badge badge-success" style="background-color: #28a745 !important;">APROVADO ✔️</span>
                             @else
                                 <span class="badge badge-success">{{ $estado }}</span>
                             @endif

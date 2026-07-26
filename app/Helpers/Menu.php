@@ -433,6 +433,10 @@ class Menu {
 						'nome' => 'Devolução NFe',
 						'rota' => '/devolucao'
 					],
+                  	[
+						'nome' => 'Conferência Notas',
+						'rota' => '/conferencia'
+					],
 					[
 						'nome' => 'Agendamentos',
 						'rota' => '/agendamentos'
@@ -589,6 +593,18 @@ class Menu {
                         'nome' => 'Monitor de Pesagens',
                         'rota' => '/monitor/pesagens',
                     ],
+                    [
+                        'nome' => 'NF-e de Pesagens',
+                        'rota' => '/pesagemNfe',
+                    ],
+                  	[
+                        'nome' => 'Movimentação',
+                        'rota' => '/gestao-estoque',
+                    ],
+                  	[
+                        'nome' => 'Preços NF-e (Pauta)',
+                        'rota' => '/tabelaPrecoNfe',
+                    ],                    
                 ],
             ],
             [
@@ -765,6 +781,12 @@ class Menu {
 						'nome' => 'Fechamento Mensal',
 						'rota' => '/apuracao'
 					],
+                  	[
+						'nome' => 'Faturamento',
+						'rota' => '/faturamento'
+					],
+                  
+                  
 				]
 			],
           

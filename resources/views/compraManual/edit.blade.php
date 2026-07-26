@@ -498,6 +498,8 @@
 
 
                                             </div>
+                                            @include('compraManual.partials.fatura_avancada', ['mostrarCategoriaConta' => false, 'mostrarAdiantamento' => true, 'faturasIniciais' => $fatura ?? []])
+
                                             <!--end: Wizard Step 2-->
 
                                             <!--begin: Wizard Actions-->
@@ -1547,6 +1549,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     id: $('#compra_id').val(),
                     fornecedor_id: fornecedor,
                     formaPagamento: $('#formaPagamento').val(),
+                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
 
                     // --- CAMPOS INJETADOS À FORÇA (CORRIGIDOS) ---
                     nf: $('#nf').val(), // Corrigido para pegar o ID certo da Nota Fiscal
@@ -1557,6 +1560,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                     itens: ITENS,
                     fatura: FATURA,
+                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     faturas_removidas: PARCELAS_REMOVIDAS,
                     total: TOTAL,
                     desconto: $('#desconto').val(),

@@ -137,4 +137,17 @@ class ContabilidadeController extends BaseController
             return back()->with('erro', 'Erro ao importar: ' . $e->getMessage());
         }
     }
+
+    public function gerarTerceiros(Request $request)
+    {
+        $empresaId = $this->getEmpresaId();
+        abort_if(!$empresaId || (int)$empresaId !== (int)$this->empresa_id, 403, 'Empresa não identificada.');
+
+        $conteudo = app(\App\Services\ContabilidadeService::class)->gerarArquivoTerceiros((int)$empresaId);
+
+        return response($conteudo, 200, [
+            'Content-Type' => 'text/plain; charset=ISO-8859-1',
+            'Content-Disposition' => 'attachment; filename="terceiros_' . date('Ymd_His') . '.txt"',
+        ]);
+    }
 }

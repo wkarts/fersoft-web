@@ -511,4 +511,37 @@ class OticaController extends BaseController
             ]);
         }
     }
+
+    public function clienteRapido(Request $request)
+    {
+        if (!$request->filled('whatsapp') && $request->filled('telefone')) {
+            $request->merge(['whatsapp' => $request->telefone]);
+        }
+        return $this->cadastroRapidoCliente($request);
+    }
+
+    public function delete($id)
+    {
+        return $this->removerOS($id);
+    }
+
+    public function destroy($id)
+    {
+        return $this->removerOS($id);
+    }
+
+    private function removerOS($id)
+    {
+        try {
+            $empresaId = $this->empresa_id ?: (session('user_logged')['empresa'] ?? null);
+            $os = ReceitaOtica::where('empresa_id', $empresaId)->findOrFail((int)$id);
+            if ($os->venda_id || mb_strtolower((string)$os->status) === 'entregue') {
+                return redirect()->route('otica.index')->with('mensagem_erro', 'Não é possível excluir uma OS já faturada ou entregue.');
+            }
+            $os->delete();
+            return redirect()->route('otica.index')->with('mensagem_sucesso', 'Ordem de Serviço excluída com sucesso.');
+        } catch (\Throwable $e) {
+            return redirect()->route('otica.index')->with('mensagem_erro', 'Erro ao excluir a OS: ' . $e->getMessage());
+        }
+    }
 }

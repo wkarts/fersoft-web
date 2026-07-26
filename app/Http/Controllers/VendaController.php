@@ -427,28 +427,43 @@ class VendaController extends Controller
         ];
     }
 
-    private function applyRtToItemVendaArray(array $itemArr, $produto): array
+    private function applyRtToItemVendaArray(array $itemArr, $produto, $natureza = null): array
     {
         $rt = app(ReformaTributariaService::class);
         $empresaId = (int)($this->empresa_id ?? 0);
-        if ($empresaId <= 0) {
-            $userLogged = session('user_logged');
-            if (is_array($userLogged)) {
-                $empresaId = (int)($userLogged['empresa'] ?? 0);
-            }
-        }
-
         $aplicar = $rt->shouldApply($empresaId);
 
         $item = new ItemVenda();
-        $item->fill($itemArr);
-        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
+        foreach ($itemArr as $key => $value) {
+            $item->setAttribute($key, $value);
+        }
+
+        $item->produto_id = (int)($itemArr['produto_id'] ?? $produto->id ?? 0);
         $item->quantidade = (float)($itemArr['quantidade'] ?? 0);
         $item->valor = (float)($itemArr['valor'] ?? 0);
         $item->valor_unitario = (float)($itemArr['valor'] ?? 0);
         $item->valor_total = $item->quantidade * $item->valor;
 
         $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
+
+        // A parametrização da natureza prevalece sobre o padrão do produto quando informada.
+        if ($natureza) {
+            if (!empty($natureza->cst_ibs_cbs)) {
+                $item->cst_ibs_cbs = trim((string)$natureza->cst_ibs_cbs);
+            }
+            if (!empty($natureza->class_trib_ibs_cbs)) {
+                $item->class_trib_ibs_cbs = trim((string)$natureza->class_trib_ibs_cbs);
+            }
+            if (isset($natureza->perc_red_ibs) && is_numeric($natureza->perc_red_ibs)) {
+                $reducaoIbs = max(0, min(100, (float)$natureza->perc_red_ibs));
+                $item->perc_red_aliq_uf = $reducaoIbs;
+                $item->perc_red_aliq_ibs_mun = $reducaoIbs;
+            }
+            if (isset($natureza->perc_red_cbs) && is_numeric($natureza->perc_red_cbs)) {
+                $item->perc_red_aliq_cbs = max(0, min(100, (float)$natureza->perc_red_cbs));
+            }
+        }
+
         $rt->calcularItem($item, $empresaId, null);
         if (!$aplicar) {
             $rt->calcularItem($item, $empresaId, 'REMESSA');
@@ -463,11 +478,20 @@ class VendaController extends Controller
             }
 
             $val = $item->getAttribute($col);
-            if ($val === null) {
-                continue;
+            if ($val !== null) {
+                $itemArr[$col] = $val;
             }
+        }
 
-            $itemArr[$col] = $val;
+        // Garante que os códigos explicitamente informados na natureza não sejam
+        // substituídos por defaults durante o cálculo.
+        if ($natureza) {
+            if (!empty($natureza->cst_ibs_cbs) && Schema::hasColumn('item_vendas', 'cst_ibs_cbs')) {
+                $itemArr['cst_ibs_cbs'] = trim((string)$natureza->cst_ibs_cbs);
+            }
+            if (!empty($natureza->class_trib_ibs_cbs) && Schema::hasColumn('item_vendas', 'class_trib_ibs_cbs')) {
+                $itemArr['class_trib_ibs_cbs'] = trim((string)$natureza->class_trib_ibs_cbs);
+            }
         }
 
         return $itemArr;
@@ -1388,7 +1412,7 @@ class VendaController extends Controller
                     ];
 
                     // >>> aplica RT no item (sem quebrar se não existirem colunas)
-                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
+                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto, $natureza);
 
                     ItemVenda::create($itemArr);
 
@@ -1903,7 +1927,7 @@ class VendaController extends Controller
                         'valor_custo' => $produto->valor_compra
                     ];
 
-                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto);
+                    $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto, $natureza);
 
                     ItemVenda::create($itemArr);
 

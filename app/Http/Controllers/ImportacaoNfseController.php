@@ -241,19 +241,148 @@ class ImportacaoNfseController extends BaseController
 
     public function visualizar($id)
     {
-        $compra = Compra::findOrFail($id);
-        $arquivo = preg_replace('/[^a-zA-Z0-9.]/', '', $compra->xml_path); 
-        if (!str_ends_with(strtolower($arquivo), '.xml')) $arquivo .= ".xml";
+        $compra = Compra::query()
+            ->where('empresa_id', $this->empresa_id)
+            ->findOrFail($id);
 
-        $pastas = ['xml_servico', 'xml_entrada', 'xml_entrada_emetida'];
-        foreach ($pastas as $pasta) {
-            $caminho = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
-            if (file_exists($caminho)) {
-                $xml = simplexml_load_string(preg_replace('/ xmlns[^=]*="[^"]*"/i', '', file_get_contents($caminho)));
-                return view('nfse.visualizar', ['xml' => $xml, 'title' => 'DANFSE']);
+        $arquivo = basename(str_replace('\\', '/', (string)$compra->xml_path));
+        $arquivo = preg_replace('/[^a-zA-Z0-9._-]/', '', $arquivo);
+        if ($arquivo === '') {
+            abort(404, 'Arquivo XML não informado para esta NFS-e.');
+        }
+        if (!str_ends_with(strtolower($arquivo), '.xml')) {
+            $arquivo .= '.xml';
+        }
+
+        $caminho = null;
+        foreach (['xml_servico', 'xml_entrada', 'xml_entrada_emetida'] as $pasta) {
+            $candidato = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
+            if (is_file($candidato)) {
+                $caminho = $candidato;
+                break;
             }
         }
-        return "Arquivo XML não localizado.";
+
+        if (!$caminho) {
+            abort(404, 'Arquivo XML da NFS-e não localizado.');
+        }
+
+        $xmlString = file_get_contents($caminho);
+        if ($xmlString === false || trim($xmlString) === '') {
+            abort(422, 'O arquivo XML da NFS-e está vazio ou não pôde ser lido.');
+        }
+
+        $dom = new \DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        try {
+            if (!$dom->loadXML($xmlString, LIBXML_NONET | LIBXML_NOBLANKS)) {
+                throw new \RuntimeException('XML da NFS-e inválido.');
+            }
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $valor = static function (array $nomes) use ($xpath): string {
+            foreach ($nomes as $nome) {
+                $nodes = $xpath->query('//*[local-name()="' . $nome . '"]');
+                if ($nodes && $nodes->length > 0) {
+                    $texto = trim((string)$nodes->item(0)->textContent);
+                    if ($texto !== '') {
+                        return $texto;
+                    }
+                }
+            }
+            return '';
+        };
+        $valorNo = static function (array $pais, array $filhos) use ($xpath): string {
+            foreach ($pais as $pai) {
+                foreach ($filhos as $filho) {
+                    $nodes = $xpath->query('//*[local-name()="' . $pai . '"]//*[local-name()="' . $filho . '"]');
+                    if ($nodes && $nodes->length > 0) {
+                        $texto = trim((string)$nodes->item(0)->textContent);
+                        if ($texto !== '') {
+                            return $texto;
+                        }
+                    }
+                }
+            }
+            return '';
+        };
+        $moeda = static function ($value): float {
+            $value = trim((string)$value);
+            if ($value === '') {
+                return 0.0;
+            }
+            if (str_contains($value, ',') && str_contains($value, '.')) {
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } elseif (str_contains($value, ',')) {
+                $value = str_replace(',', '.', $value);
+            }
+            return is_numeric($value) ? (float)$value : 0.0;
+        };
+
+        $prestadorNome = $valorNo(['emit', 'prest', 'prestador'], ['xNome', 'razaoSocial', 'RazaoSocial']);
+        $prestadorDocumento = $valorNo(['emit', 'prest', 'prestador'], ['CNPJ', 'CPF', 'CpfCnpj']);
+        $tomadorNome = $valorNo(['toma', 'tomador'], ['xNome', 'razaoSocial', 'RazaoSocial']);
+        $tomadorDocumento = $valorNo(['toma', 'tomador'], ['CNPJ', 'CPF', 'CpfCnpj']);
+
+        $logradouro = $valorNo(['enderNac', 'end', 'endereco'], ['xLgr', 'Endereco', 'logradouro']);
+        $numero = $valorNo(['enderNac', 'end', 'endereco'], ['nro', 'Numero', 'numero']);
+        $bairro = $valorNo(['enderNac', 'end', 'endereco'], ['xBairro', 'Bairro', 'bairro']);
+        $enderecoPrestador = trim(implode(', ', array_filter([$logradouro, $numero]))) . ($bairro !== '' ? ' - ' . $bairro : '');
+
+        $retencoes = [
+            'valor_pis' => $moeda($valor(['vPIS', 'ValorPis'])),
+            'valor_cofins' => $moeda($valor(['vCOFINS', 'ValorCofins'])),
+            'valor_ir' => $moeda($valor(['vIRRF', 'ValorIr', 'ValorIrrf'])),
+            'valor_csll' => $moeda($valor(['vCSLL', 'ValorCsll'])),
+            'valor_inss' => $moeda($valor(['vINSS', 'ValorInss'])),
+            'valor_iss' => $moeda($valor(['vISSRet', 'ValorIssRetido'])),
+        ];
+
+        $valorBruto = $moeda($valor(['vServ', 'vServPrest', 'ValorServicos']));
+        $valorLiquido = $moeda($valor(['vLiq', 'ValorLiquidoNfse', 'ValorLiquido']));
+        if ($valorLiquido <= 0 && $valorBruto > 0) {
+            $valorLiquido = max(0, $valorBruto - array_sum($retencoes));
+        }
+
+        $dados = [
+            'numero' => $valor(['nNFSe', 'Numero']),
+            'data_emissao' => $valor(['dhEmi', 'DataEmissao']),
+            'prestador_nome' => $prestadorNome,
+            'prestador_documento' => preg_replace('/\D/', '', $prestadorDocumento),
+            'prestador_endereco' => $enderecoPrestador,
+            'tomador_nome' => $tomadorNome,
+            'tomador_documento' => preg_replace('/\D/', '', $tomadorDocumento),
+            'descricao_servico' => $valor(['xDescServ', 'Discriminacao', 'DescricaoServico']),
+            'valor_bruto' => $valorBruto,
+            'valor_liquido' => $valorLiquido,
+            'valor_iss_apurado' => $moeda($valor(['vISSQN', 'ValorIss'])),
+            'tributacao_municipal' => $valor(['cTribMun', 'CodigoTributacaoMunicipio']),
+            'codigo_tributacao' => $valor(['cNBS', 'ItemListaServico']),
+            'retencoes' => $retencoes,
+        ];
+
+        $nota = (object)[
+            'numero_nota' => $dados['numero'],
+            'prestador_nome' => $dados['prestador_nome'],
+            'prestador_cnpj_cpf' => $dados['prestador_documento'],
+            'valor_servico' => $dados['valor_bruto'],
+            'valor_liquido' => $dados['valor_liquido'],
+            'situacao' => strtoupper((string)($compra->estado ?? '')) === 'CANCELADO' ? 'CANCELADA' : 'ATIVA',
+        ];
+
+        return view('nfse.visualizar', [
+            'xml' => simplexml_import_dom($dom),
+            'nota' => $nota,
+            'dados' => $dados,
+            'descricao_servico' => $dados['descricao_servico'],
+            'endereco_prestador' => $enderecoPrestador,
+            'title' => 'DANFSE - Nota ' . ($dados['numero'] ?: $compra->nf),
+        ]);
     }
 
     private function formataCnpj($c){ return strlen($c) == 14 ? substr($c,0,2).'.'.substr($c,2,3).'.'.substr($c,5,3).'/'.substr($c,8,4).'-'.substr($c,12,2) : $c; }

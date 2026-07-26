@@ -512,7 +512,9 @@
 											</div>
 
 										</div>
-										<div class="d-flex justify-content-between border-top mt-5 pt-10">
+										@include('compraManual.partials.fatura_avancada', ['mostrarCategoriaConta' => false, 'mostrarAdiantamento' => false, 'faturasIniciais' => []])
+
+<div class="d-flex justify-content-between border-top mt-5 pt-10">
 
 										</div>
 										</form>
@@ -1693,6 +1695,7 @@ setTimeout(function() {
 
                     itens: ITENS,
                     fatura: FATURA,
+                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     total: TOTAL,
                     desconto: $('#desconto').val(),
                     acrescimo: $('#acrescimo').val(),
@@ -1772,6 +1775,7 @@ setTimeout(function() {
 
                     itens: ITENS,
                     fatura: FATURA,
+                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     faturas_removidas: PARCELAS_REMOVIDAS,
                     total: TOTAL,
                     desconto: $('#desconto').val(),

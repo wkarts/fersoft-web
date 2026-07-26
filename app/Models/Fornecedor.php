@@ -31,7 +31,8 @@ class Fornecedor extends BaseModel
         'imagem',
         'banco',
         'agencia',
-        'conta'
+        'conta',
+        'ativo'
     ];
 
     protected $appends = ['imgApp'];

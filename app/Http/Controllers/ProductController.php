@@ -4132,4 +4132,31 @@ class ProductController extends Controller
         return response()->json($vals, 200);
     }
 
+    public function salvarProdutoAjaxCompleto(Request $request)
+    {
+        $dados = $request->validate([
+            'nome' => ['required','string','max:255'],
+            'valor_venda' => ['nullable'],
+            'categoria_id' => ['nullable','integer'],
+            'ncm' => ['nullable','string','max:10'],
+            'codBarras' => ['nullable','string','max:50'],
+            'unidade_compra' => ['nullable','string','max:10'],
+            'unidade_venda' => ['nullable','string','max:10'],
+        ]);
+        $categoriaId = $dados['categoria_id'] ?? Categoria::where('empresa_id',$this->empresa_id)->value('id');
+        $produto = Produto::create([
+            'nome' => mb_strtoupper($dados['nome']),
+            'empresa_id' => $this->empresa_id,
+            'unidade_compra' => $dados['unidade_compra'] ?? 'UN',
+            'unidade_venda' => $dados['unidade_venda'] ?? 'UN',
+            'ncm' => $dados['ncm'] ?? '00000000',
+            'codBarras' => $dados['codBarras'] ?? 'SEM GTIN',
+            'valor_venda' => app(\App\Services\FiscalImportService::class)->parseMoeda($dados['valor_venda'] ?? 0),
+            'valor_compra' => 0,
+            'categoria_id' => $categoriaId,
+            'gerenciar_estoque' => 1,
+            'inativo' => 0,
+        ]);
+        return response()->json(['id'=>$produto->id,'nome'=>$produto->nome]);
+    }
 }

@@ -4,10 +4,19 @@
     <div class="card card-custom gutter-b">
         <div class="card-body">
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-                <div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
-                    <a href="/fornecedores/new" class="btn btn-lg btn-success">
-                        <i class="fa fa-plus"></i> Novo Fornecedor
-                    </a>
+                <div class="row">
+                    <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
+                        <a href="/fornecedores/new" class="btn btn-lg btn-success mr-2">
+                            <i class="fa fa-plus"></i> Novo Fornecedor
+                        </a>
+                        <form action="{{ route('fornecedores.limpar-duplicidades') }}" method="POST" class="d-inline" id="form-limpar-duplicidades">
+                            @csrf
+                            <button type="button" class="btn btn-lg btn-warning" data-toggle="tooltip" title="Desativa automaticamente cadastros repetidos mantendo o mais completo."
+                                onclick='swal("Atenção!", "Deseja analisar e desativar fornecedores duplicados?", "warning").then((sim) => { if (sim) { document.getElementById("form-limpar-duplicidades").submit(); } })'>
+                                <i class="fa fa-magic"></i> Corrigir Duplicidades
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
             <br>
@@ -68,44 +77,72 @@
                         </div>
                     </div>
 
+                    <!-- ABA 1: TABELA -->
                     <div class="pb-5" data-wizard-type="step-content">
                         <div class="row">
                             <div class="col-xl-12">
                                 <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
                                     <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                                         <thead class="datatable-head">
-                                        <tr class="datatable-row">
-                                            <th class="datatable-cell"><span style="width: 150px;">AÇÕES</span></th>
-                                            <th class="datatable-cell"><span style="width: 250px;">RAZÃO SOCIAL</span></th>
-                                            <th class="datatable-cell"><span style="width: 150px;">CPF/CNPJ</span></th>
-                                            <th class="datatable-cell"><span style="width: 100px;">IE/RG</span></th>
-                                            <th class="datatable-cell"><span style="width: 200px;">CIDADE</span></th>
-                                        </tr>
+                                            <tr class="datatable-row">
+                                                <!-- Aumentado para 200px e adicionado white-space: nowrap -->
+                                                <th class="datatable-cell"><span style="width: 200px; white-space: nowrap;">AÇÕES</span></th>
+                                                <th class="datatable-cell"><span style="width: 80px;">STATUS</span></th>
+                                                <th class="datatable-cell"><span style="width: 250px;">RAZÃO SOCIAL</span></th>
+                                                <th class="datatable-cell"><span style="width: 150px;">CPF/CNPJ</span></th>
+                                                <th class="datatable-cell"><span style="width: 100px;">IE/RG</span></th>
+                                                <th class="datatable-cell"><span style="width: 200px;">CIDADE</span></th>
+                                            </tr>
                                         </thead>
                                         <tbody id="body" class="datatable-body">
                                         @foreach($fornecedores as $c)
-                                            <tr class="datatable-row">
+                                            <tr class="datatable-row {{ isset($c->ativo) && $c->ativo == 0 ? 'text-muted bg-light' : '' }}">
                                                 <td class="datatable-cell">
-                                                <span style="width: 150px;">
-                                                    <a class="btn btn-primary btn-sm" title="Dados Bancários" onclick="verDadosBancarios({{ $c->id }})" href="#!">
-                                                        <i class="la la-university"></i>
-                                                    </a>
+                                                    <form action="{{ route('fornecedores.toggle-ativo', $c->id) }}" method="POST" id="form-toggle-fornecedor-{{ $c->id }}" class="d-none">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                    </form>
+                                                    <!-- Aumentado para 200px e adicionado white-space: nowrap para forçar a mesma linha -->
+                                                    <span style="width: 200px; white-space: nowrap; display: block;">
+                                                        <!-- Adicionado mr-1 (margin-right) em todos para dar um pequeno respiro entre eles -->
+                                                        <a class="btn btn-primary btn-sm mr-1" title="Dados Bancários" onclick="verDadosBancarios({{ $c->id }})" href="#!">
+                                                            <i class="la la-university"></i>
+                                                        </a>
 
-                                                  	<a class="btn btn-info btn-sm" title="Histórico Financeiro" onclick="abrirHistorico({{ $c->id }})" href="#!">
-                                                        <i class="la la-history"></i>
-                                                    </a>
-                                                    <a class="btn btn-warning btn-sm" onclick='swal("Atenção!", "Deseja editar?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/edit/{{ $c->id }}" }})' href="#!">
-                                                        <i class="la la-edit"></i>
-                                                    </a>
-                                                    <a class="btn btn-danger btn-sm" onclick='swal("Atenção!", "Deseja remover?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/delete/{{ $c->id }}" }})' href="#!">
-                                                        <i class="la la-trash"></i>
-                                                    </a>
-                                                </span>
+                                                        <a class="btn btn-info btn-sm mr-1" title="Histórico Financeiro" onclick="abrirHistorico({{ $c->id }})" href="#!">
+                                                            <i class="la la-history"></i>
+                                                        </a>
+
+                                                        <a class="btn btn-warning btn-sm mr-1" title="Editar" onclick='swal("Atenção!", "Deseja editar?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/edit/{{ $c->id }}" }})' href="#!">
+                                                            <i class="la la-edit"></i>
+                                                        </a>
+
+                                                        @if(!isset($c->ativo) || $c->ativo == 1)
+                                                            <button type="button" class="btn btn-danger btn-sm" title="Desativar"
+                                                                onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })'>
+                                                                <i class="la la-ban"></i>
+                                                            </button>
+                                                        @else
+                                                            <button type="button" class="btn btn-success btn-sm" title="Ativar"
+                                                                onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })'>
+                                                                <i class="la la-check"></i>
+                                                            </button>
+                                                        @endif
+                                                    </span>
                                                 </td>
-                                                <td class="datatable-cell"><span style="width: 250px;">{{$c->razao_social}}</span></td>
+                                                <td class="datatable-cell">
+                                                    <span style="width: 80px;">
+                                                        @if(!isset($c->ativo) || $c->ativo == 1)
+                                                            <span class="label label-success label-inline font-weight-lighter">Ativo</span>
+                                                        @else
+                                                            <span class="label label-danger label-inline font-weight-lighter">Inativo</span>
+                                                        @endif
+                                                    </span>
+                                                </td>
+                                                <td class="datatable-cell"><span style="width: 250px;" class="{{ !isset($c->ativo) || $c->ativo == 1 ? 'font-weight-bold' : '' }}">{{$c->razao_social}}</span></td>
                                                 <td class="datatable-cell"><span style="width: 150px;">{{$c->cpf_cnpj}}</span></td>
                                                 <td class="datatable-cell"><span style="width: 100px;">{{$c->ie_rg}}</span></td>
-                                                <td class="datatable-cell"><span style="width: 200px;">{{$c->cidade->nome}} ({{$c->cidade->uf}})</span></td>
+                                                <td class="datatable-cell"><span style="width: 200px;">{{$c->cidade->nome ?? '--'}} ({{$c->cidade->uf ?? '--'}})</span></td>
                                             </tr>
                                         @endforeach
                                         </tbody>
@@ -115,14 +152,20 @@
                         </div>
                     </div>
 
+                    <!-- ABA 2: GRADE -->
                     <div class="pb-5" data-wizard-type="step-content">
                         <div class="row">
                             @foreach($fornecedores as $c)
                                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-                                    <div class="card card-custom gutter-b example example-compact">
+                                    <div class="card card-custom gutter-b example example-compact {{ isset($c->ativo) && $c->ativo == 0 ? 'bg-light' : '' }}">
                                         <div class="card-header">
                                             <div class="card-title">
-                                                <h3 style="font-size: 12px;" class="card-title">{{substr($c->razao_social, 0, 30)}}</h3>
+                                                <h3 style="font-size: 12px;" class="card-title">
+                                                    {{substr($c->razao_social, 0, 30)}}
+                                                    @if(isset($c->ativo) && $c->ativo == 0)
+                                                        <span class="text-danger ml-2" style="font-size: 10px;">(Inativo)</span>
+                                                    @endif
+                                                </h3>
                                             </div>
                                             <div class="card-toolbar">
                                                 <div class="dropdown dropdown-inline" data-toggle="tooltip" title="Ações" data-placement="left">
@@ -145,6 +188,20 @@
                                                                     <span class="navi-text">Editar</span>
                                                                 </a>
                                                             </li>
+                                                            <li class="navi-separator mb-3 opacity-70"></li>
+                                                            <li class="navi-item">
+                                                                @if(!isset($c->ativo) || $c->ativo == 1)
+                                                                    <a onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })' href="#!" class="navi-link">
+                                                                        <span class="navi-icon"><i class="la la-ban text-danger"></i></span>
+                                                                        <span class="navi-text text-danger">Desativar</span>
+                                                                    </a>
+                                                                @else
+                                                                    <a onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })' href="#!" class="navi-link">
+                                                                        <span class="navi-icon"><i class="la la-check text-success"></i></span>
+                                                                        <span class="navi-text text-success">Reativar</span>
+                                                                    </a>
+                                                                @endif
+                                                            </li>
                                                         </ul>
                                                     </div>
                                                 </div>
@@ -161,11 +218,11 @@
                                             </div>
                                             <div class="kt-widget__info">
                                                 <span class="kt-widget__label">Cidade:</span>
-                                                <a class="kt-widget__data text-success">{{$c->cidade->nome}}</a>
+                                                <a class="kt-widget__data text-success">{{$c->cidade->nome ?? '--'}}</a>
                                             </div>
                                             <div class="kt-widget__info">
                                                 <span class="kt-widget__label">UF:</span>
-                                                <a class="kt-widget__data text-success">{{$c->cidade->uf}}</a>
+                                                <a class="kt-widget__data text-success">{{$c->cidade->uf ?? '--'}}</a>
                                             </div>
                                             <div class="kt-widget__info">
                                                 <span class="kt-widget__label">Telefone:</span>
@@ -196,6 +253,7 @@
     {{ $fornecedores->links() }}
 </div>
 
+    <!-- MODAL HISTÓRICO -->
     <div class="modal fade" id="modal_historico" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
@@ -225,6 +283,8 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL DADOS BANCÁRIOS -->
     <div class="modal fade" id="modal_dados_bancarios" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -276,8 +336,6 @@
                     }
                     $('#tabela_historico_corpo').html(linhas);
                 });
-
-
         }
     </script>
     <script>
