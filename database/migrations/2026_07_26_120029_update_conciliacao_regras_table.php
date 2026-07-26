@@ -16,7 +16,7 @@ return new class extends Migration
         $this->applySafeColumnUpgrade([
             'table' => 'conciliacao_regras',
             'column' => 'empresa_id',
-            'type' => 'BIGINT UNSIGNED',
+            'type' => 'INT UNSIGNED',
             'nullable' => false,
             'default_specified' => false,
             'default_sql' => null,
@@ -29,7 +29,7 @@ return new class extends Migration
         $this->applySafeColumnUpgrade([
             'table' => 'conciliacao_regras',
             'column' => 'filial_id',
-            'type' => 'BIGINT UNSIGNED',
+            'type' => 'INT UNSIGNED',
             'nullable' => true,
             'default_specified' => true,
             'default_sql' => 'NULL',

@@ -55,7 +55,7 @@ return new class extends Migration
         $this->applySafeColumnUpgrade([
             'table' => 'bank_statement_transactions',
             'column' => 'filial_id',
-            'type' => 'BIGINT UNSIGNED',
+            'type' => 'INT UNSIGNED',
             'nullable' => true,
             'default_specified' => true,
             'default_sql' => 'NULL',
