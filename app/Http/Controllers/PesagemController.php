@@ -25,6 +25,7 @@ use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
 use App\Events\MovimentoRealtime;
 use App\Services\MonitorPesagemService;
+use App\Services\EstoqueFisicoPesagemService;
 use App\Services\StockService;
 use Dompdf\Dompdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -472,6 +473,22 @@ class PesagemController extends BaseController
 
             $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
 
+            // Mantém o novo livro físico de estoque sincronizado sem alterar
+            // o fluxo atual de conclusão ou o saldo operacional já existente.
+            try {
+                app(EstoqueFisicoPesagemService::class)->registrar(
+                    $pesagem->fresh(['tickets']),
+                    (int) $this->empresa_id,
+                    $this->usuario_id ? (int) $this->usuario_id : null
+                );
+            } catch (\Throwable $estoqueFisicoErro) {
+                \Log::error('Falha ao registrar estoque físico da pesagem concluída', [
+                    'empresa_id' => $this->empresa_id,
+                    'pesagem_id' => $pesagem->id,
+                    'erro' => $estoqueFisicoErro->getMessage(),
+                ]);
+            }
+
             return response()->json(['success' => 'Pesagem concluída com sucesso!']);
         } catch (\Exception $e) {
             \Log::error('Erro ao concluir a pesagem', [
@@ -479,6 +496,42 @@ class PesagemController extends BaseController
                 'exception' => $e->getMessage(),
             ]);
             return response()->json(['error' => 'Erro ao concluir a pesagem: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reconstrói o livro físico com base nas pesagens concluídas.
+     * O serviço é idempotente e não duplica empresa/pesagem/produto.
+     */
+    public function sincronizarEstoquePassado(Request $request, EstoqueFisicoPesagemService $service)
+    {
+        try {
+            $resultado = $service->sincronizarEmpresa(
+                (int) $this->empresa_id,
+                $this->usuario_id ? (int) $this->usuario_id : null
+            );
+
+            if (!empty($resultado['erros'])) {
+                \Log::warning('Sincronização de estoque físico concluída com falhas parciais', [
+                    'empresa_id' => $this->empresa_id,
+                    'erros' => $resultado['erros'],
+                ]);
+            }
+
+            return redirect()->back()->with(
+                'mensagem_sucesso',
+                "Sincronização concluída: {$resultado['processadas']} pesagens processadas e {$resultado['inseridos']} movimentos incluídos."
+            );
+        } catch (\Throwable $e) {
+            \Log::error('Erro ao sincronizar estoque físico das pesagens', [
+                'empresa_id' => $this->empresa_id,
+                'erro' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with(
+                'mensagem_erro',
+                'Erro ao sincronizar o histórico de pesagens: ' . $e->getMessage()
+            );
         }
     }
 

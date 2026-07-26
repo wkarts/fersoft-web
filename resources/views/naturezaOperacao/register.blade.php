@@ -175,6 +175,52 @@
 										</div>
 									</div>
 
+                                    <hr>
+                                    <div class="row">
+                                        <h4 class="col-12 mt-4">Tributação IBS/CBS (Sobrescrita)</h4>
+
+                                        <!-- CST IBS/CBS -->
+                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
+                                            <label class="col-form-label">CST IBS/CBS</label>
+                                            <select class="custom-select form-control" name="cst_ibs_cbs">
+                                                <option value="">-- Do Produto --</option>
+                                                @foreach($listaCstIbsCbs as $cst)
+                                                    <option value="{{ $cst->cst_ibs_cbs }}"
+                                                        @if((isset($natureza) && $natureza->cst_ibs_cbs == $cst->cst_ibs_cbs) || old('cst_ibs_cbs') == $cst->cst_ibs_cbs) selected @endif>
+                                                        {{ $cst->cst_ibs_cbs }} - {{ $cst->descricao_cst_ibs_cbs }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Classificação Tributária IBS/CBS -->
+                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
+                                            <label class="col-form-label">Class. Trib. IBS/CBS</label>
+                                            <select class="custom-select form-control" name="class_trib_ibs_cbs">
+                                                <option value="">-- Do Produto --</option>
+                                                @foreach($listaClassTrib as $class)
+                                                    <option value="{{ $class->cclasstrib }}"
+                                                        @if((isset($natureza) && $natureza->class_trib_ibs_cbs == $class->cclasstrib) || old('class_trib_ibs_cbs') == $class->cclasstrib) selected @endif>
+                                                        {{ $class->cclasstrib }} - {{ $class->nome_cclasstrib }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- Redução IBS -->
+                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
+                                            <label class="col-form-label">Redução IBS (%)</label>
+                                            <input type="text" class="form-control" name="perc_red_ibs" value="{{ isset($natureza) && $natureza->perc_red_ibs > 0 ? number_format($natureza->perc_red_ibs, 2, ',', '.') : old('perc_red_ibs', '0,00') }}">
+                                        </div>
+
+                                        <!-- Redução CBS -->
+                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
+                                            <label class="col-form-label">Redução CBS (%)</label>
+                                            <input type="text" class="form-control" name="perc_red_cbs" value="{{ isset($natureza) && $natureza->perc_red_cbs > 0 ? number_format($natureza->perc_red_cbs, 2, ',', '.') : old('perc_red_cbs', '0,00') }}">
+                                        </div>
+                                    </div>
+
+								<!-- AS TAGS DE FECHAMENTO RESTAURADAS -->
 								</div>
 							</div>
 						</div>
@@ -219,6 +265,30 @@
 			$('#CFOP_entrada_estadual').val('1'+temp)
 		}
 	})
+
+    // SCRIPT DE MELHORIA: Trava de segurança para CST x Classificação
+    $(document).ready(function() {
+        $('select[name="cst_ibs_cbs"]').change(function() {
+            let cstSelecionado = $(this).val();
+            let selectClasse = $('select[name="class_trib_ibs_cbs"]');
+
+            if(!cstSelecionado) {
+                selectClasse.find('option').show();
+                return;
+            }
+
+            selectClasse.find('option:not(:first)').hide();
+
+            selectClasse.find('option').each(function() {
+                let valorClasse = $(this).val();
+                if (valorClasse && valorClasse.substring(0, 3) === cstSelecionado) {
+                    $(this).show();
+                }
+            });
+
+            selectClasse.val('');
+        });
+    });
 </script>
 @endsection
 @endsection

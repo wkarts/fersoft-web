@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Compra;
 use App\Models\Fornecedor;
 use App\Models\CategoriaConta;
+use App\Models\Filial;
 
 class CompraConferenciaController extends BaseController
 {
@@ -14,72 +15,85 @@ class CompraConferenciaController extends BaseController
 
     public function index(Request $request)
     {
-        $data_inicial = $request->data_inicial ?? date('Y-m-01');
-        $data_final = $request->data_final ?? date('Y-m-d');
-        $fornecedor_id = $request->fornecedor_id;
-        $numero_nota = $request->numero_nota;
-        $categoria_id = $request->categoria_id;
-        $estado_filtro = $request->estado;
+        $data_inicial = $request->input('data_inicial', date('Y-m-01'));
+        $data_final = $request->input('data_final', date('Y-m-d'));
+        $fornecedor_id = $request->input('fornecedor_id');
+        $numero_nota = $request->input('numero_nota');
+        $estado_filtro = $request->input('estado');
+        $filial_id = $request->input('filial_id', 'todos');
+        $categoria_id = array_values(array_filter((array) $request->input('categoria_id', [])));
 
-        // Consulta com relacionamentos
         $query = Compra::with(['fornecedor', 'contasPagar.categoria', 'itens'])
             ->where('empresa_id', $this->empresa_id)
             ->whereBetween('data_emissao', [$data_inicial, $data_final]);
 
-        // Aplicação de Filtros
         if ($numero_nota) {
-            $query->where(function($q) use ($numero_nota) {
-                $q->where('nf', $numero_nota)->orWhere('numero_emissao', $numero_nota);
+            $query->where(function ($q) use ($numero_nota) {
+                $q->where('nf', $numero_nota)
+                    ->orWhere('numero_emissao', $numero_nota);
             });
         }
 
-        if ($fornecedor_id && $fornecedor_id != 'todos') {
+        if ($fornecedor_id && $fornecedor_id !== 'todos') {
             $query->where('fornecedor_id', $fornecedor_id);
         }
 
-        if ($categoria_id && $categoria_id != 'todos') {
-            $query->whereHas('contasPagar', function($q) use ($categoria_id) {
-                $q->where('categoria_id', $categoria_id);
+        if ($filial_id && $filial_id !== 'todos') {
+            $filial_id === 'matriz'
+                ? $query->whereNull('filial_id')
+                : $query->where('filial_id', (int) $filial_id);
+        }
+
+        if ($categoria_id !== []) {
+            $query->whereHas('contasPagar', function ($q) use ($categoria_id) {
+                $q->whereIn('categoria_id', $categoria_id);
             });
         }
 
-        if ($estado_filtro && $estado_filtro != 'todos') {
+        if ($estado_filtro && $estado_filtro !== 'todos') {
             $query->where('estado', $estado_filtro);
         }
 
-        $compras = $query->orderBy('data_emissao', 'desc')->get();
+        $compras = $query->orderByDesc('data_emissao')->get();
 
-        // Variáveis de Totalização
         $total_propria = 0;
         $total_terceiro = 0;
-        $soma_valores = 0;
-        $total_produtos = 0;
+        $soma_valores = 0.0;
+        $total_produtos = 0.0;
 
-        foreach ($compras as $c) {
-            $estado_upper = strtoupper($c->estado);
-            
-            // Lógica de Identificação e Coluna da Nota
-            if ($estado_upper == 'IMPORTADO') {
-                $c->tipo_relatorio = 'TERCEIRO';
-                $c->numero_exibicao = $c->nf;
+        foreach ($compras as $compra) {
+            $estado = strtoupper((string) $compra->estado);
+
+            if ($estado === 'IMPORTADO') {
+                $compra->tipo_relatorio = 'TERCEIRO';
+                $compra->numero_exibicao = $compra->nf;
                 $total_terceiro++;
             } else {
-                $c->tipo_relatorio = 'PRÓPRIA';
-                $c->numero_exibicao = $c->numero_emissao;
+                $compra->tipo_relatorio = 'PRÓPRIA';
+                $compra->numero_exibicao = $compra->numero_emissao;
                 $total_propria++;
             }
-            
-            $soma_valores += (float)($c->valor ?? 0);
-            $total_produtos += $c->itens->sum('quantidade');
+
+            $soma_valores += (float) ($compra->valor ?? 0);
+            $total_produtos += (float) $compra->itens->sum('quantidade');
         }
 
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get();
-        $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->get();
-        $title = "Conferência de Compras";
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+            ->orderBy('razao_social')
+            ->get();
+        $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)
+            ->where('tipo', 'pagar')
+            ->orderBy('nome')
+            ->get();
+        $filiais = Filial::where('empresa_id', $this->empresa_id)
+            ->orderBy('descricao')
+            ->get();
+        $title = 'Conferência de Compras';
 
         return view('compra_conferencia.index', compact(
-            'compras', 'fornecedores', 'categorias', 'total_propria', 'total_terceiro', 
-            'soma_valores', 'total_produtos', 'data_inicial', 'data_final', 'title'
+            'compras', 'fornecedores', 'categorias', 'filiais', 'total_propria',
+            'total_terceiro', 'soma_valores', 'total_produtos', 'data_inicial',
+            'data_final', 'filial_id', 'categoria_id', 'title'
         ));
     }
 

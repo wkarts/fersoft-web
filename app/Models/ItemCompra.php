@@ -37,6 +37,7 @@ class ItemCompra extends BaseModel
 
         // Novos campos da Reforma Tributária (IBS / CBS)
         'cst_ibs_cbs',
+        'class_trib_ibs_cbs',
         'bc_ibs_cbs',
         'aliq_ibs_uf',
         'aliq_cbs',

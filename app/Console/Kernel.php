@@ -8,33 +8,68 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     /**
-     * Define the application's command schedule.
+     * Define o agendamento dos comandos da aplicação.
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Heartbeat do Scheduler.
-        // Quando o schedule:run roda pelo cron do servidor, a origem fica como "server".
-        // Quando roda pela rota interna protegida, a rota injeta "internal_http" no container.
+        /*
+        |--------------------------------------------------------------------------
+        | Monitoramento do Scheduler
+        |--------------------------------------------------------------------------
+        |
+        | Registra que o Scheduler está ativo.
+        |
+        | Quando executado pelo cron do servidor, a origem será "server".
+        | Quando executado pela rota interna protegida, a origem poderá ser
+        | injetada como "internal_http" no container da aplicação.
+        |
+        */
+
         $schedule->command('cron:heartbeat')
             ->everyMinute()
             ->withoutOverlapping(2);
 
-        // Atualiza totalizador de empresas/usuários online.
+        /*
+        |--------------------------------------------------------------------------
+        | Empresas e usuários online
+        |--------------------------------------------------------------------------
+        */
+
         $schedule->command('empresas_logada:cron')
             ->everyMinute()
             ->withoutOverlapping(5);
 
-        // Robô DF-e: executa a cada 10 minutos, mas a regra interna mantém trava de 65 minutos por empresa/filial.
+        /*
+        |--------------------------------------------------------------------------
+        | Documentos fiscais eletrônicos
+        |--------------------------------------------------------------------------
+        |
+        | O comando é disparado a cada 10 minutos.
+        | A regra interna mantém o intervalo/trava de aproximadamente
+        | 65 minutos por empresa ou filial.
+        |
+        */
+
         $schedule->command('dfe:cron')
             ->everyTenMinutes()
             ->withoutOverlapping(70);
 
-        // Cashback: mensagens automáticas diárias.
+        /*
+        |--------------------------------------------------------------------------
+        | Cashback
+        |--------------------------------------------------------------------------
+        */
+
         $schedule->command('cash-back:cron')
             ->dailyAt('08:00')
             ->withoutOverlapping(30);
 
-        // Tarefas: lembretes, recorrência e aviso de atraso.
+        /*
+        |--------------------------------------------------------------------------
+        | Tarefas
+        |--------------------------------------------------------------------------
+        */
+
         $schedule->command('tarefas:lembrete-5min')
             ->everyMinute()
             ->withoutOverlapping(5);
@@ -47,11 +82,34 @@ class Kernel extends ConsoleKernel
             ->everyTenMinutes()
             ->withoutOverlapping(15);
 
-        // $schedule->command('cash-back:cron')->everyMinute();
+        /*
+        |--------------------------------------------------------------------------
+        | Sincronização automática de NFS-e
+        |--------------------------------------------------------------------------
+        |
+        | Executa diariamente às 08:00 e às 18:00.
+        |
+        | runInBackground:
+        | impede que uma sincronização longa bloqueie o início dos demais
+        | comandos agendados pelo Scheduler.
+        |
+        | withoutOverlapping:
+        | impede que uma nova sincronização seja iniciada enquanto a
+        | execução anterior ainda estiver ativa.
+        |
+        */
+
+        $schedule->command('nfse:sincronizar-automatica')
+            ->twiceDaily(8, 18)
+            ->withoutOverlapping(180)
+            ->runInBackground()
+            ->appendOutputTo(
+                storage_path('logs/cron_nfse.log')
+            );
     }
 
     /**
-     * Register the commands for the application.
+     * Registra os comandos Artisan da aplicação.
      */
     protected function commands(): void
     {

@@ -31,6 +31,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+
+    'chatwoot' => [
+        'base_url' => rtrim(env('CHATWOOT_BASE_URL', ''), '/'),
+        'website_token' => env('CHATWOOT_TOKEN', ''),
+    ],
+
     'tracking' => [
         // Google Analytics 4
         'google_analytics' => env('GA_MEASUREMENT_ID', 'G-XXXXXXX'),

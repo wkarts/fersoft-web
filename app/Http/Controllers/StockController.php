@@ -296,76 +296,49 @@ class StockController extends BaseController
     private function parseDate($date){
         return date('Y-m-d', strtotime(str_replace("/", "-", $date)));
     }
+public function saveApontamento(Request $request)
+    {
+        $request->validate([
+            'produto' => ['required', 'integer'],
+            'quantidade' => ['required'],
+            'filial_id' => ['nullable'],
+            'data' => ['nullable', 'date'],
+        ]);
 
-    public function saveApontamento(Request $request){
-
-        $prod = Produto::findOrFail($request->produto);
-        $quantidade = __replace($request->quantidade);
-        
-        // Captura a filial selecionada (Se for menor ou igual a zero/vazio, define como null para ser a Matriz)
-        $filial_id = $request->filial_id > 0 ? (int)$request->filial_id : null;
-
-        $erroEstoque = $this->validaEstoqueDisponivel($prod, str_replace(",", ".", $request->quantidade));
-        
-        if($erroEstoque != ""){
-            session()->flash('mensagem_erro', $erroEstoque);
-            return redirect()->back();
+        $produto = Produto::query()->where('empresa_id', $this->empresa_id)->findOrFail((int)$request->produto);
+        $quantidade = (float)__replace($request->quantidade);
+        if ($quantidade <= 0) return redirect()->back()->withInput()->with('mensagem_erro', 'A quantidade deve ser maior que zero.');
+        $filialId = (int)$request->input('filial_id',0); $filialId=$filialId>0?$filialId:null;
+        if ($filialId !== null && !\App\Models\Filial::query()->where('empresa_id',$this->empresa_id)->whereKey($filialId)->exists()) {
+            return redirect()->back()->withInput()->with('mensagem_erro','A filial informada não pertence à empresa atual.');
         }
+        try { $dataLancamento=$request->filled('data')?\Carbon\Carbon::parse($request->data)->startOfDay():now(); }
+        catch(\Throwable $e){ return redirect()->back()->withInput()->with('mensagem_erro','Data de lançamento inválida.'); }
+        if ($dataLancamento->isFuture()) return redirect()->back()->withInput()->with('mensagem_erro','Não é permitido registrar apontamento em data futura.');
+
+        $alerta=$this->verificarDisponibilidadeEstoque($produto,$quantidade,$filialId);
+        if($alerta!==''&&!$request->boolean('confirmar_negativo')) return redirect()->back()->withInput()->with('mensagem_erro',$alerta);
 
         try {
-            \Illuminate\Support\Facades\DB::beginTransaction();
-
-            // 1. Cria o documento de Apontamento (Agora salvando a filial)
-            $result = Apontamento::create([
-                'quantidade' => $quantidade,
-                'usuario_id' => get_id_user(),
-                'produto_id' => $prod->id,
-                'empresa_id' => $this->empresa_id,
-                'filial_id'  => $filial_id // Gravando filial_id na tabela apontamentos
-            ]);
-
-            $stockMove = new StockMove();
-
-            // 2. ENTRADA DO PRODUTO ACABADO
-            // Substituído o parâmetro 'null' por '$filial_id' para direcionar o saldo à filial correta
-            $stockMove->pluStock(
-                $prod->id, 
-                $quantidade,
-                str_replace(",", ".", $prod->valor_venda),
-                $filial_id, 
-                'Apontamento', 
-                $result->id
-            );
-
-            // 3. GRAVAR NA TABELA alteracao_estoques
-            $alteracaoEntrada = new \App\Models\AlteracaoEstoque();
-            $alteracaoEntrada->empresa_id = $this->empresa_id;
-            $alteracaoEntrada->filial_id  = $filial_id; // Associando a filial selecionada
-            $alteracaoEntrada->usuario_id = get_id_user();
-            $alteracaoEntrada->produto_id = $prod->id;
-            $alteracaoEntrada->quantidade = $quantidade;
-            $alteracaoEntrada->tipo       = 'incremento';
-            $alteracaoEntrada->observacao = 'Apontamento de Produção #' . $result->id;
-            $alteracaoEntrada->motivo     = 'Produção';
-            
-            $dataLancamento = \Carbon\Carbon::now();
-            $alteracaoEntrada->created_at = $dataLancamento;
-            $alteracaoEntrada->updated_at = $dataLancamento;
-            $alteracaoEntrada->save();
-
-            // 4. SAÍDA DA MATÉRIA-PRIMA
-            // Repassando o $filial_id para que a receita consuma o estoque do local correto
-            $this->downEstoquePorReceita($prod, $quantidade, $result->id, $filial_id);
-
-            \Illuminate\Support\Facades\DB::commit();
-            session()->flash("mensagem_sucesso", "Apontamento cadastrado com sucesso!");
-
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            session()->flash('mensagem_erro', 'Erro ao cadastrar apontamento: ' . $e->getMessage());
+            DB::transaction(function()use($produto,$quantidade,$filialId,$dataLancamento){
+                $apontamento=Apontamento::create([
+                    'quantidade'=>$quantidade,'usuario_id'=>$this->usuario_id,'produto_id'=>$produto->id,
+                    'empresa_id'=>$this->empresa_id,'filial_id'=>$filialId,'created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
+                ]);
+                $stockMove=new StockMove();
+                $stockMove->pluStock($produto->id,$quantidade,(float)$produto->valor_venda,$filialId,'Apontamento',$apontamento->id,$dataLancamento);
+                \App\Models\AlteracaoEstoque::create([
+                    'empresa_id'=>$this->empresa_id,'filial_id'=>$filialId,'usuario_id'=>$this->usuario_id,'produto_id'=>$produto->id,
+                    'quantidade'=>$quantidade,'tipo'=>'incremento','observacao'=>'Apontamento de Produção #'.$apontamento->id,
+                    'motivo'=>'Produção','created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
+                ]);
+                $this->downEstoquePorReceita($produto,$quantidade,$apontamento->id,$filialId,$dataLancamento);
+            },3);
+            return redirect('/estoque/apontamentoProducao')->with('mensagem_sucesso','Apontamento cadastrado com sucesso!');
+        } catch(\Throwable $e){
+            \Log::error('Erro ao cadastrar apontamento de produção',['empresa_id'=>$this->empresa_id,'produto_id'=>$produto->id,'erro'=>$e->getMessage()]);
+            return redirect()->back()->withInput()->with('mensagem_erro','Não foi possível cadastrar o apontamento. Consulte os logs.');
         }
-
-        return redirect("/estoque/apontamentoProducao");
     }
   
    public function saveApontamentoManual(Request $request){
@@ -438,58 +411,39 @@ class StockController extends BaseController
         }
         return redirect("/estoque");
     }
-  
-    private function downEstoquePorReceita($produto, $quantidade, $apontamento_id = null, $filial_id = null){
-        
-        if(valida_objeto($produto)){
-            $stockMove = new StockMove();
-            
-            if($produto->receita){
-                foreach($produto->receita->itens as $i){
-                    $qtdIngrediente = $i->quantidade * $quantidade;
-
-                    // 1. Remove do estoque da filial selecionada no apontamento
-                    $stockMove->downStock(
-                        $i->produto->id, 
-                        $qtdIngrediente, 
-                        $filial_id, // Vinculando a filial no Kardex
-                        'Apontamento', 
-                        $apontamento_id
-                    );
-
-                    // 2. Salva a alteração de estoque amarrada à filial correspondente
-                    $alteracaoSaida = new \App\Models\AlteracaoEstoque();
-                    $alteracaoSaida->empresa_id = $this->empresa_id;
-                    $alteracaoSaida->filial_id  = $filial_id; // Vinculando a filial na tabela alteracao_estoques
-                    $alteracaoSaida->usuario_id = get_id_user();
-                    $alteracaoSaida->produto_id = $i->produto->id;
-                    $alteracaoSaida->quantidade = $qtdIngrediente;
-                    $alteracaoSaida->tipo       = 'reducao'; 
-                    $alteracaoSaida->observacao = 'Consumo de matéria-prima no Apontamento #' . $apontamento_id;
-                    $alteracaoSaida->motivo     = 'Produção';
-                    
-                    $dataLancamento = \Carbon\Carbon::now();
-                    $alteracaoSaida->created_at = $dataLancamento;
-                    $alteracaoSaida->updated_at = $dataLancamento;
-                    $alteracaoSaida->save();
-                }
-            }
-        }else{
-            return redirect('/403');
+private function downEstoquePorReceita($produto, $quantidade, $apontamento_id = null, $filial_id = null, $dataLancamento = null)
+    {
+        if (!valida_objeto($produto)) throw new \RuntimeException('Produto inválido para consumo da receita.');
+        if (!$produto->receita) return;
+        $stockMove=new StockMove(); $dataLancamento=$dataLancamento?:now();
+        foreach($produto->receita->itens as $item){
+            if(!$item->produto) continue;
+            $qtd=(float)$item->quantidade*(float)$quantidade;
+            $stockMove->downStock($item->produto->id,$qtd,$filial_id,'Apontamento',$apontamento_id,$dataLancamento);
+            \App\Models\AlteracaoEstoque::create([
+                'empresa_id'=>$this->empresa_id,'filial_id'=>$filial_id,'usuario_id'=>$this->usuario_id,'produto_id'=>$item->produto->id,
+                'quantidade'=>$qtd,'tipo'=>'reducao','observacao'=>'Consumo de matéria-prima no Apontamento #'.$apontamento_id,
+                'motivo'=>'Produção','created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
+            ]);
         }
     }
+private function validaEstoqueDisponivel($produto, $quantidade)
+    {
+        return $this->verificarDisponibilidadeEstoque($produto, (float)$quantidade, null);
+    }
 
-    private function validaEstoqueDisponivel($produto, $quantidade){
-        $msg = "";
+    private function verificarDisponibilidadeEstoque($produto, float $quantidade, ?int $filialId = null): string
+    {
+        $insuficientes=[];
         if($produto->receita){
-            foreach($produto->receita->itens as $i){
-                $qtd = $i->quantidade * $quantidade;
-                if($i->produto->estoqueAtual() < $qtd){
-                    $msg = "Estoque insuficiente do produto ". $i->produto->nome;
-                }
+            foreach($produto->receita->itens as $item){
+                if(!$item->produto) continue;
+                $necessario=(float)$item->quantidade*$quantidade;
+                $saldo=(float)$item->produto->estoqueAtual($filialId);
+                if($saldo<$necessario) $insuficientes[]=$item->produto->nome.' (saldo '.number_format($saldo,3,',','.').', necessário '.number_format($necessario,3,',','.').')';
             }
         }
-        return $msg;
+        return $insuficientes?'A produção causará saldo negativo em: '.implode('; ',$insuficientes).'. Marque a confirmação para prosseguir.':'';
     }
 
 // public function deleteApontamento($id){
@@ -785,4 +739,11 @@ public function relatorioFiscal(Request $request)
 
     }
 
+
+    public function consultarDisponibilidadeEstoque($produtoId, $quantidade)
+    {
+        $produto = \App\Models\Produto::where('empresa_id',$this->empresa_id)->findOrFail((int)$produtoId);
+        $mensagem = $this->verificarDisponibilidadeEstoque($produto,(float)$quantidade);
+        return response()->json(['disponivel'=>$mensagem === '','mensagem'=>$mensagem]);
+    }
 }

@@ -125,6 +125,7 @@ class RequisicaoController extends BaseController
                     'produto_id'    => $produto->id,
                     'quantidade'    => $item['qtd'],
                     'ca_snapshot'   => $item['ca'] ?? $item['ca_numero'] ?? $produto->ca_numero ?? $produto->ca,
+                    'fabricante'    => $item['fabricante'] ?? $produto->fabricante ?? null,
                     'uso'           => $item['uso'] ?? null,
                     'motivo'        => $item['motivo'] ?? null,
                     'created_at'    => $dataRequisicao,

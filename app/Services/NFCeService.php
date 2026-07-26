@@ -183,20 +183,18 @@ class NFCeService{
     private function tryAttachReformaItemTag($nfe, int $itemCont, $item): bool
     {
         $rt = app(ReformaTributariaService::class);
-
         $norm = $this->normalizeReformaItemValues($item);
-        $base = $norm['vBC'];
-        $vIbs = $norm['vIBS'];
-        $vCbs = $norm['vCBS'];
-        $vIs  = $norm['vIS'];
-        if ($base <= 0 && $vIbs <= 0 && $vCbs <= 0 && $vIs <= 0) {
+
+        if (!$norm['semIncidencia'] && $norm['vBC'] <= 0 && $norm['vIBS'] <= 0 && $norm['vCBS'] <= 0 && $norm['vIS'] <= 0) {
             return false;
         }
 
         if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-            Log::info('RT: grupo IBS/CBS não será anexado ao XML da NFC-e porque shouldApply() retornou false.', [
+            Log::info('RT: grupo IBS/CBS não será anexado ao XML porque a aplicação da reforma está desabilitada.', [
+                'documento' => 'NFC-e',
                 'empresa_id' => (int)($this->empresa_id ?? 0),
                 'item_id' => (int)($item->id ?? 0),
+                'cst' => $norm['CST'],
             ]);
             return false;
         }
@@ -205,18 +203,22 @@ class NFCeService{
         $std->item = $itemCont;
         $std->CST = $norm['CST'];
         $std->cClassTrib = $norm['cClassTrib'];
-        $std->vBC = $this->format($norm['vBC']);
-        $std->pIBSUF = $this->format($norm['pIBSUF'], 4);
-        $std->vIBSUF = $this->format($norm['vIBSUF']);
-        $std->pIBSMun = $this->format($norm['pIBSMun'], 4);
-        $std->vIBSMun = $this->format($norm['vIBSMun']);
-        $std->vIBS = $this->format($norm['vIBS']);
-        $std->pCBS = $this->format($norm['pCBS'], 4);
-        $std->vCBS = $this->format($norm['vCBS']);
+
+        // CST 400/410 representa não incidência/imunidade. Nesses casos a NT
+        // prevê o grupo classificatório sem bases e alíquotas positivas.
+        if (!$norm['semIncidencia']) {
+            $std->vBC = $this->format($norm['vBC']);
+            $std->pIBSUF = $this->format($norm['pIBSUF'], 4);
+            $std->vIBSUF = $this->format($norm['vIBSUF']);
+            $std->pIBSMun = $this->format($norm['pIBSMun'], 4);
+            $std->vIBSMun = $this->format($norm['vIBSMun']);
+            $std->vIBS = $this->format($norm['vIBS']);
+            $std->pCBS = $this->format($norm['pCBS'], 4);
+            $std->vCBS = $this->format($norm['vCBS']);
+        }
         $std->vIS = $this->format($norm['vIS']);
 
-        $methods = ['tagIBSCBS', 'tagImpostoIBSCBS', 'tagIBS'];
-        foreach ($methods as $method) {
+        foreach (['tagIBSCBS', 'tagImpostoIBSCBS', 'tagIBS'] as $method) {
             if (!method_exists($nfe, $method)) {
                 continue;
             }
@@ -227,15 +229,16 @@ class NFCeService{
                 Log::warning('NFC-e: falha ao anexar grupo estruturado de Reforma Tributária.', [
                     'metodo' => $method,
                     'venda_item_id' => (int)($item->id ?? 0),
+                    'cst' => $norm['CST'],
                     'mensagem' => $e->getMessage(),
                 ]);
-                continue;
             }
         }
 
-        Log::warning('NFC-e: nenhum método disponível conseguiu anexar grupo estruturado de Reforma Tributária.', [
+        Log::warning('NFC-e: nenhum método disponível conseguiu anexar o grupo de Reforma Tributária.', [
             'venda_item_id' => (int)($item->id ?? 0),
             'empresa_id' => $this->empresa_id,
+            'cst' => $norm['CST'],
         ]);
         return false;
     }
@@ -247,20 +250,22 @@ class NFCeService{
             $rt->applyAliquotasFixas($item);
         }
 
+        $cst = str_pad((string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '000'), 3, '0', STR_PAD_LEFT);
+        $semIncidencia = in_array($cst, ['400', '410'], true);
         $base = max(0, $this->getNumericFromAny($item, ['bc_ibs_cbs', 'base_ibs_cbs', 'bc_rt']));
         $fixas = $rt->aliquotasFixas();
 
-        $pIbsUf = (float) $fixas['ibs_uf'];
-        $pIbsMun = (float) $fixas['ibs_mun'];
-        $pCbs = (float) $fixas['cbs'];
-        $pIs = max(0, (float)($item->is_aliq ?? 0));
+        $pIbsUf = $semIncidencia ? 0.0 : (float)$fixas['ibs_uf'];
+        $pIbsMun = $semIncidencia ? 0.0 : (float)$fixas['ibs_mun'];
+        $pCbs = $semIncidencia ? 0.0 : (float)$fixas['cbs'];
+        $pIs = $semIncidencia ? 0.0 : max(0, (float)($item->is_aliq ?? 0));
 
-        $vIbsUf = max(0, (float)($item->valor_ibs_uf ?? 0));
-        $vIbsMun = max(0, (float)($item->valor_ibs_mun ?? 0));
-        $vCbs = max(0, $this->getNumericFromAny($item, ['valor_cbs', 'cbs_valor']));
-        $vIs = max(0, $this->getNumericFromAny($item, ['valor_is', 'is_valor']));
+        $vIbsUf = $semIncidencia ? 0.0 : max(0, (float)($item->valor_ibs_uf ?? 0));
+        $vIbsMun = $semIncidencia ? 0.0 : max(0, (float)($item->valor_ibs_mun ?? 0));
+        $vCbs = $semIncidencia ? 0.0 : max(0, $this->getNumericFromAny($item, ['valor_cbs', 'cbs_valor']));
+        $vIs = $semIncidencia ? 0.0 : max(0, $this->getNumericFromAny($item, ['valor_is', 'is_valor']));
 
-        if ($base > 0) {
+        if (!$semIncidencia && $base > 0) {
             $vIbsUf = round(($base * $pIbsUf) / 100, 2);
             $vIbsMun = round(($base * $pIbsMun) / 100, 2);
             $vCbs = round(($base * $pCbs) / 100, 2);
@@ -269,17 +274,16 @@ class NFCeService{
             }
         }
 
-        $vIbs = round($vIbsUf + $vIbsMun, 2);
-
         return [
-            'CST' => str_pad((string)($item->cst_ibs_cbs ?? $item->ibs_cbs_cst ?? '000'), 3, '0', STR_PAD_LEFT),
+            'CST' => $cst,
             'cClassTrib' => str_pad((string)($item->class_trib_ibs_cbs ?? $item->class_trib_rt ?? '000000'), 6, '0', STR_PAD_LEFT),
+            'semIncidencia' => $semIncidencia,
             'vBC' => $base,
             'pIBSUF' => $pIbsUf,
             'vIBSUF' => $vIbsUf,
             'pIBSMun' => $pIbsMun,
             'vIBSMun' => $vIbsMun,
-            'vIBS' => $vIbs,
+            'vIBS' => round($vIbsUf + $vIbsMun, 2),
             'pCBS' => $pCbs,
             'vCBS' => $vCbs,
             'pIS' => $pIs,

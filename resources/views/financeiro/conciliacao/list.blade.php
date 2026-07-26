@@ -246,6 +246,17 @@
                                 <label class="font-weight-bold text-success small"><i class="fas fa-minus-circle"></i> Desconto</label>
                                 <input type="number" step="0.01" min="0" name="desconto" id="vincular_desconto" class="form-control" value="0" onkeyup="recalcularSoma()" onchange="recalcularSoma()">
                             </div>
+
+                            <div class="mt-4 p-3 bg-white border rounded">
+                                <label class="font-weight-bold text-dark small"><i class="fas fa-file-alt"></i> Tipo de Documento</label>
+                                <select name="tipo_documento" class="form-control" required>
+                                    <option value="Conciliação">Conciliação</option>
+                                    <option value="Depósito">Depósito</option>
+                                    <option value="PIX">PIX</option>
+                                    <option value="Boleto">Boleto</option>
+                                    <option value="Transferência">Transferência</option>
+                                </select>
+                            </div>
                         </div>
                         
                         <div class="col-md-9">

@@ -119,6 +119,7 @@ class ProviderController extends BaseController
                 'agencia'        => $request->input('agencia') ?? '',
                 'conta'          => $request->input('conta') ?? '',
                 'tabela_preco_id'=> $request->input('tabela_preco_id') ?: null,
+                'ativo'          => $request->boolean('ativo'),
             ]);
 
             $result = Fornecedor::create($request->all());
@@ -198,6 +199,7 @@ class ProviderController extends BaseController
             $resp->agencia        = $request->input('agencia') ?? '';
             $resp->conta          = $request->input('conta') ?? '';
             $resp->tabela_preco_id = $request->input('tabela_preco_id') ?: null;
+            $resp->ativo = $request->boolean('ativo');
 
             $resp->save();
 
@@ -483,5 +485,35 @@ class ProviderController extends BaseController
             'fornecedor' => $fornecedor->razao_social,
             'historico' => $historico
         ]);
+    }
+
+    public function limparDuplicidades()
+    {
+        $desativados = 0;
+        DB::transaction(function () use (&$desativados): void {
+            $documentos = Fornecedor::query()->where('empresa_id',$this->empresa_id)
+                ->whereNotNull('cpf_cnpj')->whereNotIn('cpf_cnpj',['','00.000.000/0000-00'])
+                ->select('cpf_cnpj')->groupBy('cpf_cnpj')->havingRaw('COUNT(*) > 1')->pluck('cpf_cnpj');
+            foreach ($documentos as $documento) {
+                $fornecedores = Fornecedor::where('empresa_id',$this->empresa_id)->where('cpf_cnpj',$documento)->lockForUpdate()->get();
+                $principal = $fornecedores->sortByDesc(function ($f) {
+                    return collect(['email','telefone','celular','rua','bairro','cep','ie_rg','banco','agencia','conta','pix'])->filter(fn($c)=>!empty($f->{$c}))->count();
+                })->sortBy('id')->first();
+                foreach ($fornecedores as $fornecedor) {
+                    if ($principal && $fornecedor->id !== $principal->id && (bool)$fornecedor->ativo) {
+                        $fornecedor->ativo = 0; $fornecedor->save(); $desativados++;
+                    }
+                }
+            }
+        },3);
+        return redirect()->back()->with('mensagem_sucesso', $desativados ? "{$desativados} fornecedor(es) duplicado(s) desativado(s)." : 'Nenhuma duplicidade ativa encontrada.');
+    }
+
+    public function toggleAtivo($id)
+    {
+        $fornecedor = Fornecedor::where('empresa_id',$this->empresa_id)->findOrFail((int)$id);
+        $fornecedor->ativo = !(bool)$fornecedor->ativo;
+        $fornecedor->save();
+        return redirect()->back()->with('mensagem_sucesso','Status do fornecedor alterado com sucesso.');
     }
 }

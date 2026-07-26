@@ -22,7 +22,8 @@ class ItemContaEmpresa extends BaseModel
         'categoria_id',
         'empresa_id',
         'conta_pagar_id',
-       'conta_receber_id'
+       'conta_receber_id',
+        'lote_pagamento_id'
     ];
 
     public function conta(){

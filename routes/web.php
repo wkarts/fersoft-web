@@ -312,6 +312,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
             Route::post('/arquivar', 'ConciliacaoController@arquivar')->name('financeiro.conciliacao.arquivar');
             Route::post('/processar-automaticos', 'ConciliacaoController@processarAutomaticos')->name('financeiro.conciliacao.processarAutomaticos');
             Route::post('/processar-lote', 'ConciliacaoController@processarLote')->name('financeiro.conciliacao.processarLote');
+            Route::get('/sugestoes', 'ConciliacaoController@getSugestoes')->name('conciliacao.sugestoes');
         });
 
     });
@@ -683,6 +684,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/filtro', 'DFeController@filtro');
         Route::post('/salvar', 'DFeController@salvar');
         Route::get('/gerar-venda/{id}', 'DFeController@gerarVenda');
+        Route::get('/sincronizar-compras', 'DFeController@sincronizarCompras')->name('dfe.sincronizar');
+        Route::post('/salvar-produto-ajax', 'DFeController@salvarProdutoAjax')->name('dfe.salvar-produto-ajax');
     });
 
     Route::group(['prefix' => '/relatorios'], function(){
@@ -1280,11 +1283,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/fecharMesRetencoes', 'ContasPagarController@fecharMesRetencoes')->name('compras.fecharMesRetencoes');
         Route::post('/baixarParcial', 'ContasPagarController@baixarParcial')->name('contasPagar.baixarParcial');
         Route::get('/detalhes/{id}', 'ContasPagarController@detalhes');
+        Route::get('/adiantamento/{fornecedorId}/saldo', 'ContasPagarController@getSaldo')->name('contas-pagar.adiantamento.saldo');
+        Route::post('/lotes/{loteId}/estornar', 'ContasPagarController@estornoLote')->name('contas-pagar.lote.estornar');
     });
 
     Route::resource('retencoes', 'RetencaoController');
     Route::get('/retencoes-print', 'RetencaoController@print')->name('retencoes.print');
     Route::get('/compraconferencia', 'CompraConferenciaController@index');
+
+    Route::group(['prefix' => 'conferencia'], function () {
+        Route::get('/', 'ConferenciaFiscalController@index')->name('conferencia.index');
+        Route::post('/integrar-massa', 'ConferenciaFiscalController@integrarMassa')->name('conferencia.integrar-massa');
+        Route::get('/exportar-excel', 'ConferenciaFiscalController@exportarExcel')->name('conferencia.exportar-excel');
+        Route::get('/imprimir', 'ConferenciaFiscalController@imprimir')->name('conferencia.imprimir');
+    });
 
     Route::group(['prefix' => 'contasReceber'],function(){
         Route::post('/salvarParcela', 'ContaReceberController@salvarParcela');
@@ -1395,6 +1407,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/ajax/class-trib-ibs-cbs', 'ProductController@ajaxClassTribIbsCbs');
         Route::get('/ajax/reducao-ibs-cbs', 'ProductController@ajaxReducaoIbsCbs');
         Route::post('/ibs-cbs/atualizar', 'ProdutoIbsCbsController@atualizar')->name('produtos.ibscbs.atualizar');
+        Route::post('/salvarProdutoAjaxCompleto', 'ProductController@salvarProdutoAjaxCompleto')->name('produtos.salvarProdutoAjaxCompleto');
     });
 
     Route::group(['prefix' => 'receita'],function(){
@@ -1764,6 +1777,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/consultaCadastrado/{doc}', 'ProviderController@consultaCadastrado');
         Route::post('/quickSave', 'ProviderController@quickSave');
         Route::get('/historico/{id}', 'ProviderController@historico');
+        Route::patch('/{id}/toggle-ativo', 'ProviderController@toggleAtivo')->name('fornecedores.toggle-ativo');
+        Route::post('/limpar-duplicidades', 'ProviderController@limparDuplicidades')->name('fornecedores.limpar-duplicidades');
     });
 
     Route::group(['prefix' => 'compraFiscal', 'middleware' => ['limiteProdutos', 'limiteClientes']],function(){
@@ -1771,6 +1786,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/new', 'CompraFiscalController@new');
         Route::post('/salvarNfFiscal', 'CompraFiscalController@salvarNfFiscal');
         Route::post('/salvarItem', 'CompraFiscalController@salvarItem');
+        Route::post('/salvarParcela', 'CompraFiscalController@salvarParcela')->name('compraFiscal.salvarParcela');
         Route::get('/read', 'CompraFiscalController@read');
         Route::get('/teste', 'CompraFiscalController@teste');
         Route::get('/syncDataEmissaoRetroativa', 'CompraManualController@syncDataEmissaoRetroativa');
@@ -2202,6 +2218,16 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::get('/saldo-real', 'RelatorioEstoqueController@relatorioSaldoReal');
         Route::get('/extrato/{produto_id}', 'RelatorioEstoqueController@extratoMovimentacao');
+        Route::post('/sincronizar-pesagens', 'PesagemController@sincronizarEstoquePassado')->name('estoque.sincronizar-pesagens');
+    });
+
+    Route::group(['prefix' => 'stock'], function () {
+        Route::get('/disponibilidade/{produtoId}/{quantidade}', 'StockController@consultarDisponibilidadeEstoque')->name('stock.disponibilidade');
+    });
+
+    Route::group(['prefix' => 'gestao-estoque'], function () {
+        Route::get('/', 'GestaoEstoqueController@index')->name('gestao-estoque.index');
+        Route::post('/sincronizar', 'GestaoEstoqueController@sincronizar')->name('gestao-estoque.sincronizar');
     });
 
     Route::group(['prefix' => 'cotacao'],function(){
@@ -2923,6 +2949,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     });
 
+    Route::group(['prefix' => 'pesagemNfe'], function () {
+        Route::get('/', 'PesagemNfeController@index')->name('pesagem-nfe.index');
+        Route::post('/processar', 'PesagemNfeController@processar')->name('pesagem-nfe.processar');
+    });
+
+    // Compatibilidade com o endereço legado.
+    Route::get('/pesagem_nfe', fn () => redirect()->route('pesagem-nfe.index'));
+
+    Route::group(['prefix' => 'tabelaPrecoNfe'], function () {
+        Route::get('/', 'TabelaPrecoNfeController@index')->name('tabela-preco-nfe.index');
+        Route::post('/save', 'TabelaPrecoNfeController@save')->name('tabela-preco-nfe.save');
+        Route::delete('/delete/{id}', 'TabelaPrecoNfeController@delete')->name('tabela-preco-nfe.delete');
+    });
+
     Route::group(['prefix' => 'monitor'], function () {
         Route::get('/pesagens', 'MonitorPesagemController@index')->name('monitor.pesagens');
         Route::get('/pesagens/data', 'MonitorPesagemController@data')->name('monitor.pesagens.data');
@@ -3090,6 +3130,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/delete/{id}', 'TarefaController@delete')->name('tarefas.delete');
         Route::get('/iniciar/{id}', 'TarefaController@iniciar')->name('tarefas.iniciar');
         Route::get('/finalizar/{id}', 'TarefaController@finalizar')->name('tarefas.finalizar');
+        Route::get('/pausar/{id}', 'TarefaController@pausar')->name('tarefas.pausar');
         Route::get('/painel', 'TarefaController@painel')->name('tarefas.painel');
     });
 
@@ -3203,6 +3244,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         // NOVA ROTA PARA EXPORTAÇÃO EXCEL
         Route::post('/exportacao/excel', 'ExportacaoContabilController@gerarExcel')->name('contabilidade.exportacao.excel');
+        Route::post('/exportacao/terceiros', 'ContabilidadeController@gerarTerceiros')->name('contabilidade.exportacao.terceiros');
 
     });
 
@@ -3224,6 +3266,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         // 🖨️ IMPRESSÃO DO ESPELHO DA NOTA:
         Route::get('/espelho/{id}', 'NFSeTomadaController@imprimirEspelho');
+        Route::get('/xml/{id}', 'NFSeTomadaController@downloadXml')->name('nfse-tomadas.xml');
+        Route::post('/sincronizar-manuais', 'NFSeTomadaController@buscarPagamentosManuais')->name('nfse.sincronizar-manuais');
 
     });
 
@@ -3313,7 +3357,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // Route::group(['prefix' => 'site-view'], function () {
     //     Route::get('/', 'SiteViewController@list')->name('site.view.list');
     // });
-
 
     Route::group(['prefix' => '/otica'], function(){
         Route::get('/', 'OticaController@list')->name('otica.index');

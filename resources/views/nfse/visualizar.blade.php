@@ -2,139 +2,87 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }}</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { font-size: 11px; color: #000; background-color: #f4f4f4; padding: 20px; }
-        .danfse-container { background: #fff; padding: 20px; border: 1px solid #333; max-width: 900px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .header-table, .info-table, .retencao-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .header-table td, .info-table td, .retencao-table td, .retencao-table th { border: 1px solid #000; padding: 5px; vertical-align: top; }
-        .retencao-table th { background-color: #f8f9fa; font-weight: bold; text-align: center; text-transform: uppercase; font-size: 9px; }
-        .title { font-weight: bold; font-size: 10px; text-transform: uppercase; display: block; color: #555; }
-        .content { font-weight: bold; font-size: 12px; display: block; margin-top: 2px; }
-        .servicos-box { border: 1px solid #000; padding: 10px; min-height: 200px; margin-bottom: 10px; }
-        .footer-table { width: 100%; border-collapse: collapse; }
-        .footer-table td { border: 1px solid #000; padding: 8px; text-align: center; width: 25%; }
-        @media print { .d-print-none { display: none; } body { padding: 0; background: none; } .danfse-container { border: none; box-shadow: none; } }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 18px; background: #f4f4f4; color: #111; font: 12px Arial, sans-serif; }
+        .danfse { max-width: 900px; margin: auto; padding: 16px; background: #fff; border: 1px solid #222; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        td, th { padding: 6px; border: 1px solid #222; vertical-align: top; }
+        th { background: #f0f0f0; text-align: center; font-size: 10px; text-transform: uppercase; }
+        .titulo { color: #555; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .valor { display: block; margin-top: 2px; font-size: 12px; font-weight: bold; }
+        .cabecalho { text-align: center; font-size: 15px; font-weight: bold; }
+        .servico { min-height: 160px; padding: 10px; border: 1px solid #222; white-space: pre-wrap; }
+        .acoes { max-width: 900px; margin: 0 auto 10px; text-align: right; }
+        .acoes button { padding: 8px 14px; cursor: pointer; }
+        .cancelada { margin-bottom: 8px; padding: 8px; border: 2px solid #b00020; color: #b00020; text-align: center; font-weight: bold; }
+        @media print { body { padding: 0; background: #fff; } .danfse { border: none; } .acoes { display: none; } }
     </style>
 </head>
 <body>
-
-<div class="danfse-container">
-    {{-- Cabeçalho Superior --}}
-    <table class="header-table">
+@php
+    $d = $dados ?? [];
+    $ret = $d['retencoes'] ?? [];
+@endphp
+<div class="acoes"><button type="button" onclick="window.print()">Imprimir</button></div>
+<div class="danfse">
+    @if(strtoupper((string)($nota->situacao ?? '')) === 'CANCELADA')
+        <div class="cancelada">NFS-e CANCELADA</div>
+    @endif
+    <table>
         <tr>
-            <td width="20%" class="text-center">
-                <img src="/logo.png" style="max-height: 50px;" onerror="this.style.display='none'"> 
-            </td>
-            <td width="55%" class="text-center">
-                <span style="font-size: 14px; font-weight: bold;">DANFSE</span><br>
-                <span>Documento Auxiliar da Nota Fiscal de Serviço Eletrônica</span>
-            </td>
-            <td width="25%">
-                <span class="title">Número da Nota</span>
-                <span class="content text-primary" style="font-size: 16px;">{{ $xml->infNFSe->nNFSe }}</span>
-                <span class="title">Data de Emissão</span>
-                <span class="content">{{ date('d/m/Y H:i', strtotime($xml->infNFSe->dhProc)) }}</span>
+            <td class="cabecalho" style="width:70%">DANFSE<br><small>Documento Auxiliar da Nota Fiscal de Serviço Eletrônica</small></td>
+            <td>
+                <span class="titulo">Número</span><span class="valor">{{ $d['numero'] ?? $nota->numero_nota ?? '' }}</span>
+                <span class="titulo">Emissão</span><span class="valor">{{ !empty($d['data_emissao']) ? date('d/m/Y H:i', strtotime($d['data_emissao'])) : '-' }}</span>
             </td>
         </tr>
     </table>
-
-    {{-- Dados do Prestador --}}
-    <table class="info-table">
+    <table>
+        <tr><td>
+            <span class="titulo">Prestador de serviços</span>
+            <span class="valor">{{ $d['prestador_nome'] ?? $nota->prestador_nome ?? '-' }}</span>
+            <div>Documento: {{ $d['prestador_documento'] ?? $nota->prestador_cnpj_cpf ?? '-' }}</div>
+            <div>{{ $d['prestador_endereco'] ?? '' }}</div>
+        </td></tr>
+    </table>
+    <table>
+        <tr><td>
+            <span class="titulo">Tomador de serviços</span>
+            <span class="valor">{{ $d['tomador_nome'] ?? 'Não informado' }}</span>
+            <div>Documento: {{ $d['tomador_documento'] ?? '-' }}</div>
+        </td></tr>
+    </table>
+    <div class="servico"><span class="titulo">Descrição dos serviços</span><br><br>{{ $d['descricao_servico'] ?? $descricao_servico ?? 'Não informada' }}</div>
+    <table style="margin-top:8px">
         <tr>
-            <td>
-                <span class="title">Prestador de Serviços</span>
-                <span class="content">{{ $xml->infNFSe->emit->xNome }}</span>
-                <span>CNPJ: {{ $xml->infNFSe->emit->CNPJ }}</span><br>
-                <span>{{ $xml->infNFSe->emit->enderNac->xLgr }}, {{ $xml->infNFSe->emit->enderNac->nro }} - {{ $xml->infNFSe->emit->enderNac->xBairro }}</span>
-            </td>
+            <th>PIS</th><th>COFINS</th><th>IRRF</th><th>CSLL</th><th>INSS</th><th>ISS retido</th>
+        </tr>
+        <tr style="text-align:center">
+            <td>R$ {{ number_format((float)($ret['valor_pis'] ?? 0), 2, ',', '.') }}</td>
+            <td>R$ {{ number_format((float)($ret['valor_cofins'] ?? 0), 2, ',', '.') }}</td>
+            <td>R$ {{ number_format((float)($ret['valor_ir'] ?? 0), 2, ',', '.') }}</td>
+            <td>R$ {{ number_format((float)($ret['valor_csll'] ?? 0), 2, ',', '.') }}</td>
+            <td>R$ {{ number_format((float)($ret['valor_inss'] ?? 0), 2, ',', '.') }}</td>
+            <td>R$ {{ number_format((float)($ret['valor_iss'] ?? 0), 2, ',', '.') }}</td>
         </tr>
     </table>
-
-    {{-- Dados do Tomador --}}
-    <table class="info-table">
-        <tr>
-            <td>
-                <span class="title">Tomador de Serviços (Sua Empresa)</span>
-                <span class="content">{{ $xml->infNFSe->DPS->infDPS->toma->xNome }}</span>
-                <span>CNPJ/CPF: {{ $xml->infNFSe->DPS->infDPS->toma->CNPJ ?? $xml->infNFSe->DPS->infDPS->toma->CPF }}</span>
-            </td>
+    <table>
+        <tr style="text-align:center">
+            <td><span class="titulo">Valor bruto</span><span class="valor">R$ {{ number_format((float)($d['valor_bruto'] ?? $nota->valor_servico ?? 0), 2, ',', '.') }}</span></td>
+            <td><span class="titulo">ISS apurado</span><span class="valor">R$ {{ number_format((float)($d['valor_iss_apurado'] ?? 0), 2, ',', '.') }}</span></td>
+            <td><span class="titulo">Total retenções</span><span class="valor">R$ {{ number_format((float)array_sum($ret), 2, ',', '.') }}</span></td>
+            <td><span class="titulo">Valor líquido</span><span class="valor">R$ {{ number_format((float)($d['valor_liquido'] ?? $nota->valor_liquido ?? 0), 2, ',', '.') }}</span></td>
         </tr>
     </table>
-
-    {{-- Descrição do Serviço --}}
-    <div class="servicos-box">
-        <span class="title">Descrição dos Serviços</span>
-        <div style="font-size: 12px; margin-top: 10px; white-space: pre-wrap;">{{ $xml->infNFSe->DPS->infDPS->serv->cServ->xDescServ }}</div>
-        
-        <hr style="border-top: 1px dashed #ccc;">
-        <span class="title">Informações Adicionais / Tributação</span>
-        <div class="mt-2">
-            <strong>Tributação Municipal (xTribMun):</strong> {{ $xml->infNFSe->xTribMun ?? 'Não informado' }}<br>
-            <strong>Cód. Tributação Nacional:</strong> {{ $xml->infNFSe->DPS->infDPS->serv->cServ->cTribNac }}
-        </div>
-    </div>
-
-    {{-- Tabela de Retenções --}}
-    <table class="retencao-table">
-        <thead>
-            <tr>
-                <th>PIS</th>
-                <th>COFINS</th>
-                <th>IRRF</th>
-                <th>CSLL</th>
-                <th>INSS</th>
-                <th>ISS Retido</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr class="text-center">
-                <td>R$ {{ number_format((float)($xml->infNFSe->valores->vPIS ?? 0), 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float)($xml->infNFSe->valores->vCOFINS ?? 0), 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float)($xml->infNFSe->valores->vIR ?? 0), 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float)($xml->infNFSe->valores->vCSLL ?? 0), 2, ',', '.') }}</td>
-                <td>R$ {{ number_format((float)($xml->infNFSe->valores->vINSS ?? 0), 2, ',', '.') }}</td>
-                {{-- Validação de Retenção de ISS --}}
-                @php 
-                    $tpRet = (int)($xml->infNFSe->DPS->infDPS->valores->trib->tribMun->tpRetISSQN ?? 2);
-                @endphp
-                <td>R$ {{ $tpRet == 1 ? number_format((float)($xml->infNFSe->valores->vISSQN ?? 0), 2, ',', '.') : '0,00' }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    {{-- Totais Finais --}}
-    <table class="footer-table">
-        <tr>
-            <td>
-                <span class="title">Valor Bruto</span>
-                {{-- Busca resiliente do Valor Bruto[cite: 3] --}}
-                @php 
-                    $vBruto = (float)($xml->infNFSe->valores->vServ ?? $xml->infNFSe->DPS->infDPS->valores->vServPrest->vServ ?? $xml->infNFSe->valores->vBC ?? 0);
-                @endphp
-                <span class="content">R$ {{ number_format($vBruto, 2, ',', '.') }}</span>
-            </td>
-            <td>
-                <span class="title">ISS Apurado</span>
-                <span class="content">R$ {{ number_format((float)($xml->infNFSe->valores->vISSQN ?? 0), 2, ',', '.') }}</span>
-            </td>
-            <td>
-                <span class="title">Total Retenções Federais</span>
-                @php 
-                    $federais = (float)($xml->infNFSe->valores->vPIS ?? 0) + 
-                                (float)($xml->infNFSe->valores->vCOFINS ?? 0) + 
-                                (float)($xml->infNFSe->valores->vIR ?? 0) + 
-                                (float)($xml->infNFSe->valores->vCSLL ?? 0);
-                @endphp
-                <span class="content text-danger">R$ {{ number_format($federais, 2, ',', '.') }}</span>
-            </td>
-            <td style="background-color: #f8f9fa;">
-                <span class="title">Valor Líquido</span>
-                <span class="content text-primary" style="font-size: 14px;">R$ {{ number_format((float)($xml->infNFSe->valores->vLiq ?? 0), 2, ',', '.') }}</span>
-            </td>
-        </tr>
-    </table>
-
+    @if(!empty($d['tributacao_municipal']) || !empty($d['codigo_tributacao']))
+        <table><tr><td>
+            <span class="titulo">Tributação municipal</span> {{ $d['tributacao_municipal'] ?? '-' }}<br>
+            <span class="titulo">Código de tributação</span> {{ $d['codigo_tributacao'] ?? '-' }}
+        </td></tr></table>
+    @endif
+</div>
 </body>
 </html>

@@ -6,6 +6,7 @@ use App\Models\ContaPagar;
 use App\Models\ContaReceber;
 use App\Models\ItemContaEmpresa;
 use App\Models\ConfiguracaoContabil;
+use App\Models\AdiantamentoMovimentacao;
 
 class ContabilidadeService
 {
@@ -46,7 +47,7 @@ class ContabilidadeService
         $contaInssPassivo = $config->conta_inss_passivo ?? '21011';
         $contaIssPassivo = $config->conta_iss_passivo ?? '21012';
 
-        $auditoria = ['pagar_prov' => [], 'pagar_baixa' => [], 'receber_prov' => [], 'receber_baixa' => [], 'manual' => []];
+        $auditoria = ['pagar_prov' => [], 'pagar_baixa' => [], 'receber_prov' => [], 'receber_baixa' => [], 'manual' => [], 'adiantamentos' => []];
 
         $limparTexto = function($texto) { return trim((string)$texto); };
 
@@ -123,7 +124,15 @@ class ContabilidadeService
             $debitoDespesa = $montarConta(optional($cat)->contaDespesa, '---');
             $creditoForn = $montarConta(optional($cat)->contaProvisao, '---');
             $numNota = $item->numero_nota_fiscal ?? $item->nf ?? '';
-            $valorBruto = (float)($item->valor_original > 0 ? $item->valor_original : $item->valor_integral);
+            $valorLiquido = (float) ($item->valor_original > 0 ? $item->valor_original : $item->valor_integral);
+            $valorRetencoes = (float) ($item->valor_ir ?? 0)
+                + (float) ($item->valor_inss ?? 0)
+                + (float) ($item->valor_iss ?? 0)
+                + (float) ($item->valor_pis ?? 0)
+                + (float) ($item->valor_cofins ?? 0)
+                + (float) ($item->valor_csll ?? 0)
+                + (float) ($item->outras_retencoes ?? 0);
+            $valorBruto = $valorLiquido + $valorRetencoes;
 
             $auditoria['pagar_prov'][] = [
                 'id' => $item->id, 'data' => date('d/m/Y', strtotime($dataBase)),
@@ -168,17 +177,30 @@ class ContabilidadeService
             $nomeCategoria = !empty($cat->nome) ? trim($cat->nome) : 'Sem Categoria';
             $cnpjFornecedor = $cfg->ignorarTerceiro ? '' : $extrairDocumento($cp->fornecedor ?? null);
             
-            $itemBank = ItemContaEmpresa::with('conta.contaContabil')->where('conta_pagar_id', $cp->id)->first();
-            $idBanco = $itemBank ? $itemBank->conta_id : null;
-            
-            $lancamentoDireto = !$cfg->geraProvisao;
-            $codD_Forn = $lancamentoDireto ? $montarConta(optional($cat)->contaDespesa, '---') : $montarConta(optional($cat)->contaProvisao, $contaFornPadrao);
-            
-            if (empty($idBanco) || stripos($cat->nome ?? '', 'Adiantamento') !== false) {
-                $codC_Banco = $montarConta(optional($cat)->contaDespesa, '---'); 
-            } else {
-                $codC_Banco = $montarConta(optional($itemBank->conta)->contaContabil, '---'); 
+            $itemBank = ItemContaEmpresa::with('conta.contaContabil')
+                ->where('empresa_id', $empresaId)
+                ->where('conta_pagar_id', $cp->id)
+                ->orderByDesc('id')
+                ->first();
+            $movAdiantamento = AdiantamentoMovimentacao::where('empresa_id', $empresaId)
+                ->where('conta_pagar_id', $cp->id)
+                ->orderByDesc('id')
+                ->first();
+
+            if (!$itemBank && !$movAdiantamento) {
+                continue;
             }
+
+            $dataTransacao = $itemBank->data_pagamento ?? $movAdiantamento->data ?? $cp->data_pagamento;
+            $dataFormatada = date('d/m/Y', strtotime($dataTransacao));
+
+            $lancamentoDireto = !$cfg->geraProvisao;
+            $codD_Forn = $lancamentoDireto
+                ? $montarConta(optional($cat)->contaDespesa, '---')
+                : $montarConta(optional($cat)->contaProvisao, $contaFornPadrao);
+            $codC_Banco = $itemBank && $itemBank->conta
+                ? $montarConta(optional($itemBank->conta)->contaContabil, '---')
+                : ($movAdiantamento ? '11501' : '---');
 
             $numNota = $cp->numero_nota_fiscal ?? $cp->nf ?? '';
             $entidade = $limparTexto($cp->fornecedor->razao_social ?? 'Baixa');
@@ -191,7 +213,7 @@ class ContabilidadeService
 
             if ($valorPrincipal > 0) {
                 $auditoria['pagar_baixa'][] = [
-                    'id' => $cp->id, 'data' => date('d/m/Y', strtotime($cp->data_pagamento)),
+                    'id' => $cp->id, 'data' => $dataFormatada,
                     'entidade' => $entidade, 'historico' => mb_substr("$textoHistorico - " . ($numNota ? "NF: $numNota - " : "") . $entidade, 0, 60, 'UTF-8'),
                     'categoria' => $nomeCategoria, 'debito' => $codD_Forn, 'credito' => $codC_Banco,
                     'terceiro_debito' => $cnpjFornecedor, 'terceiro_credito' => '', 'documento' => $numNota,
@@ -203,7 +225,7 @@ class ContabilidadeService
 
             if ($juros > 0) {
                 $auditoria['pagar_baixa'][] = [
-                    'id' => $cp->id, 'data' => date('d/m/Y', strtotime($cp->data_pagamento)),
+                    'id' => $cp->id, 'data' => $dataFormatada,
                     'entidade' => $entidade, 'historico' => mb_substr("Juros Pagos - " . ($numNota ? "NF: $numNota - " : "") . $entidade, 0, 60, 'UTF-8'),
                     'categoria' => 'Despesa Financeira (Juros)', 'debito' => $contaJurosDespesa, 'credito' => $codC_Banco,
                     'terceiro_debito' => '', 'terceiro_credito' => '', 'documento' => $numNota,
@@ -214,7 +236,7 @@ class ContabilidadeService
 
             if ($multa > 0) {
                 $auditoria['pagar_baixa'][] = [
-                    'id' => $cp->id, 'data' => date('d/m/Y', strtotime($cp->data_pagamento)),
+                    'id' => $cp->id, 'data' => $dataFormatada,
                     'entidade' => $entidade, 'historico' => mb_substr("Multa Paga - " . ($numNota ? "NF: $numNota - " : "") . $entidade, 0, 60, 'UTF-8'),
                     'categoria' => 'Despesa Financeira (Multa)', 'debito' => $contaMultaDespesa, 'credito' => $codC_Banco,
                     'terceiro_debito' => '', 'terceiro_credito' => '', 'documento' => $numNota,
@@ -280,14 +302,25 @@ class ContabilidadeService
             $nomeCategoria = !empty($cat->nome) ? trim($cat->nome) : 'Sem Categoria';
             $cnpjCliente = $cfg->ignorarTerceiro ? '' : $extrairDocumento($cr->cliente ?? null);
 
-            $itemBank = ItemContaEmpresa::with('conta.contaContabil')->where('conta_receber_id', $cr->id)->first();
-            $idBanco = $itemBank ? $itemBank->conta_id : null;
+            $itemBank = ItemContaEmpresa::with('conta.contaContabil')
+                ->where('empresa_id', $empresaId)
+                ->where('conta_receber_id', $cr->id)
+                ->orderByDesc('id')
+                ->first();
+            $movAdiantamento = AdiantamentoMovimentacao::where('empresa_id', $empresaId)
+                ->where('conta_receber_id', $cr->id)
+                ->orderByDesc('id')
+                ->first();
 
-            if (empty($idBanco) || stripos($cat->nome ?? '', 'Adiantamento') !== false) {
-                $codD_Banco = $montarConta(optional($cat)->contaDespesa, '---'); 
-            } else {
-                $codD_Banco = $montarConta(optional($itemBank->conta)->contaContabil, '---'); 
+            if (!$itemBank && !$movAdiantamento) {
+                continue;
             }
+
+            $dataTransacao = $itemBank->data_pagamento ?? $movAdiantamento->data ?? $cr->data_recebimento;
+            $dataFormatada = date('d/m/Y', strtotime($dataTransacao));
+            $codD_Banco = $itemBank && $itemBank->conta
+                ? $montarConta(optional($itemBank->conta)->contaContabil, '---')
+                : ($movAdiantamento ? '21005' : '---');
             
             $lancamentoDireto = !$cfg->geraProvisao;
             $codC_Cliente = $lancamentoDireto ? $montarConta(optional($cat)->contaDespesa, '---') : $montarConta(optional($cat)->contaProvisao, $contaClientePadrao);
@@ -304,7 +337,7 @@ class ContabilidadeService
 
             if ($valorPrincipal > 0) {
                 $auditoria['receber_baixa'][] = [
-                    'id' => $cr->id, 'data' => date('d/m/Y', strtotime($cr->data_recebimento)),
+                    'id' => $cr->id, 'data' => $dataFormatada,
                     'entidade' => $entidade, 'historico' => mb_substr("$textoHistorico - " . ($numNota ? "NF: $numNota - " : "") . $entidade, 0, 60, 'UTF-8'),
                     'categoria' => $nomeCategoria, 'debito' => $codD_Banco, 'credito' => $codC_Cliente,
                     'terceiro_debito' => '', 'terceiro_credito' => $cnpjCliente, 'documento' => $numNota, 
@@ -316,7 +349,7 @@ class ContabilidadeService
             
             if (($juros + $multa) > 0) {
                 $auditoria['receber_baixa'][] = [
-                    'id' => $cr->id, 'data' => date('d/m/Y', strtotime($cr->data_recebimento)),
+                    'id' => $cr->id, 'data' => $dataFormatada,
                     'entidade' => $entidade, 'historico' => mb_substr("Juros/Multa - " . ($numNota ? "NF: $numNota - " : "") . $entidade, 0, 60, 'UTF-8'),
                     'categoria' => 'Receita Financeira', 'debito' => $codD_Banco, 'credito' => $contaJurosReceita,
                     'terceiro_debito' => '', 'terceiro_credito' => '', 'documento' => $numNota,
@@ -340,6 +373,11 @@ class ContabilidadeService
             $cat = $item->categoria;
             $debito = $montarConta(optional($cat)->contaDespesa, '---');
             $credito = $montarConta(optional($item->conta)->contaContabil, '---');
+
+            if ($debito === $credito && $debito !== '---') {
+                continue;
+            }
+
             if (isset($item->tipo) && strtolower($item->tipo) === 'receita') {
                 $temp = $debito; $debito = $credito; $credito = $temp;
             }
@@ -357,6 +395,37 @@ class ContabilidadeService
             ];
         }
 
+        $movimentacoesAdiantamento = AdiantamentoMovimentacao::where('empresa_id', $empresaId)
+            ->whereBetween('data', [$dtInicio, $dtFim])
+            ->when($filialId === 'matriz' || empty($filialId), function ($query) {
+                $query->where(function ($q) {
+                    $q->whereNull('filial_id')->orWhere('filial_id', 0);
+                });
+            }, function ($query) use ($filialId) {
+                $query->where('filial_id', $filialId);
+            })
+            ->get();
+
+        foreach ($movimentacoesAdiantamento as $mov) {
+            $isCliente = !empty($mov->conta_receber_id);
+            $auditoria['adiantamentos'][] = [
+                'id' => $mov->id,
+                'data' => date('d/m/Y', strtotime($mov->data)),
+                'entidade' => 'Mov. Adiantamento #' . $mov->adiantamento_id,
+                'historico' => 'Movimentação de adiantamento #' . $mov->adiantamento_id,
+                'categoria' => 'Adiantamento',
+                'debito' => $isCliente ? '11101' : '11501',
+                'credito' => $isCliente ? '21005' : '11101',
+                'terceiro_debito' => '',
+                'terceiro_credito' => '',
+                'documento' => '',
+                'valor' => number_format((float) $mov->valor, 2, ',', '.'),
+                'status' => 'OK',
+                'categoria_id' => null,
+                'conta_banco_id' => null,
+            ];
+        }
+
         foreach ($auditoria as $aba => $linhas) {
             usort($auditoria[$aba], function($a, $b) {
                 if ($a['status'] === $b['status']) { return strtotime(str_replace('/', '-', $b['data'])) <=> strtotime(str_replace('/', '-', $a['data'])); }
@@ -369,5 +438,33 @@ class ContabilidadeService
         }
 
         return $auditoria;
+    }
+
+    public function gerarArquivoTerceiros(int $empresaId): string
+    {
+        $formatar = function ($terceiro): string {
+            $doc = substr(preg_replace('/\D/','',(string)$terceiro->cpf_cnpj),0,14);
+            $tipoPessoa = strlen($doc) > 11 ? '0' : '1';
+            $telefone = preg_replace('/\D/','',(string)($terceiro->telefone ?: $terceiro->celular));
+            $ddd = strlen($telefone) >= 10 ? substr($telefone,0,2) : '';
+            $numeroTelefone = strlen($telefone) >= 10 ? substr($telefone,2,10) : '';
+            $cidade = \App\Models\Cidade::find($terceiro->cidade_id);
+            $ibge = substr((string)($cidade->codigo ?? ''),0,5);
+            $cep = preg_replace('/\D/','',(string)$terceiro->cep);
+            $cep = strlen($cep) === 8 ? substr($cep,0,5).'-'.substr($cep,5) : '';
+            $campo = fn($valor,$tamanho) => str_pad(mb_substr((string)$valor,0,$tamanho),$tamanho,' ');
+            $linha='TRC'.str_repeat(' ',7).$tipoPessoa.str_pad($doc,14,'0',STR_PAD_LEFT);
+            $linha.=$campo($terceiro->razao_social,60).$campo($terceiro->nome_fantasia,20).$campo('RUA',10);
+            $linha.=$campo($terceiro->rua,60).$campo($terceiro->numero,10).$campo($terceiro->complemento,20).$campo($cep,9);
+            $linha.=$campo($terceiro->bairro,30).$campo($cidade->nome ?? '',30).$campo($cidade->uf ?? '',2).str_repeat(' ',8);
+            $linha.=$campo($ddd,5).$campo($numeroTelefone,10).str_repeat(' ',15).$campo($terceiro->email,50).str_repeat(' ',60);
+            $linha.=$campo($terceiro->ie_rg,20).str_repeat(' ',63).'1058'.$campo($ibge,5).str_repeat(' ',106).'S';
+            $linha.=((int)$terceiro->contribuinte === 1 ? 'S' : 'N').str_repeat(' ',17).'NNNN';
+            return mb_convert_encoding($linha,'ISO-8859-1','UTF-8');
+        };
+        $linhas=[];
+        \App\Models\Cliente::where('empresa_id',$empresaId)->orderBy('id')->chunkById(500,function($clientes) use (&$linhas,$formatar){ foreach($clientes as $cliente)$linhas[]=$formatar($cliente); });
+        \App\Models\Fornecedor::where('empresa_id',$empresaId)->orderBy('id')->chunkById(500,function($fornecedores) use (&$linhas,$formatar){ foreach($fornecedores as $fornecedor)$linhas[]=$formatar($fornecedor); });
+        return implode("\r\n",$linhas) . ($linhas ? "\r\n" : '');
     }
 }

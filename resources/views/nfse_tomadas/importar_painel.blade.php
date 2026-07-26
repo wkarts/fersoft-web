@@ -153,6 +153,75 @@
                 </div>
             </div>
 
+            <div class="card card-custom gutter-b border shadow-none">
+                <div class="card-header border-0">
+                    <div class="card-title">
+                        <h3 class="card-label font-weight-bold">4. Parcelamento e Rateio Avançado</h3>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="alert alert-light-info mb-5">
+                        Mantenha <strong>Automático</strong> para usar quantidade, prazo e veículo geral informados acima.
+                        Use as opções avançadas somente quando cada parcela precisar de vencimento, valor ou veículo próprio.
+                    </div>
+
+                    <div class="row align-items-end">
+                        <div class="col-md-4 form-group">
+                            <label class="font-weight-bold">Forma de distribuição</label>
+                            <select id="tipo_condicao_nfse" class="custom-select form-control">
+                                <option value="automatico">Automático pelos parâmetros acima</option>
+                                <option value="manual">Parcelamento manual</option>
+                                <option value="rateio">Ratear igualmente por veículos</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 form-group" id="grupo_quantidade_manual" style="display: none;">
+                            <label class="font-weight-bold">Quantidade de parcelas manuais</label>
+                            <div class="input-group">
+                                <input type="number" id="qtd_parcelas_manual_nfse" class="form-control" value="1" min="1" max="120">
+                                <div class="input-group-append">
+                                    <button type="button" id="btn_gerar_parcelas_nfse" class="btn btn-primary">Gerar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-8 form-group" id="grupo_rateio_veiculos" style="display: none;">
+                            <label class="font-weight-bold">Veículos participantes do rateio</label>
+                            <select id="veiculos_rateio_nfse" class="form-control select2-custom" multiple="multiple" style="width: 100%;">
+                                @foreach($veiculos as $v)
+                                    <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->marca }}/{{ $v->modelo }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="painel_parcelas_nfse" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="tabela_parcelas_nfse">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 100px;">Parcela</th>
+                                        <th style="width: 160px;">Vencimento</th>
+                                        <th style="width: 170px;">Valor (R$)</th>
+                                        <th>Veículo</th>
+                                        <th style="width: 70px;" class="text-center">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <button type="button" id="btn_adicionar_parcela_nfse" class="btn btn-sm btn-light-primary">
+                            <i class="la la-plus"></i> Adicionar parcela
+                        </button>
+                        <div class="text-right font-weight-bold mt-3">
+                            Total distribuído: <span id="total_parcelas_nfse" class="text-success">R$ 0,00</span>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="fatura_json" id="fatura_json_input">
+                </div>
+            </div>
+
             <hr class="my-8">
 
             {{-- Botões de Disparo --}}
@@ -170,13 +239,139 @@
     </div>
 </div>
 
-{{-- Interceptor JS para evitar duplo clique no salvamento --}}
+{{-- Parcelamento avançado e proteção contra duplo envio --}}
 <script>
-    document.getElementById('form-confirmar-importacao').addEventListener('submit', function() {
-        var btn = document.getElementById('btn-salvar-importacao');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="la la-spinner la-spin"></i> Processando Lançamento...';
-    });
+    (function () {
+        const valorLiquido = Number(@json(round((float) $vLiquido, 2)));
+        const vencimentoBase = @json(\Carbon\Carbon::parse($nota->data_emissao)->addDays(30)->format('d/m/Y'));
+        const veiculos = @json($veiculos->map(function ($v) {
+            return ['id' => $v->id, 'descricao' => trim($v->placa . ' - ' . $v->marca . '/' . $v->modelo)];
+        })->values());
+
+        const moeda = function (valor) {
+            return Number(valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        };
+
+        const parseMoeda = function (valor) {
+            if (typeof valor === 'number') return valor;
+            let texto = String(valor || '').replace(/[^0-9,.-]/g, '');
+            if (texto.indexOf(',') >= 0) texto = texto.replace(/\./g, '').replace(',', '.');
+            return Number(texto) || 0;
+        };
+
+        const opcoesVeiculo = function (selecionado) {
+            let html = '<option value="">Usar veículo geral da nota</option>';
+            veiculos.forEach(function (v) {
+                html += '<option value="' + v.id + '" ' + (String(selecionado || '') === String(v.id) ? 'selected' : '') + '>' + v.descricao + '</option>';
+            });
+            return html;
+        };
+
+        const adicionarLinha = function (numero, vencimento, valor, veiculoId) {
+            const linha = `
+                <tr>
+                    <td><input type="text" class="form-control text-center parcela-numero" value="${numero}"></td>
+                    <td><input type="text" class="form-control date-input parcela-vencimento" value="${vencimento}"></td>
+                    <td><input type="text" class="form-control money parcela-valor text-right" value="${moeda(valor)}"></td>
+                    <td><select class="custom-select form-control parcela-veiculo">${opcoesVeiculo(veiculoId)}</select></td>
+                    <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-danger remover-parcela-nfse"><i class="la la-trash"></i></button></td>
+                </tr>`;
+            $('#tabela_parcelas_nfse tbody').append(linha);
+            $('.date-input').mask('00/00/0000');
+            $('.money').mask('#.##0,00', {reverse: true});
+        };
+
+        const atualizarJson = function () {
+            const parcelas = [];
+            let total = 0;
+            $('#tabela_parcelas_nfse tbody tr').each(function () {
+                const valor = parseMoeda($(this).find('.parcela-valor').val());
+                total += valor;
+                parcelas.push({
+                    numero: $(this).find('.parcela-numero').val(),
+                    vencimento: $(this).find('.parcela-vencimento').val(),
+                    valor_parcela: valor.toFixed(2),
+                    veiculo_id: $(this).find('.parcela-veiculo').val() || null
+                });
+            });
+            $('#total_parcelas_nfse').text('R$ ' + moeda(total));
+            $('#fatura_json_input').val(parcelas.length ? JSON.stringify(parcelas) : '');
+            return total;
+        };
+
+        const gerarParcelas = function (quantidade, veiculosSelecionados) {
+            quantidade = Math.max(1, Number(quantidade || 1));
+            $('#tabela_parcelas_nfse tbody').empty();
+            const base = Math.floor((valorLiquido / quantidade) * 100) / 100;
+            let acumulado = 0;
+            for (let i = 1; i <= quantidade; i++) {
+                const valor = i === quantidade ? Number((valorLiquido - acumulado).toFixed(2)) : base;
+                acumulado += valor;
+                adicionarLinha(String(i).padStart(3, '0'), vencimentoBase, valor, veiculosSelecionados ? veiculosSelecionados[i - 1] : null);
+            }
+            atualizarJson();
+        };
+
+        $('#tipo_condicao_nfse').on('change', function () {
+            const tipo = $(this).val();
+            $('#grupo_quantidade_manual').toggle(tipo === 'manual');
+            $('#grupo_rateio_veiculos').toggle(tipo === 'rateio');
+            $('#painel_parcelas_nfse').toggle(tipo !== 'automatico');
+            if (tipo === 'automatico') {
+                $('#tabela_parcelas_nfse tbody').empty();
+                $('#fatura_json_input').val('');
+                $('#total_parcelas_nfse').text('R$ 0,00');
+            } else if (tipo === 'manual') {
+                gerarParcelas($('#qtd_parcelas_manual_nfse').val());
+            }
+        });
+
+        $('#btn_gerar_parcelas_nfse').on('click', function () {
+            gerarParcelas($('#qtd_parcelas_manual_nfse').val());
+        });
+
+        $('#veiculos_rateio_nfse').on('change', function () {
+            const ids = $(this).val() || [];
+            if (ids.length) gerarParcelas(ids.length, ids);
+            else {
+                $('#tabela_parcelas_nfse tbody').empty();
+                atualizarJson();
+            }
+        });
+
+        $('#btn_adicionar_parcela_nfse').on('click', function () {
+            const proximo = $('#tabela_parcelas_nfse tbody tr').length + 1;
+            adicionarLinha(String(proximo).padStart(3, '0'), vencimentoBase, 0, null);
+            atualizarJson();
+        });
+
+        $(document).on('click', '.remover-parcela-nfse', function () {
+            $(this).closest('tr').remove();
+            atualizarJson();
+        });
+        $(document).on('keyup change blur', '.parcela-numero, .parcela-vencimento, .parcela-valor, .parcela-veiculo', atualizarJson);
+
+        document.getElementById('form-confirmar-importacao').addEventListener('submit', function (event) {
+            const tipo = $('#tipo_condicao_nfse').val();
+            if (tipo !== 'automatico') {
+                const total = atualizarJson();
+                if (!$('#tabela_parcelas_nfse tbody tr').length) {
+                    event.preventDefault();
+                    alert('Gere ao menos uma parcela para concluir a importação.');
+                    return;
+                }
+                if (Math.abs(total - valorLiquido) > 0.02) {
+                    event.preventDefault();
+                    alert('A soma das parcelas deve ser igual ao valor líquido de R$ ' + moeda(valorLiquido) + '.');
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('btn-salvar-importacao');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="la la-spinner la-spin"></i> Processando Lançamento...';
+        });
+    })();
 </script>
 
 @endsection

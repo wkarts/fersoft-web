@@ -52,7 +52,17 @@
                                 </div>
                             </div>
 
-                            <div class="row">
+                            <div class="row" id="container_adiantamento" style="display: none;">
+                                <div class="form-group col-lg-8">
+                                    <label class="checkbox checkbox-lg">
+                                        <input type="checkbox" name="usar_adiantamento" id="usar_adiantamento" value="1">
+                                        <span></span>&nbsp;&nbsp;
+                                        <strong id="label_adiantamento" class="text-info">Usar saldo de adiantamento do cliente</strong>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="row" id="div_financeiro">
                                 <div class="form-group col-lg-3">
                                     <label>Data de Recebimento</label>
                                     <input type="text" name="data_pagamento" class="form-control date-input" id="kt_datepicker_3" value="{{ date('d/m/Y') }}">
@@ -60,7 +70,7 @@
 
                                 <div class="form-group col-lg-3">
                                     <label>Tipo de Pagamento</label>
-                                    <select name="tipo_pagamento" class="custom-select form-control">
+                                    <select name="tipo_pagamento" id="forma" class="custom-select form-control">
                                         @foreach(App\Models\ContaReceber::tiposPagamento() as $tp)
                                             <option value="{{$tp}}">{{$tp}}</option>
                                         @endforeach
@@ -69,7 +79,7 @@
 
                                 <div class="form-group col-lg-4">
                                     <label class="text-primary font-weight-bold">Conta para Depósito</label>
-                                    <select required name="conta_id" class="custom-select form-control">
+                                    <select required name="conta_id" id="conta_id" class="custom-select form-control">
                                         <option value="">Selecione a conta bancária</option>
                                         @foreach($contasEmpresa as $c)
                                             <option value="{{$c->id}}">{{$c->nome}}</option>
@@ -99,6 +109,27 @@
 
 @section('javascript')
 <script>
+    $(function () {
+        const clienteId = @json($conta->cliente_id);
+        if (clienteId) {
+            $.get('/adiantamentos/consulta-saldo/cliente/' + clienteId).done(function (res) {
+                const saldo = Number(res.saldo || 0);
+                if (saldo > 0) {
+                    $('#label_adiantamento').text(
+                        'Usar saldo de adiantamento do cliente (disponível: R$ ' +
+                        saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ')'
+                    );
+                    $('#container_adiantamento').show();
+                }
+            });
+        }
+        $('#usar_adiantamento').on('change', function () {
+            const usar = $(this).is(':checked');
+            $('#forma, #conta_id').prop('required', !usar);
+            $('#forma, #conta_id').closest('.form-group').toggle(!usar);
+        });
+    });
+
     function parseMoeda(valor) {
         if (!valor) return 0;
         let limpo = valor.replace(/\./g, '').replace(',', '.');

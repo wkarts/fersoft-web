@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\NaturezaOperacao;
 use App\Models\CategoriaConta;
+use Illuminate\Support\Facades\DB;
 
 class NaturezaOperacaoController extends Controller
 {
@@ -43,7 +44,10 @@ class NaturezaOperacaoController extends Controller
     ->where('tipo', 'receber')
     ->orderBy('nome', 'asc')->get();
 
-    return view('naturezaOperacao/register', compact('categoriasDeConta'))
+    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->orderBy('codigo')->get();
+    $listaClassTrib = DB::table('class_trib_ibs_cbs')->orderBy('codigo')->get();
+
+    return view('naturezaOperacao/register', compact('categoriasDeConta', 'listaCstIbsCbs', 'listaClassTrib'))
     ->with('title', 'Cadastrar Natureza de Operação');
   }
 
@@ -74,10 +78,15 @@ class NaturezaOperacaoController extends Controller
     ->where('tipo', 'receber')
     ->orderBy('nome', 'asc')->get();
 
+    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->orderBy('codigo')->get();
+    $listaClassTrib = DB::table('class_trib_ibs_cbs')->orderBy('codigo')->get();
+
     if(valida_objeto($resp)){
       return view('naturezaOperacao/register')
       ->with('natureza', $resp)
       ->with('categoriasDeConta', $categoriasDeConta)
+      ->with('listaCstIbsCbs', $listaCstIbsCbs)
+      ->with('listaClassTrib', $listaClassTrib)
       ->with('title', 'Editar natureza de operação');
     }else{
       return redirect('/403');
@@ -103,6 +112,10 @@ class NaturezaOperacaoController extends Controller
     $resp->nao_movimenta_estoque = $request->input('nao_movimenta_estoque') ? true : false;
     $resp->finNFe = $request->input('finNFe');
     $resp->CST_CSOSN = $request->input('CST_CSOSN');
+    $resp->cst_ibs_cbs = $request->input('cst_ibs_cbs');
+    $resp->class_trib_ibs_cbs = $request->input('class_trib_ibs_cbs');
+    $resp->perc_red_ibs = (float) str_replace(',', '.', (string) $request->input('perc_red_ibs', 0));
+    $resp->perc_red_cbs = (float) str_replace(',', '.', (string) $request->input('perc_red_cbs', 0));
 
     $result = $resp->save();
     if($result){

@@ -96,7 +96,7 @@ class ContasPagarController extends Controller
         $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
         $somaContas = $this->somaCategoriaDeContas($contas);
         $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->get();
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
         $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
         $tiposPagamento = \App\Models\ContaPagar::tiposPagamento();
 
@@ -204,7 +204,7 @@ class ContasPagarController extends Controller
     // Finalização igual a anterior
     $somaContas = $this->somaCategoriaDeContas($contas);
     $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->get();
-    $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
+    $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
     $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
     $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
 
@@ -343,6 +343,7 @@ class ContasPagarController extends Controller
         if ($conta->status == 1 && $request->conta_id) {
             $forn = Fornecedor::find($conta->fornecedor_id);
             $item = ItemContaEmpresa::create([
+                'empresa_id'     => $this->empresa_id,
                 'conta_id'       => $request->conta_id,
                 'descricao'      => "Pgto " . ($forn->razao_social ?? 'Fornecedor') . " | Ref: " . $conta->referencia,
                 'tipo_pagamento' => $conta->tipo_pagamento ?? 'Dinheiro',
@@ -372,6 +373,11 @@ class ContasPagarController extends Controller
         if ($this->filial_id != null && $conta->filial_id != $this->filial_id) {
             session()->flash('mensagem_erro', 'Acesso negado: Este registro pertence a outra unidade.');
             return redirect('/contasPagar');
+        }
+
+        if (empty($conta->compra_id) && $request->filled('fornecedor_id')) {
+            Fornecedor::where('empresa_id', $this->empresa_id)->findOrFail((int) $request->fornecedor_id);
+            $conta->fornecedor_id = (int) $request->fornecedor_id;
         }
 
         $conta->data_vencimento = $this->parseDate($request->vencimento);
@@ -465,7 +471,7 @@ class ContasPagarController extends Controller
             return redirect('/categoriasConta');
         }
 
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         if($config == null){
@@ -485,26 +491,29 @@ class ContasPagarController extends Controller
             ->with('contasEmpresa', $contasEmpresa);
     }
 
-    public function edit($id){
-        $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', 1)->get();
-        $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
-        $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome')->get();
+    public function edit($id)
+    {
+        $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', true)->get();
+        $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)
+            ->where('tipo', 'pagar')->orderBy('nome')->get();
 
-        $conta = ContaPagar::where('id', $id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-
-        // Trava Filial
-        if ($this->filial_id != null && $conta->filial_id != $this->filial_id) {
+        $conta = ContaPagar::where('empresa_id', $this->empresa_id)->findOrFail($id);
+        if ($this->filial_id !== null && (int) $conta->filial_id !== $this->filial_id) {
             return redirect('/403');
         }
 
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
-
-        if($conta->fornecedor_id == null){
-            if($conta->compra->fornecedor){
-                $conta->fornecedor_id = $conta->compra->fornecedor_id;
-                $conta->save();
-            }
+        if ($conta->fornecedor_id === null && $conta->compra && $conta->compra->fornecedor) {
+            $conta->fornecedor_id = $conta->compra->fornecedor_id;
+            $conta->save();
         }
+
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+            ->where(function ($query) use ($conta) {
+                $query->where('ativo', true)->orWhere('id', $conta->fornecedor_id);
+            })
+            ->orderBy('razao_social')
+            ->get();
 
         return view('contaPagar/register')
             ->with('conta', $conta)
@@ -619,68 +628,90 @@ class ContasPagarController extends Controller
 
     public function pagarConta(Request $request)
     {
-        $conta = ContaPagar::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+        $request->validate([
+            'id' => ['required', 'integer'],
+            'valor' => ['required'],
+            'data_pagamento' => ['required'],
+            'conta_id' => ['nullable', 'integer'],
+        ]);
 
-        // Trava Filial
-        if ($this->filial_id != null && $conta->filial_id != $this->filial_id) return redirect('/403');
+        $valor = (float) __replace($request->valor);
+        $juros = (float) __replace($request->input('juros', '0,00'));
+        $multa = (float) __replace($request->input('multa', '0,00'));
+        $usuarioId = session('user_logged')['id'];
+        $usarAdiantamento = $request->boolean('usar_adiantamento');
+        $dataPagamento = strlen((string) $request->data_pagamento) === 10
+            ? \Carbon\Carbon::createFromFormat('d/m/Y', $request->data_pagamento)->setTimeFromTimeString(now()->format('H:i:s'))
+            : \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $request->data_pagamento);
 
-        $valor = str_replace(",", ".", str_replace(".", "", $request->valor));
-        $juros = str_replace(",", ".", str_replace(".", "", $request->juros ?? '0,00'));
-        $multa = str_replace(",", ".", str_replace(".", "", $request->multa ?? '0,00'));
+        try {
+            $itemExtrato = DB::transaction(function () use (
+                $request, $valor, $juros, $multa, $usuarioId, $usarAdiantamento, $dataPagamento
+            ) {
+                $conta = ContaPagar::query()
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('status', false)
+                    ->lockForUpdate()
+                    ->findOrFail((int) $request->id);
 
-        $conta->status = true;
-        $conta->tipo_pagamento = $request->tipo_pagamento;
-        $conta->valor_pago = $valor;
-        $conta->juros = $juros;
-        $conta->multa = $multa;
-        $conta->usuario_baixa_id = session('user_logged')['id'];
+                if ($this->filial_id !== null && (int) $conta->filial_id !== $this->filial_id) {
+                    abort(403, 'A conta pertence a outra unidade.');
+                }
 
-        if (strlen($request->data_pagamento) == 10) {
-            $dtPag = \Carbon\Carbon::createFromFormat('d/m/Y', $request->data_pagamento)->format('Y-m-d') . " " . date("H:i:s");
-        } else {
-            $dtPag = \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $request->data_pagamento)->format('Y-m-d H:i:s');
-        }
-        $conta->data_pagamento = $dtPag;
-        $result = $conta->save();
+                if ($usarAdiantamento) {
+                    $saldo = (float) \App\Models\Adiantamento::query()
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('fornecedor_id', $conta->fornecedor_id)
+                        ->where('status', 'aberto')
+                        ->selectRaw('COALESCE(SUM(valor_total - valor_utilizado), 0) saldo')
+                        ->value('saldo');
+                    if ($saldo + 0.00001 < $valor) {
+                        throw new \RuntimeException('Saldo de adiantamento insuficiente para esta baixa.');
+                    }
 
-        $nomeFornecedor = "N/A";
-        if ($conta->compra_id) {
-            $compraDoc = \App\Models\Compra::find($conta->compra_id);
-            if ($compraDoc && $compraDoc->fornecedor) $nomeFornecedor = $compraDoc->fornecedor->razao_social;
-        } elseif ($conta->fornecedor_id) {
-            $forn = \App\Models\Fornecedor::find($conta->fornecedor_id);
-            if($forn) $nomeFornecedor = $forn->razao_social;
-        }
+                    AdiantamentoController::baixarAdiantamento(
+                        $conta->fornecedor_id,
+                        'fornecedor',
+                        $valor,
+                        $this->empresa_id,
+                        $conta->id,
+                        $usuarioId,
+                        $conta->filial_id
+                    );
+                    $conta->tipo_pagamento = 'Adiantamento de Fornecedor';
+                } else {
+                    $conta->tipo_pagamento = $request->tipo_pagamento;
+                }
 
-        if (isset($request->conta_id)) {
-            $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
-            $data = [
-                'conta_id'       => $request->conta_id,
-                'descricao'      => "Pgto " . $nomeFornecedor . " | Ref: " . $conta->referencia,
-                'tipo_pagamento' => $tipoPagamento,
-                'valor'          => $valor,
-                'tipo'           => 'saida',
-                'data_pagamento' => \Carbon\Carbon::parse($dtPag)->format('Y-m-d'),
-                'categoria_id'   => $conta->categoria_id,
-                'usuario_id'     => session('user_logged')['id'],
-                'user_id'        => session('user_logged')['id'],
-                'origem'         => 'ContaPagar',
-                'conta_pagar_id' => $conta->id,
-                'created_at'     => $dtPag,
-                'updated_at'     => $dtPag
-            ];
-            $itemContaEmpresa = \App\Models\ItemContaEmpresa::create($data);
-            $this->util->atualizaSaldo($itemContaEmpresa);
-        }
+                $conta->status = true;
+                $conta->valor_pago = $valor;
+                $conta->juros = $juros;
+                $conta->multa = $multa;
+                $conta->usuario_baixa_id = $usuarioId;
+                $conta->data_pagamento = $dataPagamento;
+                $conta->save();
 
-        if ($result) {
-            session()->flash('mensagem_sucesso', 'Conta paga!');
-            if (isset($itemContaEmpresa)) session()->flash('print_recibo_id', $itemContaEmpresa->id);
-            else session()->flash('mensagem_erro', 'Erro!');
+                if (!$usarAdiantamento && $request->filled('conta_id')) {
+                    ContaEmpresa::query()
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('status', true)
+                        ->findOrFail((int) $request->conta_id);
 
+                    return $this->criarItemExtrato($request, $conta, $valor, $dataPagamento);
+                }
+
+                return null;
+            }, 3);
+
+            if ($itemExtrato) {
+                session()->flash('print_recibo_id', $itemExtrato->id);
+            }
+            session()->flash('mensagem_sucesso', 'Conta paga com sucesso!');
             $rota = __getRedirect($this->empresa_id, 'contas_pagar');
-            if ($rota != "") return redirect($rota);
-            return redirect('/contasPagar');
+            return redirect($rota ?: '/contasPagar');
+        } catch (\Throwable $e) {
+            __saveError($e, $this->empresa_id);
+            return redirect()->back()->withInput()->with('mensagem_erro', 'Erro ao pagar a conta: '.$e->getMessage());
         }
     }
 
@@ -840,59 +871,109 @@ class ContasPagarController extends Controller
 
     public function pagarMultiploStore(Request $request)
     {
-        $valorRecebido  = __replace($request->valor);
-        $somaTotal      = $request->somaTotal;
-        $tipo_pagamento = $request->tipo_pagamento;
+        $request->validate([
+            'conta_pagar_id' => ['required', 'array', 'min:1'],
+            'conta_pagar_id.*' => ['integer'],
+            'conta_id' => ['nullable', 'integer'],
+            'tipo_lancamento' => ['nullable', 'in:analitico,sintetico'],
+        ]);
+
+        $ids = collect($request->conta_pagar_id)->map(fn ($id) => (int) $id)->unique()->values();
+        $loteId = (string) \Illuminate\Support\Str::uuid();
+        $tipoLancamento = $request->input('tipo_lancamento', 'analitico');
+        $usarAdiantamento = $request->boolean('usar_adiantamento');
+        $usuarioId = session('user_logged')['id'];
+        $dataPagamento = $request->filled('data_pagamento')
+            ? (strlen((string) $request->data_pagamento) === 10
+                ? \Carbon\Carbon::createFromFormat('d/m/Y', $request->data_pagamento)->setTimeFromTimeString(now()->format('H:i:s'))
+                : \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $request->data_pagamento))
+            : now();
 
         try {
-            if ($request->has('data_pagamento') && !empty($request->data_pagamento)) {
-                if (strlen($request->data_pagamento) == 10) {
-                    $dtPag = \Carbon\Carbon::createFromFormat('d/m/Y', $request->data_pagamento)->format('Y-m-d') . " " . date("H:i:s");
-                } else {
-                    $dtPag = \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $request->data_pagamento)->format('Y-m-d H:i:s');
+            DB::transaction(function () use (
+                $request, $ids, $loteId, $tipoLancamento, $usarAdiantamento,
+                $usuarioId, $dataPagamento
+            ) {
+                $contas = ContaPagar::query()
+                    ->with('fornecedor')
+                    ->where('empresa_id', $this->empresa_id)
+                    ->whereIn('id', $ids)
+                    ->where('status', false)
+                    ->when($this->filial_id !== null, fn ($q) => $q->where('filial_id', $this->filial_id))
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($contas->count() !== $ids->count()) {
+                    throw new \RuntimeException('Uma ou mais contas são inválidas, pertencem a outra unidade ou já foram pagas.');
                 }
-            } else {
-                $dtPag = date('Y-m-d H:i:s');
-            }
 
-            for ($i = 0; $i < sizeof($request->conta_pagar_id); $i++) {
-                $conta = ContaPagar::findOrFail($request->conta_pagar_id[$i]);
+                if (!$usarAdiantamento && $request->filled('conta_id')) {
+                    ContaEmpresa::query()
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('status', true)
+                        ->findOrFail((int) $request->conta_id);
+                }
 
-                if ($conta->empresa_id == $this->empresa_id) {
-                    // Trava de Filial
-                    if ($this->filial_id != null && $conta->filial_id != $this->filial_id) continue;
-
-                    $conta->status         = true;
-                    $conta->valor_pago     = $conta->valor_integral;
-                    $conta->tipo_pagamento = $request->tipo_pagamento;
-                    $conta->data_pagamento = $dtPag;
-                    $conta->save();
-
-                    if (isset($request->conta_id)) {
-                        $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
-                        $data = [
-                            'conta_id'       => $request->conta_id,
-                            'descricao'      => "Pagamento da conta " . $conta->referencia,
-                            'tipo_pagamento' => $tipoPagamento,
-                            'valor'          => $conta->valor_integral,
-                            'tipo'           => 'saida',
-                            'data_pagamento' => \Carbon\Carbon::parse($dtPag)->format('Y-m-d'),
-                            'categoria_id'   => $conta->categoria_id,
-                            'user_id'        => session('user_logged')['id'],
-                            'origem'         => 'Conta Pagar',
-                            'conta_pagar_id' => $conta->id,
-                        ];
-                        $itemContaEmpresa = \App\Models\ItemContaEmpresa::create($data);
-                        $this->util->atualizaSaldo($itemContaEmpresa);
+                if ($usarAdiantamento) {
+                    foreach ($contas->groupBy('fornecedor_id') as $fornecedorId => $contasFornecedor) {
+                        $necessario = (float) $contasFornecedor->sum('valor_integral');
+                        $saldo = (float) \App\Models\Adiantamento::query()
+                            ->where('empresa_id', $this->empresa_id)
+                            ->where('fornecedor_id', $fornecedorId)
+                            ->where('status', 'aberto')
+                            ->selectRaw('COALESCE(SUM(valor_total - valor_utilizado), 0) saldo')
+                            ->value('saldo');
+                        if ($saldo + 0.00001 < $necessario) {
+                            $nome = $contasFornecedor->first()->fornecedor?->razao_social ?? 'fornecedor';
+                            throw new \RuntimeException("Saldo de adiantamento insuficiente para {$nome}.");
+                        }
                     }
                 }
-            }
-            session()->flash('mensagem_sucesso', 'Contas pagas!');
-        } catch (\Exception $e) {
-            session()->flash('mensagem_erro', 'Algo deu errado: ' . $e->getMessage());
-        }
 
-        return redirect('/contasPagar');
+                $totalSintetico = 0.0;
+                foreach ($contas as $conta) {
+                    $valor = (float) $conta->valor_integral;
+                    if ($usarAdiantamento) {
+                        AdiantamentoController::baixarAdiantamento(
+                            $conta->fornecedor_id,
+                            'fornecedor',
+                            $valor,
+                            $this->empresa_id,
+                            $conta->id,
+                            $usuarioId,
+                            $conta->filial_id
+                        );
+                        $conta->tipo_pagamento = 'Adiantamento de Fornecedor';
+                    } else {
+                        $conta->tipo_pagamento = $request->tipo_pagamento;
+                    }
+
+                    $conta->status = true;
+                    $conta->valor_pago = $valor;
+                    $conta->data_pagamento = $dataPagamento;
+                    $conta->usuario_baixa_id = $usuarioId;
+                    $conta->lote_pagamento_id = $loteId;
+                    $conta->save();
+
+                    if (!$usarAdiantamento && $request->filled('conta_id')) {
+                        if ($tipoLancamento === 'sintetico') {
+                            $totalSintetico += $valor;
+                        } else {
+                            $this->criarItemExtrato($request, $conta, $valor, $dataPagamento);
+                        }
+                    }
+                }
+
+                if (!$usarAdiantamento && $tipoLancamento === 'sintetico' && $totalSintetico > 0 && $request->filled('conta_id')) {
+                    $this->criarItemExtratoSintetico($request, $totalSintetico, $dataPagamento, $contas, $loteId);
+                }
+            }, 3);
+
+            return redirect('/contasPagar')->with('mensagem_sucesso', 'Contas pagas com sucesso!');
+        } catch (\Throwable $e) {
+            __saveError($e, $this->empresa_id);
+            return redirect('/contasPagar')->with('mensagem_erro', 'Erro ao pagar as contas: '.$e->getMessage());
+        }
     }
 
     public function exportExcel(Request $request)
@@ -933,12 +1014,20 @@ class ContasPagarController extends Controller
                 'cp.data_pagamento',
                 'cp.status',
                 'cp.tipo_pagamento',
-                'ce.nome as conta_empresa',
+                \DB::raw("GROUP_CONCAT(DISTINCT ce.nome SEPARATOR ', ') as conta_empresa"),
                 'cp.numero_nota_fiscal',
                 'cp.data_emissao as data_emissao_nfe',
                 \DB::raw("COALESCE(fil.descricao, 'Matriz') as filial_nome")
             )
-            ->where('cp.empresa_id', $this->empresa_id);
+            ->where('cp.empresa_id', $this->empresa_id)
+            ->groupBy(
+                'cp.id', 'forn_direto.razao_social', 'forn_compra.razao_social',
+                'forn_direto.cpf_cnpj', 'forn_compra.cpf_cnpj', 'cc.nome',
+                'cp.referencia', 'cp.observacao', 'cp.valor_integral', 'cp.valor_pago',
+                'cp.juros', 'cp.multa', 'cp.data_vencimento', 'cp.data_pagamento',
+                'cp.status', 'cp.tipo_pagamento', 'cp.numero_nota_fiscal',
+                'cp.data_emissao', 'fil.descricao'
+            );
 
         if ($this->filial_id != null) {
             $query->where('cp.filial_id', $this->filial_id);
@@ -1107,7 +1196,7 @@ class ContasPagarController extends Controller
 
         $data = $query->orderBy('data_emissao', 'desc')->paginate(30);
 
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', true)->get();
         $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->get();
 
         return view('retencoes.index', compact('data', 'fornecedores', 'categorias'));
@@ -1115,38 +1204,65 @@ class ContasPagarController extends Controller
 
     public function fecharMesRetencoes(Request $request)
     {
+        $request->validate([
+            'ids' => ['nullable', 'array'],
+            'ids.*' => ['integer'],
+            'mes' => ['required_without:ids', 'integer', 'between:1,12'],
+            'ano' => ['required_without:ids', 'integer', 'min:2000'],
+        ]);
+
         try {
-            DB::beginTransaction();
+            DB::transaction(function () use ($request) {
+                $query = ContaPagar::query()
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('retencoes_processadas', false)
+                    ->when($this->filial_id !== null, fn ($q) => $q->where('filial_id', $this->filial_id));
 
-            $contasPagar = ContaPagar::whereMonth('data_emissao', $request->mes)
-                ->whereYear('data_emissao', $request->ano)
-                ->where('retencoes_processadas', 0)
-                ->where('empresa_id', $this->empresa_id)
-                ->when($this->filial_id != null, function ($q) {
-                    return $q->where('filial_id', $this->filial_id);
-                })
-                ->get();
+                if ($request->filled('ids')) {
+                    $query->whereIn('id', array_map('intval', $request->ids));
+                } else {
+                    $query->whereMonth('data_emissao', $request->mes)
+                        ->whereYear('data_emissao', $request->ano);
+                }
 
-            if ($contasPagar->isEmpty()) return response()->json("Nenhuma retenção pendente encontrada para este período.", 400);
+                $contas = $query->lockForUpdate()->get();
+                if ($contas->isEmpty()) {
+                    throw new \RuntimeException('Nenhuma retenção pendente foi encontrada.');
+                }
 
-            $iss  = $contasPagar->sum('valor_iss');
-            $irrf = $contasPagar->sum('valor_ir');
-            $pcc  = $contasPagar->sum('valor_pis') + $contasPagar->sum('valor_cofins') + $contasPagar->sum('valor_csll');
+                $iss = (float) $contas->sum('valor_iss');
+                $irrf = (float) $contas->sum('valor_ir');
+                $pcc = (float) $contas->sum('valor_pis')
+                    + (float) $contas->sum('valor_cofins')
+                    + (float) $contas->sum('valor_csll');
 
-            $vencimento = "{$request->ano}-" . str_pad($request->mes + 1, 2, '0', STR_PAD_LEFT) . "-20";
+                $dataReferencia = $request->filled('ids')
+                    ? \Carbon\Carbon::parse($contas->min('data_emissao') ?: now())
+                    : \Carbon\Carbon::create((int) $request->ano, (int) $request->mes, 1);
+                $vencimento = $dataReferencia->copy()->addMonthNoOverflow()->day(20)->toDateString();
+                $referencia = $request->filled('ids')
+                    ? 'SELECIONADOS '.now()->format('d/m/Y H:i')
+                    : str_pad((string) $request->mes, 2, '0', STR_PAD_LEFT).'/'.$request->ano;
 
-            if ($iss > 0) $this->criarContaAgrupada($iss, "RETENÇÃO ISS CONSOLIDADA - EMISSÃO {$request->mes}/{$request->ano}", $vencimento, $request->fornecedor_iss_id, $request->categoria_iss_id);
-            if ($pcc > 0) $this->criarContaAgrupada($pcc, "RETENÇÃO PCC CONSOLIDADA - EMISSÃO {$request->mes}/{$request->ano}", $vencimento, $request->fornecedor_pcc_id, $request->categoria_pcc_id);
-            if ($irrf > 0) $this->criarContaAgrupada($irrf, "RETENÇÃO IRRF PJ CONSOLIDADA - EMISSÃO {$request->mes}/{$request->ano}", $vencimento, $request->fornecedor_ir_id, $request->categoria_ir_id);
+                if ($iss > 0) {
+                    $this->criarContaAgrupada($iss, "RETENÇÃO ISS CONSOLIDADA - REF: {$referencia}", $vencimento, $request->fornecedor_iss_id, $request->categoria_iss_id);
+                }
+                if ($pcc > 0) {
+                    $this->criarContaAgrupada($pcc, "RETENÇÃO PCC CONSOLIDADA - REF: {$referencia}", $vencimento, $request->fornecedor_pcc_id, $request->categoria_pcc_id);
+                }
+                if ($irrf > 0) {
+                    $this->criarContaAgrupada($irrf, "RETENÇÃO IRRF PJ CONSOLIDADA - REF: {$referencia}", $vencimento, $request->fornecedor_ir_id, $request->categoria_ir_id);
+                }
 
-            ContaPagar::whereIn('id', $contasPagar->pluck('id'))->update(['retencoes_processadas' => 1]);
+                ContaPagar::where('empresa_id', $this->empresa_id)
+                    ->whereIn('id', $contas->pluck('id'))
+                    ->update(['retencoes_processadas' => true]);
+            }, 3);
 
-            DB::commit();
-            return response()->json("Fechamento concluído com sucesso!", 200);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json("Erro no fechamento: " . $e->getMessage(), 500);
+            return response()->json('Fechamento concluído com sucesso!');
+        } catch (\Throwable $e) {
+            Log::error('Erro no fechamento de retenções', ['empresa_id'=>$this->empresa_id, 'erro'=>$e->getMessage()]);
+            return response()->json('Erro no fechamento: '.$e->getMessage(), 422);
         }
     }
 
@@ -1202,7 +1318,8 @@ class ContasPagarController extends Controller
             $conta->save();
 
             $nomeForn = $conta->fornecedor->razao_social ?? 'N/A';
-            \App\Models\ItemContaEmpresa::create([
+            $itemContaEmpresa = \App\Models\ItemContaEmpresa::create([
+                'empresa_id' => $this->empresa_id,
                 'conta_id' => $request->conta_bancaria_id,
                 'conta_pagar_id' => $conta->id,
                 'valor' => $valorPago,
@@ -1212,6 +1329,7 @@ class ContasPagarController extends Controller
                 'usuario_id' => session('user_logged')['id'],
                 'user_id' => session('user_logged')['id']
             ]);
+            $this->util->atualizaSaldo($itemContaEmpresa);
 
             DB::commit();
             return response()->json("Baixa parcial realizada! Resíduo gerado para {$request->nova_data_vencimento}", 200);
@@ -1245,5 +1363,106 @@ class ContasPagarController extends Controller
             DB::rollBack();
             return response()->json("Erro ao estornar: " . $e->getMessage(), 500);
         }
+    }
+
+    private function criarItemExtrato($request, $conta, $valor, $dtPag)
+    {
+        $fornecedor = Fornecedor::where('empresa_id', $this->empresa_id)->find($conta->fornecedor_id);
+        $nome = $fornecedor?->razao_social ?: 'Fornecedor';
+        $item = ItemContaEmpresa::create([
+            'conta_id' => $request->conta_id,
+            'empresa_id' => $this->empresa_id,
+            'descricao' => mb_substr("Pgto: {$nome} | Ref: {$conta->referencia}", 0, 250),
+            'tipo_pagamento' => \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento),
+            'valor' => (float)$valor,
+            'tipo' => 'saida',
+            'data_pagamento' => \Carbon\Carbon::parse($dtPag)->toDateString(),
+            'categoria_id' => $conta->categoria_id,
+            'user_id' => session('user_logged')['id'] ?? null,
+            'origem' => 'Conta Pagar',
+            'conta_pagar_id' => $conta->id,
+        ]);
+        $this->util->atualizaSaldo($item);
+        return $item;
+    }
+
+    private function criarItemExtratoSintetico($request, $somaTotal, $dtPag, $contas, $loteId)
+    {
+        $nomes = $contas->pluck('fornecedor.razao_social')->filter()->unique()->values()->all();
+        $notas = $contas->pluck('numero_nota_fiscal')->filter()->unique()->values()->all();
+        $descricao = 'Pgto agrupado | Forn: ' . implode(', ', $nomes) . ' | Notas: ' . implode(', ', $notas);
+        $item = ItemContaEmpresa::create([
+            'conta_id' => $request->conta_id,
+            'empresa_id' => $this->empresa_id,
+            'descricao' => mb_substr($descricao, 0, 250),
+            'tipo_pagamento' => \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento),
+            'valor' => (float)$somaTotal,
+            'tipo' => 'saida',
+            'data_pagamento' => \Carbon\Carbon::parse($dtPag)->toDateString(),
+            'categoria_id' => optional($contas->first())->categoria_id,
+            'user_id' => session('user_logged')['id'] ?? null,
+            'origem' => 'Conta Pagar (Sintético)',
+            'lote_pagamento_id' => $loteId,
+        ]);
+        $this->util->atualizaSaldo($item);
+        return $item;
+    }
+
+    public function estornoLote($loteId)
+    {
+        try {
+            DB::transaction(function () use ($loteId): void {
+                $contas = ContaPagar::query()
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('lote_pagamento_id', $loteId)
+                    ->lockForUpdate()->get();
+                abort_if($contas->isEmpty(), 404, 'Lote de pagamento não encontrado.');
+
+                $itens = ItemContaEmpresa::query()
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('lote_pagamento_id', $loteId)
+                    ->lockForUpdate()->get();
+                foreach ($itens as $item) {
+                    $contaEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)->lockForUpdate()->find($item->conta_id);
+                    if ($contaEmpresa && $item->tipo === 'saida') {
+                        $contaEmpresa->increment('saldo', (float)$item->valor);
+                    } elseif ($contaEmpresa && $item->tipo === 'entrada') {
+                        $contaEmpresa->decrement('saldo', (float)$item->valor);
+                    }
+                    $item->delete();
+                }
+
+                ContaPagar::query()->where('empresa_id', $this->empresa_id)->where('lote_pagamento_id', $loteId)->update([
+                    'status' => 0,
+                    'valor_pago' => 0,
+                    'data_pagamento' => null,
+                    'lote_pagamento_id' => null,
+                    'usuario_baixa_id' => null,
+                ]);
+            }, 3);
+            return redirect()->back()->with('mensagem_sucesso', 'Lote estornado com sucesso.');
+        } catch (\Throwable $e) {
+            Log::error('Erro ao estornar lote de contas a pagar', ['empresa_id'=>$this->empresa_id,'lote'=>$loteId,'erro'=>$e->getMessage()]);
+            return redirect()->back()->with('mensagem_erro', 'Não foi possível estornar o lote: ' . $e->getMessage());
+        }
+    }
+
+    private function getNomeFornecedor($conta): string
+    {
+        return $conta->compra?->fornecedor?->razao_social
+            ?: $conta->fornecedor?->razao_social
+            ?: 'Fornecedor';
+    }
+
+    public function getSaldo($fornecedorId)
+    {
+        $fornecedor = Fornecedor::where('empresa_id', $this->empresa_id)->findOrFail((int)$fornecedorId);
+        $adiantamentos = \App\Models\Adiantamento::query()
+            ->where('empresa_id', $this->empresa_id)
+            ->where('fornecedor_id', $fornecedor->id)
+            ->where('status', 'aberto')
+            ->get();
+        $saldo = (float)$adiantamentos->sum(fn ($a) => max(0, (float)$a->valor_total - (float)$a->valor_utilizado));
+        return response()->json(['saldo' => $saldo, 'saldo_formatado' => number_format($saldo, 2, ',', '.')]);
     }
 }
