@@ -159,7 +159,7 @@ jobs:
           php artisan key:generate --force || true
           php artisan config:clear || true
           php artisan cache:clear || true
-          php artisan migrate --force || true
+          echo "As migrations do banco de teste serão executadas pelo RefreshDatabase/PHPUnit."
 
       - name: Run tests
         env:
