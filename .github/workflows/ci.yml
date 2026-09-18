@@ -30,6 +30,12 @@ jobs:
       DB_DATABASE: fersoft_test
       DB_USERNAME: root
       DB_PASSWORD: root
+      TEST_DB_CONNECTION: mysql
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_DATABASE: fersoft_test
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: root
 
     steps:
       - name: Checkout
