@@ -84,6 +84,10 @@ return new class extends Migration
 
     private function addIndexIfMissing(string $tableName, string $indexName, array $columns, bool $unique = false): void
     {
+        if ($this->isSqlite()) {
+            return;
+        }
+
         if (!Schema::hasTable($tableName) || !$this->allColumnsExist($tableName, $columns)) {
             return;
         }
