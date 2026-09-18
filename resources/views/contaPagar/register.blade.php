@@ -60,36 +60,38 @@
                                             </div>
                                             @if(!isset($conta) || $conta->compra_id == null)
                                                 <div class="form-group validated col-sm-9 col-lg-4 col-12">
-                                                    <label class="col-form-label" id="">Fornecedor</label>
-                                                    <div class="input-group">
-                                                        <select class="form-control select2 @if($errors->has('fornecedor_id')) is-invalid @endif" id="kt_select2_3" name="fornecedor_id">
-                                                            <option value="">Selecione o fornecedor</option>
-                                                            @foreach($fornecedores as $c)
-                                                                <option
-                                                                    @if(isset($conta))
-                                                                        @if($conta->fornecedor_id != null)
-                                                                            @if($conta->fornecedor_id == $c->id)
-                                                                                selected
-                                                                    @endif
-                                                                    @endif
-                                                                    @else
-                                                                        @if(old('fornecedor_id') == $c->id)
-                                                                            selected
-                                                                    @endif
-                                                                    @endif
-                                                                    value="{{$c->id}}">{{$c->id}} - {{$c->razao_social}} ({{$c->cpf_cnpj}})</option>
-                                                            @endforeach
-                                                        </select>
-                                                        <button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm">
-                                                            <i class="la la-plus-circle icon-add"></i>
-                                                        </button>
-                                                        @if($errors->has('fornecedor_id'))
-                                                            <div class="invalid-feedback">
-                                                                {{ $errors->first('fornecedor_id') }}
-                                                            </div>
-                                                        @endif
-                                                    </div>
-                                                </div>
+                                                  <label class="col-form-label" id="">Fornecedor</label>
+                                                  <div class="input-group">
+                                                      <!-- O select fica disabled (bloqueado) se a conta vier de uma compra -->
+                                                      <select class="form-control select2 @if($errors->has('fornecedor_id')) is-invalid @endif" id="kt_select2_3" name="fornecedor_id" @if(isset($conta) && $conta->compra_id != null) disabled @endif>
+                                                          <option value="">Selecione o fornecedor</option>
+                                                          @foreach($fornecedores as $c)
+                                                              <option
+                                                                  @if(isset($conta) && $conta->fornecedor_id == $c->id)
+                                                                      selected
+                                                                  @elseif(old('fornecedor_id') == $c->id)
+                                                                      selected
+                                                                  @endif
+                                                                  value="{{$c->id}}">
+                                                                  {{$c->id}} - {{$c->razao_social}} @if($c->nome_fantasia) | {{$c->nome_fantasia}} @endif ({{$c->cpf_cnpj}})
+                                                              </option>
+                                                          @endforeach
+                                                      </select>
+
+                                                      <!-- Só mostra o botão de "+" se for possível editar o fornecedor -->
+                                                      @if(!isset($conta) || $conta->compra_id == null)
+                                                          <button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm">
+                                                              <i class="la la-plus-circle icon-add"></i>
+                                                          </button>
+                                                      @endif
+
+                                                      @if($errors->has('fornecedor_id'))
+                                                          <div class="invalid-feedback">
+                                                              {{ $errors->first('fornecedor_id') }}
+                                                          </div>
+                                                      @endif
+                                                  </div>
+                                              </div>
 
                                             @endif
 

@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
 
 class ProviderController extends BaseController
 {
+    use \App\Traits\GeocodeTrait;
+
     protected $empresa_id = null;
 
     public function __construct(){
@@ -27,8 +29,8 @@ class ProviderController extends BaseController
             return $next($request);
         });
     }
-  
-  /**
+
+    /**
      * Regras de validação obrigatórias do BaseController
      */
     protected function rules(): array
@@ -51,11 +53,11 @@ class ProviderController extends BaseController
     }
 
     public function index(){
-    	
+
         $fornecedores = Fornecedor::with('cidade')
             ->where('empresa_id', $this->empresa_id)
-            ->paginate(30); 
-            
+            ->paginate(30);
+
         return view('fornecedores/list')
             ->with('fornecedores', $fornecedores)
             ->with('title', 'Fornecedores');
@@ -65,7 +67,7 @@ class ProviderController extends BaseController
         $pesquisa = $request->input('pesquisa');
 
         $fornecedores = Fornecedor::with('cidade') // Eager Loading
-            ->where('empresa_id', $this->empresa_id)
+        ->where('empresa_id', $this->empresa_id)
             ->where($request->tipo_pesquisa, 'LIKE', "%$pesquisa%")
             ->paginate(30)
             ->appends($request->except('page'));
@@ -104,7 +106,21 @@ class ProviderController extends BaseController
 
         try {
             $cidade = $request->input('cidade');
+
+            $cidObj = \App\Models\Cidade::find($cidade);
+            $lat = $request->input('latitude');
+            $lon = $request->input('longitude');
+
+            if(empty($lat) || empty($lon)){
+                $enderecoBusca = $request->rua . ', ' . $request->numero . ', ' . $request->bairro . ', ' . ($cidObj->nome ?? '');
+                $coords = $this->buscarCoordenadas($enderecoBusca);
+                $lat = $coords['latitude'];
+                $lon = $coords['longitude'];
+            }
+
             $request->merge([
+                'latitude'       => $lat,
+                'longitude'      => $lon,
                 'cidade_id'      => $cidade,
                 'telefone'       => $request->input('telefone') ?? '',
                 'celular'        => $request->input('celular') ?? '',
@@ -119,7 +135,7 @@ class ProviderController extends BaseController
                 'agencia'        => $request->input('agencia') ?? '',
                 'conta'          => $request->input('conta') ?? '',
                 'tabela_preco_id'=> $request->input('tabela_preco_id') ?: null,
-                'ativo'          => $request->boolean('ativo'),
+                'ativo'          => $request->has('ativo') ? 1 : 0, // NOVO
             ]);
 
             $result = Fornecedor::create($request->all());
@@ -166,7 +182,7 @@ class ProviderController extends BaseController
     }
 
     public function update(Request $request, $id = null)
-	{
+    {
         $resp = Fornecedor::findOrFail($request->id);
 
         $this->normalizeDocumentoECep($request);
@@ -193,13 +209,27 @@ class ProviderController extends BaseController
             $resp->cidade_id      = $cidade;
             $resp->cod_pais       = $request->input('cod_pais');
             $resp->id_estrangeiro = $request->input('id_estrangeiro');
-            
+
+            $cidObj = \App\Models\Cidade::find($cidade);
+            $lat = $request->input('latitude');
+            $lon = $request->input('longitude');
+
+            if(empty($lat) || empty($lon)){
+                $enderecoBusca = $resp->rua . ', ' . $resp->numero . ', ' . $resp->bairro . ', ' . ($cidObj->nome ?? '');
+                $coords = $this->buscarCoordenadas($enderecoBusca);
+                $lat = $coords['latitude'];
+                $lon = $coords['longitude'];
+            }
+
+            $resp->latitude       = $lat;
+            $resp->longitude      = $lon;
+
             // Novos campos para atualização
             $resp->banco          = $request->input('banco') ?? '';
             $resp->agencia        = $request->input('agencia') ?? '';
             $resp->conta          = $request->input('conta') ?? '';
             $resp->tabela_preco_id = $request->input('tabela_preco_id') ?: null;
-            $resp->ativo = $request->boolean('ativo');
+            $resp->ativo = $request->has('ativo') ? 1 : 0; // NOVO
 
             $resp->save();
 
@@ -487,33 +517,70 @@ class ProviderController extends BaseController
         ]);
     }
 
-    public function limparDuplicidades()
-    {
-        $desativados = 0;
-        DB::transaction(function () use (&$desativados): void {
-            $documentos = Fornecedor::query()->where('empresa_id',$this->empresa_id)
-                ->whereNotNull('cpf_cnpj')->whereNotIn('cpf_cnpj',['','00.000.000/0000-00'])
-                ->select('cpf_cnpj')->groupBy('cpf_cnpj')->havingRaw('COUNT(*) > 1')->pluck('cpf_cnpj');
-            foreach ($documentos as $documento) {
-                $fornecedores = Fornecedor::where('empresa_id',$this->empresa_id)->where('cpf_cnpj',$documento)->lockForUpdate()->get();
-                $principal = $fornecedores->sortByDesc(function ($f) {
-                    return collect(['email','telefone','celular','rua','bairro','cep','ie_rg','banco','agencia','conta','pix'])->filter(fn($c)=>!empty($f->{$c}))->count();
-                })->sortBy('id')->first();
-                foreach ($fornecedores as $fornecedor) {
-                    if ($principal && $fornecedor->id !== $principal->id && (bool)$fornecedor->ativo) {
-                        $fornecedor->ativo = 0; $fornecedor->save(); $desativados++;
-                    }
-                }
-            }
-        },3);
-        return redirect()->back()->with('mensagem_sucesso', $desativados ? "{$desativados} fornecedor(es) duplicado(s) desativado(s)." : 'Nenhuma duplicidade ativa encontrada.');
+    public function toggleAtivo($id){
+        try {
+            $forn = Fornecedor::where('id', $id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+            $forn->ativo = !$forn->ativo; // Inverte o status
+            $forn->save();
+
+            session()->flash('mensagem_sucesso', 'Status do fornecedor alterado com sucesso!');
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao alterar status.');
+        }
+        return redirect()->back();
     }
 
-    public function toggleAtivo($id)
-    {
-        $fornecedor = Fornecedor::where('empresa_id',$this->empresa_id)->findOrFail((int)$id);
-        $fornecedor->ativo = !(bool)$fornecedor->ativo;
-        $fornecedor->save();
-        return redirect()->back()->with('mensagem_sucesso','Status do fornecedor alterado com sucesso.');
+    public function limparDuplicidades(){
+        // Busca CNPJs/CPFs que aparecem mais de uma vez na mesma empresa
+        $duplicados = Fornecedor::select('cpf_cnpj')
+            ->where('empresa_id', $this->empresa_id)
+            ->whereNotNull('cpf_cnpj')
+            ->where('cpf_cnpj', '!=', '00.000.000/0000-00') // Ignora os do exterior não preenchidos
+            ->groupBy('cpf_cnpj')
+            ->havingRaw('COUNT(id) > 1')
+            ->get();
+
+        $countDesativados = 0;
+
+        foreach($duplicados as $dup) {
+            $fornecedores = Fornecedor::where('cpf_cnpj', $dup->cpf_cnpj)
+                ->where('empresa_id', $this->empresa_id)
+                ->get();
+
+            $maisCompleto = null;
+            $maiorPontuacao = -1;
+
+            // Lógica para descobrir qual é o cadastro mais completo
+            foreach($fornecedores as $f) {
+                $pontuacao = 0;
+                $campos = ['email', 'telefone', 'celular', 'rua', 'bairro', 'cep', 'ie_rg', 'banco', 'agencia', 'conta', 'pix'];
+
+                foreach($campos as $campo) {
+                    if(!empty($f->$campo)) $pontuacao++;
+                }
+
+                if($pontuacao > $maiorPontuacao) {
+                    $maiorPontuacao = $pontuacao;
+                    $maisCompleto = $f;
+                }
+            }
+
+            // Desativa os que não são o mais completo
+            foreach($fornecedores as $f) {
+                if($f->id != $maisCompleto->id && $f->ativo == 1) {
+                    $f->ativo = 0;
+                    $f->save();
+                    $countDesativados++;
+                }
+            }
+        }
+
+        if($countDesativados > 0){
+            session()->flash('mensagem_sucesso', "$countDesativados fornecedores duplicados foram desativados!");
+        } else {
+            session()->flash('mensagem_sucesso', "Nenhuma duplicidade ativa foi encontrada.");
+        }
+
+        return redirect()->back();
     }
 }

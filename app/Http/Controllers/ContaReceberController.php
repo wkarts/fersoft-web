@@ -18,7 +18,6 @@ use App\Exports\ContasReceberExport;
 use NFePHP\DA\NFe\Danfe;
 use Illuminate\Support\Facades\DB;
 
-
 class ContaReceberController extends Controller
 {
     protected $empresa_id = null;
@@ -45,8 +44,8 @@ class ContaReceberController extends Controller
         if($local_padrao == -1){
             $local_padrao = null;
         }
-        $contas = ContaReceber::
-        where('empresa_id', $this->empresa_id)
+        $contas = ContaReceber::with(['usuario', 'usuarioEdit', 'usuarioBaixa', 'categoria', 'cliente', 'filial'])
+            ->where('empresa_id', $this->empresa_id)
             ->whereBetween('data_vencimento', [date("Y-m-d"),
                 date('Y-m-d', strtotime('+1 month'))])
             ->orderBy('data_vencimento', 'desc')
@@ -101,7 +100,7 @@ class ContaReceberController extends Controller
         $temp = [];
         foreach($contas as $c){
             foreach($arrayCategorias as $a){
-                if($c->categoria->nome == $a){
+                if($c->categoria && $c->categoria->nome == $a){
                     if(isset($temp[$a])){
                         $temp[$a] = $temp[$a] + $c->valor_integral;
                     }else{
@@ -126,9 +125,9 @@ class ContaReceberController extends Controller
         return $temp;
     }
 
-// =========================================================================
-// CORREÇÃO DO FILTRO (Unificado em uma única Query para eliminar duplicados)
-// =========================================================================
+    // =========================================================================
+    // FILTRO UNIFICADO
+    // =========================================================================
     public function filtro(Request $request){
         $dataInicial = $request->data_inicial;
         $dataFinal = $request->data_final;
@@ -147,12 +146,11 @@ class ContaReceberController extends Controller
         __saveRedirect($this->empresa_id, $url, 'contas_receber');
         $permissaoAcesso = __getLocaisUsarioLogado();
 
-        // Query única e otimizada
-        $query = ContaReceber::select('conta_recebers.*')
+        $query = ContaReceber::with(['usuario', 'usuarioEdit', 'usuarioBaixa', 'categoria', 'cliente', 'filial'])
+            ->select('conta_recebers.*')
             ->leftJoin('item_conta_empresas as ice', 'conta_recebers.id', '=', 'ice.conta_receber_id')
             ->where('conta_recebers.empresa_id', $this->empresa_id);
 
-        // Filtro de permissão de locais (Filiais)
         $query->where(function($q) use ($permissaoAcesso){
             if($permissaoAcesso != null){
                 foreach ($permissaoAcesso as $value) {
@@ -162,13 +160,11 @@ class ContaReceberController extends Controller
             }
         });
 
-        // Filtro por Filial selecionada
         if($filial_id){
             $filial_id = $filial_id == -1 ? null : $filial_id;
             $query->where('conta_recebers.filial_id', $filial_id);
         }
 
-        // Filtro inteligente de Cliente (busca na conta OU na venda vinculada)
         if($clienteId != 'null'){
             $query->leftJoin('vendas', 'vendas.id', '=', 'conta_recebers.venda_id')
                 ->where(function($q) use ($clienteId) {
@@ -219,7 +215,10 @@ class ContaReceberController extends Controller
         }
 
         if($request->numero_nota_fiscal){
-            $query->where('conta_recebers.numero_nota_fiscal', $request->numero_nota_fiscal);
+            $query->where(function($q) use ($request) {
+                $q->where('conta_recebers.numero_nota_fiscal', $request->numero_nota_fiscal)
+                    ->orWhere('conta_recebers.nf_numero', $request->numero_nota_fiscal);
+            });
         }
 
         if($request->categoria != 'todos'){
@@ -231,14 +230,12 @@ class ContaReceberController extends Controller
         }
 
         if($numero_pedido){
-            // Garante que se já não foi feito o join de vendas acima, faça agora de forma segura
             if($clienteId == 'null') {
                 $query->join('vendas', 'vendas.id', '=', 'conta_recebers.venda_id');
             }
             $query->where('vendas.id', $numero_pedido);
         }
 
-        // Executa a busca trazendo os dados agrupados e sem repetições
         $contas = $query->groupBy('conta_recebers.id')
             ->orderBy('conta_recebers.data_vencimento', 'desc')
             ->get();
@@ -291,6 +288,8 @@ class ContaReceberController extends Controller
             ->where('tipo', 'receber')
             ->first();
 
+        $numNota = isset($parcela['numero_nota_fiscal']) ? $parcela['numero_nota_fiscal'] : 0;
+
         $result = ContaReceber::create([
             'venda_id' => $parcela['compra_id'],
             'data_vencimento' => $this->parseDate($parcela['vencimento']),
@@ -303,14 +302,17 @@ class ContaReceberController extends Controller
             'status' => false,
             'referencia' => $parcela['referencia'],
             'categoria_id' => $categoria->id,
-            'empresa_id' => $this->empresa_id
+            'empresa_id' => $this->empresa_id,
+            'numero_nota_fiscal' => $numNota,
+            'nf_numero' => $numNota,
+            'usuario_id' => session('user_logged')['id']
         ]);
         echo json_encode($parcela);
     }
 
     // =========================================================================
-// CORREÇÃO DO SALVAR (Gravando nas duas colunas: numero_nota_fiscal e nf_numero)
-// =========================================================================
+    // MÉTODOS SAVE & UPDATE (Gravação em numero_nota_fiscal e nf_numero)
+    // =========================================================================
     public function save(Request $request){
         if(strlen($request->recorrencia) == 5){
             $valid = $this->validaRecorrencia($request->recorrencia);
@@ -327,11 +329,13 @@ class ContaReceberController extends Controller
         $parcelas = json_decode($request->parcelas) ?? [];
         $dataPagamento = $request->data_pagamento ? $this->parseDate($request->data_pagamento) : $this->parseDate($request->vencimento);
         $numNota = $request->numero_nota_fiscal ?? 0;
+        $dataEmissao = $request->data_emissao ? $this->parseDate($request->data_emissao) . " " . date('H:i:s') : date('Y-m-d H:i:s');
 
         $conta = ContaReceber::create([
             'venda_id' => null,
             'data_vencimento' => $this->parseDate($request->vencimento),
-            'data_recebimento' => $request->status ? $dataPagamento : $this->parseDate($request->vencimento),
+            'data_recebimento' => $request->status ? $dataPagamento : null,
+            'nf_data_emissao' => $dataEmissao,
             'valor_integral' => str_replace(",", ".", $request->valor),
             'valor_recebido' => $request->status ? str_replace(",", ".", $request->valor_recebido) : 0,
             'status' => $request->status ? true : false,
@@ -343,7 +347,7 @@ class ContaReceberController extends Controller
             'cliente_id' => $clienteId,
             'filial_id' => $request->filial_id,
             'numero_nota_fiscal' => $numNota,
-            'nf_numero' => $numNota, // <--- SALVANDO NA SEGUNDA COLUNA SOLICITADA
+            'nf_numero' => $numNota,
             'usuario_id' => session('user_logged')['id'],
             'usuario_baixa_id' => $request->status ? session('user_logged')['id'] : null
         ]);
@@ -351,6 +355,7 @@ class ContaReceberController extends Controller
         if($conta->status && $request->conta_id){
             $item = ItemContaEmpresa::create([
                 'conta_id' => $request->conta_id,
+                'empresa_id' => $this->empresa_id,
                 'descricao' => "Recebimento: " . ($conta->cliente->razao_social ?? 'Cliente') . " | Ref: " . $conta->referencia,
                 'tipo_pagamento' => $conta->tipo_pagamento ?? 'Dinheiro',
                 'valor' => $conta->valor_recebido,
@@ -369,7 +374,8 @@ class ContaReceberController extends Controller
                 $contaP = ContaReceber::create([
                     'venda_id' => null,
                     'data_vencimento' => $p->vencimento,
-                    'data_recebimento' => $request->status ? $dataPagamento : $p->vencimento,
+                    'data_recebimento' => $request->status ? $dataPagamento : null,
+                    'nf_data_emissao' => $dataEmissao,
                     'valor_integral' => str_replace(",", ".", $p->valor),
                     'valor_recebido' => $request->status ? str_replace(",", ".", $p->valor) : 0,
                     'status' => $request->status ? true : false,
@@ -377,10 +383,11 @@ class ContaReceberController extends Controller
                     'cliente_id' => $clienteId,
                     'observacao' => $request->observacao ?? '',
                     'numero_nota_fiscal' => $numNota,
-                    'nf_numero' => $numNota, // <--- ADICIONADO PARA AS PARCELAS TAMBÉM
+                    'nf_numero' => $numNota,
                     'referencia' => $request->referencia . " - parcela " .($key+2) . "/".(sizeof($parcelas)+1),
                     'categoria_id' => $request->categoria_id,
                     'empresa_id' => $this->empresa_id,
+                    'filial_id' => $request->filial_id,
                     'usuario_id' => session('user_logged')['id'],
                     'usuario_edit_id' => NULL,
                     'usuario_baixa_id' => $request->status ? session('user_logged')['id'] : NULL
@@ -389,6 +396,7 @@ class ContaReceberController extends Controller
                 if($contaP->status && $request->conta_id){
                     $itemP = ItemContaEmpresa::create([
                         'conta_id' => $request->conta_id,
+                        'empresa_id' => $this->empresa_id,
                         'descricao' => "Recebimento: " . ($contaP->cliente->razao_social ?? 'Cliente') . " | Ref: " . $contaP->referencia,
                         'tipo_pagamento' => $contaP->tipo_pagamento ?? 'Dinheiro',
                         'valor' => $contaP->valor_recebido,
@@ -410,26 +418,29 @@ class ContaReceberController extends Controller
 
     public function update(Request $request){
         $this->_validate($request);
-        $conta = ContaReceber::
-        where('id', $request->id)
-            ->first();
+        $conta = ContaReceber::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
 
         $request->merge([
             'filial_id' => $request->filial_id == -1 ? null : $request->filial_id
         ]);
 
+        $numNota = $request->numero_nota_fiscal ?? 0;
+
         $conta->data_vencimento = $this->parseDate($request->vencimento);
+        if($request->data_emissao){
+            $conta->nf_data_emissao = $this->parseDate($request->data_emissao) . " " . date('H:i:s');
+        }
         $conta->referencia = $request->referencia;
         $conta->tipo_pagamento = $request->tipo_pagamento ?? '';
         $conta->observacao = $request->observacao ?? '';
         $conta->valor_integral = str_replace(",", ".", $request->valor);
         $conta->categoria_id = $request->categoria_id;
         $conta->filial_id = $request->filial_id;
-        $conta->numero_nota_fiscal = $request->numero_nota_fiscal ?? 0;
-        $conta->nf_numero          = $request->numero_nota_fiscal ?? 0;
-        $conta->usuario_edit_id = session('user_logged')['id']; // ID de quem está editando agora
-        $conta->save();
-        if(isset($request->cliente_id)){
+        $conta->numero_nota_fiscal = $numNota;
+        $conta->nf_numero          = $numNota;
+        $conta->usuario_edit_id   = session('user_logged')['id'];
+
+        if(isset($request->cliente_id) && !empty($request->cliente_id)){
             $conta->cliente_id = $request->cliente_id;
         }
 
@@ -449,14 +460,78 @@ class ContaReceberController extends Controller
         return redirect('/contasReceber');
     }
 
-    private function calculaRecorrencia($recorrencia){
-        if(strlen($recorrencia) == 5){
-            $dataAtual = date("Y-m");
-            $dif = strtotime($this->parseRecorrencia($recorrencia)) - strtotime($dataAtual);
-            $meses = floor($dif / (60 * 60 * 24 * 30));
-            return $meses;
+    // =========================================================================
+    // NOVOS MÉTODOS: DETALHES E BAIXA PARCIAL
+    // =========================================================================
+    public function detalhes($id){
+        $conta = ContaReceber::with(['usuario', 'usuarioEdit', 'usuarioBaixa', 'categoria', 'cliente', 'filial'])
+            ->where('empresa_id', $this->empresa_id)
+            ->findOrFail($id);
+
+        $title = 'Detalhes da Conta a Receber';
+        return view('contaReceber/detalhes', compact('conta', 'title'));
+    }
+
+    public function baixarParcial(Request $request){
+        try {
+            DB::beginTransaction();
+
+            $conta = ContaReceber::where('id', $request->id)->where('empresa_id', $this->empresa_id)->firstOrFail();
+
+            $valorRecebido = str_replace(',', '.', str_replace('.', '', $request->valor_recebido));
+            $valorRestante = round($conta->valor_integral - $valorRecebido, 2);
+
+            if ($valorRestante <= 0) {
+                throw new \Exception("Para baixa total, utilize a função de recebimento normal.");
+            }
+
+            // Replica a conta criando o resíduo
+            $residuo = $conta->replicate();
+            $residuo->valor_integral = $valorRestante;
+            $residuo->valor_recebido = 0;
+            $residuo->status = false;
+            $residuo->data_vencimento = $request->nova_data_vencimento;
+            $residuo->referencia .= " (Resíduo de Baixa Parcial)";
+            $residuo->created_at = now();
+            $residuo->updated_at = now();
+            $residuo->save();
+
+            // Baixa a conta original pelo valor informado
+            $conta->status = true;
+            $conta->valor_recebido = $valorRecebido;
+            $conta->valor_integral = $valorRecebido;
+            $conta->data_recebimento = $request->data_recebimento;
+            $conta->usuario_baixa_id = session('user_logged')['id'];
+            $conta->save();
+
+            // Registra no extrato da conta bancária
+            if ($request->conta_bancaria_id) {
+                $nomeCliente = $conta->cliente->razao_social ?? 'N/A';
+                ItemContaEmpresa::create([
+                    'empresa_id' => $this->empresa_id,
+                    'conta_id' => $request->conta_bancaria_id,
+                    'conta_receber_id' => $conta->id,
+                    'valor' => $valorRecebido,
+                    'tipo' => 'entrada',
+                    'descricao' => "Recebimento parcial Cliente: {$nomeCliente} | Ref: {$conta->referencia}",
+                    'data_pagamento' => $request->data_recebimento,
+                    'categoria_id' => $conta->categoria_id,
+                    'user_id' => session('user_logged')['id']
+                ]);
+            }
+
+            DB::commit();
+            return response()->json("Baixa parcial realizada! Resíduo gerado para " . \Carbon\Carbon::parse($request->nova_data_vencimento)->format('d/m/Y'), 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json($e->getMessage(), 500);
         }
-        return 0;
+    }
+
+    private function parseRecorrencia($rec){
+        $temp = explode("/", $rec);
+        $rec = "01/".$temp[0]."/20".$temp[1];
+        return date('Y-m', strtotime(str_replace("/", "-", $rec)));
     }
 
     public function validaRecorrencia($rec){
@@ -558,24 +633,20 @@ class ContaReceberController extends Controller
         $conta = ContaReceber::findOrFail($request->id);
 
         try {
-            // 1. Remove o lançamento do Extrato Bancário (ItemContaEmpresa)
-            // Só vai funcionar se você tiver a coluna conta_receber_id no banco
             $itemBancario = ItemContaEmpresa::where('conta_receber_id', $conta->id)->first();
 
             if ($itemBancario) {
-                // Se o seu sistema usa o helper de atualizar saldo, chamamos ele antes de deletar
                 if (isset($this->util)) {
-                    // Passamos o valor negativo para subtrair do saldo o que foi deletado
                     $this->util->atualizaSaldo($itemBancario, true);
                 }
                 $itemBancario->delete();
             }
 
-            // 2. Volta a conta para pendente
             $conta->status = false;
             $conta->valor_recebido = 0;
             $conta->estorno = true;
             $conta->motivo_estorno = $request->motivo;
+            $conta->usuario_baixa_id = null;
             $conta->save();
 
             session()->flash('mensagem_sucesso', 'Conta estornada e lançamento bancário removido!');
@@ -589,16 +660,22 @@ class ContaReceberController extends Controller
         }
     }
 
-    // MÉTODO RECEBER CORRIGIDO (Removido log e duplicidade)
-    // 1. Abre a tela de recebimento (Chamada pelo botão da lista - GET)
     public function receber($id){
         $conta = ContaReceber::find($id);
 
-        $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-            ->where('status', 1)
-            ->get();
-
         if(valida_objeto($conta)){
+            // Filtra as contas de banco pertencentes à unidade da conta a receber (Matriz ou Filial)
+            $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
+                ->where('status', 1)
+                ->where(function($query) use ($conta) {
+                    if ($conta->filial_id != null) {
+                        $query->where('filial_id', $conta->filial_id);
+                    } else {
+                        $query->whereNull('filial_id');
+                    }
+                })
+                ->get();
+
             return view('contaReceber/receber')
                 ->with('conta', $conta)
                 ->with('contasEmpresa', $contasEmpresa)
@@ -608,91 +685,64 @@ class ContaReceberController extends Controller
         }
     }
 
-    // 2. Processa a baixa da conta (Chamada pelo formulário - POST)
-    // Renomeada para receberConta para corrigir o erro de "Method does not exist"
-    public function receberConta(Request $request)
-    {
-        $request->validate([
-            'id' => ['required', 'integer'],
-            'valor_recebido' => ['required'],
-            'conta_id' => ['nullable', 'integer'],
-        ]);
+    public function receberConta(Request $request){
+        $conta = ContaReceber::find($request->id);
+        $usarAdiantamento = $request->has('usar_adiantamento');
 
-        $usarAdiantamento = $request->boolean('usar_adiantamento');
-        $usuarioId = session('user_logged')['id'];
-        $valorRecebido = (float) str_replace(',', '.', str_replace('.', '', (string) $request->valor_recebido));
-        $juros = (float) str_replace(',', '.', str_replace('.', '', (string) $request->input('juros', 0)));
-        $multa = (float) str_replace(',', '.', str_replace('.', '', (string) $request->input('multa', 0)));
-        $desconto = (float) str_replace(',', '.', str_replace('.', '', (string) $request->input('desconto', 0)));
-        $dataRecebimento = $request->filled('data_pagamento')
-            ? $this->parseDate($request->data_pagamento)
-            : now()->toDateString();
+        $valor_recebido = (float)str_replace(',', '.', str_replace('.', '', $request->valor_recebido));
+        $juros = (float)str_replace(',', '.', str_replace('.', '', $request->juros));
+        $multa = (float)str_replace(',', '.', str_replace('.', '', $request->multa));
+        $desconto = (float)str_replace(',', '.', str_replace('.', '', $request->desconto));
 
-        try {
-            DB::transaction(function () use (
-                $request, $usarAdiantamento, $usuarioId, $valorRecebido,
-                $juros, $multa, $desconto, $dataRecebimento
-            ) {
-                $conta = ContaReceber::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('status', false)
-                    ->lockForUpdate()
-                    ->findOrFail((int) $request->id);
+        $conta->status = true;
+        $conta->valor_recebido = $valor_recebido;
+        $conta->juros = $juros;
+        $conta->multa = $multa;
+        $conta->desconto = $desconto;
+        $conta->usuario_baixa_id = session('user_logged')['id'];
 
-                $conta->status = true;
-                $conta->valor_recebido = $valorRecebido;
-                $conta->juros = $juros;
-                $conta->multa = $multa;
-                $conta->desconto = $desconto;
-                $conta->usuario_baixa_id = $usuarioId;
-                $conta->data_recebimento = $dataRecebimento;
-                $conta->tipo_pagamento = $usarAdiantamento
-                    ? 'Adiantamento de Cliente'
-                    : $request->tipo_pagamento;
-                $conta->save();
+        $dataPagamento = $request->data_pagamento ? $this->parseDate($request->data_pagamento) : date('Y-m-d');
+        $conta->data_recebimento = $dataPagamento;
 
-                if ($usarAdiantamento) {
-                    AdiantamentoController::baixarAdiantamento(
-                        $conta->cliente_id,
-                        'cliente',
-                        $valorRecebido,
-                        $this->empresa_id,
-                        $conta->id,
-                        $usuarioId,
-                        $conta->filial_id
-                    );
-                    return;
+        $conta->tipo_pagamento = $usarAdiantamento ? 'Adiantamento de Cliente' : $request->tipo_pagamento;
+        $conta->save();
+
+        if ($usarAdiantamento) {
+            \App\Http\Controllers\AdiantamentoController::baixarAdiantamento(
+                $conta->cliente_id,
+                'cliente',
+                $valor_recebido,
+                $this->empresa_id,
+                $conta->id,
+                session('user_logged')['id'],
+                $conta->filial_id
+            );
+        } else {
+            if (isset($request->conta_id)) {
+                $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
+
+                $itemContaEmpresa = ItemContaEmpresa::create([
+                    'conta_id'       => $request->conta_id,
+                    'empresa_id'     => $this->empresa_id,
+                    'descricao'      => "Recebimento: " . ($conta->cliente->razao_social ?? 'Cliente') . " | Ref: " . $conta->referencia,
+                    'tipo_pagamento' => $tipoPagamento,
+                    'valor'          => $valor_recebido,
+                    'tipo'           => 'entrada',
+                    'data_pagamento' => $dataPagamento,
+                    'categoria_id'   => $conta->categoria_id,
+                    'user_id'        => session('user_logged')['id'],
+                    'origem'         => 'Conta Receber',
+                    'conta_receber_id' => $conta->id,
+                ]);
+
+                if($this->util){
+                    $this->util->atualizaSaldo($itemContaEmpresa);
                 }
-
-                if ($request->filled('conta_id')) {
-                    ContaEmpresa::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->where('status', true)
-                        ->findOrFail((int) $request->conta_id);
-
-                    $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
-                    $item = ItemContaEmpresa::create([
-                        'empresa_id' => $this->empresa_id,
-                        'conta_id' => (int) $request->conta_id,
-                        'descricao' => 'Recebimento: '.($conta->cliente->razao_social ?? 'Cliente').' | Ref: '.$conta->referencia,
-                        'tipo_pagamento' => $tipoPagamento,
-                        'valor' => $valorRecebido,
-                        'tipo' => 'entrada',
-                        'data_pagamento' => $dataRecebimento,
-                        'categoria_id' => $conta->categoria_id,
-                        'user_id' => $usuarioId,
-                        'origem' => 'Conta Receber',
-                        'conta_receber_id' => $conta->id,
-                    ]);
-                    $this->util?->atualizaSaldo($item);
-                }
-            }, 3);
-
-            return redirect('/contasReceber')->with('mensagem_sucesso', 'Conta recebida com sucesso!');
-        } catch (\Throwable $e) {
-            __saveError($e, $this->empresa_id);
-            return redirect('/contasReceber')->with('mensagem_erro', 'Erro ao receber a conta: '.$e->getMessage());
+            }
         }
+
+        session()->flash('mensagem_sucesso', 'Conta recebida com sucesso!');
+        return redirect('/contasReceber');
     }
 
     public function delete($id){
@@ -724,12 +774,6 @@ class ContaReceberController extends Controller
             return date('Y-m-d', strtotime(str_replace("/", "-", $date)));
         else
             return date('Y-m-d', strtotime("+1 day",strtotime(str_replace("/", "-", $date))));
-    }
-
-    private function parseRecorrencia($rec){
-        $temp = explode("/", $rec);
-        $rec = "01/".$temp[0]."/20".$temp[1];
-        return date('Y-m', strtotime(str_replace("/", "-", $rec)));
     }
 
     public function relatorio(Request $request){
@@ -827,6 +871,7 @@ class ContaReceberController extends Controller
         $conta->valor_recebido = $request->valor;
         $conta->data_recebimento = date("Y-m-d") . " " . date('H:i:s');
         $conta->tipo_pagamento = $request->tipo_pagamento;
+        $conta->usuario_baixa_id = session('user_logged')['id'];
 
         if($conta->save()){
             session()->flash('mensagem_sucesso', 'Conta recebida!');
@@ -852,6 +897,9 @@ class ContaReceberController extends Controller
             'referencia' => $conta->referencia,
             'categoria_id' => $conta->categoria_id,
             'empresa_id' => $this->empresa_id,
+            'numero_nota_fiscal' => $conta->numero_nota_fiscal,
+            'nf_numero' => $conta->nf_numero,
+            'usuario_id' => session('user_logged')['id']
         ]);
 
         $conta->status = true;
@@ -859,6 +907,7 @@ class ContaReceberController extends Controller
         $conta->valor_integral = $request->valor;
         $conta->tipo_pagamento = $request->tipo_pagamento;
         $conta->data_recebimento = date("Y-m-d") . " " . date('H:i:s');
+        $conta->usuario_baixa_id = session('user_logged')['id'];
 
         if($conta->save()){
             session()->flash('mensagem_sucesso', 'Conta recebida parcialmente, uma nova foi criada com ID: ' . $res->id);
@@ -881,6 +930,7 @@ class ContaReceberController extends Controller
                     $ctemp->status = true;
                     $ctemp->valor_recebido = $ctemp->valor_integral;
                     $ctemp->data_recebimento = date("Y-m-d") . " " . date('H:i:s');
+                    $ctemp->usuario_baixa_id = session('user_logged')['id'];
                     $ctemp->save();
                     $temp .= " $c" . (sizeof($contasMais)-1 > $key ? "," : "");
                     $somaParaTroco += $ctemp->valor_integral;
@@ -890,6 +940,7 @@ class ContaReceberController extends Controller
             $conta->status = true;
             $conta->valor_recebido = $conta->valor_integral;
             $conta->data_recebimento = date("Y-m-d") . " " . date('H:i:s');
+            $conta->usuario_baixa_id = session('user_logged')['id'];
             $conta->save();
 
             $troco = $valor - $somaParaTroco;
@@ -947,125 +998,94 @@ class ContaReceberController extends Controller
         return view('contaReceber/pendentes', compact('clientes', 'title', 'contas', 'dataInicial', 'DataFinal', 'tipo_pagamento', 'clienteId'));
     }
 
-    public function receberMultiplos($ids)
-    {
-        $idList = collect(explode(',', (string) $ids))
-            ->map(fn ($id) => (int) trim($id))
-            ->filter()
-            ->unique()
-            ->values();
-
-        $contas = ContaReceber::query()
+    public function receberMultiplos($ids){
+        $temp = explode(",", $ids);
+        $contas = ContaReceber::whereIn('id', $temp)
             ->where('empresa_id', $this->empresa_id)
-            ->whereIn('id', $idList)
-            ->where('status', false)
             ->get();
 
-        if ($contas->count() <= 1) {
-            return redirect()->back()->with('mensagem_erro', 'Selecione pelo menos duas contas abertas e válidas.');
+        if($contas->isEmpty() || $contas->count() <= 1){
+            session()->flash('mensagem_erro', "Selecione pelo menos duas contas válidas!");
+            return redirect()->back();
         }
 
-        $somaTotal = (float) $contas->sum('valor_integral');
+        // Pega a filial do primeiro documento do lote
+        $filialIdDocumento = $contas->first()->filial_id;
+
+        $somaTotal = $contas->sum('valor_integral');
         $title = 'Receber contas';
+
+        // Busca apenas as contas bancárias da unidade do lote (Matriz ou Filial)
         $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-            ->where('status', true)
-            ->orderBy('nome')
+            ->where('status', 1)
+            ->where(function($query) use ($filialIdDocumento) {
+                if ($filialIdDocumento != null) {
+                    $query->where('filial_id', $filialIdDocumento);
+                } else {
+                    $query->whereNull('filial_id');
+                }
+            })
             ->get();
 
-        return view('contaReceber/receber_multi', compact(
-            'somaTotal', 'title', 'contas', 'ids', 'contasEmpresa'
-        ));
+        return view('contaReceber/receber_multi', compact('somaTotal', 'title', 'contas', 'ids', 'contasEmpresa'));
     }
-    public function receberMulti(Request $request)
-    {
-        $request->validate([
-            'ids' => ['required', 'string'],
-            'data_pagamento' => ['required'],
-            'tipo_pagamento' => ['nullable'],
-            'conta_id' => ['nullable', 'integer'],
-        ]);
 
-        $dataRecebimento = \Carbon\Carbon::parse(str_replace('/', '-', $request->data_pagamento))
-            ->setTimeFromTimeString(now()->format('H:i:s'));
-        $ids = collect(explode(',', $request->ids))
-            ->map(fn ($id) => (int) trim($id))
-            ->filter()
-            ->unique()
-            ->values();
-        $usarAdiantamento = $request->boolean('usar_adiantamento');
-        $usuarioId = session('user_logged')['id'];
+    public function receberMulti(Request $request){
+        $dtReceb = \Carbon\Carbon::parse(str_replace("/", "-", $request->data_pagamento))->format('Y-m-d H:i:s');
+        $temp = explode(",", $request->ids);
+        $usarAdiantamento = $request->has('usar_adiantamento');
 
         try {
-            DB::transaction(function () use ($ids, $dataRecebimento, $request, $usarAdiantamento, $usuarioId) {
-                $contas = ContaReceber::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->whereIn('id', $ids)
-                    ->where('status', false)
-                    ->lockForUpdate()
-                    ->get();
+            \Illuminate\Support\Facades\DB::transaction(function () use ($temp, $dtReceb, $request, $usarAdiantamento) {
+                foreach($temp as $i){
+                    $conta = ContaReceber::find($i);
+                    if($conta && $conta->empresa_id == $this->empresa_id){
 
-                if ($contas->count() !== $ids->count()) {
-                    throw new \RuntimeException('Uma ou mais contas não existem, pertencem a outra empresa ou já foram recebidas.');
-                }
+                        $conta->status = 1;
+                        $conta->valor_recebido = $conta->valor_integral;
+                        $conta->data_recebimento = $dtReceb;
+                        $conta->usuario_baixa_id = session('user_logged')['id'];
 
-                if (!$usarAdiantamento && $request->filled('conta_id')) {
-                    ContaEmpresa::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->where('status', true)
-                        ->findOrFail((int) $request->conta_id);
-                }
+                        $conta->tipo_pagamento = $usarAdiantamento ? 'Adiantamento de Cliente' : $request->tipo_pagamento;
 
-                foreach ($contas as $conta) {
-                    $conta->status = true;
-                    $conta->valor_recebido = $conta->valor_integral;
-                    $conta->data_recebimento = $dataRecebimento;
-                    $conta->usuario_baixa_id = $usuarioId;
-                    $conta->tipo_pagamento = $usarAdiantamento
-                        ? 'Adiantamento de Cliente'
-                        : $request->tipo_pagamento;
-                    $conta->juros = $request->filled('juros') ? __replace($request->juros) : 0;
-                    $conta->multa = $request->filled('multa') ? __replace($request->multa) : 0;
-                    $conta->desconto = $request->filled('desconto') ? __replace($request->desconto) : 0;
-                    $conta->save();
+                        $conta->juros = $request->juros ? __replace($request->juros) : 0;
+                        $conta->multa = $request->multa ? __replace($request->multa) : 0;
+                        $conta->desconto = $request->desconto ? __replace($request->desconto) : 0;
+                        $conta->save();
 
-                    if ($usarAdiantamento) {
-                        AdiantamentoController::baixarAdiantamento(
-                            $conta->cliente_id,
-                            'cliente',
-                            (float) $conta->valor_integral,
-                            $this->empresa_id,
-                            $conta->id,
-                            $usuarioId,
-                            $conta->filial_id
-                        );
-                        continue;
-                    }
-
-                    if ($request->filled('conta_id')) {
-                        $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
-                        $item = ItemContaEmpresa::create([
-                            'empresa_id' => $this->empresa_id,
-                            'conta_id' => (int) $request->conta_id,
-                            'descricao' => 'Recebimento múltiplo: '.($conta->cliente->razao_social ?? 'Cliente').' | Ref: '.$conta->referencia,
-                            'tipo_pagamento' => $tipoPagamento,
-                            'valor' => $conta->valor_integral,
-                            'tipo' => 'entrada',
-                            'categoria_id' => $conta->categoria_id,
-                            'user_id' => $usuarioId,
-                            'origem' => 'Conta Receber',
-                            'conta_receber_id' => $conta->id,
-                            'data_pagamento' => $dataRecebimento,
-                        ]);
-                        $this->util?->atualizaSaldo($item);
+                        if ($usarAdiantamento) {
+                            \App\Http\Controllers\AdiantamentoController::baixarAdiantamento(
+                                $conta->cliente_id, 'cliente', $conta->valor_integral,
+                                $this->empresa_id, $conta->id, session('user_logged')['id'], $conta->filial_id
+                            );
+                        } else if(isset($request->conta_id)){
+                            $tipoPagamento = \App\Models\Venda::getTipoPagamentoNFe($request->tipo_pagamento);
+                            $data = [
+                                'conta_id'       => $request->conta_id,
+                                'empresa_id'     => $this->empresa_id,
+                                'descricao'      => "Recebimento Multi: " . ($conta->cliente->razao_social ?? 'Cliente') . " | Ref: " . $conta->referencia,
+                                'tipo_pagamento' => $tipoPagamento,
+                                'valor'          => $conta->valor_integral,
+                                'tipo'           => 'entrada',
+                                'categoria_id'   => $conta->categoria_id,
+                                'user_id'        => session('user_logged')['id'],
+                                'origem'         => 'Conta Receber',
+                                'conta_receber_id' => $conta->id,
+                                'data_pagamento' => $dtReceb
+                            ];
+                            $itemContaEmpresa = ItemContaEmpresa::create($data);
+                            $this->util->atualizaSaldo($itemContaEmpresa);
+                        }
                     }
                 }
-            }, 3);
+            });
 
-            return redirect('/contasReceber')->with('mensagem_sucesso', 'Contas recebidas com sucesso!');
-        } catch (\Throwable $e) {
-            __saveError($e, $this->empresa_id);
-            return redirect('/contasReceber')->with('mensagem_erro', 'Erro ao processar o recebimento múltiplo: '.$e->getMessage());
+            session()->flash('mensagem_sucesso', "Contas recebidas com sucesso!");
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', "Erro ao processar lote: " . $e->getMessage());
         }
+
+        return redirect('/contasReceber');
     }
 
     public function importacao(){
@@ -1139,7 +1159,8 @@ class ContaReceberController extends Controller
             'cliente_id' => $cliente->id,
             'juros' => 0, 'multa' => 0, 'observacao' => '', 'tipo_pagamento' => '',
             'filial_id' => $filial_id == -1 ? null : $filial_id,
-            'entrada' => 0
+            'entrada' => 0,
+            'usuario_id' => session('user_logged')['id']
         ];
     }
 
@@ -1190,7 +1211,6 @@ class ContaReceberController extends Controller
 
     public function exportExcel(Request $request)
     {
-        // Captura os filtros
         $dataInicial = $request->data_inicial;
         $dataFinal = $request->data_final;
         $clienteId = $request->clienteId;
@@ -1209,29 +1229,28 @@ class ContaReceberController extends Controller
             ->leftJoin('item_conta_empresas as ice', 'cr.id', '=', 'ice.conta_receber_id')
             ->leftJoin('conta_empresas as ce', 'ice.conta_id', '=', 'ce.id')
             ->select(
-                'cr.id', // Crucial para não dar erro de undefined
+                'cr.id',
                 'cr.numero_nota_fiscal',
-                'cr.nf_data_emissao as data_emissao_nfe', // Nome padronizado para a view
+                'cr.nf_data_emissao as data_emissao_nfe',
                 'cr.data_vencimento',
                 'cr.data_recebimento',
                 'cli.razao_social as cliente_razao',
-                'cli.cpf_cnpj as cliente_cpf_cnpj', // Adicionado documento
+                'cli.cpf_cnpj as cliente_cpf_cnpj',
                 'cr.referencia',
-                'cr.observacao', // Adicionado observação
+                'cr.observacao',
                 'cc.nome as categoria_nome',
                 'cr.tipo_pagamento',
                 'ce.nome as conta_empresa',
-                'cr.valor_integral', // Adicionado valor original
+                'cr.valor_integral',
                 'cr.valor_recebido',
                 'cr.juros',
                 'cr.multa',
                 'cr.desconto',
-                'cr.status', // Adicionado para lógica na view
+                'cr.status',
                 \DB::raw("COALESCE(fil.descricao, 'Matriz') as filial_nome")
             )
             ->where('cr.empresa_id', $this->empresa_id);
 
-        // Filtros de Data
         if($dataInicial && $dataFinal){
             $d1 = $this->parseDate($dataInicial);
             $d2 = $this->parseDate($dataFinal, ($tipo_filtro_data == 2));
@@ -1267,31 +1286,24 @@ class ContaReceberController extends Controller
         return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\ContasReceberExport($contas), 'Relatorio_Contas_Receber.xlsx');
     }
 
-    // =========================================================================
-// CORREÇÃO DO SINCRONISMO (Adicionado nf_numero, numero_nota_fiscal e nf_chave)
-// =========================================================================
     public function syncNotaFiscal()
     {
         $updatedCount = 0;
         $empresa_id = $this->empresa_id;
 
-        // 1. Busca TODAS as contas da empresa para passar o pente fino e corrigir tudo
         $contas = \App\Models\ContaReceber::where('empresa_id', $empresa_id)->get();
 
         foreach ($contas as $conta) {
             $alterou = false;
             $venda = null;
 
-            // ESTRATÉGIA A: Se a conta já tem o ID da venda, usamos ele direto
             if (!empty($conta->venda_id)) {
                 $venda = \App\Models\Venda::where('empresa_id', $empresa_id)
                     ->where('id', $conta->venda_id)
                     ->first();
             }
 
-            // ESTRATÉGIA B: Se não tem ID, mas tem texto na referência (Ex: "Venda 998" ou "da Venda 1002")
             if (!$venda && !empty($conta->referencia)) {
-                // Extrai qualquer número que venha logo após a palavra "Venda" ou "venda"
                 if (preg_match('/[Vv]enda\s*(\d+)/', $conta->referencia, $matches)) {
                     $vendaIdExtraido = $matches[1];
 
@@ -1301,7 +1313,6 @@ class ContaReceberController extends Controller
                 }
             }
 
-            // ESTRATÉGIA C: Se ainda não achou, tenta pelo número que estiver em "numero_nota_fiscal" ou "nf_numero"
             if (!$venda) {
                 $numeroNota = $conta->numero_nota_fiscal > 0 ? $conta->numero_nota_fiscal : $conta->nf_numero;
                 if ($numeroNota > 0) {
@@ -1311,21 +1322,15 @@ class ContaReceberController extends Controller
                 }
             }
 
-            // Se encontrou a venda por qualquer uma das estratégias, atualiza os dados fiscais
             if ($venda) {
                 $conta->venda_id = $venda->id;
 
-                // Se a venda tem nota gerada (NfNumero > 0), grava nas duas colunas e pega a chave
                 if ($venda->NfNumero > 0) {
                     $conta->numero_nota_fiscal = $venda->NfNumero;
                     $conta->nf_numero          = $venda->NfNumero;
                     $conta->nf_chave           = $venda->chave ?? null;
-
-                    // Atualiza a referência para o padrão bonito de nota sincronizada
-                    $conta->referencia = "VENDA DE MERCADORIAS E NFe - " . $venda->NfNumero;
+                    $conta->referencia         = "VENDA DE MERCADORIAS E NFe - " . $venda->NfNumero;
                 } else {
-                    // Se a venda existe mas ainda não tem nota emitida (ex: é só um pedido/orçamento)
-                    // Mantemos o número em 0 ou limpo para não inventar dados fiscais
                     $conta->numero_nota_fiscal = 0;
                     $conta->nf_numero          = 0;
                     $conta->nf_chave           = null;
@@ -1338,7 +1343,6 @@ class ContaReceberController extends Controller
                 $alterou = true;
             }
 
-            // SE NÃO FOR VENDA, MANTÉM A VERIFICAÇÃO DO CT-E LOGO ABAIXO
             if (!$venda) {
                 $numeroNota = $conta->numero_nota_fiscal > 0 ? $conta->numero_nota_fiscal : $conta->nf_numero;
                 if ($numeroNota > 0) {
@@ -1361,7 +1365,6 @@ class ContaReceberController extends Controller
                 }
             }
 
-            // Se houve alteração real nos campos do banco de dados, salva
             if ($alterou) {
                 $conta->save();
                 $updatedCount++;
@@ -1372,12 +1375,10 @@ class ContaReceberController extends Controller
         return redirect()->back();
     }
 
-
     public function imprimirRecibo($id)
     {
         if (ob_get_contents()) ob_end_clean();
 
-        // Carrega a conta com o cliente e a filial
         $conta = \App\Models\ContaReceber::with(['cliente', 'usuarioBaixa', 'categoria', 'filial'])
             ->where('empresa_id', $this->empresa_id)
             ->findOrFail($id);
@@ -1445,7 +1446,8 @@ class ContaReceberController extends Controller
                 : null;
 
             try {
-                $danfe = new \Danfe($xmlString);
+                // CORRIGIDO: Instanciando via Namespace correto da NFePHP
+                $danfe = new \NFePHP\DA\NFe\Danfe($xmlString);
                 $pdf = $danfe->render($logo);
                 return response($pdf)->header('Content-Type', 'application/pdf');
             } catch (\Exception $e) {

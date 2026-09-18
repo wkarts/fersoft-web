@@ -21,13 +21,12 @@ class ContaPagar extends BaseModel
 }
   
     protected $fillable = [
-        'compra_id', 'data_vencimento', 'data_emissao', 'data_emissao_nfe', 'data_pagamento','numero_emissao',
+        'compra_id', 'data_vencimento', 'data_emissao', 'data_pagamento','numero_emissao','data_emissao_nfe',
         'valor_integral', 'valor_original', 'valor_pago', 'referencia','nf',
         'categoria_id', 'status', 'empresa_id', 'fornecedor_id',
         'tipo_pagamento', 'numero_nota_fiscal', 'filial_id', 'observacao',
         'valor_inss', 'valor_iss', 'valor_pis', 'valor_cofins', 'valor_ir', 'valor_csll', 'usuario_edicao_id',
-        'outras_retencoes', 'valor_csll', 'usuario_id', 'usuario_baixa_id', 'veiculo_id', 'juros', 'multa',
-        'lote_pagamento_id', 'conta_id_origem', 'retencoes_processadas'
+        'outras_retencoes', 'usuario_id', 'usuario_baixa_id', 'veiculo_id','juros', 'multa'
     ];
 
     // Atributo virtual para retornar valor líquido
@@ -207,12 +206,33 @@ class ContaPagar extends BaseModel
 
     public static function tiposPagamento(){
         return [
-            'Dinheiro', 'Cheque', 'Banco Itau', 'Boleto', 'Banco Santander',
-            'Banco Bradesco', 'Banco do Brasil', 'Banco Inter', 'C6Bank', 'Cora',
-            'Caixa 01', 'Caixa 02', 'Credito Fornecedor', 'Crédito Cliente',
-            'Cartão de Crédito', 'Cartão de Débito', 'Vale Alimentação',
-            'Vale Refeição', 'Vale Presente', 'Vale Combustível',
-            'Depósito Bancário', 'Pix', 'Outros'
+            'Dinheiro', 
+            'Cheque', 
+            'Banco Itau', 
+            'Boleto', 
+            'Banco Santander',
+            'Banco Bradesco', 
+            'Banco do Brasil', 
+            'Banco Inter', 
+            'C6Bank', 
+            'Cora',
+            'DAE', 
+            'DARF', 
+            'DAM', 
+            'Caixa 01', 
+            'Caixa 02', 
+            'Credito Fornecedor', 
+            'Crédito Cliente',
+            'Cartão de Crédito', 
+            'Cartão de Débito', 
+            'Vale Alimentação',
+            'Vale Refeição', 
+            'Vale Presente', 
+            'Vale Combustível',
+            'Depósito Bancário', 
+            'Pix', 
+            'Outros', 
+            'Transfrencia'
         ];
     }
 

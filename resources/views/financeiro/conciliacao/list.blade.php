@@ -77,137 +77,204 @@
         </div>
     </div>
 
-    {{-- TABELA DE EXTRATO --}}
-    <div class="card shadow-sm" style="border: none;">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-            <h5 class="mb-0 text-secondary font-weight-bold"><i class="fas fa-list-ul mr-2"></i> Extrato</h5>
+  {{-- PAINEL DE CONFRONTO: ERP x BANCO --}}
+@if(isset($resumo))
+    <div class="row mb-4 px-3">
+        <div class="col-12 bg-white rounded shadow-sm border p-0 overflow-hidden">
+            <div class="bg-dark text-white px-4 py-2 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-balance-scale mr-2"></i> Auditoria de Caixa (Período Filtrado)</h6>
+                <small>Conta Bancária Selecionada vs. Financeiro do ERP</small>
+            </div>
             
-            <div class="d-flex">
-                    {{-- NOVO BOTÃO DE MANUAL --}}
-                    <button type="button" class="btn btn-sm btn-info font-weight-bold shadow-sm mr-2" data-toggle="modal" data-target="#modalManualConciliacao">
-                        <i class="fas fa-question-circle mr-1"></i> Como Funciona
-                    </button>
+            <div class="row m-0 text-center">
+                {{-- BLOCO DE ENTRADAS --}}
+                <div class="col-md-6 p-4 border-right">
+                    <h6 class="text-success font-weight-bold mb-3"><i class="fas fa-arrow-circle-down"></i> RECEBIMENTOS (ENTRADAS)</h6>
+                    <div class="d-flex justify-content-around">
+                        <div>
+                            <small class="text-muted d-block">Lido no Banco (OFX)</small>
+                            <h4 class="text-dark">R$ {{ number_format($resumo['banco_in'], 2, ',', '.') }}</h4>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block">Baixado no ERP</small>
+                            <h4 class="text-dark">R$ {{ number_format($resumo['erp_in'], 2, ',', '.') }}</h4>
+                        </div>
+                    </div>
+                    <hr>
+                    @if(abs($resumo['dif_in']) < 0.01)
+                        <span class="badge badge-success px-3 py-2"><i class="fas fa-check-circle"></i> Entradas 100% Conciliadas</span>
+                    @else
+                        <span class="badge badge-warning text-dark px-3 py-2">
+                            <i class="fas fa-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_in']), 2, ',', '.') }}
+                        </span>
+                    @endif
+                </div>
 
-                    {{-- BOTÃO: ZERO-CLICK --}}
-                    <form action="{{ url('financeiro/conciliacao/processar-automaticos') }}" method="POST" class="mr-2">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-success font-weight-bold shadow-sm" title="Rodar regras memorizadas">
-                        <i class="fas fa-robot mr-1"></i> Rodar Automação
-                    </button>
-                </form>
-
-                {{-- BOTÃO LIMPAR EXISTENTE --}}
-                <form action="{{ url('financeiro/conciliacao/limpar-pendentes') }}" method="POST" onsubmit="return confirm('Apagar importações pendentes?');">
-                    @csrf
-                    <button type="submit" class="btn btn-sm btn-outline-danger font-weight-bold shadow-sm">Limpar Pendentes</button>
-                </form>
-              {{-- COLAR ANTES DA TABELA COMEÇAR --}}
-              @if(request('conta_filtro'))
-                  <div class="alert alert-light border-left-primary shadow-sm mb-3">
-                      Mostrando lançamentos de: <strong>{{ $contasBancarias->find(request('conta_filtro'))->nome ?? '' }}</strong>
-                  </div>
-              @endif
-              
+                {{-- BLOCO DE SAÍDAS --}}
+                <div class="col-md-6 p-4">
+                    <h6 class="text-danger font-weight-bold mb-3"><i class="fas fa-arrow-circle-up"></i> PAGAMENTOS (SAÍDAS)</h6>
+                    <div class="d-flex justify-content-around">
+                        <div>
+                            <small class="text-muted d-block">Lido no Banco (OFX)</small>
+                            <h4 class="text-dark">R$ {{ number_format($resumo['banco_out'], 2, ',', '.') }}</h4>
+                        </div>
+                        <div>
+                            <small class="text-muted d-block">Baixado no ERP</small>
+                            <h4 class="text-dark">R$ {{ number_format($resumo['erp_out'], 2, ',', '.') }}</h4>
+                        </div>
+                    </div>
+                    <hr>
+                    @if(abs($resumo['dif_out']) < 0.01)
+                        <span class="badge badge-success px-3 py-2"><i class="fas fa-check-circle"></i> Saídas 100% Conciliadas</span>
+                    @else
+                        <span class="badge badge-warning text-dark px-3 py-2">
+                            <i class="fas fa-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_out']), 2, ',', '.') }}
+                        </span>
+                    @endif
+                </div>
             </div>
         </div>
-        {{-- ÁREA DOS BOTÕES DE AÇÃO EM MASSA --}}
-<div class="mb-3 d-flex justify-content-between align-items-center pl-3 pr-3 bg-white p-3 rounded shadow-sm border">
-    <div>
-        {{-- BOTÃO INTELIGENTE QUE VOCÊ SUGERIU --}}
-        <button type="button" class="btn btn-warning shadow-sm font-weight-bold mr-2 text-dark" onclick="selecionarAtencao()">
-            <i class="fas fa-exclamation-triangle"></i> Marcar todos com "Atenção"
-        </button>
-        <span class="text-muted small">Ideal para baixar o que o ERP já reconheceu.</span>
     </div>
-    
-    {{-- BOTÃO DE ENVIAR --}}
-    <button type="button" class="btn btn-success shadow-sm font-weight-bold px-4" onclick="confirmarLote()">
-    <i class="fas fa-check-double"></i> Confirmar Selecionados
-	</button>
-</div>
-
-{{-- SEU FORMULÁRIO COMEÇA AQUI --}}
-<form id="form_lote" action="{{ url('financeiro/conciliacao/processar-lote') }}" method="POST">
-    @csrf
-    <table class="table table-hover mb-0">
-        <thead class="bg-light text-muted">
-            <tr>
-                {{-- NOVA COLUNA: CAIXINHA DE "SELECIONAR TODOS" --}}
-                <th class="border-0 pl-4" style="width: 40px;">
-                    <input type="checkbox" id="checkAll" style="cursor: pointer; transform: scale(1.2);">
-                </th>
-                <th class="border-0">Data</th>
-                <th class="border-0">Histórico Bancário</th>
-                <th class="border-0">Valor</th>
-                <th class="border-0 pr-4 text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($records as $l)
-                <tr class="{{ $l->status == 'reconciled' ? 'bg-light text-muted' : '' }}">
+@else
+    <div class="alert alert-light border-left-info shadow-sm mb-4 mx-3">
+        <i class="fas fa-info-circle text-info mr-2"></i> <strong>Dica de Auditoria:</strong> Filtre a tela por <b>Conta Bancária</b>, <b>Data Inicial</b> e <b>Data Final</b> para visualizar o Painel de Confronto de Saldos automaticamente.
+    </div>
+@endif
+  
+    {{-- LAYOUT DIVIDIDO: EXTRATO (ESQUERDA) E SUGESTÕES (DIREITA) --}}
+    <div class="row">
+        
+        {{-- COLUNA DA ESQUERDA (EXTRATO) --}}
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow-sm" style="border: none;">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 text-secondary font-weight-bold"><i class="fas fa-list-ul mr-2"></i> Extrato</h5>
                     
-                    {{-- NOVA COLUNA: CAIXINHA DE CADA LINHA --}}
-                    <td class="align-middle pl-4">
-                        @if($l->status == 'pending')
-                            <input type="checkbox" name="extrato_ids[]" value="{{ $l->id }}" class="check-item" style="cursor: pointer; transform: scale(1.2);">
-                        @endif
-                    </td>
+                    <div class="d-flex">
+                        <button type="button" class="btn btn-sm btn-info font-weight-bold shadow-sm mr-2" data-toggle="modal" data-target="#modalManualConciliacao">
+                            <i class="fas fa-question-circle mr-1"></i> Como Funciona
+                        </button>
 
-                    {{-- SUAS COLUNAS ORIGINAIS CONTINUAM AQUI --}}
-                    <td class="align-middle">{{ date('d/m/Y', strtotime($l->data_transacao)) }}</td>
-                    <td class="align-middle">
-                        @if($l->status == 'reconciled') 
-                            <i class="fas fa-check-circle text-success mr-1"></i> 
-                        @endif
-                        <span class="{{ $l->status == 'reconciled' ? 'font-weight-normal' : 'font-weight-bold text-dark' }}">{{ $l->descricao }}</span>
-
-                        {{-- NOVA ETIQUETA COM O NOME DO BANCO --}}
-                        <br>
-                        <small class="badge badge-info shadow-sm mt-1" style="font-size: 0.7rem; opacity: 0.9;">
-                            <i class="fas fa-university mr-1"></i>
-                            {{ $l->contaBancaria->nome ?? 'ID Bancário: ' . $l->conta_bancaria_id }}
-                        </small>
-
-                        @if($l->status == 'pending')
-                            <div class="mt-1">
-                            @if($l->achou_pago)
-                                <span class="badge badge-warning text-dark px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Atenção: Consta PAGO no ERP</span>
-                            @elseif($l->achou_pendente)
-                                <span class="badge badge-info px-2 py-1"><i class="fas fa-magic"></i> Encontrado (Pendente no ERP)</span>
-                            @endif
-                            </div>
-                        @endif
-                    </td>
-                    <td class="align-middle {{ $l->tipo == 'credit' ? 'text-success' : 'text-danger' }}">
-                        <strong class="h6 font-weight-bold">R$ {{ number_format($l->valor, 2, ',', '.') }}</strong>
-                    </td>
-                    <td class="align-middle pr-4 text-center">
-                        @if($l->status == 'pending')
-                            <button type="button" class="btn btn-sm btn-primary font-weight-bold mb-1" onclick="abrirModalVincular({{ json_encode($l) }})">Vincular</button>
-                            <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold mb-1" onclick="abrirModalNovo({{ json_encode($l) }})">+ Novo</button>
-                            <button type="button" class="btn btn-sm text-white font-weight-bold mb-1" style="background-color: #8b5cf6;" onclick="abrirModalTransferir({{ json_encode($l) }})">Transf.</button>
-                            
-                            {{-- NOVO BOTÃO OK INDIVIDUAL LIMPO --}}
-                            <button type="button" class="btn btn-sm btn-light border-secondary font-weight-bold mb-1" title="Apenas arquivar e tirar da tela" onclick="confirmarOKIndividual({{ $l->id }})">
-                                <i class="fas fa-check-double text-success"></i> OK
+                        <form action="{{ url('financeiro/conciliacao/processar-automaticos') }}" method="POST" class="mr-2">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-success font-weight-bold shadow-sm" title="Rodar regras memorizadas">
+                                <i class="fas fa-robot mr-1"></i> Rodar Automação
                             </button>
-                        @else
-                            <span class="badge badge-success px-3 py-2 font-weight-bold"><i class="fas fa-lock mr-1"></i> CONCILIADO</span>
-                        @endif
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum lançamento.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-</form> 
+                        </form>
+
+                        <form action="{{ url('financeiro/conciliacao/limpar-pendentes') }}" method="POST" onsubmit="return confirm('Apagar importações pendentes?');">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-danger font-weight-bold shadow-sm">Limpar Pendentes</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="mb-3 d-flex justify-content-between align-items-center pl-3 pr-3 bg-white p-3 rounded shadow-sm border mx-3 mt-3">
+                    <div>
+                        <button type="button" class="btn btn-warning shadow-sm font-weight-bold mr-2 text-dark" onclick="selecionarAtencao()">
+                            <i class="fas fa-exclamation-triangle"></i> Marcar "Atenção"
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-success shadow-sm font-weight-bold px-4" onclick="confirmarLote()">
+                        <i class="fas fa-check-double"></i> Confirmar Selecionados
+                    </button>
+                </div>
+
+                <div class="card-body p-0" style="max-height: 70vh; overflow-y: auto;">
+                    <form id="form_lote" action="{{ url('financeiro/conciliacao/processar-lote') }}" method="POST">
+                        @csrf
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light text-muted">
+                                <tr>
+                                    <th class="border-0 pl-4" style="width: 40px;">
+                                        <input type="checkbox" id="checkAll" style="cursor: pointer; transform: scale(1.2);">
+                                    </th>
+                                    <th class="border-0">Data</th>
+                                    <th class="border-0">Histórico</th>
+                                    <th class="border-0">Valor</th>
+                                    <th class="border-0 pr-4 text-center">Ações Manuais</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($records as $l)
+                                    <tr class="extrato-row {{ $l->status == 'reconciled' ? 'bg-light text-muted' : '' }}" 
+                                        id="row_{{ $l->id }}" onclick="carregarSugestoes({{ $l->id }})" style="cursor:pointer;">
+                                        
+                                        <td class="align-middle pl-4" onclick="event.stopPropagation();">
+                                            @if($l->status == 'pending')
+                                                <input type="checkbox" name="extrato_ids[]" value="{{ $l->id }}" class="check-item" style="cursor: pointer; transform: scale(1.2);">
+                                            @endif
+                                        </td>
+
+                                        <td class="align-middle">{{ date('d/m/Y', strtotime($l->data_transacao)) }}</td>
+                                        <td class="align-middle">
+                                            @if($l->status == 'reconciled') 
+                                                <i class="fas fa-check-circle text-success mr-1"></i> 
+                                            @endif
+                                            <span class="{{ $l->status == 'reconciled' ? 'font-weight-normal' : 'font-weight-bold text-dark' }}">{{ $l->descricao }}</span>
+                                            
+                                            <br>
+                                            <small class="badge badge-info shadow-sm mt-1" style="font-size: 0.7rem; opacity: 0.9;">
+                                                <i class="fas fa-university mr-1"></i> {{ $l->contaBancaria->nome ?? 'ID Bancário: ' . $l->conta_bancaria_id }}
+                                            </small>
+
+                                            @if($l->status == 'pending')
+                                                <div class="mt-1">
+                                                @if($l->achou_pago)
+                                                    <span class="badge badge-warning text-dark px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Atenção: Consta PAGO no ERP</span>
+                                                @elseif($l->achou_pendente)
+                                                    <span class="badge badge-info px-2 py-1"><i class="fas fa-magic"></i> Encontrado (Pendente no ERP)</span>
+                                                @endif
+                                                </div>
+                                            @endif
+                                        </td>
+                                        <td class="align-middle {{ $l->tipo == 'credit' ? 'text-success' : 'text-danger' }}">
+                                            <strong class="h6 font-weight-bold">R$ {{ number_format($l->valor, 2, ',', '.') }}</strong>
+                                        </td>
+                                        <td class="align-middle pr-4 text-center" onclick="event.stopPropagation();">
+                                            @if($l->status == 'pending')
+                                                <div class="btn-group-vertical">
+                                                    <button type="button" class="btn btn-sm btn-primary font-weight-bold mb-1" onclick="abrirModalVincular({{ json_encode($l) }})">Opções</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold mb-1" onclick="abrirModalNovo({{ json_encode($l) }})">+ Novo</button>
+                                                    <button type="button" class="btn btn-sm text-white font-weight-bold mb-1" style="background-color: #8b5cf6;" onclick="abrirModalTransferir({{ json_encode($l) }})">Transf.</button>
+                                                    <button type="button" class="btn btn-sm btn-light border-secondary font-weight-bold mb-1" title="Apenas arquivar e tirar da tela" onclick="confirmarOKIndividual({{ $l->id }})">
+                                                        <i class="fas fa-check-double text-success"></i> OK
+                                                    </button>
+                                                </div>
+                                            @else
+                                                <span class="badge badge-success px-3 py-2 font-weight-bold"><i class="fas fa-lock mr-1"></i> CONCILIADO</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="text-center py-5 text-muted">Nenhum lançamento.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </form> 
+                </div>
+            </div>
+        </div>
+
+        {{-- COLUNA DA DIREITA (PAINEL INTELIGENTE) --}}
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow-sm" style="position: sticky; top: 20px; min-height: 50vh;" id="painel_sugestoes">
+                <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="min-height: 50vh; background: #f8f9fa; border: 2px dashed #dee2e6;">
+                    <i class="fas fa-mouse-pointer fa-4x text-muted mb-3" style="opacity: 0.5;"></i>
+                    <h5 class="text-muted font-weight-bold">Painel Inteligente</h5>
+                    <p class="text-muted small px-3">Clique em uma linha pendente do extrato ao lado para que o sistema busque o título correto automaticamente.</p>
+                </div>
+            </div>
+        </div>
 
     </div>
 </div>
+
+{{-- ================================================================= --}}
+{{-- MODAIS ORIGINAIS PRESERVADOS --}}
+{{-- ================================================================= --}}
 
 {{-- MODAL VINCULAR (MULTIPLA ESCOLHA) --}}
-{{-- MODAL VINCULAR (MULTIPLA ESCOLHA + JUROS/DESCONTOS) --}}
 <div class="modal fade" id="modalVincular" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <form action="{{ url('financeiro/conciliacao/conciliar') }}" method="POST" id="formVincular" onsubmit="return validarFechamento()">
@@ -215,7 +282,7 @@
             <input type="hidden" name="extrato_id" id="vincular_extrato_id">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header text-white" style="background-color: #3b82f6;">
-                    <h5 class="modal-title font-weight-bold"><i class="fas fa-link mr-2"></i> Vincular Títulos</h5>
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-link mr-2"></i> Vincular Títulos Manualmente</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
                 <div class="modal-body bg-light">
@@ -238,7 +305,6 @@
                                 <option value="receber">Contas a Receber</option>
                             </select>
 
-                            {{-- NOVOS CAMPOS: JUROS E DESCONTOS --}}
                             <div class="mt-4 p-3 bg-white border rounded">
                                 <label class="font-weight-bold text-danger small"><i class="fas fa-plus-circle"></i> Juros / Multa</label>
                                 <input type="number" step="0.01" min="0" name="acrescimo" id="vincular_acrescimo" class="form-control mb-3" value="0" onkeyup="recalcularSoma()" onchange="recalcularSoma()">
@@ -246,7 +312,7 @@
                                 <label class="font-weight-bold text-success small"><i class="fas fa-minus-circle"></i> Desconto</label>
                                 <input type="number" step="0.01" min="0" name="desconto" id="vincular_desconto" class="form-control" value="0" onkeyup="recalcularSoma()" onchange="recalcularSoma()">
                             </div>
-
+                          {{-- Adicione este bloco dentro do modalVincular --}}
                             <div class="mt-4 p-3 bg-white border rounded">
                                 <label class="font-weight-bold text-dark small"><i class="fas fa-file-alt"></i> Tipo de Documento</label>
                                 <select name="tipo_documento" class="form-control" required>
@@ -259,24 +325,24 @@
                             </div>
                         </div>
                         
+                      
                         <div class="col-md-9">
-    <div class="d-flex justify-content-between align-items-end mb-2">
-        <label class="font-weight-bold text-muted small mb-0">Títulos Encontrados</label>
-        
-        {{-- NOVA BARRA DE BUSCA MANUAL --}}
-        <div class="input-group input-group-sm w-50">
-            <div class="input-group-prepend">
-                <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
-            </div>
-            <input type="text" id="busca_vinculo" class="form-control" placeholder="Pesquisar nome ou valor..." onkeyup="filtrarSugestoes()">
-        </div>
-    </div>
-    
-    <div id="lista_checkboxes" class="border rounded bg-white p-2 shadow-sm" style="max-height: 280px; overflow-y: auto;">
-        <!-- Lista injetada pelo JS -->
-    </div>
-    <small id="msg_feedback" class="form-text mt-2 font-weight-bold"></small>
-</div>
+                            <div class="d-flex justify-content-between align-items-end mb-2">
+                                <label class="font-weight-bold text-muted small mb-0">Títulos Encontrados</label>
+                                
+                                <div class="input-group input-group-sm w-50">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
+                                    </div>
+                                    <input type="text" id="busca_vinculo" class="form-control" placeholder="Pesquisar nome ou valor..." onkeyup="filtrarSugestoes()">
+                                </div>
+                            </div>
+                            
+                            <div id="lista_checkboxes" class="border rounded bg-white p-2 shadow-sm" style="max-height: 280px; overflow-y: auto;">
+                                <!-- Lista injetada pelo JS -->
+                            </div>
+                            <small id="msg_feedback" class="form-text mt-2 font-weight-bold"></small>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer bg-white border-0">
@@ -393,7 +459,6 @@
                         </select>
                     </div>
 
-                    {{-- NOVO CAMPO DE CATEGORIA --}}
                     <div class="form-group">
                         <label class="font-weight-bold text-muted small">Categoria Financeira</label>
                         <select name="categoria_id" id="select_cat_transf" class="form-control" required>
@@ -412,7 +477,7 @@
     </div>
 </div>
 
-{{-- MODAL MANUAL DE INSTRUÇÕES DA CONCILIAÇÃO --}}
+{{-- MODAL MANUAL --}}
 <div class="modal fade" id="modalManualConciliacao" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content shadow-lg border-0">
@@ -421,37 +486,14 @@
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
             </div>
             <div class="modal-body bg-light" style="max-height: 70vh; overflow-y: auto;">
-                
                 <h5 class="text-primary font-weight-bold">1. Qual o objetivo desta tela?</h5>
                 <p>A conciliação bancária serve para "bater" (comparar) o que aconteceu no seu banco real com o que está lançado no ERP. Isso evita fraudes, esquecimentos e garante que o saldo do sistema seja idêntico ao saldo do banco.</p>
-
                 <hr>
-
                 <h5 class="text-primary font-weight-bold">2. Importando o Arquivo (Passo a Passo)</h5>
                 <ol>
-                    <li>Acesse o seu internet banking (Itaú, Caixa, etc.) e procure pela opção "Exportar Extrato".</li>
-                    <li>Escolha o formato <strong>OFX</strong> (é o padrão universal para integração de sistemas).</li>
+                    <li>Acesse o seu internet banking e procure pela opção "Exportar Extrato" no formato <strong>OFX</strong>.</li>
                     <li>No sistema, escolha a conta bancária correspondente, selecione o arquivo OFX baixado e clique em <strong>Processar Arquivo</strong>.</li>
-                    <li>O sistema lerá as transações e as listará na tabela de extrato como "Pendentes".</li>
                 </ol>
-
-                <hr>
-
-                <h5 class="text-primary font-weight-bold">3. Como analisar e baixar os lançamentos</h5>
-                <p>Na coluna "Ações", você tem 4 opções para lidar com cada linha do extrato bancário:</p>
-                <ul>
-                    <li><strong class="text-primary">Vincular:</strong> Use quando o boleto/conta já foi lançado no sistema (Contas a Pagar/Receber), mas ainda está em aberto. O sistema buscará opções similares. Você marca a correta e ele faz a baixa automática, calculando inclusive juros e descontos.</li>
-                    <li><strong class="text-dark">+ Novo:</strong> Use para despesas/receitas que caíram no banco, mas esqueceram de lançar no sistema (ex: Tarifas bancárias, PIX de última hora). Ele já cria a conta, faz a baixa e ajusta o saldo na mesma hora.</li>
-                    <li><strong style="color: #8b5cf6;">Transf.:</strong> Use para movimentações de dinheiro entre suas próprias contas (ex: enviou do Itaú para o Caixa Fundo Fixo).</li>
-                    <li><strong class="text-success">OK (Arquivar):</strong> Use para limpar a linha da tela caso ela já tenha sido baixada manualmente no passado ou seja um erro de exportação do banco.</li>
-                </ul>
-
-                <hr>
-
-                <h5 class="text-primary font-weight-bold">4. Robô e Regras Automáticas</h5>
-                <p>Ao usar o botão "+ Novo", você verá uma caixinha chamada <strong>"Salvar Regra"</strong>. Se você marcá-la (ideal para tarifas, energia, internet), no mês seguinte você não precisará fazer nada manualmente!</p>
-                <p>Basta importar o OFX e clicar no botão verde superior <strong>"Rodar Automação"</strong>. O sistema lembrará da regra, criará as contas, fará a baixa e atualizará o saldo automaticamente para todas as linhas que tiverem o mesmo nome.</p>
-
             </div>
             <div class="modal-footer bg-white">
                 <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal">Entendi</button>
@@ -460,11 +502,174 @@
     </div>
 </div>
 
+@endsection
+
+@section('javascript')
+@section('javascript')
 <script>
 const pagarSugestoes = @json($contasPagarSugestao ?? []);
 const receberSugestoes = @json($contasReceberSugestao ?? []);
 let dadoExtratoAtual = null;
-  
+
+function carregarSugestoes(extrato_id) {
+    $('.extrato-row').removeClass('bg-warning text-dark font-weight-bold');
+    $('#row_' + extrato_id).addClass('bg-warning text-dark font-weight-bold');
+
+    $.get("{{ url('financeiro/conciliacao/sugestoes') }}", { extrato_id: extrato_id }, function(data) {
+        let painel = $('#painel_sugestoes');
+        let corCarga = data.tipo_conta === 'pagar' ? 'danger' : 'success';
+
+        painel.html(`
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-magic"></i> Painel Inteligente</span>
+                <span class="badge badge-${corCarga}">R$ ${parseFloat(data.valor_banco).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+            </div>
+            <div class="card-body p-3 bg-light" id="lista_sugestoes"></div>
+        `);
+
+        let lista = painel.find('#lista_sugestoes');
+        let temResultados = false;
+
+        // 1. Títulos Abertos
+        if (data.sugestoes && data.sugestoes.length > 0) {
+            temResultados = true;
+            lista.append(`<h6 class="text-muted mb-3 font-weight-bold text-uppercase small">Títulos com valor exato/próximo:</h6>`);
+            data.sugestoes.forEach(item => {
+                let nome = item.fornecedor ? item.fornecedor.razao_social : (item.cliente ? item.cliente.razao_social : 'Sem Nome');
+                lista.append(gerarCardUnico(item, nome, corCarga, extrato_id, data.tipo_conta));
+            });
+        }
+
+        // 2. Títulos JÁ PAGOS (Elizabete)
+        if (data.sugestoes_pagas && data.sugestoes_pagas.length > 0) {
+            temResultados = true;
+            lista.append(`<h6 class="text-warning mt-3 mb-3 font-weight-bold text-uppercase small"><i class="fas fa-exclamation-triangle"></i> Encontrado como PAGO no ERP:</h6>`);
+            data.sugestoes_pagas.forEach(item => {
+                let nome = item.fornecedor ? item.fornecedor.razao_social : (item.cliente ? item.cliente.razao_social : 'Sem Nome');
+                lista.append(gerarCardPago(item, nome, extrato_id));
+            });
+        }
+
+        // 3. Combos (Soma de 2)
+        if (data.combos && data.combos.length > 0) {
+            temResultados = true;
+            lista.append(`<h6 class="text-success mt-4 mb-3 font-weight-bold text-uppercase small"><i class="fas fa-boxes"></i> Combinação Exata (Soma de 2):</h6>`);
+            data.combos.forEach(combo => {
+                let nome = combo[0].fornecedor ? combo[0].fornecedor.razao_social : (combo[0].cliente ? combo[0].cliente.razao_social : 'Sem Nome');
+                lista.append(gerarCardCombo(combo, nome, corCarga, extrato_id, data.tipo_conta));
+            });
+        }
+
+        // 4. Outras Opções (Supergasbras com valores diferentes)
+        if (!temResultados && data.outras_opcoes && data.outras_opcoes.length > 0) {
+            temResultados = true;
+            lista.append(`<div class="alert alert-warning shadow-sm"><i class="fas fa-filter"></i> Valor exato não encontrado, mas achamos este parceiro próximo a esta data:</div>`);
+            data.outras_opcoes.forEach(item => {
+                let nome = item.fornecedor ? item.fornecedor.razao_social : (item.cliente ? item.cliente.razao_social : 'Sem Nome');
+                lista.append(gerarCardUnico(item, nome, corCarga, extrato_id, data.tipo_conta));
+            });
+        }
+
+        if (!temResultados) {
+            lista.html(`
+                <div class="alert alert-warning shadow-sm border-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Nada encontrado.<br><br>
+                    Utilize o botão <strong>"+ Novo"</strong> na tabela ao lado para gerar o lançamento.
+                </div>
+            `);
+        }
+    });
+}
+
+function gerarCardUnico(item, nome, cor, extrato_id, tipo_conta) {
+    let venc = item.data_vencimento ? item.data_vencimento.split('-').reverse().join('/') : '--/--/----';
+    let valor = parseFloat(item.valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    return `
+        <div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid #3b82f6 !important;">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="text-dark" style="font-size: 1.1rem;">${nome}</strong>
+                    <strong class="text-${cor} h5 mb-0">R$ ${valor}</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <div>
+                        <small class="d-block text-muted"><i class="far fa-calendar-alt"></i> Vencimento: ${venc}</small>
+                        <small class="d-block text-muted"><i class="fas fa-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
+                    </div>
+                    <button class="btn btn-sm btn-primary font-weight-bold px-3 shadow-sm" onclick='conciliarAgora([${item.id}], ${extrato_id}, "${tipo_conta}")'>
+                        <i class="fas fa-link"></i> Bater Valor
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+// NOVO: GERA O CARD PARA TÍTULOS JÁ PAGOS
+function gerarCardPago(item, nome, extrato_id) {
+    let pgto = item.data_pagamento || item.data_recebimento || '--/--/----';
+    if(pgto !== '--/--/----') pgto = pgto.split('-').reverse().join('/');
+    let valor = parseFloat(item.valor_pago || item.valor_recebido || item.valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    
+    return `
+        <div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid #f59e0b !important; background-color: #fffbeb;">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="text-dark" style="font-size: 1.1rem;">${nome}</strong>
+                    <strong class="text-warning h5 mb-0">R$ ${valor}</strong>
+                </div>
+                <div class="d-flex justify-content-between align-items-end">
+                    <div>
+                        <span class="badge badge-warning text-dark mb-1">Pago em: ${pgto}</span><br>
+                        <small class="text-muted"><i class="fas fa-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary font-weight-bold px-3 shadow-sm" title="Remove este aviso da tela do banco" onclick='confirmarOKIndividual(${extrato_id})'>
+                        <i class="fas fa-check-double"></i> Apenas Arquivar Banco
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function gerarCardCombo(combo, nome, cor, extrato_id, tipo_conta) {
+    let valorTotal = (parseFloat(combo[0].valor_integral) + parseFloat(combo[1].valor_integral)).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+    let ids = JSON.stringify([combo[0].id, combo[1].id]);
+
+    return `
+        <div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid #10b981 !important; background-color: #f0fdf4;">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="text-dark" style="font-size: 1.1rem;">${nome}</strong>
+                    <strong class="text-${cor} h5 mb-0">R$ ${valorTotal}</strong>
+                </div>
+                <div class="mb-2">
+                    <small class="d-block text-muted"><i class="fas fa-plus"></i> R$ ${parseFloat(combo[0].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[0].data_vencimento.split('-').reverse().join('/')})</small>
+                    <small class="d-block text-muted"><i class="fas fa-plus"></i> R$ ${parseFloat(combo[1].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[1].data_vencimento.split('-').reverse().join('/')})</small>
+                </div>
+                <div class="text-right">
+                    <button class="btn btn-sm btn-success font-weight-bold px-3 shadow-sm" onclick='conciliarAgora(${ids}, ${extrato_id}, "${tipo_conta}")'>
+                        <i class="fas fa-link"></i> Conciliar Ambos
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function conciliarAgora(titulos_ids, extrato_id, tipo_conta) {
+    if (!confirm('Tem certeza que deseja baixar este(s) título(s) com o valor do extrato?')) return;
+    let form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url('financeiro/conciliacao/conciliar') }}";
+    form.innerHTML = `@csrf <input type="hidden" name="extrato_id" value="${extrato_id}"><input type="hidden" name="tipo_conta" value="${tipo_conta}">`;
+    titulos_ids.forEach(id => { form.innerHTML += `<input type="hidden" name="conta_ids[]" value="${id}">`; });
+    document.body.appendChild(form);
+    form.submit();
+}
+
+
+
+// ==========================================
+// FUNÇÕES ORIGINAIS (MANTIDAS INTACTAS)
+// ==========================================
 function abrirModalVincular(dados) {
     dadoExtratoAtual = dados;
     document.getElementById('vincular_extrato_id').value = dados.id;
@@ -482,61 +687,41 @@ function abrirModalVincular(dados) {
     $('#modalVincular').modal('show');
 }
 
-  
-  
 function selecionarAtencao() {
     let marcados = 0;
-    // Pega todas as caixinhas de seleção individuais
     let checkboxes = document.querySelectorAll('.check-item');
-    
     checkboxes.forEach(function(chk) {
-        // Pega a linha (<tr>) inteira onde essa caixinha está
         let linha = chk.closest('tr');
-        
-        // Se a linha contiver a etiqueta de Atenção, ele marca a caixinha
         if (linha.innerHTML.includes('Atenção: Consta PAGO no ERP')) {
             chk.checked = true;
             marcados++;
         }
     });
-
-    if(marcados === 0) {
-        alert('Nenhum lançamento com o status "Atenção" encontrado nesta página.');
-    }
+    if(marcados === 0) alert('Nenhum lançamento com o status "Atenção" encontrado nesta página.');
 }
-  
-  // --- FUNÇÃO DO BOTÃO DE LOTE ---
+
 function confirmarLote() {
-    // Conta quantas caixinhas estão marcadas
     let marcados = document.querySelectorAll('.check-item:checked').length;
-    
     if (marcados === 0) {
         alert('Selecione pelo menos um lançamento marcando as caixinhas primeiro.');
         return;
     }
-    
     if (confirm(`Você está prestes a confirmar ${marcados} lançamentos de uma vez. Deseja continuar?`)) {
-        // Se confirmou, envia o formulário principal
         document.getElementById('form_lote').submit();
     }
 }
 
-// --- FUNÇÃO DO BOTÃO OK INDIVIDUAL ---
 function confirmarOKIndividual(idExtrato) {
     if (confirm('Confirmar ciência deste lançamento individual? Ele será removido das pendências.')) {
-        // Cria um formulário invisível na hora e envia (Resolve o problema de Form dentro de Form)
         let formInvisivel = document.createElement('form');
         formInvisivel.method = 'POST';
         formInvisivel.action = '{{ url("financeiro/conciliacao/arquivar") }}';
-        formInvisivel.innerHTML = `
-            @csrf
-            <input type="hidden" name="extrato_id" value="${idExtrato}">
-        `;
+        formInvisivel.innerHTML = `@csrf <input type="hidden" name="extrato_id" value="${idExtrato}">`;
         document.body.appendChild(formInvisivel);
         formInvisivel.submit();
     }
 }
-  
+
 function abrirModalNovo(dados) {
     document.getElementById('novo_extrato_id').value = dados.id;
     document.getElementById('info_extrato_novo').innerHTML = `<strong>${dados.descricao}</strong><br>R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
@@ -547,35 +732,22 @@ function abrirModalNovo(dados) {
     const selectReceber = document.getElementById('select_categoria_receber');
 
     if (dados.tipo === 'debit') {
-        // --- LÓGICA PARA SAÍDA (PAGAR) ---
-        // Mostra Fornecedor e Categoria Pagar
         document.getElementById('div_fornecedor').style.display = 'block';
         divPagar.style.display = 'block';
-        selectPagar.disabled = false;
-        selectPagar.required = true;
+        selectPagar.disabled = false; selectPagar.required = true;
 
-        // Esconde Cliente e Categoria Receber
         document.getElementById('div_cliente').style.display = 'none';
         divReceber.style.display = 'none';
-        selectReceber.disabled = true;
-        selectReceber.required = false;
-        selectReceber.value = ''; 
+        selectReceber.disabled = true; selectReceber.required = false; selectReceber.value = ''; 
     } else {
-        // --- LÓGICA PARA ENTRADA (RECEBER) ---
-        // Mostra Cliente e Categoria Receber
         document.getElementById('div_cliente').style.display = 'block';
         divReceber.style.display = 'block';
-        selectReceber.disabled = false;
-        selectReceber.required = true;
+        selectReceber.disabled = false; selectReceber.required = true;
 
-        // Esconde Fornecedor e Categoria Pagar
         document.getElementById('div_fornecedor').style.display = 'none';
         divPagar.style.display = 'none';
-        selectPagar.disabled = true;
-        selectPagar.required = false;
-        selectPagar.value = ''; 
+        selectPagar.disabled = true; selectPagar.required = false; selectPagar.value = ''; 
     }
-
     $('#modalNovo').modal('show');
 }
 
@@ -587,26 +759,18 @@ function abrirModalTransferir(dados) {
         <strong class="h5" style="color: #8b5cf6;">R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
     `;
 
-    // INTELIGÊNCIA DE UX: Auto-selecionar a categoria de transferência
     let selectCat = document.getElementById('select_cat_transf');
-    selectCat.value = ""; // Reseta o campo
-    
-    // Procura nas options alguma que contenha as palavras-chave exatas que você usa
+    selectCat.value = ""; 
     for (let i = 0; i < selectCat.options.length; i++) {
-        // Converte para maiúsculo para ignorar acentos e letras minúsculas
         let nomeCat = selectCat.options[i].text.toUpperCase();
-        
-        // Busca por TRANSF, CAIXA ou FUNDO (de fundo fixo)
         if (nomeCat.includes('TRANSF') || nomeCat.includes('CAIXA') || nomeCat.includes('FUNDO')) {
             selectCat.selectedIndex = i;
-            break; // Para no primeiro que achar e já deixa selecionado na tela
+            break; 
         }
     }
-
     $('#modalTransferir').modal('show');
 }
 
-// === NOVO: PREENCHIMENTO AUTOMÁTICO DE JUROS/DESCONTO ===
 function aplicarDiferencaAuto() {
     let somaTituloss = 0;
     document.querySelectorAll('.check-titulo:checked').forEach(chk => {
@@ -617,11 +781,9 @@ function aplicarDiferencaAuto() {
     let diferenca = extrato - somaTituloss;
     
     if (diferenca > 0) {
-        // Banco cobrou mais do que a nota -> É Juros/Multa
         document.getElementById('vincular_acrescimo').value = diferenca.toFixed(2);
         document.getElementById('vincular_desconto').value = '0';
     } else if (diferenca < 0) {
-        // Banco cobrou menos do que a nota -> É Desconto
         document.getElementById('vincular_desconto').value = Math.abs(diferenca).toFixed(2);
         document.getElementById('vincular_acrescimo').value = '0';
     }
@@ -652,11 +814,8 @@ function recalcularSoma() {
         btnSubmit.innerText = "Confirmar Conciliação";
         btnSubmit.className = "btn btn-success font-weight-bold px-4";
     } else {
-        // Se houver diferença E algum título estiver marcado, mostra o botão mágico
         let btnAuto = soma > 0 ? `<button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 mt-1 d-block w-100 font-weight-bold" onclick="aplicarDiferencaAuto()"><i class="fas fa-magic"></i> Lançar Diferença</button>` : '';
-        
         difEl.innerHTML = `<span class="text-danger">R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span> ${btnAuto}`;
-        
         btnSubmit.disabled = true;
         btnSubmit.innerText = "Aguardando Fechamento...";
         btnSubmit.className = "btn btn-primary font-weight-bold px-4";
@@ -667,7 +826,7 @@ function filtrarSugestoes() {
     const tipo = document.getElementById('vincular_tipo').value;
     const divCheckboxes = document.getElementById('lista_checkboxes');
     const msg = document.getElementById('msg_feedback');
-    const termoBusca = document.getElementById('busca_vinculo').value.toLowerCase().trim(); // Pega o que o usuário digitou
+    const termoBusca = document.getElementById('busca_vinculo').value.toLowerCase().trim(); 
     const listaOriginal = (tipo === 'pagar') ? pagarSugestoes : receberSugestoes;
     
     const valorExtrato = parseFloat(dadoExtratoAtual.valor);
@@ -677,7 +836,6 @@ function filtrarSugestoes() {
     let itensOrdenados = [];
     let somaPorFornecedor = {};
 
-    // Preparação para Combo de soma exata
     listaOriginal.forEach(item => {
         if (item.status == 0) { 
             let nomeForn = (item.nome_parceiro || 'SEM_NOME').trim().toUpperCase();
@@ -694,7 +852,6 @@ function filtrarSugestoes() {
         }
     }
 
-    // Lógica principal de Match e Filtro
     listaOriginal.forEach(item => {
         let score = 0;
         const valorTitulo = parseFloat(item.valor_integral || 0);
@@ -702,39 +859,32 @@ function filtrarSugestoes() {
         const parceiroUpper = (item.nome_parceiro || '').toUpperCase().trim();
         const dataFmt = item.data_vencimento ? item.data_vencimento.split('-').reverse().join('/') : '';
         
-        // --- 1. FILTRO MANUAL (Se o usuário digitou algo na barra de pesquisa) ---
         if (termoBusca !== '') {
-            // Se o que ele digitou não existe nem no nome, nem no valor e nem na data, ignora este item
             if (!parceiroNome.includes(termoBusca) && !valorTitulo.toString().includes(termoBusca) && !dataFmt.includes(termoBusca)) {
-                return; // Pula para o próximo (não mostra na tela)
+                return; 
             } else {
-                score += 50000; // Força o item pesquisado a ficar no topo
+                score += 50000; 
             }
         }
 
-        // --- 2. INTELIGÊNCIA: Nomes parecidos e fragmentados (Adriano Santos Silva) ---
-        // Pega palavras maiores que 3 letras do extrato do banco
         let palavrasBanco = descBanco.split(/[\s-]+/).filter(p => p.length > 3);
         let bateuNome = false;
         
         for(let palavra of palavrasBanco) {
-            // Se a palavra do banco estiver no nome cadastrado no ERP, ganha ponto
             if (parceiroNome.includes(palavra)) {
                 bateuNome = true;
                 score += 2000; 
             }
         }
 
-        // --- 3. INTELIGÊNCIA: Valores Exatos ---
         let diferencaValor = Math.abs(valorTitulo - valorExtrato);
         if (diferencaValor < 0.01) {
             score += 1000; 
-            if (bateuNome) score += 5000; // Match Perfeito: Bateu Nome e Valor!
+            if (bateuNome) score += 5000; 
         } else if (diferencaValor <= 5.00) {
-            score += 100; // Pode ser juros pequeno ou tarifa retida (Aproximado)
+            score += 100; 
         }
 
-        // --- 4. INTELIGÊNCIA: Faz parte do Combo Perfeito? ---
         let fazParteDoCombo = false;
         if (comboPerfeito !== null && parceiroUpper === comboPerfeito && item.status == 0) {
             score += 10000; 
@@ -744,7 +894,6 @@ function filtrarSugestoes() {
         itensOrdenados.push({ item: item, score: score, isCombo: fazParteDoCombo });
     });
 
-    // Ordena do maior Score (mais parecido/pesquisado) para o menor
     itensOrdenados.sort((a, b) => b.score - a.score);
 
     if (itensOrdenados.length === 0) {
@@ -754,7 +903,6 @@ function filtrarSugestoes() {
         return;
     }
 
-    // Desenha na tela
     itensOrdenados.forEach((c, index) => {
         const i = c.item;
         const dataVenc = i.data_vencimento ? i.data_vencimento.split('-').reverse().join('/') : 'S/D';
@@ -762,7 +910,6 @@ function filtrarSugestoes() {
         const badgeStatus = (i.status == 1) ? '<span class="badge badge-warning text-dark ml-2">Já Pago</span>' : '';
         const corLinha = (i.status == 1) ? 'bg-light' : '';
         
-        // Se o usuário não digitou nada, aplica as regras de Auto-Check
         let checkAttribute = '';
         if (termoBusca === '') {
             if (c.isCombo || (index === 0 && c.score >= 6000 && i.status == 0)) {
@@ -787,20 +934,24 @@ function filtrarSugestoes() {
 
     recalcularSoma();
 
-    // Mensagens de Feedback só aparecem se não estiver buscando manualmente
     if (termoBusca === '') {
         if (itensOrdenados[0].score >= 10000) {
-            msg.innerHTML = `<i class="fas fa-boxes text-success"></i> Combo Inteligente: O sistema encontrou vários títulos deste fornecedor que somam o valor exato!`;
+            msg.innerHTML = `<i class="fas fa-boxes text-success"></i> Combo Inteligente: Múltiplos títulos exatos!`;
         } else if (itensOrdenados[0].score >= 6000) {
-            msg.innerHTML = `<i class="fas fa-bullseye text-success"></i> Combinação exata de título único (Nome e Valor conferem)!`;
+            msg.innerHTML = `<i class="fas fa-bullseye text-success"></i> Combinação exata de título único!`;
         } else if (itensOrdenados[0].score >= 2000) {
-            msg.innerHTML = `<i class="fas fa-search text-primary"></i> Encontramos nomes parecidos com a descrição do banco.`;
+            msg.innerHTML = `<i class="fas fa-search text-primary"></i> Nomes parecidos encontrados.`;
         } else {
-            msg.innerHTML = `<i class="fas fa-info-circle text-info"></i> Selecione os títulos manualmente ou use a barra de pesquisa acima.`;
+            msg.innerHTML = `<i class="fas fa-info-circle text-info"></i> Selecione os títulos manualmente.`;
         }
     } else {
         msg.innerHTML = `<i class="fas fa-filter text-primary"></i> Mostrando resultados para: "${termoBusca}"`;
     }
 }
+
+// Para manter os checkboxes marcando todos no header da tabela
+$('#checkAll').click(function() {
+    $('.check-item').prop('checked', this.checked);
+});
 </script>
 @endsection

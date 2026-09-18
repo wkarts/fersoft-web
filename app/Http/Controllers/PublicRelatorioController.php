@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Pesagem;
 use App\Models\ConfigNota;
 use App\Services\LogService;
+use App\Support\PesagemReportCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use NFePHP\DA\Legacy\Pdf;
@@ -49,6 +50,29 @@ class PublicRelatorioController extends Controller
         return $value;
     }
 
+    protected function cellFitText(
+        string $texto,
+        float $largura,
+        float $altura = 5,
+        int $border = 0,
+        int $ln = 1,
+        string $align = 'L',
+        float $fontSize = 7,
+        float $minFontSize = 5.2,
+        string $style = ''
+    ): void {
+        $textoPdf = mb_convert_encoding($texto, 'ISO-8859-1', 'UTF-8');
+        $size = $fontSize;
+
+        $this->pdf->SetFont('Arial', $style, $size);
+        while ($size > $minFontSize && $this->pdf->GetStringWidth($textoPdf) > max(1, $largura - 1)) {
+            $size -= 0.2;
+            $this->pdf->SetFont('Arial', $style, $size);
+        }
+
+        $this->pdf->Cell($largura, $altura, $textoPdf, $border, $ln, $align);
+    }
+
     /**
      * Gera o relatório completo de 80mm em PDF baseado no token da pesagem.
      */
@@ -84,29 +108,10 @@ class PublicRelatorioController extends Controller
             $this->montaCarimbo($dadosEmpresa);
             $this->montaRodape($dadosEmpresa);
 
-            // 🔹 Captura os dados antes da alteração para log
-            $dadosAntes = $pesagem->toArray();
-
-            // **Altera a visibilidade após a impressão para "não visível" (view_public = 0)**
-            $pesagem->view_public = 0; // Altera para não visível
-            $pesagem->save(); // Salva a alteração no banco de dados
-
-            // 🔹 Captura os dados após a alteração para log
-            $dadosDepois = $pesagem->toArray();
-
-            // 🔹 Instancia manual do LogService com os IDs corretos
-            $empresaId = $pesagem->empresa_id;
-            $usuarioId = auth()->check() ? auth()->id() : null;
-            $filialId = $pesagem->filial_id ?? null;
-
-            $logService = new \App\Services\LogService($empresaId, $usuarioId, $filialId);
-
-            // 🔹 Registra log da alteração da visibilidade
-            $logService->registrar('get/update', PublicRelatorioController::class, [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAntes,
-                'dados_depois' => $dadosDepois,
-            ]);
+            // Altera a visibilidade após a impressão. O BaseModel já audita
+            // esta mudança uma única vez, somente com o campo alterado.
+            $pesagem->view_public = 0;
+            $pesagem->save();
 
             // 🔹 Retorna o PDF como resposta
             $output = $this->pdf->Output('', 'S'); // Gera o PDF como string
@@ -137,6 +142,8 @@ class PublicRelatorioController extends Controller
             if (!$config) {
                 throw new \Exception("Configuração da empresa não encontrada para o ID: {$empresaId}");
             }
+
+            $this->config = $config;
 
             return $config->toArray();
         } catch (\Exception $e) {
@@ -337,100 +344,64 @@ class PublicRelatorioController extends Controller
         }
 
         /**
-         * ======================
-         * CÁLCULO ROBUSTO (SEM NEGATIVOS / SEM ESTOURO)
-         * ======================
+         * Consolidação exclusivamente de apresentação.
+         * A conciliação persistida permanece intacta.
          */
-        $entradas = $pesagem->tickets->where('tipo', 'entrada')->sum(function ($t) {
-            return $this->f($t->peso);
-        });
-        $saidas   = $pesagem->tickets->where('tipo', 'saida')->sum(function ($t) {
-            return $this->f($t->peso);
-        });
-        $avulsas  = $pesagem->tickets->where('tipo', 'avulsa')->sum(function ($t) {
-            return $this->f($t->peso);
-        });
-        $bags     = $pesagem->tickets->sum(function ($t) {
-            return $this->f($t->peso_bag);
-        });
-
-        $baseEntradas = $entradas + $avulsas;
-
-        // diferença absoluta entre (entradas + avulsas) e saídas
-        $pesoLiquido = $this->absDiff($baseEntradas, $saidas);
-
-        // somatório de percentuais (sempre sobre base não-negativa)
-        $pct = 0.0;
-        if (!empty($pesagem->danificado)) $pct += $this->f($pesagem->danificado_desconto);
-        if (!empty($pesagem->quebrado))   $pct += $this->f($pesagem->quebrado_desconto);
-        if (!empty($pesagem->esverdeado)) $pct += $this->f($pesagem->esverdeado_desconto);
-        if (!empty($pesagem->ardido))     $pct += $this->f($pesagem->ardido_desconto);
-        if (!empty($pesagem->secagem))    $pct += $this->f($pesagem->secagem_desconto);
-        $pct += $this->f($pesagem->umidade_desconto);
-        $pct += $this->f($pesagem->impureza_desconto);
-
-        // descontos percentuais calculados sobre o líquido não-negativo
-        $descontosPercentuais = ($pesoLiquido > 0) ? ($pesoLiquido * ($pct / 100.0)) : 0.0;
-
-        // soma de bags + percentuais, porém NUNCA acima do pesoLiquido
-        $descontos = $this->clamp($bags + $descontosPercentuais, 0.0, $pesoLiquido);
-
-        // Peso final nunca negativo
-        $pesoFinal = $this->clamp($pesoLiquido - $descontos, 0.0, $pesoLiquido);
-
-        // Para exibição adicional (mantendo seu rótulo original)
-        $pesoBrutoPorPesagem = $this->f($baseEntradas);
+        $resumo = PesagemReportCalculator::summarize($pesagem);
+        $pesoInicial = (float) $resumo['peso_inicial'];
+        $pesoFinalVeiculo = (float) $resumo['peso_final'];
+        $pesoLiquido = (float) $resumo['peso_liquido_total'];
+        $descontos = (float) $resumo['descontos'];
+        $pesoFinal = (float) $resumo['peso_final_liquido'];
 
         // Caixa Resumo
         $this->pdf->Ln(2); // Espaçamento antes da caixa
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 7, '---------------------------------------Resumo------------------------------------------', 0, 1, 'C');
 
+        $exibirValoresRelatorio = (bool) ($this->config->pesagem_exibir_valores_relatorio ?? true);
+        $alturaResumo = $exibirValoresRelatorio ? 35 : 30;
+
         // Desenha a borda da caixa
-        $this->pdf->Cell(0, 30, '', 1, 1); // Cria uma célula de altura 30mm com borda
+        $this->pdf->Cell(0, $alturaResumo, '', 1, 1);
 
         // Configura a posição inicial dentro da caixa
         $startX = $this->pdf->GetX() + 0;
-        $startY = $this->pdf->GetY() - 30;
+        $startY = $this->pdf->GetY() - $alturaResumo;
 
         $this->pdf->SetXY($startX, $startY + 0);
 
         // Exibição dos cálculos gerais
         $this->pdf->Ln(0);
         $this->pdf->SetFont('Arial', 'B', 8);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Bruto Total (Pesagem): ' . number_format($pesoBrutoPorPesagem, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Total Entrada: ' . number_format($entradas, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Total Saída: ' . number_format($saidas, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Líquido: ' . number_format($pesoLiquido, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Inicial: ' . number_format($pesoInicial, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final: ' . number_format($pesoFinalVeiculo, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Líquido Total: ' . number_format($pesoLiquido, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
         $this->pdf->Cell(0, 5, mb_convert_encoding('Descontos: ' . number_format($descontos, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final: ' . number_format($pesoFinal, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final Líquido: ' . number_format($pesoFinal, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        if ($exibirValoresRelatorio) {
+            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Total da Operação: R$ ' . number_format((float) $resumo['valor_total_operacao'], 2, ',', '.'), 'ISO-8859-1', 'UTF-8'), 0, 1);
+        }
 
         // Lista de Tickets
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 5, '--------------------------------Tickets / Pesagens-----------------------------------', 0, 1, 'C');
 
-        // Detalhes dos produtos
-        $ticketsAgrupados = $pesagem->tickets->groupBy('produto_id');
-        if ($ticketsAgrupados->isEmpty()) {
+        // Detalhes dos produtos conciliados apenas para apresentação.
+        $produtosResumo = $resumo['produtos'];
+        if ($produtosResumo->isEmpty()) {
             $this->pdf->Cell(0, 5, mb_convert_encoding('Nenhum ticket encontrado!', 'ISO-8859-1', 'UTF-8'), 0, 1);
             return;
         }
 
-        foreach ($ticketsAgrupados as $produtoId => $tickets) {
-            $produto = $tickets->first()->produto ?? null;
-
-            // Pesos por produto (com avulsas e diferença absoluta)
-            $entradaProduto = (float) $tickets->where('tipo', 'entrada')->sum('peso');
-            $saidaProduto   = (float) $tickets->where('tipo', 'saida')->sum('peso');
-            $avulsaProduto  = (float) $tickets->where('tipo', 'avulsa')->sum('peso');
-
-            $entradaProduto = $this->f($entradaProduto);
-            $saidaProduto   = $this->f($saidaProduto);
-            $avulsaProduto  = $this->f($avulsaProduto);
-
-            $brutoProduto   = $entradaProduto + $avulsaProduto;
-            $liqProduto     = $this->absDiff($brutoProduto, $saidaProduto); // diferença absoluta
+        foreach ($produtosResumo as $grupoProduto) {
+            $produto = $grupoProduto['produto'];
+            $tickets = $grupoProduto['tickets'];
+            $entradaProduto = (float) $grupoProduto['entrada'];
+            $saidaProduto = (float) $grupoProduto['saida'];
+            $liqProduto = (float) $grupoProduto['peso_liquido'];
+            $recipienteProduto = (float) $grupoProduto['peso_bag'];
 
             // Caixa do produto
             $this->pdf->Ln(0);
@@ -446,11 +417,10 @@ class PublicRelatorioController extends Controller
             $this->pdf->Ln(0);
             $this->pdf->SetFont('Arial', '', 7);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Produto: ' . ($produto->nome ?? 'Não informado'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $this->pdf->Cell(0, 4, mb_convert_encoding('Peso Bruto: ' . number_format($brutoProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Entrada: ' . number_format($entradaProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Saída: ' . number_format($saidaProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-            // mantém a métrica "recipiente" como no relatório impresso (total de descontos aplicados)
-            $this->pdf->Cell(0, 4, mb_convert_encoding('Recipiente de Pesagem: ' . number_format($descontos, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+            // Recipiente/desconto específico do produto; apenas apresentação.
+            $this->pdf->Cell(0, 4, mb_convert_encoding('Recipiente de Pesagem: ' . number_format($recipienteProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Peso Líquido: ' . number_format($liqProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
 
             // Tabela de tickets por produto
@@ -497,20 +467,17 @@ class PublicRelatorioController extends Controller
 
         $this->pdf->SetXY($startX, $startY + 0);
 
-        // Exibe as informações da empresa
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Razão Social: ' . ($dadosEmpresa['razao_social'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
+        // Exibe as informações da empresa respeitando a largura real de 80 mm.
+        $larguraUtil = $this->larg - 4;
+        $coluna = $larguraUtil / 2;
 
-        // Exibe o CNPJ e IE em uma linha
-        $this->pdf->Cell(50, 5, mb_convert_encoding('CNPJ: ' . ($dadosEmpresa['cnpj'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('IE: ' . ($dadosEmpresa['ie'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-
-        // Exibe o município e UF em uma linha
-        $this->pdf->Cell(50, 5, mb_convert_encoding('Município: ' . ($dadosEmpresa['municipio'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('UF: ' . ($dadosEmpresa['uf'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-
-        // Exibe o e-mail e telefone em uma linha
-        $this->pdf->Cell(50, 5, mb_convert_encoding('E-mail: ' . ($dadosEmpresa['email'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('Fone: ' . ($dadosEmpresa['fone'] ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->cellFitText('Razão Social: ' . ($dadosEmpresa['razao_social'] ?? 'N/A'), $larguraUtil, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('CNPJ: ' . ($dadosEmpresa['cnpj'] ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('IE: ' . ($dadosEmpresa['ie'] ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('Município: ' . ($dadosEmpresa['municipio'] ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('UF: ' . ($dadosEmpresa['uf'] ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('E-mail: ' . ($dadosEmpresa['email'] ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.0);
+        $this->cellFitText('Fone: ' . ($dadosEmpresa['fone'] ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
 
         // Campo para a assinatura (linha para assinatura)
         $this->pdf->SetFont('Arial', '', 9);

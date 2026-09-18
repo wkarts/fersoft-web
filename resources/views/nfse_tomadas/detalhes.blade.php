@@ -37,66 +37,42 @@
 
         <hr>
 
-        <form method="POST" action="/nfse-tomadas/salvar" id="form-importar-nfse">
-            @csrf
-            <input type="hidden" name="manifesto_id" value="{{ $doc->id }}">
-
-            <h4 class="mb-5 mt-5">Dados para o Financeiro</h4>
-            <div class="row align-items-end">
-                <div class="col-lg-3">
-                    <label>Vincular Veículo (Opcional)</label>
-                    <select name="veiculo_id" class="form-control custom-select">
-                        <option value="">Selecione...</option>
-                        @foreach($veiculos as $v)
-                            <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                
-                <div class="col-lg-3">
-                    <label>Categoria de Conta <strong class="text-danger">*</strong></label>
-                    <select name="categoria_id" class="form-control custom-select" required>
-                        <option value="">Selecione...</option>
-                        @foreach($categoriasConta as $c)
-                            <option value="{{ $c->id }}">{{ $c->nome }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-lg-3">
-                    <label>Forma de Pagamento <strong class="text-danger">*</strong></label>
-                    <select name="tipo_pagamento" class="form-control custom-select" required>
-                        <option value="">Selecione...</option>
-                        @foreach($tiposPagamento as $key => $t)
-                            <option value="{{ $key }}">{{ $key }} - {{ $t }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-lg-3">
-                    <label>Vencimento do Contas a Pagar</label>
-                    <input type="date" name="data_vencimento" class="form-control" value="{{ \Carbon\Carbon::parse($doc->data_emissao)->format('Y-m-d') }}" required>
-                </div>
+        <form method="POST" action="/nfse-tomadas/salvarImportacao/{{ $doc->id }}" id="form-importar-nfse">
+    @csrf
+    <div class="card card-custom gutter-b mt-5">
+        <div class="card-header">
+            <h3 class="card-title font-weight-bold text-dark">Financeiro da Nota de Serviço</h3>
+        </div>
+        <div class="card-body">
             </div>
+    </div>
 
-            <div class="row mt-8">
-                <div class="col-12 text-right">
-                    <a href="/nfse-tomadas" class="btn btn-light-danger font-weight-bold mr-2">
-                        <i class="la la-arrow-left"></i> Voltar
-                    </a>
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <label>Categoria de Conta *</label>
+            <select name="categoria_conta_id" class="custom-select form-control" required>
+                @foreach($categoriasConta as $c)
+                    <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label>Veículo Geral</label>
+            <select name="veiculo_id" class="custom-select form-control">
+                <option value="">-- Selecione --</option>
+                @foreach($veiculos as $v)
+                    <option value="{{ $v->id }}">{{ $v->placa }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
 
-                    @if($doc->compra_servico_id == 0)
-                    <button type="submit" class="btn btn-success font-weight-bold" id="btn-salvar">
-                        <i class="la la-check"></i> Salvar como Compra
-                    </button>
-                    @else
-                    <button type="button" class="btn btn-secondary font-weight-bold" disabled>
-                        Já Importado
-                    </button>
-                    @endif
-                </div>
-            </div>
-        </form>
+    <div class="text-right mt-5">
+        <button type="submit" class="btn btn-success font-weight-bold" id="btn-salvar">
+            <i class="la la-check"></i> Salvar como Compra de Serviço
+        </button>
+    </div>
+</form>
 
     </div>
 </div>

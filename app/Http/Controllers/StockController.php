@@ -37,7 +37,7 @@ class StockController extends BaseController
         $pesquisa = $request->input('pesquisa');
         $categoria_id = $request->input('categoria_id');
         $filial_filtro = $request->input('filial_id'); // Filtro que vem da tela
-        
+
         $mes = $request->mes ?? date('m');
         $ano = $request->ano ?? date('Y');
         $mesAnt = $mes == 1 ? 12 : $mes - 1;
@@ -92,13 +92,13 @@ class StockController extends BaseController
             DB::raw("(SELECT SUM(quantidade) FROM stock_movements WHERE produto_id = estoques.produto_id AND tipo = 'entrada' AND MONTH(movimentado_em) = $mes AND YEAR(movimentado_em) = $ano $filialSubQuery) as total_entradas"),
             DB::raw("(SELECT SUM(quantidade) FROM stock_movements WHERE produto_id = estoques.produto_id AND tipo = 'saida' AND MONTH(movimentado_em) = $mes AND YEAR(movimentado_em) = $ano $filialSubQuery) as total_saidas")
         )
-        ->orderBy('produtos.nome', 'asc')
-        ->paginate(25);
-      
+            ->orderBy('produtos.nome', 'asc')
+            ->paginate(25);
+
         foreach($estoque as $e) {
             $e->saldo_no_periodo = ($e->saldo_inicial ?? 0) + ($e->total_entradas ?? 0) - ($e->total_saidas ?? 0);
         }
-        
+
         $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
         // Na view, o select de filiais também deve respeitar a trava
         $filiais = Filial::where('empresa_id', $this->empresa_id)
@@ -107,14 +107,14 @@ class StockController extends BaseController
             })->get();
 
         return view($this->listView, compact(
-            'estoque', 'mes', 'ano', 'categorias', 'filiais', 
+            'estoque', 'mes', 'ano', 'categorias', 'filiais',
             'pesquisa', 'categoria_id', 'filial_id', 'somaEstoque'
         ))->with('title', 'Estoque');
     }
 
     public function historico(Request $request, $id) {
         $item = Estoque::findOrFail($id);
-        
+
         // Proteção: Se o item clicado não for da filial do usuário, bloqueia
         if($this->filial_id != null && $item->filial_id != $this->filial_id){
             return redirect('/403');
@@ -125,7 +125,7 @@ class StockController extends BaseController
 
         $query = DB::table('stock_movements')
             ->select('stock_movements.*', 'usuarios.nome as usuario_nome', 'fornecedors.razao_social as fornecedor_nome',
-                'cl.razao_social as cliente_nome', 'v.numero_sequencial as venda_numero', 
+                'cl.razao_social as cliente_nome', 'v.numero_sequencial as venda_numero',
                 'compras.nf as compra_nf', 'compras.numero_emissao as compra_emissao', 'filials.descricao as filial_nome')
             ->leftJoin('usuarios', 'usuarios.id', '=', 'stock_movements.usuario_id')
             ->leftJoin('compras', function($join) {
@@ -155,49 +155,49 @@ class StockController extends BaseController
         return view('stock.historico', compact('item', 'movimentacoes', 'data_inicial', 'data_final'))
             ->with('title', 'Histórico de Movimentação');
     }
-  
-  
+
+
     public function pesquisa(Request $request){
-    $filial_id = $request->input('filial_id');
-    $categoria_id = $request->input('categoria_id');
-    $pesquisa = $request->pesquisa;
+        $filial_id = $request->input('filial_id');
+        $categoria_id = $request->input('categoria_id');
+        $pesquisa = $request->pesquisa;
 
-    $query = Estoque::where('estoques.empresa_id', $this->empresa_id)
-        ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
-        ->where('produtos.gerenciar_estoque', 1)
-        ->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
+        $query = Estoque::where('estoques.empresa_id', $this->empresa_id)
+            ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
+            ->where('produtos.gerenciar_estoque', 1)
+            ->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
 
-    // FILTRO DE FILIAL: Crucial para não duplicar
-    if ($filial_id) {
-        if ($filial_id == -1 || $filial_id == 'matriz') {
-            $query->whereNull('estoques.filial_id');
-        } else {
-            $query->where('estoques.filial_id', $filial_id);
+        // FILTRO DE FILIAL: Crucial para não duplicar
+        if ($filial_id) {
+            if ($filial_id == -1 || $filial_id == 'matriz') {
+                $query->whereNull('estoques.filial_id');
+            } else {
+                $query->where('estoques.filial_id', $filial_id);
+            }
         }
+
+        if ($categoria_id) {
+            $query->where('produtos.categoria_id', $categoria_id);
+        }
+
+        // Selecionamos as colunas explicitamente para evitar sobreposição de IDs
+        $estoque = $query->select('estoques.*', 'produtos.nome as produto_nome')->get();
+
+        // Reutiliza a lógica de soma que você já tem
+        $somaEstoque = $this->somaEstoque($estoque);
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
+
+        return view('stock/list')
+            ->with('pesquisa', $pesquisa)
+            ->with('categorias', $categorias)
+            ->with('estoque', $estoque)
+            ->with('categoria_id', $categoria_id)
+            ->with('config', $config)
+            ->with('filial_id', $filial_id)
+            ->with('somaEstoque', $somaEstoque)
+            ->with('title', 'Estoque');
     }
-
-    if ($categoria_id) {
-        $query->where('produtos.categoria_id', $categoria_id);
-    }
-
-    // Selecionamos as colunas explicitamente para evitar sobreposição de IDs
-    $estoque = $query->select('estoques.*', 'produtos.nome as produto_nome')->get();
-
-    // Reutiliza a lógica de soma que você já tem
-    $somaEstoque = $this->somaEstoque($estoque);
-    $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
-    $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
-
-    return view('stock/list')
-        ->with('pesquisa', $pesquisa)
-        ->with('categorias', $categorias)
-        ->with('estoque', $estoque)
-        ->with('categoria_id', $categoria_id)
-        ->with('config', $config)
-        ->with('filial_id', $filial_id)
-        ->with('somaEstoque', $somaEstoque)
-        ->with('title', 'Estoque');
-}
 
     private function somaEstoque($estoque){
 
@@ -223,51 +223,51 @@ class StockController extends BaseController
 
     public function apontamento(){
         $apontamentos = Apontamento::limit(5)
-        ->where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->where('empresa_id', $this->empresa_id)
+            ->orderBy('id', 'desc')
+            ->get();
 
         $produtos = Produto::where('composto', 1)
-        ->where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->get();
+            ->where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->get();
 
         // NOVO: Busca as filiais da empresa ordenadas pela descrição
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)
-        ->orderBy('descricao')
-        ->get();
+            ->orderBy('descricao')
+            ->get();
 
         return view('stock/apontamento')
-        ->with('apontamentos', $apontamentos)
-        ->with('produtos', $produtos)
-        ->with('filiais', $filiais) // NOVO: Envia as filiais para a tela acabar com o erro
-        ->with('produtoJs', true)
-        ->with('title', 'Apontamento');
+            ->with('apontamentos', $apontamentos)
+            ->with('produtos', $produtos)
+            ->with('filiais', $filiais) // NOVO: Envia as filiais para a tela acabar com o erro
+            ->with('produtoJs', true)
+            ->with('title', 'Apontamento');
     }
 
     public function apontamentoManual(){
-    // Buscamos apenas produtos ativos e da empresa logada
-    // Removendo o loop manual para ganhar performance
-    $produtos = Produto::where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->orderBy('nome', 'asc')
-        ->get();
+        // Buscamos apenas produtos ativos e da empresa logada
+        // Removendo o loop manual para ganhar performance
+        $produtos = Produto::where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->orderBy('nome', 'asc')
+            ->get();
 
-    return view('stock/apontaManual')
-        ->with('produtoJs', false)
-        ->with('produtos', $produtos)
-        ->with('title', 'Apontamento Manual');
-	}
+        return view('stock/apontaManual')
+            ->with('produtoJs', false)
+            ->with('produtos', $produtos)
+            ->with('title', 'Apontamento Manual');
+    }
 
     public function todosApontamentos(){
         $apontamentos = Apontamento::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')
-        ->paginate(10);
+            ->orderBy('id', 'desc')
+            ->paginate(10);
         return view("stock/todosApontamentos")
-        ->with('apontamentos', $apontamentos)
-        ->with('links', true)
-        ->with('title', 'Todos os apontamentos');
+            ->with('apontamentos', $apontamentos)
+            ->with('links', true)
+            ->with('title', 'Todos os apontamentos');
     }
 
     public function su(){
@@ -279,69 +279,96 @@ class StockController extends BaseController
 
     public function filtroApontamentos(Request $request){
         $apontamentos = Apontamento::
-        whereBetween('data_registro', 
-            [$this->parseDate($request->dataInicial), 
+        whereBetween('data_registro',
+            [$this->parseDate($request->dataInicial),
                 $this->parseDate($request->dataFinal)])
-        ->where('empresa_id', $this->empresa_id)
-        ->orderBy('data_registro', 'desc')
-        ->get();
+            ->where('empresa_id', $this->empresa_id)
+            ->orderBy('data_registro', 'desc')
+            ->get();
 
         return view("stock/todosApontamentos")
-        ->with('apontamentos', $apontamentos)
-        ->with('dataInicial', $request->dataInicial)
-        ->with('dataFinal', $request->dataFinal)
-        ->with('title', 'Todos os apontamentos');
+            ->with('apontamentos', $apontamentos)
+            ->with('dataInicial', $request->dataInicial)
+            ->with('dataFinal', $request->dataFinal)
+            ->with('title', 'Todos os apontamentos');
     }
 
     private function parseDate($date){
         return date('Y-m-d', strtotime(str_replace("/", "-", $date)));
     }
-public function saveApontamento(Request $request)
-    {
-        $request->validate([
-            'produto' => ['required', 'integer'],
-            'quantidade' => ['required'],
-            'filial_id' => ['nullable'],
-            'data' => ['nullable', 'date'],
-        ]);
 
-        $produto = Produto::query()->where('empresa_id', $this->empresa_id)->findOrFail((int)$request->produto);
-        $quantidade = (float)__replace($request->quantidade);
-        if ($quantidade <= 0) return redirect()->back()->withInput()->with('mensagem_erro', 'A quantidade deve ser maior que zero.');
-        $filialId = (int)$request->input('filial_id',0); $filialId=$filialId>0?$filialId:null;
-        if ($filialId !== null && !\App\Models\Filial::query()->where('empresa_id',$this->empresa_id)->whereKey($filialId)->exists()) {
-            return redirect()->back()->withInput()->with('mensagem_erro','A filial informada não pertence à empresa atual.');
+    public function saveApontamento(Request $request) {
+        $prod = Produto::findOrFail($request->produto);
+        $quantidade = __replace($request->quantidade);
+
+        // 1. Definição obrigatória da variável no início do método
+        $dataLancamento = $request->data ? $this->parseDate($request->data) : \Carbon\Carbon::now();
+
+        $filial_id = $request->filial_id > 0 ? (int)$request->filial_id : null;
+
+        // 2. Validação
+        $alerta = $this->verificarDisponibilidadeEstoque($prod, $quantidade);
+        if($alerta != "" && !$request->has('confirmar_negativo')){
+            session()->flash('mensagem_erro', $alerta);
+            return redirect()->back()->withInput();
         }
-        try { $dataLancamento=$request->filled('data')?\Carbon\Carbon::parse($request->data)->startOfDay():now(); }
-        catch(\Throwable $e){ return redirect()->back()->withInput()->with('mensagem_erro','Data de lançamento inválida.'); }
-        if ($dataLancamento->isFuture()) return redirect()->back()->withInput()->with('mensagem_erro','Não é permitido registrar apontamento em data futura.');
-
-        $alerta=$this->verificarDisponibilidadeEstoque($produto,$quantidade,$filialId);
-        if($alerta!==''&&!$request->boolean('confirmar_negativo')) return redirect()->back()->withInput()->with('mensagem_erro',$alerta);
 
         try {
-            DB::transaction(function()use($produto,$quantidade,$filialId,$dataLancamento){
-                $apontamento=Apontamento::create([
-                    'quantidade'=>$quantidade,'usuario_id'=>$this->usuario_id,'produto_id'=>$produto->id,
-                    'empresa_id'=>$this->empresa_id,'filial_id'=>$filialId,'created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
-                ]);
-                $stockMove=new StockMove();
-                $stockMove->pluStock($produto->id,$quantidade,(float)$produto->valor_venda,$filialId,'Apontamento',$apontamento->id,$dataLancamento);
-                \App\Models\AlteracaoEstoque::create([
-                    'empresa_id'=>$this->empresa_id,'filial_id'=>$filialId,'usuario_id'=>$this->usuario_id,'produto_id'=>$produto->id,
-                    'quantidade'=>$quantidade,'tipo'=>'incremento','observacao'=>'Apontamento de Produção #'.$apontamento->id,
-                    'motivo'=>'Produção','created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
-                ]);
-                $this->downEstoquePorReceita($produto,$quantidade,$apontamento->id,$filialId,$dataLancamento);
-            },3);
-            return redirect('/estoque/apontamentoProducao')->with('mensagem_sucesso','Apontamento cadastrado com sucesso!');
-        } catch(\Throwable $e){
-            \Log::error('Erro ao cadastrar apontamento de produção',['empresa_id'=>$this->empresa_id,'produto_id'=>$produto->id,'erro'=>$e->getMessage()]);
-            return redirect()->back()->withInput()->with('mensagem_erro','Não foi possível cadastrar o apontamento. Consulte os logs.');
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            $result = Apontamento::create([
+                'quantidade' => $quantidade,
+                'usuario_id' => get_id_user(),
+                'produto_id' => $prod->id,
+                'empresa_id' => $this->empresa_id,
+                'filial_id'  => $filial_id,
+                'created_at' => $dataLancamento
+            ]);
+
+            $stockMove = new StockMove();
+
+            // 3. Entrada do Produto
+            $stockMove->pluStock(
+                $prod->id,
+                $quantidade,
+                str_replace(",", ".", $prod->valor_venda),
+                $filial_id,
+                'Apontamento',
+                $result->id,
+                $dataLancamento // Passando a variável definida no topo
+            );
+
+            // 4. Alteração Estoque
+            $alteracaoEntrada = new \App\Models\AlteracaoEstoque();
+            $alteracaoEntrada->empresa_id = $this->empresa_id;
+            $alteracaoEntrada->filial_id  = $filial_id;
+            $alteracaoEntrada->usuario_id = get_id_user();
+            $alteracaoEntrada->produto_id = $prod->id;
+            $alteracaoEntrada->quantidade = $quantidade;
+            $alteracaoEntrada->tipo       = 'incremento';
+            $alteracaoEntrada->observacao = 'Apontamento de Produção #' . $result->id;
+            $alteracaoEntrada->motivo     = 'Produção';
+
+            $alteracaoEntrada->created_at = $dataLancamento; // Usando a variável definida
+            $alteracaoEntrada->updated_at = $dataLancamento; // Usando a variável definida
+            $alteracaoEntrada->save();
+
+            // 5. Saída da Matéria-Prima
+            $this->downEstoquePorReceita($prod, $quantidade, $result->id, $filial_id, $dataLancamento);
+
+            \Illuminate\Support\Facades\DB::commit();
+            session()->flash("mensagem_sucesso", "Apontamento cadastrado com sucesso!");
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            // Agora, se o erro ocorrer aqui, a variável $dataLancamento já existe e o log será claro
+            session()->flash('mensagem_erro', 'Erro ao cadastrar apontamento: ' . $e->getMessage());
         }
+
+        return redirect("/estoque/apontamentoProducao");
     }
-  
-   public function saveApontamentoManual(Request $request){
+
+    public function saveApontamentoManual(Request $request){
         if(__replace($request->quantidade) <= 0){
             session()->flash('mensagem_erro', 'Informe uma quantidade maior que zero!');
             return redirect()->back();
@@ -349,7 +376,7 @@ public function saveApontamento(Request $request)
 
         $this->_validateApontamento($request);
         $prod = Produto::findOrFail($request->produto_id);
-        
+
         // Data informada ou agora
         $dataLancamento = $request->data ? $this->parseDate($request->data) : date('Y-m-d');
         $quantidade = __replace($request->quantidade);
@@ -370,7 +397,7 @@ public function saveApontamento(Request $request)
             // ------------------------------------------------------------------
             // INÍCIO DA GRAVAÇÃO NA TABELA alteracao_estoques
             // ------------------------------------------------------------------
-            
+
             // Formatando a data do lançamento para injetar a hora atual, evitando ficar 00:00:00
             $dataLancamentoCarbon = \Carbon\Carbon::parse($dataLancamento);
             if ($dataLancamentoCarbon->format('H:i:s') === '00:00:00') {
@@ -378,26 +405,26 @@ public function saveApontamento(Request $request)
             }
 
             $alteracao = new \App\Models\AlteracaoEstoque();
-            
-            // Se o seu StockController não estender o BaseController, 
+
+            // Se o seu StockController não estender o BaseController,
             // talvez você precise trocar $this->empresa_id por auth()->user()->empresa_id
-            $alteracao->empresa_id = $this->empresa_id; 
+            $alteracao->empresa_id = $this->empresa_id;
             $alteracao->filial_id  = $filial_id;
             $alteracao->usuario_id = $this->usuario_id;
-            
+
             $alteracao->produto_id = $prod->id;
             $alteracao->quantidade = $quantidade;
-            
+
             // Verifica o tipo para salvar o nome correto na tabela (entrada ou saida)
-            $alteracao->tipo       = $request->tipo == 'reducao' ? 'reducao' : 'incremento'; 
-            
+            $alteracao->tipo       = $request->tipo == 'reducao' ? 'reducao' : 'incremento';
+
             $alteracao->observacao = $request->observacao;
             $alteracao->motivo     = $request->motivo;
-            
+
             // Força a data de criação e atualização
             $alteracao->created_at = $dataLancamentoCarbon;
             $alteracao->updated_at = $dataLancamentoCarbon;
-            
+
             $alteracao->save();
             // ------------------------------------------------------------------
             // FIM DA GRAVAÇÃO NA TABELA alteracao_estoques
@@ -411,39 +438,77 @@ public function saveApontamento(Request $request)
         }
         return redirect("/estoque");
     }
-private function downEstoquePorReceita($produto, $quantidade, $apontamento_id = null, $filial_id = null, $dataLancamento = null)
-    {
-        if (!valida_objeto($produto)) throw new \RuntimeException('Produto inválido para consumo da receita.');
-        if (!$produto->receita) return;
-        $stockMove=new StockMove(); $dataLancamento=$dataLancamento?:now();
-        foreach($produto->receita->itens as $item){
-            if(!$item->produto) continue;
-            $qtd=(float)$item->quantidade*(float)$quantidade;
-            $stockMove->downStock($item->produto->id,$qtd,$filial_id,'Apontamento',$apontamento_id,$dataLancamento);
-            \App\Models\AlteracaoEstoque::create([
-                'empresa_id'=>$this->empresa_id,'filial_id'=>$filial_id,'usuario_id'=>$this->usuario_id,'produto_id'=>$item->produto->id,
-                'quantidade'=>$qtd,'tipo'=>'reducao','observacao'=>'Consumo de matéria-prima no Apontamento #'.$apontamento_id,
-                'motivo'=>'Produção','created_at'=>$dataLancamento,'updated_at'=>$dataLancamento,
-            ]);
+
+    // Adicione o = null para não quebrar outros lugares que chamam essa função
+    private function downEstoquePorReceita($produto, $quantidade, $apontamento_id = null, $filial_id = null, $dataLancamento = null){
+
+        if(valida_objeto($produto)){
+            $stockMove = new StockMove();
+
+            if($produto->receita){
+                foreach($produto->receita->itens as $i){
+                    $qtdIngrediente = $i->quantidade * $quantidade;
+
+                    // 1. Remove do estoque
+                    $stockMove->downStock(
+                        $i->produto->id,
+                        $qtdIngrediente,
+                        $filial_id,
+                        'Apontamento',
+                        $apontamento_id,
+                        $dataLancamento // Agora a variável existe!
+                    );
+
+                    // 2. Salva a alteração de estoque
+                    $alteracaoSaida = new \App\Models\AlteracaoEstoque();
+                    $alteracaoSaida->empresa_id = $this->empresa_id;
+                    $alteracaoSaida->filial_id  = $filial_id;
+                    $alteracaoSaida->usuario_id = get_id_user();
+                    $alteracaoSaida->produto_id = $i->produto->id;
+                    $alteracaoSaida->quantidade = $qtdIngrediente;
+                    $alteracaoSaida->tipo       = 'reducao';
+                    $alteracaoSaida->observacao = 'Consumo de matéria-prima no Apontamento #' . $apontamento_id;
+                    $alteracaoSaida->motivo     = 'Produção';
+
+                    // CORREÇÃO: Use a variável que veio do parâmetro, não o Carbon::now()
+                    $alteracaoSaida->created_at = $dataLancamento ?? \Carbon\Carbon::now();
+                    $alteracaoSaida->updated_at = $dataLancamento ?? \Carbon\Carbon::now();
+                    $alteracaoSaida->save();
+                }
+            }
+        } else {
+            return redirect('/403');
         }
-    }
-private function validaEstoqueDisponivel($produto, $quantidade)
-    {
-        return $this->verificarDisponibilidadeEstoque($produto, (float)$quantidade, null);
     }
 
-    private function verificarDisponibilidadeEstoque($produto, float $quantidade, ?int $filialId = null): string
-    {
-        $insuficientes=[];
-        if($produto->receita){
-            foreach($produto->receita->itens as $item){
-                if(!$item->produto) continue;
-                $necessario=(float)$item->quantidade*$quantidade;
-                $saldo=(float)$item->produto->estoqueAtual($filialId);
-                if($saldo<$necessario) $insuficientes[]=$item->produto->nome.' (saldo '.number_format($saldo,3,',','.').', necessário '.number_format($necessario,3,',','.').')';
+    /* private function validaEstoqueDisponivel($produto, $quantidade){
+         $msg = "";
+         if($produto->receita){
+             foreach($produto->receita->itens as $i){
+                 $qtd = $i->quantidade * $quantidade;
+                 if($i->produto->estoqueAtual() < $qtd){
+                     $msg = "Estoque insuficiente do produto ". $i->produto->nome;
+                 }
+             }
+         }
+         return $msg;
+     }
+ */
+
+    private function verificarDisponibilidadeEstoque($produto, $quantidade) {
+        $insuficientes = [];
+        if ($produto->receita) {
+            foreach ($produto->receita->itens as $i) {
+                if ($i->produto->estoqueAtual() < ($i->quantidade * $quantidade)) {
+                    $insuficientes[] = $i->produto->nome;
+                }
             }
         }
-        return $insuficientes?'A produção causará saldo negativo em: '.implode('; ',$insuficientes).'. Marque a confirmação para prosseguir.':'';
+
+        if (!empty($insuficientes)) {
+            return "Atenção: A produção causará saldo negativo nos itens: " . implode(", ", $insuficientes) . ". Marque a opção de confirmar para prosseguir.";
+        }
+        return "";
     }
 
 // public function deleteApontamento($id){
@@ -478,11 +543,11 @@ private function validaEstoqueDisponivel($produto, $quantidade)
     public function listApontamentos(){
         $apontamentos = AlteracaoEstoque::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')->get();
+            ->orderBy('id', 'desc')->get();
 
         return view('stock/listaAlteracao')
-        ->with('title', 'Lista de Alterações')
-        ->with('apontamentos', $apontamentos);
+            ->with('title', 'Lista de Alterações')
+            ->with('apontamentos', $apontamentos);
     }
 
     public function listApontamentosDelte($id){
@@ -510,13 +575,13 @@ private function validaEstoqueDisponivel($produto, $quantidade)
     public function add1(){
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $stockMove = new StockMove();
 
         foreach($produtos as $p){
             if($p->estoqueAtual() == 0){
                 echo "Inserido estoque para $p->nome <br>";
-                $stockMove->pluStock((int) $p->id, 
+                $stockMove->pluStock((int) $p->id,
                     str_replace(",", ".", 1),
                     str_replace(",", ".", $p->valor_venda));
             }
@@ -529,7 +594,7 @@ private function validaEstoqueDisponivel($produto, $quantidade)
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
                 $estoque = \App\Models\Estoque::findOrFail($id);
-                
+
                 \Illuminate\Support\Facades\DB::table('stock_movements')
                     ->where('produto_id', $estoque->produto_id)
                     ->where('empresa_id', $estoque->empresa_id)
@@ -552,11 +617,11 @@ private function validaEstoqueDisponivel($produto, $quantidade)
     public function alterarGerenciamento(Request $request){
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($config->senha_remover == md5($request->senha)){
             Produto::where('empresa_id', $this->empresa_id)
-            ->update(['gerenciar_estoque' => $request->gerenciar_estoque]);
+                ->update(['gerenciar_estoque' => $request->gerenciar_estoque]);
             session()->flash('mensagem_sucesso', 'Ação de estoque realizada!');
 
         }else{
@@ -584,133 +649,133 @@ private function validaEstoqueDisponivel($produto, $quantidade)
         }
 
         return view('stock.filial', compact('item', 'locais', 'grade'))
-        ->with('title', 'Defina o estoque por localização');
+            ->with('title', 'Defina o estoque por localização');
     }
 
-public function relatorioPdf(Request $request)
-{
-    $pesquisa = $request->input('pesquisa');
-    $categoria_id = $request->input('categoria_id');
-    $filial_id = $request->input('filial_id');
-    $mes = $request->mes ?? date('m'); 
-    $ano = $request->ano ?? date('Y');
-    
-    $mesAnt = $mes == 1 ? 12 : $mes - 1;
-    $anoAnt = $mes == 1 ? $ano - 1 : $ano;
+    public function relatorioPdf(Request $request)
+    {
+        $pesquisa = $request->input('pesquisa');
+        $categoria_id = $request->input('categoria_id');
+        $filial_id = $request->input('filial_id');
+        $mes = $request->mes ?? date('m');
+        $ano = $request->ano ?? date('Y');
 
-    $filialSubQuery = "";
-    if ($filial_id == 'matriz') {
-        $filialSubQuery = " AND filial_id IS NULL";
-    } elseif ($filial_id > 0) {
-        $filialSubQuery = " AND filial_id = " . (int)$filial_id;
-    }
+        $mesAnt = $mes == 1 ? 12 : $mes - 1;
+        $anoAnt = $mes == 1 ? $ano - 1 : $ano;
 
-    $query = \App\Models\Estoque::where('estoques.empresa_id', $this->empresa_id)
-        ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
-        ->where('produtos.gerenciar_estoque', 1);
+        $filialSubQuery = "";
+        if ($filial_id == 'matriz') {
+            $filialSubQuery = " AND filial_id IS NULL";
+        } elseif ($filial_id > 0) {
+            $filialSubQuery = " AND filial_id = " . (int)$filial_id;
+        }
 
-    if ($pesquisa) $query->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
-    if ($categoria_id) $query->where('produtos.categoria_id', $categoria_id);
-    
-    if ($filial_id) {
-        if ($filial_id == 'matriz') $query->whereNull('estoques.filial_id');
-        else $query->where('estoques.filial_id', $filial_id);
-    }
+        $query = \App\Models\Estoque::where('estoques.empresa_id', $this->empresa_id)
+            ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
+            ->where('produtos.gerenciar_estoque', 1);
 
-    // Seleção com as subqueries para resolver o problema do saldo zerado no PDF
-    $estoque = $query->select(
-        'estoques.*',
-        'produtos.nome as produto_nome',
-        'produtos.valor_venda as preco_venda',
-        'produtos.valor_compra as preco_custo',
-        \DB::raw("(SELECT quantidade FROM estoque_mensal_fechamentos 
+        if ($pesquisa) $query->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
+        if ($categoria_id) $query->where('produtos.categoria_id', $categoria_id);
+
+        if ($filial_id) {
+            if ($filial_id == 'matriz') $query->whereNull('estoques.filial_id');
+            else $query->where('estoques.filial_id', $filial_id);
+        }
+
+        // Seleção com as subqueries para resolver o problema do saldo zerado no PDF
+        $estoque = $query->select(
+            'estoques.*',
+            'produtos.nome as produto_nome',
+            'produtos.valor_venda as preco_venda',
+            'produtos.valor_compra as preco_custo',
+            \DB::raw("(SELECT quantidade FROM estoque_mensal_fechamentos
                   WHERE produto_id = estoques.produto_id AND mes = $mesAnt AND ano = $anoAnt $filialSubQuery LIMIT 1) as saldo_inicial"),
-        \DB::raw("(SELECT SUM(quantidade) FROM stock_movements 
-                  WHERE produto_id = estoques.produto_id AND tipo = 'entrada' 
+            \DB::raw("(SELECT SUM(quantidade) FROM stock_movements
+                  WHERE produto_id = estoques.produto_id AND tipo = 'entrada'
                   AND MONTH(movimentado_em) = $mes AND YEAR(movimentado_em) = $ano $filialSubQuery) as total_entradas"),
-        \DB::raw("(SELECT SUM(quantidade) FROM stock_movements 
-                  WHERE produto_id = estoques.produto_id AND tipo = 'saida' 
+            \DB::raw("(SELECT SUM(quantidade) FROM stock_movements
+                  WHERE produto_id = estoques.produto_id AND tipo = 'saida'
                   AND MONTH(movimentado_em) = $mes AND YEAR(movimentado_em) = $ano $filialSubQuery) as total_saidas")
-    )
-    ->orderBy('produtos.nome', 'asc')
-    ->get();
+        )
+            ->orderBy('produtos.nome', 'asc')
+            ->get();
 
-    // Calcula o saldo final do período para cada item
-    foreach($estoque as $e) {
-        // Cálculo do saldo final daquele mês específico
-        $e->saldo_no_periodo = ($e->saldo_inicial ?? 0) + ($e->total_entradas ?? 0) - ($e->total_saidas ?? 0);
+        // Calcula o saldo final do período para cada item
+        foreach($estoque as $e) {
+            // Cálculo do saldo final daquele mês específico
+            $e->saldo_no_periodo = ($e->saldo_inicial ?? 0) + ($e->total_entradas ?? 0) - ($e->total_saidas ?? 0);
+        }
+
+        if($estoque->count() > 800) {
+            return redirect()->back()->with('mensagem_erro', 'Relatório muito grande. Use filtros.');
+        }
+
+        $empresa = \DB::table('empresas')->where('id', $this->empresa_id)->first();
+        $html = view('stock.relatorio_pdf', compact('estoque', 'mes', 'ano', 'empresa'));
+
+        $domPdf = new \Dompdf\Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($html);
+        $domPdf->setPaper('A4', 'landscape');
+        $domPdf->render();
+
+        return response($domPdf->output(), 200)->header('Content-Type', 'application/pdf');
     }
 
-    if($estoque->count() > 800) {
-        return redirect()->back()->with('mensagem_erro', 'Relatório muito grande. Use filtros.');
+    public function relatorioFiscal(Request $request)
+    {
+        $pesquisa = $request->input('pesquisa');
+        $categoria_id = $request->input('categoria_id');
+        $filial_id = $request->input('filial_id');
+
+        $query = Estoque::where('estoques.empresa_id', $this->empresa_id)
+            ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
+            ->where('produtos.gerenciar_estoque', 1)
+            ->leftJoin('categorias', 'categorias.id', '=', 'produtos.categoria_id');
+
+        if ($pesquisa) $query->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
+        if ($categoria_id) $query->where('produtos.categoria_id', $categoria_id);
+
+        if ($filial_id) {
+            if ($filial_id == 'matriz') $query->whereNull('estoques.filial_id');
+            else $query->where('estoques.filial_id', $filial_id);
+        }
+
+        // Seleção com os nomes de colunas corretos do banco de dados
+        $estoque = $query->select(
+            'estoques.quantidade',
+            'produtos.nome as produto_nome',
+            'produtos.referencia',
+            'produtos.NCM', // NCM em maiúsculo como no banco
+            'produtos.valor_compra',
+            // Mapeamento das colunas de Saída (Venda)
+            'produtos.CST_CSOSN as cst_icms_saida',
+            'produtos.CST_PIS as cst_pis_saida',
+            'produtos.CST_COFINS as cst_cofins_saida',
+            // Mapeamento das colunas de Entrada (Compra)
+            'produtos.CST_CSOSN_entrada as cst_icms_entrada',
+            'produtos.CST_PIS_entrada as cst_pis_entrada',
+            'produtos.CST_COFINS_entrada as cst_cofins_entrada',
+            'categorias.nome as categoria_nome'
+        )
+            ->orderBy('produtos.nome', 'asc')
+            ->get();
+
+        if($estoque->count() > 1000){
+            session()->flash('mensagem_erro', 'Relatório muito extenso. Use os filtros.');
+            return redirect()->back();
+        }
+
+        $empresa = DB::table('empresas')->where('id', $this->empresa_id)->first();
+        $html = view('stock.relatorio_fiscal', compact('estoque', 'empresa'));
+
+        $domPdf = new \Dompdf\Dompdf(["enable_remote" => true]);
+        $domPdf->loadHtml($html);
+        $domPdf->setPaper('A3', 'landscape');
+        $domPdf->render();
+
+        return response($domPdf->output(), 200)->header('Content-Type', 'application/pdf');
     }
 
-    $empresa = \DB::table('empresas')->where('id', $this->empresa_id)->first();
-    $html = view('stock.relatorio_pdf', compact('estoque', 'mes', 'ano', 'empresa'));
-
-    $domPdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-    $domPdf->loadHtml($html);
-    $domPdf->setPaper('A4', 'landscape');
-    $domPdf->render();
-
-    return response($domPdf->output(), 200)->header('Content-Type', 'application/pdf');
-}
-  
-public function relatorioFiscal(Request $request)
-{
-    $pesquisa = $request->input('pesquisa');
-    $categoria_id = $request->input('categoria_id');
-    $filial_id = $request->input('filial_id');
-
-    $query = Estoque::where('estoques.empresa_id', $this->empresa_id)
-        ->join('produtos', 'produtos.id', '=', 'estoques.produto_id')
-        ->where('produtos.gerenciar_estoque', 1)
-        ->leftJoin('categorias', 'categorias.id', '=', 'produtos.categoria_id');
-
-    if ($pesquisa) $query->where('produtos.nome', 'LIKE', "%{$pesquisa}%");
-    if ($categoria_id) $query->where('produtos.categoria_id', $categoria_id);
-    
-    if ($filial_id) {
-        if ($filial_id == 'matriz') $query->whereNull('estoques.filial_id');
-        else $query->where('estoques.filial_id', $filial_id);
-    }
-
-    // Seleção com os nomes de colunas corretos do banco de dados
-    $estoque = $query->select(
-        'estoques.quantidade',
-        'produtos.nome as produto_nome',
-        'produtos.referencia',
-        'produtos.NCM', // NCM em maiúsculo como no banco
-        'produtos.valor_compra',
-        // Mapeamento das colunas de Saída (Venda)
-        'produtos.CST_CSOSN as cst_icms_saida',
-        'produtos.CST_PIS as cst_pis_saida',
-        'produtos.CST_COFINS as cst_cofins_saida',
-        // Mapeamento das colunas de Entrada (Compra)
-        'produtos.CST_CSOSN_entrada as cst_icms_entrada',
-        'produtos.CST_PIS_entrada as cst_pis_entrada',
-        'produtos.CST_COFINS_entrada as cst_cofins_entrada',
-        'categorias.nome as categoria_nome'
-    )
-    ->orderBy('produtos.nome', 'asc')
-    ->get();
-
-    if($estoque->count() > 1000){
-        session()->flash('mensagem_erro', 'Relatório muito extenso. Use os filtros.');
-        return redirect()->back();
-    }
-
-    $empresa = DB::table('empresas')->where('id', $this->empresa_id)->first();
-    $html = view('stock.relatorio_fiscal', compact('estoque', 'empresa'));
-
-    $domPdf = new \Dompdf\Dompdf(["enable_remote" => true]);
-    $domPdf->loadHtml($html);
-    $domPdf->setPaper('A3', 'landscape'); 
-    $domPdf->render();
-
-    return response($domPdf->output(), 200)->header('Content-Type', 'application/pdf');
-}
-  
     public function setEstoqueStore(Request $request){
 
         $stockMove = new StockMove();
@@ -722,8 +787,8 @@ public function relatorioFiscal(Request $request)
                     $produto = Produto::findOrFail($request->produto_grade_id[$i]);
                 }
                 $stockMove->pluStock(
-                    $produto->id, 
-                    __replace($request->quantidade[$i]), -1, 
+                    $produto->id,
+                    __replace($request->quantidade[$i]), -1,
                     $request->filial_id[$i]
                 );
             }
@@ -739,11 +804,4 @@ public function relatorioFiscal(Request $request)
 
     }
 
-
-    public function consultarDisponibilidadeEstoque($produtoId, $quantidade)
-    {
-        $produto = \App\Models\Produto::where('empresa_id',$this->empresa_id)->findOrFail((int)$produtoId);
-        $mensagem = $this->verificarDisponibilidadeEstoque($produto,(float)$quantidade);
-        return response()->json(['disponivel'=>$mensagem === '','mensagem'=>$mensagem]);
-    }
 }

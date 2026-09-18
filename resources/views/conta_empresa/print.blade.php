@@ -1,213 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Extrato Bancário - {{ $item->nome }}</title>
+    <title>Extrato da Conta Bancária</title>
     <style>
-        /* Define as margens nativas da página A4 no Dompdf */
-        @page {
-            margin: 1.5cm; 
-        }
-
+        @page { margin: 1.2cm; }
         body {
-            background: #ffffff; /* Fundo branco para remover o quadrado cinza */
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10px;
+            color: #2b2b2b;
             margin: 0;
             padding: 0;
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 11px;
-            color: #333;
+        }
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .logo-img { max-width: 120px; max-height: 60px; }
+        .title { font-size: 14px; font-weight: 800; text-transform: uppercase; text-align: center; }
+        .empresa-info { text-align: center; font-size: 10px; color: #555; }
+
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
         }
 
-        /* A div page agora apenas agrupa, sem forçar larguras ou margens que causam corte */
-        .page {
-            width: 100%;
-        }
-
-        /* Cabeçalho da Empresa */
-        .table-header { width: 100%; margin-bottom: 10px; border: none; }
-        .logo { max-width: 130px; max-height: 90px; }
-        .empresa-info { text-align: center; line-height: 1.4; color: #444; }
-        .empresa-nome { font-size: 16px; font-weight: 800; color: #000; text-transform: uppercase; }
-
-        .titulo-relatorio {
-            text-align: center;
-            background: #f8f9fa;
-            border-top: 1px solid #000;
-            border-bottom: 1px solid #000;
-            padding: 8px;
-            margin: 15px 0;
+        .table-data { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .table-data th {
+            background-color: #343a40;
+            color: #ffffff;
             font-weight: bold;
-            font-size: 13px;
-            letter-spacing: 1px;
-        }
-
-        /* Tabela de Extrato com alinhamento preciso */
-        table.extrato {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed; /* Impede que a tabela ultrapasse a margem */
-        }
-        .extrato th {
-            border-bottom: 2px solid #000;
-            padding: 10px 5px;
+            padding: 6px;
             text-align: left;
-            font-weight: bold;
-            color: #000;
+            font-size: 9px;
+            text-transform: uppercase;
         }
-        .extrato td {
-            padding: 8px 5px;
-            border-bottom: 1px solid #eee;
-            vertical-align: middle;
-        }
-
-        /* Definição das Larguras das Colunas para não "vazar" da tela */
-        .col-data { width: 15%; }
-        .col-desc { width: 40%; }
-        .col-entrada { width: 15%; text-align: right; }
-        .col-saida { width: 15%; text-align: right; }
-        .col-saldo { width: 15%; text-align: right; }
-
-        .text-right { text-align: right; padding-right: 5px !important; }
-        .bold { font-weight: bold; }
-        .debito { color: #d9534f; }
+        .table-data td { padding: 6px; border-bottom: 1px solid #dee2e6; font-size: 10px; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .credito { color: #198754; font-weight: bold; }
+        .debito { color: #dc3545; font-weight: bold; }
+        .saldo-box { margin-top: 15px; text-align: right; font-size: 11px; font-weight: bold; }
     </style>
-  </head>
+</head>
 <body>
 
-    <div class="page">
-        {{-- Cabeçalho Identidade Visual --}}
-        <table class="table-header">
-            <tr>
-                <td width="20%">
-                    @if($caminhoLogo)
-                        <img class="logo" src="{{ $caminhoLogo }}">
-                    @else
-                        {{-- Caso não tenha logo cadastrada, busca uma padrão --}}
-                        @if(file_exists(public_path('imgs/logo.png')))
-                            <img class="logo" src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('imgs/logo.png'))) }}">
-                        @endif
-                    @endif
-                </td>
-                <td width="80%" class="empresa-info">
-                    <span class="empresa-nome">{{ $empresa->nome }}</span><br>
-                    {{ $empresa->rua }}, {{ $empresa->numero }} - {{ $empresa->bairro }}<br>
-                    {{ $empresa->cidade }} ({{ $empresa->cidade->uf ?? 'BA' }}) - {{ $empresa->cep }} | CNPJ: {{ $empresa->cnpj }}<br>
-                    Fone: {{ $empresa->telefone }}
-                </td>
-            </tr>
-        </table>
+<!-- Cabeçalho -->
+<table class="header-table">
+    <tr>
+        <td width="25%">
+            @if(!empty($caminhoLogo))
+                <img class="logo-img" src="{{ $caminhoLogo }}">
+            @else
+                <strong>{{ $empresa->nome ?? 'EMPRESA' }}</strong>
+            @endif
+        </td>
+        <td width="50%" class="text-center">
+            <div class="title">Extrato Bancário</div>
+            <div class="empresa-info">
+                {{ $empresa->nome ?? 'Empresa' }} | CNPJ: {{ $config->cnpj ?? $empresa->cnpj ?? '-' }}
+            </div>
+        </td>
+        <td width="25%" class="text-right">
+            <small>Período:</small><br>
+            <strong>{{ $data_inicio ? date('d/m/Y', strtotime($data_inicio)) : 'Início' }} a {{ $data_final ? date('d/m/Y', strtotime($data_final)) : date('d/m/Y') }}</strong>
+        </td>
+    </tr>
+</table>
 
-        <div class="titulo-relatorio">EXTRATO BANCÁRIO</div>
+<!-- Detalhes da Conta -->
+<div class="info-box">
+    <table width="100%">
+        <tr>
+            <td><strong>Conta:</strong> {{ $item->nome }}</td>
+            <td><strong>Agência:</strong> {{ $item->agencia ?? '-' }}</td>
+            <td><strong>Nº Conta:</strong> {{ $item->conta ?? '-' }}</td>
+            <td class="text-right"><strong>Saldo Anterior:</strong> R$ {{ number_format($saldo_anterior, 2, ',', '.') }}</td>
+        </tr>
+    </table>
+</div>
 
-        <div style="margin-bottom: 20px; font-size: 11px; line-height: 1.6;">
-            <strong>CONTA:</strong> {{ $item->nome }} | <strong>AGÊNCIA:</strong> {{ $item->agencia }} | <strong>CONTA:</strong> {{ $item->conta }}<br>
-            <strong>PERÍODO:</strong> {{ $data_inicio ? date('d/m/Y', strtotime($data_inicio)) : 'Início' }} até {{ $data_final ? date('d/m/Y', strtotime($data_final)) : date('d/m/Y') }}
-        </div>
-
-        <table class="extrato">
-            <thead>
-                <tr>
-                    <th width="15%">DATA</th>
-                    <th width="40%">DESCRIÇÃO</th>
-                    <th width="15%" style="text-align: right;">ENTRADA</th>
-                    <th width="15%" style="text-align: right;">SAÍDA</th>
-                    <th width="15%" style="text-align: right;">SALDO</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{-- Saldo Anterior --}}
-                <tr class="bold">
-                    <td></td>
-                    <td>SALDO ANTERIOR AO PERÍODO</td>
-                    <td></td>
-                    <td></td>
-                    <td class="text-right">
-                        {{ number_format(abs($saldo_anterior), 2, ',', '.') }}
-                        {{ $saldo_anterior >= 0 ? 'C' : 'D' }}
-                    </td>
-                </tr>
-
-                @php $saldo_acumulado = $saldo_anterior; @endphp
-
-                @if(isset($movimentacoes) && count($movimentacoes) > 0)
-                    @foreach($movimentacoes as $m)
-                        @php
-                            if($m->tipo == 'entrada') {
-                                $saldo_acumulado += $m->valor;
-                                $entrada = $m->valor;
-                                $saida = null;
-                            } else {
-                                $saldo_acumulado -= $m->valor;
-                                $entrada = null;
-                                $saida = $m->valor;
-                            }
-                        @endphp
-                        <tr>
-                            <td>{{ date('d/m/Y', strtotime($m->data_pagamento ?? $m->created_at)) }}</td>
-                            <td style="text-transform: uppercase; font-size: 10px;">{{ $m->descricao }}</td>
-                            <td class="text-right">
-                                {{ $entrada ? number_format($entrada, 2, ',', '.') : '' }}
-                            </td>
-                            <td class="text-right">
-                                {{ $saida ? number_format($saida, 2, ',', '.') : '' }}
-                            </td>
-                            <td class="text-right bold {{ $saldo_acumulado < 0 ? 'debito' : '' }}">
-                                {{ number_format(abs($saldo_acumulado), 2, ',', '.') }}
-                                {{ $saldo_acumulado >= 0 ? 'C' : 'D' }}
-                            </td>
-                        </tr>
-                    @endforeach
+<!-- Tabela de Movimentações -->
+<table class="table-data">
+    <thead>
+    <tr>
+        <th width="12%">Data</th>
+        <th width="48%">Descrição</th>
+        <th width="15%" class="text-center">Tipo</th>
+        <th width="25%" class="text-right">Valor (R$)</th>
+    </tr>
+    </thead>
+    <tbody>
+    @php $saldoAcumulado = $saldo_anterior; @endphp
+    @forelse($movimentacoes as $transacao)
+        @php
+            if ($transacao->tipo == 'entrada') {
+                $saldoAcumulado += $transacao->valor;
+            } else {
+                $saldoAcumulado -= $transacao->valor;
+            }
+        @endphp
+        <tr>
+            <td class="text-center">{{ date('d/m/Y', strtotime($transacao->data_pagamento ?? $transacao->created_at)) }}</td>
+            <td>{{ $transacao->descricao }}</td>
+            <td class="text-center">
+                @if($transacao->tipo == 'entrada')
+                    <span class="credito">ENTRADA (+)</span>
                 @else
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 20px;">Nenhuma movimentação encontrada no período.</td>
-                    </tr>
+                    <span class="debito">SAÍDA (-)</span>
                 @endif
-            </tbody>
-            <tfoot>
-                @php
-                    // Calcula os totais de forma segura para o PDF
-                    $total_entradas = 0;
-                    $total_saidas = 0;
-                    if(isset($movimentacoes) && count($movimentacoes) > 0) {
-                        foreach($movimentacoes as $m) {
-                            if($m->tipo == 'entrada') {
-                                $total_entradas += $m->valor;
-                            } else {
-                                $total_saidas += $m->valor;
-                            }
-                        }
-                    }
-                @endphp
+            </td>
+            <td class="text-right">
+                        <span class="{{ $transacao->tipo == 'entrada' ? 'credito' : 'debito' }}">
+                            {{ $transacao->tipo == 'entrada' ? '+' : '-' }} R$ {{ number_format($transacao->valor, 2, ',', '.') }}
+                        </span>
+            </td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="4" class="text-center" style="padding: 15px; color: #777;">
+                Nenhuma movimentação registrada no período selecionado.
+            </td>
+        </tr>
+    @endforelse
+    </tbody>
+</table>
 
-                {{-- Linha 1: Totais do Período --}}
-                <tr class="bold">
-                    <td colspan="2" class="text-right" style="padding: 10px 5px; border-top: 1px solid #000;">
-                        TOTAIS DO PERÍODO:
-                    </td>
-                    <td class="text-right" style="border-top: 1px solid #000; color: #198754;">
-                        {{ number_format($total_entradas, 2, ',', '.') }}
-                    </td>
-                    <td class="text-right debito" style="border-top: 1px solid #000;">
-                        {{ number_format($total_saidas, 2, ',', '.') }}
-                    </td>
-                    <td style="border-top: 1px solid #000;">
-                        {{-- Célula vazia embaixo do saldo para manter o alinhamento --}}
-                    </td>
-                </tr>
-
-                {{-- Linha 2: Saldo Final (A sua original) --}}
-                <tr class="bold" style="background-color: #f8f9fa;">
-                    <td colspan="4" class="text-right" style="padding: 12px 5px;">
-                        SALDO FINAL EM {{ date('d/m/Y', strtotime($data_final ?? date('Y-m-d'))) }}:
-                    </td>
-                    <td class="text-right" style="font-size: 13px;">
-                        {{ number_format(abs($saldo_acumulado), 2, ',', '.') }}
-                        {{ $saldo_acumulado >= 0 ? 'C' : 'D' }}
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
+<!-- Saldo Final -->
+<div class="saldo-box">
+    Saldo Atual em {{ date('d/m/Y') }}:
+    <span class="{{ $saldoAcumulado >= 0 ? 'credito' : 'debito' }}">
+            R$ {{ number_format($saldoAcumulado, 2, ',', '.') }}
+        </span>
+</div>
 
 </body>
 </html>

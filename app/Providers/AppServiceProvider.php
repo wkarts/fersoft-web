@@ -35,6 +35,8 @@ use App\Utils\WhatsAppUtil;
 use App\Services\AppVersionService;
 use App\Support\FiscalDateHelper;
 use App\Support\EnsureApplicationDirectories;
+use App\Models\Aviso;
+use App\Models\Tarefa;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -186,6 +188,31 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $alertas = [];
+            $avisosAtivos = Aviso::where('status', 1)->get();
+            foreach($avisosAtivos as $aviso) {
+                array_push($alertas, [
+                    'msg' => $aviso->texto,
+                    'titulo' => $aviso->titulo,
+                    'link' => '/alertas'
+                ]);
+            }
+
+            // 2. Busca TAREFAS pendentes (Tabela tarefas)
+            if(isset($usuario)){
+                $tarefasPendentes = \App\Models\Tarefa::where('status', 'pendente')
+                    ->where('user_id', $usuario->id)
+                    ->where('data', '<=', date('Y-m-d H:i:s')) // Agora usando a coluna 'data' correta
+                    ->get();
+
+                foreach($tarefasPendentes as $t) {
+                    array_push($alertas, [
+                        'msg' => 'Tarefa pendente: ' . $t->nome . ' - Vencida ou agendada para: ' . date('d/m/Y H:i', strtotime($t->data)),
+                        'titulo' => 'Atenção: Tarefa Pendente',
+                        'link' => '/tarefas' 
+                    ]);
+                }
+            }
+          
             $semValidade = $this->verificaItensSemValidade($empresa_id);
             if($semValidade) {
                 array_push($alertas,

@@ -155,7 +155,7 @@ function _construct(codigo_, nome_, codBarras_, ncm_, cfop_, unidade_, valor_, q
 	nNf = nNf_;
 	cest = cest_;
 	codBarras = codBarras_.substring(0, 13);
-    linha_global = linha_ || codigo_; // Trava de segurança ativada
+  	linha_global = linha_ || codigo_; // Trava de segurança ativada
 }
 
 // AQUI ESTAVA FALTANDO A PALAVRA "linha" NO FINAL:
@@ -237,7 +237,7 @@ function cadProd(codigo, nome, codBarras, ncm, cfop, unidade, valor, quantidade,
 		valorVenda = valorVenda.substring(3, valorVenda.length)
 
 		$('#valor_venda').val(valorVenda)
-
+		
 		$('#quantidade').val(quantidade);
 		$('#codBarras').val(codBarras);
 		$('#conv_estoque').val('1');
@@ -292,13 +292,13 @@ $('#salvarLink').click(() => {
             valor_venda: valor,
             valor_compra: valorCompra,
             produto_id: produto.id,
-            numero_nfe: nNf,
+            numero_nfe: nNf, 
             fornecedor_id: fornecedor_id,
-
+            
             // 🔥 O SEGREDO: Enviamos o código que veio da nota aqui
-            codigo_fornecedor: codigo,
-            descricao_fornecedor: nome,
-            codigo_barras_fornecedor: codBarras
+            codigo_fornecedor: codigo, 
+            descricao_fornecedor: nome, 
+            codigo_barras_fornecedor: codBarras 
         };
 
         let token = $('#_token').val();
@@ -316,19 +316,19 @@ $('#salvarLink').click(() => {
 
                 $('#preloader').css('display', 'none');
                 $('#modal1').modal('hide');
-                $('#modal-link').modal('hide');
+                $('#modal-link').modal('hide'); 
 
                 swal("Sucesso", "Produto Vinculado com sucesso!", "success")
                 .then(sim => {
                     location.reload();
                 });
-            },
+            }, 
             error: function(e){
                 console.log(e);
                 $('#preloader').css('display', 'none');
                 document.write(e.responseText);
             }
-        });
+        }); 
     }else{
         swal("Erro", "Selecione o produto", "error");
     }
@@ -342,7 +342,7 @@ var searchTimeout = null;
 $('#salvar').click(function(e) {
     e.preventDefault();
     let btn = $(this);
-
+    
     let valorVenda = $('#valor_venda').val();
     if(valorVenda <= 0 || valorVenda === ''){
         swal("Erro", "Informe um valor de venda válido", "warning");
@@ -355,10 +355,10 @@ $('#salvar').click(function(e) {
     // Como corrigimos os NAMEs no HTML, o jQuery varre tudo sozinho!
     let formArray = $('#kt_form').serializeArray();
     let prod = {};
-
+    
     // Transforma os campos em um objeto, e caso algo venha vazio ele joga '0' pra não dar erro
     $.each(formArray, function() {
-        prod[this.name] = this.value || '0';
+        prod[this.name] = this.value || '0'; 
     });
 
     // Como o Checkbox não é capturado quando está desmarcado, forçamos aqui
@@ -366,7 +366,7 @@ $('#salvar').click(function(e) {
     prod.inativo = $('#inativo').is(':checked') ? 1 : 0;
 
     // Colocamos os dados que são gerados pelo sistema, que não ficam dentro do form do modal
-    prod.ncm = ncm;
+    prod.ncm = ncm; 
     prod.id_empresa = $('#empresa_id').val() || 1;
     prod.fornecedor_id = $('#fornecedor_id').val() || 0;
     prod.numero_nfe = nNf;
@@ -382,9 +382,9 @@ $('#salvar').click(function(e) {
         data: { produto: prod, _token: token },
         url: path + 'produtos/salvarProdutoDaNotaComEstoque',
         dataType: 'json',
-        success: function(e) {
+        success: function(e) { 
             $("#th_prod_id_" + linha_global).html(e.id);
-            $("#th_" + linha_global).removeClass("text-danger red-text");
+            $("#th_" + linha_global).removeClass("text-danger red-text"); 
             $("#th_acao1_" + linha_global).css('display', 'none');
             $("#th_estoque_" + linha_global).addClass('disabled');
 
@@ -393,14 +393,14 @@ $('#salvar').click(function(e) {
 
             swal("Sucesso", "Produto Salvo e vinculado ao Estoque com Sucesso!", "success")
             .then(sim => {
-                location.reload();
+                location.reload(); 
             });
-        },
+        }, 
         error: function(e){
             console.error(e);
             $('#preloader').css('display', 'none');
             btn.removeClass('spinner spinner-white spinner-right').attr('disabled', false);
-
+            
             try {
                 swal("Erro de Banco de Dados", e.responseJSON.message || e.responseText, "error");
             } catch (err) {
@@ -490,16 +490,16 @@ function formatReal(v){
 }
 
 // Garante o tempo de digitação correto sem quebrar a busca
-var searchTimeout = null;
+var searchTimeout = null; 
 
 // =================================================================
 // 🟢 AUTOCOMPLETE CORRIGIDO: INTEGRAÇÃO PERFEITA COM AS DUAS ROTAS
 // =================================================================
-var searchTimeout = null;
+var searchTimeout = null; 
 
 $('#produto-search').keyup(function() {
 	let pesquisa = $(this).val();
-
+	
 	if (searchTimeout) {
 		clearTimeout(searchTimeout);
 	}
@@ -509,9 +509,9 @@ $('#produto-search').keyup(function() {
 			let filial_id = $('#filial_id').length > 0 ? $('#filial_id').val() : -1;
 
 			// 1. Chamamos a rota de pesquisa por TEXTO do seu sistema
-			$.get(path + 'produtos/autocomplete', {
+			$.get(path + 'produtos/autocomplete', { 
 				pesquisa: pesquisa,
-				filial_id: filial_id
+				filial_id: filial_id 
 			})
 			.done((res) => {
 				let dados = Array.isArray(res) ? res : (res.produtos || []);
@@ -523,11 +523,11 @@ $('#produto-search').keyup(function() {
 						if(rs.grade){
 							p += ' ' + (rs.str_grade || '');
 						}
-
+						
 						// Força a prioridade visual (z-index) para aparecer na frente do modal branco
 						html += '<label onclick="selectProd('+rs.id+')" style="display: block; width: 100%; padding: 8px; background: #fff; cursor: pointer; border-bottom: 1px solid #eee; position: relative; z-index: 99999 !important;">'+p+'</label>';
 					});
-
+					
 					$('.search-prod').html(html);
 					$('.search-prod').css({
 						'display': 'block',
@@ -546,7 +546,7 @@ $('#produto-search').keyup(function() {
 			.fail((err) => {
 				console.log("Erro na busca por texto:", err);
 			});
-		}, 400);
+		}, 400); 
 	} else {
 		$('.search-prod').css('display', 'none');
 	}
@@ -563,7 +563,7 @@ function selectProd(id){
 		PRODUTO = Array.isArray(res) ? res[0] : res;
 
 		if(PRODUTO) {
-			let p = PRODUTO.nome;
+			let p = PRODUTO.nome; 
 			if(PRODUTO.grade && PRODUTO.str_grade){
 				p += ' ' + PRODUTO.str_grade;
 			}

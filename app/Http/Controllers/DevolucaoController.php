@@ -603,14 +603,22 @@ class DevolucaoController extends Controller
 	}
 
 	private function verificaFornecedor($doc){
-		if(strlen($doc) == 14){
-			$doc = $this->formataCnpj($doc);
-		}else{
-			$doc = $this->formataCpf($doc);
-		}
-		$forn = Fornecedor::verificaCadastrado($doc);
-		return $forn;
-	}
+        $docLimpo = preg_replace('/[^0-9]/', '', $doc);
+        if(strlen($docLimpo) == 14){
+            $docFormatado = $this->formataCnpj($docLimpo);
+        } else {
+            $docFormatado = $this->formataCpf($docLimpo);
+        }
+        
+        // Tenta buscar tanto formatado quanto limpo para garantir que encontre
+        $forn = Fornecedor::where('empresa_id', $this->empresa_id)
+            ->where(function($query) use ($docFormatado, $docLimpo) {
+                $query->where('cpf_cnpj', $docFormatado)
+                      ->orWhere('cpf_cnpj', $docLimpo);
+            })->first();
+
+        return $forn;
+    }
 
 	private function verificaTransportadora($cnpj){
 		$transp = Transportadora::verificaCadastrado($cnpj);
@@ -618,35 +626,40 @@ class DevolucaoController extends Controller
 	}
 
 	private function cadastrarFornecedor($fornecedor){
+        $doc = $fornecedor['cnpj'] == '' ? $fornecedor['cpf'] : $fornecedor['cnpj'];
+        $docLimpo = preg_replace('/[^0-9]/', '', $doc);
+        
+        // ANTES DE CADASTRAR: Verifica se já existe na base para esta empresa
+        $existente = $this->verificaFornecedor($docLimpo);
+        if ($existente) {
+            return $existente->id; // Retorna o ID existente em vez de duplicar
+        }
 
-		$doc = $fornecedor['cnpj'] == '' ? $fornecedor['cpf'] : $fornecedor['cnpj'];
-		if(strlen($doc) == 14){
-			$doc = $this->formataCnpj($doc);
-		}else{
-			$doc = $this->formataCpf($doc);
-		}
-       // Busca o ID interno da cidade usando o código do IBGE
-    // O erro acontece porque você estava usando $fornecedor['cidade_id'] direto no 'create'
-         $cidade = Cidade::where('codigo', $fornecedor['cidade_id'])->first();
+        if(strlen($docLimpo) == 14){
+            $doc = $this->formataCnpj($docLimpo);
+        } else {
+            $doc = $this->formataCpf($docLimpo);
+        }
 
+        $cidade = Cidade::where('codigo', $fornecedor['cidade_id'])->first();
 
-		$result = Fornecedor::create([
-			'razao_social' => $fornecedor['razaoSocial'],
-			'nome_fantasia' => $fornecedor['nomeFantasia'],
-			'rua' => $fornecedor['logradouro'],
-			'numero' => $fornecedor['numero'],
-			'bairro' => $fornecedor['bairro'],
-			'cep' => $this->formataCep($fornecedor['cep']),
-			'cpf_cnpj' => $doc,
-			'ie_rg' => $fornecedor['ie'],
-			'celular' => '*',
-			'telefone' => $this->formataTelefone($fornecedor['fone']),
-			'email' => '*',
-			'cidade_id' => $cidade ? $cidade->id : 1, // <--- AQUI ESTÁ A CORREÇÃO: usa o ID da tabela
-			'empresa_id' => $this->empresa_id
-		]);
-		return $result->id;
-	}
+        $result = Fornecedor::create([
+            'razao_social' => $fornecedor['razaoSocial'],
+            'nome_fantasia' => $fornecedor['nomeFantasia'] ?? $fornecedor['razaoSocial'],
+            'rua' => $fornecedor['logradouro'],
+            'numero' => $fornecedor['numero'],
+            'bairro' => $fornecedor['bairro'],
+            'cep' => $this->formataCep($fornecedor['cep']),
+            'cpf_cnpj' => $doc,
+            'ie_rg' => $fornecedor['ie'] ?? 'ISENTO',
+            'celular' => '*',
+            'telefone' => isset($fornecedor['fone']) ? $this->formataTelefone($fornecedor['fone']) : '*',
+            'email' => '*',
+            'cidade_id' => $cidade ? $cidade->id : 1,
+            'empresa_id' => $this->empresa_id
+        ]);
+        return $result->id;
+    }
 
 	private function cadastrarTransportadora($transp){
 

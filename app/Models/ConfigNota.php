@@ -90,6 +90,8 @@ class ConfigNota extends BaseModel
         'conectar_automaticamente_balanca_padrao_usuario',
         'conectar_automaticamente_balanca_ao_selecionar',
         'codigo_prosoft',
+        'latitude',
+        'longitude',
         'conta_estoque',
         'pesagem_habilitar_preview_cameras',
         'pesagem_exigir_imagem_quando_balanca_tem_camera',
@@ -113,6 +115,8 @@ class ConfigNota extends BaseModel
         'pesagem_permitir_cadastro_rapido_veiculo',
         'pesagem_permitir_cadastro_rapido_motorista',
         'pesagem_exibir_chave_pix_relatorio',
+        'pesagem_exibir_valores_relatorio',
+        'pesagem_manter_modal_ticket_aberto_apos_salvar',
     ];
 
     protected $casts = [
@@ -133,6 +137,8 @@ class ConfigNota extends BaseModel
         'pesagem_permitir_cadastro_rapido_veiculo' => 'boolean',
         'pesagem_permitir_cadastro_rapido_motorista' => 'boolean',
         'pesagem_exibir_chave_pix_relatorio' => 'boolean',
+        'pesagem_exibir_valores_relatorio' => 'boolean',
+        'pesagem_manter_modal_ticket_aberto_apos_salvar' => 'boolean',
     ];
 
 
@@ -229,7 +235,7 @@ class ConfigNota extends BaseModel
         $empresa_id = $value['empresa'];
         $config = ConfigNota::
         where('empresa_id', $empresa_id)
-        ->first();
+            ->first();
         return $config;
     }
 

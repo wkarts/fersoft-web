@@ -514,13 +514,24 @@ upsert_env "CACHE_DRIVER" "array"
 upsert_env "SESSION_DRIVER" "array"
 upsert_env "QUEUE_CONNECTION" "sync"
 
-# Banco SQLite no CI (você já tem database/database.sqlite)
-mkdir -p database
-if [ ! -f database/database.sqlite ]; then
-  touch database/database.sqlite
+# Banco do CI.
+# Quando o workflow fornece MySQL 8, preserva essa configuração.
+# Sem configuração externa, mantém o fallback SQLite usado no desenvolvimento/CI legado.
+if [[ "${DB_CONNECTION:-sqlite}" == "mysql" ]]; then
+  upsert_env "DB_CONNECTION" "mysql"
+  upsert_env "DB_HOST" "${DB_HOST:-127.0.0.1}"
+  upsert_env "DB_PORT" "${DB_PORT:-3306}"
+  upsert_env "DB_DATABASE" "${DB_DATABASE:-fersoft_test}"
+  upsert_env "DB_USERNAME" "${DB_USERNAME:-root}"
+  upsert_env "DB_PASSWORD" "${DB_PASSWORD:-root}"
+else
+  mkdir -p database
+  if [ ! -f database/database.sqlite ]; then
+    touch database/database.sqlite
+  fi
+  upsert_env "DB_CONNECTION" "sqlite"
+  upsert_env "DB_DATABASE" "database/database.sqlite"
 fi
-upsert_env "DB_CONNECTION" "sqlite"
-upsert_env "DB_DATABASE" "database/database.sqlite"
 
 # -----------------------------
 # 4) Se existirem secrets importantes, sobrescreve (sem exigir template)

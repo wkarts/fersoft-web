@@ -10,10 +10,10 @@
         }
 
         /* 2. Reseta o fundo e remove preenchimentos inúteis para usar a folha toda */
-        body, .content, .d-flex, .wrapper {
-            background-color: #fff !important;
-            padding: 0 !important;
-            margin: 0 !important;
+        body, .content, .d-flex, .wrapper { 
+            background-color: #fff !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
             width: 100% !important;
         }
 
@@ -27,7 +27,7 @@
         
         th, td { 
             font-size: 10px !important; /* Fonte um pouco menor para caber todas as colunas lado a lado */
-            padding: 4px 6px !important;
+            padding: 4px 6px !important; 
             border: 1px solid #ddd !important; /* Borda cinza clara para guiar a leitura */
         }
 
@@ -37,7 +37,7 @@
             print-color-adjust: exact !important;
             color-adjust: exact !important;
         }
-
+        
         /* 5. Mantém as cores dos botõezinhos e textos alinhados */
         .text-right { text-align: right !important; }
         .badge { padding: 4px 8px !important; border-radius: 4px !important; display: inline-block; font-size: 9px !important; font-weight: bold; }
@@ -66,7 +66,7 @@
                     <label>Data Final</label>
                     <input type="date" name="data_final" class="form-control" value="{{ $data_final }}">
                 </div>
-
+                
                 <div class="col-md-2">
                     <label>Filial</label>
                     <select name="filial_id" class="form-control select2">
@@ -91,7 +91,7 @@
                         @endforeach
                     </select>
                 </div>
-
+                
                 <div class="col-md-3">
                     <label>Categoria (Múltipla)</label>
                     @php $cats = request('categoria_id', []); @endphp
@@ -108,7 +108,7 @@
                     <label>Nº Nota</label>
                     <input type="text" name="numero_nota" class="form-control" value="{{ request('numero_nota') }}">
                 </div>
-
+                
                 <div class="col-md-2">
                     <label>Estado</label>
                     <select name="estado" class="form-control select2">

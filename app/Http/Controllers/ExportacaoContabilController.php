@@ -8,40 +8,35 @@ use App\Models\Filial;
 
 class ExportacaoContabilController extends BaseController
 {
-    // Apenas para cumprir exigências do BaseController, mesmo não usando CRUD padrão aqui
-    protected $model = Filial::class; 
-    protected $redirectPage = '/'; 
+    // Apenas para cumprir exigências do BaseController
+    protected $model = Filial::class;
+    protected $redirectPage = '/';
 
     public function rules(): array { return []; }
     public function messages(): array { return []; }
 
     public function index()
     {
-        // 1. Define o título da página que o seu layout exige
         $title = 'Exportação Contábil Prosoft';
-
-        // 2. Busca filiais para o select
         $filiais = Filial::where('empresa_id', $this->empresa_id)->get();
-        
-        // 3. Envia as filiais e o título para a view
         return view('contabilidade.exportacao', compact('filiais', 'title'));
     }
 
     public function processarPrevia(Request $request)
     {
         $service = new ContabilidadeService();
-        
-        // Simula um objeto de filial para a Matriz se for selecionado "matriz"
         $filial = ($request->filial_id == 'matriz') ? (object)['id' => 'matriz'] : Filial::findOrFail($request->filial_id);
-        
+
         $dados = $service->processarAuditoria($request->data_inicio, $request->data_fim, $filial);
-        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
-        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
+
+        // Agrupa as provisões na prévia também para o visual bater com o arquivo
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov']);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov']);
 
         return response()->json($dados);
     }
-  
-  public function gerarArquivo(Request $request, \App\Services\ContabilidadeService $service)
+
+    public function gerarArquivo(Request $request, \App\Services\ContabilidadeService $service)
     {
         $filialId = $request->input('filial_id');
         $dataInicio = $request->input('data_inicio');
@@ -49,65 +44,61 @@ class ExportacaoContabilController extends BaseController
 
         $dados = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
 
-        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
-        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
+        // Agrupa as provisões para o arquivo TXT
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov']);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov']);
 
         $linhasTxt = [];
         $ordem = 1;
 
-        // SE O SEU CONTADOR MUDAR O CÓDIGO DA FILIAL, É SÓ ALTERAR AQUI:
         $codigoFilialProsoft = '002';
 
         $processarAba = function($linhas) use (&$linhasTxt, &$ordem, $codigoFilialProsoft) {
             foreach ($linhas as $item) {
                 if ($item['status'] === 'ERRO' || $item['status'] === 'SEM PROVISÃO') {
-                    continue; 
+                    continue;
                 }
 
                 $data = str_replace('/', '', $item['data']);
 
                 $debito = str_pad(substr(preg_replace('/[^0-9]/', '', $item['debito']), 0, 5), 5, '0', STR_PAD_LEFT);
                 $credito = str_pad(substr(preg_replace('/[^0-9]/', '', $item['credito']), 0, 5), 5, '0', STR_PAD_LEFT);
-                
-                // Trata o Terceiro (CNPJ/CPF) adicionando zeros à esquerda até dar 14 posições, ou espaços se for vazio
-                $terc_D = !empty($item['terceiro_debito']) 
-                          ? str_pad($item['terceiro_debito'], 14, '0', STR_PAD_LEFT) 
-                          : str_pad('', 14, ' ');
-                          
-                $terc_C = !empty($item['terceiro_credito']) 
-                          ? str_pad($item['terceiro_credito'], 14, '0', STR_PAD_LEFT) 
-                          : str_pad('', 14, ' ');
-                
-                $valorLimpo = str_replace(['R$', ' ', '.'], '', $item['valor']); 
-                $valorLimpo = str_replace(',', '.', $valorLimpo); 
+
+                $terc_D = !empty($item['terceiro_debito'])
+                    ? str_pad($item['terceiro_debito'], 14, '0', STR_PAD_LEFT)
+                    : str_pad('', 14, ' ');
+
+                $terc_C = !empty($item['terceiro_credito'])
+                    ? str_pad($item['terceiro_credito'], 14, '0', STR_PAD_LEFT)
+                    : str_pad('', 14, ' ');
+
+                $valorLimpo = str_replace(['R$', ' ', '.'], '', $item['valor']);
+                $valorLimpo = str_replace(',', '.', $valorLimpo);
                 $valor = str_pad($valorLimpo, 16, '0', STR_PAD_LEFT);
-                
+
                 $historico = strtoupper(trim(preg_replace('/\s+/', ' ', $item['historico'])));
                 $historico = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $historico);
                 $historico = str_pad(substr($historico, 0, 240), 240, ' ', STR_PAD_RIGHT);
 
-                // ==========================================================
-                // MONTAGEM DA LINHA PROSOFT
-                // ==========================================================
-                $linha = 'LC1' .                                       // Posição 1 a 3 (Tipo)
-                         str_pad($ordem, 5, '0', STR_PAD_LEFT) .       // Posição 4 a 8 (Ordem)
-                         '   ' .                                       // Posição 9 a 11 (Filler)
-                         '1' .                                         // Posição 12 (Modo = 1 Simples)
-                         $data .                                       // Posição 13 a 20 (Data)
-                         str_pad('', 10, ' ') .                        // Posição 21 a 30 (Documento)
-                         str_pad('', 5, ' ') .                         // Posição 31 a 35 (Lote)
-                         str_pad('', 30, ' ') .                        // Posição 36 a 65 (Origem)
-                         str_pad($codigoFilialProsoft, 3, '0', STR_PAD_LEFT) . // Posição 66 a 68 (Código da Filial na Prosoft)
-                         $debito .                                     // Posição 69 a 73 (Conta Débito)
-                         $terc_D .                                     // Posição 74 a 87 (Terceiro Débito CNPJ/CPF)
-                         str_pad('', 5, ' ') .                         // Posição 88 a 92 (C/Custo Débito)
-                         $credito .                                    // Posição 93 a 97 (Conta Crédito)
-                         $terc_C .                                     // Posição 98 a 111 (Terceiro Crédito CNPJ/CPF)
-                         str_pad('', 5, ' ') .                         // Posição 112 a 116 (C/Custo Crédito)
-                         $valor .                                      // Posição 117 a 132 (Valor)
-                         $historico .                                  // Posição 133 a 372 (Histórico)
-                         '  ' .                                        // Posição 373 a 374 (Conciliação D e C)
-                         str_pad('', 74, ' ');                         // Posição 375 a 448 (Filler)
+                $linha = 'LC1' .
+                    str_pad($ordem, 5, '0', STR_PAD_LEFT) .
+                    '   ' .
+                    '1' .
+                    $data .
+                    str_pad('', 10, ' ') .
+                    str_pad('', 5, ' ') .
+                    str_pad('', 30, ' ') .
+                    str_pad($codigoFilialProsoft, 3, '0', STR_PAD_LEFT) .
+                    $debito .
+                    $terc_D .
+                    str_pad('', 5, ' ') .
+                    $credito .
+                    $terc_C .
+                    str_pad('', 5, ' ') .
+                    $valor .
+                    $historico .
+                    '  ' .
+                    str_pad('', 74, ' ');
 
                 $linhasTxt[] = $linha;
                 $ordem++;
@@ -119,23 +110,21 @@ class ExportacaoContabilController extends BaseController
         $processarAba($dados['receber_prov']);
         $processarAba($dados['receber_baixa']);
         $processarAba($dados['manual']);
-        $processarAba($dados['adiantamentos'] ?? []);
 
         $conteudo = implode("\r\n", $linhasTxt);
         if (!empty($conteudo)) {
             $conteudo .= "\r\n";
         }
 
-        // Nome do arquivo idêntico ao seu exemplo
-        $codigoEmpresa = '0160'; 
+        $codigoEmpresa = '0160';
         $nomeArquivo = "ctblctos{$codigoEmpresa}.txt";
 
         return response($conteudo)
             ->header('Content-Type', 'text/plain')
             ->header('Content-Disposition', 'attachment; filename="' . $nomeArquivo . '"');
     }
-  
-  public function gerarExcel(Request $request, \App\Services\ContabilidadeService $service)
+
+    public function gerarExcel(Request $request, \App\Services\ContabilidadeService $service)
     {
         $filialId = $request->input('filial_id');
         $dataInicio = $request->input('data_inicio');
@@ -143,41 +132,34 @@ class ExportacaoContabilController extends BaseController
 
         $dados = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
 
-        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov'] ?? []);
-        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov'] ?? []);
+        // Agrupa as provisões para o CSV do Excel
+        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov']);
+        $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov']);
 
         $linhasCsv = [];
-        
-        // Cabeçalho das Colunas
         $linhasCsv[] = implode(';', ['DATA', 'HISTORICO', 'TERCEIROS', 'CREDITO', 'DEBITO', 'N DOCUMENTO', 'CATEGORIA', 'VALOR']);
 
         $processarAba = function($linhas) use (&$linhasCsv) {
             foreach ($linhas as $item) {
-                // Pula os lançamentos com erro, igual na Prosoft
                 if ($item['status'] === 'ERRO' || $item['status'] === 'SEM PROVISÃO') {
-                    continue; 
+                    continue;
                 }
 
-                $data = $item['data']; // Ex: 15/04/2026
-                
-                // Limpa o ponto e vírgula do texto para não pular coluna no Excel
+                $data = $item['data'];
                 $historico = str_replace(';', ',', $item['historico']);
                 $categoria = str_replace(';', ',', $item['categoria']);
-                
-                // Terceiro: Pega o CNPJ/CPF onde ele estiver (débito ou crédito)
+
                 $terceiro = !empty($item['terceiro_debito']) ? $item['terceiro_debito'] : $item['terceiro_credito'];
+
+                // SOLUÇÃO DO EXCEL: Força o valor a ser interpretado como Texto para não sumir os Zeros
                 if (!empty($terceiro)) {
                     $terceiro = '="' . $terceiro . '"';
                 }
 
                 $credito = $item['credito'] === '---' ? '' : $item['credito'];
                 $debito = $item['debito'] === '---' ? '' : $item['debito'];
-                
-                // Pega o número do documento que adicionaremos no Service
                 $documento = $item['documento'] ?? '';
-                
-                // Valor já vem formatado como 1.500,00
-                $valor = $item['valor']; 
+                $valor = $item['valor'];
 
                 $linhasCsv[] = implode(';', [
                     $data, $historico, $terceiro, $credito, $debito, $documento, $categoria, $valor
@@ -190,9 +172,7 @@ class ExportacaoContabilController extends BaseController
         $processarAba($dados['receber_prov']);
         $processarAba($dados['receber_baixa']);
         $processarAba($dados['manual']);
-        $processarAba($dados['adiantamentos'] ?? []);
 
-        // Converte para ISO-8859-1 (Padrão do Excel no Brasil para não bugar os acentos)
         $conteudo = implode("\r\n", $linhasCsv);
         $conteudo = mb_convert_encoding($conteudo, 'ISO-8859-1', 'UTF-8');
 
@@ -203,29 +183,53 @@ class ExportacaoContabilController extends BaseController
             ->header('Content-Disposition', 'attachment; filename="' . $nomeArquivo . '"');
     }
 
-    private function agruparProvisoes($provisoes): array
+    /**
+     * FUNÇÃO NOVA: Agrupa provisões da mesma nota e soma os valores.
+     */
+    private function agruparProvisoes($provisoes)
     {
         $agrupado = [];
-        $diretos = [];
+
         foreach ($provisoes as $item) {
-            if (in_array($item['status'] ?? null, ['ERRO', 'SEM PROVISÃO'], true)) {
-                $diretos[] = $item;
+            // Se tiver erro, passa direto e não agrupa
+            if ($item['status'] === 'ERRO' || $item['status'] === 'SEM PROVISÃO') {
+                $agrupado[] = $item;
                 continue;
             }
-            $chave = implode('|', [$item['documento'] ?? 'SEM_DOC', $item['debito'] ?? '', $item['credito'] ?? '', $item['terceiro_debito'] ?? '', $item['terceiro_credito'] ?? '']);
-            $texto = str_replace(['R$', ' ', '.'], '', (string)($item['valor'] ?? 0));
-            $valor = (float)str_replace(',', '.', $texto);
+
+            // A chave junta o Número da Nota + Contas (Debito/Credito) + Terceiro
+            // Assim, ele sabe exatamente quem ele deve somar
+            $doc = $item['documento'] ?? 'SEM_DOC';
+            $chave = $doc . '_' . $item['debito'] . '_' . $item['credito'] . '_' . ($item['terceiro_debito'] ?? '') . ($item['terceiro_credito'] ?? '');
+
             if (!isset($agrupado[$chave])) {
                 $agrupado[$chave] = $item;
-                $agrupado[$chave]['_valor_soma'] = 0.0;
+
+                // Converte de "1.500,00" para 1500.00 para fazer conta matemática
+                $valorNumerico = str_replace(['R$', ' ', '.'], '', $item['valor']);
+                $valorNumerico = (float) str_replace(',', '.', $valorNumerico);
+
+                $agrupado[$chave]['valor_soma'] = $valorNumerico;
+            } else {
+                // Se já existe a chave, soma o valor da parcela atual
+                $valorNumerico = str_replace(['R$', ' ', '.'], '', $item['valor']);
+                $valorNumerico = (float) str_replace(',', '.', $valorNumerico);
+
+                $agrupado[$chave]['valor_soma'] += $valorNumerico;
             }
-            $agrupado[$chave]['_valor_soma'] += $valor;
         }
-        foreach ($agrupado as &$item) {
-            $item['valor'] = number_format($item['_valor_soma'], 2, ',', '.');
-            unset($item['_valor_soma']);
+
+        // Reconstrói o array formatando o dinheiro de volta para a tela/arquivo
+        $resultado = [];
+        foreach ($agrupado as $item) {
+            if (isset($item['valor_soma'])) {
+                $item['valor'] = number_format($item['valor_soma'], 2, ',', '.');
+                unset($item['valor_soma']); // Remove a variável temporária
+            }
+            $resultado[] = $item;
         }
-        unset($item);
-        return array_values(array_merge($diretos, $agrupado));
+
+        // Retorna a lista nova, limpa e agrupada
+        return array_values($resultado);
     }
 }

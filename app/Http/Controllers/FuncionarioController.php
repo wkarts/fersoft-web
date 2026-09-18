@@ -12,10 +12,12 @@ use App\Services\SaveFilesDB;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\FuncionarioImport;
 use App\Exports\FuncionarioModeloExport;
-
+use Illuminate\Support\Facades\DB;
 
 class FuncionarioController extends Controller
 {
+    use \App\Traits\GeocodeTrait;
+
     protected $empresa_id = null;
     protected $saveFilesDB;
     protected $directoryPath;
@@ -36,7 +38,6 @@ class FuncionarioController extends Controller
     }
 
     public function index(){
-        // Adicionei o -> antes do where
         $funcionarios = Funcionario::with('funcao')
             ->where('empresa_id', $this->empresa_id)
             ->get();
@@ -58,6 +59,13 @@ class FuncionarioController extends Controller
         $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
+        // 🚀 Busca as escalas ativas da empresa
+        $escalas = DB::table('ponto_escalas')
+            ->where('empresa_id', $this->empresa_id)
+            ->where('ativo', 1)
+            ->orderBy('nome', 'asc')
+            ->get();
+
         $temp = [];
         foreach($usuarios as $u){
             if(!isset($u->funcionario)){
@@ -68,6 +76,7 @@ class FuncionarioController extends Controller
             ->with('usuarios', $temp)
             ->with('funcoes', $funcoes)
             ->with('filiais', $filiais)
+            ->with('escalas', $escalas)
             ->with('empresa_id', $this->empresa_id)
             ->with('title', 'Cadastrar Funcionario');
     }
@@ -89,15 +98,18 @@ class FuncionarioController extends Controller
 
         $request->merge([ 'salario' => $request->salario ? __replace($request->salario) : 0 ]);
 
-        // Merge dos novos campos
+        // Merge dos campos operacionais e escala de ponto
         $request->merge([
             'funcao_id' => $request->funcao_id ? $request->funcao_id : null,
-            'filial_id' => $request->filial_id != '' ? $request->filial_id : null
+            'filial_id' => $request->filial_id != '' ? $request->filial_id : null,
+            'ponto_escala_id' => (!empty($request->ponto_escala_id) && $request->ponto_escala_id != 'NULL') ? $request->ponto_escala_id : null,
         ]);
 
         $request->merge([
             'cnh' => $request->cnh ?? null,
+            'traccar_id' => $request->traccar_id ?? null,
             'categoria_cnh' => $request->categoria_cnh ?? null,
+            'tipo_ponto' => $request->tipo_ponto ?? 'ambos',
             'status_motorista' => $request->status_motorista ?? 'Ativo',
             'status_funcionario' => $request->status_funcionario ?? 'Ativo',
             'matricula' => $request->matricula ? trim($request->matricula) : null,
@@ -123,11 +135,31 @@ class FuncionarioController extends Controller
                 : null
         ]);
 
+        $request->merge([
+            'recebe_alerta_coleta' => $request->has('recebe_alerta_coleta') ? 1 : 0,
+        ]);
+
         // Salvar a imagem usando o SaveFilesDB
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
             $filename = $this->saveFilesDB->SaveFile($request->file('file'), $this->directoryPath, $funcionario, 'foto_funcionario');
             $request->merge(['foto_funcionario' => $filename]);
         }
+
+        // Buscar coordenadas da residência automaticamente se preenchida
+        $coords = ['latitude' => null, 'longitude' => null];
+        if (!empty($request->rua) && !empty($request->numero) && !empty($request->bairro)) {
+            $enderecoBusca = $request->rua . ', ' . $request->numero . ', ' . $request->bairro;
+            $coords = $this->buscarCoordenadas($enderecoBusca);
+        }
+
+        $request->merge([
+            'latitude_residencia' => $coords['latitude'] ?? null,
+            'longitude_residencia' => $coords['longitude'] ?? null,
+        ]);
+
+        $request->merge([
+            'pin_ponto' => $request->pin_ponto ?? null,
+        ]);
 
         $result = $funcionario->create($request->all());
 
@@ -141,7 +173,7 @@ class FuncionarioController extends Controller
     }
 
     public function edit($id){
-        $funcionario = new Funcionario(); //Model
+        $funcionario = new Funcionario();
 
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)->get();
         $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
@@ -149,8 +181,14 @@ class FuncionarioController extends Controller
         $funcoes = \App\Models\Funcao::where('empresa_id', $this->empresa_id)->get();
         $filiais = \App\Models\Filial::where('empresa_id', $this->empresa_id)->get();
 
-        $resp = $funcionario
-            ->where('id', $id)->first();
+        // 🚀 Busca as escalas ativas da empresa
+        $escalas = DB::table('ponto_escalas')
+            ->where('empresa_id', $this->empresa_id)
+            ->where('ativo', 1)
+            ->orderBy('nome', 'asc')
+            ->get();
+
+        $resp = $funcionario->where('id', $id)->first();
 
         $temp = [];
         foreach($usuarios as $u){
@@ -166,6 +204,7 @@ class FuncionarioController extends Controller
                 ->with('usuarios', $usuarios)
                 ->with('funcoes', $funcoes)
                 ->with('filiais', $filiais)
+                ->with('escalas', $escalas)
                 ->with('empresa_id', $this->empresa_id)
                 ->with('title', 'Editar Funcionario');
         }else{
@@ -187,7 +226,6 @@ class FuncionarioController extends Controller
         if ($request->input('remove_image') == '1') {
             $imagePath = $this->directoryPath . $resp->foto_funcionario;
 
-            // Exclui o arquivo físico se ele existir
             if ($resp->foto_funcionario && file_exists($imagePath)) {
                 unlink($imagePath);
                 \Log::info("Imagem {$imagePath} removida com sucesso.");
@@ -195,7 +233,6 @@ class FuncionarioController extends Controller
                 \Log::warning("Imagem {$imagePath} não encontrada para remoção.");
             }
 
-            // Define o campo como nulo no banco para remoção da referência
             $resp->foto_funcionario = null;
         }
 
@@ -218,6 +255,13 @@ class FuncionarioController extends Controller
         $resp->numero = $request->input('numero');
         $resp->bairro = $request->input('bairro');
 
+        if (!empty($resp->rua) && !empty($resp->numero) && !empty($resp->bairro)) {
+            $enderecoBusca = $resp->rua . ', ' . $resp->numero . ', ' . $resp->bairro;
+            $coords = $this->buscarCoordenadas($enderecoBusca);
+            $resp->latitude_residencia = $coords['latitude'] ?? null;
+            $resp->longitude_residencia = $coords['longitude'] ?? null;
+        }
+
         $resp->telefone = $request->input('telefone');
         $resp->celular = $request->input('celular');
         $resp->email = $request->input('email');
@@ -228,12 +272,15 @@ class FuncionarioController extends Controller
 
         $resp->usuario_id = ($request->usuario_id && $request->usuario_id != 'NULL') ? $request->usuario_id : null;
 
-        // Inserção dos novos campos
+        // Atualização de Função, Filial e Escala de Ponto
         $resp->funcao_id = $request->input('funcao_id') ? $request->input('funcao_id') : null;
         $resp->filial_id = $request->input('filial_id') != '' ? $request->input('filial_id') : null;
+        $resp->ponto_escala_id = (!empty($request->ponto_escala_id) && $request->ponto_escala_id != 'NULL') ? $request->ponto_escala_id : null;
 
         $resp->cnh = $request->input('cnh');
         $resp->categoria_cnh = $request->input('categoria_cnh');
+        $resp->traccar_id = $request->input('traccar_id');
+        $resp->tipo_ponto = $request->input('tipo_ponto') ?? 'ambos';
 
         $resp->vencimento_cnh = $request->vencimento_cnh
             ? \Carbon\Carbon::createFromFormat('d/m/Y', $request->vencimento_cnh)->format('Y-m-d')
@@ -256,8 +303,8 @@ class FuncionarioController extends Controller
         $resp->codigo_relogio = $request->input('codigo_relogio');
         $resp->observacao_ponto = $request->input('observacao_ponto');
         $resp->observacoes = $request->input('observacoes');
-
-        $funcionario->fill($request->all());
+        $resp->recebe_alerta_coleta = $request->has('recebe_alerta_coleta') ? 1 : 0;
+        $resp->pin_ponto = $request->input('pin_ponto');
 
         $result = $resp->save();
         if($result){
@@ -274,7 +321,6 @@ class FuncionarioController extends Controller
             $sessionData = session('user_logged');
             $usuarioLogadoId = $sessionData ? $sessionData['id'] : null;
 
-            // Usamos o método forceCreate para testar se o problema é o $fillable
             $novaFuncao = \App\Models\Funcao::forceCreate([
                 'nome'       => $request->nome,
                 'empresa_id' => $this->empresa_id,
@@ -288,7 +334,6 @@ class FuncionarioController extends Controller
                 'nome' => $novaFuncao->nome
             ]);
         } catch (\Exception $e) {
-            // Isso vai fazer o erro real aparecer no alerta da tela
             return response()->json([
                 'success' => false,
                 'message' => 'Erro técnico: ' . $e->getMessage()
@@ -297,7 +342,6 @@ class FuncionarioController extends Controller
     }
 
     public function delete($id){
-
         $resp = Funcionario::where('id', $id)->first();
 
         if(valida_objeto($resp)){
@@ -313,7 +357,6 @@ class FuncionarioController extends Controller
         }else{
             return redirect('/403');
         }
-
     }
 
     private function _validate(Request $request){
@@ -330,8 +373,8 @@ class FuncionarioController extends Controller
             'data_registro' => 'required',
             'cnh' => 'nullable|max:255',
             'categoria_cnh' => 'nullable|in:A,B,C,D,E',
-            'vencimento_cnh' => 'nullable|date',
             'status_motorista' => 'required|in:Ativo,Inativo',
+            'tipo_ponto' => 'nullable|in:local,whatsapp,ambos',
             'vencimento_cnh' => 'nullable|date_format:d/m/Y',
             'data_nascimento' => 'nullable|date_format:d/m/Y',
             'data_admissao' => 'nullable|date_format:d/m/Y',
@@ -340,6 +383,7 @@ class FuncionarioController extends Controller
             'matricula' => 'nullable|max:60',
             'pis' => 'nullable|max:20',
             'codigo_relogio' => 'nullable|max:30',
+            'ponto_escala_id' => 'nullable',
             'observacao_ponto' => 'nullable|max:500',
             'foto_funcionario' => 'nullable|image|max:2048',
         ];
@@ -360,17 +404,13 @@ class FuncionarioController extends Controller
             'telefone.max' => '20 caracteres maximos permitidos.',
             'celular.required' => 'O campo Celular é obrigatório.',
             'celular.max' => '20 caracteres maximos permitidos.',
-
             'email.required' => 'O campo Email é obrigatório.',
             'email.max' => '40 caracteres maximos permitidos.',
             'email.email' => 'Email inválido.',
-
             'cnh.max' => '255 caracteres máximos permitidos para CNH.',
             'categoria_cnh.in' => 'Categoria CNH deve ser A, B, C, D ou E.',
-            'vencimento_cnh.date' => 'Vencimento CNH deve ser uma data válida.',
             'status_motorista.in' => 'Status do motorista deve ser Ativo ou Inativo.',
             'vencimento_cnh.date_format' => 'Vencimento CNH deve ser uma data válida no formato DD/MM/AAAA.',
-
         ];
         $this->validate($request, $rules, $messages);
     }
@@ -384,18 +424,14 @@ class FuncionarioController extends Controller
         $messages = [
             'nome.required' => 'O campo nome é obrigatório.',
             'nome.max' => '40 caracteres maximos permitidos.',
-
             'telefone.required' => 'O campo Celular é obrigatório.',
             'telefone.max' => '20 caracteres maximos permitidos.',
-
         ];
         $this->validate($request, $rules, $messages);
     }
 
     public function contatos($id, $edit = false){
-        $funcionario = Funcionario::
-        where('id', $id)
-            ->first();
+        $funcionario = Funcionario::where('id', $id)->first();
         if(valida_objeto($funcionario)){
             return view('funcionarios/contatos')
                 ->with('funcionario', $funcionario)
@@ -407,13 +443,9 @@ class FuncionarioController extends Controller
     }
 
     public function editContato($id){
-        $contato = ContatoFuncionario::
-        where('id', $id)
-            ->first();
+        $contato = ContatoFuncionario::where('id', $id)->first();
         if($contato != null && valida_objeto($contato->funcionario)){
-
             $funcionario = $contato->funcionario;
-
             return view('funcionarios/contatos')
                 ->with('funcionario', $funcionario)
                 ->with('contato', $contato)
@@ -424,12 +456,9 @@ class FuncionarioController extends Controller
     }
 
     public function deleteContato($id){
-        $funcionario = ContatoFuncionario::
-        where('id', $id)
-            ->first();
+        $funcionario = ContatoFuncionario::where('id', $id)->first();
 
         if($funcionario != null && valida_objeto($funcionario->funcionario)){
-
             $delete = $funcionario->delete();
 
             if($delete){
@@ -449,13 +478,9 @@ class FuncionarioController extends Controller
 
         $result = null;
         if($request->id > 0){
-            $contato = ContatoFuncionario::
-            where('id', $request->id)
-                ->first();
-
+            $contato = ContatoFuncionario::where('id', $request->id)->first();
             $contato->nome = $request->nome;
             $contato->telefone = $request->telefone;
-
             $result = $contato->save();
         }else{
             $result = ContatoFuncionario::create($request->all());
@@ -469,13 +494,9 @@ class FuncionarioController extends Controller
         return redirect("/funcionarios/contatos/$request->funcionario_id");
     }
 
-
     public function comissao(){
-        $funcionarios = Funcionario::
-        where('empresa_id', $this->empresa_id)
-            ->get();
-        $comissoes = ComissaoVenda::
-        where('empresa_id', $this->empresa_id)
+        $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
+        $comissoes = ComissaoVenda::where('empresa_id', $this->empresa_id)
             ->limit(200)
             ->orderBy('id', 'desc')
             ->get();
@@ -489,20 +510,16 @@ class FuncionarioController extends Controller
 
     public function pagarComissao(Request $request){
         try{
-            $vArr = $arr = $request->arr;
-            $arr = explode(",", $arr);
+            $arr = explode(",", $request->arr);
 
             foreach($arr as $a){
-
                 $pedido = ComissaoVenda::find($a);
                 $pedido->status = 1;
-
                 $pedido->save();
             }
             session()->flash('mensagem_sucesso', 'Comissão(s) paga(s) com sucesso!');
         }catch(\Exception $e){
             session()->flash('mensagem_erro', 'Erro ao pagar comissão(s)!');
-
         }
         return redirect()->back();
     }
@@ -513,9 +530,7 @@ class FuncionarioController extends Controller
         $dataInicial = $request->data_inicial;
         $dataFinal = $request->data_final;
 
-        $comissoes = ComissaoVenda::
-        where('empresa_id', $this->empresa_id)
-            ->orderBy('id', 'desc');
+        $comissoes = ComissaoVenda::where('empresa_id', $this->empresa_id)->orderBy('id', 'desc');
 
         if($status != '--'){
             $comissoes->where('status', $status);
@@ -524,8 +539,7 @@ class FuncionarioController extends Controller
         if($dataFinal && $dataInicial){
             $data_inicial = $this->parseDate($request->data_inicial);
             $data_final = $this->parseDate($request->data_final, true);
-            $comissoes->whereBetween('created_at', [$data_inicial,
-                $data_final]);
+            $comissoes->whereBetween('created_at', [$data_inicial, $data_final]);
         }
 
         if($funcionarioId != '--'){
@@ -533,9 +547,7 @@ class FuncionarioController extends Controller
         }
         $comissoes = $comissoes->get();
 
-        $funcionarios = Funcionario::
-        where('empresa_id', $this->empresa_id)
-            ->get();
+        $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
 
         return view('funcionarios/comissao')
             ->with('funcionarios', $funcionarios)
@@ -590,22 +602,17 @@ class FuncionarioController extends Controller
                             'status' => 0,
                             'empresa_id' => $this->empresa_id
                         ];
-                        // ComissaoVenda::create($dataComissao);
                         echo __date($v->created_at) . " ID:$v->id - valor comissão R$".moeda($valorComissao)."<br>";
                     }
                 }
             }else{
-                // $c->created_at = $v->created_at;
-                // $c->save();
-                // echo $c->created_at . "<br>";
-
-                // echo "ID: #$v->id R$ ". moeda($v->valor_total).", valor da comissão: R$ ".moeda($c->valor).", data: ".\Carbon\Carbon::parse($v->created_at)->format('d/m/Y H:i')." - $cont<br>";
                 $cont++;
             }
         }
     }
-   public function downloadLayout() {
-    return Excel::download(new FuncionarioModeloExport, 'layout_funcionarios.xlsx');
+
+    public function downloadLayout() {
+        return Excel::download(new FuncionarioModeloExport, 'layout_funcionarios.xlsx');
     }
 
     public function importExcel(Request $request) {
@@ -615,7 +622,6 @@ class FuncionarioController extends Controller
 
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
             try {
-                // Se vier 'NULL' da view, vira null (Matriz). Se vier ID, salva o ID[cite: 6].
                 $filialId = ($request->filial_id == 'NULL' || !$request->filial_id) ? null : $request->filial_id;
 
                 Excel::import(new FuncionarioImport($this->empresa_id, $filialId), $request->file('file'));
@@ -628,5 +634,4 @@ class FuncionarioController extends Controller
         }
         return redirect('/funcionarios');
     }
-
 }

@@ -42,6 +42,7 @@ class PesagensAnaliticoController extends Controller
                 'veiculo',
                 'motorista',
                 'filial',
+                'tickets.produto',
             ]);
 
         /**
@@ -197,7 +198,7 @@ class PesagensAnaliticoController extends Controller
             ->when($empresaId, function ($q) use ($empresaId) {
                 $q->where('empresa_id', $empresaId);
             })
-            ->with(['venda', 'compra', 'veiculo', 'motorista', 'filial']);
+            ->with(['venda', 'compra', 'veiculo', 'motorista', 'filial', 'tickets.produto']);
 
         if ($dataInicial) {
             $query->whereDate('dt_registro', '>=', $dataInicial);

@@ -54,11 +54,11 @@ class PurchaseController extends Controller
 
     public function numeroSequencial(){
         $verify = Compra::where('empresa_id', $this->empresa_id)
-        ->where('numero_sequencial', 0)
-        ->first();
+            ->where('numero_sequencial', 0)
+            ->first();
         if($verify){
             $vendas = Compra::where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $n = 1;
             foreach($vendas as $v){
@@ -69,63 +69,63 @@ class PurchaseController extends Controller
         }
     }
 
-public function index()
-{
-    $this->numeroSequencial();
+    public function index()
+    {
+        $this->numeroSequencial();
 
-    // Deixamos as datas apenas para preencher o campo na tela,
-    // mas não vamos filtrar a query por elas agora para mostrar os últimos lançamentos
-    $dataInicial = date('01/m/Y');
-    $dataFinal = date('d/m/Y');
+        // Deixamos as datas apenas para preencher o campo na tela,
+        // mas não vamos filtrar a query por elas agora para mostrar os últimos lançamentos
+        $dataInicial = date('01/m/Y');
+        $dataFinal = date('d/m/Y');
 
-    $usuario = \App\Models\Usuario::find($this->usuario_id);
-    $locais_permitidos = json_decode($usuario->locais) ?? [];
+        $usuario = \App\Models\Usuario::find($this->usuario_id);
+        $locais_permitidos = json_decode($usuario->locais) ?? [];
 
-    $query = Compra::orderBy('id', 'desc') // Ordena pelo mais recente
+        $query = Compra::orderBy('id', 'desc') // Ordena pelo mais recente
         ->where('empresa_id', $this->empresa_id);
 
-    // Lógica de permissão de locais
-    $query->where(function($q) use ($locais_permitidos) {
-        if (session('user_logged.adm') == 0) {
-            $ids_filiais = array_filter($locais_permitidos, function($id) {
-                return $id != "-1" && $id != ""; // CORRIGIDO: removido ";" extra
-            });
+        // Lógica de permissão de locais
+        $query->where(function($q) use ($locais_permitidos) {
+            if (session('user_logged.adm') == 0) {
+                $ids_filiais = array_filter($locais_permitidos, function($id) {
+                    return $id != "-1" && $id != ""; // CORRIGIDO: removido ";" extra
+                });
 
-            if (count($ids_filiais) > 0) {
-                $q->whereIn('filial_id', $ids_filiais);
-                if (in_array("-1", $locais_permitidos)) {
-                    $q->orWhereNull('filial_id');
-                }
-            } else {
-                if (in_array("-1", $locais_permitidos)) {
-                    $q->whereNull('filial_id');
+                if (count($ids_filiais) > 0) {
+                    $q->whereIn('filial_id', $ids_filiais);
+                    if (in_array("-1", $locais_permitidos)) {
+                        $q->orWhereNull('filial_id');
+                    }
                 } else {
-                    // Se o usuário não tiver permissão configurada,
-                    // a query morre aqui (segurança)
-                    $q->whereRaw("1=0");
+                    if (in_array("-1", $locais_permitidos)) {
+                        $q->whereNull('filial_id');
+                    } else {
+                        // Se o usuário não tiver permissão configurada,
+                        // a query morre aqui (segurança)
+                        $q->whereRaw("1=0");
+                    }
                 }
             }
-        }
-    });
+        });
 
-    // Pega os últimos 15 lançamentos como você pediu
-    $compras = $query->paginate(15);
+        // Pega os últimos 15 lançamentos como você pediu
+        $compras = $query->paginate(15);
 
-    $somaCompraMensal = $this->somaCompraMensal();
+        $somaCompraMensal = $this->somaCompraMensal();
 
-    return view('compraManual/listAll')
-        ->with('compras', $compras)
-        ->with('dataInicial', $dataInicial)
-        ->with('dataFinal', $dataFinal)
-        ->with('somaCompraMensal', $somaCompraMensal)
-        ->with('links', true)
-        ->with('title', 'Compras');
-}
+        return view('compraManual/listAll')
+            ->with('compras', $compras)
+            ->with('dataInicial', $dataInicial)
+            ->with('dataFinal', $dataFinal)
+            ->with('somaCompraMensal', $somaCompraMensal)
+            ->with('links', true)
+            ->with('title', 'Compras');
+    }
 
     private function somaCompraMensal(){
         $compras = Compra::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $temp = [];
         $soma = 0;
         $mesAnterior = null;
@@ -202,80 +202,80 @@ public function index()
         return floor($dif / (60 * 60 * 24));
     }
 
-   public function filtro(Request $request)
-{
-    // 1. Pegamos os dados do request SEM valores padrão fixos de data
-    $dataInicial = $request->data_inicial;
-    $dataFinal = $request->data_final;
-    $fornecedor = $request->fornecedor;
-    $numero_emissao = $request->numero_emissao;
-    $filial_id = $request->filial_id;
+    public function filtro(Request $request)
+    {
+        // 1. Pegamos os dados do request SEM valores padrão fixos de data
+        $dataInicial = $request->data_inicial;
+        $dataFinal = $request->data_final;
+        $fornecedor = $request->fornecedor;
+        $numero_emissao = $request->numero_emissao;
+        $filial_id = $request->filial_id;
 
-    $usuario = \App\Models\Usuario::find($this->usuario_id);
-    $locais_permitidos = json_decode($usuario->locais) ?? [];
+        $usuario = \App\Models\Usuario::find($this->usuario_id);
+        $locais_permitidos = json_decode($usuario->locais) ?? [];
 
-    // 2. Iniciamos a query com o empresa_id (obrigatório)
-    $compras = Compra::select('compras.*')
-        ->orderBy('compras.id', 'desc') // Ordena por ID decrescente para ver as últimas
-        ->where('compras.empresa_id', $this->empresa_id);
+        // 2. Iniciamos a query com o empresa_id (obrigatório)
+        $compras = Compra::select('compras.*')
+            ->orderBy('compras.id', 'desc') // Ordena por ID decrescente para ver as últimas
+            ->where('compras.empresa_id', $this->empresa_id);
 
-    // 3. Lógica de permissões (ACL)
-    $compras->where(function($q) use ($locais_permitidos) {
-        if (session('user_logged.adm') == 0) {
-            $ids_filiais = array_filter($locais_permitidos, function($id) {
-                return $id != "-1" && $id != "";
-            });
-            if (count($ids_filiais) > 0) {
-                $q->whereIn('filial_id', $ids_filiais);
-                if (in_array("-1", $locais_permitidos)) {
-                    $q->orWhereNull('filial_id');
-                }
-            } else {
-                if (in_array("-1", $locais_permitidos)) {
-                    $q->whereNull('filial_id');
+        // 3. Lógica de permissões (ACL)
+        $compras->where(function($q) use ($locais_permitidos) {
+            if (session('user_logged.adm') == 0) {
+                $ids_filiais = array_filter($locais_permitidos, function($id) {
+                    return $id != "-1" && $id != "";
+                });
+                if (count($ids_filiais) > 0) {
+                    $q->whereIn('filial_id', $ids_filiais);
+                    if (in_array("-1", $locais_permitidos)) {
+                        $q->orWhereNull('filial_id');
+                    }
                 } else {
-                    $q->whereRaw("1=0");
+                    if (in_array("-1", $locais_permitidos)) {
+                        $q->whereNull('filial_id');
+                    } else {
+                        $q->whereRaw("1=0");
+                    }
                 }
             }
+        });
+
+        // 4. FILTRO DE FORNECEDOR (Opcional)
+        if($fornecedor){
+            $compras->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
+                ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
         }
-    });
 
-    // 4. FILTRO DE FORNECEDOR (Opcional)
-    if($fornecedor){
-        $compras->join('fornecedors', 'fornecedors.id' , '=', 'compras.fornecedor_id')
-            ->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
+        // 5. FILTRO DE DATA (Agora só aplica se AMBAS estiverem preenchidas)
+        if($dataInicial && $dataFinal){
+            $compras->whereBetween('compras.data_emissao', [
+                $this->parseDate($dataInicial) . " 00:00:00",
+                $this->parseDate($dataFinal) . " 23:59:59"
+            ]);
+        }
+
+        // 6. FILTRO DE NÚMERO DA NOTA (Nº Emissão Própria)
+        if($numero_emissao){
+            // Usamos where especificando a tabela para evitar conflito com o join do fornecedor
+            $compras->where('compras.numero_emissao', 'LIKE', "%$numero_emissao%");
+        }
+
+        // 7. FILTRO DE FILIAL
+        if($filial_id){
+            if($filial_id == -1) $compras->whereNull('filial_id');
+            else $compras->where('filial_id', $filial_id);
+        }
+
+        // Paginação com 50 para buscas
+        $compras = $compras->paginate(50);
+
+        return view('compraManual/listAll', compact('compras', 'dataInicial', 'dataFinal', 'fornecedor', 'numero_emissao', 'filial_id'))
+            ->with('title', 'Filtro Compras');
     }
-
-    // 5. FILTRO DE DATA (Agora só aplica se AMBAS estiverem preenchidas)
-    if($dataInicial && $dataFinal){
-        $compras->whereBetween('compras.data_emissao', [
-            $this->parseDate($dataInicial) . " 00:00:00",
-            $this->parseDate($dataFinal) . " 23:59:59"
-        ]);
-    }
-
-    // 6. FILTRO DE NÚMERO DA NOTA (Nº Emissão Própria)
-    if($numero_emissao){
-        // Usamos where especificando a tabela para evitar conflito com o join do fornecedor
-        $compras->where('compras.numero_emissao', 'LIKE', "%$numero_emissao%");
-    }
-
-    // 7. FILTRO DE FILIAL
-    if($filial_id){
-        if($filial_id == -1) $compras->whereNull('filial_id');
-        else $compras->where('filial_id', $filial_id);
-    }
-
-    // Paginação com 50 para buscas
-    $compras = $compras->paginate(50);
-
-    return view('compraManual/listAll', compact('compras', 'dataInicial', 'dataFinal', 'fornecedor', 'numero_emissao', 'filial_id'))
-        ->with('title', 'Filtro Compras');
-}
     public function downloadXml($id){
         $compra = Compra::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($compra)){
             //$public = env('SERVIDOR_WEB') ? 'public/' : '';
             $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
@@ -284,12 +284,12 @@ public function index()
         }else{
             return redirect('/403');
 
+        }
     }
-  }
     public function downloadXmlCancela($id){
         $compra = Compra::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($compra)){
             //$public = env('SERVIDOR_WEB') ? 'public/' : '';
             $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
@@ -302,14 +302,14 @@ public function index()
     public function detalhes($id){
         $compra = Compra::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($compra)){
             $value = session('user_logged');
 
             return view('compraManual/detail')
-            ->with('compra', $compra)
-            ->with('adm', $value['adm'])
-            ->with('title', 'Detalhes da compra');
+                ->with('compra', $compra)
+                ->with('adm', $value['adm'])
+                ->with('title', 'Detalhes da compra');
         }else{
             return redirect('/403');
         }
@@ -319,7 +319,7 @@ public function index()
 
         $compra = Compra::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($compra)){
             $stockMove = new StockMove();
             //$public = env('SERVIDOR_WEB') ? 'public/' : '';
@@ -364,7 +364,7 @@ public function index()
         if(valida_objeto($compra)){
             $naturezas = NaturezaOperacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $cidades = Cidade::all();
 
@@ -379,14 +379,14 @@ public function index()
 
             $tiposPagamento = Compra::tiposPagamento();
             return view('compraManual/emitirEntrada')
-            ->with('compra', $compra)
-            ->with('cidades', $cidades)
-            ->with('naturezas', $naturezas)
-            ->with('tiposPagamento', $tiposPagamento)
-            ->with('dadosEntrada', $dadosEntrada)
-            ->with('produtosInvalidos', $produtosInvalidos)
-            ->with('NFeEntradaJS', true)
-            ->with('title', 'Emitir NFe Entrada');
+                ->with('compra', $compra)
+                ->with('cidades', $cidades)
+                ->with('naturezas', $naturezas)
+                ->with('tiposPagamento', $tiposPagamento)
+                ->with('dadosEntrada', $dadosEntrada)
+                ->with('produtosInvalidos', $produtosInvalidos)
+                ->with('NFeEntradaJS', true)
+                ->with('title', 'Emitir NFe Entrada');
         }else{
             return redirect('/403');
         }
@@ -695,7 +695,7 @@ public function index()
 
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($compra->filial_id != null){
                 $config = Filial::findOrFail($compra->filial_id);
@@ -822,14 +822,14 @@ public function index()
             }
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($config->logo){
                 $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
             }else{
                 $logo = null;
             }
-        // $docxml = FilesFolders::readFile($xml);
+            // $docxml = FilesFolders::readFile($xml);
 
             try {
                 $danfe = new Danfe($xml);
@@ -839,7 +839,7 @@ public function index()
                 // echo $pdf;
 
                 return response($pdf)
-                ->header('Content-Type', 'application/pdf');
+                    ->header('Content-Type', 'application/pdf');
             } catch (InvalidArgumentException $e) {
                 echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
             }
@@ -938,7 +938,7 @@ public function index()
         if($config == null){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
         }
         return [
             'razao' => $config->razao_social,
@@ -1235,12 +1235,12 @@ public function index()
 
     public function produtosSemValidade(){
         $produtos = Produto::select('id')
-        ->where('alerta_vencimento', '>', 0)
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->where('alerta_vencimento', '>', 0)
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $estoque = ItemCompra::where('validade', NULL)
-        ->limit(100)->get();
+            ->limit(100)->get();
 
         $itensSemEstoque = [];
         foreach($estoque as $e){
@@ -1252,8 +1252,8 @@ public function index()
         }
 
         return view('compraManual/itens_sem_estoque')
-        ->with('itens', $itensSemEstoque)
-        ->with('title', 'Itens sem Estoque');
+            ->with('itens', $itensSemEstoque)
+            ->with('title', 'Itens sem Estoque');
     }
 
     public function salvarValidade(Request $request){
@@ -1294,7 +1294,7 @@ public function index()
         // $produtos = Produto::select('id')->where('alerta_vencimento', '>', 0)->get();
         $itensCompra = ItemCompra::
         whereBetween('validade', [$dataHoje, $dataFutura])
-        ->limit(300)->get();
+            ->limit(300)->get();
         $itens = [];
         foreach($itensCompra as $i){
             $strValidade = strtotime($i->validade);
@@ -1308,8 +1308,8 @@ public function index()
         }
 
         return view('compraManual/validade_alerta')
-        ->with('itens', $itens)
-        ->with('title', 'Produtos com validade próxima');
+            ->with('itens', $itens)
+            ->with('title', 'Produtos com validade próxima');
     }
 
     public function xmlTemporaria(Request $request){
@@ -1319,7 +1319,7 @@ public function index()
 
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($compra->filial_id != null){
                 $config = Filial::findOrFail($compra->filial_id);
@@ -1354,7 +1354,7 @@ public function index()
 
                 $config = ConfigNota::
                 where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->first();
                 //$public = env('SERVIDOR_WEB') ? 'public/' : '';
                 $public = rtrim(public_path(), '/\\') . DIRECTORY_SEPARATOR;
                 if($config->logo){
@@ -1364,10 +1364,10 @@ public function index()
                 }
 
                 $danfe = new Danfe($nfe['xml']);
-            // $id = $danfe->monta($logo);
+                // $id = $danfe->monta($logo);
                 $pdf = $danfe->render($logo);
                 return response($nfe['xml'])
-                ->header('Content-Type', 'application/xml');
+                    ->header('Content-Type', 'application/xml');
             }else{
                 print_r($nfe['erros_xml']);
             }
@@ -1452,7 +1452,7 @@ public function index()
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $compra = Compra::find($request->compra_id);
 
@@ -1504,7 +1504,7 @@ public function index()
     private function enviarEmailAutomatico($compra){
         $escritorio = EscritorioContabil::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($escritorio != null && $escritorio->envio_automatico_xml_contador){
             $email = $escritorio->email;
@@ -1526,14 +1526,14 @@ public function index()
     public function estadoFiscal($id){
         $compra = Compra::
         where('id', $id)
-        ->first();
+            ->first();
         $value = session('user_logged');
         if($value['adm'] == 0) return redirect()->back();
         if(valida_objeto($compra)){
 
             return view("compraManual/alterar_estado_fiscal")
-            ->with('compra', $compra)
-            ->with('title', "Alterar estado compra $id");
+                ->with('compra', $compra)
+                ->with('title', "Alterar estado compra $id");
         }else{
             return redirect('/403');
         }
@@ -1582,7 +1582,7 @@ public function index()
         return redirect()->back();
     }
 
-     public function setNaturezaPagamento(Request $request){
+    public function setNaturezaPagamento(Request $request){
         $compra = Compra::find($request->id);
 
         $compra->tipo_pagamento = $request->tipo_pagamento;
@@ -1596,10 +1596,10 @@ public function index()
         if(valida_objeto($compra)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
             $p = view('compraManual/print')
-            ->with('config', $config)
-            ->with('compra', $compra);
+                ->with('config', $config)
+                ->with('compra', $compra);
             // return $p;
 
             $domPdf = new Dompdf(["enable_remote" => true]);
@@ -1620,13 +1620,13 @@ public function index()
         if(valida_objeto($compra)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $cupom = new CompraPrint80($compra);
             $cupom->monta();
             $pdf = $cupom->render();
             return response($pdf)
-            ->header('Content-Type', 'application/pdf');
+                ->header('Content-Type', 'application/pdf');
         }else{
             return redirect('/403');
         }
@@ -1650,7 +1650,7 @@ public function index()
             session()->flash('mensagem_erro', "O pedido de compra com ID #{$id} não foi encontrado. Verifique o ID e tente novamente.");
 
             // Log da mensagem salva na sessão
-            \Log::info('Mensagem de erro definida na sessão', session()->all());
+            \Log::debug('Mensagem de erro definida na sessão');
 
             // Redireciona para a página anterior ou para a lista de pedidos
             return request()->headers->get('referer') ? redirect()->back() : redirect()->route('compras.list');
@@ -1677,17 +1677,17 @@ public function index()
         if(valida_objeto($compra)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $padrosEtiqueta = Etiqueta::
             where('empresa_id', null)
-            ->orWhere('empresa_id', $this->empresa_id)
-            ->get();
+                ->orWhere('empresa_id', $this->empresa_id)
+                ->get();
 
             return view('compraManual/etiqueta')
-            ->with('compra', $compra)
-            ->with('padrosEtiqueta', $padrosEtiqueta)
-            ->with('title', 'Gerar Etiqueta');
+                ->with('compra', $compra)
+                ->with('padrosEtiqueta', $padrosEtiqueta)
+                ->with('title', 'Gerar Etiqueta');
         }else{
             return redirect('/403');
         }
@@ -1763,16 +1763,16 @@ public function index()
             $qtdTotal = $request->qtd_etiquetas;
 
             return view('compraManual/print_etiqueta')
-            ->with('altura', $request->altura)
-            ->with('largura', $request->largura)
-            ->with('codigo', $codigo)
-            ->with('quantidade', $qtdTotal)
-            ->with('distancia_topo', $request->dist_topo)
-            ->with('distancia_lateral', $request->dist_lateral)
-            ->with('quantidade_por_linhas', $qtdLinhas)
-            ->with('tamanho_fonte', $request->tamanho_fonte)
-            ->with('tamanho_codigo', $request->tamanho_codigo)
-            ->with('data', $data);
+                ->with('altura', $request->altura)
+                ->with('largura', $request->largura)
+                ->with('codigo', $codigo)
+                ->with('quantidade', $qtdTotal)
+                ->with('distancia_topo', $request->dist_topo)
+                ->with('distancia_lateral', $request->dist_lateral)
+                ->with('quantidade_por_linhas', $qtdLinhas)
+                ->with('tamanho_fonte', $request->tamanho_fonte)
+                ->with('tamanho_codigo', $request->tamanho_codigo)
+                ->with('data', $data);
         }catch(\Exception $e){
             session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
             return redirect()->back();
@@ -1818,7 +1818,7 @@ public function index()
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
 
@@ -1852,7 +1852,7 @@ public function index()
             $xml = $nfe['xml'];
 
             return view('compraManual.edit_xml', compact('item', 'xml'))
-            ->with('title', 'Editando XML');
+                ->with('title', 'Editando XML');
         }else{
             print_r($nfe['erros_xml']);
         }
@@ -1862,8 +1862,8 @@ public function index()
         $item = Compra::findOrFail($id);
 
         return view('compraManual/setar_validade')
-        ->with('item', $item)
-        ->with('title', 'Setar validade dos itens');
+            ->with('item', $item)
+            ->with('title', 'Setar validade dos itens');
     }
 
     public function setarValidadeStore(Request $request){
@@ -1884,8 +1884,8 @@ public function index()
 
     public function comprasSemValidade(){
         $data = Compra::where('empresa_id', $this->empresa_id)
-        ->orderBy('compras.id', 'desc')
-        ->get();
+            ->orderBy('compras.id', 'desc')
+            ->get();
 
         $compras = [];
         foreach($data as $item){
@@ -1901,14 +1901,14 @@ public function index()
 
     public function alertaValidade(Request $request){
         $produtos = Produto::where('empresa_id', $this->empresa_id)
-        ->where('alerta_vencimento', '>', 0)
-        ->get();
+            ->where('alerta_vencimento', '>', 0)
+            ->get();
 
         $data = [];
         foreach($produtos as $p){
             $item = ItemCompra::where('produto_id', $p->id)
-            ->whereNotNull('validade') // Jeito mais otimizado do Laravel
-            ->first();
+                ->whereNotNull('validade') // Jeito mais otimizado do Laravel
+                ->first();
 
             // --- TRAVA DE SEGURANÇA ---
             // Se o produto não tiver nenhuma compra com validade, pula para o próximo
@@ -1935,12 +1935,12 @@ public function index()
 
         // return response()->json($data, 200);
     }
-  
-  
+
+
     public function alertaEstoque(Request $request){
         $produtos = Produto::where('empresa_id', $this->empresa_id)
-        ->where('estoque_minimo', '>', 0)
-        ->get();
+            ->where('estoque_minimo', '>', 0)
+            ->get();
 
         $data = [];
         foreach($produtos as $p){
@@ -1963,8 +1963,8 @@ public function index()
 
     public function imprimirAlertaEstoque(){
         $produtos = Produto::where('empresa_id', $this->empresa_id)
-        ->where('estoque_minimo', '>', 0)
-        ->get();
+            ->where('estoque_minimo', '>', 0)
+            ->get();
 
         $data = [];
         foreach($produtos as $p){
@@ -1982,10 +1982,10 @@ public function index()
         }
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
         $p = view('compraManual/print_estoque')
-        ->with('config', $config)
-        ->with('data', $data);
+            ->with('config', $config)
+            ->with('data', $data);
 
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -2024,12 +2024,12 @@ public function index()
         return redirect()->back();
     }
 
-      private function parseDate($date){
-    if(strpos($date, "/") !== false){
-        $d = explode("/", $date);
-        return $d[2] . "-" . $d[1] . "-" . $d[0];
+    private function parseDate($date){
+        if(strpos($date, "/") !== false){
+            $d = explode("/", $date);
+            return $d[2] . "-" . $d[1] . "-" . $d[0];
+        }
+        return $date;
     }
-    return $date;
-}
 
 }

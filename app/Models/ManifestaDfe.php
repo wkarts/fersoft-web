@@ -7,7 +7,7 @@ class ManifestaDfe extends BaseModel
 {
     protected $fillable = [
 		'chave', 'nome', 'documento', 'valor', 'num_prot', 'data_emissao', 
-		'sequencia_evento', 'fatura_salva', 'tipo', 'nsu', 'empresa_id', 'nNF', 'compra_id', 'fatura_salva','compra_id', 'filial_id', 'situacao_sefaz',
+		'sequencia_evento', 'fatura_salva', 'tipo', 'nsu', 'empresa_id', 'nNF', 'compra_id', 'fatura_salva','compra_id', 'filial_id',
 	];
 
 	public function filial(){

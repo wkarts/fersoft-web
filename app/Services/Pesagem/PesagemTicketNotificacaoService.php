@@ -7,6 +7,7 @@ use App\Models\TicketPesagem;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 
 class PesagemTicketNotificacaoService
 {
@@ -70,7 +71,7 @@ class PesagemTicketNotificacaoService
             : $this->normalizarEmails($config->pesagem_email_destino ?? '');
 
         if (empty($emails)) {
-            Log::info('Pesagem sem e-mails de notificação configurados.', [
+            Log::debug('Pesagem sem e-mails de notificação configurados.', [
                 'ticket_id' => $ticket->id,
                 'empresa_id' => $ticket->empresa_id,
             ]);
@@ -100,7 +101,7 @@ class PesagemTicketNotificacaoService
                 }
             });
 
-            Log::info('E-mail de coleta de pesagem enviado.', [
+            Log::debug('E-mail de coleta de pesagem enviado.', [
                 'ticket_id' => $ticket->id,
                 'empresa_id' => $ticket->empresa_id,
                 'to' => $to,
@@ -108,13 +109,19 @@ class PesagemTicketNotificacaoService
                 'imagens' => $imagens->count(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Falha ao enviar e-mail de coleta de pesagem.', [
-                'ticket_id' => $ticket->id,
-                'empresa_id' => $ticket->empresa_id,
-                'to' => $to,
-                'cc' => $cc,
-                'message' => $e->getMessage(),
-            ]);
+            $this->logFalhaThrottled(
+                'email',
+                (int) $ticket->empresa_id,
+                (string) $e->getMessage(),
+                'Falha ao enviar e-mail de coleta de pesagem.',
+                [
+                    'ticket_id' => $ticket->id,
+                    'empresa_id' => $ticket->empresa_id,
+                    'to' => $to,
+                    'cc' => $cc,
+                    'message' => $e->getMessage(),
+                ]
+            );
         }
     }
 
@@ -125,7 +132,7 @@ class PesagemTicketNotificacaoService
             : $this->normalizarWhatsapps($config->pesagem_whatsapp_destino ?? '');
 
         if (empty($numeros)) {
-            Log::info('Pesagem sem WhatsApps de notificação configurados.', [
+            Log::debug('Pesagem sem WhatsApps de notificação configurados.', [
                 'ticket_id' => $ticket->id,
                 'empresa_id' => $ticket->empresa_id,
             ]);
@@ -157,7 +164,7 @@ class PesagemTicketNotificacaoService
                     }
                 }
 
-                Log::info('WhatsApp de coleta de pesagem enviado.', [
+                Log::debug('WhatsApp de coleta de pesagem enviado.', [
                     'ticket_id' => $ticket->id,
                     'empresa_id' => $ticket->empresa_id,
                     'numero' => $numero,
@@ -165,14 +172,47 @@ class PesagemTicketNotificacaoService
                     'retornos_midia' => $retornosMidia,
                 ]);
             } catch (\Throwable $e) {
-                Log::error('Falha ao enviar WhatsApp de coleta de pesagem.', [
-                    'ticket_id' => $ticket->id,
-                    'empresa_id' => $ticket->empresa_id,
-                    'numero' => $numero,
-                    'message' => $e->getMessage(),
-                ]);
+                $this->logFalhaThrottled(
+                    'whatsapp:' . $numero,
+                    (int) $ticket->empresa_id,
+                    (string) $e->getMessage(),
+                    'Falha ao enviar WhatsApp de coleta de pesagem.',
+                    [
+                        'ticket_id' => $ticket->id,
+                        'empresa_id' => $ticket->empresa_id,
+                        'numero' => $numero,
+                        'message' => $e->getMessage(),
+                    ]
+                );
             }
         }
+    }
+
+    /**
+     * Evita que uma configuração externa quebrada (SMTP/WhatsApp) escreva o
+     * mesmo erro a cada ticket. O primeiro erro é mantido e as repetições são
+     * silenciadas por 15 minutos por empresa/origem/mensagem.
+     */
+    private function logFalhaThrottled(
+        string $origem,
+        int $empresaId,
+        string $erro,
+        string $mensagem,
+        array $contexto
+    ): void {
+        $cacheKey = 'pesagem:notificacao:falha:' . sha1(
+                $empresaId . '|' . $origem . '|' . $erro
+            );
+
+        try {
+            if (!Cache::add($cacheKey, true, now()->addMinutes(15))) {
+                return;
+            }
+        } catch (\Throwable $cacheError) {
+            // Se o cache estiver indisponível, não impede o log original.
+        }
+
+        Log::error($mensagem, $contexto);
     }
 
     private function arquivoLocalParaAnexo($imagem): ?string

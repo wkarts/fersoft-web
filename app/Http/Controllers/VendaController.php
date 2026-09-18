@@ -431,44 +431,50 @@ class VendaController extends Controller
     {
         $rt = app(ReformaTributariaService::class);
         $empresaId = (int)($this->empresa_id ?? 0);
+        if ($empresaId <= 0) {
+            $userLogged = session('user_logged');
+            if (is_array($userLogged)) {
+                $empresaId = (int)($userLogged['empresa'] ?? 0);
+            }
+        }
+
         $aplicar = $rt->shouldApply($empresaId);
 
         $item = new ItemVenda();
-        foreach ($itemArr as $key => $value) {
-            $item->setAttribute($key, $value);
-        }
-
-        $item->produto_id = (int)($itemArr['produto_id'] ?? $produto->id ?? 0);
+        $item->fill($itemArr);
+        $item->produto_id = (int)($itemArr['produto_id'] ?? ($produto->id ?? 0));
         $item->quantidade = (float)($itemArr['quantidade'] ?? 0);
         $item->valor = (float)($itemArr['valor'] ?? 0);
         $item->valor_unitario = (float)($itemArr['valor'] ?? 0);
         $item->valor_total = $item->quantidade * $item->valor;
 
+        // 1. Preenche e calcula baseado no Produto
         $rt->fillItemFromProdutoAliquota($empresaId, (int)$item->produto_id, $item);
 
-        // A parametrização da natureza prevalece sobre o padrão do produto quando informada.
+        // 2. Se a Natureza possuir dados, injeta no objeto antes de calcular as bases e totais
         if ($natureza) {
             if (!empty($natureza->cst_ibs_cbs)) {
-                $item->cst_ibs_cbs = trim((string)$natureza->cst_ibs_cbs);
+                $item->cst_ibs_cbs = $natureza->cst_ibs_cbs;
             }
             if (!empty($natureza->class_trib_ibs_cbs)) {
-                $item->class_trib_ibs_cbs = trim((string)$natureza->class_trib_ibs_cbs);
+                $item->class_trib_ibs_cbs = $natureza->class_trib_ibs_cbs;
             }
-            if (isset($natureza->perc_red_ibs) && is_numeric($natureza->perc_red_ibs)) {
-                $reducaoIbs = max(0, min(100, (float)$natureza->perc_red_ibs));
-                $item->perc_red_aliq_uf = $reducaoIbs;
-                $item->perc_red_aliq_ibs_mun = $reducaoIbs;
+            if (isset($natureza->perc_red_ibs) && $natureza->perc_red_ibs > 0) {
+                $item->perc_red_aliq_uf = $natureza->perc_red_ibs;
+                $item->perc_red_aliq_ibs_mun = $natureza->perc_red_ibs;
             }
-            if (isset($natureza->perc_red_cbs) && is_numeric($natureza->perc_red_cbs)) {
-                $item->perc_red_aliq_cbs = max(0, min(100, (float)$natureza->perc_red_cbs));
+            if (isset($natureza->perc_red_cbs) && $natureza->perc_red_cbs > 0) {
+                $item->perc_red_aliq_cbs = $natureza->perc_red_cbs;
             }
         }
 
+        // Executa o cálculo matemático da RT
         $rt->calcularItem($item, $empresaId, null);
         if (!$aplicar) {
             $rt->calcularItem($item, $empresaId, 'REMESSA');
         }
 
+        // 3. Mapeia os campos calculados para o array final de gravação
         $lists = $this->rtItemFieldLists();
         $fields = array_merge($lists['strings'], $lists['ints'], $lists['floats']);
 
@@ -476,21 +482,20 @@ class VendaController extends Controller
             if (!Schema::hasColumn('item_vendas', $col)) {
                 continue;
             }
-
             $val = $item->getAttribute($col);
-            if ($val !== null) {
-                $itemArr[$col] = $val;
+            if ($val === null) {
+                continue;
             }
+            $itemArr[$col] = $val;
         }
 
-        // Garante que os códigos explicitamente informados na natureza não sejam
-        // substituídos por defaults durante o cálculo.
+        // 4. GARANTIA ABSOLUTA: Força os valores da Natureza direto no array final de gravação
         if ($natureza) {
             if (!empty($natureza->cst_ibs_cbs) && Schema::hasColumn('item_vendas', 'cst_ibs_cbs')) {
-                $itemArr['cst_ibs_cbs'] = trim((string)$natureza->cst_ibs_cbs);
+                $itemArr['cst_ibs_cbs'] = $natureza->cst_ibs_cbs;
             }
             if (!empty($natureza->class_trib_ibs_cbs) && Schema::hasColumn('item_vendas', 'class_trib_ibs_cbs')) {
-                $itemArr['class_trib_ibs_cbs'] = trim((string)$natureza->class_trib_ibs_cbs);
+                $itemArr['class_trib_ibs_cbs'] = $natureza->class_trib_ibs_cbs;
             }
         }
 
@@ -1011,6 +1016,7 @@ class VendaController extends Controller
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
             ->where('inativo', false)
+            ->where('tipo_item', '00') // <-- ADICIONADO: Filtra apenas tipo_item 00
             ->groupBy('referencia_grade')
             ->orderBy('nome')
             ->get();
@@ -3994,4 +4000,28 @@ class VendaController extends Controller
             ->update($update);
     }
 
+    public function setEstadoCliente(Request $request)
+    {
+        try {
+            $vendaId = $request->input('venda_id');
+            $estadoCliente = $request->input('estado_cliente');
+
+            $venda = Venda::where('empresa_id', $this->empresa_id)
+                ->where('id', $vendaId)
+                ->first();
+
+            if ($venda) {
+                $venda->estado_cliente = $estadoCliente ?: null;
+                $venda->save();
+
+                session()->flash("mensagem_sucesso", "Situação do cliente atualizada com sucesso!");
+            } else {
+                session()->flash("mensagem_erro", "Venda não encontrada!");
+            }
+        } catch (\Exception $e) {
+            session()->flash("mensagem_erro", "Erro ao atualizar: " . $e->getMessage());
+        }
+
+        return redirect()->back();
+    }
 }

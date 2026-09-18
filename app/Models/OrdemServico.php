@@ -58,7 +58,7 @@ class OrdemServico extends BaseModel
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
         $c = OrdemServico::
-        whereBetween('data_vencimento', [$dataInicial, 
+        whereBetween('data_vencimento', [$dataInicial,
             $dataFinal])
         ->where('ordem_servicos.empresa_id', $empresa_id)
         ->where('estado', $estado);
@@ -72,7 +72,7 @@ class OrdemServico extends BaseModel
         $c = OrdemServico::
         join('clientes', 'clientes.id' , '=', 'ordem_servicos.cliente_id')
         ->where('razao_social.nome', 'LIKE', "%$cliente%")
-        ->whereBetween('data_vencimento', [$dataInicial, 
+        ->whereBetween('data_vencimento', [$dataInicial,
             $dataFinal])
         ->where('ordem_servicos.empresa_id', $empresa_id)
         ->where('estado', $estado);
@@ -87,7 +87,7 @@ class OrdemServico extends BaseModel
         ->where('razao_social', 'LIKE', "%$cliente%")
         ->where('ordem_servicos.empresa_id', $empresa_id)
         ->where('estado', $estado);
-        
+
         return $c->get();
     }
 
@@ -113,8 +113,13 @@ class OrdemServico extends BaseModel
     }
 
     public function total_os(){
-        return $this->produtos->sum('sub_total') + $this->servicos->sum('sub_total') + 
+        return $this->produtos->sum('sub_total') + $this->servicos->sum('sub_total') +
         $this->acrescimo - $this->desconto;
     }
-    
+
+    public function veiculo()
+    {
+        return $this->belongsTo(\App\Models\ClienteVeiculo::class, 'cliente_veiculo_id');
+    }
+
 }

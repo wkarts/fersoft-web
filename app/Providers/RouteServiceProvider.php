@@ -26,18 +26,29 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            /*
+             * O Traccar pode encaminhar vários eventos em sequência pelo
+             * mesmo IP. Mantemos o rate limit padrão da API para todo o
+             * sistema e ampliamos apenas o webhook protegido por segredo.
+             */
+            if ($request->is('api/traccar/webhook')) {
+                return Limit::perMinute(1200)
+                    ->by('traccar-webhook:' . $request->ip());
+            }
+
+            return Limit::perMinute(60)
+                ->by($request->user()?->id ?: $request->ip());
         });
 
         $this->routes(function () {
             Route::middleware('api')
-            ->prefix('api')
-            ->namespace($this->namespace)
-            ->group(base_path('routes/api.php'));
+                ->prefix('api')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/api.php'));
 
             Route::middleware('web')
-            ->namespace($this->namespace)
-            ->group(base_path('routes/web.php'));
+                ->namespace($this->namespace)
+                ->group(base_path('routes/web.php'));
         });
     }
 }

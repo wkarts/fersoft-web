@@ -11,8 +11,9 @@ use NFePHP\Common\Certificate;
 
 class FilialController extends Controller
 {
-    protected $empresa_id = null;
+    use \App\Traits\GeocodeTrait;
 
+    protected $empresa_id = null;
     public function __construct(){
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
@@ -45,7 +46,7 @@ class FilialController extends Controller
 
         return view('filial.create', ['title' => 'Nova Localização'],
             compact('cidades', 'naturezas', 'infoCertificado', 'planoContas'))
-        ->with('testeJs', true);
+            ->with('testeJs', true);
 
     }
 
@@ -64,7 +65,7 @@ class FilialController extends Controller
 
             return view('filial.create', ['title' => 'Editar Localização'],
                 compact('cidades', 'naturezas', 'config', 'infoCertificado', 'planoContas'))
-            ->with('testeJs', true);
+                ->with('testeJs', true);
 
         } else {
             return redirect('/403');
@@ -94,7 +95,7 @@ class FilialController extends Controller
     }
 
     public function store(Request $request){
-        
+
         $this->_validate($request);
 
         $logo_name = "";
@@ -119,7 +120,12 @@ class FilialController extends Controller
         $cUF = ConfigNota::getCodUF($uf);
         $municipio = $cidade->nome;
 
+        $enderecoBusca = $request->logradouro . ', ' . $request->numero . ', ' . $request->bairro . ', ' . $municipio . ' - ' . $uf;
+        $coords = $this->buscarCoordenadas($enderecoBusca);
+
         $request->merge([
+            'latitude' => $coords['latitude'],
+            'longitude' => $coords['longitude'],
             'numero_serie_cte' => $request->numero_serie_cte ?? 0,
             'numero_serie_mdfe' => $request->numero_serie_mdfe ?? 0,
             'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0,
@@ -186,7 +192,12 @@ class FilialController extends Controller
         $cUF = ConfigNota::getCodUF($uf);
         $municipio = $cidade->nome;
 
+        $enderecoBusca = $request->logradouro . ', ' . $request->numero . ', ' . $request->bairro . ', ' . $municipio . ' - ' . $uf;
+        $coords = $this->buscarCoordenadas($enderecoBusca, $municipio, $uf); // Passando os novos parâmetros
+
         $request->merge([
+            'latitude' => $coords['latitude'],
+            'longitude' => $coords['longitude'],
             'numero_serie_cte' => $request->numero_serie_cte ?? 0,
             'numero_serie_mdfe' => $request->numero_serie_mdfe ?? 0,
             'ultimo_numero_cte' => $request->ultimo_numero_cte ?? 0,

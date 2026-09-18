@@ -18,7 +18,7 @@
     </style>
 </head>
 <body onload="window.print()">
-
+    
     <div class="header">
         <h2>Relatório de Conferência Fiscal e Financeira</h2>
         <p>Período: {{ date('d/m/Y', strtotime(request('data_inicial', date('Y-m-01')))) }} a {{ date('d/m/Y', strtotime(request('data_final', date('Y-m-t')))) }}</p>

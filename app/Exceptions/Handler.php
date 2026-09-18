@@ -15,6 +15,13 @@ use Throwable;
 class Handler extends ExceptionHandler
 {
     /**
+     * Evita registrar a mesma instância de exception duas vezes na mesma request.
+     * O Handler possui callbacks reportable + renderable e, sem essa barreira,
+     * ambos podiam chamar logContext() para a mesma falha.
+     */
+    protected array $loggedExceptionFingerprints = [];
+
+    /**
      * Exceções que não serão reportadas.
      *
      * @var array<int, class-string<Throwable>>
@@ -55,7 +62,8 @@ class Handler extends ExceptionHandler
             $request = $this->safeRequest();
 
             if ($request instanceof Request) {
-                $this->logContext('error', $e->getMessage(), $e, $request);
+                $persistToDatabase = !($e instanceof HttpException) || $e->getStatusCode() >= 500;
+                $this->logContext('error', $e->getMessage(), $e, $request, $persistToDatabase);
 
                 if (! $request->expectsJson()) {
                     session()->flash('mensagem_erro', $e->getMessage());
@@ -145,7 +153,7 @@ class Handler extends ExceptionHandler
         $message = $labels[$code] ?? "Erro {$code}: {$e->getMessage()}";
         $level   = $code >= 500 ? 'error' : 'warning';
 
-        $this->logContext($level, $message, $e, $request);
+        $this->logContext($level, $message, $e, $request, $code >= 500);
         session()->flash('mensagem_erro', $message);
 
         return redirect()->back()->withInput();
@@ -211,8 +219,21 @@ class Handler extends ExceptionHandler
      * @param Throwable $e
      * @param Request   $request
      */
-    protected function logContext(string $level, string $message, Throwable $e, Request $request): void
+    protected function logContext(string $level, string $message, Throwable $e, Request $request, bool $persistToDatabase = true): void
     {
+        $fingerprint = implode('|', [
+            spl_object_id($e),
+            get_class($e),
+            $request->method(),
+            $request->fullUrl(),
+        ]);
+
+        // reportable() e renderable() podem receber a mesma exception. Registra uma vez.
+        if (isset($this->loggedExceptionFingerprints[$fingerprint])) {
+            return;
+        }
+        $this->loggedExceptionFingerprints[$fingerprint] = true;
+
         // 1) Log no arquivo Laravel
         $context = [
             'url'       => $request->fullUrl(),
@@ -229,6 +250,12 @@ class Handler extends ExceptionHandler
         }
 
         \Log::{$level}($message, $context);
+
+        // HTTP 4xx (404/405/scanners, sessão expirada etc.) fica somente no arquivo.
+        // Não é evento de auditoria empresarial e não deve aumentar a tabela logs.
+        if (!$persistToDatabase) {
+            return;
+        }
 
         // 2) Grava também no banco via LogService
         try {
@@ -250,17 +277,17 @@ class Handler extends ExceptionHandler
                 [
                     'registro_id' => null,
                     'dados_anteriores' => null,
-                    'dados_depois'     => json_encode([
-                        'message'    => $message,
-                        'url'        => $request->fullUrl(),
+                    'dados_depois'     => [
+                        'message'    => mb_substr($message, 0, 2000),
+                        'url'        => mb_substr($request->fullUrl(), 0, 1500),
                         'empresa_id' => $empresaId,
                         'empresa'    => $razaoSocial,
                         'usuario_id' => $usuarioId,
                         'filial_id'  => $filialFinal,
                         'file'       => $e->getFile(),
                         'line'       => $e->getLine(),
-                        'trace'      => substr($e->getTraceAsString(), 0, 500),
-                    ], JSON_UNESCAPED_UNICODE),
+                        'trace'      => substr($e->getTraceAsString(), 0, 1000),
+                    ],
                 ]
             );
         } catch (Throwable $inner) {

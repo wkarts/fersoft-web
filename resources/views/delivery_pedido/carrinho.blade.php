@@ -151,13 +151,16 @@
 				@endif
 
 				@if($pedido)
+				
+				<button id="btn-enviar" onclick="enviarParaCozinha()" type="button" class="btn btn-info btn-lg btn-block @if(sizeof($pedido->itens) == 0) disabled @endif" style="margin-bottom: 10px;">
+					<span class="fa fa-fire mr-2"></span> ENVIAR PARA COZINHA
+				</button>
+
 				<a onclick='swal("Atenção!", "Deseja finalizar esta mesa? não irá pedir mais nada?", "warning").then((sim) => {if(sim){ location.href="/pedido/finalizar" }else{return false} })' type="button" href="#!" class="btn btn-success btn-lg btn-block @if(sizeof($pedido->itens) == 0) disabled @endif">
 					<span class="fa fa-check mr-2"></span> FINALIZAR
 					<strong>R$ {{number_format($geral, 2, ',', '.')}}</strong>
 				</a>
-				<!-- <a href="/cardapio" style="font-size: 15px; color: #fff" type="button" class="btn btn-warning btn-lg btn-block">
-					<span class="fa fa-bars mr-2"></span>CONTINUAR COMPRANDO
-				</a> -->
+				
 				@else
 				<a href="/pedido" type="button" class="btn btn-primary btn-lg btn-block">
 					<span class="fa fa-bars mr-2"></span>CARDÁPIO</strong>
@@ -168,4 +171,36 @@
 	</div>
 	<br>
 
-@endsection	
+<script>
+function enviarParaCozinha() {
+    let btn = document.getElementById('btn-enviar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="fa fa-spinner fa-spin mr-2"></span> Enviando...';
+    
+    // O fetch aponta para a rota do seu PedidoQrCodeController
+    fetch("{{ url('/cardapio-web/enviarParaCozinha') }}", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Erro no servidor');
+        return response.json();
+    })
+    .then(data => {
+        btn.innerHTML = '<span class="fa fa-check mr-2"></span> Pedido na Cozinha!';
+        btn.classList.remove('btn-info');
+        btn.classList.add('btn-success');
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Erro ao enviar pedido. Tente novamente.');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="fa fa-fire mr-2"></span> ENVIAR PARA COZINHA';
+    });
+}
+</script>
+
+@endsection

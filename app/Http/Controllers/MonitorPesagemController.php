@@ -6,6 +6,7 @@ use App\Models\Filial;
 use App\Models\Pesagem;
 use App\Models\StockDailyAggregate;
 use App\Services\MonitorPesagemService;
+use App\Support\PesagemReportCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -179,41 +180,26 @@ class MonitorPesagemController extends BaseController
                 continue;
             }
 
-            $pesoFinalPesagem = (float) ($pesagem->peso_final ?? $pesagem->peso ?? 0);
-            $totalLiquidoPesagem = 0;
-            $totalBrutoPesagem = 0;
+            // Quantidades por produto são derivadas da conciliação líquida dos tickets,
+            // nunca da soma dos estados físicos intermediários do veículo.
+            $resumo = PesagemReportCalculator::summarize($pesagem);
+            $pesoFinalPesagem = (float) $resumo['peso_final_liquido'];
+            $totalLiquidoPesagem = (float) $resumo['peso_liquido_total'];
 
-            foreach ($pesagem->tickets as $ticket) {
-                if (empty($ticket->produto_id)) {
+            foreach ($resumo['produtos'] as $grupoProduto) {
+                $produto = $grupoProduto['produto'] ?? null;
+                $pesoLiquidoProduto = (float) ($grupoProduto['peso_liquido'] ?? 0);
+
+                if (!$produto || $pesoLiquidoProduto <= 0) {
                     continue;
                 }
 
-                $peso = (float) ($ticket->peso ?? 0);
-                $pesoBag = (float) ($ticket->peso_bag ?? 0);
-                $pesoLiquido = max(0, $peso - $pesoBag);
-
-                $totalBrutoPesagem += $peso;
-                $totalLiquidoPesagem += $pesoLiquido;
-            }
-
-            foreach ($pesagem->tickets as $ticket) {
-                if (empty($ticket->produto_id)) {
-                    continue;
-                }
-
-                $peso = (float) ($ticket->peso ?? 0);
-                $pesoBag = (float) ($ticket->peso_bag ?? 0);
-                $pesoLiquido = max(0, $peso - $pesoBag);
-
-                if ($pesoLiquido <= 0 && $peso <= 0) {
-                    continue;
-                }
-
-                $key = (string) $ticket->produto_id;
+                $key = (string) $produto->id;
                 if (!isset($produtos[$key])) {
                     $produtos[$key] = [
-                        'produto_id' => (int) $ticket->produto_id,
-                        'produto_nome' => $ticket->produto->nome ?? '—',
+                        'produto_id' => (int) $produto->id,
+                        'produto_nome' => $produto->nome ?? '—',
+                        // Campos bruto mantidos apenas como alias legado do payload.
                         'entrada_bruto' => 0,
                         'entrada_liquido' => 0,
                         'entrada_final' => 0,
@@ -225,12 +211,13 @@ class MonitorPesagemController extends BaseController
                 }
 
                 $proporcaoFinal = $totalLiquidoPesagem > 0
-                    ? ($pesoLiquido / $totalLiquidoPesagem)
+                    ? ($pesoLiquidoProduto / $totalLiquidoPesagem)
                     : 0;
                 $pesoFinalItem = $pesoFinalPesagem * $proporcaoFinal;
 
-                $produtos[$key]["{$direcao}_bruto"] += $peso;
-                $produtos[$key]["{$direcao}_liquido"] += $pesoLiquido;
+                // A quantidade operacional do produto é o líquido conciliado daquele produto.
+                $produtos[$key]["{$direcao}_bruto"] += $pesoLiquidoProduto; // compatibilidade
+                $produtos[$key]["{$direcao}_liquido"] += $pesoLiquidoProduto;
                 $produtos[$key]["{$direcao}_final"] += $pesoFinalItem;
                 $produtos[$key]['total_final'] = $produtos[$key]['entrada_final'] + $produtos[$key]['saida_final'];
             }

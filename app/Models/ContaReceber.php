@@ -213,11 +213,21 @@ class ContaReceber extends BaseModel
     }
 
   public function usuarioBaixa()
-{
-    // Isso diz ao Laravel que a coluna 'usuario_baixa_id' se conecta com a tabela de usuários
-    return $this->belongsTo(Usuario::class, 'usuario_baixa_id');
-}
-  
+    {
+        // Isso diz ao Laravel que a coluna 'usuario_baixa_id' se conecta com a tabela de usuários
+        return $this->belongsTo(Usuario::class, 'usuario_baixa_id');
+    }
+  public function usuario()
+    {
+        return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    public function usuarioEdit()
+    {
+        return $this->belongsTo(User::class, 'usuario_edit_id');
+    }
+
+    
   
     public static function tiposPagamento(){
         return [

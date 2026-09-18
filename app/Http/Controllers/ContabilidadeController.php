@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PlanoContasContabil;
-use App\Models\Usuario;
+use App\Models\Usuario; // <-- Adicionamos o modelo do utilizador!
 use Illuminate\Support\Facades\DB;
+use App\Services\ContabilidadeService;
 
 class ContabilidadeController extends BaseController
 {
@@ -58,18 +59,18 @@ class ContabilidadeController extends BaseController
             ->when($request->get('pesquisa'), function($query, $pesquisa) {
                 return $query->where(function($q) use ($pesquisa) {
                     $q->where('nome', 'LIKE', "%{$pesquisa}%")
-                        ->orWhere('codigo_acesso', 'LIKE', "%{$pesquisa}%")
-                        ->orWhere('classificador', 'LIKE', "%{$pesquisa}%");
+                      ->orWhere('codigo_acesso', 'LIKE', "%{$pesquisa}%")
+                      ->orWhere('classificador', 'LIKE', "%{$pesquisa}%");
                 });
             })
             ->orderBy('classificador', 'asc')
-            ->paginate(50);
+            ->paginate(50); 
 
         $data = [
             'title'   => 'Plano de Contas Contábil',
             'titulo'  => 'Arquivos Contábil',
             'contas'  => $contas,
-            'filters' => $request->all()
+            'filters' => $request->all() 
         ];
 
         return view('contabilidade.importar', $data);
@@ -137,17 +138,37 @@ class ContabilidadeController extends BaseController
             return back()->with('erro', 'Erro ao importar: ' . $e->getMessage());
         }
     }
-
-    public function gerarTerceiros(Request $request)
+  
+  public function gerarTerceiros(\Illuminate\Http\Request $request)
     {
-        $empresaId = $this->getEmpresaId();
-        abort_if(!$empresaId || (int)$empresaId !== (int)$this->empresa_id, 403, 'Empresa não identificada.');
+        // 1. Obtém o ID da Empresa da sessão ou do usuário logado
+        $empresaId = auth()->check() ? auth()->user()->empresa_id : session('empresa_id');
 
-        $conteudo = app(\App\Services\ContabilidadeService::class)->gerarArquivoTerceiros((int)$empresaId);
+        $userLogged = session('user_logged');
+        if (!$empresaId && is_array($userLogged)) {
+            $empresaId = $userLogged['empresa_id'] ?? null;
+            if (!$empresaId && isset($userLogged['empresa'])) {
+                $empresa = $userLogged['empresa'];
+                $empresaId = is_numeric($empresa) ? $empresa : (is_array($empresa) ? ($empresa['id'] ?? null) : ($empresa->id ?? null));
+            }
+        } elseif (!$empresaId && is_object($userLogged)) {
+            $empresaId = $userLogged->empresa_id ?? null;
+        }
 
-        return response($conteudo, 200, [
-            'Content-Type' => 'text/plain; charset=ISO-8859-1',
-            'Content-Disposition' => 'attachment; filename="terceiros_' . date('Ymd_His') . '.txt"',
-        ]);
+        // Se por algum motivo a sessão cair, evita o erro parando o processo
+        if (!$empresaId) {
+            return redirect()->back()->with('error', 'Sessão expirada ou empresa não identificada.');
+        }
+
+        // 2. Instancia o Service
+        $contabilidadeService = new \App\Services\ContabilidadeService();
+
+        // 3. Chama a função passando APENAS o número do ID da empresa
+        $conteudoArquivo = $contabilidadeService->gerarArquivoTerceiros($empresaId);
+
+        // 4. Retorna o arquivo para download
+        return response($conteudoArquivo)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="Terceiros.txt"');
     }
 }

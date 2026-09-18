@@ -9,13 +9,9 @@
                         <a href="/fornecedores/new" class="btn btn-lg btn-success mr-2">
                             <i class="fa fa-plus"></i> Novo Fornecedor
                         </a>
-                        <form action="{{ route('fornecedores.limpar-duplicidades') }}" method="POST" class="d-inline" id="form-limpar-duplicidades">
-                            @csrf
-                            <button type="button" class="btn btn-lg btn-warning" data-toggle="tooltip" title="Desativa automaticamente cadastros repetidos mantendo o mais completo."
-                                onclick='swal("Atenção!", "Deseja analisar e desativar fornecedores duplicados?", "warning").then((sim) => { if (sim) { document.getElementById("form-limpar-duplicidades").submit(); } })'>
-                                <i class="fa fa-magic"></i> Corrigir Duplicidades
-                            </button>
-                        </form>
+                        <a href="/fornecedores/limpar-duplicidades" class="btn btn-lg btn-warning" data-toggle="tooltip" title="Desativa automaticamente cadastros repetidos mantendo o mais completo.">
+                            <i class="fa fa-magic"></i> Corrigir Duplicidades
+                        </a>
                     </div>
                 </div>
             </div>
@@ -98,10 +94,6 @@
                                         @foreach($fornecedores as $c)
                                             <tr class="datatable-row {{ isset($c->ativo) && $c->ativo == 0 ? 'text-muted bg-light' : '' }}">
                                                 <td class="datatable-cell">
-                                                    <form action="{{ route('fornecedores.toggle-ativo', $c->id) }}" method="POST" id="form-toggle-fornecedor-{{ $c->id }}" class="d-none">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                    </form>
                                                     <!-- Aumentado para 200px e adicionado white-space: nowrap para forçar a mesma linha -->
                                                     <span style="width: 200px; white-space: nowrap; display: block;">
                                                         <!-- Adicionado mr-1 (margin-right) em todos para dar um pequeno respiro entre eles -->
@@ -118,15 +110,13 @@
                                                         </a>
 
                                                         @if(!isset($c->ativo) || $c->ativo == 1)
-                                                            <button type="button" class="btn btn-danger btn-sm" title="Desativar"
-                                                                onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })'>
+                                                            <a class="btn btn-danger btn-sm" title="Desativar" onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/toggle-ativo/{{ $c->id }}" }})' href="#!">
                                                                 <i class="la la-ban"></i>
-                                                            </button>
+                                                            </a>
                                                         @else
-                                                            <button type="button" class="btn btn-success btn-sm" title="Ativar"
-                                                                onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })'>
+                                                            <a class="btn btn-success btn-sm" title="Ativar" onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/toggle-ativo/{{ $c->id }}" }})' href="#!">
                                                                 <i class="la la-check"></i>
-                                                            </button>
+                                                            </a>
                                                         @endif
                                                     </span>
                                                 </td>
@@ -162,8 +152,8 @@
                                             <div class="card-title">
                                                 <h3 style="font-size: 12px;" class="card-title">
                                                     {{substr($c->razao_social, 0, 30)}}
-                                                    @if(isset($c->ativo) && $c->ativo == 0)
-                                                        <span class="text-danger ml-2" style="font-size: 10px;">(Inativo)</span>
+                                                    @if(isset($c->ativo) && $c->ativo == 0) 
+                                                        <span class="text-danger ml-2" style="font-size: 10px;">(Inativo)</span> 
                                                     @endif
                                                 </h3>
                                             </div>
@@ -191,12 +181,12 @@
                                                             <li class="navi-separator mb-3 opacity-70"></li>
                                                             <li class="navi-item">
                                                                 @if(!isset($c->ativo) || $c->ativo == 1)
-                                                                    <a onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })' href="#!" class="navi-link">
+                                                                    <a onclick='swal("Atenção!", "Deseja desativar este fornecedor?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/toggle-ativo/{{ $c->id }}" }})' href="#!" class="navi-link">
                                                                         <span class="navi-icon"><i class="la la-ban text-danger"></i></span>
                                                                         <span class="navi-text text-danger">Desativar</span>
                                                                     </a>
                                                                 @else
-                                                                    <a onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => { if (sim) { document.getElementById("form-toggle-fornecedor-{{ $c->id }}").submit(); } })' href="#!" class="navi-link">
+                                                                    <a onclick='swal("Atenção!", "Deseja reativar este fornecedor?", "warning").then((sim) => {if(sim){ location.href="/fornecedores/toggle-ativo/{{ $c->id }}" }})' href="#!" class="navi-link">
                                                                         <span class="navi-icon"><i class="la la-check text-success"></i></span>
                                                                         <span class="navi-text text-success">Reativar</span>
                                                                     </a>
@@ -283,7 +273,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- MODAL DADOS BANCÁRIOS -->
     <div class="modal fade" id="modal_dados_bancarios" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">

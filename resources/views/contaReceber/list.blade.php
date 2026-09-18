@@ -218,24 +218,27 @@
                                         <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
                                             <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                                                 <thead class="datatable-head">
-                                                <tr class="datatable-row">
-                                                    <th class="datatable-cell"><span style="width: 160px;">AÇÕES</span></th>
-                                                    <th class="datatable-cell"><span style="width: 200px;">CLIENTE</span></th>
-                                                    <th class="datatable-cell"><span style="width: 200px;">CATEGORIA / REF</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">VALOR INT.</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">VALOR PAGO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">VENCIMENTO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">PAGAMENTO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 100px;">ESTADO</span></th>
-                                                    <th class="datatable-cell"><span style="width: 80px;">Nº NOTA</span></th>
-                                                    <th class="datatable-cell"><span style="width: 150px;">USUÁRIOS (C/B)</span></th>
-                                                </tr>
+                                                    <tr class="datatable-row">
+                                                        <th class="datatable-cell"><span style="width: 200px;">AÇÕES</span></th>
+                                                        <th class="datatable-cell"><span style="width: 200px;">CLIENTE</span></th>
+                                                        <th class="datatable-cell"><span style="width: 200px;">CATEGORIA / REF</span></th>
+                                                        <th class="datatable-cell"><span style="width: 100px;">VALOR INT.</span></th>
+                                                        <th class="datatable-cell"><span style="width: 100px;">VALOR PAGO</span></th>
+                                                        <th class="datatable-cell"><span style="width: 100px;">VENCIMENTO</span></th>
+                                                        <th class="datatable-cell"><span style="width: 100px;">PAGAMENTO</span></th>
+                                                        <th class="datatable-cell"><span style="width: 100px;">ESTADO</span></th>
+                                                        <th class="datatable-cell"><span style="width: 80px;">Nº NOTA</span></th>
+                                                        <th class="datatable-cell"><span style="width: 150px;">USUÁRIOS (C/E/B)</span></th>
+                                                    </tr>
                                                 </thead>
                                                 <tbody id="body" class="datatable-body">
-                                                @foreach($contas as $c)
-                                                    <tr class="datatable-row">
-                                                        <td class="datatable-cell">
-                                                                <span style="width: 160px;">
+                                                    @foreach($contas as $c)
+                                                        <tr class="datatable-row">
+                                                            <td class="datatable-cell">
+                                                                <span style="width: 200px;">
+                                                                    {{-- BOTÃO DETALHES ADICIONADO --}}
+                                                                    <a href="/contasReceber/detalhes/{{$c->id}}" class="btn btn-info btn-sm btn-icon" title="Detalhes"><i class="la la-eye"></i></a>
+
                                                                     @if($c->status == false)
                                                                         {{-- Checkbox para seleção múltipla --}}
                                                                         <label style="display: none" class="checkbox checkbox-success checkbox-inline mr-2" for="sel_{{$c->id}}">
@@ -246,10 +249,13 @@
                                                                         <a href="/contasReceber/edit/{{$c->id}}" class="btn btn-warning btn-sm btn-icon" title="Editar"><i class="la la-edit"></i></a>
                                                                         <a onclick='swal("Atenção!", "Remover?", "warning").then((sim) => {if(sim){ location.href="/contasReceber/delete/{{ $c->id }}" }})' class="btn btn-danger btn-sm btn-icon" title="Excluir"><i class="la la-trash"></i></a>
                                                                         <a href="/contasReceber/receber/{{$c->id}}" class="btn btn-success btn-sm btn-icon" title="Receber"><i class="la la-money"></i></a>
+                                                                        
+                                                                        {{-- BOTÃO BAIXA PARCIAL ADICIONADO --}}
+                                                                        <button onclick="abrirModalBaixaParcial({{ $c->id }}, '{{ number_format($c->valor_integral, 2, ',', '.') }}')" class="btn btn-primary btn-sm btn-icon" title="Baixa Parcial"><i class="la la-minus-circle"></i></button>
 
                                                                         {{-- BOTÃO GERAR BOLETO (Individual) --}}
                                                                         @if(!$c->boleto)
-                                                                            <a href="/boleto/gerar/{{$c->id}}" class="btn btn-info btn-sm btn-icon" title="Gerar Boleto"><i class="la la-barcode"></i></a>
+                                                                        <a href="/boleto/gerar/{{$c->id}}" class="btn btn-info btn-sm btn-icon" title="Gerar Boleto"><i class="la la-barcode"></i></a>
                                                                         @endif
                                                                     @else
                                                                         <a title="Estornar conta" href="/contasReceber/estorno/{{$c->id}}" class="btn btn-dark btn-sm btn-icon"><i class="la la-arrow-alt-circle-left"></i></a>
@@ -261,19 +267,21 @@
                                                                         <button onclick='swal("Observação", "{{$c->observacao}}", "info")' class="btn btn-light-primary btn-sm btn-icon" title="Ver Observação"><i class="la la-sticky-note"></i></button>
                                                                     @endif
                                                                 </span>
-                                                        </td>
+                                                            </td>
 
-                                                        <td class="datatable-cell">
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 200px;">
-                                                                    @if($c->venda_id != null) <b>{{ $c->venda->cliente->razao_social }}</b>
-                                                                    @else <b>{{ $c->cliente->razao_social ?? '--' }}</b>
+                                                                    @if($c->venda_id != null && $c->venda && $c->venda->cliente) 
+                                                                        <b>{{ $c->venda->cliente->razao_social }}</b>
+                                                                    @else 
+                                                                        <b>{{ $c->cliente->razao_social ?? '--' }}</b>
                                                                     @endif
                                                                 </span>
-                                                        </td>
+                                                            </td>
 
-                                                        <td class="datatable-cell">
+                                                            <td class="datatable-cell">
                                                                   <span style="width: 200px;">
-                                                                      <b>{{$c->categoria->nome}}</b> <br>
+                                                                      <b>{{ $c->categoria->nome ?? '--' }}</b> <br>
                                                                       <small class="text-muted">{{ $c->referencia }}</small>
 
                                                                       {{-- TIPO DE PAGAMENTO --}}
@@ -282,49 +290,48 @@
                                                                           Pagt: {{ $c->tipo_pagamento ?? '--' }}
                                                                       </span>
 
-                                                                      @if($c->filial_id)
-                                                                          <br><span class="label label-inline label-light-primary">Local: {{ $c->filial->descricao }}</span>
+                                                                      @if($c->filial_id && $c->filial) 
+                                                                          <br><span class="label label-inline label-light-primary">Local: {{ $c->filial->descricao }}</span> 
                                                                       @endif
                                                                   </span>
-                                                        </td>
+                                                              </td>
 
-                                                        <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_integral, 2, ',', '.')}}</span></td>
-                                                        <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_recebido, 2, ',', '.')}}</span></td>
-
-                                                        <td class="datatable-cell">
+                                                            <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_integral, 2, ',', '.')}}</span></td>
+                                                            <td class="datatable-cell"><span style="width: 100px;">R$ {{number_format($c->valor_recebido, 2, ',', '.')}}</span></td>
+															
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 100px;">
                                                                     {{ \Carbon\Carbon::parse($c->data_vencimento)->format('d/m/Y')}}
-                                                                    @if(!$c->status)
-                                                                        <br><span class="text-danger" style="font-size: 10px">{{ $c->diasAtraso() }}</span>
+                                                                    @if(!$c->status) 
+                                                                        <br><span class="text-danger" style="font-size: 10px">{{ $c->diasAtraso() }}</span> 
                                                                     @endif
                                                                 </span>
-                                                        </td>
+                                                            </td>
 
-                                                        <td class="datatable-cell">
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 100px;">
                                                                     {{ $c->status && $c->data_recebimento ? \Carbon\Carbon::parse($c->data_recebimento)->format('d/m/Y') : '--' }}
                                                                 </span>
-                                                        </td>
+                                                            </td>
 
-                                                        <td class="datatable-cell">
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 100px;">
                                                                     @if($c->status == true) <span class="label label-xl label-inline label-light-success">Pago</span>
                                                                     @else <span class="label label-xl label-inline label-light-danger">Pendente</span> @endif
                                                                 </span>
-                                                        </td>
-
-
-                                                        {{-- Nº NOTA COM LINKS DINÂMICOS --}}
-                                                        <td class="datatable-cell">
+                                                            </td>
+															                                                          
+                                                          {{-- Nº NOTA COM LINKS DINÂMICOS --}}
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 80px;">
-                                                                    @if($c->numero_nota_fiscal > 0 || $c->nf_numero > 0)
+                                                                    @if(($c->numero_nota_fiscal > 0) || ($c->nf_numero > 0))
                                                                         @if($c->cte_id)
-                                                                            {{-- Abre o DACTE padrão do CT-e (Preservado e funcionando!) --}}
+                                                                            {{-- Abre o DACTE padrão do CT-e --}}
                                                                             <a href="/cteSefaz/imprimir/{{$c->cte_id}}" target="_blank" title="Imprimir DACTE" class="text-info font-weight-bold">
                                                                                 <i class="la la-truck"></i> {{ $c->numero_nota_fiscal > 0 ? $c->numero_nota_fiscal : $c->nf_numero }}
                                                                             </a>
                                                                         @else
-                                                                            {{-- TODAS AS NF-E (Vendas, Manuais ou Importadas): Abrem pela nova rota segura baseada no ID da Conta --}}
+                                                                            {{-- DANFE da NF-e --}}
                                                                             <a href="/contasReceber/visualizarDanfe/{{$c->id}}" target="_blank" title="Visualizar DANFE Oficial" class="text-primary font-weight-bold">
                                                                                 <i class="la la-print"></i> {{ $c->numero_nota_fiscal > 0 ? $c->numero_nota_fiscal : $c->nf_numero }}
                                                                             </a>
@@ -333,25 +340,27 @@
                                                                         --
                                                                     @endif
                                                                 </span>
-                                                        </td>
+                                                            </td>
 
-                                                        {{-- COLUNA DE USUÁRIOS (CADASTROU / BAIXOU) --}}
-                                                        <td class="datatable-cell">
+                                                            {{-- COLUNA DE USUÁRIOS (CADASTROU / EDITOU / BAIXOU) --}}
+                                                            <td class="datatable-cell">
                                                                 <span style="width: 150px;">
                                                                     <small><b>Incluiu:</b> {{ $c->usuario->nome ?? 'Sistema' }}</small> <br>
+                                                                    <small><b>Editou:</b> {{ $c->usuarioEdit->nome ?? '--' }}</small> <br>
                                                                     @if($c->status)
                                                                         <small><b>Baixou:</b> {{ $c->usuarioBaixa->nome ?? '--' }}</small>
                                                                     @endif
                                                                 </span>
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
+                                                            </td>
+                                                       </tr>
+                                                    @endforeach
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            
                             {{-- CONTEÚDO 2: VISUALIZAÇÃO EM GRADE (CARTÕES) --}}
                             <input type="hidden" id="contas" value="{{json_encode($contas)}}">
                             <div class="pb-5" data-wizard-type="step-content">
@@ -368,7 +377,7 @@
                                                             </label>
                                                         @endif
                                                         <h3 style="width: 230px; font-size: 20px; height: 10px;" class="card-title">
-                                                            R$ {{number_format($c->valor_integral, $casasDecimais, ',', '.')}}
+                                                            R$ {{number_format($c->valor_integral, $casasDecimais ?? 2, ',', '.')}}
                                                         </h3>
                                                     </div>
 
@@ -381,10 +390,12 @@
                                                                 <ul class="navi navi-hover">
                                                                     <li class="navi-header font-weight-bold py-4"><span class="font-size-lg">Ações:</span></li>
                                                                     <li class="navi-separator mb-3 opacity-70"></li>
+                                                                    <li class="navi-item"><a href="/contasReceber/detalhes/{{$c->id}}" class="navi-link"><span class="navi-text text-info">Detalhes</span></a></li>
                                                                     @if($c->status == false)
                                                                         <li class="navi-item"><a href="/contasReceber/edit/{{$c->id}}" class="navi-link"><span class="navi-text text-warning">Editar</span></a></li>
                                                                         <li class="navi-item"><a onclick='swal("Atenção!", "Remover?", "warning").then((sim) => {if(sim){ location.href="/contasReceber/delete/{{ $c->id }}" }})' class="navi-link"><span class="navi-text text-danger">Excluir</span></a></li>
                                                                         <li class="navi-item"><a href="/contasReceber/receber/{{$c->id}}" class="navi-link"><span class="navi-text text-success">Receber</span></a></li>
+                                                                        <li class="navi-item"><a onclick="abrirModalBaixaParcial({{ $c->id }}, '{{ number_format($c->valor_integral, 2, ',', '.') }}')" class="navi-link"><span class="navi-text text-primary">Baixa Parcial</span></a></li>
                                                                     @else
                                                                         <li class="navi-item">
                                                                             <a href="/contasReceber/imprimirRecibo/{{$c->id}}" target="_blank" class="navi-link">
@@ -401,11 +412,11 @@
                                                 <div class="card-body">
                                                     <div class="kt-widget__info">
                                                         <span class="kt-widget__label">Cliente:</span>
-                                                        <a class="kt-widget__data text-success">@if($c->venda_id != null) {{ $c->venda->cliente->razao_social }} @else {{ $c->cliente->razao_social ?? '--' }} @endif</a>
+                                                        <a class="kt-widget__data text-success">@if($c->venda_id != null && $c->venda && $c->venda->cliente) {{ $c->venda->cliente->razao_social }} @else {{ $c->cliente->razao_social ?? '--' }} @endif</a>
                                                     </div>
                                                     <div class="kt-widget__info">
                                                         <span class="kt-widget__label">Categoria:</span>
-                                                        <a class="kt-widget__data text-success">{{$c->categoria->nome}}</a>
+                                                        <a class="kt-widget__data text-success">{{ $c->categoria->nome ?? '--' }}</a>
                                                     </div>
                                                     <div class="kt-widget__info">
                                                         <span class="kt-widget__label">Vencimento:</span>
@@ -413,16 +424,9 @@
                                                     </div>
 
                                                     <div class="kt-widget__info">
-                                                        <span class="kt-widget__label">Emissão:</span>
-                                                        <a class="kt-widget__data text-success">
-                                                            {{ $c->nf_data_emissao ? \Carbon\Carbon::parse($c->nf_data_emissao)->format('d/m/Y') : '--' }}
-                                                        </a>
-                                                    </div>
-
-                                                    <div class="kt-widget__info">
-                                                        <span class="kt-widget__label">Usuários (C/B):</span>
+                                                        <span class="kt-widget__label">Usuários (C/E/B):</span>
                                                         <span class="kt-widget__data text-dark">
-                                                            {{ $c->usuario->nome ?? '--' }} / {{ $c->usuarioBaixa->nome ?? '--' }}
+                                                            {{ $c->usuario->nome ?? '--' }} / {{ $c->usuarioEdit->nome ?? '--' }} / {{ $c->usuarioBaixa->nome ?? '--' }}
                                                         </span>
                                                     </div>
 
@@ -432,7 +436,7 @@
                                                             {{ $c->nf_data_emissao ? \Carbon\Carbon::parse($c->nf_data_emissao)->format('d/m/Y') : '--' }}
                                                         </span>
                                                     </div>
-
+                                                  
                                                     <div class="kt-widget__info">
                                                         <span class="kt-widget__label">Estado:</span>
                                                         @if($c->status == true) <span class="label label-xl label-inline label-light-success">Pago</span>
@@ -479,6 +483,54 @@
         </div>
     </div>
 
+    {{-- MODAL DE BAIXA PARCIAL --}}
+    <div class="modal fade" id="modal_baixa_parcial" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Baixa Parcial - Conta a Receber</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <i aria-hidden="true" class="ki ki-close"></i>
+                    </button>
+                </div>
+                <form id="form_baixa_parcial">
+                    <input type="hidden" id="baixa_parcial_id" name="id">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Valor Total da Conta</label>
+                            <input type="text" class="form-control" id="baixa_parcial_valor_total" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor Recebido Parcialmente</label>
+                            <input type="text" class="form-control money" id="baixa_parcial_valor_recebido" name="valor_recebido" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Recebimento</label>
+                            <input type="date" class="form-control" name="data_recebimento" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nova Data de Vencimento (do Resíduo)</label>
+                            <input type="date" class="form-control" name="nova_data_vencimento" value="{{ date('Y-m-d', strtotime('+30 days')) }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Conta Bancária / Caixa para Depósito</label>
+                            <select name="conta_bancaria_id" class="form-control custom-select" required>
+                                <option value="">Selecione...</option>
+                                @foreach($contasEmpresa as $ce)
+                                    <option value="{{ $ce->id }}">{{ $ce->nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success font-weight-bold">Confirmar Baixa Parcial</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('javascript')
@@ -498,14 +550,12 @@
             BTNSELECIONA = !BTNSELECIONA;
 
             if(BTNSELECIONA){
-                // Ativa visualmente o botão e mostra as caixinhas de seleção
                 $(this).removeClass('btn-light').addClass('btn-info');
-                $('.checkbox').show(); // Mostra as divs que escondem o check
-                $('.select').show();   // Garante que o input apareça
+                $('.checkbox').show(); 
+                $('.select').show();   
                 $('.btn-action').hide();
                 $('.div-valor-selecionado').show();
             } else {
-                // Desativa tudo e limpa as seleções
                 $(this).removeClass('btn-info').addClass('btn-light');
                 $('.checkbox').hide();
                 $('.div-valor-selecionado').hide();
@@ -520,10 +570,8 @@
         // (GRUPO) CLIQUE NO CHECKBOX: Monitora cada marcação individual
         $(document).on('click', '.select', function() {
             ADICIONADAS = [];
-            // Percorre todos os checks marcados para montar o array de IDs e Valores
             $('.select:checked').each(function() {
                 let id = $(this).attr('id').replace('sel_', '');
-                // Busca os dados da conta no array global de CONTAS
                 let conta = CONTAS.find(c => c.id == id);
                 if(conta) ADICIONADAS.push(conta);
             });
@@ -569,6 +617,31 @@
         $('#btn_gerar').click(() => {
             let temp = ADICIONADAS.map(a => a.id);
             location.href = '/boleto/gerarMultiplos/' + temp.join(',');
+        });
+
+        // LÓGICA DE BAIXA PARCIAL
+        function abrirModalBaixaParcial(id, valorTotal) {
+            $('#baixa_parcial_id').val(id);
+            $('#baixa_parcial_valor_total').val(valorTotal);
+            $('#baixa_parcial_valor_recebido').val('');
+            $('#modal_baixa_parcial').modal('show');
+        }
+
+        $('#form_baixa_parcial').submit(function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: '/contasReceber/baixarParcial',
+                type: 'POST',
+                data: $(this).serialize() + '&_token={{ csrf_token() }}',
+                success: function(res) {
+                    swal("Sucesso!", res, "success").then(() => {
+                        location.reload();
+                    });
+                },
+                error: function(err) {
+                    swal("Erro!", err.responseText || "Falha ao processar a baixa parcial.", "error");
+                }
+            });
         });
     </script>
 @endsection

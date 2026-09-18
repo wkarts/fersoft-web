@@ -38,8 +38,19 @@ trait CreatesApplication
         $app->make(Kernel::class)->bootstrap();
 
         if ($app->environment('testing')) {
-            $app['config']->set('database.default', 'sqlite');
-            $app['config']->set('database.connections.sqlite.database', ':memory:');
+            $testDbConnection = getenv('TEST_DB_CONNECTION') ?: 'sqlite';
+
+            if ($testDbConnection === 'mysql') {
+                $app['config']->set('database.default', 'mysql');
+                $app['config']->set('database.connections.mysql.host', getenv('TEST_DB_HOST') ?: '127.0.0.1');
+                $app['config']->set('database.connections.mysql.port', getenv('TEST_DB_PORT') ?: '3306');
+                $app['config']->set('database.connections.mysql.database', getenv('TEST_DB_DATABASE') ?: 'fersoft_test');
+                $app['config']->set('database.connections.mysql.username', getenv('TEST_DB_USERNAME') ?: 'root');
+                $app['config']->set('database.connections.mysql.password', getenv('TEST_DB_PASSWORD') ?: 'root');
+            } else {
+                $app['config']->set('database.default', 'sqlite');
+                $app['config']->set('database.connections.sqlite.database', ':memory:');
+            }
 
             $app['config']->set('broadcasting.default', 'log');
             $app['config']->set('broadcasting.connections.pusher.key', 'testing-key');

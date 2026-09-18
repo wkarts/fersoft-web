@@ -52,8 +52,8 @@ class ImportacaoNfseController extends BaseController
             ->orderBy('nome', 'asc')
             ->get();
         return view('nfse.importar', [
-            'veiculos' => $veiculos, 
-            'categoriasDeConta' => $categoriasDeConta, 
+            'veiculos' => $veiculos,
+            'categoriasDeConta' => $categoriasDeConta,
             'title' => $this->formTitle
         ]);
     }
@@ -61,7 +61,7 @@ class ImportacaoNfseController extends BaseController
     public function importarLote(Request $request)
     {
         $arquivos = $request->file('xmls');
-        $sucessos = 0; 
+        $sucessos = 0;
         $erros = [];
 
         if (!file_exists(public_path('xml_servico'))) {
@@ -111,107 +111,107 @@ class ImportacaoNfseController extends BaseController
     }
 
     private function processarXml($xml, $veiculo_id, $categoria_id, $prazo, $nomeArquivo, $chave, $qtdParcelas)
-{
-    $inf = $xml->infNFSe;
-    $valores = $inf->valores;
-    $dps = $inf->DPS->infDPS ?? $inf;
-    $data_emi = isset($dps->dhEmi) ? substr((string)$dps->dhEmi, 0, 10) : date('Y-m-d');
+    {
+        $inf = $xml->infNFSe;
+        $valores = $inf->valores;
+        $dps = $inf->DPS->infDPS ?? $inf;
+        $data_emi = isset($dps->dhEmi) ? substr((string)$dps->dhEmi, 0, 10) : date('Y-m-d');
 
-    // VALOR BRUTO CORRIGIDO: Busca em múltiplas tags possíveis
-    $vServico = (float)($valores->vServ ?? $dps->valores->vServPrest->vServ ?? $valores->vBC ?? 0);
-    $vLiquido = (float)($valores->vLiq ?? $vServico);
-    
-    if($vServico <= 0) throw new \Exception("Valor do serviço não localizado.");
+        // VALOR BRUTO CORRIGIDO: Busca em múltiplas tags possíveis
+        $vServico = (float)($valores->vServ ?? $dps->valores->vServPrest->vServ ?? $valores->vBC ?? 0);
+        $vLiquido = (float)($valores->vLiq ?? $vServico);
 
-    // LÓGICA DE ISS RETIDO
-    $tpRetISSQN = (int)($dps->valores->trib->tribMun->tpRetISSQN ?? 2);
-    $vIssRetido = ($tpRetISSQN === 1) ? (float)($valores->vISSQN ?? 0) : 0;
+        if($vServico <= 0) throw new \Exception("Valor do serviço não localizado.");
 
-    // CONTINGÊNCIA DE IMPOSTOS FEDERAIS
-    $vPis = (float)($valores->vPIS ?? 0);
-    $vCofins = (float)($valores->vCOFINS ?? 0);
-    $vIr = (float)($valores->vIR ?? 0);
-    $vCsll = (float)($valores->vCSLL ?? 0);
-    $diffFederal = round($vServico - $vLiquido - $vIssRetido, 2);
+        // LÓGICA DE ISS RETIDO
+        $tpRetISSQN = (int)($dps->valores->trib->tribMun->tpRetISSQN ?? 2);
+        $vIssRetido = ($tpRetISSQN === 1) ? (float)($valores->vISSQN ?? 0) : 0;
 
-    if ($diffFederal > 0 && ($vPis + $vCofins + $vIr + $vCsll) == 0) {
-        $vPis = round($vServico * 0.0065, 2); 
-        $vCofins = round($vServico * 0.03, 2); 
-        $vCsll = round($vServico * 0.01, 2); 
-        $vIr = round($vServico * 0.015, 2);
-    }
+        // CONTINGÊNCIA DE IMPOSTOS FEDERAIS
+        $vPis = (float)($valores->vPIS ?? 0);
+        $vCofins = (float)($valores->vCOFINS ?? 0);
+        $vIr = (float)($valores->vIR ?? 0);
+        $vCsll = (float)($valores->vCSLL ?? 0);
+        $diffFederal = round($vServico - $vLiquido - $vIssRetido, 2);
 
-    $retencoes = [
-        'valor_iss' => $vIssRetido,
-        'valor_pis' => $vPis,
-        'valor_cofins' => $vCofins,
-        'valor_ir' => $vIr,
-        'valor_csll' => $vCsll,
-        'valor_inss' => (float)($valores->vINSS ?? 0),
-    ];
+        if ($diffFederal > 0 && ($vPis + $vCofins + $vIr + $vCsll) == 0) {
+            $vPis = round($vServico * 0.0065, 2);
+            $vCofins = round($vServico * 0.03, 2);
+            $vCsll = round($vServico * 0.01, 2);
+            $vIr = round($vServico * 0.015, 2);
+        }
 
-    $fornecedor = $this->obterFornecedor($inf->emit, (string)$inf->emit->CNPJ);
-    $servBloco = $dps->serv->cServ ?? $inf->serv->cServ;
-    $descCurta = substr((string)$servBloco->xDescServ, 0, 50); // Pega os primeiros 50 caracteres
-    $servico = $this->obterServico((string)($servBloco->cTribNac ?? '140101'), (string)$servBloco->xDescServ, $vServico);
+        $retencoes = [
+            'valor_iss' => $vIssRetido,
+            'valor_pis' => $vPis,
+            'valor_cofins' => $vCofins,
+            'valor_ir' => $vIr,
+            'valor_csll' => $vCsll,
+            'valor_inss' => (float)($valores->vINSS ?? 0),
+        ];
 
-    $this->disableNextModelAudit();
-    $compra = Compra::create([
-        'fornecedor_id' => $fornecedor->id,
-        'usuario_id' => $this->usuario_id,
-        'nf' => (string)$inf->nNFSe,
-        'data_emissao' => $data_emi,
-        'valor' => $vServico,
-        'veiculo_id' => $veiculo_id,
-        'estado' => 'IMPORTADO',
-        'xml_importado' => 1,
-        'xml_path' => $nomeArquivo,
-        'categoria_conta_id' => $categoria_id,
-        'chave' => $chave,
-        'empresa_id' => $this->empresa_id,
-        'filial_id' => $this->filial_id,
-        'observacao' => trim(str_replace(["\r", "\n"], ' ', (string)$servBloco->xDescServ)),
-        'numero_emissao' => 0
-    ]);
+        $fornecedor = $this->obterFornecedor($inf->emit, (string)$inf->emit->CNPJ);
+        $servBloco = $dps->serv->cServ ?? $inf->serv->cServ;
+        $descCurta = substr((string)$servBloco->xDescServ, 0, 50); // Pega os primeiros 50 caracteres
+        $servico = $this->obterServico((string)($servBloco->cTribNac ?? '140101'), (string)$servBloco->xDescServ, $vServico);
 
-    ItemCompra::create([
-        'compra_id' => $compra->id,
-        'produto_id' => $servico->id,
-        'quantidade' => 1,
-        'valor_unitario' => $vServico,
-        'unidade_compra' => 'UN',
-        'cfop_entrada' => '1933'
-    ]);
-
-    $qtdParcelas = (int) $qtdParcelas > 0 ? (int) $qtdParcelas : 1;
-    $valorParcela = round($vLiquido / $qtdParcelas, 2);
-    $somaAcumulada = 0;
-
-    for ($i = 1; $i <= $qtdParcelas; $i++) {
-        $vencimento = date('Y-m-d', strtotime($data_emi . " + " . ($prazo * $i) . " days"));
-        $valorFinal = ($i == $qtdParcelas) ? round($vLiquido - $somaAcumulada, 2) : $valorParcela;
-        $somaAcumulada += $valorFinal;
-
-        ContaPagar::create([
-            'compra_id' => $compra->id,
+        $this->disableNextModelAudit();
+        $compra = Compra::create([
             'fornecedor_id' => $fornecedor->id,
-            'data_vencimento' => $vencimento,
+            'usuario_id' => $this->usuario_id,
+            'nf' => (string)$inf->nNFSe,
             'data_emissao' => $data_emi,
-            'valor_integral' => $valorFinal,
-            'valor_original' => $valorFinal,
-            'status' => false,
-            // REFERÊNCIA ATUALIZADA COM DESCRIÇÃO
-            'referencia' => "NFS-e " . $inf->nNFSe . " - " . $descCurta . " ($i/$qtdParcelas)",
-            'categoria_id' => $categoria_id,
+            'valor' => $vServico,
+            'veiculo_id' => $veiculo_id,
+            'estado' => 'IMPORTADO',
+            'xml_importado' => 1,
+            'xml_path' => $nomeArquivo,
+            'categoria_conta_id' => $categoria_id,
+            'chave' => $chave,
             'empresa_id' => $this->empresa_id,
             'filial_id' => $this->filial_id,
-            'veiculo_id' => $veiculo_id,
-            'numero_nota_fiscal' => (string)$inf->nNFSe,
-            'usuario_id' => $this->usuario_id,
-            ...($i == 1 ? $retencoes : [])
+            'observacao' => trim(str_replace(["\r", "\n"], ' ', (string)$servBloco->xDescServ)),
+            'numero_emissao' => 0
         ]);
+
+        ItemCompra::create([
+            'compra_id' => $compra->id,
+            'produto_id' => $servico->id,
+            'quantidade' => 1,
+            'valor_unitario' => $vServico,
+            'unidade_compra' => 'UN',
+            'cfop_entrada' => '1933'
+        ]);
+
+        $qtdParcelas = (int) $qtdParcelas > 0 ? (int) $qtdParcelas : 1;
+        $valorParcela = round($vLiquido / $qtdParcelas, 2);
+        $somaAcumulada = 0;
+
+        for ($i = 1; $i <= $qtdParcelas; $i++) {
+            $vencimento = date('Y-m-d', strtotime($data_emi . " + " . ($prazo * $i) . " days"));
+            $valorFinal = ($i == $qtdParcelas) ? round($vLiquido - $somaAcumulada, 2) : $valorParcela;
+            $somaAcumulada += $valorFinal;
+
+            ContaPagar::create([
+                'compra_id' => $compra->id,
+                'fornecedor_id' => $fornecedor->id,
+                'data_vencimento' => $vencimento,
+                'data_emissao' => $data_emi,
+                'valor_integral' => $valorFinal,
+                'valor_original' => $valorFinal,
+                'status' => false,
+                // REFERÊNCIA ATUALIZADA COM DESCRIÇÃO
+                'referencia' => "NFS-e " . $inf->nNFSe . " - " . $descCurta . " ($i/$qtdParcelas)",
+                'categoria_id' => $categoria_id,
+                'empresa_id' => $this->empresa_id,
+                'filial_id' => $this->filial_id,
+                'veiculo_id' => $veiculo_id,
+                'numero_nota_fiscal' => (string)$inf->nNFSe,
+                'usuario_id' => $this->usuario_id,
+                ...($i == 1 ? $retencoes : [])
+            ]);
+        }
     }
-}
     private function obterFornecedor($emit, $cnpj)
     {
         $cnpjLimpo = preg_replace('/[^0-9]/', '', $cnpj);
@@ -241,148 +241,69 @@ class ImportacaoNfseController extends BaseController
 
     public function visualizar($id)
     {
-        $compra = Compra::query()
-            ->where('empresa_id', $this->empresa_id)
-            ->findOrFail($id);
+        $compra = Compra::findOrFail($id);
+        $arquivo = preg_replace('/[^a-zA-Z0-9.]/', '', $compra->xml_path);
+        if (!str_ends_with(strtolower($arquivo), '.xml')) $arquivo .= ".xml";
 
-        $arquivo = basename(str_replace('\\', '/', (string)$compra->xml_path));
-        $arquivo = preg_replace('/[^a-zA-Z0-9._-]/', '', $arquivo);
-        if ($arquivo === '') {
-            abort(404, 'Arquivo XML não informado para esta NFS-e.');
-        }
-        if (!str_ends_with(strtolower($arquivo), '.xml')) {
-            $arquivo .= '.xml';
-        }
+        $pastas = ['xml_servico', 'xml_entrada', 'xml_entrada_emetida'];
 
-        $caminho = null;
-        foreach (['xml_servico', 'xml_entrada', 'xml_entrada_emetida'] as $pasta) {
-            $candidato = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
-            if (is_file($candidato)) {
-                $caminho = $candidato;
-                break;
+        foreach ($pastas as $pasta) {
+            $caminho = public_path($pasta . DIRECTORY_SEPARATOR . $arquivo);
+
+            if (file_exists($caminho)) {
+                $xmlString = file_get_contents($caminho);
+                $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
+                $xml = simplexml_load_string($xmlClean);
+
+                // 1. Mapeamento dos dados
+                $nota = (object)[
+                    'numero_nota' => (string)$xml->infNFSe->nNFSe,
+                    'nsu' => 'N/A',
+                    'data_emissao' => (string)$xml->infNFSe->DPS->infDPS->dhEmi,
+                    'prestador_nome' => (string)$xml->infNFSe->emit->xNome,
+                    'prestador_cnpj_cpf' => (string)$xml->infNFSe->emit->CNPJ,
+                    'valor_servico' => (float)($xml->infNFSe->valores->vLiq ?? 0),
+                    'observacao' => (string)$xml->infNFSe->DPS->infDPS->serv->cServ->xDescServ
+                ];
+
+                $tomador = [
+                    'nome' => (string)$xml->infNFSe->DPS->infDPS->toma->xNome,
+                    'cnpj_cpf' => (string)$xml->infNFSe->DPS->infDPS->toma->CNPJ,
+                    'endereco' => (string)$xml->infNFSe->DPS->infDPS->toma->end->xLgr . ', ' .
+                        (string)$xml->infNFSe->DPS->infDPS->toma->end->nro . ' - ' .
+                        (string)$xml->infNFSe->DPS->infDPS->toma->end->xBairro
+                ];
+
+                $retencoes = [
+                    'total_retido' => 0,
+                    'iss_retido' => 0,
+                    'pis' => 0,
+                    'cofins' => 0,
+                    'csll' => 0,
+                    'irrf' => 0,
+                    'liquido' => (float)($xml->infNFSe->valores->vLiq ?? 0)
+                ];
+
+                $enderecoPrestador = (string)$xml->infNFSe->emit->enderNac->xLgr . ', ' .
+                    (string)$xml->infNFSe->emit->enderNac->nro . ' - ' .
+                    (string)$xml->infNFSe->emit->enderNac->xBairro;
+
+                $descricaoServico = (string)$xml->infNFSe->DPS->infDPS->serv->cServ->xDescServ;
+
+                // 2. RETORNO PARA A VIEW (Aqui está o que faltava)
+                return view('nfse.visualizar', [
+                    'xml' => $xml,
+                    'nota' => $nota,
+                    'tomador' => $tomador,
+                    'retencoes' => $retencoes,
+                    'descricao_servico' => $descricaoServico,
+                    'endereco_prestador' => $enderecoPrestador,
+                    'title' => 'DANFSE - Nota ' . $nota->numero_nota
+                ]);
             }
         }
 
-        if (!$caminho) {
-            abort(404, 'Arquivo XML da NFS-e não localizado.');
-        }
-
-        $xmlString = file_get_contents($caminho);
-        if ($xmlString === false || trim($xmlString) === '') {
-            abort(422, 'O arquivo XML da NFS-e está vazio ou não pôde ser lido.');
-        }
-
-        $dom = new \DOMDocument();
-        $previous = libxml_use_internal_errors(true);
-        try {
-            if (!$dom->loadXML($xmlString, LIBXML_NONET | LIBXML_NOBLANKS)) {
-                throw new \RuntimeException('XML da NFS-e inválido.');
-            }
-        } finally {
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
-        }
-
-        $xpath = new \DOMXPath($dom);
-        $valor = static function (array $nomes) use ($xpath): string {
-            foreach ($nomes as $nome) {
-                $nodes = $xpath->query('//*[local-name()="' . $nome . '"]');
-                if ($nodes && $nodes->length > 0) {
-                    $texto = trim((string)$nodes->item(0)->textContent);
-                    if ($texto !== '') {
-                        return $texto;
-                    }
-                }
-            }
-            return '';
-        };
-        $valorNo = static function (array $pais, array $filhos) use ($xpath): string {
-            foreach ($pais as $pai) {
-                foreach ($filhos as $filho) {
-                    $nodes = $xpath->query('//*[local-name()="' . $pai . '"]//*[local-name()="' . $filho . '"]');
-                    if ($nodes && $nodes->length > 0) {
-                        $texto = trim((string)$nodes->item(0)->textContent);
-                        if ($texto !== '') {
-                            return $texto;
-                        }
-                    }
-                }
-            }
-            return '';
-        };
-        $moeda = static function ($value): float {
-            $value = trim((string)$value);
-            if ($value === '') {
-                return 0.0;
-            }
-            if (str_contains($value, ',') && str_contains($value, '.')) {
-                $value = str_replace('.', '', $value);
-                $value = str_replace(',', '.', $value);
-            } elseif (str_contains($value, ',')) {
-                $value = str_replace(',', '.', $value);
-            }
-            return is_numeric($value) ? (float)$value : 0.0;
-        };
-
-        $prestadorNome = $valorNo(['emit', 'prest', 'prestador'], ['xNome', 'razaoSocial', 'RazaoSocial']);
-        $prestadorDocumento = $valorNo(['emit', 'prest', 'prestador'], ['CNPJ', 'CPF', 'CpfCnpj']);
-        $tomadorNome = $valorNo(['toma', 'tomador'], ['xNome', 'razaoSocial', 'RazaoSocial']);
-        $tomadorDocumento = $valorNo(['toma', 'tomador'], ['CNPJ', 'CPF', 'CpfCnpj']);
-
-        $logradouro = $valorNo(['enderNac', 'end', 'endereco'], ['xLgr', 'Endereco', 'logradouro']);
-        $numero = $valorNo(['enderNac', 'end', 'endereco'], ['nro', 'Numero', 'numero']);
-        $bairro = $valorNo(['enderNac', 'end', 'endereco'], ['xBairro', 'Bairro', 'bairro']);
-        $enderecoPrestador = trim(implode(', ', array_filter([$logradouro, $numero]))) . ($bairro !== '' ? ' - ' . $bairro : '');
-
-        $retencoes = [
-            'valor_pis' => $moeda($valor(['vPIS', 'ValorPis'])),
-            'valor_cofins' => $moeda($valor(['vCOFINS', 'ValorCofins'])),
-            'valor_ir' => $moeda($valor(['vIRRF', 'ValorIr', 'ValorIrrf'])),
-            'valor_csll' => $moeda($valor(['vCSLL', 'ValorCsll'])),
-            'valor_inss' => $moeda($valor(['vINSS', 'ValorInss'])),
-            'valor_iss' => $moeda($valor(['vISSRet', 'ValorIssRetido'])),
-        ];
-
-        $valorBruto = $moeda($valor(['vServ', 'vServPrest', 'ValorServicos']));
-        $valorLiquido = $moeda($valor(['vLiq', 'ValorLiquidoNfse', 'ValorLiquido']));
-        if ($valorLiquido <= 0 && $valorBruto > 0) {
-            $valorLiquido = max(0, $valorBruto - array_sum($retencoes));
-        }
-
-        $dados = [
-            'numero' => $valor(['nNFSe', 'Numero']),
-            'data_emissao' => $valor(['dhEmi', 'DataEmissao']),
-            'prestador_nome' => $prestadorNome,
-            'prestador_documento' => preg_replace('/\D/', '', $prestadorDocumento),
-            'prestador_endereco' => $enderecoPrestador,
-            'tomador_nome' => $tomadorNome,
-            'tomador_documento' => preg_replace('/\D/', '', $tomadorDocumento),
-            'descricao_servico' => $valor(['xDescServ', 'Discriminacao', 'DescricaoServico']),
-            'valor_bruto' => $valorBruto,
-            'valor_liquido' => $valorLiquido,
-            'valor_iss_apurado' => $moeda($valor(['vISSQN', 'ValorIss'])),
-            'tributacao_municipal' => $valor(['cTribMun', 'CodigoTributacaoMunicipio']),
-            'codigo_tributacao' => $valor(['cNBS', 'ItemListaServico']),
-            'retencoes' => $retencoes,
-        ];
-
-        $nota = (object)[
-            'numero_nota' => $dados['numero'],
-            'prestador_nome' => $dados['prestador_nome'],
-            'prestador_cnpj_cpf' => $dados['prestador_documento'],
-            'valor_servico' => $dados['valor_bruto'],
-            'valor_liquido' => $dados['valor_liquido'],
-            'situacao' => strtoupper((string)($compra->estado ?? '')) === 'CANCELADO' ? 'CANCELADA' : 'ATIVA',
-        ];
-
-        return view('nfse.visualizar', [
-            'xml' => simplexml_import_dom($dom),
-            'nota' => $nota,
-            'dados' => $dados,
-            'descricao_servico' => $dados['descricao_servico'],
-            'endereco_prestador' => $enderecoPrestador,
-            'title' => 'DANFSE - Nota ' . ($dados['numero'] ?: $compra->nf),
-        ]);
+        return "Arquivo XML não localizado.";
     }
 
     private function formataCnpj($c){ return strlen($c) == 14 ? substr($c,0,2).'.'.substr($c,2,3).'.'.substr($c,5,3).'/'.substr($c,8,4).'-'.substr($c,12,2) : $c; }

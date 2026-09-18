@@ -1,595 +1,416 @@
 @extends('default.layout')
 @section('content')
 <style type="text/css">
-
-	#focus-codigo:hover{
-		cursor: pointer
-	}
-
+	#focus-codigo:hover{ cursor: pointer }
 	.search-prod{
-		position: absolute;
-		top: 0;
-		margin-top: 40px;
-		left: 10;
-		width: 100%;
-		max-height: 200px;
-		overflow: auto;
-		z-index: 9999;
-		border: 1px solid #eeeeee;
-		border-radius: 4px;
-		background-color: #fff;
-		box-shadow: 0px 1px 6px 1px rgba(0, 0, 0, 0.4);
+		position: absolute; top: 0; margin-top: 40px; left: 10px; width: 100%;
+		max-height: 200px; overflow: auto; z-index: 9999; border: 1px solid #eeeeee;
+		border-radius: 4px; background-color: #fff; box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.15);
 	}
-
-	.search-prod label:hover{
-		cursor: pointer;
-	}
-
-	.search-prod label{
-		margin-left: 10px;
-		width: 100%;
-		margin-top: 7px;
-		font-size: 14px;
-		color: #000 !important;
-	}
+	.search-prod label:hover{ cursor: pointer; background-color: #f3f6f9; color: #3699ff; }
+	.search-prod label{ margin-left: 0; width: 100%; padding: 8px 12px; font-size: 13px; color: #3f4254 !important; transition: all 0.2s; }
+    
+    /* Custom Modern Design UI */
+    .summary-box { background: #ffffff; border: 1px solid #ebedf3; border-radius: 0.75rem; box-shadow: 0px 0px 20px 0px rgba(0,0,0,0.03); }
+    .table-fatura th { background-color: #f3f6f9; color: #3f4254; font-weight: 700; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.6px; }
+    .nav-tabs-custom .nav-link.active { border-bottom: 3px solid #3699ff !important; color: #3699ff !important; font-weight: 700; }
+    .form-control-solid { background-color: #f3f6f9; border-color: #f3f6f9; color: #3f4254; transition: all 0.2s; }
+    .form-control-solid:focus { background-color: #ebedf3; border-color: #3699ff; }
 </style>
+
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
-		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay>
-		</lottie-player>
+		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay></lottie-player>
 	</div>
 </div>
 
-
 <div class="row @if(env('ANIMACAO')) animate__animated @endif animate__bounce" id="content" style="display: block">
 	<div class="d-flex flex-column flex-column-fluid" id="kt_content">
-		<div class="card card-custom gutter-b example example-compact">
-			<div class="">
-				<div class="col-lg-12">
-					<div class="card card-custom gutter-b example example-compact m-3">
-						<div class="card-header d-flex justify-content-between align-items-center">
-                            <h3 class="card-title">DADOS INICIAIS</h3>
+		<div class="card card-custom gutter-b summary-box">
+			
+            <!-- SEÇÃO DADOS INICIAIS -->
+            <div class="card-header d-flex justify-content-between align-items-center border-0 pt-5">
+                <h3 class="card-title font-weight-bolder text-dark"><i class="la la-file-invoice text-dark icon-xl mr-2"></i> DADOS INICIAIS DA COMPRA</h3>
+                <button type="button" class="btn btn-light-info font-weight-bold shadow-sm" data-toggle="modal" data-target="#modal-ajuda">
+                    <i class="la la-question-circle"></i> Como emitir a nota?
+                </button>
+                {!! __view_locais_select() !!}
+            </div>
 
-                            <button type="button" class="btn btn-info font-weight-bold" data-toggle="modal" data-target="#modal-ajuda">
-                                <i class="la la-question-circle"></i> Como emitir a nota?
-                            </button>
-
-                            {!! __view_locais_select() !!}
+			<div class="row justify-content-center px-8 pb-5">
+                <div class="col-xl-12">
+                    <div class="row bg-light-secondary p-5 rounded-card" style="border-radius: 0.75rem;">
+                        <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                            <label class="col-form-label font-weight-bold">Data Retroativa</label>
+                            <div class="input-group date">
+                                <input type="text" name="data_retroativa" class="form-control date-input form-control-solid" value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa', date('d/m/Y')) }}" id="data_retroativa_dynamic" />
+                                <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
+                            </div>
                         </div>
 
-						<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
-                              <div class="col-xl-12">
-                                  <div class="row">
-                                      <div class="form-group col-lg-2 col-md-4 col-sm-6">
-                                          <label class="col-form-label">Data retroativa</label>
-                                          <div class="input-group date">
-                                              <input type="text" name="data_retroativa" class="form-control date-input"
-                                                  value="{{ isset($compra->data_retroativa) ? \Carbon\Carbon::parse($compra->data_retroativa)->format('d/m/Y') : old('data_retroativa', date('d/m/Y')) }}" id="data_retroativa_dynamic" />
-                                              <div class="input-group-append">
-                                                  <span class="input-group-text"><i class="la la-calendar"></i></span>
-                                              </div>
-                                          </div>
-                                      </div>
+                        <div class="form-group col-lg-2 col-md-4 col-sm-6">
+                            <label class="col-form-label font-weight-bold">Data Saída</label>
+                            <div class="input-group date">
+                                <input type="text" name="data_saida" class="form-control date-input form-control-solid" value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida', date('d/m/Y')) }}" id="data_saida_dynamic" />
+                                <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
+                            </div>
+                        </div>
 
-                                      <div class="form-group col-lg-2 col-md-4 col-sm-6">
-                                          <label class="col-form-label">Data saída</label>
-                                          <div class="input-group date">
-                                              <input type="text" name="data_saida" class="form-control date-input"
-                                                  value="{{ isset($compra->data_saida) ? \Carbon\Carbon::parse($compra->data_saida)->format('d/m/Y') : old('data_saida', date('d/m/Y')) }}" id="data_saida_dynamic" />
-                                              <div class="input-group-append">
-                                                  <span class="input-group-text"><i class="la la-calendar"></i></span>
-                                              </div>
-                                          </div>
-                                      </div>
+                        <div class="form-group validated col-lg-2 col-md-4 col-sm-6">
+                            <label class="col-form-label font-weight-bold">Nota Fiscal</label>
+                            <input type="text" class="form-control form-control-solid" id="numero_emissao" name="numero_emissao" value="{{ $compra->nf ?? '' }}" placeholder="Ex: 000000">
+                        </div>
 
-									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
-										<label class="col-form-label">Nota Fiscal</label>
-										<input type="text" class="form-control" id="numero_emissao" name="numero_emissao" 
-											value="{{ $compra->nf ?? '' }}" placeholder="Ex: 000000">
-									</div>
+                        <div class="form-group validated col-lg-2 col-md-4 col-sm-6">
+                            <label class="col-form-label font-weight-bold">Emissão da NF</label>
+                            <input type="date" class="form-control form-control-solid" id="data_emissao" name="data_emissao" value="{{ (isset($compra) && $compra->data_emissao) ? \Carbon\Carbon::parse($compra->data_emissao)->format('Y-m-d') : date('Y-m-d') }}">
+                        </div>
 
-									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
-										<label class="col-form-label">Emissão da NF</label>
-										<input type="date" class="form-control" id="data_emissao" name="data_emissao" 
-											value="{{ (isset($compra) && $compra->data_emissao) ? \Carbon\Carbon::parse($compra->data_emissao)->format('Y-m-d') : date('Y-m-d') }}">
-									</div>
+                        <div class="form-group validated col-lg-4 col-md-8 col-sm-12">
+                            <label class="col-form-label font-weight-bold">Veículos Utilizados (Para Múltiplos Selecione Abaixo)</label>
+                            <select class="form-control select2 form-control-solid" id="veiculos_ids" name="veiculos_ids[]" multiple="multiple">
+                                @if(isset($veiculos) && count($veiculos) > 0)
+                                    @foreach($veiculos as $v)
+                                        <option value="{{ $v->id }}" {{ (isset($compra) && $compra->veiculo_id == $v->id) ? 'selected' : '' }}>
+                                            {{ $v->placa }} - {{ $v->marca }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-									<div class="form-group validated col-lg-4 col-md-8 col-sm-12">
-										<label class="col-form-label">Veículo Utilizado</label>
-										<select class="form-control custom-select" id="veiculo_id" name="veiculo_id">
-											<option value="">-- Selecione um veículo (Opcional) --</option>
-											@if(isset($veiculos) && count($veiculos) > 0)
-												@foreach($veiculos as $v)
-													<option value="{{ $v->id }}" {{ (isset($compra) && $compra->veiculo_id == $v->id) ? 'selected' : '' }}>
-														{{ $v->placa }} - {{ $v->marca }}
-													</option>
-												@endforeach
-											@else
-												<option value="" disabled>Nenhum veículo encontrado/cadastrado</option>
-											@endif
-										</select>
-									</div>
-								</div>
+            <!-- NAVEGAÇÃO DOS PASSOS (WIZARD) -->
+			<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+				<div class="wizard-nav border-bottom-0">
+					<div class="wizard-steps px-8 py-3 px-lg-15 py-lg-3 nav-tabs-custom">
+						<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
+							<div class="wizard-label">
+								<h3 class="wizard-title"><span>1.</span>ITENS DA NOTA</h3>
+								<div class="wizard-bar"></div>
 							</div>
 						</div>
-                        </div>
-                       
-                  </div>
-						<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-							<div class="wizard-nav">
-								<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-									<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-										<div class="wizard-label">
-											<h3 class="wizard-title">
-												<span>1.</span>ITENS
-											</h3>
-											<div class="wizard-bar"></div>
-										</div>
-									</div>
-									<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-										<div class="wizard-label">
-											<h3 class="wizard-title">
-												<span>2.</span>FRETE
-											</h3>
-											<div class="wizard-bar"></div>
-										</div>
-									</div>
-									<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-										<div class="wizard-label">
-											<h3 class="wizard-title">
-												<span>3.</span>PAGAMENTO
-											</h3>
-											<div class="wizard-bar"></div>
-										</div>
-									</div>
-									</div>
+						<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
+							<div class="wizard-label">
+								<h3 class="wizard-title"><span>2.</span>TRANSPORTE / FRETE</h3>
+								<div class="wizard-bar"></div>
 							</div>
-							<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
-								<div class="col-xl-12">
-
-									<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
-										<div class="pb-5" data-wizard-type="step-content">
-
-											<h4 class="mb-10 font-weight-bold text-dark">Selecione o Fornecedor</h4>
-											<div class="row">
-												<div class="input-group col-8">
-
-													<select class="form-control select2 fornecedor" id="kt_select2_1" name="fornecedor">
-														<option value="--">Selecione o fornecedor</option>
-														@foreach($fornecedores as $f)
-														<option value="{{$f->id}}">{{$f->razao_social}} - {{$f->nome_fantasia}} ({{$f->cpf_cnpj}})</option>
-														@endforeach
-													</select>
-													<button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm">
-														<i class="la la-plus-circle icon-add"></i>
-													</button>
-												</div>
-											</div>
-
-											<div class="row mt-3" id="div_adiantamento" style="display:none;">
-												<div class="col-lg-8"> 
-													<div class="alert alert-custom alert-outline-info fade show mb-5" role="alert" style="background: #f3f6f9; border: 1px solid #17a2b8;">
-														<div class="alert-icon"><i class="flaticon-questions-wheels-and-self-care text-info"></i></div>
-														<div class="alert-text">
-															<span class="font-weight-bold">Crédito Disponível: </span>
-															<span class="label label-lg label-light-info label-inline font-weight-bold" id="label_saldo_adv" style="font-size: 1.2rem;">R$ 0,00</span>
-															<br>
-															<div class="checkbox-inline mt-2">
-																<label class="checkbox checkbox-success">
-																	<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento">
-																	<span></span>
-																	<strong class="text-dark">Deseja abater este valor no pagamento desta compra?</strong>
-																</label>
-															</div>
-														</div>
-													</div>
-												</div>
-											</div>
-
-											<div class="row" id="fornecedor" style="display: none">
-
-												<br>
-												<div class="row col-12">
-
-													<div class="col-sm-6 col-lg-6">
-														<h5>Razão Social: <strong id="razao_social" class="text-danger">--</strong></h5>
-														<h5>Nome Fantasia: <strong id="nome_fantasia" class="text-danger">--</strong></h5>
-														<h5>Logradouro: <strong id="logradouro" class="text-danger">--</strong></h5>
-														<h5>Numero: <strong id="numero" class="text-danger">--</strong></h5>
-
-													</div>
-													<div class="col-sm-6 col-lg-6">
-														<h5>CPF/CNPJ: <strong id="cnpj" class="text-danger">--</strong></h5>
-														<h5>RG/IE: <strong id="ie" class="text-danger">--</strong></h5>
-														<h5>Fone: <strong id="fone" class="text-danger">--</strong></h5>
-														<h5>Cidade: <strong id="cidade" class="text-danger">--</strong></h5>
-
-													</div>
-												</div>
-                                            <hr>
-                                            <br>
-                                            
-											</div>
-
-											<hr>
-											<br>
-											<h4 class="mb-10 font-weight-bold text-dark">Itens da Compra</h4>
-											<div class="row">
-												<div class="form-group validated col-sm-4 col-lg-4">
-													<label class="col-form-label">Produto</label>
-													<div class="input-group">
-
-														<input placeholder="Digite para buscar o produto" type="search" id="produto-search" class="form-control">
-														<div class="search-prod" style="display: none">
-														</div>
-														<button type="button" onclick="novoProduto()" class="btn btn-info btn-sm">
-															<i class="la la-plus-circle icon-add"></i>
-														</button>
-													</div>
-
-
-												</div>
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Quantidade</label>
-													<div class="">
-														<input type="text" class="form-control" name="quantidade" id="quantidade">
-
-													</div>
-												</div>
-
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Valor Unitário</label>
-													<div class="">
-														<input type="text" class="form-control" name="valor" value="0" id="valor">
-
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">SubTotal</label>
-													<div class="">
-														<input type="text" class="form-control" id="subtotal" value="0" disabled>
-
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<br>
-													<button type="button" style="margin-top: 13px;" id="addProd" class="btn btn-success font-weight-bold text-uppercase px-9 py-4">
-														Adicionar
-													</button>
-												</div>
-											</div>
-
-											<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded prod">
-												<table class="datatable-table" style="max-width: 100%;overflow: scroll">
-													<thead class="datatable-head">
-														<tr class="datatable-row" style="left: 0px;">
-															<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 60px;">#</span></th>
-															<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 60px;">Código</span></th>
-															<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">Nome</span></th>
-															<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Valor</span></th>
-															<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Quantidade</span></th>
-															<th data-field="Status" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Subtotal</span></th>
-															<th data-field="Actions" data-autohide-disabled="false" class="datatable-cell datatable-cell-sort"><span style="width: 80px;">Ações</span></th>
-														</tr>
-													</thead>
-
-													<tbody class="datatable-body">
-													</tbody>
-
-												</table>
-
-											</div>
-										</div>
-										<div class="pb-5" data-wizard-type="step-content" >
-											<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-												<div class="row">
-													<div class="col-xl-12">
-														<h3>Transportadora</h3>
-
-														<div class="row align-items-center">
-															<div class="form-group validated col-sm-6 col-lg-7 col-12">
-																<div class="input-group">
-
-																	<select class="form-control select2" style="width: 80%" id="kt_select2_3" name="transportadora">
-																		<option value="null">Selecione a transportadora (opcional)</option>
-																		@foreach($transportadoras as $t)
-																		<option value="{{$t->id}}">{{$t->id}} - {{$t->razao_social}}</option>
-																		@endforeach
-																	</select>
-																	<button type="button" onclick="novaTransportadora()" class="btn btn-warning btn-sm">
-																		<i class="la la-plus-circle icon-add"></i>
-																	</button>
-																</div>
-															</div>
-														</div>
-													</div>
-												</div>
-												<hr>
-
-												<div class="row">
-													<div class="col-xl-12">
-														<h3>Frete</h3>
-
-														<div class="row align-items-center">
-															<div class="form-group validated col-sm-4 col-lg-4 col-8">
-																<label class="col-form-label" id="">Tipo</label>
-																<select class="custom-select form-control" id="frete" name="frete">
-																	<option @if($config->frete_padrao == '0') selected @endif value="0">0 - Emitente</option>
-																	<option @if($config->frete_padrao == '1') selected @endif  value="1">1 - Destinatário</option>
-																	<option @if($config->frete_padrao == '2') selected @endif  value="2">2 - Terceiros</option>
-																	<option @if($config->frete_padrao == '9') selected @endif  value="9">9 - Sem Frete</option>
-																</select>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Placa Veiculo</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="placa" class="form-control" value="" id="placa"/>
-																	</div>
-																</div>
-															</div>
-
-															<div class="form-group validated col-sm-2 col-lg-2 col-6">
-																<label class="col-form-label" id="">UF</label>
-																<select class="custom-select form-control" id="uf_placa" name="uf_placa">
-																	<option value="--">--</option>
-																	<option value="AC">AC</option>
-																	<option value="AL">AL</option>
-																	<option value="AM">AM</option>
-																	<option value="AP">AP</option>
-																	<option value="BA">BA</option>
-																	<option value="CE">CE</option>
-																	<option value="DF">DF</option>
-																	<option value="ES">ES</option>
-																	<option value="GO">GO</option>
-																	<option value="MA">MA</option>
-																	<option value="MG">MG</option>
-																	<option value="MS">MS</option>
-																	<option value="MT">MT</option>
-																	<option value="PA">PA</option>
-																	<option value="PB">PB</option>
-																	<option value="PE">PE</option>
-																	<option value="PI">PI</option>
-																	<option value="PR">PR</option>
-																	<option value="RJ">RJ</option>
-																	<option value="RN">RN</option>
-																	<option value="RS">RS</option>
-																	<option value="RO">RO</option>
-																	<option value="RR">RR</option>
-																	<option value="SC">SC</option>
-																	<option value="SE">SE</option>
-																	<option value="SP">SP</option>
-																	<option value="TO">TO</option>
-																</select>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Valor</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="valor_frete" class="form-control" value="" id="valor_frete"/>
-																	</div>
-																</div>
-															</div>
-														</div>
-													</div>
-												</div>
-												<hr>
-												<div class="row">
-													<div class="col-xl-12">
-														<h3>Volume</h3>
-
-														<div class="row align-items-center">
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Espécie</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="especie" class="form-control" value="" id="especie"/>
-																	</div>
-																</div>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Num. de Volumes</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="numeracaoVol" class="form-control" value="" id="numeracaoVol"/>
-																	</div>
-																</div>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Qtd. de Volumes</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="qtdVol" class="form-control" value="" id="qtdVol"/>
-																	</div>
-																</div>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Peso Liquido</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="pesoL" class="form-control" value="" id="pesoL"/>
-																	</div>
-																</div>
-															</div>
-
-															<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
-																<label class="col-form-label">Peso Bruto</label>
-																<div class="">
-																	<div class="input-group">
-																		<input type="text" name="pesoB" class="form-control" value="" id="pesoB"/>
-																	</div>
-																</div>
-															</div>
-														</div>
-													</div>
-												</div>
-
-											</div>
-										</div>
-
-
-										<div class="pb-5" data-wizard-type="step-content" data-wizard-state="current">
-											<h4 class="mb-10 font-weight-bold text-dark">Selecione a forma de pagamento</h4>
-											<div class="row">
-												<div class="form-group validated col-sm-3 col-lg-3">
-													<label class="col-form-label">Forma de pagamento</label>
-													<select class="custom-select form-control" id="formaPagamento">
-														<option value="--">Selecione a forma de pagamento</option>
-														<option value="a_vista">A vista</option>
-														<option value="30_dias">30 Dias</option>
-														<option value="personalizado">Personalizado</option>
-													</select>
-												</div>
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Qtd de parcelas</label>
-													<div class="">
-														<input type="text" class="form-control" name="bairro" id="qtdParcelas">
-
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Data de Vencimento</label>
-													<div class="">
-														<div class="input-group date">
-															<input type="text" class="form-control data-input" id="kt_datepicker_3">
-															<div class="input-group-append">
-																<span class="input-group-text">
-																	<i class="la la-calendar"></i>
-																</span>
-															</div>
-														</div>
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Valor da parcela</label>
-													<div class="">
-														<input type="text" class="form-control" id="valor_parcela">
-
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<br>
-													<a style="margin-top: 13px;" id="add-pag" class="btn btn-primary font-weight-bold text-uppercase px-9 py-4">
-														Adicionar
-													</a>
-												</div>
-											</div>
-
-											<div class="row">
-												<div class="form-group validated col-sm-12 col-lg-12">
-
-													<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded fatura">
-														<table class="datatable-table" style="max-width: 100%;overflow: scroll">
-															<thead class="datatable-head">
-																<tr class="datatable-row" style="left: 0px;">
-																	<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 180px;">Parcela</span></th>
-																	<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 220px;">Data</span></th>
-																	<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 260px;">Valor</span></th>
-
-																	<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 220px;">Valor</span></th>
-																</tr>
-															</thead>
-
-															<tbody class="datatable-body">
-															</tbody>
-
-														</table>
-
-													</div>
-												</div>
-											</div>
-
-										</div>
-										@include('compraManual.partials.fatura_avancada', ['mostrarCategoriaConta' => false, 'mostrarAdiantamento' => false, 'faturasIniciais' => []])
-
-<div class="d-flex justify-content-between border-top mt-5 pt-10">
-
-										</div>
-										</form>
-									</div>
+						</div>
+						<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
+							<div class="wizard-label">
+								<h3 class="wizard-title"><span>3.</span>PAGAMENTO / FATURAMENTO</h3>
+								<div class="wizard-bar"></div>
 							</div>
-							</div>
+						</div>
+					</div>
+				</div>
 
-						<div class="row justify-content-center py-10 px-8 py-lg-12 px-lg-10">
-							<div class="col-xl-12">
-								<h5>Valor Total R$ <strong id="total" class="cyan-text">0,00</strong></h5>
-								<div class="row">
-
-									<div class="form-group validated col-6 col-lg-2">
-										<label class="col-form-label">Desconto</label>
-										<div class="">
-											<input type="text" class="form-control" id="desconto">
-
-										</div>
-									</div>
-
-									<div class="form-group validated col-sm-2 col-lg-2">
-										<label class="col-form-label">Acréscimo</label>
-										<div class="">
-											<input type="text" class="form-control" id="acrescimo">
-
-										</div>
-									</div>
-
-									<div class="form-group validated col-lg-6 col-12">
-										<label class="col-form-label">Observação</label>
-										<div class="">
-											<input type="text" class="form-control" id="obs">
-
-										</div>
-									</div>
-
-									<div class="form-group validated col-lg-2 col-md-4 col-sm-6">
-										<label class="col-form-label">Categoria de conta</label>
-
-										<select class="custom-select form-control" id="categoria_conta_id" name="categoria_conta_id">
-											<option value="">Selecione</option>
-											@foreach($categoriasDeConta as $c)
-											<option value="{{$c->id}}">
-												{{$c->nome}}
-											</option>
+				<div class="row justify-content-center py-5 px-8 px-lg-10">
+					<div class="col-xl-12">
+						<form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
+							
+                            <!-- PASSO 1: FORNECEDOR E PRODUTOS -->
+                            <div class="pb-5" data-wizard-type="step-content">
+								<h4 class="mb-5 font-weight-bolder text-dark">Identificação do Fornecedor</h4>
+								<div class="row align-items-center">
+									<div class="input-group col-lg-8 col-md-10 col-sm-12">
+										<select class="form-control select2 fornecedor" id="kt_select2_1" name="fornecedor">
+											<option value="--">Selecione o fornecedor</option>
+											@foreach($fornecedores as $f)
+											    <option value="{{$f->id}}">{{$f->razao_social}} - {{$f->nome_fantasia}} ({{$f->cpf_cnpj}})</option>
 											@endforeach
 										</select>
-
+										<button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm shadow-sm"><i class="la la-plus-circle icon-add"></i></button>
 									</div>
+								</div>
 
-									<div class="form-group validated col-6 col-lg-2">
-										<label class="col-form-label">Lote</label>
-										<div class="">
-											<input type="text" class="form-control" id="lote">
+								<div class="row mt-4" id="div_adiantamento" style="display:none;">
+									<div class="col-lg-8"> 
+										<div class="alert alert-custom alert-outline-info fade show mb-0" role="alert" style="background: #f4f6fa; border: 1px solid #17a2b8; border-radius: 0.5rem;">
+											<div class="alert-icon"><i class="flaticon-questions-wheels-and-self-care text-info"></i></div>
+											<div class="alert-text">
+												<span class="font-weight-bold text-dark">Crédito de Adiantamento Disponível: </span>
+												<span class="label label-lg label-light-info label-inline font-weight-bolder" id="label_saldo_adv" style="font-size: 1.1rem;">R$ 0,00</span>
+												<div class="checkbox-inline mt-2">
+													<label class="checkbox checkbox-success font-weight-bold">
+														<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento">
+														<span></span>
+														<strong class="text-dark-75">Deseja abater automaticamente o saldo neste lançamento?</strong>
+													</label>
+												</div>
+											</div>
 										</div>
 									</div>
+								</div>
 
-									<div class="form-group validated col-12">
-										<br>
-										<button disabled type="button" class="btn btn-success font-weight-bold text-uppercase px-9 py-4" id="salvar-venda" style="width: 180px; margin-top: 13px; float: right;" onclick="salvarCompra()">Finalizar</button>
-
+								<div class="row" id="fornecedor" style="display: none">
+									<div class="row col-12 mt-4 bg-light p-4 rounded m-0 shadow-sm" style="border-left: 4px solid #3699ff;">
+										<div class="col-sm-6 col-lg-6">
+											<h6>Razão Social: <strong id="razao_social" class="text-dark">--</strong></h6>
+											<h6>Nome Fantasia: <strong id="nome_fantasia" class="text-dark">--</strong></h6>
+											<h6>Endereço: <strong id="logradouro" class="text-dark">--</strong>, <strong id="numero" class="text-dark">--</strong></h6>
+										</div>
+										<div class="col-sm-6 col-lg-6">
+											<h6>CPF/CNPJ: <strong id="cnpj" class="text-dark">--</strong></h6>
+											<h6>Inscrição Estadual: <strong id="ie" class="text-dark">--</strong></h6>
+											<h6>Cidade/UF: <strong id="cidade" class="text-dark">--</strong></h6>
+										</div>
 									</div>
+								</div>
 
+								<hr class="my-8 opacity-10">
+
+								<h4 class="mb-5 font-weight-bolder text-dark">Inserção de Itens</h4>
+								<div class="row align-items-end bg-light-primary p-4 rounded m-0 shadow-sm">
+									<div class="form-group validated col-sm-4 col-lg-4 mb-0">
+										<label class="font-weight-bold text-dark-75">Buscar Produto</label>
+										<div class="input-group">
+											<input placeholder="Digite o nome para pesquisar..." type="search" id="produto-search" class="form-control">
+											<div class="search-prod" style="display: none"></div>
+											<button type="button" onclick="novoProduto()" class="btn btn-info btn-sm"><i class="la la-plus-circle icon-add"></i></button>
+										</div>
+									</div>
+									<div class="form-group validated col-sm-2 col-lg-2 mb-0">
+										<label class="font-weight-bold text-dark-75">Quantidade</label>
+										<input type="text" class="form-control text-center" name="quantidade" id="quantidade">
+									</div>
+									<div class="form-group validated col-sm-2 col-lg-2 mb-0">
+										<label class="font-weight-bold text-dark-75">Valor Unitário</label>
+										<input type="text" class="form-control text-right money" name="valor" value="0" id="valor">
+									</div>
+									<div class="form-group validated col-sm-2 col-lg-2 mb-0">
+										<label class="font-weight-bold text-dark-75">SubTotal</label>
+										<input type="text" class="form-control text-right font-weight-bolder text-success" id="subtotal" value="0" disabled>
+									</div>
+									<div class="form-group validated col-sm-2 col-lg-2 mb-0">
+										<button type="button" id="addProd" class="btn btn-success font-weight-bold text-uppercase px-9 py-3 w-100 shadow-sm"><i class="la la-plus"></i> Inserir</button>
+									</div>
+								</div>
+
+								<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded prod mt-5 shadow-sm">
+									<table class="datatable-table" style="max-width: 100%;overflow: scroll">
+										<thead class="datatable-head">
+											<tr class="datatable-row">
+												<th class="datatable-cell" style="width: 50px;">#</th>
+												<th class="datatable-cell" style="width: 80px;">Código</th>
+												<th class="datatable-cell" style="width: 320px;">Descrição do Produto</th>
+												<th class="datatable-cell" style="width: 120px;">Valor Un.</th>
+												<th class="datatable-cell" style="width: 100px;">Qtd</th>
+												<th class="datatable-cell" style="width: 120px;">Subtotal</th>
+												<th class="datatable-cell text-center" style="width: 80px;">Ações</th>
+											</tr>
+										</thead>
+										<tbody class="datatable-body"></tbody>
+									</table>
 								</div>
 							</div>
-						</div>
+
+                            <!-- PASSO 2: TRANSPORTADORA E LOGÍSTICA -->
+							<div class="pb-5" data-wizard-type="step-content" >
+								<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12 p-0">
+									<h4 class="mb-5 font-weight-bolder text-dark">Dados de Transporte</h4>
+									<div class="row align-items-center mb-6">
+										<div class="form-group validated col-lg-6 col-md-8 col-sm-12">
+                                            <label class="font-weight-bold text-dark-75">Transportadora (Opcional)</label>
+											<div class="input-group">
+												<select class="form-control select2" style="width: 85%" id="kt_select2_3" name="transportadora">
+													<option value="null">Selecione a transportadora (opcional)</option>
+													@foreach($transportadoras as $t)
+													    <option value="{{$t->id}}">{{$t->id}} - {{$t->razao_social}}</option>
+													@endforeach
+												</select>
+												<button type="button" onclick="novaTransportadora()" class="btn btn-warning btn-sm shadow-sm"><i class="la la-plus-circle icon-add"></i></button>
+											</div>
+										</div>
+									</div>
+									<hr class="my-6 opacity-10">
+
+									<h4 class="mb-5 font-weight-bolder text-dark">Informações do Frete</h4>
+									<div class="row align-items-center">
+										<div class="form-group validated col-sm-4 col-lg-3">
+											<label class="font-weight-bold text-dark-75">Modalidade do Frete</label>
+											<select class="custom-select form-control form-control-solid" id="frete" name="frete">
+												<option @if($config->frete_padrao == '0') selected @endif value="0">0 - Emitente</option>
+												<option @if($config->frete_padrao == '1') selected @endif  value="1">1 - Destinatário</option>
+												<option @if($config->frete_padrao == '2') selected @endif  value="2">2 - Terceiros</option>
+												<option @if($config->frete_padrao == '9') selected @endif  value="9">9 - Sem Frete</option>
+											</select>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Placa do Veículo</label>
+											<input type="text" name="placa" class="form-control form-control-solid text-uppercase" value="" id="placa"/>
+										</div>
+										<div class="form-group validated col-sm-2 col-lg-2 col-6">
+											<label class="font-weight-bold text-dark-75">UF Placa</label>
+											<select class="custom-select form-control form-control-solid" id="uf_placa" name="uf_placa">
+												<option value="--">--</option>
+												@foreach(\App\Models\Cidade::estados() as $uf)
+                                                    <option value="{{$uf}}">{{$uf}}</option>
+                                                @endforeach
+											</select>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Valor do Frete</label>
+											<input type="text" name="valor_frete" class="form-control form-control-solid money text-right" value="" id="valor_frete"/>
+										</div>
+									</div>
+									<hr class="my-6 opacity-10">
+
+									<h4 class="mb-5 font-weight-bolder text-dark">Volumes e Pesos</h4>
+									<div class="row align-items-center">
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Espécie</label>
+											<input type="text" name="especie" class="form-control form-control-solid" value="VOLUMES" id="especie"/>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Numeração Vol.</label>
+											<input type="text" name="numeracaoVol" class="form-control form-control-solid text-center" value="0" id="numeracaoVol"/>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Qtd. Volumes</label>
+											<input type="text" name="qtdVol" class="form-control form-control-solid text-center" value="0" id="qtdVol"/>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-6 col-6">
+											<label class="font-weight-bold text-dark-75">Peso Líquido</label>
+											<input type="text" name="pesoL" class="form-control form-control-solid text-right" value="0,00" id="pesoL"/>
+										</div>
+										<div class="form-group col-lg-2 col-md-4 col-sm-4 col-6">
+											<label class="font-weight-bold text-dark-75">Peso Bruto</label>
+											<input type="text" name="pesoB" class="form-control form-control-solid text-right" value="0,00" id="pesoB"/>
+										</div>
+									</div>
+								</div>
+							</div>
+
+                            <!-- PASSO 3: CONDICIONAL DE PAGAMENTO COM CONTA POR LINHA (ESTILO DFE) -->
+							<div class="pb-5" data-wizard-type="step-content" data-wizard-state="current">
+                                <h4 class="mb-6 font-weight-bolder text-dark">Estrutura de Faturamento Financeiro</h4>
+                                
+                                <div class="row mb-6 bg-light p-5 rounded m-0 shadow-sm border">
+                                    <div class="form-group col-lg-4 mb-0">
+                                        <label class="font-weight-bold text-dark-75">Condição Comercial</label>
+                                        <select id="tipo_condicao" class="custom-select form-control">
+                                            <option value="prazo">Montar Parcelamento Manual (A Prazo)</option>
+                                            <option value="vista">Forçar À Vista (Gera 1 Parcela Hoje)</option>
+                                            <option value="rateio">Ratear Parcela Única por Veículos</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group col-lg-5 id-div-rateio mb-0" style="display:none;">
+                                        <label class="font-weight-bold text-success">Selecione os Veículos para o Rateio das Parcelas</label>
+                                        <select id="veiculos_rateio" class="form-control select2" multiple="multiple" style="width: 100%">
+                                            @if(isset($veiculos))
+                                                @foreach($veiculos as $v)
+                                                    <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->marca }}</option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group col-lg-2 div-gerador mb-0">
+                                        <label class="font-weight-bold text-dark-75">Nº de Parcelas</label>
+                                        <input type="number" id="qtd_parcelas_manual" class="form-control text-center" value="1" min="1">
+                                    </div>
+                                    <div class="form-group col-lg-1 div-gerador mb-0 text-right align-self-end">
+                                        <button type="button" id="btn_gerar_parcelas" class="btn btn-primary font-weight-bold btn-block shadow-sm">Gerar</button>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-5">
+                                    <div class="form-group validated col-12 mb-0">
+                                        <div class="table-responsive shadow-sm rounded border">
+                                            <table class="table table-bordered table-striped table-hover table-fatura m-0" id="tabela-fatura">
+                                                <thead>
+                                                    <tr>
+                                                        <th width="90" class="text-center">Parcela</th>
+                                                        <th width="140" class="text-center">Vencimento</th>
+                                                        <th width="160" class="text-right">Valor da Parcela</th>
+                                                        <th width="180">Forma Pagamento</th>
+                                                        <th width="240" class="text-info"><i class="la la-university text-info"></i> Conta / Caixa (Baixa Automática)</th>
+                                                        <th width="160">Veículo Alocado</th>
+                                                        <th width="60" class="text-center">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- Injetado dinamicamente via JS igual no DFe -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="text-right mt-3">
+                                            <button type="button" id="btn-adicionar-linha-fatura" class="btn btn-sm btn-light-primary font-weight-bold">
+                                                <i class="la la-plus"></i> Adicionar Nova Linha
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+							</div>
+						</form>
+
+                        <!-- BLOCO CENTRALIZADO DE RESUMO FINANCEIRO E FINALIZAÇÃO DO LOG -->
+                        <div class="card card-custom bg-light-primary border-primary mt-8 mb-4 shadow-sm" style="border: 1px solid #3699ff; border-radius: 0.75rem;">
+                            <div class="card-header border-0 pb-0 pt-5">
+                                <h3 class="card-title font-weight-bolder text-primary"><i class="la la-calculator text-primary mr-2"></i> Fechamento e Resumo Financeiro</h3>
+                                <div class="card-toolbar">
+                                    <h3 class="font-weight-bolder text-dark mb-0">VALOR TOTAL NF: <span id="total" class="text-success font-size-h1 ml-2">R$ 0,00</span></h3>
+                                </div>
+                            </div>
+                            <div class="card-body pt-3 pb-5">
+                                <div class="row align-items-end">
+                                    <div class="col-lg-3 col-md-6">
+                                        <div class="row">
+                                            <div class="form-group col-6 mb-2">
+                                                <label class="font-weight-bold text-dark-75">Desconto (R$)</label>
+                                                <input type="text" class="form-control form-control-sm money" id="desconto" placeholder="0,00">
+                                            </div>
+                                            <div class="form-group col-6 mb-2">
+                                                <label class="font-weight-bold text-dark-75">Acréscimo (R$)</label>
+                                                <input type="text" class="form-control form-control-sm money" id="acrescimo" placeholder="0,00">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group col-lg-5 col-md-6 mb-2">
+                                        <label class="font-weight-bold text-dark-75">Observação Interna / Histórico</label>
+                                        <input type="text" class="form-control form-control-sm" id="obs" placeholder="Escreva observações ou observações adicionais da NFe...">
+                                    </div>
+
+                                    <div class="form-group col-lg-2 col-md-4 mb-2">
+                                        <label class="font-weight-bold text-danger">Categoria da Conta (Financeiro) *</label>
+                                        <select class="custom-select form-control form-control-sm border-danger font-weight-bold" id="categoria_conta_id" name="categoria_conta_id" required>
+                                            <option value="">-- Selecione --</option>
+                                            @foreach($categoriasDeConta as $c)
+                                                <option value="{{$c->id}}">{{$c->nome}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group col-lg-2 col-md-4 mb-2">
+                                        <label class="font-weight-bold text-dark-75">Nº Controle Lote</label>
+                                        <input type="text" class="form-control form-control-sm text-center" id="lote" placeholder="Opcional">
+                                    </div>
+
+                                    <div class="form-group col-12 mt-4 text-right mb-0">
+                                        <button disabled type="button" class="btn btn-success font-weight-bolder text-uppercase px-15 py-3 shadow" id="salvar-venda" onclick="salvarCompra()">
+                                            <i class="la la-check-circle icon-lg"></i> Finalizar Emissão
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FIM DO BLOCO DE RESUMO -->
 
 					</div>
-
 				</div>
 			</div>
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
 		</div>
 	</div>
 </div>
+
+
+
 
 <div class="modal fade" id="modal-fornecedor" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
@@ -1582,53 +1403,61 @@
         </div>
     </div>
 </div>
+
+
+@endsection
+@section('javascript')
 <script>
-// Este código aguarda o JS velho carregar e sobrescreve ele na memória
 document.addEventListener("DOMContentLoaded", function() {
-  
- // AVISO DE INSTRUÇÕES AO ABRIR A TELA (MOSTRA APENAS 1 VEZ)
-setTimeout(function() {
-    // Verifica se o usuário já leu o aviso antes
-    if (!localStorage.getItem('avisoCompraManualLido')) {
-        swal({
-            title: "Instruções Importantes",
-            text: "<div style='text-align: left; font-size: 14px;'>" +
-                  "<p><strong>1. Número da NF:</strong> Informe apenas se já emitida. Em nota de entrada, deixe em branco.</p>" +
-                  "<p><strong>2. Categoria:</strong> Selecione a categoria que corresponde à despesa.</p>" +
-                  "<p><strong>3. Pagamento À Vista:</strong> Se o pagamento for hoje, use 'À Vista' para evitar rejeição da SEFAZ por duplicidade de data.</p>" +
-                  "<p><strong>4. Botão Finalizar:</strong> Só é habilitado após adicionar Fornecedor, Produto e Pagamento.</p>" +
-                  "<p><strong>5. Preenchimento Automático:</strong> Evite usar o preenchimento automático do Chrome nas buscas. Ele pode travar o botão de salvar.</p>" +
-                  "</div>",
-            html: true, // Habilita o HTML no SweetAlert
-            type: "info",
-            confirmButtonText: "Entendi e não mostrar novamente"
-        }, function() {
-            // Quando o usuário clica no botão, gravamos no navegador que ele já leu
-            localStorage.setItem('avisoCompraManualLido', 'true');
-        });
-    }
-}, 500);
     
-  
+    // Options montadas dinamicamente via Blade para alimentar o JS
+    const optContas = `<option value="">-- Nenhuma (A Prazo) --</option>
+        @if(isset($contasEmpresa))
+            @foreach($contasEmpresa as $c)
+                <option value="{{$c->id}}">{{$c->nome}}</option>
+            @endforeach
+        @endif`;
+        
+    const optVeiculos = `<option value="">-- Geral --</option>
+        @if(isset($veiculos))
+            @foreach($veiculos as $v)
+                <option value="{{$v->id}}">{{$v->placa}}</option>
+            @endforeach
+        @endif`;
+
+    // AVISO DE INSTRUÇÕES AO ABRIR A TELA (SweetAlert)
     setTimeout(function() {
-        console.log("Forçando a captura da NF e Veículo!");
+        if (!localStorage.getItem('avisoCompraManualLido')) {
+            swal({
+                title: "Instruções Importantes",
+                text: "<div style='text-align: left; font-size: 14px;'>" +
+                      "<p><strong>1. Número da NF:</strong> Informe apenas se já emitida. Em nota de entrada, deixe em branco.</p>" +
+                      "<p><strong>2. Categoria:</strong> Selecione a categoria que corresponde à despesa.</p>" +
+                      "<p><strong>3. Pagamento À Vista:</strong> Se o pagamento for hoje, use 'À Vista' para evitar rejeição da SEFAZ por duplicidade de data.</p>" +
+                      "</div>",
+                html: true, 
+                type: "info",
+                confirmButtonText: "Entendi"
+            }, function() {
+                localStorage.setItem('avisoCompraManualLido', 'true');
+            });
+        }
+    }, 500);
+    
+    setTimeout(function() {
+        console.log("Forçando a captura das faturas e adiantamentos!");
 
-        // NOVA FUNÇÃO: Busca o saldo de adiantamento via AJAX
-        console.log("Forçando a captura da NF e Veículo!");
-
-        // 1. FUNÇÃO QUE VAI BUSCAR O SALDO NO BANCO
+        // 1. CONSULTA DO SALDO DE ADIANTAMENTO DISPONÍVEL
         function buscarSaldoAdiantamento(id_fornecedor) {
             if(id_fornecedor && id_fornecedor !== '--') {
                 let url = path + 'adiantamentos/consulta-saldo/fornecedor/' + id_fornecedor;
-
                 $.get(url, function(data) {
                     let saldo = parseFloat(data.saldo);
-                    
                     if(saldo > 0) {
                         $('#label_saldo_adv').text('R$ ' + saldo.toLocaleString('pt-br', {minimumFractionDigits: 2}));
-                        $('#div_adiantamento').show(); // MOSTRA A CAIXA AZUL
+                        $('#div_adiantamento').show(); 
                     } else {
-                        $('#div_adiantamento').hide(); // ESCONDE SE O SALDO FOR ZERO
+                        $('#div_adiantamento').hide(); 
                         $('#usar_adiantamento').prop('checked', false);
                     }
                 }).fail(function() {
@@ -1640,18 +1469,226 @@ setTimeout(function() {
             }
         }
 
-        // 2. GATILHO: QUANDO VOCÊ CLICA E TROCA O FORNECEDOR NA LISTA
         $('#kt_select2_1').on('change', function() {
             buscarSaldoAdiantamento($(this).val());
         });
 
-        // 3. GATILHO: QUANDO A PÁGINA CARREGA JÁ COM UM FORNECEDOR (Ex: Edição)
         let fornecedorJaPreenchido = $('#kt_select2_1').val();
         if(fornecedorJaPreenchido && fornecedorJaPreenchido !== '--') {
             buscarSaldoAdiantamento(fornecedorJaPreenchido);
         }
 
+        // 2. MÁGICA DA INTEGRAÇÃO DO FATURAMENTO DINÂMICO (IGUAL AO DFE)
+        $('#tipo_condicao').change(function() {
+            let tipo = $(this).val();
+            if (tipo === 'rateio') {
+                $('.id-div-rateio').fadeIn();
+                $('.div-gerador').hide();
+                executarRateioVeiculos();
+            } else if (tipo === 'prazo') {
+                $('.div-gerador').fadeIn();
+                $('.id-div-rateio').hide();
+            } else if (tipo === 'vista') {
+                $('.div-gerador').hide();
+                $('.id-div-rateio').hide();
+                
+                let totalNF = parseFloat(TOTAL || 0).toLocaleString('pt-br', {minimumFractionDigits: 2});
+                let hoje = $('#data_retroativa_dynamic').val() || "{{ date('d/m/Y') }}";
+                
+                // À Vista cria uma linha pré-faturada, permitindo escolher a conta empresa por linha!
+                $('#tabela-fatura tbody').html(`
+                    <tr>
+                        <td><input type="text" name="fatura_num[]" class="form-control form-control-sm text-center font-weight-bold" value="001"></td>
+                        <td><input type="text" name="fatura_venc[]" class="form-control form-control-sm date-input text-center" value="${hoje}"></td>
+                        <td><input type="text" name="fatura_val[]" class="form-control form-control-sm money text-right font-weight-bold text-success" value="${totalNF}"></td>
+                        <td>
+                            <select name="forma_pagamento[]" class="custom-select custom-select-sm">
+                                <option value="dinheiro">Dinheiro (Caixa)</option>
+                                <option value="pix">Pix</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="transferencia">Transferência</option>
+                                <option value="adiantamento">Adiantamento Fornecedor</option>
+                            </select>
+                        </td>
+                        <td><select name="fatura_conta[]" class="custom-select custom-select-sm border-info">${optContas}</select></td>
+                        <td><select name="fatura_veiculo[]" class="custom-select custom-select-sm">${optVeiculos}</select></td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-light-danger btn-remover-fat"><i class="la la-trash"></i></button></td>
+                    </tr>
+                `);
+                $('.money').mask('#.##0,00', {reverse: true});
+                $('.date-input').mask('00/00/0000');
+                
+                // Pré-seleciona o veículo geral no select se já houver um selecionado lá em cima
+                if($('#veiculos_ids').val() && $('#veiculos_ids').val().length > 0) {
+                    $('#tabela-fatura tbody tr:last .select-veiculo-parcela').val($('#veiculos_ids').val()[0]);
+                }
+                revezarFaturaEstatica();
+            }
+        });
+
+        $('#veiculos_rateio').change(function() { executarRateioVeiculos(); });
+
+        function executarRateioVeiculos() {
+            let veiculosSelecionados = $('#veiculos_rateio').val();
+            if (!veiculosSelecionados || veiculosSelecionados.length === 0) {
+                $('#tabela-fatura tbody').html('<tr><td colspan="7" class="text-center text-danger font-weight-bold py-4">Selecione os veículos acima no campo do rateio!</td></tr>');
+                return;
+            }
+
+            let totalNF = parseFloat(TOTAL) || 0;
+            let qtdVeiculos = veiculosSelecionados.length;
+            let valorFatiado = (totalNF / qtdVeiculos).toFixed(2);
+            let valorFormatado = parseFloat(valorFatiado).toLocaleString('pt-br', {minimumFractionDigits: 2});
+            let hoje = $('#data_retroativa_dynamic').val() || "{{ date('d/m/Y') }}";
+            let html = '';
+
+            veiculosSelecionados.forEach(function(veiculoId, index) {
+                let numeroParcela = String(index + 1).padStart(3, '0');
+                
+                let vOptions = `<option value="">-- Geral --</option>`;
+                @if(isset($veiculos))
+                    @foreach($veiculos as $v)
+                        vOptions += `<option value="{{$v->id}}" ${veiculoId == "{{$v->id}}" ? 'selected' : ''}>{{$v->placa}}</option>`;
+                    @endforeach
+                @endif
+
+                html += `
+                    <tr>
+                        <td><input type="text" name="fatura_num[]" class="form-control form-control-sm text-center font-weight-bold" value="${numeroParcela}"></td>
+                        <td><input type="text" name="fatura_venc[]" class="form-control form-control-sm date-input text-center" value="${hoje}"></td>
+                        <td><input type="text" name="fatura_val[]" class="form-control form-control-sm money text-right font-weight-bold text-success" value="${valorFormatado}"></td>
+                        <td>
+                            <select name="forma_pagamento[]" class="custom-select custom-select-sm">
+                                <option value="pix">Pix</option>
+                                <option value="dinheiro">Dinheiro (Caixa)</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="adiantamento">Adiantamento Fornecedor</option>
+                            </select>
+                        </td>
+                        <td><select name="fatura_conta[]" class="custom-select custom-select-sm border-info">${optContas}</select></td>
+                        <td><select name="fatura_veiculo[]" class="custom-select custom-select-sm">${vOptions}</select></td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-light-danger btn-remover-fat"><i class="la la-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+
+            $('#tabela-fatura tbody').html(html);
+            $('.money').mask('#.##0,00', {reverse: true});
+            $('.date-input').mask('00/00/0000');
+            revezarFaturaEstatica();
+        }
+
+        $('#btn_gerar_parcelas').click(function() {
+            let qtd = parseInt($('#qtd_parcelas_manual').val()) || 1;
+            let totalNF = parseFloat(TOTAL) || 0;
+            let valorParcela = (totalNF / qtd).toFixed(2);
+            let valorFormatado = parseFloat(valorParcela).toLocaleString('pt-br', {minimumFractionDigits: 2});
+            let html = '';
+            let dataBase = new Date();
+
+            for (let i = 1; i <= qtd; i++) {
+                dataBase.setMonth(dataBase.getMonth() + 1);
+                let dia = String(dataBase.getDate()).padStart(2, '0');
+                let msg = String(dataBase.getMonth() + 1).padStart(2, '0');
+                let ano = dataBase.getFullYear();
+                let dataStr = `${dia}/${msg}/${ano}`;
+
+                html += `
+                    <tr>
+                        <td><input type="text" name="fatura_num[]" class="form-control form-control-sm text-center font-weight-bold" value="${String(i).padStart(3, '0')}"></td>
+                        <td><input type="text" name="fatura_venc[]" class="form-control form-control-sm date-input text-center" value="${dataStr}"></td>
+                        <td><input type="text" name="fatura_val[]" class="form-control form-control-sm money text-right font-weight-bold text-success" value="${valorFormatado}"></td>
+                        <td>
+                            <select name="forma_pagamento[]" class="custom-select custom-select-sm">
+                                <option value="boleto">Boleto</option>
+                                <option value="pix">Pix</option>
+                                <option value="dinheiro">Dinheiro (Caixa)</option>
+                                <option value="adiantamento">Adiantamento Fornecedor</option>
+                            </select>
+                        </td>
+                        <td><select name="fatura_conta[]" class="custom-select custom-select-sm border-info">${optContas}</select></td>
+                        <td><select name="fatura_veiculo[]" class="custom-select custom-select-sm">${optVeiculos}</select></td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-light-danger btn-remover-fat"><i class="la la-trash"></i></button></td>
+                    </tr>
+                `;
+            }
+            $('#tabela-fatura tbody').html(html);
+            $('.money').mask('#.##0,00', {reverse: true});
+            $('.date-input').mask('00/00/0000');
+            revezarFaturaEstatica();
+        });
+
+        $('#btn-adicionar-linha-fatura').click(function() {
+            let numLinhas = $('#tabela-fatura tbody tr').length + 1;
+            let numFormatado = String(numLinhas).padStart(3, '0');
+            let hoje = $('#data_retroativa_dynamic').val() || "{{ date('d/m/Y') }}";
+            
+            let novaLinha = `
+                <tr>
+                    <td><input type="text" name="fatura_num[]" class="form-control form-control-sm text-center font-weight-bold" value="${numFormatado}"></td>
+                    <td><input type="text" name="fatura_venc[]" class="form-control form-control-sm date-input text-center" value="${hoje}"></td>
+                    <td><input type="text" name="fatura_val[]" class="form-control form-control-sm money text-right font-weight-bold text-success" value="0,00"></td>
+                    <td>
+                        <select name="forma_pagamento[]" class="custom-select custom-select-sm">
+                            <option value="boleto">Boleto</option>
+                            <option value="pix">Pix</option>
+                            <option value="dinheiro">Dinheiro (Caixa)</option>
+                            <option value="adiantamento">Adiantamento Fornecedor</option>
+                        </select>
+                    </td>
+                    <td><select name="fatura_conta[]" class="custom-select custom-select-sm border-info">${optContas}</select></td>
+                    <td><select name="fatura_veiculo[]" class="custom-select custom-select-sm">${optVeiculos}</select></td>
+                    <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-light-danger btn-remover-fat"><i class="la la-trash"></i></button></td>
+                </tr>
+            `;
+            $('#tabela-fatura tbody').append(novaLinha);
+            $('.money').mask('#.##0,00', {reverse: true});
+            $('.date-input').mask('00/00/0000');
+            revezarFaturaEstatica();
+        });
+
+        $(document).on('click', '.btn-remover-fat', function() {
+            $(this).closest('tr').remove();
+            revezarFaturaEstatica();
+        });
+
+        $(document).on('blur', 'input[name="fatura_venc[]"], input[name="fatura_val[]"]', function() { revezarFaturaEstatica(); });
+        $(document).on('change', 'select[name="forma_pagamento[]"], select[name="fatura_veiculo[]"], select[name="fatura_conta[]"]', function() { revezarFaturaEstatica(); });
+
+        // COMPILAÇÃO MATEMÁTICA E LIBERAÇÃO AUTOMÁTICA DO FINANCEIRO
+        function revezarFaturaEstatica() {
+            FATURA = [];
+            $('#tabela-fatura tbody tr').each(function() {
+                let num = $(this).find('input[name="fatura_num[]"]').val();
+                let venc = $(this).find('input[name="fatura_venc[]"]').val();
+                let val = $(this).find('input[name="fatura_val[]"]').val();
+                let forma = $(this).find('select[name="forma_pagamento[]"]').val();
+                let veiculo = $(this).find('select[name="fatura_veiculo[]"]').val();
+                let conta = $(this).find('select[name="fatura_conta[]"]').val();
+                
+                if(num && venc && val) {
+                    FATURA.push({
+                        numero: num,
+                        data: venc,
+                        valor: val,
+                        forma_pagamento: forma,
+                        veiculo_id: veiculo,
+                        conta_empresa_id: conta
+                    });
+                }
+            });
+            
+            // 🔓 DESTRAVA AUTOMÁTICA DO BOTÃO FINALIZAR (IGUAL AO DFE)
+            if (FATURA.length > 0) {
+                $('#salvar-venda').removeAttr('disabled');
+            } else {
+                $('#salvar-venda').attr('disabled', 1);
+            }
+        }
+
+        // DISPAROS AJAX DE SUBMISSÃO
         window.salvarCompra = function() {
+            revezarFaturaEstatica();
             $('#salvar-venda').attr('disabled', 1);
             if(salvando == false){
                 salvando = true;
@@ -1660,19 +1697,13 @@ setTimeout(function() {
                 var fornecedor = $('.fornecedor').val();
                 if (fornecedor == '--') {
                     swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
-                    salvando = false;
-                    $('#preloader2').css('display', 'none');
-                    $('#salvar-venda').removeAttr('disabled');
-                    return;
+                    salvando = false; $('#preloader2').css('display', 'none'); $('#salvar-venda').removeAttr('disabled'); return;
                 }
 
-              	var categoria = $('#categoria_conta_id').val();
+                var categoria = $('#categoria_conta_id').val();
                 if (!categoria || categoria == '') {
                     swal({title: "Aviso", text: "Selecione uma categoria de conta para finalizar!", type: "warning"});
-                    salvando = false;
-                    $('#preloader2').css('display', 'none');
-                    $('#salvar-venda').removeAttr('disabled');
-                    return;
+                    salvando = false; $('#preloader2').css('display', 'none'); $('#salvar-venda').removeAttr('disabled'); return;
                 }
               
                 var transportadora = $('#kt_select2_3').val();
@@ -1680,27 +1711,24 @@ setTimeout(function() {
                 
                 let js = {
                     fornecedor: fornecedor,
-                    formaPagamento: $('#formaPagamento').val(),
-                    
-                    // --- VARIÁVEL DO ADIANTAMENTO ---
+                    formaPagamento: $('#tipo_condicao').val() === 'vista' ? 'a_vista' : 'a_prazo',
                     usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
-                    
-                    // --- CAMPOS INJETADOS À FORÇA ---
+                    rateio_veiculo: $('#tipo_condicao').val() === 'rateio' ? 1 : 0,
+                    fatura_manual: FATURA,
+
                     nf: $('#numero_emissao').val(),
                     numero_emissao: 0,
                     data_emissao: $('#data_emissao').val(),
-                    veiculo_id: $('#veiculo_id').val(),
+                    veiculo_id: $('#veiculos_ids').val() ? $('#veiculos_ids').val()[0] : null,
                     filial_id: $('#filial_id').val(),
-                    // --------------------------------
 
                     itens: ITENS,
                     fatura: FATURA,
-                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     total: TOTAL,
                     desconto: $('#desconto').val(),
                     acrescimo: $('#acrescimo').val(),
                     observacao: $('#obs').val(),
-                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    categoria_conta_id: categoria,
                     especie: $('#especie').val(),
                     numeracaoVol: $('#numeracaoVol').val(),
                     qtdVol: $('#qtdVol').val(),
@@ -1735,6 +1763,7 @@ setTimeout(function() {
         };
 
         window.atualizarCompra = function() {
+            revezarFaturaEstatica();
             if(salvando == false){
                 salvando = true;
                 $('#preloader2').css('display', 'block');
@@ -1742,18 +1771,14 @@ setTimeout(function() {
                 var fornecedor = $('.fornecedor').val();
                 if (fornecedor == '--') {
                     swal({title: "Erro", text: "Selecione um fornecedor para continuar!", type: "warning"});
-                    salvando = false;
-                    $('#preloader2').css('display', 'none');
-                    return;
+                    salvando = false; $('#preloader2').css('display', 'none'); return;
                 } 
                 
-              	var categoria = $('#categoria_conta_id').val();
-                  if (!categoria || categoria == '') {
-                      swal({title: "Aviso", text: "Selecione uma categoria de conta para atualizar!", type: "warning"});
-                      salvando = false;
-                      $('#preloader2').css('display', 'none');
-                      return;
-                  }
+                var categoria = $('#categoria_conta_id').val();
+                if (!categoria || categoria == '') {
+                    swal({title: "Aviso", text: "Selecione uma categoria de conta para atualizar!", type: "warning"});
+                    salvando = false; $('#preloader2').css('display', 'none'); return;
+                }
               
                 var transportadora = $('#kt_select2_3').val();
                 transportadora = transportadora == 'null' ? null : transportadora;
@@ -1761,27 +1786,24 @@ setTimeout(function() {
                 let js = {
                     id: $('#compra_id').val(),
                     fornecedor_id: fornecedor,
-                    formaPagamento: $('#formaPagamento').val(),
-
-                    // --- VARIÁVEL DO ADIANTAMENTO ---
+                    formaPagamento: $('#tipo_condicao').val() === 'vista' ? 'a_vista' : 'a_prazo',
                     usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
+                    rateio_veiculo: $('#tipo_condicao').val() === 'rateio' ? 1 : 0,
+                    fatura_manual: FATURA,
 
-                    // --- CAMPOS INJETADOS À FORÇA ---
                     nf: $('#numero_emissao').val(),
                     numero_emissao: 0,
                     data_emissao: $('#data_emissao').val(),
-                    veiculo_id: $('#veiculo_id').val(),
-                    // --------------------------------
+                    veiculo_id: $('#veiculos_ids').val() ? $('#veiculos_ids').val()[0] : null,
 
                     itens: ITENS,
                     fatura: FATURA,
-                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     faturas_removidas: PARCELAS_REMOVIDAS,
                     total: TOTAL,
                     desconto: $('#desconto').val(),
                     acrescimo: $('#acrescimo').val(),
                     observacao: $('#obs').val(),
-                    categoria_conta_id: $('#categoria_conta_id').val(),
+                    categoria_conta_id: categoria,
                     especie: $('#especie').val(),
                     numeracaoVol: $('#numeracaoVol').val(),
                     qtdVol: $('#qtdVol').val(),
@@ -1804,18 +1826,16 @@ setTimeout(function() {
                     url: path + 'compraManual/update',
                     dataType: 'json',
                     success: function (e) {
-                        $('#preloader2').css('display', 'none');
-                        sucesso(e);
+                        $('#preloader2').css('display', 'none'); sucesso(e);
                     }, error: function (e) {
-                        $('#preloader2').css('display', 'none');
-                        swal("Erro", "Erro ao atualizar a compra.", "warning");
+                        $('#preloader2').css('display', 'none'); swal("Erro", "Erro ao atualizar a compra.", "warning");
                     }
                 });
             }
             salvando = false;
         };
 
-    }, 1000); // Dá tempo do arquivo velho carregar para depois substituí-lo
+    }, 1000); 
 });
 </script>
 @endsection

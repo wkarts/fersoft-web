@@ -6,6 +6,7 @@ use App\Models\ConfigNota;
 use App\Models\Pesagem;
 use App\Models\PesagemTicketImagem;
 use App\Services\Pesagem\PesagemTicketImagemService;
+use App\Support\PesagemReportCalculator;
 use NFePHP\DA\Legacy\Pdf;
 use NFePHP\DA\Legacy\Common;
 use Com\Tecnick\Barcode\Barcode;
@@ -294,7 +295,7 @@ class PesagemPrint80 extends Common
             $altura += ($linhasObs + 1) * 5;
         }
 
-        $exibirValoresTicket = (bool) ($this->config->usar_valores_ticket_pesagem ?? false);
+        $exibirValoresTicket = (bool) ($this->config->pesagem_exibir_valores_relatorio ?? true);
 
         $ticketsAgrupados = $this->pesagem->tickets->groupBy('produto_id');
         foreach ($ticketsAgrupados as $produtoId => $tickets) {
@@ -305,13 +306,10 @@ class PesagemPrint80 extends Common
                 $linhasProduto = ceil($larguraProduto / ($this->larg - 4));
                 $altura += $linhasProduto * 5;
             }
-            $altura += count($tickets) * ($exibirValoresTicket ? 10 : 5);
-            if ($exibirValoresTicket) {
-                $altura += 8;
-            }
+            $altura += count($tickets) * 5;
         }
 
-        $altura += $exibirValoresTicket ? 56 : 40; // cálculos gerais
+        $altura += $exibirValoresTicket ? 48 : 40; // resumo físico + financeiro consolidado
         $altura += ($this->contarImagens80mm(2) * 45); // imagens das câmeras no 80mm completo
         $altura += 50; // carimbo e assinatura
 
@@ -335,6 +333,34 @@ class PesagemPrint80 extends Common
         if ($linha !== '') {
             $this->pdf->Cell($largura, $altura, $linha, 0, 1, $alinhamento);
         }
+    }
+
+
+    /**
+     * Imprime uma linha reduzindo a fonte somente quando necessário para
+     * manter o texto dentro da largura disponível do ticket.
+     */
+    protected function cellFitText(
+        string $texto,
+        float $largura,
+        float $altura = 5,
+        int $border = 0,
+        int $ln = 1,
+        string $align = 'L',
+        float $fontSize = 7,
+        float $minFontSize = 5.2,
+        string $style = ''
+    ): void {
+        $textoPdf = mb_convert_encoding($texto, 'ISO-8859-1', 'UTF-8');
+        $size = $fontSize;
+
+        $this->pdf->SetFont('Arial', $style, $size);
+        while ($size > $minFontSize && $this->pdf->GetStringWidth($textoPdf) > max(1, $largura - 1)) {
+            $size -= 0.2;
+            $this->pdf->SetFont('Arial', $style, $size);
+        }
+
+        $this->pdf->Cell($largura, $altura, $textoPdf, $border, $ln, $align);
     }
 
     protected function adicionaQRCode($conteudo, $x = 25, $y = null, $largura = 30, $altura = 30)
@@ -361,29 +387,43 @@ class PesagemPrint80 extends Common
 
     protected function montaCabecalho()
     {
-        $espacoEntreLogoEQRCode = 2;
-        $yQRCode = 2;
+        $temLogo = !empty($this->config->logo)
+            && file_exists(public_path('logos/' . $this->config->logo));
 
-        if (!empty($this->config->logo) && file_exists(public_path('logos/' . $this->config->logo))) {
-            list($larguraLogo, $alturaLogo) = getimagesize(public_path('logos/' . $this->config->logo));
+        if ($temLogo) {
+            [$larguraLogo, $alturaLogo] = getimagesize(public_path('logos/' . $this->config->logo));
             $larguraLogoNoPDF = 60;
-            $escalaAltura = $alturaLogo / $larguraLogo;
-            $alturaLogoNoPDF = $larguraLogoNoPDF * $escalaAltura;
+            $alturaLogoNoPDF = $larguraLogo > 0
+                ? ($larguraLogoNoPDF * ($alturaLogo / $larguraLogo))
+                : 18;
 
             $this->pdf->Image(public_path('logos/' . $this->config->logo), 10, 2, $larguraLogoNoPDF);
-            $yQRCode += $alturaLogoNoPDF + $espacoEntreLogoEQRCode;
-            $this->pdf->Ln($alturaLogoNoPDF);
+            $this->pdf->SetY(2 + $alturaLogoNoPDF + 2);
         } else {
-            $this->pdf->SetFont('Arial', 'B', 10);
-            $this->pdf->Cell(0, 10, mb_convert_encoding($this->config->razao_social ?? 'Empresa Não Configurada', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-            $yQRCode += 20;
+            $this->pdf->SetY(2);
+            $this->cellFitText(
+                (string) ($this->config->razao_social ?? 'Empresa Não Configurada'),
+                $this->larg - 4,
+                5,
+                0,
+                1,
+                'C',
+                8,
+                5.2,
+                'B'
+            );
+            $this->pdf->Ln(1);
         }
 
-        $this->adicionaQRCode(env('URL_PESAGEM_TOKEN') . '/getTicket/withToken/relPrn80mm/' . $this->pesagem->token, 25, $yQRCode);
+        $yQRCode = $this->pdf->GetY();
+        $this->adicionaQRCode(
+            env('URL_PESAGEM_TOKEN') . '/getTicket/withToken/relPrn80mm/' . $this->pesagem->token,
+            25,
+            $yQRCode
+        );
 
-        $this->pdf->Ln(30);
+        $this->pdf->SetY($yQRCode + 31);
         $this->pdf->SetFont('Arial', 'B', 8);
-        $this->pdf->Ln(2);
         $this->pdf->Cell(0, 5, utf8_decode('Ticket: ' . $this->pesagem->token), 0, 1, 'C');
         $this->pdf->Ln(2);
     }
@@ -450,59 +490,27 @@ class PesagemPrint80 extends Common
         }
 
         // ======================
-        // CÁLCULO ROBUSTO (SEM NEGATIVOS / SEM ESTOURO)
+        // CONSOLIDAÇÃO EXCLUSIVAMENTE DE APRESENTAÇÃO
         // ======================
-        $entradas = $this->pesagem->tickets->where('tipo', 'entrada')->sum(fn($t) => $this->f($t->peso));
-        $saidas   = $this->pesagem->tickets->where('tipo', 'saida')  ->sum(fn($t) => $this->f($t->peso));
-        $avulsas  = $this->pesagem->tickets->where('tipo', 'avulsa') ->sum(fn($t) => $this->f($t->peso));
-        $bags     = $this->pesagem->tickets->sum(fn($t) => $this->f($t->peso_bag));
+        $resumo = PesagemReportCalculator::summarize($this->pesagem);
+        $pesoInicial = (float) $resumo['peso_inicial'];
+        $pesoFinalVeiculo = (float) $resumo['peso_final'];
+        $pesoLiquido = (float) $resumo['peso_liquido_total'];
+        $descontos = (float) $resumo['descontos'];
+        $pesoFinal = (float) $resumo['peso_final_liquido'];
 
-        $baseEntradas = $entradas + $avulsas;
-
-        // diferença absoluta entre (entradas + avulsas) e saídas
-        $pesoLiquido = $this->absDiff($baseEntradas, $saidas);
-
-        // percentuais sempre sobre base não negativa
-        $pct = 0.0;
-        if (!empty($this->pesagem->danificado)) $pct += $this->f($this->pesagem->danificado_desconto);
-        if (!empty($this->pesagem->quebrado))   $pct += $this->f($this->pesagem->quebrado_desconto);
-        if (!empty($this->pesagem->esverdeado)) $pct += $this->f($this->pesagem->esverdeado_desconto);
-        if (!empty($this->pesagem->ardido))     $pct += $this->f($this->pesagem->ardido_desconto);
-        if (!empty($this->pesagem->secagem))    $pct += $this->f($this->pesagem->secagem_desconto);
-
-        $pct += $this->f($this->pesagem->umidade_desconto);
-        $pct += $this->f($this->pesagem->impureza_desconto);
-
-        // descontos percentuais sobre pesoLiquido (não negativo)
-        $descontosPercentuais = ($pesoLiquido > 0) ? ($pesoLiquido * ($pct / 100.0)) : 0.0;
-
-        // soma de bags + percentuais, porém NUNCA acima do pesoLiquido
-        $descontos = $this->clamp($bags + $descontosPercentuais, 0.0, $pesoLiquido);
-
-        $pesoFinal = $this->clamp($pesoLiquido - $descontos, 0.0, $pesoLiquido);
-
-        // Para exibição adicional
-        $pesoBrutoPorPesagem = $this->f($baseEntradas); // mantém sua métrica original (sem saídas)
-
-        $exibirValoresTicket = (bool) ($this->config->usar_valores_ticket_pesagem ?? false);
-        $valorUnitarioResumo = 0.0;
-        $valorTotalResumo = 0.0;
-
-        if ($exibirValoresTicket) {
-            $ticketValorUnitario = $this->pesagem->tickets->first(function ($ticket) {
-                return (float) ($ticket->valor_unitario ?? 0) > 0;
-            });
-
-            $valorUnitarioResumo = $this->f($ticketValorUnitario->valor_unitario ?? 0);
-            $valorTotalResumo = $this->valorTotalLiquidoTickets($this->pesagem->tickets);
-        }
+        // Preserva a configuração já existente. Nenhuma alteração de banco é necessária.
+        $exibirValoresTicket = (bool) ($this->config->pesagem_exibir_valores_relatorio ?? true);
+        $valorTotalResumo = $exibirValoresTicket
+            ? (float) $resumo['valor_total_operacao']
+            : 0.0;
 
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 7, '---------------------------------------Resumo------------------------------------------', 0, 1, 'C');
 
         // Box resumo
-        $resumoBoxAltura = $exibirValoresTicket ? 40 : 30;
+        $resumoBoxAltura = $exibirValoresTicket ? 35 : 30;
         $this->pdf->Cell(0, $resumoBoxAltura, '', 1, 1);
         $startX = $this->pdf->GetX() + 0;
         $startY = $this->pdf->GetY() - $resumoBoxAltura;
@@ -510,47 +518,40 @@ class PesagemPrint80 extends Common
 
         $this->pdf->Ln(0);
         $this->pdf->SetFont('Arial', 'B', 8);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Bruto Total (Pesagem): ' . number_format($pesoBrutoPorPesagem, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Total Entrada: ' . number_format($entradas, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Total Saída: '   . number_format($saidas,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Líquido: '  . number_format($pesoLiquido, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Descontos: '     . number_format($descontos,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final: '    . number_format($pesoFinal,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Inicial: ' . number_format($pesoInicial, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final: ' . number_format($pesoFinalVeiculo, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Líquido Total: ' . number_format($pesoLiquido, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Descontos: ' . number_format($descontos, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Final Líquido: ' . number_format($pesoFinal, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
         if ($exibirValoresTicket) {
-            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Unitário: ' . $this->moedaBr($valorUnitarioResumo), 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Total: '    . $this->moedaBr($valorTotalResumo), 'ISO-8859-1', 'UTF-8'), 0, 1);
+            $this->pdf->Cell(0, 5, mb_convert_encoding('Valor Total da Operação: ' . $this->moedaBr($valorTotalResumo), 'ISO-8859-1', 'UTF-8'), 0, 1);
         }
 
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 5, '--------------------------------Tickets / Pesagens-----------------------------------', 0, 1, 'C');
 
-        // Detalhes por produto (ajuste de líquido por produto também com diferença absoluta)
-        $ticketsAgrupados = $this->pesagem->tickets->groupBy('produto_id');
-        if ($ticketsAgrupados->isEmpty()) {
+        // Detalhes por produto. O líquido é conciliado por produto; leituras individuais permanecem brutas.
+        $produtosResumo = $resumo['produtos'];
+        if ($produtosResumo->isEmpty()) {
             $this->pdf->Cell(0, 5, mb_convert_encoding('Nenhum ticket encontrado!', 'ISO-8859-1', 'UTF-8'), 0, 1);
             return;
         }
 
-        foreach ($ticketsAgrupados as $produtoId => $tickets) {
-            $produto = $tickets->first()->produto ?? null;
-
-            $entradaProduto = (float)$tickets->where('tipo', 'entrada')->sum('peso');
-            $saidaProduto   = (float)$tickets->where('tipo', 'saida')->sum('peso');
-            $avulsaProduto  = (float)$tickets->where('tipo', 'avulsa')->sum('peso');
-
-            $entradaProduto = $this->f($entradaProduto);
-            $saidaProduto   = $this->f($saidaProduto);
-            $avulsaProduto  = $this->f($avulsaProduto);
-
-            $brutoProduto   = $entradaProduto + $avulsaProduto;
-            $liqProduto     = $this->absDiff($brutoProduto, $saidaProduto); // <- diferença absoluta por produto
+        foreach ($produtosResumo as $grupoProduto) {
+            $produto = $grupoProduto['produto'];
+            $tickets = $grupoProduto['tickets'];
+            $entradaProduto = (float) $grupoProduto['entrada'];
+            $saidaProduto = (float) $grupoProduto['saida'];
+            $avulsaProduto = (float) $grupoProduto['avulsa'];
+            $liqProduto = (float) $grupoProduto['peso_liquido'];
+            $recipienteProduto = (float) $grupoProduto['peso_bag'];
 
             $this->pdf->Ln(0);
             $this->pdf->SetFont('Arial', 'I', 7);
             $this->pdf->Cell(0, 2, '', 0, 1, 'C');
 
-            $produtoBoxAltura = $exibirValoresTicket ? 33 : 25;
+            $produtoBoxAltura = 21;
             $this->pdf->Cell(0, $produtoBoxAltura, '', 1, 1);
             $startX = $this->pdf->GetX() + 0;
             $startY = $this->pdf->GetY() - ($produtoBoxAltura - 1);
@@ -559,31 +560,11 @@ class PesagemPrint80 extends Common
             $this->pdf->Ln(0);
             $this->pdf->SetFont('Arial', '', 7);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Produto: ' . ($produto->nome ?? 'Não informado'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-            $this->pdf->Cell(0, 4, mb_convert_encoding('Peso Bruto: ' . number_format($brutoProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Entrada: '    . number_format($entradaProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Saída: '      . number_format($saidaProduto,   2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-            // “Recipiente” segue o total (não por produto), preservando seu layout
-            $this->pdf->Cell(0, 4, mb_convert_encoding('Recipiente de Pesagem: ' . number_format($descontos, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
+            // Recipiente/desconto exibido por produto, sem alterar a persistência.
+            $this->pdf->Cell(0, 4, mb_convert_encoding('Recipiente de Pesagem: ' . number_format($recipienteProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
             $this->pdf->Cell(0, 4, mb_convert_encoding('Peso Líquido: ' . number_format($liqProduto, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
-
-            if ($exibirValoresTicket) {
-                $valorUnitarioProduto = 0.0;
-                $valorTotalProduto = $this->valorTotalLiquidoTickets($tickets);
-
-                foreach ($tickets as $ticketProduto) {
-                    $valorUnitarioResolvido = (float) ($ticketProduto->valor_unitario ?? 0) > 0
-                        ? (float) $ticketProduto->valor_unitario
-                        : (float) ($ticketProduto->produto->valor_venda ?? $ticketProduto->produto->valor_compra ?? 0);
-
-                    if ($valorUnitarioProduto <= 0 && $valorUnitarioResolvido > 0) {
-                        $valorUnitarioProduto = $valorUnitarioResolvido;
-                    }
-
-                }
-
-                $this->pdf->Cell(0, 4, mb_convert_encoding('Valor Unitário: ' . $this->moedaBr($valorUnitarioProduto), 'ISO-8859-1', 'UTF-8'), 0, 1);
-                $this->pdf->Cell(0, 4, mb_convert_encoding('Valor Total: '    . $this->moedaBr($valorTotalProduto), 'ISO-8859-1', 'UTF-8'), 0, 1);
-            }
 
             // Tabela de tickets por produto
             $this->pdf->Cell(16, 4, mb_convert_encoding('ID', 'ISO-8859-1', 'UTF-8'), 1, 0);
@@ -599,15 +580,6 @@ class PesagemPrint80 extends Common
                 $this->pdf->Cell(17, 5, number_format($this->f($ticket->peso_bag), 2, ',', '.'), 1, 0);
                 $this->pdf->Cell(16, 5, $ticket->created_at->format('d/m/Y'), 1, 1);
 
-                if ($exibirValoresTicket) {
-                    $valorUnitarioTicket = (float) ($ticket->valor_unitario ?? 0) > 0
-                        ? (float) $ticket->valor_unitario
-                        : (float) ($ticket->produto->valor_venda ?? $ticket->produto->valor_compra ?? 0);
-                    $valorTotalTicket = $this->valorTicket($ticket);
-
-                    $this->pdf->Cell(76, 4, mb_convert_encoding('  Valor Unitário: ' . $this->moedaBr($valorUnitarioTicket) . '  |  Valor Total: ' . $this->moedaBr($valorTotalTicket), 'ISO-8859-1', 'UTF-8'), 1, 1);
-                }
-
                 $this->imprimirImagensTicket80mm($ticket, 2);
             }
         }
@@ -616,23 +588,27 @@ class PesagemPrint80 extends Common
         $this->pdf->SetFont('Arial', 'B', 9);
         $this->pdf->Cell(0, 5, mb_convert_encoding('Peso Total Geral: ' . number_format($pesoFinal, 2, ',', '.') . ' kg', 'ISO-8859-1', 'UTF-8'), 0, 1);
 
-        // Carimbo
+        // Carimbo responsivo: usa a largura real disponível do papel.
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial', 'I', 7);
         $this->pdf->Cell(0, 6, '---------------------------------------CARIMBO------------------------------------------', 0, 1, 'C');
 
-        $this->pdf->Cell(0, 20, '', 1, 1);
-        $startX = $this->pdf->GetX() + 0;
-        $startY = $this->pdf->GetY() - 20;
-        $this->pdf->SetXY($startX, $startY + 0);
+        $larguraUtil = $this->larg - 4;
+        $coluna = $larguraUtil / 2;
+        $alturaCarimbo = 20;
 
-        $this->pdf->Cell(0, 5, mb_convert_encoding('Razão Social: ' . ($this->config->razao_social ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('CNPJ: ' . ($this->config->cnpj ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('IE: '   . ($this->config->ie ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('Município: ' . ($this->config->municipio ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('UF: ' . ($this->config->uf ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('E-mail: ' . ($this->config->email ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 0);
-        $this->pdf->Cell(50, 5, mb_convert_encoding('Fone: '   . ($this->config->fone ?? 'N/A'), 'ISO-8859-1', 'UTF-8'), 0, 1);
+        $this->pdf->Cell(0, $alturaCarimbo, '', 1, 1);
+        $startX = $this->pdf->GetX();
+        $startY = $this->pdf->GetY() - $alturaCarimbo;
+        $this->pdf->SetXY($startX, $startY);
+
+        $this->cellFitText('Razão Social: ' . ($this->config->razao_social ?? 'N/A'), $larguraUtil, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('CNPJ: ' . ($this->config->cnpj ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('IE: ' . ($this->config->ie ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('Município: ' . ($this->config->municipio ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('UF: ' . ($this->config->uf ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('E-mail: ' . ($this->config->email ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.0);
+        $this->cellFitText('Fone: ' . ($this->config->fone ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
 
         $this->pdf->SetFont('Arial', '', 9);
         $this->pdf->Ln(5);

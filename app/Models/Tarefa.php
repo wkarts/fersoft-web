@@ -14,6 +14,7 @@ class Tarefa extends BaseModel
         'empresa_id',
         'filial_id',
         'funcionario_id',
+        'usuario_id',
         'user_id',
         'titulo',
         'descricao',
@@ -23,11 +24,13 @@ class Tarefa extends BaseModel
         'iniciado_em',
         'finalizado_em',
         'tempo_gasto_minutos',
+        'justificativa_atraso',
+        'aviso_supervisor_enviado',
         'is_recorrente',
         'frequencia',
         'data_limite',
-      	'hora_limite',
-    	'prioridade',
+        'hora_limite',
+        'prioridade',
     ];
 
     /**
@@ -41,7 +44,8 @@ class Tarefa extends BaseModel
         'iniciado_em' => 'datetime',
         'finalizado_em' => 'datetime',
         'is_recorrente' => 'boolean',
-        'tempo_gasto_minutos' => 'integer'
+        'tempo_gasto_minutos' => 'integer',
+        'aviso_supervisor_enviado' => 'boolean',
     ];
 
     /**
@@ -69,11 +73,37 @@ class Tarefa extends BaseModel
     }
 
     /**
-     * Relacionamento: O Usuário logado que criou ou é dono do registro da tarefa
+     * Relacionamento original:
+     * O Usuário logado que criou ou é dono do registro da tarefa.
+     *
+     * Mantido utilizando user_id para preservar o comportamento existente.
      */
     public function usuario()
     {
         return $this->belongsTo(Usuario::class, 'user_id');
+    }
+
+    /**
+     * Relacionamento adicional trazido da implementação nova.
+     *
+     * Mantido separado para não alterar o relacionamento usuario()
+     * já utilizado pelo sistema.
+     */
+    public function user()
+    {
+        return $this->belongsTo(Usuario::class, 'user_id');
+    }
+
+    /**
+     * Relacionamento opcional com usuario_id.
+     *
+     * O código novo introduziu o campo usuario_id. Como o relacionamento
+     * usuario() existente utiliza user_id, criamos um relacionamento
+     * separado para evitar qualquer quebra de compatibilidade.
+     */
+    public function usuarioResponsavel()
+    {
+        return $this->belongsTo(Usuario::class, 'usuario_id');
     }
 
     /**

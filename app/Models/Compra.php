@@ -17,8 +17,7 @@ class Compra extends BaseModel
 		'chave', 'estado', 'numero_emissao', 'empresa_id', 'sequencia_cce', 'valor_frete', 'placa',
 		'tipo', 'uf', 'numeracaoVolumes', 'peso_liquido', 'peso_bruto', 'especie', 'qtdVolumes',
 		'transportadora_id', 'data_emissao', 'filial_id', 'lote', 'acrescimo', 'xml_importado',
-		'categoria_conta_id', 'veiculo_id', 'data_retroativa', 'data_saida', 'nf',
-		'natureza_id', 'tipo_pagamento'
+		'categoria_conta_id', 'veiculo_id', 'data_retroativa', 'data_saida', 'nf'
 	];
 
 	public static function lastNumero($empresa_id){

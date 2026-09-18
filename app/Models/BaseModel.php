@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use App\Services\LogService;
 use App\Support\AuditContext;
+use App\Support\BinaryPayloadSanitizer;
 use App\Traits\TenantInjectable;
 
 abstract class BaseModel extends Model
@@ -26,6 +27,7 @@ abstract class BaseModel extends Model
      * Armazena snapshots temporários para log.
      */
     protected array $auditOldValues = [];
+    protected array $auditNewValues = [];
     protected array $auditDeleteValues = [];
     protected array $auditRestoreValues = [];
 
@@ -45,23 +47,29 @@ abstract class BaseModel extends Model
         });
 
         static::created(function ($model) {
-            $model->writeAuditLog('create', null, $model->toArray());
+            $model->writeAuditLog('create', null, $model->auditSnapshot());
         });
 
         static::updating(function ($model) {
-            $model->auditOldValues = $model->getOriginal();
+            [$model->auditOldValues, $model->auditNewValues] = $model->auditChangedSnapshot();
         });
 
         static::updated(function ($model) {
+            // Evita gravar um evento de update sem mudança funcional real
+            // (por exemplo, apenas updated_at).
+            if (empty($model->auditOldValues) && empty($model->auditNewValues)) {
+                return;
+            }
+
             $model->writeAuditLog(
                 'update',
                 $model->auditOldValues,
-                $model->fresh()?->toArray() ?? $model->toArray()
+                $model->auditNewValues
             );
         });
 
         static::deleting(function ($model) {
-            $model->auditDeleteValues = $model->toArray();
+            $model->auditDeleteValues = $model->auditSnapshot();
 
             // Se a tabela suporta deleted_at, converte exclusão em soft delete custom
             if ($model->supportsSoftDeleteColumn() && !$model->isForceDeleting()) {
@@ -121,7 +129,7 @@ abstract class BaseModel extends Model
             return false;
         }
 
-        $this->auditRestoreValues = $this->toArray();
+        $this->auditRestoreValues = $this->auditSnapshot();
 
         $this->setAttribute('deleted_at', null);
 
@@ -131,7 +139,7 @@ abstract class BaseModel extends Model
             $this->writeAuditLog(
                 'restore',
                 $this->auditRestoreValues,
-                $this->fresh()?->toArray() ?? $this->toArray()
+                $this->fresh()?->auditSnapshot() ?? $this->auditSnapshot()
             );
         }
 
@@ -300,7 +308,7 @@ abstract class BaseModel extends Model
 
     protected function shouldWriteAuditLog(): bool
     {
-        if (!$this->auditEnabled) {
+        if (!$this->auditEnabled || AuditContext::isModelAuditSuppressed()) {
             return false;
         }
 
@@ -321,6 +329,11 @@ abstract class BaseModel extends Model
             if (!$this->shouldWriteAuditLog()) {
                 return;
             }
+
+            // Barreira final da auditoria: mesmo chamadas manuais/legadas que
+            // tragam snapshots, JSON aninhado ou Base64 nunca persistem binário.
+            $dadosAntes = BinaryPayloadSanitizer::sanitize($dadosAntes);
+            $dadosDepois = BinaryPayloadSanitizer::sanitize($dadosDepois);
 
             $sessao = Session::get('user_logged', []);
 
@@ -351,6 +364,79 @@ abstract class BaseModel extends Model
                 'erro' => $e->getMessage(),
             ]);
         }
+    }
+
+
+    /**
+     * Snapshot de auditoria sem relações Eloquent carregadas.
+     *
+     * getAttributes() preserva os atributos persistidos do próprio model e
+     * evita que toArray() replique relações (tickets/imagens) dentro do log.
+     * Campos JSON/string continuam sendo sanitizados recursivamente.
+     */
+    protected function auditSnapshot(): array
+    {
+        $snapshot = BinaryPayloadSanitizer::sanitize($this->getAttributes());
+
+        return is_array($snapshot) ? $snapshot : [];
+    }
+
+    /**
+     * Snapshot enxuto somente dos atributos realmente alterados.
+     *
+     * Antes, cada update copiava o registro inteiro para dados_anteriores e
+     * dados_depois. Em models de pesagem isso multiplicava JSON e aumentava
+     * drasticamente o volume da tabela logs. Aqui preservamos a conformidade:
+     * cada campo alterado continua auditado com valor anterior e novo, mas sem
+     * repetir atributos que não participaram da operação.
+     */
+    protected function auditChangedSnapshot(): array
+    {
+        $dirty = $this->getDirty();
+
+        // Timestamp técnico não deve, sozinho, gerar evento de negócio.
+        unset($dirty['updated_at']);
+
+        if (empty($dirty)) {
+            return [[], []];
+        }
+
+        $before = [];
+        $after = [];
+
+        foreach (array_keys($dirty) as $attribute) {
+            $before[$attribute] = $this->getOriginal($attribute);
+            $after[$attribute] = $this->getAttribute($attribute);
+        }
+
+        // Mantém a identidade do registro em snapshots enxutos. A tabela logs
+        // atual não possui coluna registro_id; por isso o ID precisa continuar
+        // presente nos próprios JSONs de auditoria para rastreabilidade.
+        $keyName = $this->getKeyName();
+        $keyValue = $this->getKey();
+
+        if ($keyValue !== null && $keyName !== '') {
+            $before[$keyName] = $this->getOriginal($keyName) ?? $keyValue;
+            $after[$keyName] = $keyValue;
+        }
+
+        $before = BinaryPayloadSanitizer::sanitize($before);
+        $after = BinaryPayloadSanitizer::sanitize($after);
+
+        return [
+            is_array($before) ? $before : [],
+            is_array($after) ? $after : [],
+        ];
+    }
+
+    /**
+     * Estado original do model, também livre de relações e conteúdo binário.
+     */
+    protected function auditSnapshotOriginal(): array
+    {
+        $snapshot = BinaryPayloadSanitizer::sanitize($this->getOriginal());
+
+        return is_array($snapshot) ? $snapshot : [];
     }
 
     protected function supportsSoftDeleteColumn(): bool

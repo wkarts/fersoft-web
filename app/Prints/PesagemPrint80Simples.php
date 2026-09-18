@@ -6,6 +6,7 @@ use App\Models\ConfigNota;
 use App\Models\Pesagem;
 use App\Models\PesagemTicketImagem;
 use App\Services\Pesagem\PesagemTicketImagemService;
+use App\Support\PesagemReportCalculator;
 use NFePHP\DA\Legacy\Pdf;
 use NFePHP\DA\Legacy\Common;
 use Com\Tecnick\Barcode\Barcode;
@@ -259,7 +260,7 @@ class PesagemPrint80Simples extends Common
             $altura += count($tickets) * 5;
         }
 
-        $altura += 40; // cálculos gerais
+        $altura += (bool) ($this->config->pesagem_exibir_valores_relatorio ?? true) ? 45 : 40; // cálculos gerais
         $altura += ($this->contarImagens80mm(1) * 45); // imagens das câmeras no 80mm simples
         $altura += 50; // carimbo/assinatura
 
@@ -283,6 +284,34 @@ class PesagemPrint80Simples extends Common
         if ($linha !== '') {
             $this->pdf->Cell($largura, $altura, $linha, 0, 1, $alinhamento);
         }
+    }
+
+
+    /**
+     * Imprime uma linha reduzindo a fonte somente quando necessário para
+     * manter o texto dentro da largura disponível do ticket.
+     */
+    protected function cellFitText(
+        string $texto,
+        float $largura,
+        float $altura = 5,
+        int $border = 0,
+        int $ln = 1,
+        string $align = 'L',
+        float $fontSize = 7,
+        float $minFontSize = 5.2,
+        string $style = ''
+    ): void {
+        $textoPdf = mb_convert_encoding($texto, 'ISO-8859-1', 'UTF-8');
+        $size = $fontSize;
+
+        $this->pdf->SetFont('Arial', $style, $size);
+        while ($size > $minFontSize && $this->pdf->GetStringWidth($textoPdf) > max(1, $largura - 1)) {
+            $size -= 0.2;
+            $this->pdf->SetFont('Arial', $style, $size);
+        }
+
+        $this->pdf->Cell($largura, $altura, $textoPdf, $border, $ln, $align);
     }
 
     protected function adicionaQRCode($conteudo, $x = 25, $y = null, $largura = 30, $altura = 30)
@@ -309,29 +338,43 @@ class PesagemPrint80Simples extends Common
 
     protected function montaCabecalho()
     {
-        $espacoEntreLogoEQRCode = 2;
-        $yQRCode = 2;
+        $temLogo = !empty($this->config->logo)
+            && file_exists(public_path('logos/' . $this->config->logo));
 
-        if (!empty($this->config->logo) && file_exists(public_path('logos/' . $this->config->logo))) {
-            list($larguraLogo, $alturaLogo) = getimagesize(public_path('logos/' . $this->config->logo));
+        if ($temLogo) {
+            [$larguraLogo, $alturaLogo] = getimagesize(public_path('logos/' . $this->config->logo));
             $larguraLogoNoPDF = 60;
-            $escalaAltura = $alturaLogo / $larguraLogo;
-            $alturaLogoNoPDF = $larguraLogoNoPDF * $escalaAltura;
+            $alturaLogoNoPDF = $larguraLogo > 0
+                ? ($larguraLogoNoPDF * ($alturaLogo / $larguraLogo))
+                : 18;
 
             $this->pdf->Image(public_path('logos/' . $this->config->logo), 10, 2, $larguraLogoNoPDF);
-            $yQRCode += $alturaLogoNoPDF + $espacoEntreLogoEQRCode;
-            $this->pdf->Ln($alturaLogoNoPDF);
+            $this->pdf->SetY(2 + $alturaLogoNoPDF + 2);
         } else {
-            $this->pdf->SetFont('Arial', 'B', 10);
-            $this->pdf->Cell(0, 10, mb_convert_encoding($this->config->razao_social ?? 'Empresa Não Configurada', 'ISO-8859-1', 'UTF-8'), 0, 1, 'C');
-            $yQRCode += 20;
+            $this->pdf->SetY(2);
+            $this->cellFitText(
+                (string) ($this->config->razao_social ?? 'Empresa Não Configurada'),
+                $this->larg - 4,
+                5,
+                0,
+                1,
+                'C',
+                8,
+                5.2,
+                'B'
+            );
+            $this->pdf->Ln(1);
         }
 
-        $this->adicionaQRCode(env('URL_PESAGEM_TOKEN') . '/getTicket/withToken/relPrn80mm/' . $this->pesagem->token, 25, $yQRCode);
+        $yQRCode = $this->pdf->GetY();
+        $this->adicionaQRCode(
+            env('URL_PESAGEM_TOKEN') . '/getTicket/withToken/relPrn80mm/' . $this->pesagem->token,
+            25,
+            $yQRCode
+        );
 
-        $this->pdf->Ln(30);
+        $this->pdf->SetY($yQRCode + 31);
         $this->pdf->SetFont('Arial', 'B', 8);
-        $this->pdf->Ln(2);
         $this->pdf->Cell(0, 5, utf8_decode('Ticket: ' . $this->pesagem->token), 0, 1, 'C');
         $this->pdf->Ln(2);
     }
@@ -402,55 +445,33 @@ class PesagemPrint80Simples extends Common
             $this->quebraTexto($obs, $this->larg - 4, 5, 'L');
         }
 
-        // Consolidado (caso queira exibir datas globais, já está calculado)
-        $all = $this->pesagem->tickets;
-        $rawIni = $all->min('inicio');
-        $rawFim = $all->max('fim');
-        $iniGlob = $rawIni ? Carbon::parse($rawIni) : null;
-        $fimGlob = $rawFim ? Carbon::parse($rawFim) : null;
+        // Consolidação exclusivamente de apresentação. A conciliação persistida permanece intacta.
+        $resumo = PesagemReportCalculator::summarize($this->pesagem);
+        $pesoInicial = (float) $resumo['peso_inicial'];
+        $pesoFinalVeiculo = (float) $resumo['peso_final'];
+        $pesoLiquido = (float) $resumo['peso_liquido_total'];
+        $descontos = (float) $resumo['descontos'];
+        $pesoFinal = (float) $resumo['peso_final_liquido'];
 
-        // ======================
-        // CÁLCULO ROBUSTO (SEM NEGATIVOS / SEM ESTOURO)
-        // ======================
-        $entradas = $all->where('tipo','entrada')->sum(fn($t)=>$this->f($t->peso));
-        $saidas   = $all->where('tipo','saida')  ->sum(fn($t)=>$this->f($t->peso));
-        $avulsas  = $all->where('tipo','avulsa') ->sum(fn($t)=>$this->f($t->peso));
-        $bags     = $all->sum(fn($t)=>$this->f($t->peso_bag));
-
-        $baseEntradas = $entradas + $avulsas;
-
-        // diferença absoluta entre (entradas + avulsas) e saídas
-        $pesoLiquido = $this->absDiff($baseEntradas, $saidas);
-
-        // somatório de percentuais (sempre base não negativa)
-        $pct = 0.0;
-        if (!empty($this->pesagem->danificado)) $pct += $this->f($this->pesagem->danificado_desconto);
-        if (!empty($this->pesagem->quebrado))   $pct += $this->f($this->pesagem->quebrado_desconto);
-        if (!empty($this->pesagem->esverdeado)) $pct += $this->f($this->pesagem->esverdeado_desconto);
-        if (!empty($this->pesagem->ardido))     $pct += $this->f($this->pesagem->ardido_desconto);
-        if (!empty($this->pesagem->secagem))    $pct += $this->f($this->pesagem->secagem_desconto);
-
-        $pct += $this->f($this->pesagem->umidade_desconto);
-        $pct += $this->f($this->pesagem->impureza_desconto);
-
-        $descontosPercentuais = ($pesoLiquido > 0) ? ($pesoLiquido * ($pct / 100.0)) : 0.0;
-
-        // soma de bags + percentuais, com clamp para não exceder o líquido
-        $descontos = $this->clamp($bags + $descontosPercentuais, 0.0, $pesoLiquido);
-
-        $pesoFinal = $this->clamp($pesoLiquido - $descontos, 0.0, $pesoLiquido);
+        $this->pdf->Ln(2);
+        $this->pdf->SetFont('Arial','B',8);
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Inicial: '.number_format($pesoInicial,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final: '.number_format($pesoFinalVeiculo,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
 
         // 6) Detalhes por produto com datas por tipo
         $this->pdf->Ln(2);
-        $ticketsAgrupados = $all->groupBy('produto_id');
-        if ($ticketsAgrupados->isEmpty()) {
+        $produtosResumo = $resumo['produtos'];
+        if ($produtosResumo->isEmpty()) {
             $this->pdf->Cell(0,5, mb_convert_encoding('Nenhum ticket encontrado!','ISO-8859-1','UTF-8'), 0,1,'L');
         } else {
-            foreach ($ticketsAgrupados as $prodId => $tks) {
-                $nomeProd = optional($tks->first()->produto)->nome ?? 'Não informado';
+            foreach ($produtosResumo as $grupoProduto) {
+                $tks = $grupoProduto['tickets'];
+                $nomeProd = optional($grupoProduto['produto'])->nome ?? 'Não informado';
                 $this->pdf->Ln(2);
                 $this->pdf->SetFont('Arial','B',7);
                 $this->pdf->Cell(0,5, mb_convert_encoding("Produto: {$nomeProd}",'ISO-8859-1','UTF-8'), 0,1,'L');
+                $this->pdf->SetFont('Arial','',7);
+                $this->pdf->Cell(0,4, mb_convert_encoding('Peso Líquido do Produto: '.number_format((float) $grupoProduto['peso_liquido'],2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
 
                 foreach (['entrada','saida','avulsa'] as $tipoT) {
                     $peso = (float)$tks->where('tipo',$tipoT)->sum('peso');
@@ -481,25 +502,32 @@ class PesagemPrint80Simples extends Common
         // 7) Resumo final
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial','B',8);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Impurezas:   '.number_format($descontos,   2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final:  '.number_format($pesoFinal,    2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido Total: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Descontos: '.number_format($descontos, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final Líquido: '.number_format($pesoFinal, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        if ((bool) ($this->config->pesagem_exibir_valores_relatorio ?? true)) {
+            $this->pdf->Cell(0,5, mb_convert_encoding('Valor Total da Operação: '.'R$ '.number_format((float) $resumo['valor_total_operacao'], 2, ',', '.'),'ISO-8859-1','UTF-8'), 0,1,'L');
+        }
 
-        // 8) Carimbo / Assinatura
+        // 8) Carimbo / Assinatura responsivo
         $this->pdf->Ln(5);
-        $this->pdf->Cell(0,20,'',1,1);
+
+        $larguraUtil = $this->larg - 4;
+        $coluna = $larguraUtil / 2;
+        $alturaCarimbo = 20;
+
+        $this->pdf->Cell(0, $alturaCarimbo, '', 1, 1);
         $startX = $this->pdf->GetX();
-        $startY = $this->pdf->GetY() - 20;
+        $startY = $this->pdf->GetY() - $alturaCarimbo;
         $this->pdf->SetXY($startX, $startY);
 
-        $this->pdf->SetFont('Arial','',7);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Razão Social: '.($this->config->razao_social??'N/A'),'ISO-8859-1','UTF-8'),0,1,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('CNPJ: '.($this->config->cnpj     ??'N/A'),'ISO-8859-1','UTF-8'),0,0,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('IE: '.  ($this->config->ie       ??'N/A'),'ISO-8859-1','UTF-8'),0,1,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('Município: '.($this->config->municipio??'N/A'),'ISO-8859-1','UTF-8'),0,0,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('UF: '.       ($this->config->uf       ??'N/A'),'ISO-8859-1','UTF-8'),0,1,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('E-mail: '.   ($this->config->email    ??'N/A'),'ISO-8859-1','UTF-8'),0,0,'L');
-        $this->pdf->Cell(50,5,mb_convert_encoding('Fone: '.     ($this->config->fone     ??'N/A'),'ISO-8859-1','UTF-8'),0,1,'L');
+        $this->cellFitText('Razão Social: '.($this->config->razao_social ?? 'N/A'), $larguraUtil, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('CNPJ: '.($this->config->cnpj ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('IE: '.($this->config->ie ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('Município: '.($this->config->municipio ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.2);
+        $this->cellFitText('UF: '.($this->config->uf ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
+        $this->cellFitText('E-mail: '.($this->config->email ?? 'N/A'), $coluna, 5, 0, 0, 'L', 7, 5.0);
+        $this->cellFitText('Fone: '.($this->config->fone ?? 'N/A'), $coluna, 5, 0, 1, 'L', 7, 5.2);
 
         $this->pdf->Ln(5);
         $this->pdf->SetFont('Arial','',9);

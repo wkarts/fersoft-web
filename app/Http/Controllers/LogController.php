@@ -7,6 +7,7 @@ use App\Models\Log;
 use App\Models\Usuario;
 use App\Models\Filial;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class LogController extends BaseController
 {
@@ -127,10 +128,10 @@ class LogController extends BaseController
 
         // Filtro por datas (se preenchido)
         if ($request->filled('data_inicial')) {
-            $query->whereDate('created_at', '>=', $request->data_inicial);
+            $query->where('created_at', '>=', Carbon::parse($request->data_inicial)->startOfDay());
         }
         if ($request->filled('data_final')) {
-            $query->whereDate('created_at', '<=', $request->data_final);
+            $query->where('created_at', '<=', Carbon::parse($request->data_final)->endOfDay());
         }
 
         if ($request->filled('modelo')) {

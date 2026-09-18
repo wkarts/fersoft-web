@@ -1,19 +1,19 @@
 @extends('default.layout')
 @section('content')
 <div class="container-fluid">
-
+    
     {{-- CABEÇALHO E BOTÕES DE AÇÃO --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="m-0 text-dark fw-bold">{{ $title }}</h2>
-
+        
         <div class="btn-group shadow-sm">
-            <a href="{{ route('gestao-estoque.index', array_merge(request()->query(), ['export' => 'pdf'])) }}" class="btn btn-danger" title="Exportar para PDF">
+            <a href="{{ route('estoque.index', array_merge(request()->query(), ['export' => 'pdf'])) }}" class="btn btn-danger" title="Exportar para PDF">
                 <i class="fas fa-file-pdf"></i> PDF
             </a>
-            <a href="{{ route('gestao-estoque.index', array_merge(request()->query(), ['export' => 'excel'])) }}" class="btn btn-success" title="Exportar para Excel">
+            <a href="{{ route('estoque.index', array_merge(request()->query(), ['export' => 'excel'])) }}" class="btn btn-success" title="Exportar para Excel">
                 <i class="fas fa-file-excel"></i> Excel
             </a>
-            <form action="{{ route('gestao-estoque.sincronizar') }}" method="POST" class="m-0" onsubmit="return confirm('Deseja puxar todo o histórico de pesagens concluídas para o estoque?');">
+            <form action="{{ route('estoque.sincronizar') }}" method="POST" class="m-0" onsubmit="return confirm('Deseja puxar todo o histórico de pesagens concluídas para o estoque?');">
                 @csrf
                 <button type="submit" class="btn btn-warning" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
                     <i class="fas fa-sync-alt"></i> Sincronizar Histórico
@@ -25,7 +25,7 @@
     {{-- FILTROS DE BUSCA MELHORADOS --}}
     <div class="card shadow-sm mb-4">
         <div class="card-body pb-0"> {{-- pb-0 tira o excesso de margem embaixo --}}
-            <form action="{{ route('gestao-estoque.index') }}" method="GET">
+            <form action="{{ route('estoque.index') }}" method="GET">
                 <div class="row align-items-end">
                     <div class="col-md-2 mb-3">
                         <label class="form-label fw-bold mb-1">Data Inicial</label>
@@ -46,17 +46,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3">
-                        <label class="form-label fw-bold mb-1">Unidade</label>
-                        <select name="filial_id" class="form-control">
-                            <option value="todos" {{ ($filialId ?? 'todos') === 'todos' ? 'selected' : '' }}>Todas</option>
-                            <option value="matriz" {{ ($filialId ?? '') === 'matriz' ? 'selected' : '' }}>Matriz</option>
-                            @foreach($filiais as $filial)
-                                <option value="{{ $filial->id }}" {{ (string)($filialId ?? '') === (string)$filial->id ? 'selected' : '' }}>{{ $filial->descricao }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label class="form-label fw-bold mb-1">Fornecedor / Cliente</label>
                         <input type="text" name="parceiro_nome" class="form-control" placeholder="Buscar por nome..." value="{{ request('parceiro_nome') }}">
                     </div>
@@ -233,7 +223,7 @@
             </div>
         </div>
     </div>
-    {{-- ABA POR FORNECEDOR / CLIENTE --}}
+  	{{-- ABA POR FORNECEDOR / CLIENTE --}}
     <div id="conteudo-fornecedores" style="display: none;">
         <div class="card shadow-sm">
             <div class="card-body p-0 table-responsive">
@@ -261,7 +251,7 @@
                                 <td class="text-end text-secondary">R$ {{ number_format($dados['preco_medio'], 4, ',', '.') }}</td>
                                 <td class="text-end text-success">R$ {{ number_format($dados['valor_total'], 2, ',', '.') }}</td>
                             </tr>
-
+                            
                             {{-- LINHA OCULTA (DETALHES/TICKETS) --}}
                             <tr>
                                 <td colspan="7" class="p-0 border-0">
@@ -315,14 +305,14 @@
     function trocarAba(abaId) {
         // Lista de todas as abas
         const abas = ['sintetico', 'analitico', 'fornecedores'];
-
+        
         abas.forEach(function(id) {
             // Remove a classe active dos botões
             document.getElementById('aba-' + id).classList.remove('active');
             // Esconde todas as divs de conteúdo
             document.getElementById('conteudo-' + id).style.display = 'none';
         });
-
+        
         // Adiciona classe active e mostra a aba clicada
         document.getElementById('aba-' + abaId).classList.add('active');
         document.getElementById('conteudo-' + abaId).style.display = 'block';

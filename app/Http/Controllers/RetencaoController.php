@@ -7,7 +7,6 @@ use App\Models\ContaPagar;
 use App\Models\ConfigNota;
 use App\Models\Fornecedor;
 use App\Models\CategoriaConta;
-use App\Models\Filial;
 use Dompdf\Dompdf;
 
 class RetencaoController extends Controller
@@ -25,59 +24,59 @@ class RetencaoController extends Controller
         });
     }
 
-    public function index(Request $request)
-    {
-        $fornecedor = $request->input('fornecedor');
-        $filial_id = $request->input('filial_id');
-        $data_inicio = $request->input('data_inicio', now()->subMonthNoOverflow()->startOfMonth()->toDateString());
-        $data_final = $request->input('data_final', now()->subMonthNoOverflow()->endOfMonth()->toDateString());
+    public function index(Request $request){
+    $emp_id = session('user_logged')['empresa'];
+    $filial_id = $request->input('filial_id'); // Pega o id do select
+    $fornecedor = $request->fornecedor;
+    
+    // 🌟 NOVO: Data Padrão (Mês Anterior) caso o usuário não tenha feito uma pesquisa
+    $data_inicio = $request->input('data_inicio', now()->subMonth()->startOfMonth()->format('Y-m-d'));
+    $data_final  = $request->input('data_final', now()->subMonth()->endOfMonth()->format('Y-m-d'));
 
-        $query = ContaPagar::query()
-            ->where('conta_pagars.empresa_id', $this->empresa_id)
-            ->select('conta_pagars.*')
-            ->where(function ($q) {
-                $q->where('conta_pagars.valor_inss', '>', 0)
-                    ->orWhere('conta_pagars.valor_iss', '>', 0)
-                    ->orWhere('conta_pagars.valor_pis', '>', 0)
-                    ->orWhere('conta_pagars.valor_cofins', '>', 0)
-                    ->orWhere('conta_pagars.valor_ir', '>', 0)
-                    ->orWhere('conta_pagars.valor_csll', '>', 0)
-                    ->orWhere('conta_pagars.outras_retencoes', '>', 0);
-            })
-            ->whereBetween('conta_pagars.data_emissao', [$data_inicio, $data_final]);
+    // Busca as filiais cadastradas
+    $empresas = \App\Models\Filial::where('empresa_id', $emp_id)->get();
 
-        if ($filial_id && $filial_id !== 'todos') {
-            $filial_id === 'matriz'
-                ? $query->whereNull('conta_pagars.filial_id')
-                : $query->where('conta_pagars.filial_id', (int) $filial_id);
+    $query = ContaPagar::where('conta_pagars.empresa_id', $emp_id)
+        ->select('conta_pagars.*')
+        ->where(function($q) {
+            return $q->where('conta_pagars.valor_inss', '>', 0)
+                ->orWhere('conta_pagars.valor_iss', '>', 0)
+                ->orWhere('conta_pagars.valor_pis', '>', 0)
+                ->orWhere('conta_pagars.valor_cofins', '>', 0)
+                ->orWhere('conta_pagars.valor_ir', '>', 0)
+                ->orWhere('conta_pagars.valor_csll', '>', 0)
+                ->orWhere('conta_pagars.outras_retencoes', '>', 0);
+        });
+
+    // 🌟 NOVO: Filtro da Matriz (Idêntico ao seu outro controller)
+    if (!empty($filial_id)) {
+        if ($filial_id == 'matriz') {
+            $query->whereNull('conta_pagars.filial_id');
+        } else {
+            $query->where('conta_pagars.filial_id', $filial_id);
         }
-
-        $query->join('fornecedors', 'fornecedors.id', '=', 'conta_pagars.fornecedor_id')
-            ->when($fornecedor, function ($q, $fornecedor) {
-                $q->where('fornecedors.razao_social', 'LIKE', "%{$fornecedor}%");
-            });
-
-        $data = $query->orderByDesc('conta_pagars.data_emissao')
-            ->paginate(30)
-            ->appends($request->query());
-
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
-            ->orderBy('razao_social')
-            ->get();
-        $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)
-            ->where('tipo', 'pagar')
-            ->orderBy('nome')
-            ->get();
-        $empresas = Filial::where('empresa_id', $this->empresa_id)
-            ->orderBy('descricao')
-            ->get();
-
-        return view('retencoes.index', compact(
-            'data', 'fornecedores', 'categorias', 'empresas', 'data_inicio',
-            'data_final', 'filial_id'
-        ));
     }
 
+    // Filtro por Data (Sempre vai ter dados, pois setamos o mês anterior)
+    if($data_inicio && $data_final){
+        $query->whereBetween('conta_pagars.data_emissao', [$data_inicio, $data_final]);
+    }
+
+    $query->join('fornecedors', 'fornecedors.id' , '=', 'conta_pagars.fornecedor_id')
+        ->when($fornecedor, function ($q) use ($fornecedor) {
+            return $q->where('fornecedors.razao_social', 'LIKE', "%$fornecedor%");
+        });
+
+    $data = $query->orderBy('conta_pagars.data_emissao', 'desc')->paginate(30);
+    $data->appends($request->all()); // Mantém os filtros ao mudar de página!
+
+    $fornecedores = Fornecedor::where('empresa_id', $emp_id)->orderBy('razao_social', 'asc')->get();
+    $categorias = CategoriaConta::where('empresa_id', $emp_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
+    
+    // Enviando as datas padrões para preencher a tela
+    return view('retencoes.index', compact('data', 'fornecedores', 'categorias', 'empresas', 'data_inicio', 'data_final', 'filial_id'));
+}
+  
     public function print(Request $request){
         $fornecedor = $request->fornecedor;
         $data_inicio = $request->data_inicio;

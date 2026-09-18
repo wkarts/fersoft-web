@@ -83,7 +83,7 @@
                         <i class="fa fa-info-circle"></i> Entender a Rotina
                     </button>
                 </div>
-
+                
                 {{-- BOTÃO FILTRAR --}}
                 <div class="col-lg-2 mb-2">
                     <button type="submit" class="btn btn-primary font-weight-bold btn-block">
@@ -106,7 +106,7 @@
 
       <a href="{{ route('dfe.sincronizar') }}" class="btn btn-info"> <i class="fas fa-sync"></i> Sincronizar Notas
 		</a>
-
+      
         @if($busca_automatica)
         <a href="/dfe/logs" class="btn btn-warning btn-sm float-right @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
             <i class="la la-file"></i>
@@ -145,7 +145,7 @@
                                                 <th class="datatable-cell"><span style="width: 90px;">VALOR</span></th>
                                                 <th class="datatable-cell"><span style="width: 80px;">EMISSÃO</span></th>
                                                 <th class="datatable-cell"><span style="width: 100px;">STATUS SEFAZ</span></th> <!-- COLUNA NOVA -->
-                                        <th class="datatable-cell"><span style="width: 100px;">MANIFESTO</span></th> <!-- SEU STATUS ANTIGO -->
+        										<th class="datatable-cell"><span style="width: 100px;">MANIFESTO</span></th> <!-- SEU STATUS ANTIGO -->
                                                 <th class="datatable-cell"><span style="width: 80px;">ERP / FIN.</span></th>
                                                 <th class="datatable-cell"><span style="width: 120px;">AÇÕES</span></th>
                                                 <th class="datatable-cell"><span style="width: 180px;">CHAVE DE ACESSO</span></th>
@@ -277,7 +277,7 @@
                                         <a style="width: 100%;" class="btn btn-info mt-1" onclick="setarEvento('{{$d->chave}}')" data-toggle="modal" data-target="#modal1">Manifestar</a>
                                         @endif
                                     </div>
-
+                                  
                                 </div>
                             </div>
                             @endforeach

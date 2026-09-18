@@ -17,6 +17,8 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
+    'site_suporte' => env('SITE_SUPORTE', ''),
+    'email_suporte' => env('EMAIL_SUPORTE', ''),
 
     /*
     |--------------------------------------------------------------------------

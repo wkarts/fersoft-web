@@ -86,11 +86,13 @@
 											<div class="row">
 												<div class="input-group col-8">
 													<select class="form-control select2 fornecedor" id="kt_select2_1" name="fornecedor">
-														<option value="--">Selecione o fornecedor</option>
-														@foreach($fornecedores as $f)
-														<option value="{{$f->id}}">{{$f->razao_social}} ({{$f->cpf_cnpj}})</option>
-														@endforeach
-													</select>
+                                                        <option value="--">Selecione o fornecedor</option>
+                                                        @foreach($fornecedores as $f)
+                                                            <option value="{{$f->id}}">
+                                                                {{$f->id}} - {{$f->razao_social}} @if($f->nome_fantasia) | {{$f->nome_fantasia}} @endif ({{$f->cpf_cnpj}})
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
 													<button type="button" onclick="novoFornecedor()" class="btn btn-warning btn-sm">
 														<i class="la la-plus-circle icon-add"></i>
 													</button>
@@ -352,56 +354,90 @@
 											</div>
 										</div>
 										<div class="pb-5" data-wizard-type="step-content" data-wizard-state="current">
-											<h4 class="mb-10 font-weight-bold text-dark">Selecione a forma de pagamento</h4>
-											<!--begin::Input-->
-											<div class="row">
-												<div class="form-group validated col-sm-3 col-lg-3">
-													<label class="col-form-label">Forma de pagamento</label>
-													<select class="custom-select form-control" id="formaPagamento">
-														<option value="--">Selecione a forma de pagamento</option>
-														<option value="a_vista">A vista</option>
-														<option value="30_dias">30 Dias</option>
-														<option value="personalizado">Personalizado</option>
-													</select>
-												</div>
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Qtd de parcelas</label>
-													<div class="">
-														<input type="text" class="form-control" name="bairro" id="qtdParcelas">
+    <h4 class="mb-10 font-weight-bold text-dark">Forma de Pagamento e Rateio</h4>
+    
+    <div class="row">
+        <!-- Tipo de Prazo -->
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Tipo de Condição</label>
+            <select class="custom-select form-control" id="formaPagamento" name="formaPagamento">
+                <option value="a_vista">A vista</option>
+                <option value="30_dias">30 Dias</option>
+                <option value="personalizado">Personalizado</option>
+            </select>
+        </div>
 
-													</div>
-												</div>
+        <!-- Ativar Rateio por Veículo -->
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Rateio por Veículo nas Faturas?</label>
+            <select class="custom-select form-control" id="rateio_veiculo" name="rateio_veiculo">
+                <option value="0">Não</option>
+                <option value="1">Sim</option>
+            </select>
+        </div>
+    </div>
 
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Data de Vencimento</label>
-													<div class="">
-														<div class="input-group date">
-															<input type="text" class="form-control data-input" id="kt_datepicker_3">
-															<div class="input-group-append">
-																<span class="input-group-text">
-																	<i class="la la-calendar"></i>
-																</span>
-															</div>
-														</div>
-													</div>
-												</div>
+    <hr>
+    <h5 class="mb-5 font-weight-bold text-dark">Formas de Pagamento Vinculadas</h5>
+    
+    <div class="row">
+        <!-- Primeira Forma de Pagamento -->
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Forma 1</label>
+            <select class="custom-select form-control" id="tipo_pagamento_1" name="tipo_pagamento_1">
+                <option value="01">Dinheiro</option>
+                <option value="17">PIX</option>
+                <option value="02">Cheque</option>
+                <option value="03">Cartão de Crédito</option>
+                <option value="04">Cartão de Débito</option>
+                <option value="05">Crédito Loja</option>
+                <option value="15">Boleto Bancário</option>
+                <option value="90">Sem Pagamento</option>
+            </select>
+        </div>
+        <div class="form-group validated col-sm-3 col-lg-2">
+            <label class="col-form-label">Valor 1</label>
+            <input type="text" class="form-control money" id="valor_pagamento_1" name="valor_pagamento_1" value="0,00">
+        </div>
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Conta Empresa 1 (Caixa/Banco)</label>
+            <select class="custom-select form-control" id="conta_empresa_id_1" name="conta_empresa_id_1">
+                <option value="">Selecione a Conta</option>
+                @foreach($categoriasDeConta as $c) <!-- Se houver lista de contas/bancos cadastrados -->
+                    <option value="{{$c->id}}">{{$c->nome}}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
 
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<label class="col-form-label">Valor da parcela</label>
-													<div class="">
-														<input type="text" class="form-control" id="valor_parcela">
-
-													</div>
-												</div>
-
-												<div class="form-group validated col-sm-2 col-lg-2">
-													<br>
-													<a style="margin-top: 13px;" id="add-pag" class="btn btn-primary font-weight-bold text-uppercase px-9 py-4">
-														Adicionar
-													</a>
-												</div>
-											</div>
-
+    <div class="row mt-2">
+        <!-- Segunda Forma de Pagamento (Opcional) -->
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Forma 2 (Opcional)</label>
+            <select class="custom-select form-control" id="tipo_pagamento_2" name="tipo_pagamento_2">
+                <option value="">-- Nenhuma --</option>
+                <option value="17">PIX</option>
+                <option value="01">Dinheiro</option>
+                <option value="03">Cartão de Crédito</option>
+                <option value="04">Cartão de Débito</option>
+                <option value="15">Boleto Bancário</option>
+            </select>
+        </div>
+        <div class="form-group validated col-sm-3 col-lg-2">
+            <label class="col-form-label">Valor 2</label>
+            <input type="text" class="form-control money" id="valor_pagamento_2" name="valor_pagamento_2" value="0,00">
+        </div>
+        <div class="form-group validated col-sm-3 col-lg-3">
+            <label class="col-form-label">Conta Empresa 2 (Caixa/Banco)</label>
+            <select class="custom-select form-control" id="conta_empresa_id_2" name="conta_empresa_id_2">
+                <option value="">Selecione a Conta</option>
+                @foreach($categoriasDeConta as $c)
+                    <option value="{{$c->id}}">{{$c->nome}}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+</div>
 											<div class="row">
 												<div class="form-group validated col-sm-12 col-lg-12">
 
@@ -428,9 +464,7 @@
 
 
 										</div>
-										@include('compraManual.partials.fatura_avancada', ['mostrarCategoriaConta' => true, 'mostrarAdiantamento' => true, 'faturasIniciais' => []])
-
-											<!--end: Wizard Step 2-->
+										<!--end: Wizard Step 2-->
 
 										<!--begin: Wizard Actions-->
 										<div class="d-flex justify-content-between border-top mt-5 pt-10">
@@ -1486,7 +1520,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 let js = {
                     fornecedor: fornecedor,
                     formaPagamento: $('#formaPagamento').val(),
-                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
                     
                     // --- CAMPOS INJETADOS À FORÇA ---
                     nf: $('#numero_emissao').val(),
@@ -1494,11 +1527,17 @@ document.addEventListener("DOMContentLoaded", function() {
                     data_emissao: $('#data_emissao').val(),
                     veiculo_id: $('#veiculo_id').val(),
                     filial_id: $('#filial_id').val(),
+                  	rateio_veiculo: $('#rateio_veiculo').val(),
+                    tipo_pagamento_1: $('#tipo_pagamento_1').val(),
+                    valor_pagamento_1: $('#valor_pagamento_1').val(),
+                    conta_empresa_id_1: $('#conta_empresa_id_1').val(),
+                    tipo_pagamento_2: $('#tipo_pagamento_2').val(),
+                    valor_pagamento_2: $('#valor_pagamento_2').val(),
+                    conta_empresa_id_2: $('#conta_empresa_id_2').val(),
                     // --------------------------------
 
                     itens: ITENS,
                     fatura: FATURA,
-                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     total: TOTAL,
                     desconto: $('#desconto').val(),
                     acrescimo: $('#acrescimo').val(),
@@ -1556,7 +1595,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     id: $('#compra_id').val(),
                     fornecedor_id: fornecedor,
                     formaPagamento: $('#formaPagamento').val(),
-                    usar_adiantamento: $('#usar_adiantamento').is(':checked') ? 1 : 0,
 
                     // --- CAMPOS INJETADOS À FORÇA ---
                     nf: $('#numero_emissao').val(),
@@ -1567,7 +1605,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
                     itens: ITENS,
                     fatura: FATURA,
-                    fatura_manual: window.coletarFaturaManualCompra ? window.coletarFaturaManualCompra() : [],
                     faturas_removidas: PARCELAS_REMOVIDAS,
                     total: TOTAL,
                     desconto: $('#desconto').val(),
