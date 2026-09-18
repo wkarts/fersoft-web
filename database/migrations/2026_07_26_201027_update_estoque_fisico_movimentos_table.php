@@ -417,6 +417,10 @@ return new class extends Migration
 
     private function equivalentIndexExists(string $tableName, array $columns, bool $unique): bool
     {
+        if ($this->isSqlite()) {
+            return false;
+        }
+
         $names = DB::table('information_schema.STATISTICS')
             ->where('TABLE_SCHEMA', DB::getDatabaseName())
             ->where('TABLE_NAME', $tableName)
