@@ -9,6 +9,27 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fersoft_test
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: fersoft_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
 
     steps:
       - name: Checkout
@@ -19,7 +40,7 @@ jobs:
         with:
           php-version: "8.2"
           tools: composer:v2
-          extensions: mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          extensions: pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
           coverage: none
 
       - name: Versions
@@ -85,7 +106,7 @@ jobs:
           echo "EVO_WHATSAPP_MODAL_TITLE=${{ secrets.EVO_WHATSAPP_MODAL_TITLE }}" >> $GITHUB_ENV
           echo "EVO_WHATSAPP_MODAL_HINTFOOTER=${{ secrets.EVO_WHATSAPP_MODAL_HINTFOOTER }}" >> $GITHUB_ENV
 
-      # Gera .env COMPLETO e aplica overrides seguros pro CI + SQLite
+      # Gera .env COMPLETO e aplica overrides seguros para o banco configurado no CI
       - name: Bootstrap .env (integral) for CI
         shell: bash
         run: |
@@ -126,7 +147,7 @@ jobs:
           COMPOSER_NO_AUDIT: 1
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Prepare Laravel (SQLite)
+      - name: Prepare Laravel (MySQL 8)
         shell: bash
         run: |
           php artisan key:generate --force || true
