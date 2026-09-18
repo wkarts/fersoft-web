@@ -21,7 +21,7 @@ class FiscalImportService
     }
 
   
-  public function determinarRegraFiscal($cfopSaida, $finalidade)
+    public function determinarRegraFiscal($cfopSaida, $finalidade)
     {
         // Regras padrão baseadas na UF (Entrada)
         $isInterestadual = (substr($cfopSaida, 0, 1) == '6');
@@ -62,7 +62,6 @@ class FiscalImportService
 
         return $regra;
     }
-}
   
     /**
      * Registra o vínculo Produto x Fornecedor (Referência)
