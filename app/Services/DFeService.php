@@ -115,8 +115,6 @@ class DFeService{
 							'num_prot' => $xml->nProt,
 							'chave' => $xml->chNFe,
 							'nNf' => $xml->nNF,
-                            'cSitNFe' => (string) ($xml->cSitNFe ?? '1'),
-                            'situacao_sefaz' => ((string) ($xml->cSitNFe ?? '1')) === '3' ? 'CANCELADA' : (((string) ($xml->cSitNFe ?? '1')) === '2' ? 'DENEGADA' : 'AUTORIZADA'),
 							'nsu' => $ultNSU,
 							'tipo' => 0,
 							'fatura_salva' => false,

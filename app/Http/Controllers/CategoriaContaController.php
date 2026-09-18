@@ -64,9 +64,12 @@ class CategoriaContaController extends Controller
         $data['usuario_id'] = get_id_user();
         $data['filial_id'] = __normaliza_filial_banco($filialRequest);
         $data['incluir_resultado'] = $request->has('incluir_resultado') ? 1 : 0;
-      	// Novos campos adicionados:
+
         $data['ignora_terceiro'] = $request->has('ignora_terceiro') ? 1 : 0;
         $data['gera_provisao'] = $request->has('gera_provisao') ? 1 : 0;
+        $data['int_ctb'] = $request->input('int_ctb');
+        // NOVO CAMPO: Captura o CTB para Serviços
+        $data['int_ctb_servico'] = $request->input('int_ctb_servico');
 
         $result = CategoriaConta::create($data);
 
@@ -138,11 +141,14 @@ class CategoriaContaController extends Controller
         $resp->incluir_resultado = $request->has('incluir_resultado') ? 1 : 0;
         $resp->filial_id = __normaliza_filial_banco($filialRequest);
         $resp->usuario_id = get_id_user();
-      	// Adicione os novos campos aqui:
+
         $resp->conta_contabil_despesa_id = $request->input('conta_contabil_despesa_id');
         $resp->conta_contabil_provisao_id = $request->input('conta_contabil_provisao_id');
         $resp->ignora_terceiro = $request->has('ignora_terceiro') ? 1 : 0;
         $resp->gera_provisao = $request->has('gera_provisao') ? 1 : 0;
+        $resp->int_ctb = $request->input('int_ctb');
+        // NOVO CAMPO: Atualiza o CTB para Serviços
+        $resp->int_ctb_servico = $request->input('int_ctb_servico');
 
         $result = $resp->save();
 

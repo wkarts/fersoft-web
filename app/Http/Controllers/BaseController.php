@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use App\Services\LogService;
 use App\Models\ConfigNota;
+use App\Models\BaseModel;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\DB;
 use PragmaRX\Google2FA\Google2FA;
@@ -373,9 +374,6 @@ abstract class BaseController extends Controller
             $registroId = null;
             $dadosAnteriores = [];
 
-            // 🔹 Impede duplicidade com auditoria automática do BaseModel
-            $this->disableNextModelAudit();
-
             if ($request->filled('id')) {
                 $registroId = $request->id;
                 $record = $this->model::where('empresa_id', $this->empresa_id)
@@ -386,7 +384,7 @@ abstract class BaseController extends Controller
                 }
 
                 // 🔹 Captura os dados antes da alteração para o log garantindo JSON correto
-                $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $dadosAnteriores = $record->getAttributes();
 
                 $record->fill($data);
                 $record->save();
@@ -411,18 +409,18 @@ abstract class BaseController extends Controller
                 ));
             }
 
-            // 🔹 Marca que o controller assumiu o log desta operação
-            $this->markManualAuditExecuted();
+            // Models que herdam BaseModel já foram auditados automaticamente durante
+            // create/save. Não registra uma segunda cópia manual da mesma operação.
+            // Models Eloquent legados que não usam BaseModel continuam cobertos aqui.
+            if (!($record instanceof BaseModel)) {
+                $modelInstance = is_string($this->model) ? app($this->model) : $this->model;
 
-            // 🔹 Certifica-se de que $this->model é uma instância válida antes de chamar get_class()
-            $modelInstance = is_string($this->model) ? app($this->model) : $this->model;
-
-            // 🔹 Registra o log da operação garantindo JSON correto
-            $this->logService->registrar($acao, get_class($modelInstance), [
-                'registro_id' => $registroId,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => json_encode($record->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            ]);
+                $this->logService->registrar($acao, get_class($modelInstance), [
+                    'registro_id' => $registroId,
+                    'dados_antes' => $dadosAnteriores,
+                    'dados_depois' => $record->getAttributes(),
+                ]);
+            }
 
         } catch (\Exception $e) {
             session()->flash('mensagem_erro', $e->getMessage());
@@ -457,16 +455,7 @@ abstract class BaseController extends Controller
         try {
             // 🔹 Busca o registro pertencente ao tenant
             $record = $this->getTenantRecords()->findOrFail($id);
-            $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
-
-            // 🔹 Certifica-se de que $this->model é uma instância válida antes de chamar get_class()
-            $modelInstance = is_string($this->model) ? app($this->model) : $this->model;
-
-            // 🔹 Registra log da edição
-            $this->logService->registrar('edit', get_class($modelInstance), [
-                'registro_id' => $id,
-                'dados_anteriores' => $dadosAnteriores,
-            ]);
+            // Abrir formulário não altera estado e não pertence à auditoria de negócio.
 
             return $this->register($id); // Comportamento padrão para exibição do formulário
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -503,11 +492,13 @@ abstract class BaseController extends Controller
             }
 
             // 🔹 Captura os dados antes da exclusão para o log
-            $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
+            $dadosAnteriores = $record->getAttributes();
             $acao = 'delete';
 
-            // Evita duplicidade com auditoria automática do BaseModel
-            $this->disableNextModelAudit();
+            // Evita duplicidade somente quando o model realmente usa a auditoria automática.
+            if ($record instanceof BaseModel) {
+                $this->disableNextModelAudit();
+            }
 
             if ($this->modelSupportsSoftDelete()) {
                 $record->delete();
@@ -576,10 +567,12 @@ abstract class BaseController extends Controller
             }
 
             // 🔹 Captura os dados antes da restauração para o log
-            $dadosAnteriores = json_encode($record->toArray(), JSON_UNESCAPED_UNICODE);
+            $dadosAnteriores = $record->getAttributes();
 
-            // Evita duplicidade com auditoria automática do BaseModel
-            $this->disableNextModelAudit();
+            // Evita duplicidade somente quando o model realmente usa a auditoria automática.
+            if ($record instanceof BaseModel) {
+                $this->disableNextModelAudit();
+            }
 
             $record->restore();
 
@@ -590,7 +583,7 @@ abstract class BaseController extends Controller
             $this->logService->registrar('restore', get_class($modelInstance), [
                 'registro_id' => $id,
                 'dados_antes' => $dadosAnteriores,
-                'dados_depois' => json_encode($record->fresh()?->toArray() ?? $record->toArray(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'dados_depois' => $record->fresh()?->getAttributes() ?? $record->getAttributes(),
             ]);
 
             session()->flash('mensagem_sucesso', "O registro #{$id} foi restaurado com sucesso em: {$this->formTitle}");

@@ -48,11 +48,14 @@ class RequisicaoController extends BaseController
 
         $funcionarios = Funcionario::where('empresa_id', $empresa_id)->orderBy('nome')->get();
 
+        // Filtra especificamente por quem tem a função de Técnico ou Segurança
         $tecnicos = Funcionario::where('empresa_id', $empresa_id)
             ->whereHas('funcao', function($q) {
                 $q->where('nome', 'LIKE', '%Tecnico%')
-                    ->orWhere('nome', 'LIKE', '%Seguranca%');
-            })->orderBy('nome')->get();
+                  ->orWhere('nome', 'LIKE', '%Seguranca%');
+            })
+            ->orderBy('nome')
+            ->get();
       
         $filial_id = $this->filial_id;
 
@@ -125,7 +128,7 @@ class RequisicaoController extends BaseController
                     'produto_id'    => $produto->id,
                     'quantidade'    => $item['qtd'],
                     'ca_snapshot'   => $item['ca'] ?? $item['ca_numero'] ?? $produto->ca_numero ?? $produto->ca,
-                    'fabricante'    => $item['fabricante'] ?? $produto->fabricante ?? null,
+                  	'fabricante'    => $item['fabricante'] ?? $produto->fabricante,
                     'uso'           => $item['uso'] ?? null,
                     'motivo'        => $item['motivo'] ?? null,
                     'created_at'    => $dataRequisicao,

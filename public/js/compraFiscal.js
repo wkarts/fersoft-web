@@ -423,7 +423,7 @@ $('#salvar').click(() => {
 var salvando = false;
 $('#salvarNF').click(() => {
     $('#salvarNF').addClass('spinner').attr('disabled', 'disabled');
-
+    
     if(salvando == false){
         salvando = true;
         $('#preloader2').css('display', 'block');
@@ -450,13 +450,13 @@ $('#salvarNF').click(() => {
 	function salvarFatura(compra_id, call){
     let token = $('#_token').val();
     // Pegando as faturas diretamente do input hidden (onde o rateio já salva o JSON pronto)
-    let faturas = JSON.parse($('#fatura').val() || '[]');
+    let faturas = JSON.parse($('#fatura').val() || '[]'); 
     let faturasSalvas = 0;
 
     if(faturas.length > 0){
         faturas.map((item) => {
             item.compra_id = compra_id;
-
+            
             $.ajax({
                 type: 'POST',
                 data: { parcela: item, _token: token },
@@ -467,7 +467,7 @@ $('#salvarNF').click(() => {
                     if(faturasSalvas === faturas.length){
                         call(true);
                     }
-                },
+                }, 
                 error: function(e){
                     console.log(e);
                     $('#preloader2').css('display', 'none');
@@ -527,7 +527,7 @@ $('#filial_id').change(() => {
         dataType: 'json',
         success: function(e){
             call(e);
-        },
+        }, 
         error: function(e){
             console.log(e);
             $('#preloader2').css('display', 'none');
@@ -601,7 +601,7 @@ $('#conv_estoque').blur(() => {
             cst_pis: tr.find('.cst_pis_input').val(),
             cst_cofins: tr.find('.cst_cofins_input').val(),
             finalidade: tr.find('.finalidade_input').val(),
-
+            
             // Impostos do XML
             vbc_icms: tr.find('.vbc_icms').val(),
             p_icms: tr.find('.p_icms').val(),
@@ -621,7 +621,7 @@ $('#conv_estoque').blur(() => {
             valor_ibs: tr.find('.valor_ibs').val(),
             valor_cbs: tr.find('.valor_cbs').val(),
             class_trib_ibs_cbs: tr.find('.class_trib_ibs_cbs').val(),
-
+            
             filial_id: $('#filial_id').length ? $('#filial_id').val() : -1,
             unidade: tr.find('.unidade').val() || 'UN'
         };
@@ -637,7 +637,7 @@ $('#conv_estoque').blur(() => {
                 if(itensSalvos === totalItens){
                     call(true);
                 }
-            },
+            }, 
             error: function(e){
                 console.log(e);
                 $('#preloader2').css('display', 'none');

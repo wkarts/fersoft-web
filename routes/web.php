@@ -7,6 +7,50 @@ Route::get('/novoparceiro', 'UserController@novoparceiro');
 
 Route::post('/recuperarSenha', 'UserController@recuperarSenha');
 
+// Cadastro público de parceiro
+Route::group(['prefix' => 'cadastro-parceiro'], function(){
+    Route::get('/{nome_empresa}', 'PessoaPreCadastroController@createPublico');
+    Route::post('/salvar', 'PessoaPreCadastroController@storePublico');
+});
+
+// PORTAL DO CLIENTE
+// O NOVO não fornece middleware próprio do portal; não utilizar a sessão interna do ERP como substituta.
+Route::group(['prefix' => 'portal-cliente'], function(){
+    Route::get('/{empresa_id}/login', 'PortalClienteController@login');
+    Route::post('/{empresa_id}/autenticar', 'PortalClienteController@autenticar');
+    Route::get('/logout', 'PortalClienteController@logout');
+    Route::get('/{slug}/esqueci-senha', 'PortalClienteController@esqueciSenha');
+    Route::post('/{slug}/recuperar-senha', 'PortalClienteController@recuperarSenha');
+
+    // Painel e Solicitação: a sessão do cliente deve ser validada no controller.
+    Route::get('/painel', 'PortalClienteController@painel');
+    Route::post('/coleta/salvar', 'PortalClienteController@storeColeta');
+    Route::get('/sair', 'PortalClienteController@logout');
+});
+
+// 📋 Rota Pública do Checklist do Motorista (Acesso via WhatsApp)
+// O controller deve validar a autorização do acesso externo; o ID sozinho não demonstra essa autorização.
+Route::group(['prefix' => 'checklist/veiculo'], function(){
+    Route::get('/{id}', 'ChecklistMovimentacaoController@showForm');
+    Route::post('/{id}/salvar', 'ChecklistMovimentacaoController@store');
+});
+
+// ==========================================
+// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
+// ==========================================
+/*Route::post('/whatsapp/ponto/webhook', 'PontoWhatsAppController@receberMensagem');*/
+
+// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
+// Autenticação da origem deve ser validada pelo controller; exclusão de CSRF restrita à rota abaixo.
+Route::group(['prefix' => 'whatsapp/ponto/webhook'], function(){
+    Route::match(['get', 'post'], '/messages-upsert', 'App\Http\Controllers\PontoWhatsAppController@receberMensagem')
+        ->withoutMiddleware([
+            \App\Http\Middleware\VerifyCsrfToken::class,
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class
+        ]);
+});
+
+
 Route::group(['prefix' => '/ajax'], function(){
     Route::get('/', 'AjaxController@index');
 });
@@ -267,6 +311,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'controleCozinha'],function(){
+        Route::get('/', 'CozinhaController@index');
         Route::get('/controle/{tela?}', 'CozinhaController@index');
         Route::get('/selecionar', 'CozinhaController@selecionar');
         Route::get('/buscar', 'CozinhaController@buscar');
@@ -315,6 +360,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
             Route::get('/sugestoes', 'ConciliacaoController@getSugestoes')->name('conciliacao.sugestoes');
         });
 
+
+        Route::group(['prefix' => 'custo-veiculo'], function(){
+            Route::get('/', 'CustoVeiculoController@index')->name('custo.veiculo.index');
+            Route::get('/excel', 'CustoVeiculoController@exportarExcel')->name('custo.veiculo.excel');
+            Route::get('/pdf', 'CustoVeiculoController@gerarPdf')->name('custo.veiculo.pdf');
+        });
     });
 
     Route::group(['prefix' => '/contadores'], function(){
@@ -619,6 +670,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::get('/servicos', 'AgendamentoController@servicos');
         Route::get('/filtrarServicos', 'AgendamentoController@filtrarServicos');
+
+        // Rota correta para conversão em Ordem de Serviço
+        Route::get('/gerarOs/{id}', 'AgendamentoController@gerarOs');
+        Route::post('/cancelar/{id}', 'AgendamentoController@cancelar');
     });
 
     Route::group(['prefix' => '/eventos', 'middleware' => ['validaEvento']], function(){
@@ -666,6 +721,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/deleteItem/{id}', 'LocacaoController@deleteItem');
         Route::get('/alterarStatus/{id}', 'LocacaoController@alterarStatus');
         Route::get('/comprovante/{id}', 'LocacaoController@comprovante');
+
+        // ROTAS LOGÍSTICAS VIA POST (PARA RECEBER MOTORISTA/VEÍCULO DO MODAL)
+        Route::match(['get', 'post'], '/marcarComoEntregue/{id}', 'LocacaoController@marcarComoEntregue');
+        Route::match(['get', 'post'], '/solicitarRetirada/{id}', 'LocacaoController@solicitarRetirada');
+        Route::match(['get', 'post'], '/finalizarLocacao/{id}', 'LocacaoController@finalizarLocacao');
+        Route::get('/gerarFaturamentoFinanceiro/{id}', 'LocacaoController@gerarFaturamentoFinanceiro');
+        Route::get('/imprimirFatura/{id}', 'LocacaoController@imprimirFatura');
     });
 
     Route::group(['prefix' => '/dfe'], function(){
@@ -684,8 +746,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/filtro', 'DFeController@filtro');
         Route::post('/salvar', 'DFeController@salvar');
         Route::get('/gerar-venda/{id}', 'DFeController@gerarVenda');
-        Route::get('/sincronizar-compras', 'DFeController@sincronizarCompras')->name('dfe.sincronizar');
-        Route::post('/salvar-produto-ajax', 'DFeController@salvarProdutoAjax')->name('dfe.salvar-produto-ajax');
+        Route::get('/sincronizar', 'DFeController@sincronizarCompras')->name('dfe.sincronizar');
     });
 
     Route::group(['prefix' => '/relatorios'], function(){
@@ -1235,7 +1296,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/request', 'CategoriaServicoController@request');
         Route::post('/save', 'CategoriaServicoController@save');
         Route::post('/update', 'CategoriaServicoController@update');
-        Route::post('/update', 'CategoriaServicoController@update');
     });
 
     Route::group(['prefix' => 'categoriasConta'],function(){
@@ -1331,6 +1391,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/syncNotaFiscal','ContaReceberController@syncNotaFiscal');
         Route::get('/visualizarDanfe/{id}', 'ContaReceberController@visualizarDanfe');
 
+        Route::get('/detalhes/{id}', 'ContaReceberController@detalhes');
+        Route::post('/baixarParcial', 'ContaReceberController@baixarParcial');
+
     });
 
     Route::group(['prefix' => 'produtos'],function(){
@@ -1399,7 +1462,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/dup/{qtd}', 'ProductController@dup');
         Route::get('/exportacaoBalanca', 'ProductController@exportacaoBalanca');
         Route::post('/exportacaoBalanca', 'ProductController@exportacaoBalancaFile');
-        Route::get('/searchProduto', 'ProductController@searchProduto')->name('produtos.searchProduto');
         Route::post('/corrige-locais', 'ProductController@corrigeLocais')->name('produtos.corrigeLocais');
         //Route::post('/corrige-locais', 'ProductController@corrigeLocais')->name('produtos.corrigeLocais')->middleware('auth');
 
@@ -1407,7 +1469,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/ajax/class-trib-ibs-cbs', 'ProductController@ajaxClassTribIbsCbs');
         Route::get('/ajax/reducao-ibs-cbs', 'ProductController@ajaxReducaoIbsCbs');
         Route::post('/ibs-cbs/atualizar', 'ProdutoIbsCbsController@atualizar')->name('produtos.ibscbs.atualizar');
-        Route::post('/salvarProdutoAjaxCompleto', 'ProductController@salvarProdutoAjaxCompleto')->name('produtos.salvarProdutoAjaxCompleto');
+        Route::get('/searchProduto', 'ProductController@searchProduto')->name('produtos.searchProduto');
+        Route::post('/salvarProdutoAjaxCompleto', 'ProductController@salvarProdutoAjaxCompleto');
     });
 
     Route::group(['prefix' => 'receita'],function(){
@@ -1420,7 +1483,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     Route::group(['prefix' => 'vendasEmCredito'],function(){
         Route::get('/', 'CreditoVendaController@index');
-        Route::get('/receber', 'CreditoVendaController@receber');
         Route::get('/receber', 'CreditoVendaController@receber');
         Route::get('/delete/{id}', 'CreditoVendaController@delete');
         //Route::get('/somaVendas/{cliente_id}', 'CreditoVendaController@somaVendas');
@@ -1594,7 +1656,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/imprimir/{id}', 'CteOsController@imprimir');
         Route::get('/download/{id}', 'CteOsController@download');
         Route::post('/consultar', 'CteOsController@consultar');
-        Route::post('/enviar', 'CteOsController@enviar');
+
         Route::post('/cartaCorrecao', 'CteOsController@cartaCorrecao');
         Route::post('/cancelar', 'CteOsController@cancelar');
 
@@ -1777,8 +1839,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/consultaCadastrado/{doc}', 'ProviderController@consultaCadastrado');
         Route::post('/quickSave', 'ProviderController@quickSave');
         Route::get('/historico/{id}', 'ProviderController@historico');
-        Route::patch('/{id}/toggle-ativo', 'ProviderController@toggleAtivo')->name('fornecedores.toggle-ativo');
-        Route::post('/limpar-duplicidades', 'ProviderController@limparDuplicidades')->name('fornecedores.limpar-duplicidades');
+        Route::get('/toggle-ativo/{id}', 'ProviderController@toggleAtivo');
+        Route::get('/limpar-duplicidades', 'ProviderController@limparDuplicidades');
     });
 
     Route::group(['prefix' => 'compraFiscal', 'middleware' => ['limiteProdutos', 'limiteClientes']],function(){
@@ -1786,7 +1848,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/new', 'CompraFiscalController@new');
         Route::post('/salvarNfFiscal', 'CompraFiscalController@salvarNfFiscal');
         Route::post('/salvarItem', 'CompraFiscalController@salvarItem');
-        Route::post('/salvarParcela', 'CompraFiscalController@salvarParcela')->name('compraFiscal.salvarParcela');
+        Route::post('/salvarParcela', 'CompraFiscalController@salvarParcela');
         Route::get('/read', 'CompraFiscalController@read');
         Route::get('/teste', 'CompraFiscalController@teste');
         Route::get('/syncDataEmissaoRetroativa', 'CompraManualController@syncDataEmissaoRetroativa');
@@ -1849,6 +1911,19 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::get('/relatorios', 'PontoRelatorioController@index');
         Route::get('/relatorios/csv', 'PontoRelatorioController@csv');
+
+        // Rotas adicionais do NOVO: espelho, fechamento, férias e exportação.
+        Route::get('/espelho', 'PontoMarcacaoController@espelho')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/espelho/pdf/{id}', 'PontoMarcacaoController@espelhoPdf')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/fechamento', 'PontoFechamentoController@index')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/fechamento/processar', 'PontoFechamentoController@processarFechamento')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/fechamento/ajustar-saldo', 'PontoFechamentoController@ajustarSaldo')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/fechamento/reabrir', 'PontoFechamentoController@reabrirFechamento')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/ponto/dashboard', 'PontoController@dashboard')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/ponto/ferias/salvar', 'PontoController@salvarFerias')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/ponto/ferias/cancelar/{id}', 'PontoController@cancelarFerias')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/relatorios/exportar-afd', 'PontoRelatorioController@exportarAfd')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/ajuste-manual', 'PontoMarcacaoController@ajusteManual')->middleware(['verificaEmpresa', 'validaAcesso']);
     });
 
     Route::group(['prefix' => 'funcionarios'],function(){
@@ -1967,6 +2042,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/store_pdv', 'OrderController@storePdv');
         Route::get('/gerarVendaCompleta/{id}', 'OrderController@gerarVendaCompleta');
 
+
+        // Rotas adicionais do NOVO: faturamento, oficina, laudo técnico e WhatsApp.
+        Route::get('/gerarVenda/{id}', 'OrderController@gerarVenda');
+        Route::get('/gerarNfse/{id}', 'OrderController@gerarNfse');
+        Route::get('/getVeiculosCliente/{clienteId}', 'OrderController@getVeiculosCliente');
+        Route::post('/storeVeiculoCliente', 'OrderController@storeVeiculoCliente');
+        Route::get('/historicoVeiculo/{veiculoId}', 'OrderController@historicoVeiculo');
+        Route::post('/salvarChecklist', 'OrderController@salvarChecklist');
+        Route::get('/enviarWhatsapp/{id}', 'OrderController@enviarWhatsapp');
     });
 
     Route::group(['prefix' => 'semRegistro'],function(){
@@ -2059,6 +2143,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/reforma/preview-item', 'VendaController@previewReformaItem')->name('vendas.reforma.previewItem');
         Route::post('/{venda}/nfe/reforma/recalc-item/{item}', 'VendaController@recalcItem')->name('vendas.nfe.reforma.recalcItem');
         Route::post('/{venda}/nfe/reforma/recalc-all', 'VendaController@recalcAll')->name('vendas.nfe.reforma.recalcAll');
+
+        Route::post('/setEstadoCliente', 'VendaController@setEstadoCliente');
     });
 
     Route::group(['prefix' => 'compras'],function(){
@@ -2131,6 +2217,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
             Route::get('/imprimir/{id}', 'ApuracaoDifalController@imprimir')->name('compraFiscal.difal.imprimir');
             Route::post('/corrigir-cfops', 'ApuracaoDifalController@corrigirCfops')->name('compraFiscal.difal.corrigirCfops');
         });
+
+        Route::group(['prefix' => 'reprocessar-cfop'], function(){
+            Route::get('/', 'ReprocessarCfopCompraController@index');
+            Route::post('/executar', 'ReprocessarCfopCompraController@executar');
+        });
     });
 
     Route::group(['prefix' => 'inventario'],function(){
@@ -2184,10 +2275,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'StockController@index');
         Route::get('/kardex', 'StockKardexController@index');
         Route::get('/kardex/{produto}', 'StockKardexController@show');
-        Route::get('/ajustes', 'StockAdjustmentController@index');
+
         Route::get('/ajustes/novo', 'StockAdjustmentController@create');
-        Route::post('/ajustes', 'StockAdjustmentController@store');
-        Route::get('/ajustes/{id}', 'StockAdjustmentController@show');
+
         Route::get('/pesquisa', 'StockController@pesquisa');
         Route::get('/su', 'StockController@su');
         Route::get('/view/{id}', 'StockController@view');
@@ -2412,12 +2502,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
         Route::get('/enviarXml', 'DevolucaoController@enviarXml');
 
-    });
-
-    Route::group(['prefix' => 'controleCozinha'],function(){
-        Route::get('/', 'CozinhaController@index');
-        Route::get('/buscar', 'CozinhaController@buscar');
-        Route::get('/concluido', 'CozinhaController@concluido');
     });
 
     Route::get('/graficos', 'DashboardAnaliticoController@index')->name('dashboard.analitico');
@@ -2743,7 +2827,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/editGrade/{id}', 'ProdutoEcommerceController@editGrade');
         Route::get('/listGrade/{referecia}', 'ProdutoEcommerceController@listGrade');
         Route::get('/galeria/{id}', 'ProdutoEcommerceController@galeria');
-        Route::get('/deleteImagem/{id}', 'ProdutoEcommerceController@deleteImagem');
         Route::get('/new', 'ProdutoEcommerceController@new');
         Route::get('/pesquisa', 'ProdutoEcommerceController@pesquisa');
 
@@ -2895,6 +2978,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/dashboard', 'MovimentacaoVeiculoController@dashboard')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::get('/relatorio', 'MovimentacaoVeiculoController@relatorio')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::get('/imprimir/{id}', 'MovimentacaoVeiculoController@imprimir')->middleware(['verificaEmpresa', 'validaAcesso']);
+
+        // Rotas adicionais da agenda, cancelamento, coletas e checklist.
+        Route::get('/agenda', 'MovimentacaoVeiculoController@agenda')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/cancelar/{id}', 'MovimentacaoVeiculoController@cancelar')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/eventosCalendario', 'MovimentacaoVeiculoController@eventosCalendario')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/relatorioColetas', 'MovimentacaoVeiculoController@relatorioColetas')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/registrarHorarioCliente/{id}', 'MovimentacaoVeiculoController@registrarHorarioCliente')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/enviar-checklist/{id}', 'MovimentacaoVeiculoController@enviarChecklistWhatsApp');
+        Route::get('/ver-checklist/{id}', 'MovimentacaoVeiculoController@verChecklist');
     });
 
     Route::group(['prefix' => 'atendimentoWeb'], function () {
@@ -2917,6 +3009,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::delete('/devices/{id}', 'TraccarIntegrationController@deletarDispositivo')->name('traccar.devices.delete');
         Route::get('/monitor', 'TraccarIntegrationController@monitorar')->name('traccar.monitor');
         Route::get('/rastreamentoVeiculo', 'SiteViewController@rastreamento');
+
+        Route::get('/posicoes-tempo-real', 'TraccarIntegrationController@posicoesTempoReal');
+        Route::get('/mapa', function() {
+            return view('movimentacoes_veiculos.mapa')->with('title', 'Mapa em Tempo Real');
+        })->name('traccar.mapa');
     });
 
     Route::group(['prefix' => 'pesagens'], function () {
@@ -2957,6 +3054,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // Compatibilidade com o endereço legado.
     Route::get('/pesagem_nfe', fn () => redirect()->route('pesagem-nfe.index'));
 
+    Route::group(['prefix' => 'pesagem_nfe'], function(){
+        Route::post('/processar', 'PesagemNfeController@processar');
+    });
+
     Route::group(['prefix' => 'tabelaPrecoNfe'], function () {
         Route::get('/', 'TabelaPrecoNfeController@index')->name('tabela-preco-nfe.index');
         Route::post('/save', 'TabelaPrecoNfeController@save')->name('tabela-preco-nfe.save');
@@ -2987,6 +3088,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::put('/update/{id}', 'BalancaConfigController@save')->name('balancas.update');
         Route::delete('/delete/{id}', 'BalancaConfigController@delete')->name('balancas.delete');
         Route::get('/balanca', 'BalancaConfigController@showBalanca');
+
+        Route::post('/lerPeso', 'BalancaConfigController@lerPesoBalança');
+        Route::get('/listarPortas', 'BalancaConfigController@listarPortas');
+        Route::post('/testarBalanca', 'BalancaConfigController@testarBalanca');
     });
 
     Route::prefix('eletronicDocs')->group(function () {
@@ -3107,6 +3212,131 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     // Declare Novos Grupos de Rotas aqui Protegidos Pelo MidiWare
     // Siga o padrao abaixo
+
+    // Folha de pagamento
+    Route::group(['prefix' => 'folhaPagamento'], function(){
+        Route::get('/', 'FolhaPagamentoController@index')->name('folha.index');
+        Route::post('/importar', 'FolhaPagamentoController@importarTxt')->name('folha.importar');
+        Route::get('/pdf/{id}', 'FolhaPagamentoController@gerarPdf')->name('folha.pdf');
+        Route::delete('/excluir/{competencia}', 'FolhaPagamentoController@excluirCompetencia')
+            ->name('folha.excluir')
+            ->where('competencia', '.*');
+    });
+
+    // Pré-cadastros: aprovação e consulta
+    Route::group(['prefix' => 'cadastros-pendentes'], function(){
+        Route::get('/', 'PessoaPreCadastroController@index');
+        Route::get('/aprovados', 'PessoaPreCadastroController@aprovados');
+        Route::post('/aprovar/{id}', 'PessoaPreCadastroController@aprovar');
+    });
+
+    // Rotas do Grupo de Categorias
+    Route::group(['prefix' => 'grupo-categorias'], function(){
+        Route::get('/', 'GrupoCategoriaController@index')->name('grupo-categorias.index');
+        Route::get('/novo', 'GrupoCategoriaController@create')->name('grupo-categorias.create');
+        Route::post('/salvar', 'GrupoCategoriaController@store')->name('grupo-categorias.store');
+        Route::get('/editar/{id}', 'GrupoCategoriaController@edit')->name('grupo-categorias.edit');
+        Route::post('/atualizar/{id}', 'GrupoCategoriaController@update')->name('grupo-categorias.update');
+        Route::get('/excluir/{id}', 'GrupoCategoriaController@destroy')->name('grupo-categorias.destroy');
+    });
+
+    // 2. Consultas e Relatórios Financeiros (RelatorioDespesaController)
+    Route::group(['prefix' => 'relatorios-financeiros'], function(){
+        Route::get('/despesas-semanal', 'RelatorioDespesaController@visualizacaoPlanilha');
+        Route::get('/resumo-despesas', 'RelatorioResumoController@resumoDespesas');
+        Route::get('/comparativo-meses', 'RelatorioResumoController@comparativoMeses');
+
+        // Rotas do Prosoft padronizadas
+        Route::get('/exportar-prosoft', 'ProsoftExportController@index');
+        Route::post('/exportar-prosoft', 'ProsoftExportController@exportar');
+        Route::get('/prosoft/ajuste-fiscal', 'ProsoftExportController@ajusteFiscal');
+        Route::post('/prosoft/aplicar-ajuste', 'ProsoftExportController@aplicarAjusteLote');
+    });
+
+    Route::group(['prefix' => 'portaria'], function(){
+        // Telas e Ações Principais
+        Route::get('/', 'PortariaController@index');
+        Route::post('/agendar', 'PortariaController@agendarVisita');
+        Route::post('/entrada', 'PortariaController@registrarEntrada');
+        Route::put('/saida/{id}', 'PortariaController@saida');
+        Route::get('/saida/{id}', 'PortariaController@saida'); // Para a leitura do QR Code
+
+        // Rotas para as buscas automáticas (AJAX) e Disparos
+        Route::get('/busca-cpf/{cpf}', 'PortariaController@buscaCpf');
+        Route::get('/busca-placa/{placa}', 'PortariaController@buscaPlaca');
+
+        // Rota do botão de avisar no WhatsApp
+        Route::post('/avisar-chegada', 'PortariaController@avisarChegadaAjax');
+
+        // 🚀 AJUSTADO AQUI (Sem o /portaria dobrado)
+        Route::get('/checar-resposta/{funcionario_id}', 'PortariaController@checarRespostaAjax');
+
+        // Histórico
+        Route::get('/historico', 'PortariaController@historico');
+
+        // Rota para bloquear/desbloquear visitante
+        Route::post('/bloquear-visitante', 'PortariaController@bloquearVisitanteAjax');
+
+        Route::get('/imprimir-etiqueta/{id}', 'PortariaController@imprimirEtiqueta');
+
+        // Rotas para Edição e Exclusão de Agendamento (Restrito ADM)
+        Route::get('/agendamento/{id}/editar', 'PortariaController@editarAgendamento');
+        Route::post('/agendamento/{id}/atualizar', 'PortariaController@atualizarAgendamento');
+        Route::delete('/agendamento/{id}', 'PortariaController@excluirAgendamento');
+    });
+
+    Route::group(['prefix' => 'gestao-coletas'], function(){
+        Route::get('/', 'GestaoColetaController@index');
+        Route::post('/agendar/{id}', 'GestaoColetaController@agendar');
+        Route::post('/recusar/{id}', 'GestaoColetaController@recusar');
+    });
+
+    // Manutenção: corrigir-notas
+    Route::group(['prefix' => 'corrigir-notas'], function(){
+        // ATENÇÃO: a consulta do NOVO não contém filtro explícito por empresa.
+        // Conferir autorização administrativa e escopos do model antes de executar.
+        Route::get('/', function() {
+            $notas = \App\Models\ManifestaNfseTomada::whereNotNull('chave')->get();
+            $atualizadas = 0;
+
+            foreach ($notas as $nota) {
+                $caminhoXml = public_path('xml_servico/' . $nota->chave . '.xml');
+
+                if (file_exists($caminhoXml)) {
+                    $xmlString = file_get_contents($caminhoXml);
+                    $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
+                    $xml = simplexml_load_string($xmlClean);
+
+                    if ($xml) {
+                        // CORREÇÃO: A data está dentro de DPS -> infDPS -> dhEmi
+                        $data = $xml->DPS->infDPS->dhEmi ?? $xml->infNFSe->DPS->infDPS->dhEmi ?? null;
+
+                        // CORREÇÃO: O status de cancelamento no seu XML (107 = Cancelada / 100 = Autorizada)
+                        $cStat = $xml->cStat ?? null;
+
+                        if ($data) {
+                            $nota->data_emissao = date('Y-m-d', strtotime((string)$data));
+                        }
+
+                        // Se cStat for 107, consideramos CANCELADA. Se for 100, é NORMAL/AUTORIZADA
+                        $nota->situacao = ((string)$cStat == '107') ? 'CANCELADA' : 'NORMAL';
+
+                        $nota->save();
+                        $atualizadas++;
+                    }
+                }
+            }
+            return "Processo finalizado! $atualizadas notas atualizadas com sucesso.";
+        });
+    });
+
+    // Manutenção: criar-atalho-foto
+    Route::group(['prefix' => 'criar-atalho-foto'], function(){
+        Route::get('/', function () {
+            \Illuminate\Support\Facades\Artisan::call('storage:link');
+            return 'Atalho criado com sucesso! As fotos já devem aparecer.';
+        });
+    });
 
     // =======================================================
     // IMPORTAÇÃO DE CT-e (RECEBER)
@@ -3397,7 +3627,6 @@ Route::group(['prefix' => 'loja', 'middleware' => 'validaEcommerce'], function()
     Route::get('/{link}/carrinho', 'EcommerceController@carrinho');
     Route::get('/{link}/curtidas', 'EcommerceController@curtidas');
     Route::get('/{link}/{id}/deleteItemCarrinho', 'EcommerceController@deleteItemCarrinho');
-    Route::get('/{link}/{id}/deleteItemCarrinho', 'EcommerceController@deleteItemCarrinho');
     Route::get('/{link}/carrinho/atualizaItem', 'EcommerceController@atualizaItem');
 
     Route::get('/{link}/checkout', 'EcommerceController@checkout');
@@ -3542,6 +3771,40 @@ Route::group([
         }
     })->name('admin.cron-master.run');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Traccar - Event Forwarding
+|--------------------------------------------------------------------------
+|
+| Endpoint sem sessão/CSRF para receber os eventos enviados diretamente
+| pelo servidor Traccar. A autenticação é feita pelo próprio controller
+| através do header configurado em TRACCAR_WEBHOOK_HEADER/SECRET.
+|
+*/
+Route::post('/traccar/webhook', 'TraccarWebhookController@receberEvento')
+    ->name('api.traccar.webhook');
+
+/*Route::get('/executar-migrations-fersoft-admin', function () {
+    try {
+        // Roda apenas o arquivo da migration do grupo de categorias
+        \Illuminate\Support\Facades\Artisan::call('migrate', [
+            '--path' => 'database/migrations/2026_07_30_ccreate_grupo_categorias_tables.php', // Ajuste com o nome exato do arquivo que você criou
+            '--force' => true
+        ]);
+
+        return '<h2>Migration executada com sucesso!</h2><pre>' . \Illuminate\Support\Facades\Artisan::output() . '</pre>';
+    } catch (\Exception $e) {
+        return '<h2>Erro ao executar migration:</h2><pre>' . $e->getMessage() . '</pre>';
+    }
+});
+
+Route::get('/limpar-cache-fersoft', function() {
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    return '<h3>Cache de rotas e configurações limpo com sucesso!</h3>';
+});*/
 
 /* Desabilitado por Wallace em 16022026
 Route::group([

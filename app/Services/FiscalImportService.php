@@ -6,89 +6,102 @@ use Illuminate\Support\Facades\DB;
 
 class FiscalImportService
 {
-    public function formatarCst($icms): string
+    /**
+     * Ajusta o CST/CSOSN para 3 dígitos (Origem + CST)
+     */
+    public function formatarCst($icms)
     {
-        $origem = (string) ($icms->orig ?? '0');
-        $cst = (string) ($icms->CST ?? $icms->CSOSN ?? '90');
-
-        return $origem . str_pad($cst, 2, '0', STR_PAD_LEFT);
+        $origem = (string)($icms->orig ?? '0');
+        $cst = (string)($icms->CST ?? $icms->CSOSN ?? '90');
+        
+        // Garante que o CST tenha 2 dígitos (ex: 00 vira 00, 90 vira 90)
+        $cst = str_pad($cst, 2, '0', STR_PAD_LEFT);
+        
+        return $origem . $cst;
     }
 
-    public function determinarRegraFiscal(string $cfopSaida, string $finalidade): array
+  
+  public function determinarRegraFiscal($cfopSaida, $finalidade)
     {
-        $interestadual = str_starts_with($cfopSaida, '6');
+        // Regras padrão baseadas na UF (Entrada)
+        $isInterestadual = (substr($cfopSaida, 0, 1) == '6');
+        $cfopEntrada = $isInterestadual ? '2' . substr($cfopSaida, 1) : '1' . substr($cfopSaida, 1);
+
         $regra = [
-            'cfop' => ($interestadual ? '2' : '1') . substr($cfopSaida, 1),
-            'cst_icms' => '090',
+            'cfop' => $cfopEntrada,
+            'cst_icms' => '090', // Padrão
             'cst_pis' => '70',
-            'cst_cofins' => '70',
+            'cst_cofins' => '70'
         ];
 
-        return match ($finalidade) {
-            'uso_consumo_sem_credito' => array_replace($regra, [
-                'cfop' => $interestadual ? '2556' : '1556',
-            ]),
-            'uso_consumo_com_credito' => array_replace($regra, [
-                'cfop' => $interestadual ? '2556' : '1556',
-                'cst_pis' => '50',
-                'cst_cofins' => '50',
-            ]),
-            'imobilizado' => array_replace($regra, [
-                'cfop' => $interestadual ? '2551' : '1551',
-            ]),
-            'revenda' => array_replace($regra, [
-                'cfop' => $interestadual ? '2102' : '1102',
-                'cst_pis' => '01',
-                'cst_cofins' => '01',
-            ]),
-            default => $regra,
-        };
-    }
+        switch ($finalidade) {
+            case 'uso_consumo_sem_credito':
+                $regra['cfop'] = $isInterestadual ? '2556' : '1556';
+                $regra['cst_icms'] = '090'; // Ou 060 dependendo do estado
+                $regra['cst_pis'] = '70';
+                $regra['cst_cofins'] = '70';
+                break;
 
-    public function salvarReferenciaProduto(
-        int $produtoId,
-        int $fornecedorId,
-        ?string $codigoXml,
-        ?string $descricao,
-        ?string $codigoBarras,
-        int $empresaId,
-        ?int $usuarioId
-    ): void {
-        if ($produtoId <= 0 || $fornecedorId <= 0) {
-            return;
+            case 'uso_consumo_com_credito': // Ex: Manutenção de frota
+                $regra['cfop'] = $isInterestadual ? '2556' : '1556';
+                $regra['cst_pis'] = '50';
+                $regra['cst_cofins'] = '50';
+                break;
+
+            case 'imobilizado':
+                $regra['cfop'] = $isInterestadual ? '2551' : '1551';
+                break;
+
+            case 'revenda':
+                // Mantém a lógica padrão 5102 -> 1102 / 6102 -> 2102
+                $regra['cfop'] = $isInterestadual ? '2102' : '1102';
+                $regra['cst_pis'] = '01'; // Crédito normal para revenda
+                $regra['cst_cofins'] = '01';
+                break;
         }
 
-        DB::table('produto_fornecedors')->updateOrInsert(
-            [
-                'empresa_id' => $empresaId,
-                'produto_id' => $produtoId,
-                'fornecedor_id' => $fornecedorId,
-                'codigo_fornecedor' => preg_replace('/[^a-zA-Z0-9]/', '', (string) $codigoXml),
-            ],
-            [
-                'descricao_fornecedor' => $descricao ?: '',
-                'codigo_barras_fornecedor' => $codigoBarras ?: '',
-                'usuario_id' => $usuarioId,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
+        return $regra;
     }
-
-    public function parseMoeda($valor): float
+}
+  
+    /**
+     * Registra o vínculo Produto x Fornecedor (Referência)
+     */
+    public function salvarReferenciaProduto($produtoId, $fornecedorId, $codigoXml, $descricao, $codBarras, $empresaId, $usuarioId)
     {
-        if ($valor === null || $valor === '') {
-            return 0.0;
+        if ((int)$produtoId > 0 && (int)$fornecedorId > 0) {
+            DB::table('produto_fornecedors')->updateOrInsert(
+                [
+                    'produto_id' => $produtoId,
+                    'fornecedor_id' => $fornecedorId,
+                    'codigo_fornecedor' => preg_replace('/[^a-zA-Z0-9]/', '', $codigoXml)
+                ],
+                [
+                    'empresa_id' => $empresaId,
+                    'descricao_fornecedor' => $descricao ?? '',
+                    'codigo_barras_fornecedor' => $codBarras ?? '',
+                    'usuario_id' => $usuarioId,
+                    'updated_at' => now()
+                ]
+            );
         }
+    }
 
-        $texto = preg_replace('/[^0-9,.-]/', '', (string) $valor);
-        if (str_contains($texto, ',') && str_contains($texto, '.')) {
-            $texto = str_replace('.', '', $texto);
-            $texto = str_replace(',', '.', $texto);
-        } elseif (str_contains($texto, ',')) {
-            $texto = str_replace(',', '.', $texto);
+    /**
+     * Padroniza a conversão de valores para float
+     */
+    public function parseMoeda($valor)
+    {
+        if (empty($valor)) return 0;
+        $valorStr = (string)$valor;
+        $valorStr = preg_replace('/[^0-9.,]/', '', $valorStr);
+
+        if (strpos($valorStr, ',') !== false && strpos($valorStr, '.') !== false) {
+            $valorStr = str_replace('.', '', $valorStr);
+            $valorStr = str_replace(',', '.', $valorStr);
+        } elseif (strpos($valorStr, ',') !== false) {
+            $valorStr = str_replace(',', '.', $valorStr);
         }
-
-        return (float) $texto;
+        return (float)$valorStr;
     }
 }

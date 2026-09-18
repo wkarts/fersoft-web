@@ -195,16 +195,42 @@
 
 										</div>
 
-										<div class="form-group validated">
-											<label class="col-form-label text-left">Tipo de Pagamento</label>
-
-											<select class="custom-select form-control" id="tipo_pagamento" name="tipo_pagamento">
-												@foreach($tiposPagamento as $key => $t)
-												<option @if($compra->tipo_pagamento == $key) selected @endif value="{{$key}}">{{$key}} - {{$t}}</option>
-												@endforeach
-											</select>
-
-										</div>
+										<div class="form-group validated mt-4">
+    <label class="col-form-label text-left font-weight-bold text-dark">Formas de Pagamento e Rateio (Gerados)</label>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+            <thead class="thead-light">
+                <tr>
+                    <th>Forma/Tipo</th>
+                    <th>Valor</th>
+                    <th>Vencimento</th>
+                    <th>Baixado?</th>
+                    <th>Veículo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($compra->fatura as $fat)
+                <tr>
+                    <td>{{ $fat->tipo_pagamento }}</td>
+                    <td class="text-success font-weight-bold">R$ {{ number_format($fat->valor_integral, 2, ',', '.') }}</td>
+                    <td>{{ \Carbon\Carbon::parse($fat->data_vencimento)->format('d/m/Y') }}</td>
+                    <td>
+                        @if($fat->status)
+                            <span class="label label-sm label-light-success label-inline">Sim</span>
+                        @else
+                            <span class="label label-sm label-light-danger label-inline">Não</span>
+                        @endif
+                    </td>
+                    <td>{{ $fat->veiculo ? $fat->veiculo->placa : '--' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Mantemos o campo hidden pro caso de alguma validação de JS antigo pedir essa ID na hora de Transmitir para Sefaz -->
+    <input type="hidden" id="tipo_pagamento" name="tipo_pagamento" value="{{ $compra->tipo_pagamento ?? '90' }}">
+</div>
 									</div>
 								</div>
 							</div>

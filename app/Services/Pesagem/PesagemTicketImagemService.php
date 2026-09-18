@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\BinaryPayloadSanitizer;
 
 class PesagemTicketImagemService
 {
@@ -49,8 +50,14 @@ class PesagemTicketImagemService
             $bytes = null;
             $largura = null;
             $altura = null;
+            $optimizationMetadata = null;
 
             if ($source['data']) {
+                $optimized = $this->otimizarImagemSeBenefico($source['data'], $mime);
+                $source['data'] = $optimized['data'];
+                $mime = $optimized['mime'];
+                $optimizationMetadata = $optimized['metadata'];
+
                 $extension = $this->extensionFromMime($mime);
                 $dir = $this->buildRelativeDir($ticket, $storage['base_path']);
                 $filename = Str::slug($cameraUuid ?: 'camera')
@@ -86,7 +93,15 @@ class PesagemTicketImagemService
                     ->first();
             }
 
-            $metadata = $item;
+            // O snapshot pode chegar com Base64 em vários níveis do payload ADP.
+            // Depois que o arquivo foi persistido, o Base64 deixa de ser dado de negócio:
+            // mantemos apenas caminho/URL e metadados pequenos.
+            $metadata = BinaryPayloadSanitizer::sanitize($item, $arquivoPath ?: $arquivoUrl);
+            $metadata = $this->sanitizarMetadataPersistente(
+                is_array($metadata) ? $metadata : [],
+                $arquivoPath,
+                $arquivoUrl
+            );
             $metadata['storage'] = [
                 'disk' => $storage['disk'],
                 'base_path' => $storage['base_path'],
@@ -96,6 +111,7 @@ class PesagemTicketImagemService
                 'provider' => $storage['provider'] ?? null,
                 'external' => $externalMetadata ?? null,
             ];
+            $metadata['image_optimization'] = $optimizationMetadata;
 
             $registro = PesagemTicketImagem::create([
                 'empresa_id' => $ticket->empresa_id,
@@ -127,10 +143,149 @@ class PesagemTicketImagemService
                 'arquivo_path' => $registro->arquivo_path,
                 'arquivo_url' => $registro->imagem_url,
                 'storage_disk' => $registro->storage_disk,
+                'mime_type' => $registro->mime_type,
+                'tamanho_bytes' => $registro->tamanho_bytes,
+                'largura' => $registro->largura,
+                'altura' => $registro->altura,
+                'capturado_em' => optional($registro->capturado_em)->toIso8601String(),
             ];
         }
 
         return $salvas;
+    }
+
+    /**
+     * Remove do metadata persistente tudo que só faz sentido durante o transporte ADP.
+     *
+     * Não altera o ADP, preview ou streaming. Atua somente depois que a imagem
+     * definitiva já foi gravada, mantendo caminho/URL canônicos no registro.
+     */
+    private function sanitizarMetadataPersistente(array $metadata, ?string $arquivoPath, ?string $arquivoUrl): array
+    {
+        $sensitiveKeys = [
+            'username',
+            'user_name',
+            'password',
+            'passwd',
+            'senha',
+            'credentials',
+            'credential',
+            'authorization',
+            'access_token',
+            'api_token',
+            'auth_token',
+            'bearer_token',
+            'profile_token',
+            'client_secret',
+            'refresh_token',
+            'api_key',
+            'secret',
+            'secret_key',
+            // Dados de conexão da câmera não pertencem à evidência persistida.
+            'host',
+            'hostname',
+            'ip',
+            'ip_address',
+            'http_port',
+            'rtsp_port',
+            'stream_url',
+            'rtsp_url',
+            'snapshot_url',
+        ];
+
+        $transientImageKeys = [
+            'base64',
+            'image_base64',
+            'imagem_base64',
+            'photo_base64',
+            'foto_base64',
+            'snapshot_base64',
+            'file_base64',
+            'jpeg_base64',
+            'jpg_base64',
+            'png_base64',
+            'image_data_url',
+            'imagem_data_url',
+            'data_url',
+            'image_src',
+            'imagem_src',
+        ];
+
+        $canonicalPath = $arquivoPath ?: $arquivoUrl;
+
+        // A configuração completa do dispositivo é necessária apenas durante
+        // comunicação com o ADP. Depois da captura, não deve fazer parte da
+        // evidência persistida (evita host/portas/tokens/credenciais e reduz volume).
+        if (isset($metadata['response']['device']) && is_array($metadata['response']['device'])) {
+            unset($metadata['response']['device']['config']);
+        }
+
+        if (isset($metadata['device']) && is_array($metadata['device'])) {
+            unset($metadata['device']['config']);
+        }
+
+        if (isset($metadata['camera']) && is_array($metadata['camera'])) {
+            unset($metadata['camera']['config']);
+        }
+
+        $sanitizeRecursive = function (array $data) use (&$sanitizeRecursive, $sensitiveKeys, $transientImageKeys, $canonicalPath): array {
+            $result = [];
+
+            foreach ($data as $key => $value) {
+                $normalizedKey = strtolower((string) $key);
+
+                if (in_array($normalizedKey, $sensitiveKeys, true)) {
+                    continue;
+                }
+
+                if (in_array($normalizedKey, $transientImageKeys, true)) {
+                    continue;
+                }
+
+                if (is_array($value)) {
+                    $result[$key] = $sanitizeRecursive($value);
+                    continue;
+                }
+
+                if (
+                    is_string($value)
+                    && in_array($normalizedKey, ['file_path', 'path', 'local_path', 'capture_path'], true)
+                    && $this->isCaminhoLocalAdp($value)
+                ) {
+                    if ($canonicalPath !== null && $canonicalPath !== '') {
+                        $result[$key] = $canonicalPath;
+                    }
+
+                    continue;
+                }
+
+                $result[$key] = $value;
+            }
+
+            return $result;
+        };
+
+        $metadata = $sanitizeRecursive($metadata);
+
+        // Referência canônica explícita; evita depender de caminhos locais do ADP.
+        if ($arquivoPath) {
+            $metadata['arquivo_path'] = $arquivoPath;
+        }
+
+        if ($arquivoUrl) {
+            $metadata['arquivo_url'] = $arquivoUrl;
+        }
+
+        return $metadata;
+    }
+
+    private function isCaminhoLocalAdp(string $value): bool
+    {
+        $normalized = strtolower(str_replace('\\', '/', trim($value)));
+
+        return str_contains($normalized, 'all_driver_platform_adp')
+            || str_contains($normalized, '/camera-captures/')
+            || preg_match('~^[a-z]:/users/.+/appdata/local/~i', $normalized) === 1;
     }
 
     public function excluirDoTicket(TicketPesagem $ticket, bool $apagarArquivos = true, bool $forceDelete = true): void
@@ -661,10 +816,10 @@ class PesagemTicketImagemService
             if (is_string($node)) {
                 $trim = trim($node);
                 if ($trim !== '' && (
-                    str_starts_with($trim, 'data:image') ||
-                    preg_match('/^https?:\/\//i', $trim) ||
-                    strlen($trim) > 200
-                )) {
+                        str_starts_with($trim, 'data:image') ||
+                        preg_match('/^https?:\/\//i', $trim) ||
+                        strlen($trim) > 200
+                    )) {
                     $candidates[] = $trim;
                 }
                 return;
@@ -709,9 +864,9 @@ class PesagemTicketImagemService
                 if (is_string($child)) {
                     $trim = trim($child);
                     if ($trim !== '' && (
-                        in_array($key, ['file_path', 'local_path', 'path', 'snapshot_path', 'image_path'], true) ||
-                        $this->looksLikeLocalPath($trim)
-                    )) {
+                            in_array($key, ['file_path', 'local_path', 'path', 'snapshot_path', 'image_path'], true) ||
+                            $this->looksLikeLocalPath($trim)
+                        )) {
                         $candidates[] = $trim;
                     }
                 } elseif (is_array($child)) {
@@ -793,6 +948,117 @@ class PesagemTicketImagemService
         }
 
         return ['data' => $data, 'mime' => $mime, 'url' => null];
+    }
+
+    /**
+     * Otimiza snapshots JPEG sem alterar o fluxo ADP.
+     *
+     * - Só atua quando GD está disponível;
+     * - só recomprime JPEG acima do limite mínimo;
+     * - nunca amplia imagem;
+     * - mantém o original quando a versão otimizada não fica menor.
+     */
+    private function otimizarImagemSeBenefico(string $data, string $mime): array
+    {
+        $originalBytes = strlen($data);
+        $enabled = (bool) config('pesagem.snapshot_optimize', true);
+        $minBytes = max(0, (int) config('pesagem.snapshot_optimize_min_bytes', 153600));
+        $maxDimension = max(640, (int) config('pesagem.snapshot_max_dimension', 1920));
+        $jpegQuality = min(95, max(75, (int) config('pesagem.snapshot_jpeg_quality', 88)));
+
+        $metadata = [
+            'enabled' => $enabled,
+            'optimized' => false,
+            'original_bytes' => $originalBytes,
+            'final_bytes' => $originalBytes,
+            'jpeg_quality' => $jpegQuality,
+            'max_dimension' => $maxDimension,
+        ];
+
+        if (!$enabled || strtolower($mime) !== 'image/jpeg' || $originalBytes < $minBytes) {
+            return ['data' => $data, 'mime' => $mime, 'metadata' => $metadata];
+        }
+
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagejpeg')) {
+            $metadata['reason'] = 'gd_unavailable';
+            return ['data' => $data, 'mime' => $mime, 'metadata' => $metadata];
+        }
+
+        $sourceImage = @imagecreatefromstring($data);
+        if ($sourceImage === false) {
+            $metadata['reason'] = 'invalid_image';
+            return ['data' => $data, 'mime' => $mime, 'metadata' => $metadata];
+        }
+
+        try {
+            $width = imagesx($sourceImage);
+            $height = imagesy($sourceImage);
+            $targetWidth = $width;
+            $targetHeight = $height;
+
+            if (max($width, $height) > $maxDimension) {
+                $scale = $maxDimension / max($width, $height);
+                $targetWidth = max(1, (int) round($width * $scale));
+                $targetHeight = max(1, (int) round($height * $scale));
+            }
+
+            $targetImage = $sourceImage;
+            if ($targetWidth !== $width || $targetHeight !== $height) {
+                $resized = imagecreatetruecolor($targetWidth, $targetHeight);
+                if ($resized !== false) {
+                    imagecopyresampled(
+                        $resized,
+                        $sourceImage,
+                        0,
+                        0,
+                        0,
+                        0,
+                        $targetWidth,
+                        $targetHeight,
+                        $width,
+                        $height
+                    );
+                    $targetImage = $resized;
+                }
+            }
+
+            if (function_exists('imageinterlace')) {
+                @imageinterlace($targetImage, true);
+            }
+
+            ob_start();
+            $written = @imagejpeg($targetImage, null, $jpegQuality);
+            $optimizedData = $written ? ob_get_clean() : false;
+            if (!$written) {
+                ob_end_clean();
+            }
+
+            if ($targetImage !== $sourceImage) {
+                imagedestroy($targetImage);
+            }
+
+            if (!is_string($optimizedData) || $optimizedData === '') {
+                $metadata['reason'] = 'encode_failed';
+                return ['data' => $data, 'mime' => $mime, 'metadata' => $metadata];
+            }
+
+            $finalBytes = strlen($optimizedData);
+            if ($finalBytes >= $originalBytes) {
+                $metadata['reason'] = 'original_is_smaller';
+                return ['data' => $data, 'mime' => $mime, 'metadata' => $metadata];
+            }
+
+            $metadata['optimized'] = true;
+            $metadata['final_bytes'] = $finalBytes;
+            $metadata['original_width'] = $width;
+            $metadata['original_height'] = $height;
+            $metadata['final_width'] = $targetWidth;
+            $metadata['final_height'] = $targetHeight;
+
+            return ['data' => $optimizedData, 'mime' => 'image/jpeg', 'metadata' => $metadata];
+        } finally {
+            imagedestroy($sourceImage);
+        }
     }
 
     private function extensionFromMime(string $mime): string

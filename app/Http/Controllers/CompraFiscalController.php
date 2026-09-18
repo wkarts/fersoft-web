@@ -23,6 +23,7 @@ use App\Models\Veiculo;
 use App\Models\ContaPagar;
 use App\Models\Adiantamento;
 use Illuminate\Support\Facades\DB;
+use App\Services\FiscalImportService;
 
 class CompraFiscalController extends BaseController
 {
@@ -216,38 +217,54 @@ class CompraFiscalController extends BaseController
 							$vICMSST = $valor/$item->prod->qCom;
 					}
 
-                    // Extração segura do ICMS, preservando origem + CST/CSOSN em três dígitos.
-                    $icmsNode = isset($item->imposto->ICMS) ? $item->imposto->ICMS->children()[0] : null;
-                    $origemIcms = $icmsNode ? (string) ($icmsNode->orig ?? '0') : '0';
-                    $codigoIcms = $icmsNode ? (string) ($icmsNode->CST ?? $icmsNode->CSOSN ?? '90') : '90';
-                    $cst_icms = $origemIcms . str_pad(preg_replace('/[^0-9]/', '', $codigoIcms), 2, '0', STR_PAD_LEFT);
-                    $vbc_icms = (float) ($icmsNode->vBC ?? 0);
-                    $p_icms = (float) ($icmsNode->pICMS ?? 0);
-                    $v_icms = (float) ($icmsNode->vICMS ?? 0);
+                    // Extração estruturada de impostos reais com Origem (3 Dígitos) unificado
+                    $cst_icms = '';
+                    if(isset($item->imposto->ICMS)){
+                        $icms_arr = (array)$item->imposto->ICMS;
+                        $icms_key = array_key_first($icms_arr); 
+                        if($icms_key){
+                            $origem = isset($item->imposto->ICMS->$icms_key->orig) ? (string)$item->imposto->ICMS->$icms_key->orig : '0';
+                            if(isset($item->imposto->ICMS->$icms_key->CST)) {
+                                $cst_icms = $origem . str_pad((string)$item->imposto->ICMS->$icms_key->CST, 2, '0', STR_PAD_LEFT);
+                            } elseif(isset($item->imposto->ICMS->$icms_key->CSOSN)) {
+                                $cst_icms = $origem . str_pad((string)$item->imposto->ICMS->$icms_key->CSOSN, 2, '0', STR_PAD_LEFT);
+                            }
+                        }
+                    }
+                    if(empty($cst_icms)) {
+                        $cst_icms = '090';
+                    }
 
-                    // Reforma Tributária: suporta operação normal e monofásica.
+                    $vbc_icms = (float)($item->imposto->ICMS->children()[0]->vBC ?? 0);
+                    $p_icms = (float)($item->imposto->ICMS->children()[0]->pICMS ?? 0);
+                    $v_icms = (float)($item->imposto->ICMS->children()[0]->vICMS ?? 0);
+
+                    // EXTRAÇÃO IBS E CBS DA REFORMA TRIBUTÁRIA
                     $cst_ibs_cbs = '';
-                    $bc_ibs_cbs = 0.0;
-                    $aliq_ibs = 0.0;
-                    $valor_ibs = 0.0;
-                    $aliq_cbs = 0.0;
-                    $valor_cbs = 0.0;
+                    $bc_ibs_cbs = 0;
+                    $aliq_ibs = 0;
+                    $valor_ibs = 0;
+                    $aliq_cbs = 0;
+                    $valor_cbs = 0;
                     $class_trib = '';
 
                     if (isset($item->imposto->IBSCBS)) {
                         $ibscbs = $item->imposto->IBSCBS;
-                        $cst_ibs_cbs = (string) ($ibscbs->CST ?? '');
-                        $class_trib = (string) ($ibscbs->cClassTrib ?? '');
+                        $cst_ibs_cbs = (string)($ibscbs->CST ?? '');
+                        $class_trib = (string)($ibscbs->cClassTrib ?? '');
 
+                        // 1. Tenta ler como Operação Normal (Ex: Item 1 - ARLA)
                         if (isset($ibscbs->gIBSCBS)) {
-                            $bc_ibs_cbs = (float) ($ibscbs->gIBSCBS->vBC ?? 0);
-                            $aliq_ibs = (float) ($ibscbs->gIBSCBS->gIBSUF->pIBSUF ?? 0);
-                            $valor_ibs = (float) ($ibscbs->gIBSCBS->vIBS ?? 0);
-                            $aliq_cbs = (float) ($ibscbs->gIBSCBS->gCBS->pCBS ?? 0);
-                            $valor_cbs = (float) ($ibscbs->gIBSCBS->gCBS->vCBS ?? 0);
-                        } elseif (isset($ibscbs->gIBSCBSMono)) {
-                            $valor_ibs = (float) ($ibscbs->gIBSCBSMono->vTotIBSMonoItem ?? 0);
-                            $valor_cbs = (float) ($ibscbs->gIBSCBSMono->vTotCBSMonoItem ?? 0);
+                            $bc_ibs_cbs = (float)($ibscbs->gIBSCBS->vBC ?? 0);
+                            $aliq_ibs = (float)($ibscbs->gIBSCBS->gIBSUF->pIBSUF ?? 0);
+                            $valor_ibs = (float)($ibscbs->gIBSCBS->vIBS ?? 0);
+                            $aliq_cbs = (float)($ibscbs->gIBSCBS->gCBS->pCBS ?? 0);
+                            $valor_cbs = (float)($ibscbs->gIBSCBS->gCBS->vCBS ?? 0);
+                        }
+                        // 2. Tenta ler como Operação Monofásica (Ex: Item 2 - Diesel Combustível)
+                        elseif (isset($ibscbs->gIBSCBSMono)) {
+                            $valor_ibs = (float)($ibscbs->gIBSCBSMono->vTotIBSMonoItem ?? 0);
+                            $valor_cbs = (float)($ibscbs->gIBSCBSMono->vTotCBSMonoItem ?? 0);
                         }
                     }
                   
@@ -296,41 +313,43 @@ class CompraFiscalController extends BaseController
                         'p_cofins' => (float)($item->imposto->COFINS->children()[0]->pCOFINS ?? 0),
                         'v_cofins' => (float)($item->imposto->COFINS->children()[0]->vCOFINS ?? 0),
                         
-                    // IBS / CBS (Reforma Tributária)
+                      	// IBS / CBS (Reforma Tributária)
                         'cst_ibs_cbs' => $cst_ibs_cbs,
-                        'bc_ibs_cbs' => $bc_ibs_cbs,
-                        'aliq_ibs' => $aliq_ibs,
-                        'valor_ibs' => $valor_ibs,
-                        'aliq_cbs' => $aliq_cbs,
-                        'valor_cbs' => $valor_cbs,
-                        'class_trib' => $class_trib
+                        'bc_ibs_cbs'  => $bc_ibs_cbs,
+                        'aliq_ibs'    => $aliq_ibs,
+                        'valor_ibs'   => $valor_ibs,
+                        'aliq_cbs'    => $aliq_cbs,
+                        'valor_cbs'   => $valor_cbs,
+                        'class_trib'  => $class_trib
 					];
 
 					array_push($itens, $itemAdd);
 				}
 
-                $infCpl = isset($xml->NFe->infNFe->infAdic->infCpl)
-                    ? (string) $xml->NFe->infNFe->infAdic->infCpl
-                    : '';
+                // Captura de Informações Complementares da Nota Fiscal
+                $infCpl = '';
+                if (isset($xml->NFe->infNFe->infAdic->infCpl)) {
+                    $infCpl = (string) $xml->NFe->infNFe->infAdic->infCpl;
+                }
 
 				$chave = substr($xml->NFe->infNFe->attributes()->Id, 3, 44);
 				$dadosNf = [
-					'chave' => $chave,
-                    'vProd' => (float) $xml->NFe->infNFe->total->ICMSTot->vProd,
-                    'vNF' => (float) $xml->NFe->infNFe->total->ICMSTot->vNF,
-					'indPag' => (string)$xml->NFe->infNFe->ide->indPag,
-					'nNf' => (string)$xml->NFe->infNFe->ide->nNF,
-					'vFrete' => $vFrete,
-					'vDesc' => $vDesc,
-					'contSemRegistro' => $contSemRegistro,
-					'data_emissao' => substr($xml->NFe->infNFe->ide->dhEmi[0], 0, 16),
+                    'chave' => $chave,
+                    'vProd' => (float)$xml->NFe->infNFe->total->ICMSTot->vProd, // Adicionado vProd corretamente
+                    'vNF' => (float)$xml->NFe->infNFe->total->ICMSTot->vNF,     // <-- ESSA É A LINHA QUE FALTAVA
+                    'indPag' => (string)$xml->NFe->infNFe->ide->indPag,
+                    'nNf' => (string)$xml->NFe->infNFe->ide->nNF,
+                    'vFrete' => $vFrete,
+                    'vDesc' => $vDesc,
+                    'contSemRegistro' => $contSemRegistro,
+                    'data_emissao' => substr($xml->NFe->infNFe->ide->dhEmi[0], 0, 16),
                     'vbc_icms' => (float)$xml->NFe->infNFe->total->ICMSTot->vBC,
                     'v_icms' => (float)$xml->NFe->infNFe->total->ICMSTot->vICMS,
                     'v_ipi' => (float)$xml->NFe->infNFe->total->ICMSTot->vIPI,
                     'v_pis' => (float)$xml->NFe->infNFe->total->ICMSTot->vPIS,
                     'v_cofins' => (float)$xml->NFe->infNFe->total->ICMSTot->vCOFINS,
-                    'infCpl' => $infCpl,
-				];
+                    'infCpl' => $infCpl ?? ''
+                ];
 
 				$fatura = [];
 				if (!empty($xml->NFe->infNFe->cobr->dup))
@@ -370,15 +389,12 @@ class CompraFiscalController extends BaseController
 				$marcas = Marca::where('empresa_id', $this->empresa_id)->get();
 				$subs = SubCategoria::select('sub_categorias.*')->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')->where('empresa_id', $request->empresa_id)->get();
 				$categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
-                $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)
-                    ->where('status', 1)
-                    ->orderBy('nome')
-                    ->get();
+              	$contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', 1)->get();
 
 				return view('compraFiscal/visualizaNota')
 				->with('title', 'Nota Fiscal')
 				->with('itens', $itens)
-                ->with('saldo_credito', $saldo_credito) // MANDANDO SALDO PRA VIEW
+                ->with('saldo_credito', $saldo_credito)
                 ->with('veiculos', Veiculo::where('empresa_id', $this->empresa_id)->get())
 				->with('subs', $subs)->with('marcas', $marcas)->with('categoriasDeConta', $categoriasDeConta)
 				->with('fatura', $fatura)
@@ -515,378 +531,372 @@ class CompraFiscalController extends BaseController
 	}
 
 	public function salvarNfFiscal(Request $request){
-    $nf = $request->nf;
-    $veiculo_id = (isset($nf['veiculo_id']) && $nf['veiculo_id'] > 0) ? $nf['veiculo_id'] : null;
-    $data_emissao = isset($nf['data_emissao']) ? substr($nf['data_emissao'], 0, 10) : date('Y-m-d');
+        $nf = $request->nf;
+        $veiculo_id = (isset($nf['veiculo_id']) && $nf['veiculo_id'] > 0) ? $nf['veiculo_id'] : null;
+        $data_emissao = isset($nf['data_emissao']) ? substr($nf['data_emissao'], 0, 10) : date('Y-m-d');
 
-    $result = Compra::create([
-        'fornecedor_id' => $nf['fornecedor_id'],
-        'usuario_id' => $this->usuario_id,
-        'nf' => $nf['nNf'],
-        'data_emissao' => $data_emissao,
-        'observacao' => '',
-        'lote' => $nf['lote'] ?? '',
-        // CORREÇÃO: Usando parseMoeda para resolver o problema do 2.152,00 virar 2,15
-        'valor' => $this->parseMoeda($nf['valor_nf'] ?? 0),
-        'desconto' => $this->parseMoeda($nf['desconto']),
-        'xml_path' => $nf['xml_path'],
-        'veiculo_id' => $veiculo_id,
-        'estado' => 'IMPORTADO',
-        'numero_emissao' => 0,
-        'xml_importado' => 1,
-        'categoria_conta_id' => $nf['categoria_conta_id'] ?? null,
-        'chave' => $nf['chave'],
-        'empresa_id' => $this->empresa_id,
-        'vbc_icms' => $this->parseMoeda($nf['vbc_icms'] ?? 0),
-        'v_icms'   => $this->parseMoeda($nf['v_icms'] ?? 0),
-        'v_ipi'    => $this->parseMoeda($nf['v_ipi'] ?? 0),
-        'v_pis'    => $this->parseMoeda($nf['v_pis'] ?? 0),
-        'v_cofins' => $this->parseMoeda($nf['v_cofins'] ?? 0),
-        'filial_id' => (isset($nf['filial_id']) && $nf['filial_id'] != -1) ? $nf['filial_id'] : null
-    ]);
+        $result = Compra::create([
+            'fornecedor_id' => $nf['fornecedor_id'],
+            'usuario_id' => $this->usuario_id,
+            'nf' => $nf['nNf'],
+            'data_emissao' => $data_emissao,
+            'observacao' => '',
+            'lote' => $nf['lote'] ?? '',
+            'valor' => $this->parseMoeda($nf['valor_nf'] ?? 0),
+            'desconto' => $this->parseMoeda($nf['desconto']?? 0),
+            'xml_path' => $nf['xml_path'],
+            'veiculo_id' => $veiculo_id,
+            'estado' => 'IMPORTADO',
+            'numero_emissao' => 0,
+            'xml_importado' => 1,
+            'categoria_conta_id' => $nf['categoria_conta_id'] ?? null,
+            'chave' => $nf['chave'],
+            'empresa_id' => $this->empresa_id,
+            'vbc_icms' => $this->parseMoeda($nf['vbc_icms'] ?? 0),
+            'v_icms'   => $this->parseMoeda($nf['v_icms'] ?? 0),
+            'v_ipi'    => $this->parseMoeda($nf['v_ipi'] ?? 0),
+            'v_pis'    => $this->parseMoeda($nf['v_pis'] ?? 0),
+            'v_cofins' => $this->parseMoeda($nf['v_cofins'] ?? 0),
+            'filial_id' => (isset($nf['filial_id']) && $nf['filial_id'] != -1) ? $nf['filial_id'] : null
+        ]);
 
-    return response()->json($result);
-}
+        return response()->json($result);
+    }
 
-    public function salvarItem(Request $request)
-    {
-        $prod = (array) $request->input('produto', []);
+    public function salvarItem(Request $request){
+        $prod = $request->produto;
 
-        $compraId = (int) ($prod['compra_id'] ?? 0);
-        $produtoId = (int) ($prod['produto_id'] ?? 0);
+        \Log::info("=== DADOS DO ITEM RECEBIDOS DA TELA ===", is_array($prod) ? $prod : []);
 
-        $compra = Compra::where('empresa_id', $this->empresa_id)->find($compraId);
-        $produtoBD = Produto::where('empresa_id', $this->empresa_id)->find($produtoId);
+        $compra = Compra::find($prod['compra_id']);
 
-        if (!$compra || !$produtoBD) {
-            return response()->json([
-                'message' => 'Compra ou produto não encontrado para a empresa atual.',
-            ], 422);
-        }
+        $cfopEntrada = $prod['cfop_entrada'] ?? '';
+        $cstIcms = str_pad($prod['cst_icms'] ?? '000', 3, '0', STR_PAD_LEFT);
 
         $quantidadeFinal = $this->parseMoeda($prod['quantidade'] ?? 0);
         $custoUnitario = $this->parseMoeda($prod['valor'] ?? 0);
+        $subtotalItem = $quantidadeFinal * $custoUnitario;  
 
-        if ($quantidadeFinal <= 0 || $custoUnitario < 0) {
-            return response()->json([
-                'message' => 'Quantidade ou custo unitário inválido.',
-            ], 422);
-        }
+        // 1. INTELIGÊNCIA FISCAL CONSOLIDAÇÃO DE DE/PARA BASEADO NA FINALIDADE
+        $cfopOriginal = preg_replace('/[^0-9]/', '', $prod['cfop'] ?? '');
+        $finalidade = $prod['finalidade'] ?? 'revenda';
+        $isInterestadual = (substr($cfopOriginal, 0, 1) == '6' || substr($prod['cfop_entrada'] ?? '', 0, 1) == '2');
 
-        return DB::transaction(function () use ($prod, $compra, $produtoBD, $quantidadeFinal, $custoUnitario) {
-            $cfopOriginal = preg_replace('/[^0-9]/', '', (string) ($prod['cfop'] ?? ''));
-            $cfopTela = preg_replace('/[^0-9]/', '', (string) ($prod['cfop_entrada'] ?? ''));
-            $finalidade = (string) ($prod['finalidade'] ?? 'revenda');
-            $interestadual = str_starts_with($cfopOriginal, '6') || str_starts_with($cfopTela, '2');
-            $cstIcms = str_pad(preg_replace('/[^0-9]/', '', (string) ($prod['cst_icms'] ?? '90')), 3, '0', STR_PAD_LEFT);
-
-            if ($finalidade === 'uso_consumo_sem_credito') {
-                if (in_array($cfopOriginal, ['5405', '5403', '6403', '6404'], true)) {
-                    $cfopEntrada = $interestadual ? '2407' : '1407';
-                    $cstIcms = '060';
-                } else {
-                    $cfopEntrada = $interestadual ? '2556' : '1556';
-                    $cstIcms = '090';
-                }
-                $prod['cst_pis'] = '70';
-                $prod['cst_cofins'] = '70';
-            } elseif ($finalidade === 'uso_consumo_com_credito') {
-                if (in_array($cfopTela, ['1652', '1653', '2652', '2653'], true)) {
-                    $cfopEntrada = $cfopTela;
-                } elseif (in_array($cfopOriginal, ['5405', '5403', '6403', '6404'], true)) {
-                    $cfopEntrada = $interestadual ? '2407' : '1407';
-                    $cstIcms = '060';
-                } else {
-                    $cfopEntrada = $interestadual ? '2556' : '1556';
-                    $cstIcms = '090';
-                }
-                $prod['cst_pis'] = '50';
-                $prod['cst_cofins'] = '50';
-            } elseif ($finalidade === 'imobilizado') {
-                $cfopEntrada = $interestadual ? '2551' : '1551';
+        if ($finalidade == 'uso_consumo_sem_credito') {
+            if (in_array($cfopOriginal, ['5405', '5403', '6403', '6404'])) {
+                $cfopEntrada = $isInterestadual ? '2407' : '1407';
+                $cstIcms = '060';
+            } else {
+                $cfopEntrada = $isInterestadual ? '2556' : '1556';
                 $cstIcms = '090';
-                $prod['cst_pis'] = '70';
-                $prod['cst_cofins'] = '70';
+            }
+            $prod['cst_pis'] = '70';
+            $prod['cst_cofins'] = '70';
+        } elseif ($finalidade == 'uso_consumo_com_credito') {
+            
+            // NOVA REGRA: Verifica se a tela enviou o CFOP de Combustível que a IA configurou
+            $cfopTela = preg_replace('/[^0-9]/', '', $prod['cfop_entrada'] ?? '');
+            
+            if (in_array($cfopTela, ['1653', '2653', '1652', '2652'])) {
+                // Respeita o que a IA mandou da tela!
+                $cfopEntrada = $cfopTela;
+                $cstIcms = str_pad($prod['cst_icms'] ?? '000', 3, '0', STR_PAD_LEFT);
             } else {
-                if (strlen($cfopTela) === 4) {
-                    $cfopEntrada = $cfopTela;
-                } elseif ($cfopOriginal === '5102') {
-                    $cfopEntrada = '1102';
-                } elseif ($cfopOriginal === '6102') {
-                    $cfopEntrada = '2102';
+                // Lógica antiga (padrão) se não for combustível
+                if (in_array($cfopOriginal, ['5405', '5403', '6403', '6404'])) {
+                    $cfopEntrada = $isInterestadual ? '2407' : '1407';
+                    $cstIcms = '060';
                 } else {
-                    $cfopEntrada = preg_replace('/[^0-9]/', '', (string) $this->getCfopEntrada($cfopOriginal));
-                }
-
-                if (strlen($cfopEntrada) !== 4) {
-                    $cfopEntrada = $interestadual ? '2102' : '1102';
+                    $cfopEntrada = $isInterestadual ? '2556' : '1556';
+                    $cstIcms = '090';
                 }
             }
+            
+            // Força o crédito de PIS/COFINS
+            $prod['cst_pis'] = '50';
+            $prod['cst_cofins'] = '50';
 
-            $subtotalItem = round($quantidadeFinal * $custoUnitario, 2);
-            $cstPis = str_pad(preg_replace('/[^0-9]/', '', (string) ($prod['cst_pis'] ?? '70')), 2, '0', STR_PAD_LEFT);
-            $cstCofins = str_pad(preg_replace('/[^0-9]/', '', (string) ($prod['cst_cofins'] ?? '70')), 2, '0', STR_PAD_LEFT);
-
-            $vbcPis = $this->parseMoeda($prod['vbc_pis'] ?? 0);
-            $pPis = $this->parseMoeda($prod['p_pis'] ?? 0);
-            $vPis = $this->parseMoeda($prod['v_pis'] ?? 0);
-            $vbcCofins = $this->parseMoeda($prod['vbc_cofins'] ?? 0);
-            $pCofins = $this->parseMoeda($prod['p_cofins'] ?? 0);
-            $vCofins = $this->parseMoeda($prod['v_cofins'] ?? 0);
-
-            if ($cstPis === '50' && $vPis <= 0) {
-                $vbcPis = $subtotalItem;
-                $pPis = 1.65;
-                $vPis = round($subtotalItem * 0.0165, 2);
-            }
-            if ($cstCofins === '50' && $vCofins <= 0) {
-                $vbcCofins = $subtotalItem;
-                $pCofins = 7.60;
-                $vCofins = round($subtotalItem * 0.076, 2);
-            }
-
-            $tipoItem = in_array($cfopEntrada, ['1556', '2556', '1407', '2407', '1652', '1653', '2652', '2653'], true)
-                ? '07'
-                : (in_array($cfopEntrada, ['1551', '2551'], true) ? '08' : '00');
-
-            $produtoBD->tipo_item = $tipoItem;
-            if (str_starts_with($cfopEntrada, '1')) {
-                $produtoBD->CFOP_entrada_estadual = $cfopEntrada;
+        
+        } elseif ($finalidade == 'imobilizado') {
+            $cfopEntrada = $isInterestadual ? '2551' : '1551';
+            $cstIcms = '090';
+            $prod['cst_pis'] = '70';
+            $prod['cst_cofins'] = '70';
+        } else {
+            // Revenda padrão respeitando 5102 -> 1102, 6102 -> 2102
+            $cfopXml = preg_replace('/[^0-9]/', '', $prod['cfop_entrada'] ?? '');
+            if (!empty($cfopXml) && strlen($cfopXml) == 4) {
+                $cfopEntrada = $cfopXml;
             } else {
-                $produtoBD->CFOP_entrada_inter_estadual = $cfopEntrada;
+                if ($cfopOriginal == '5102') $cfopEntrada = '1102';
+                elseif ($cfopOriginal == '6102') $cfopEntrada = '2102';
+                else $cfopEntrada = $this->getCfopEntrada($cfopOriginal);
+                if(empty($cfopEntrada) || strlen($cfopEntrada) < 4) { $cfopEntrada = '2102'; } 
             }
-            $produtoBD->CST_CSOSN_entrada = $cstIcms;
+            $cstIcms = str_pad($prod['cst_icms'] ?? '000', 3, '0', STR_PAD_LEFT);
+        }
+
+        // --- NOVA INTELIGÊNCIA FISCAL: FORÇAR CRÉDITO PIS/COFINS ---
+        $cstPis = $prod['cst_pis'] ?? '70';
+        $cstCofins = $prod['cst_cofins'] ?? '70';
+
+        $vbc_pis = $this->parseMoeda($prod['vbc_pis'] ?? 0);
+        $p_pis = $this->parseMoeda($prod['p_pis'] ?? 0);
+        $v_pis = $this->parseMoeda($prod['v_pis'] ?? 0);
+
+        $vbc_cofins = $this->parseMoeda($prod['vbc_cofins'] ?? 0);
+        $p_cofins = $this->parseMoeda($prod['p_cofins'] ?? 0);
+        $v_cofins = $this->parseMoeda($prod['v_cofins'] ?? 0);
+
+        // Se o CST indicar crédito (ex: 50) e o XML trouxe zerado, calcula automaticamente (Lucro Real: 1.65% e 7.6%)
+        if ($cstPis == '50' && $v_pis == 0) {
+            $vbc_pis = $subtotalItem;
+            $p_pis = 1.65;
+            $v_pis = round($subtotalItem * (1.65 / 100), 2);
+        }
+        if ($cstCofins == '50' && $v_cofins == 0) {
+            $vbc_cofins = $subtotalItem;
+            $p_cofins = 7.60;
+            $v_cofins = round($subtotalItem * (7.60 / 100), 2);
+        }
+
+        // 2. CONVERSÃO SEGURA DE VALORES
+        $tipoItem = in_array($cfopEntrada, ['1556', '2556', '1407', '2407']) ? '07' : (in_array($cfopEntrada, ['1551', '2551']) ? '08' : '00');
+
+        $produtoBD = Produto::where('id', (int) ($prod['produto_id'] ?? 0))->where('empresa_id', $this->empresa_id)->first();
+
+        if ($produtoBD) {
+            $produtoBD->tipo_item = $tipoItem; 
+            if(substr($cfopEntrada, 0, 1) == '1') { $produtoBD->CFOP_entrada_estadual = $cfopEntrada; } 
+            else { $produtoBD->CFOP_entrada_inter_estadual = $cfopEntrada; }
+            $produtoBD->CST_CSOSN_entrada = $cstIcms; 
             $produtoBD->save();
+        }
 
-            $result = ItemCompra::create([
-                'compra_id' => $compra->id,
-                'produto_id' => $produtoBD->id,
-                'quantidade' => $quantidadeFinal,
-                'valor_unitario' => $custoUnitario,
-                'unidade_compra' => $prod['unidade'] ?? 'UN',
-                'cfop_entrada' => $cfopEntrada,
-                'cst_icms' => $cstIcms,
-                'vbc_icms' => $this->parseMoeda($prod['vbc_icms'] ?? 0),
-                'p_icms' => $this->parseMoeda($prod['p_icms'] ?? 0),
-                'v_icms' => $this->parseMoeda($prod['v_icms'] ?? 0),
-                'cst_pis' => $cstPis,
-                'vbc_pis' => $vbcPis,
-                'p_pis' => $pPis,
-                'v_pis' => $vPis,
-                'cst_cofins' => $cstCofins,
-                'vbc_cofins' => $vbcCofins,
-                'p_cofins' => $pCofins,
-                'v_cofins' => $vCofins,
-                'cst_ibs_cbs' => $prod['cst_ibs_cbs'] ?? null,
-                'class_trib_ibs_cbs' => $prod['class_trib_ibs_cbs'] ?? $prod['class_trib'] ?? null,
-                'bc_ibs_cbs' => $this->parseMoeda($prod['bc_ibs_cbs'] ?? 0),
-                'aliq_ibs_uf' => $this->parseMoeda($prod['aliq_ibs'] ?? 0),
-                'aliq_cbs' => $this->parseMoeda($prod['aliq_cbs'] ?? 0),
-                'valor_ibs' => $this->parseMoeda($prod['valor_ibs'] ?? 0),
-                'valor_cbs' => $this->parseMoeda($prod['valor_cbs'] ?? 0),
-            ]);
+        // 4. CRIA O ITEM DA COMPRA (Agora salvando PIS/COFINS inteligentes)
+        $result = ItemCompra::create([
+            'compra_id' => (int) $prod['compra_id'],
+            'produto_id' => (int) $prod['produto_id'],
+            'quantidade' => $quantidadeFinal,
+            'valor_unitario' => $custoUnitario,
+            'unidade_compra' => $prod['unidade'] ?? 'UN',
+            'cfop_entrada' => $cfopEntrada,
 
-            if ((int) $produtoBD->gerenciar_estoque === 1) {
-                $conversao = max((float) ($produtoBD->conversao_unitaria ?? 1), 0.0000001);
-                $filialId = ((int) ($compra->filial_id ?? 0)) > 0 ? (int) $compra->filial_id : null;
+            // ICMS garantindo as 3 casas
+            'cst_icms' => $cstIcms,
+            'vbc_icms' => $this->parseMoeda($prod['vbc_icms'] ?? 0),
+            'p_icms' => $this->parseMoeda($prod['p_icms'] ?? 0),
+            'v_icms' => $this->parseMoeda($prod['v_icms'] ?? 0),
 
-                (new StockMove())->pluStock(
-                    $produtoBD->id,
-                    $quantidadeFinal * $conversao,
-                    $custoUnitario,
-                    $filialId,
-                    'compra',
-                    $compra->id,
-                    $compra->data_retroativa ?? $compra->data_emissao ?? now()
-                );
-            }
+            // PIS/COFINS (Inteligentes)
+            'cst_pis' => $cstPis,
+            'vbc_pis' => $vbc_pis,
+            'p_pis' => $p_pis,
+            'v_pis' => $v_pis,
+            'cst_cofins' => $cstCofins,
+            'vbc_cofins' => $vbc_cofins,
+            'p_cofins' => $p_cofins,
+            'v_cofins' => $v_cofins,
 
-            $codigoFornecedor = trim((string) ($prod['codigo'] ?? ''));
-            if ($codigoFornecedor !== '' && $compra->fornecedor_id) {
-                DB::table('produto_fornecedors')->updateOrInsert(
-                    [
-                        'empresa_id' => $this->empresa_id,
-                        'produto_id' => $produtoBD->id,
-                        'fornecedor_id' => $compra->fornecedor_id,
-                        'codigo_fornecedor' => $codigoFornecedor,
-                    ],
-                    [
-                        'filial_id' => ((int) ($compra->filial_id ?? 0)) > 0 ? (int) $compra->filial_id : null,
-                        'usuario_id' => $this->usuario_id,
-                        'descricao_fornecedor' => trim((string) ($prod['xProd'] ?? '')),
-                        'codigo_barras_fornecedor' => trim((string) ($prod['codBarras'] ?? '')),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-            }
+            // Reforma Tributária
+            'cst_ibs_cbs'    => $prod['cst_ibs_cbs'] ?? null,
+            'bc_ibs_cbs'     => $this->parseMoeda($prod['bc_ibs_cbs'] ?? 0),
+            'aliq_ibs_uf'    => $this->parseMoeda($prod['aliq_ibs'] ?? 0),
+            'aliq_cbs'       => $this->parseMoeda($prod['aliq_cbs'] ?? 0),
+            'valor_ibs'      => $this->parseMoeda($prod['valor_ibs'] ?? 0),
+            'valor_cbs'      => $this->parseMoeda($prod['valor_cbs'] ?? 0),
+            'class_trib_ibs_cbs' => $prod['class_trib_ibs_cbs'] ?? null
+        ]);
 
-            return response()->json($result);
-        }, 3);
+        // 5. MOVIMENTAÇÃO DE ESTOQUE CORRIGIDA
+        if($produtoBD && $produtoBD->gerenciar_estoque == 1){
+            $conversao = (float)($produtoBD->conversao_unitaria ?? 1);
+            $qtdFinalMovimentacao = $quantidadeFinal * $conversao;
+
+            $stockMove = new StockMove();
+            $filial = $compra->filial_id > 0 ? $compra->filial_id : null;
+
+            $stockMove->pluStock(
+                $produtoBD->id, 
+                $qtdFinalMovimentacao, 
+                $custoUnitario, 
+                $filial, 
+                'compra', 
+                $compra->id, 
+                $compra->data_emissao
+            );
+        }
+
+        // 6. SALVA O VÍNCULO PRODUTO x FORNECEDOR EM MEMÓRIA (Referência produto fornecedor)
+        if ((int)$prod['produto_id'] > 0 && $compra && $compra->fornecedor_id > 0) {
+            \DB::table('produto_fornecedors')->updateOrInsert(
+                [
+                    'produto_id' => $prod['produto_id'],
+                    'fornecedor_id' => $compra->fornecedor_id,
+                    'codigo_fornecedor' => preg_replace('/[^a-zA-Z0-9]/', '', $prod['codigo'] ?? '')
+                ],
+                [
+                    'empresa_id' => $this->empresa_id,
+                    'descricao_fornecedor' => $prod['xProd'] ?? '',
+                    'codigo_barras_fornecedor' => $prod['codBarras'] ?? '',
+                    'usuario_id' => $this->usuario_id,
+                    'updated_at' => now()
+                ]
+            );
+        }
+
+        return response()->json($result);
     }
 
-    public function salvarParcela(Request $request)
-    {
-        $parcela = (array) $request->input('parcela', []);
-        $compraId = (int) ($parcela['compra_id'] ?? 0);
-        $compra = Compra::where('empresa_id', $this->empresa_id)->find($compraId);
+    public function salvarParcela(Request $request){
+    $parcela = $request->parcela;
+    $compra = Compra::find($parcela['compra_id']);
 
-        if (!$compra) {
-            return response()->json(['message' => 'Compra não encontrada para a empresa atual.'], 404);
-        }
+    $valor = $parcela['valor_parcela'];
+    if (strpos($valor, ',') !== false) {
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+    }
+    $valorParcelaFloat = (float)$valor;
 
-        $valorParcela = $this->parseMoeda($parcela['valor_parcela'] ?? 0);
-        if ($valorParcela <= 0) {
-            return response()->json(['message' => 'O valor da parcela deve ser maior que zero.'], 422);
-        }
+    $formaPagamento = strtolower($parcela['forma_pagamento'] ?? '');
+    $isAdiantamento = ($formaPagamento === 'adiantamento');
+    $contaEmpresaId = !empty($parcela['conta_empresa_id']) ? $parcela['conta_empresa_id'] : null;
 
-        $formaPagamento = strtolower(trim((string) ($parcela['forma_pagamento'] ?? '')));
-        $isAdiantamento = $formaPagamento === 'adiantamento';
-        $contaEmpresaId = !empty($parcela['conta_empresa_id']) ? (int) $parcela['conta_empresa_id'] : null;
-        $veiculoId = !empty($parcela['veiculo_id']) ? (int) $parcela['veiculo_id'] : ($compra->veiculo_id ?? null);
-        $dataVencimento = $this->parseDate($parcela['vencimento'] ?? null);
-        $dataEmissao = $compra->data_retroativa ?? $compra->data_emissao ?? now()->toDateString();
+    $veiculoIdParcela = !empty($parcela['veiculo_id']) ? $parcela['veiculo_id'] : ($compra ? $compra->veiculo_id : null);
 
-        try {
-            $resultado = DB::transaction(function () use (
-                $compra,
-                $valorParcela,
-                $formaPagamento,
-                $isAdiantamento,
-                $contaEmpresaId,
-                $veiculoId,
-                $dataVencimento,
-                $dataEmissao
-            ) {
-                $categoriaNome = '';
-                if ($compra->categoria_conta_id) {
-                    $categoriaNome = (string) DB::table('categoria_contas')
-                        ->where('empresa_id', $this->empresa_id)
-                        ->where('id', $compra->categoria_conta_id)
-                        ->value('nome');
-                }
+    $statusPaga = ($isAdiantamento || $contaEmpresaId != null) ? 1 : 0;
+    $dataPagamento = $statusPaga ? ($compra ? $compra->data_emissao : date('Y-m-d')) : null;
+    $valorPago = $statusPaga ? $valorParcelaFloat : 0;
 
-                $referencia = trim(sprintf(
-                    'Ref. Compra %s NFe %s',
-                    $categoriaNome,
-                    (string) ($compra->nf ?? '')
-                ));
+    // 1. MONTA A REFERÊNCIA PERFEITA DO CONTAS A PAGAR
+    $nomeCategoria = '';
+    if ($compra && $compra->categoria_conta_id) {
+        $catDB = \DB::table('categoria_contas')->where('id', $compra->categoria_conta_id)->first();
+        if ($catDB) $nomeCategoria = $catDB->nome;
+    }
+    $referencia = "Ref. Compra " . $nomeCategoria . " NFe " . ($compra ? $compra->nf : '');
 
-                $criarTitulo = function (float $valor, bool $pago, string $tipo, ?int $contaId = null) use (
-                    $compra,
-                    $dataVencimento,
-                    $dataEmissao,
-                    $veiculoId,
-                    $referencia
-                ): ContaPagar {
-                    return ContaPagar::create([
-                        'compra_id' => $compra->id,
-                        'fornecedor_id' => $compra->fornecedor_id,
-                        'numero_nota_fiscal' => $compra->nf ?? '',
-                        'nf' => $compra->nf ?? '',
-                        'data_vencimento' => $dataVencimento,
-                        'data_emissao' => $dataEmissao,
-                        'data_emissao_nfe' => $dataEmissao,
-                        'data_pagamento' => $pago ? $dataEmissao : null,
-                        'valor_integral' => $valor,
-                        'valor_original' => $valor,
-                        'valor_pago' => $pago ? $valor : 0,
-                        'status' => $pago,
-                        'tipo_pagamento' => $tipo,
-                        'empresa_id' => $this->empresa_id,
-                        'usuario_id' => $this->usuario_id,
-                        'usuario_baixa_id' => $pago ? $this->usuario_id : null,
-                        'filial_id' => ((int) ($compra->filial_id ?? 0)) > 0 ? (int) $compra->filial_id : null,
-                        'veiculo_id' => $veiculoId,
-                        'categoria_id' => $compra->categoria_conta_id,
-                        'conta_id_origem' => $contaId,
-                        'referencia' => $referencia,
-                    ]);
-                };
+    // BLOCO ADIANTAMENTO
+    if ($isAdiantamento) {
+        $saldoAdiantamento = Adiantamento::where('empresa_id', $this->empresa_id)
+            ->where('fornecedor_id', $compra->fornecedor_id)
+            ->where('status', 'aberto')
+            ->sum(\DB::raw('valor_total - valor_utilizado'));
 
-                if ($isAdiantamento) {
-                    $saldoAdiantamento = (float) Adiantamento::where('empresa_id', $this->empresa_id)
-                        ->where('fornecedor_id', $compra->fornecedor_id)
-                        ->where('status', 'aberto')
-                        ->lockForUpdate()
-                        ->sum(DB::raw('valor_total - valor_utilizado'));
+        if ($saldoAdiantamento > 0 && $saldoAdiantamento < $valorParcelaFloat) {
+            $valorRestante = $valorParcelaFloat - $saldoAdiantamento;
 
-                    if ($saldoAdiantamento <= 0) {
-                        throw new \RuntimeException('O fornecedor não possui saldo de adiantamento disponível.');
-                    }
+            $resPaga = ContaPagar::create([
+                'compra_id' => $parcela['compra_id'], 
+                'fornecedor_id' => $compra->fornecedor_id,
+              	'numero_nota_fiscal' => $compra ? $compra->nf : '',
+                'data_vencimento' => $this->parseDate($parcela['vencimento']), 
+                'data_emissao' => $compra->data_emissao, 
+                'data_emissao_nfe' => $compra->data_emissao,
+                'valor_integral' => $saldoAdiantamento, 
+                'valor_pago' => $saldoAdiantamento, 
+                'status' => 1, 
+                'data_pagamento' => $compra ? $compra->data_emissao : date('Y-m-d'),
+                'tipo_pagamento' => 'adiantamento', 
+                'empresa_id' => $this->empresa_id, 
+                'usuario_id' => $this->usuario_id, 
+                'usuario_baixa_id' => $this->usuario_id,
+                'filial_id' => $compra ? $compra->filial_id : null, 
+                'veiculo_id' => $veiculoIdParcela,
+                'categoria_id' => $compra ? $compra->categoria_conta_id : null,
+                'referencia' => $referencia // <--- REFERÊNCIA AQUI
+            ]);
 
-                    $valorAdiantamento = min($saldoAdiantamento, $valorParcela);
-                    $tituloPago = $criarTitulo($valorAdiantamento, true, 'adiantamento');
+            \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($compra->fornecedor_id, 'fornecedor', $saldoAdiantamento, $this->empresa_id, $resPaga->id, $this->usuario_id, $this->filial_id);
 
-                    AdiantamentoController::baixarAdiantamento(
-                        $compra->fornecedor_id,
-                        'fornecedor',
-                        $valorAdiantamento,
-                        $this->empresa_id,
-                        $tituloPago->id,
-                        $this->usuario_id,
-                        ((int) ($compra->filial_id ?? 0)) > 0 ? (int) $compra->filial_id : null
-                    );
-
-                    $titulos = [$tituloPago];
-                    $restante = round($valorParcela - $valorAdiantamento, 2);
-                    if ($restante > 0) {
-                        $titulos[] = $criarTitulo($restante, false, 'boleto');
-                    }
-
-                    return $titulos;
-                }
-
-                $baixarImediatamente = $contaEmpresaId !== null;
-                $titulo = $criarTitulo(
-                    $valorParcela,
-                    $baixarImediatamente,
-                    $formaPagamento !== '' ? $formaPagamento : 'boleto',
-                    $contaEmpresaId
-                );
-
-                if ($baixarImediatamente) {
-                    $conta = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)
-                        ->where('status', 1)
-                        ->lockForUpdate()
-                        ->find($contaEmpresaId);
-
-                    if (!$conta) {
-                        throw new \RuntimeException('Conta bancária inválida ou inativa para a empresa atual.');
-                    }
-
-                    $itemConta = \App\Models\ItemContaEmpresa::create([
-                        'conta_id' => $conta->id,
-                        'descricao' => trim('Pagamento NF ' . ($compra->nf ?? '') . ($categoriaNome !== '' ? " ({$categoriaNome})" : '')),
-                        'valor' => $valorParcela,
-                        'tipo_pagamento' => $formaPagamento,
-                        'tipo' => 'saida',
-                        'data_pagamento' => $dataEmissao,
-                        'user_id' => $this->usuario_id,
-                        'empresa_id' => $this->empresa_id,
-                        'origem' => 'Conta Pagar',
-                        'conta_pagar_id' => $titulo->id,
-                        'categoria_id' => $compra->categoria_conta_id,
-                    ]);
-
-                    app(\App\Utils\ContaEmpresaUtil::class)->atualizaSaldo($itemConta);
-                }
-
-                return [$titulo];
-            }, 3);
-
-            return response()->json(count($resultado) === 1 ? $resultado[0] : $resultado);
-        } catch (\Throwable $e) {
-            \Log::error('Erro ao salvar parcela da compra fiscal', [
+            return response()->json(ContaPagar::create([
+                'compra_id' => $parcela['compra_id'], 
+                'fornecedor_id' => $compra->fornecedor_id, 
+              	'numero_nota_fiscal' => $compra ? $compra->nf : '',
+                'data_vencimento' => $this->parseDate($parcela['vencimento']), 
+                'data_emissao' => $compra->data_emissao, 
+                'data_emissao_nfe' => $compra->data_emissao,
+                'valor_integral' => $valorRestante,
+              	'valor_original' => $valorRestante,
+                'valor_pago' => 0, 
+                'status' => 0, 
+                'tipo_pagamento' => 'boleto', 
                 'empresa_id' => $this->empresa_id,
-                'compra_id' => $compraId,
-                'erro' => $e->getMessage(),
-            ]);
-
-            return response()->json(['message' => $e->getMessage()], 422);
+                'usuario_id' => $this->usuario_id, 
+                'filial_id' => $compra ? $compra->filial_id : null, 
+                'categoria_id' => $compra ? $compra->categoria_conta_id : null,
+                'veiculo_id' => $veiculoIdParcela, 
+                'conta_empresa_id' => $contaEmpresaId,
+                'referencia' => $referencia // <--- REFERÊNCIA AQUI
+            ]));
         }
     }
 
+    // CRIAÇÃO DO CONTAS A PAGAR PRINCIPAL
+    $result = ContaPagar::create([
+        'compra_id' => $parcela['compra_id'],
+        'fornecedor_id' => $compra ? $compra->fornecedor_id : null,
+      	'numero_nota_fiscal' => $compra ? $compra->nf : '',
+        'data_vencimento' => $this->parseDate($parcela['vencimento']),
+        'data_emissao' => $compra ? $compra->data_emissao : date('Y-m-d'),
+        'data_emissao_nfe' => $compra ? $compra->data_emissao : date('Y-m-d'),
+        'valor_integral' => $valorParcelaFloat,
+      	'valor_original' => $valorParcelaFloat,
+        'valor_pago' => $valorPago,
+        'data_pagamento' => $compra ? $compra->data_emissao : date('Y-m-d'),
+        'status' => $statusPaga,
+        'tipo_pagamento' => $formaPagamento,
+        'empresa_id' => $this->empresa_id,
+        'usuario_id' => $this->usuario_id,
+        'filial_id' => $compra ? $compra->filial_id : null,
+        'veiculo_id' => $veiculoIdParcela,
+        'categoria_id' => $compra ? $compra->categoria_conta_id : null,
+        'conta_empresa_id' => $contaEmpresaId,
+        'usuario_baixa_id' => $statusPaga ? $this->usuario_id : null,
+        'referencia' => $referencia // <--- REFERÊNCIA AQUI
+    ]);
+
+    // LÓGICA DE BAIXAS
+    if($isAdiantamento) {
+        \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($compra->fornecedor_id, 'fornecedor', $valorParcelaFloat, $this->empresa_id, $result->id, $this->usuario_id, $this->filial_id);
+    } 
+    elseif ($statusPaga && $contaEmpresaId) {
+        // BUSCA A CONTA BANCÁRIA PARA SUBTRAIR E GRAVAR O SALDO
+        $contaBancaria = \DB::table('conta_empresas')->where('id', $contaEmpresaId)->first();
+        
+        if ($contaBancaria) {
+            // A matemática do caixa: Saldo Antigo menos Valor da Parcela
+            $saldoAtualizado = $contaBancaria->saldo - $valorParcelaFloat;
+            
+            // GRAVANDO NO EXTRATO (Item Conta Empresa) COM TODOS OS DADOS
+            \DB::table('item_conta_empresas')->insert([
+                'conta_id' => $contaEmpresaId,
+                'descricao' => "Pagamento NF " . ($compra ? $compra->nf : '') . " (" . $nomeCategoria . ")",
+                'valor' => $valorParcelaFloat,
+                'tipo_pagamento' => $formaPagamento,
+                'tipo' => 'saida',
+                'data_pagamento' => $compra ? $compra->data_emissao : date('Y-m-d'), // Usa a data da emissão como pediu
+                'user_id' => $this->usuario_id,
+                'empresa_id' => $this->empresa_id,
+                'origem' => 'Conta Pagar', // Corrigido de 'manual' para Conta Pagar
+                'conta_pagar_id' => $result->id, // Gravando o ID do Contas a Pagar
+                'saldo_atual' => $saldoAtualizado, // Gravando o saldo pós-movimentação
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // ATUALIZANDO O SALDO GERAL NA TABELA DA CONTA BANCÁRIA
+            \DB::table('conta_empresas')->where('id', $contaEmpresaId)->update([
+                'saldo' => $saldoAtualizado,
+                'updated_at' => now()
+            ]);
+        }
+    }
+
+    return response()->json($result);
+}
+  
     private function parseDate($date){
         if(strpos($date, "/") !== false){
             $d = explode("/", $date);
@@ -897,7 +907,6 @@ class CompraFiscalController extends BaseController
         return $date;
     }
     
-  
   	private function aplicarRegrasFiscais($itemXml, $cfopEntrada)
     {
         // 1. Regra CST ICMS (Sugestão)
@@ -909,14 +918,14 @@ class CompraFiscalController extends BaseController
 
         // 2. Regra CST PIS e COFINS (Sugestão baseada em CFOP)
         $cstPisXml = (string)($itemXml->imposto->PIS->children()[0]->CST ?? '01');
-        $cstPisSugerido = '70'; // Padrão "Outros"
+        $cstPisSugerido = '70'; 
 
         $cfopsCreditoEspecial = ['5656', '5651', '5653', '1653', '2653'];
         $cfopsCompraRevenda = ['1102', '2102'];
 
         if (in_array($cstPisXml, ['04', '01'])) {
             if (in_array($cfopEntrada, $cfopsCreditoEspecial) || in_array((string)$itemXml->prod->CFOP, $cfopsCreditoEspecial)) {
-                $cstPisSugerido = '50'; // Operação com Direito a Crédito
+                $cstPisSugerido = '50'; 
             } elseif (in_array($cfopEntrada, $cfopsCompraRevenda)) {
                 $cstPisSugerido = '50';
             }
@@ -929,41 +938,33 @@ class CompraFiscalController extends BaseController
         return [
             'cst_icms' => $cstIcmsSugerido,
             'cst_pis' => $cstPisSugerido,
-            'cst_cofins' => $cstPisSugerido, // Normalmente seguem a mesma regra
+            'cst_cofins' => $cstPisSugerido, 
         ];
     }
 	
-  
   	private function parseMoeda($valor)
 {
     if (empty($valor)) return 0;
     
     $valorStr = (string)$valor;
-    // Remove qualquer coisa que não seja número, ponto ou vírgula (como R$, espaços, letras)
     $valorStr = preg_replace('/[^0-9.,]/', '', $valorStr);
 
-    // Se a string tem vírgula E ponto (ex: 2.152,00 ou 2,152.00)
     if (strpos($valorStr, ',') !== false && strpos($valorStr, '.') !== false) {
         $ultimaVirgula = strrpos($valorStr, ',');
         $ultimoPonto = strrpos($valorStr, '.');
         
         if ($ultimaVirgula > $ultimoPonto) {
-            // É formato BR (2.152,00) -> Remove os pontos e troca a vírgula por ponto
             $valorStr = str_replace('.', '', $valorStr);
             $valorStr = str_replace(',', '.', $valorStr);
         } else {
-            // É formato US (2,152.00) -> Remove as vírgulas
             $valorStr = str_replace(',', '', $valorStr);
         }
     } 
-    // Se tem apenas vírgula (ex: 2152,00 ou 2,69)
     elseif (strpos($valorStr, ',') !== false) {
         $valorStr = str_replace(',', '.', $valorStr);
     }
-    // Se tem múltiplos pontos por erro da máscara JS (ex: 2.152.00)
     elseif (substr_count($valorStr, '.') > 1) {
         $ultimoPonto = strrpos($valorStr, '.');
-        // Pega tudo antes do último ponto, tira os pontos, e junta com os centavos
         $parteInteira = str_replace('.', '', substr($valorStr, 0, $ultimoPonto));
         $parteDecimal = substr($valorStr, $ultimoPonto + 1);
         $valorStr = $parteInteira . '.' . $parteDecimal;

@@ -9,7 +9,7 @@ use App\Models\ItemContaEmpresa;
 use App\Models\ConfigNota;
 use App\Models\Empresa;
 use Illuminate\Support\Facades\DB;
-use Dompdf\Dompdf; // <-- IMPORTANTE: Adicionado para a impressão do Extrato
+use Dompdf\Dompdf;
 use App\Models\MultiEmpresaTrait;
 
 class ContaEmpresaController extends BaseController
@@ -79,7 +79,7 @@ class ContaEmpresaController extends BaseController
         }
 
         // 2. Busca as contas contábeis para a integração Prosoft
-        $planoContasContabeis = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get(); 
+        $planoContasContabeis = \App\Models\PlanoContasContabil::where('empresa_id', $this->empresa_id)->get();
 
         // 3. Envia tudo para a view
         return view('conta_empresa/register', compact('planos', 'planoContasContabeis'));
@@ -146,7 +146,7 @@ class ContaEmpresaController extends BaseController
             $item->empresa_id = $this->empresa_id;
             $item->usuario_id = $this->usuario_id ?? get_id_user();
             $item->filial_id = $filial_final; // Atribuição direta e forçada
-          	$item->conta_contabil_id = $request->conta_contabil_id;
+            $item->conta_contabil_id = $request->conta_contabil_id;
 
             $item->save();
 
@@ -197,7 +197,7 @@ class ContaEmpresaController extends BaseController
             $item->exibir_dashboard_analitico = $request->has('exibir_dashboard_analitico') ? 1 : 0;
             $item->filial_id = $filial_final; // <--- Forçamos o ID (ex: 8) aqui!
             $item->usuario_id = $this->usuario_id ?? get_id_user();
-          	$item->conta_contabil_id = $request->conta_contabil_id;
+            $item->conta_contabil_id = $request->conta_contabil_id;
 
             $item->save();
 
@@ -348,41 +348,80 @@ class ContaEmpresaController extends BaseController
     public function imprimirTransacao($id)
     {
         if (ob_get_contents()) { ob_end_clean(); }
+
         $transacao = ItemContaEmpresa::findOrFail($id);
-        $item = ContaEmpresa::withoutGlobalScopes()->where('id', $transacao->conta_id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) { return redirect('/403'); }
+        $item = ContaEmpresa::withoutGlobalScopes()
+            ->where('id', $transacao->conta_id)
+            ->where('empresa_id', $this->empresa_id)
+            ->firstOrFail();
+
+        if (!$this->usuarioPodeAcessarFilialRegistro($item->filial_id)) {
+            return redirect('/403');
+        }
 
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first() ?? (object)['cnpj' => 'Não configurado'];
         $empresa = DB::table('empresas')->where('id', $this->empresa_id)->first();
-        $p = view('relatorios/recibo_transacao', compact('transacao', 'item', 'config', 'empresa'));
+
+        // --- LÓGICA DA LOGO EM BASE64 ---
+        $logoBase64 = null;
+
+        if (isset($config->logo) && !empty($config->logo)) {
+            $caminhoLogo = public_path('logos/' . $config->logo);
+            if (file_exists($caminhoLogo)) {
+                $logoBase64 = 'data:image/' . pathinfo($caminhoLogo, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents($caminhoLogo));
+            }
+        }
+
+        // Fallback: busca logo padrão na pasta imgs caso não tenha na config_notas
+        if (!$logoBase64 && file_exists(public_path('imgs/logo.png'))) {
+            $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('imgs/logo.png')));
+        }
+
+        $p = view('relatorios/recibo_transacao', compact('transacao', 'item', 'config', 'empresa', 'logoBase64'));
+
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
         $domPdf->setPaper("A4");
         $domPdf->render();
+
         return response($domPdf->output())->header('Content-Type', 'application/pdf');
     }
-
+    // Exemplo no método de exclusão/deleção de lançamento manual
     public function deleteLancamento(Request $request, $id = null)
     {
         $id_lancamento = $id ?? $request->id;
         $item = ItemContaEmpresa::findOrFail($id_lancamento);
 
-        $conta = ContaEmpresa::withoutGlobalScopes()->where('id', $item->conta_id)->where('empresa_id', $this->empresa_id)->firstOrFail();
-        if (!$this->usuarioPodeAcessarFilialRegistro($conta->filial_id)) { return redirect('/403'); }
-        if ($item->origem != 'manual') { session()->flash('mensagem_erro', 'Lançamentos automáticos não podem ser excluídos.'); return redirect()->back(); }
+        $conta = ContaEmpresa::withoutGlobalScopes()
+            ->where('id', $item->conta_id)
+            ->where('empresa_id', $this->empresa_id)
+            ->firstOrFail();
 
-        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first() ?? ConfigNota::first();
-        if (!$config || md5($request->senha) != $config->senha_remover) { session()->flash('mensagem_erro', 'Senha incorreta!'); return redirect()->back(); }
+        if ($item->origem != 'manual') {
+            session()->flash('mensagem_erro', 'Lançamentos automáticos não podem ser excluídos.');
+            return redirect()->back();
+        }
+
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        if (!$config || md5($request->senha) != $config->senha_remover) {
+            session()->flash('mensagem_erro', 'Senha incorreta!');
+            return redirect()->back();
+        }
 
         try {
             DB::transaction(function () use ($item, $conta) {
-                if ($item->tipo == 'entrada') { $conta->saldo -= $item->valor; }
-                else { $conta->saldo += $item->valor; }
-                $conta->save();
+                $contaId = $conta->id;
                 $item->delete();
+
+                // Chamada direta do método presente no próprio Controller
+                $this->recalcularSaldoConta($contaId);
             });
-            session()->flash('mensagem_sucesso', 'Excluído com sucesso!');
-        } catch (\Exception $e) { session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage()); }
+
+            session()->flash('mensagem_sucesso', 'Excluído e saldos recalculados com sucesso!');
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
+        }
+
         return redirect()->back();
     }
 
@@ -430,7 +469,7 @@ class ContaEmpresaController extends BaseController
 
             // 3. BUSCA PAGAMENTOS (Contas a Pagar)
             $pagamentos = \DB::table('conta_pagars as cp')
-                ->leftJoin('fornecedores as f', 'f.id', '=', 'cp.fornecedor_id')
+                ->leftJoin('fornecedors as f', 'f.id', '=', 'cp.fornecedor_id')
                 ->where('cp.empresa_id', $this->empresa_id)
                 ->where('cp.status', 1)
                 ->whereBetween('cp.data_pagamento', [$data_inicial, $data_final])
@@ -515,5 +554,64 @@ class ContaEmpresaController extends BaseController
 
         session()->flash('mensagem_sucesso', 'Sincronização realizada com sucesso!');
         return redirect()->back();
-		}
+    }
+
+    // Adicione este método dentro do ContaEmpresaController.php
+
+    public function recalcularSaldoConta($contaId)
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($contaId) {
+            // 1. Busca a conta empresa
+            $conta = \App\Models\ContaEmpresa::findOrFail($contaId);
+
+            // 2. Busca todos os itens da conta ordenados por data
+            $movimentacoes = \App\Models\ItemContaEmpresa::where('conta_id', $contaId)
+                ->orderByRaw('COALESCE(data_pagamento, created_at) ASC, id ASC')
+                ->get();
+
+            // 3. Começa a conta pelo Saldo Inicial
+            $saldoAcumulado = (float) $conta->saldo_inicial;
+
+            // 4. Percorre cada movimentação aplicando a fórmula: Saldo Inicial + Entrada - Saída
+            foreach ($movimentacoes as $item) {
+                if ($item->tipo === 'entrada') {
+                    $saldoAcumulado += (float) $item->valor;
+                } else {
+                    $saldoAcumulado -= (float) $item->valor;
+                }
+
+                // Atualiza o saldo calculado naquela linha específica do extrato
+                $item->saldo_atual = $saldoAcumulado;
+                $item->save();
+            }
+
+            // 5. Salva o saldo total atualizado na tabela conta_empresas
+            $conta->saldo = $saldoAcumulado;
+            $conta->save();
+
+            return $saldoAcumulado;
+        });
+    }
+    /**
+     * Converte datas no formato dd/mm/yyyy para yyyy-mm-dd
+     */
+    private function parseDate($date, $plusDay = false)
+    {
+        if (empty($date)) return null;
+
+        // Se a data já estiver no formato yyyy-mm-dd, apenas retorna ou processa
+        if (str_contains($date, '-')) {
+            $timestamp = strtotime($date);
+        } else {
+            $date = str_replace("/", "-", $date);
+            $timestamp = strtotime($date);
+        }
+
+        if ($plusDay) {
+            $timestamp = strtotime("+1 day", $timestamp);
+        }
+
+        return date('Y-m-d', $timestamp);
+    }
 }
+

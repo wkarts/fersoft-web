@@ -28,11 +28,12 @@ class Fornecedor extends BaseModel
         'complemento',
         'cod_pais',
         'id_estrangeiro',
+        'latitude',
+        'longitude',
         'imagem',
         'banco',
         'agencia',
-        'conta',
-        'ativo'
+        'conta'
     ];
 
     protected $appends = ['imgApp'];
@@ -83,7 +84,7 @@ class Fornecedor extends BaseModel
     {
         $this->attributes['cep'] = preg_replace('/\D/', '', (string)$value);
     }
-  
+
  	public function tabelaPreco()
     {
         return $this->belongsTo(\App\Models\TabelaPreco::class, 'tabela_preco_id');

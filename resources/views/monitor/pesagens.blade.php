@@ -158,62 +158,54 @@
                     <div class="table-responsive monitor-feed monitor-table-wrapper">
                         <table class="table table-sm align-middle monitor-table text-nowrap" id="monitorTabela">
                             <thead class="thead-light">
-                                <tr>
-                                    <th>Hora</th>
-                                    <th>Filial</th>
-                                    <th>Ação</th>
-                                    <th>ID</th>
-                                    <th>Motorista</th>
-                                    <th>Usuário</th>
-                                    <th>Fornecedor/Cliente</th>
-                                    <th>Materiais</th>
-                                    <th>Peso Bruto</th>
-                                    <th>Tara</th>
-                                    <th>Bag</th>
-                                    <th>Peso Líquido</th>
-                                    <th>Peso Final</th>
-                                    <th>Preço/KG</th>
-                                    <th>Valor Total</th>
-                                    <th>Status</th>
-                                </tr>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Filial</th>
+                                <th>Ação</th>
+                                <th>ID</th>
+                                <th>Motorista</th>
+                                <th>Usuário</th>
+                                <th>Fornecedor/Cliente</th>
+                                <th>Materiais</th>
+                                <th>Peso Inicial</th>
+                                <th>Peso Final</th>
+                                <th>Recipiente</th>
+                                <th>Peso Líquido Total</th>
+                                <th>Peso Final Líquido</th>
+                                <th>Valor Total da Operação</th>
+                                <th>Status</th>
+                            </tr>
                             </thead>
                             <tbody id="monitorEventos">
-                                @foreach($eventos as $evento)
-                                    <tr data-pesagem-id="{{ $evento['id'] }}" class="{{ $evento['status'] === 'concluído' ? 'monitor-row-finished' : '' }}">
-                                        <td>{{ $evento['timestamp'] }}</td>
-                                        <td>{{ $evento['filial'] }}</td>
-                                        <td>{{ $evento['acao'] }}</td>
-                                        <td>#{{ $evento['id'] }}</td>
-                                        <td>{{ $evento['motorista'] }}</td>
-                                        <td>{{ $evento['usuario'] }}</td>
-                                        <td>{{ $evento['fornecedor'] }}</td>
-                                        <td>{{ $evento['produtos_resumo'] }}</td>
-                                        <td>{{ number_format($evento['pesos']['bruto'] ?? 0, 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($evento['pesos']['tara'] ?? 0, 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($evento['pesos']['bag'] ?? 0, 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($evento['pesos']['liquido'] ?? 0, 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($evento['pesos']['final'] ?? 0, 2, ',', '.') }} kg</td>
-                                        <td>
-                                            @if(!is_null($evento['preco_kg']))
-                                                R$ {{ number_format($evento['preco_kg'], 4, ',', '.') }}
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if(!is_null($evento['valor_total']))
-                                                R$ {{ number_format($evento['valor_total'], 2, ',', '.') }}
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                        <td>
+                            @foreach($eventos as $evento)
+                                <tr data-pesagem-id="{{ $evento['id'] }}" class="{{ $evento['status'] === 'concluído' ? 'monitor-row-finished' : '' }}">
+                                    <td>{{ $evento['timestamp'] }}</td>
+                                    <td>{{ $evento['filial'] }}</td>
+                                    <td>{{ $evento['acao'] }}</td>
+                                    <td>#{{ $evento['id'] }}</td>
+                                    <td>{{ $evento['motorista'] }}</td>
+                                    <td>{{ $evento['usuario'] }}</td>
+                                    <td>{{ $evento['fornecedor'] }}</td>
+                                    <td>{{ $evento['produtos_resumo'] }}</td>
+                                    <td>{{ number_format($evento['pesos']['inicial'] ?? 0, 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($evento['pesos']['final_veiculo'] ?? 0, 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($evento['pesos']['bag'] ?? 0, 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($evento['pesos']['liquido_total'] ?? 0, 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($evento['pesos']['final_liquido'] ?? 0, 2, ',', '.') }} kg</td>
+                                    <td>
+                                        @if(!is_null($evento['valor_total']))
+                                            R$ {{ number_format($evento['valor_total'], 2, ',', '.') }}
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>
                                             <span class="badge badge-light monitor-badge">
                                                 {{ ucfirst($evento['status']) }}
                                             </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                    </td>
+                                </tr>
+                            @endforeach
                             </tbody>
                         </table>
                     </div>
@@ -223,34 +215,30 @@
                     <div class="table-responsive monitor-table-wrapper">
                         <table class="table table-sm align-middle monitor-table text-nowrap">
                             <thead class="thead-light">
-                                <tr>
-                                    <th>Produto</th>
-                                    <th>Entrada Bruto (KG)</th>
-                                    <th>Entrada Líquido (KG)</th>
-                                    <th>Entrada Final (KG)</th>
-                                    <th>Saída Bruto (KG)</th>
-                                    <th>Saída Líquido (KG)</th>
-                                    <th>Saída Final (KG)</th>
-                                    <th>Total Final (KG)</th>
-                                </tr>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Entrada Líquida (KG)</th>
+                                <th>Entrada Final (KG)</th>
+                                <th>Saída Líquida (KG)</th>
+                                <th>Saída Final (KG)</th>
+                                <th>Total Final (KG)</th>
+                            </tr>
                             </thead>
                             <tbody id="monitorProdutosBody">
-                                @forelse($analiticoProdutos as $produto)
-                                    <tr data-produto-id="{{ $produto['produto_id'] }}">
-                                        <td>{{ $produto['produto_nome'] }}</td>
-                                        <td>{{ number_format($produto['entrada_bruto'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['entrada_liquido'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['entrada_final'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['saida_bruto'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['saida_liquido'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['saida_final'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($produto['total_final'], 2, ',', '.') }} kg</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td>
-                                    </tr>
-                                @endforelse
+                            @forelse($analiticoProdutos as $produto)
+                                <tr data-produto-id="{{ $produto['produto_id'] }}">
+                                    <td>{{ $produto['produto_nome'] }}</td>
+                                    <td>{{ number_format($produto['entrada_liquido'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($produto['entrada_final'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($produto['saida_liquido'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($produto['saida_final'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($produto['total_final'], 2, ',', '.') }} kg</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td>
+                                </tr>
+                            @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -260,30 +248,30 @@
                     <div class="table-responsive monitor-table-wrapper">
                         <table class="table table-sm align-middle monitor-table text-nowrap">
                             <thead class="thead-light">
-                                <tr>
-                                    <th>Fornecedor/Cliente</th>
-                                    <th>Tipo</th>
-                                    <th>Entrada (KG)</th>
-                                    <th>Saída (KG)</th>
-                                    <th>Total (KG)</th>
-                                    <th>Pesagens</th>
-                                </tr>
+                            <tr>
+                                <th>Fornecedor/Cliente</th>
+                                <th>Tipo</th>
+                                <th>Entrada (KG)</th>
+                                <th>Saída (KG)</th>
+                                <th>Total (KG)</th>
+                                <th>Pesagens</th>
+                            </tr>
                             </thead>
                             <tbody id="monitorParceirosBody">
-                                @forelse($analiticoParceiros as $parceiro)
-                                    <tr data-parceiro-key="{{ $parceiro['parceiro_tipo'] }}-{{ $parceiro['parceiro_id'] ?? 'sem' }}">
-                                        <td>{{ $parceiro['parceiro_nome'] }}</td>
-                                        <td>{{ $parceiro['parceiro_tipo'] }}</td>
-                                        <td>{{ number_format($parceiro['entrada'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($parceiro['saida'], 2, ',', '.') }} kg</td>
-                                        <td>{{ number_format($parceiro['total'], 2, ',', '.') }} kg</td>
-                                        <td>{{ $parceiro['total_pesagens'] }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">Nenhum parceiro encontrado.</td>
-                                    </tr>
-                                @endforelse
+                            @forelse($analiticoParceiros as $parceiro)
+                                <tr data-parceiro-key="{{ $parceiro['parceiro_tipo'] }}-{{ $parceiro['parceiro_id'] ?? 'sem' }}">
+                                    <td>{{ $parceiro['parceiro_nome'] }}</td>
+                                    <td>{{ $parceiro['parceiro_tipo'] }}</td>
+                                    <td>{{ number_format($parceiro['entrada'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($parceiro['saida'], 2, ',', '.') }} kg</td>
+                                    <td>{{ number_format($parceiro['total'], 2, ',', '.') }} kg</td>
+                                    <td>{{ $parceiro['total_pesagens'] }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">Nenhum parceiro encontrado.</td>
+                                </tr>
+                            @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -346,12 +334,11 @@
                     <td>${escapeHtml(evento.usuario)}</td>
                     <td>${escapeHtml(evento.fornecedor)}</td>
                     <td>${escapeHtml(evento.produtos_resumo)}</td>
-                    <td>${formatPeso(evento.pesos?.bruto)}</td>
-                    <td>${formatPeso(evento.pesos?.tara)}</td>
+                    <td>${formatPeso(evento.pesos?.inicial)}</td>
+                    <td>${formatPeso(evento.pesos?.final_veiculo)}</td>
                     <td>${formatPeso(evento.pesos?.bag)}</td>
-                    <td>${formatPeso(evento.pesos?.liquido)}</td>
-                    <td>${formatPeso(evento.pesos?.final)}</td>
-                    <td>${evento.preco_kg ? formatMoney(evento.preco_kg, 4) : '—'}</td>
+                    <td>${formatPeso(evento.pesos?.liquido_total)}</td>
+                    <td>${formatPeso(evento.pesos?.final_liquido)}</td>
                     <td>${evento.valor_total ? formatMoney(evento.valor_total, 2) : '—'}</td>
                     <td><span class="badge badge-light monitor-badge">${escapeHtml(evento.status)}</span></td>
                 </tr>
@@ -400,17 +387,15 @@
         const renderProdutos = () => {
             const itens = Array.from(produtoState.values()).sort((a, b) => (b.total_final || 0) - (a.total_final || 0));
             if (!itens.length) {
-                monitorProdutosBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
+                monitorProdutosBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td></tr>';
                 return;
             }
 
             monitorProdutosBody.innerHTML = itens.map((item) => `
                 <tr data-produto-id="${item.produto_id}">
                     <td>${escapeHtml(item.produto_nome)}</td>
-                    <td>${formatPeso(item.entrada_bruto)}</td>
                     <td>${formatPeso(item.entrada_liquido)}</td>
                     <td>${formatPeso(item.entrada_final)}</td>
-                    <td>${formatPeso(item.saida_bruto)}</td>
                     <td>${formatPeso(item.saida_liquido)}</td>
                     <td>${formatPeso(item.saida_final)}</td>
                     <td>${formatPeso(item.total_final)}</td>

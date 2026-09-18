@@ -3,375 +3,326 @@
 
 <div class="card card-custom gutter-b">
     <div class="card-header border-0 pt-6">
-        <div class="card-title">
-            <h3 class="card-label font-weight-bolder text-dark">
-                <i class="la la-file-import text-success icon-xl"></i> Finalizar Importação de NFS-e Tomada
-                <span class="text-muted pt-2 font-size-sm d-block">Confirme as regras de retenção, prazos e parametrização financeira</span>
-            </h3>
-        </div>
+        <h3 class="card-title font-weight-bolder text-dark">
+            <i class="la la-file-import text-success icon-xl mr-2"></i> Finalizar Importação de NFS-e
+        </h3>
         <div class="card-toolbar">
-            <a href="/nfse-tomadas" class="btn btn-light-danger font-weight-bold">
-                <i class="la la-arrow-left"></i> Voltar
-            </a>
+            <a href="/nfse-tomadas" class="btn btn-light-danger font-weight-bold"><i class="la la-arrow-left"></i> Voltar</a>
         </div>
     </div>
 
     <div class="card-body">
-        
-        {{-- Formulário de Disparo do Lançamento --}}
         <form action="/nfse-tomadas/salvar-importacao/{{ $nota->id }}" method="POST" id="form-confirmar-importacao">
             @csrf
 
-            {{-- 1. Resumo dos Dados Gerados pela Receita --}}
             <div class="row mb-8">
-                <div class="col-12">
-                    <h5 class="text-dark font-weight-bold mb-4">1. Dados do Documento Fiscal</h5>
-                    <div class="bg-light p-5 rounded row">
-                        
-                        <div class="col-md-2 mb-3">
-                            <span class="text-muted d-block font-size-sm">Número da Nota</span>
-                            <strong class="text-dark font-size-lg">{{ $nota->numero_nota }}</strong>
+                <div class="col-md-8">
+                    <div class="card card-custom bg-light-info shadow-none p-5">
+                        <h5 class="text-info font-weight-bold mb-3">Dados do Documento</h5>
+                        <div class="row">
+                            <div class="col-md-3"><span>Nota:</span><br><strong>{{ $nota->numero_nota }}</strong></div>
+                            <div class="col-md-4"><span>Emissão:</span><br><strong>{{ date('d/m/Y', strtotime($nota->data_emissao)) }}</strong></div>
+                            <div class="col-md-5"><span>Prestador:</span><br><strong>{{ $nota->prestador_nome }}</strong></div>
                         </div>
-                        
-                        <div class="col-md-2 mb-3">
-                            <span class="text-muted d-block font-size-sm">Data de Emissão</span>
-                            <strong class="text-dark font-size-lg">{{ date('d/m/Y', strtotime($nota->data_emissao)) }}</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-custom bg-light-secondary shadow-none p-5 h-100">
+                        <h5 class="text-dark font-weight-bold mb-2">Descrição do Serviço</h5>
+                        <div style="max-height: 80px; overflow-y: auto; font-size: 0.9rem;">
+                            {!! isset($descricao_servico) ? nl2br(e($descricao_servico)) : 'Prestação de serviços gerais.' !!}
                         </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <span class="text-muted d-block font-size-sm">Prestador / Fornecedor</span>
-                            <strong class="text-dark font-size-lg">{{ $nota->prestador_nome }}</strong>
-                            <small class="text-muted d-block">{{ $nota->prestador_cnpj_cpf ?? $nota->prestador_cnpj }}</small>
-                        </div>
-                        
-                        {{-- CAIXA DA DESCRIÇÃO (Agora separada na sua própria coluna) --}}
-                        <div class="col-md-4 mb-3">
-                            <span class="text-muted d-block font-size-sm">Descrição do Serviço Reconhecido</span>
-                            <span class="text-dark font-weight-bold font-size-sm d-block bg-white p-2 rounded border" style="max-height: 75px; overflow-y: auto;">
-                                @if(isset($descricao_servico) && !empty($descricao_servico))
-                                    {!! nl2br(e($descricao_servico)) !!}
-                                @else
-                                    Prestação de serviços gerais discriminada no corpo do documento nacional.
-                                @endif
-                            </span>
-                        </div>
-                        
                     </div>
                 </div>
             </div>
 
-            {{-- 2. Bloco de Retenções Fiscais Identificadas --}}
-            <div class="row mb-8">
-                <div class="col-12">
-                    <h5 class="text-dark font-weight-bold mb-4">2. Valores e Retenções Provisionadas</h5>
-                    <div class="table-responsive bg-light-secondary p-4 rounded">
-                        <table class="table table-borderless table-vertical-center mb-0">
-                            <thead>
-                                <tr class="text-muted font-size-xs text-uppercase">
-                                    <th>Valor do Serviço</th>
-                                    <th>PIS Retido (Est.)</th>
-                                    <th>COFINS Retido (Est.)</th>
-                                    <th>CSLL Retida (Est.)</th>
-                                    <th>IRRF Retido (Est.)</th>
-                                    <th class="text-right text-success font-weight-bold">Valor Líquido a Pagar</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @php
-                                    $vServico = $nota->valor_servico;
-                                    $vLiquido = $nota->valor_liquido > 0 ? $nota->valor_liquido : $vServico;
-                                    
-                                    // Provisionamento de simulação gráfica baseado nas regras do seu Controller
-                                    $vPis = round($vServico - $vLiquido, 2) > 0 ? round($vServico * 0.0065, 2) : 0;
-                                    $vCofins = round($vServico - $vLiquido, 2) > 0 ? round($vServico * 0.03, 2) : 0;
-                                    $vCsll = round($vServico - $vLiquido, 2) > 0 ? round($vServico * 0.01, 2) : 0;
-                                    $vIr = round($vServico - $vLiquido, 2) > 0 ? round($vServico * 0.015, 2) : 0;
-                                @endphp
-                                <tr class="font-size-lg font-weight-bolder text-dark">
-                                    <td>R$ {{ number_format($vServico, 2, ',', '.') }}</td>
-                                    <td class="text-danger font-weight-normal">R$ {{ number_format($vPis, 2, ',', '.') }}</td>
-                                    <td class="text-danger font-weight-normal">R$ {{ number_format($vCofins, 2, ',', '.') }}</td>
-                                    <td class="text-danger font-weight-normal">R$ {{ number_format($vCsll, 2, ',', '.') }}</td>
-                                    <td class="text-danger font-weight-normal">R$ {{ number_format($vIr, 2, ',', '.') }}</td>
-                                    <td class="text-right text-success font-size-h4">R$ {{ number_format($vLiquido, 2, ',', '.') }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            @php
+                $vServico = $nota->valor_servico;
+                $vLiquido = $nota->valor_liquido > 0 ? $nota->valor_liquido : $vServico;
+                $vPis = 0; $vCofins = 0; $vCsll = 0; $vIr = 0;
+                if (round($vServico - $vLiquido, 2) > 0) {
+                    $vPis = round($vServico * 0.0065, 2);
+                    $vCofins = round($vServico * 0.03, 2);
+                    $vCsll = round($vServico * 0.01, 2);
+                    $vIr = round($vServico * 0.015, 2);
+                }
+            @endphp
+            <h5 class="text-dark font-weight-bold mb-4">Retenções e Valor Líquido</h5>
+            <div class="table-responsive mb-8">
+                <table class="table table-bordered text-center">
+                    <thead class="bg-dark text-white">
+                        <tr><th>Valor Serviço</th><th>PIS</th><th>COFINS</th><th>CSLL</th><th>IRRF</th><th>VALOR LÍQUIDO</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="font-weight-bolder">
+                            <td class="text-primary">R$ {{ number_format($vServico, 2, ',', '.') }}</td>
+                            <td>R$ {{ number_format($vPis, 2, ',', '.') }}</td>
+                            <td>R$ {{ number_format($vCofins, 2, ',', '.') }}</td>
+                            <td>R$ {{ number_format($vCsll, 2, ',', '.') }}</td>
+                            <td>R$ {{ number_format($vIr, 2, ',', '.') }}</td>
+                            <td class="text-success font-size-h4">R$ {{ number_format($vLiquido, 2, ',', '.') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            {{-- 3. Parâmetros de Lançamento e Condições de Pagamento --}}
-            <div class="row mb-8">
-                <div class="col-12">
-                    <h5 class="text-dark font-weight-bold mb-4">3. Classificação e Condição de Pagamento</h5>
-                    <div class="row">
-                        
-                        {{-- Categoria de Conta (Plano de Contas) --}}
-                        <div class="col-md-4 form-group">
-                            <label class="font-weight-bold text-dark">Categoria de Conta Finan. <span class="text-danger">*</span></label>
-                            <select name="categoria_conta_id" class="form-control custom-select" required>
-                                <option value="">Selecione uma categoria...</option>
-                                @foreach($categoriasDeConta as $c)
-                                    <option value="{{ $c->id }}" {{ old('categoria_conta_id') == $c->id ? 'selected' : '' }}>
-                                        {{ $c->nome }}
-                                    </option>
-                                @endforeach
+            <div class="card card-custom gutter-b shadow-sm border border-light">
+                <div class="card-header border-0"><h3 class="card-title font-weight-bold">Configuração de Pagamento e Rateio</h3></div>
+                <div class="card-body">
+                    <div class="row mb-6 bg-light-secondary p-4 rounded">
+                        <div class="form-group col-lg-3">
+                            <label>Forma de Faturamento</label>
+                            <select id="tipo_condicao" class="custom-select form-control">
+                                <option value="vista">À Vista</option>
+                                <option value="rateio">Ratear por Veículos</option>
+                                <option value="prazo">Parcelamento Manual</option>
                             </select>
                         </div>
-
-                        {{-- Prazo entre parcelas --}}
-                        <div class="col-md-3 form-group">
-                            <label class="font-weight-bold text-dark">Intervalo de Dias (Prazo) <span class="text-danger">*</span></label>
-                            <select name="prazo_pagamento" class="form-control custom-select" required>
-                                <option value="30" {{ old('prazo_pagamento') == '30' ? 'selected' : '' }}>A cada 30 dias</option>
-                                <option value="15" {{ old('prazo_pagamento') == '15' ? 'selected' : '' }}>A cada 15 dias</option>
-                                <option value="0" {{ old('prazo_pagamento') == '0' ? 'selected' : '' }}>À Vista / Mesma Data</option>
-                            </select>
-                        </div>
-
-                        {{-- Quantidade de Parcelas --}}
-                        <div class="col-md-2 form-group">
-                            <label class="font-weight-bold text-dark">Qtd. Parcelas <span class="text-danger">*</span></label>
-                            <input type="number" name="quantidade_parcelas" class="form-control" value="{{ old('quantidade_parcelas', 1) }}" min="1" max="72" required>
-                        </div>
-
-                        {{-- Vínculo de Frota / Veículo (Opcional) --}}
-                        <div class="col-md-3 form-group">
-                            <label class="font-weight-bold text-dark">Vincular a Veículo / Frota</label>
-                            <select name="veiculo_id" class="form-control custom-select">
-                                <option value="">Nenhum (Geral)</option>
+                        <div class="form-group col-lg-6 id-div-rateio" style="display:none;">
+                            <label>Selecione os Veículos</label>
+                            <select id="veiculos_rateio" class="form-control select2-custom" multiple="multiple" style="width: 100%">
                                 @foreach($veiculos as $v)
-                                    <option value="{{ $v->id }}" {{ old('veiculo_id') == $v->id ? 'selected' : '' }}>
-                                        {{ $v->placa }} - {{ $v->marca }}/{{ $v->modelo }}
-                                    </option>
+                                    <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->modelo }}</option>
                                 @endforeach
                             </select>
                         </div>
-
-                    </div>
-                </div>
-            </div>
-
-            <div class="card card-custom gutter-b border shadow-none">
-                <div class="card-header border-0">
-                    <div class="card-title">
-                        <h3 class="card-label font-weight-bold">4. Parcelamento e Rateio Avançado</h3>
-                    </div>
-                </div>
-                <div class="card-body pt-0">
-                    <div class="alert alert-light-info mb-5">
-                        Mantenha <strong>Automático</strong> para usar quantidade, prazo e veículo geral informados acima.
-                        Use as opções avançadas somente quando cada parcela precisar de vencimento, valor ou veículo próprio.
-                    </div>
-
-                    <div class="row align-items-end">
-                        <div class="col-md-4 form-group">
-                            <label class="font-weight-bold">Forma de distribuição</label>
-                            <select id="tipo_condicao_nfse" class="custom-select form-control">
-                                <option value="automatico">Automático pelos parâmetros acima</option>
-                                <option value="manual">Parcelamento manual</option>
-                                <option value="rateio">Ratear igualmente por veículos</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-4 form-group" id="grupo_quantidade_manual" style="display: none;">
-                            <label class="font-weight-bold">Quantidade de parcelas manuais</label>
+                        <div class="form-group col-lg-3 div-gerador" style="display:none;">
+                            <label>Qtd Parcelas</label>
                             <div class="input-group">
-                                <input type="number" id="qtd_parcelas_manual_nfse" class="form-control" value="1" min="1" max="120">
-                                <div class="input-group-append">
-                                    <button type="button" id="btn_gerar_parcelas_nfse" class="btn btn-primary">Gerar</button>
-                                </div>
+                                <input type="number" id="qtd_parcelas_manual" name="quantidade_parcelas" class="form-control" value="1" min="1">
+                                <div class="input-group-append"><button type="button" id="btn_gerar_parcelas" class="btn btn-primary">Gerar</button></div>
                             </div>
                         </div>
-
-                        <div class="col-md-8 form-group" id="grupo_rateio_veiculos" style="display: none;">
-                            <label class="font-weight-bold">Veículos participantes do rateio</label>
-                            <select id="veiculos_rateio_nfse" class="form-control select2-custom" multiple="multiple" style="width: 100%;">
-                                @foreach($veiculos as $v)
-                                    <option value="{{ $v->id }}">{{ $v->placa }} - {{ $v->marca }}/{{ $v->modelo }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                     </div>
-
-                    <div id="painel_parcelas_nfse" style="display: none;">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped" id="tabela_parcelas_nfse">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 100px;">Parcela</th>
-                                        <th style="width: 160px;">Vencimento</th>
-                                        <th style="width: 170px;">Valor (R$)</th>
-                                        <th>Veículo</th>
-                                        <th style="width: 70px;" class="text-center">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                        <button type="button" id="btn_adicionar_parcela_nfse" class="btn btn-sm btn-light-primary">
-                            <i class="la la-plus"></i> Adicionar parcela
-                        </button>
-                        <div class="text-right font-weight-bold mt-3">
-                            Total distribuído: <span id="total_parcelas_nfse" class="text-success">R$ 0,00</span>
-                        </div>
-                    </div>
-
+                    <table class="table table-bordered table-striped" id="tabela-fatura">
+                        <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor (R$)</th><th>Veículo</th><th>Ações</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
                     <input type="hidden" name="fatura_json" id="fatura_json_input">
                 </div>
             </div>
 
-            <hr class="my-8">
+            <div class="row mb-8">
+                <div class="col-md-4">
+                    <label>Categoria da Conta *</label>
+                    <select name="categoria_conta_id" class="custom-select form-control" required>
+                        <option value="">-- Selecione --</option>
+                        @foreach($categoriasDeConta as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-            {{-- Botões de Disparo --}}
-            <div class="row">
-                <div class="col-12 text-right">
-                    <a href="/nfse-tomadas" class="btn btn-light-dark font-weight-bold mr-2">Cancelar</a>
-                    <button type="submit" id="btn-salvar-importacao" class="btn btn-success font-weight-bolder px-8 shadow-sm">
-                        <i class="la la-check-circle"></i> CONFIRMAR E GERAR FINANCEIRO
-                    </button>
+                <div class="col-md-4">
+                    <label>Prazo de Pagamento (dias) *</label>
+                    <input type="number" name="prazo_pagamento" class="form-control" value="30" min="0" required>
                 </div>
             </div>
-
+            <div class="text-right">
+                <button type="submit" id="btn-salvar-importacao" class="btn btn-success font-weight-bolder px-10 py-4 shadow-lg">
+                    <i class="la la-check-circle icon-lg"></i> CONFIRMAR E SALVAR
+                </button>
+            </div>
         </form>
-
     </div>
 </div>
+@endsection
 
-{{-- Parcelamento avançado e proteção contra duplo envio --}}
+@section('javascript')
 <script>
-    (function () {
-        const valorLiquido = Number(@json(round((float) $vLiquido, 2)));
-        const vencimentoBase = @json(\Carbon\Carbon::parse($nota->data_emissao)->addDays(30)->format('d/m/Y'));
-        const veiculos = @json($veiculos->map(function ($v) {
-            return ['id' => $v->id, 'descricao' => trim($v->placa . ' - ' . $v->marca . '/' . $v->modelo)];
-        })->values());
+  $(document).ready(function() {
+        $('#veiculo_geral').change(function() {
+            let idVeiculo = $(this).val();
+            $('.select-veiculo-parcela').val(idVeiculo);
+            atualizarFaturaJson();
+        });
 
-        const moeda = function (valor) {
-            return Number(valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        };
+        $('#tipo_condicao').change(function() {
+            let tipo = $(this).val();
+            if (tipo === 'rateio') {
+                $('.id-div-rateio').fadeIn();
+                $('.div-gerador').hide();
+                executarRateioVeiculos();
+            } else if (tipo === 'prazo') {
+                $('.div-gerador').fadeIn();
+                $('.id-div-rateio').hide();
+            } else if (tipo === 'vista') {
+                $('.div-gerador').hide();
+                $('.id-div-rateio').hide();
+                
+                let totalNF = "{{ number_format((double)$infos['vNF'], 2, ',', '.') }}";
+                let hoje = "{{ date('d/m/Y') }}";
+                
+                $('#tabela-fatura tbody').html(`
+                    <tr>
+                        <td><input type="text" name="fat_num[]" class="form-control text-center font-weight-bold" value="001"></td>
+                        <td><input type="text" name="fat_venc[]" class="form-control date-input text-center" value="${hoje}"></td>
+                        <td><input type="text" name="fat_val[]" class="form-control money text-right font-weight-bold text-success" value="${totalNF}"></td>
+                        <td>
+                            <select name="fat_veiculo[]" class="custom-select form-control select-veiculo-parcela">
+                                <option value="">Usar veículo geral da nota</option>
+                                @foreach($veiculos as $v) <option value="{{ $v->id }}">{{ $v->placa }}</option> @endforeach
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-icon btn-danger btn-remover-fat"><i class="la la-trash"></i></button>
+                        </td>
+                    </tr>
+                `);
+                $('.money').mask('#.##0,00', {reverse: true});
+                $('.date-input').mask('00/00/0000');
+                $('#tabela-fatura tbody .select-veiculo-parcela').val($('#veiculo_geral').val());
+                atualizarFaturaJson();
+            } else {
+                location.reload(); // Recarrega para voltar o XML ao normal se desistir
+            }
+        });
 
-        const parseMoeda = function (valor) {
-            if (typeof valor === 'number') return valor;
-            let texto = String(valor || '').replace(/[^0-9,.-]/g, '');
-            if (texto.indexOf(',') >= 0) texto = texto.replace(/\./g, '').replace(',', '.');
-            return Number(texto) || 0;
-        };
+        $('#veiculos_rateio').change(function() { executarRateioVeiculos(); });
 
-        const opcoesVeiculo = function (selecionado) {
-            let html = '<option value="">Usar veículo geral da nota</option>';
-            veiculos.forEach(function (v) {
-                html += '<option value="' + v.id + '" ' + (String(selecionado || '') === String(v.id) ? 'selected' : '') + '>' + v.descricao + '</option>';
+        function executarRateioVeiculos() {
+            let veiculosSelecionados = $('#veiculos_rateio').val();
+            if (!veiculosSelecionados || veiculosSelecionados.length === 0) {
+                $('#tabela-fatura tbody').html('<tr><td colspan="5" class="text-center text-danger">Selecione pelo menos um veículo no campo acima!</td></tr>');
+                return;
+            }
+
+            let totalNF = parseFloat("{{ $infos['vNF'] }}");
+            let qtdVeiculos = veiculosSelecionados.length;
+            let valorFatiado = (totalNF / qtdVeiculos).toFixed(2);
+            let valorFormatado = parseFloat(valorFatiado).toLocaleString('pt-br', {minimumFractionDigits: 2});
+            let hoje = "{{ date('d/m/Y') }}";
+            let html = '';
+
+            veiculosSelecionados.forEach(function(veiculoId, index) {
+                let numeroParcela = String(index + 1).padStart(3, '0');
+                html += `
+                    <tr>
+                        <td><input type="text" name="fat_num[]" class="form-control text-center font-weight-bold" value="${numeroParcela}"></td>
+                        <td><input type="text" name="fat_venc[]" class="form-control date-input text-center" value="${hoje}"></td>
+                        <td><input type="text" name="fat_val[]" class="form-control money text-right font-weight-bold text-success" value="${valorFormatado}"></td>
+                        <td>
+                            <select name="fat_veiculo[]" class="custom-select form-control select-veiculo-parcela">
+                                <option value="">Usar veículo geral da nota</option>
+                                @foreach($veiculos as $v)
+                                    <option value="{{ $v->id }}" ${veiculoId == "{{ $v->id }}" ? 'selected' : ''}>{{ $v->placa }} - {{ $v->modelo }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-icon btn-danger btn-remover-fat"><i class="la la-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
             });
-            return html;
-        };
 
-        const adicionarLinha = function (numero, vencimento, valor, veiculoId) {
-            const linha = `
-                <tr>
-                    <td><input type="text" class="form-control text-center parcela-numero" value="${numero}"></td>
-                    <td><input type="text" class="form-control date-input parcela-vencimento" value="${vencimento}"></td>
-                    <td><input type="text" class="form-control money parcela-valor text-right" value="${moeda(valor)}"></td>
-                    <td><select class="custom-select form-control parcela-veiculo">${opcoesVeiculo(veiculoId)}</select></td>
-                    <td class="text-center"><button type="button" class="btn btn-sm btn-icon btn-danger remover-parcela-nfse"><i class="la la-trash"></i></button></td>
-                </tr>`;
-            $('#tabela_parcelas_nfse tbody').append(linha);
-            $('.date-input').mask('00/00/0000');
+            $('#tabela-fatura tbody').html(html);
             $('.money').mask('#.##0,00', {reverse: true});
-        };
+            $('.date-input').mask('00/00/0000');
+            atualizarFaturaJson();
+        }
 
-        const atualizarJson = function () {
-            const parcelas = [];
-            let total = 0;
-            $('#tabela_parcelas_nfse tbody tr').each(function () {
-                const valor = parseMoeda($(this).find('.parcela-valor').val());
-                total += valor;
-                parcelas.push({
-                    numero: $(this).find('.parcela-numero').val(),
-                    vencimento: $(this).find('.parcela-vencimento').val(),
-                    valor_parcela: valor.toFixed(2),
-                    veiculo_id: $(this).find('.parcela-veiculo').val() || null
-                });
+        $('#btn_gerar_parcelas').click(function() {
+            let qtd = parseInt($('#qtd_parcelas_manual').val()) || 1;
+            let totalNF = parseFloat("{{ $infos['vNF'] }}");
+            let valorParcela = (totalNF / qtd).toFixed(2);
+            let valorFormatado = parseFloat(valorParcela).toLocaleString('pt-br', {minimumFractionDigits: 2});
+            let html = '';
+            let dataBase = new Date();
+
+            for (let i = 1; i <= qtd; i++) {
+                dataBase.setMonth(dataBase.getMonth() + 1);
+                let dia = String(dataBase.getDate()).padStart(2, '0');
+                let msg = String(dataBase.getMonth() + 1).padStart(2, '0');
+                let ano = dataBase.getFullYear();
+                let dataStr = `${dia}/${msg}/${ano}`;
+
+                html += `
+                    <tr>
+                        <td><input type="text" name="fat_num[]" class="form-control text-center font-weight-bold" value="${String(i).padStart(3, '0')}"></td>
+                        <td><input type="text" name="fat_venc[]" class="form-control date-input text-center" value="${dataStr}"></td>
+                        <td><input type="text" name="fat_val[]" class="form-control money text-right font-weight-bold text-success" value="${valorFormatado}"></td>
+                        <td>
+                            <select name="fat_veiculo[]" class="custom-select form-control select-veiculo-parcela">
+                                <option value="">Usar veículo geral da nota</option>
+                                @foreach($veiculos as $v) <option value="{{ $v->id }}">{{ $v->placa }}</option> @endforeach
+                            </select>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-icon btn-danger btn-remover-fat"><i class="la la-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }
+            $('#tabela-fatura tbody').html(html);
+            $('.money').mask('#.##0,00', {reverse: true});
+            $('.date-input').mask('00/00/0000');
+            $('.select-veiculo-parcela').val($('#veiculo_geral').val());
+            atualizarFaturaJson();
+        });
+
+        $('#btn-adicionar-linha-fatura').click(function() {
+            let numLinhas = $('#tabela-fatura tbody tr').length + 1;
+            let numFormatado = String(numLinhas).padStart(3, '0');
+            let hoje = "{{ date('d/m/Y') }}";
+            
+            let novaLinha = `
+                <tr>
+                    <td><input type="text" name="fat_num[]" class="form-control text-center font-weight-bold" value="${numFormatado}"></td>
+                    <td><input type="text" name="fat_venc[]" class="form-control date-input text-center" value="${hoje}"></td>
+                    <td><input type="text" name="fat_val[]" class="form-control money text-right font-weight-bold text-success" value="0,00"></td>
+                    <td>
+                        <select name="fat_veiculo[]" class="custom-select form-control select-veiculo-parcela">
+                            <option value="">Usar veículo geral da nota</option>
+                            @foreach($veiculos as $v) <option value="{{ $v->id }}">{{ $v->placa }}</option> @endforeach
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-icon btn-danger btn-remover-fat"><i class="la la-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+            $('#tabela-fatura tbody').append(novaLinha);
+            $('.money').mask('#.##0,00', {reverse: true});
+            $('.date-input').mask('00/00/0000');
+            $('#tabela-fatura tbody tr:last .select-veiculo-parcela').val($('#veiculo_geral').val());
+            atualizarFaturaJson();
+        });
+
+        $(document).on('click', '.btn-remover-fat', function() {
+            if(confirm("Deseja remover esta parcela do financeiro?")) {
+                $(this).closest('tr').remove();
+                atualizarFaturaJson();
+            }
+        });
+
+        $(document).on('blur', 'input[name="fat_venc[]"], input[name="fat_val[]"], input[name="fat_num[]"]', function() {
+            atualizarFaturaJson();
+        });
+        
+        $(document).on('change', 'select[name="fat_veiculo[]"]', function() {
+            atualizarFaturaJson();
+        });
+
+        function atualizarFaturaJson() {
+            let faturas = [];
+            $('#tabela-fatura tbody tr').each(function() {
+                let num = $(this).find('input[name="fat_num[]"]').val();
+                let venc = $(this).find('input[name="fat_venc[]"]').val();
+                let val = $(this).find('input[name="fat_val[]"]').val();
+                let veiculo = $(this).find('select[name="fat_veiculo[]"]').val();
+                
+                if(num && venc && val) {
+                    faturas.push({
+                        numero: num,
+                        vencimento: venc,
+                        valor_parcela: val,
+                        veiculo_id: veiculo
+                    });
+                }
             });
-            $('#total_parcelas_nfse').text('R$ ' + moeda(total));
-            $('#fatura_json_input').val(parcelas.length ? JSON.stringify(parcelas) : '');
-            return total;
-        };
-
-        const gerarParcelas = function (quantidade, veiculosSelecionados) {
-            quantidade = Math.max(1, Number(quantidade || 1));
-            $('#tabela_parcelas_nfse tbody').empty();
-            const base = Math.floor((valorLiquido / quantidade) * 100) / 100;
-            let acumulado = 0;
-            for (let i = 1; i <= quantidade; i++) {
-                const valor = i === quantidade ? Number((valorLiquido - acumulado).toFixed(2)) : base;
-                acumulado += valor;
-                adicionarLinha(String(i).padStart(3, '0'), vencimentoBase, valor, veiculosSelecionados ? veiculosSelecionados[i - 1] : null);
-            }
-            atualizarJson();
-        };
-
-        $('#tipo_condicao_nfse').on('change', function () {
-            const tipo = $(this).val();
-            $('#grupo_quantidade_manual').toggle(tipo === 'manual');
-            $('#grupo_rateio_veiculos').toggle(tipo === 'rateio');
-            $('#painel_parcelas_nfse').toggle(tipo !== 'automatico');
-            if (tipo === 'automatico') {
-                $('#tabela_parcelas_nfse tbody').empty();
-                $('#fatura_json_input').val('');
-                $('#total_parcelas_nfse').text('R$ 0,00');
-            } else if (tipo === 'manual') {
-                gerarParcelas($('#qtd_parcelas_manual_nfse').val());
-            }
-        });
-
-        $('#btn_gerar_parcelas_nfse').on('click', function () {
-            gerarParcelas($('#qtd_parcelas_manual_nfse').val());
-        });
-
-        $('#veiculos_rateio_nfse').on('change', function () {
-            const ids = $(this).val() || [];
-            if (ids.length) gerarParcelas(ids.length, ids);
-            else {
-                $('#tabela_parcelas_nfse tbody').empty();
-                atualizarJson();
-            }
-        });
-
-        $('#btn_adicionar_parcela_nfse').on('click', function () {
-            const proximo = $('#tabela_parcelas_nfse tbody tr').length + 1;
-            adicionarLinha(String(proximo).padStart(3, '0'), vencimentoBase, 0, null);
-            atualizarJson();
-        });
-
-        $(document).on('click', '.remover-parcela-nfse', function () {
-            $(this).closest('tr').remove();
-            atualizarJson();
-        });
-        $(document).on('keyup change blur', '.parcela-numero, .parcela-vencimento, .parcela-valor, .parcela-veiculo', atualizarJson);
-
-        document.getElementById('form-confirmar-importacao').addEventListener('submit', function (event) {
-            const tipo = $('#tipo_condicao_nfse').val();
-            if (tipo !== 'automatico') {
-                const total = atualizarJson();
-                if (!$('#tabela_parcelas_nfse tbody tr').length) {
-                    event.preventDefault();
-                    alert('Gere ao menos uma parcela para concluir a importação.');
-                    return;
-                }
-                if (Math.abs(total - valorLiquido) > 0.02) {
-                    event.preventDefault();
-                    alert('A soma das parcelas deve ser igual ao valor líquido de R$ ' + moeda(valorLiquido) + '.');
-                    return;
-                }
-            }
-
-            const btn = document.getElementById('btn-salvar-importacao');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="la la-spinner la-spin"></i> Processando Lançamento...';
-        });
-    })();
+            $('#fatura_json_input').val(JSON.stringify(faturas));
+        }
+    });
 </script>
-
 @endsection

@@ -64,7 +64,7 @@ class ConciliacaoController extends BaseController
             ->select('conta_pagars.*', 'fornecedors.razao_social as nome_parceiro')
             ->where('conta_pagars.empresa_id', $empresaId)
             ->when($filialId, function($q) use ($filialId) {
-                return $q->where('conta_pagars.filial_id', $filialId); // TRAVA DE FILIAL
+                return $q->where('conta_pagars.filial_id', $filialId);
             })
             ->where(function($q) use ($dataLimite) {
                 $q->where('conta_pagars.status', 0)
@@ -76,7 +76,7 @@ class ConciliacaoController extends BaseController
             ->select('conta_recebers.*', 'clientes.razao_social as nome_parceiro')
             ->where('conta_recebers.empresa_id', $empresaId)
             ->when($filialId, function($q) use ($filialId) {
-                return $q->where('conta_recebers.filial_id', $filialId); // TRAVA DE FILIAL
+                return $q->where('conta_recebers.filial_id', $filialId);
             })
             ->where(function($q) use ($dataLimite) {
                 $q->where('conta_recebers.status', 0)
@@ -94,77 +94,79 @@ class ConciliacaoController extends BaseController
         if ($request->filled('data_fim')) {
             $query->where('data_transacao', '<=', $request->data_fim);
         }
+
         if ($request->filled('status_filtro')) {
-            $query->where('status', $request->status_filtro);
+            if ($request->status_filtro !== 'all') {
+                $query->where('status', $request->status_filtro);
+            }
         } else {
+            // Se a requisição veio sem o parâmetro status_filtro, define como pending padrão
             $query->where('status', 'pending');
         }
 
         $records = $query->orderBy('data_transacao', 'desc')->get();
 
+        // Lógica original de marcação de status
         foreach ($records as $extrato) {
             $extrato->achou_pendente = false;
             $extrato->achou_pago = false;
-
             $listaBusca = ($extrato->tipo === 'debit') ? $contasPagarSugestao : $contasReceberSugestao;
             $descBanco = strtoupper($extrato->descricao);
-
             foreach ($listaBusca as $titulo) {
                 if (abs((float)$titulo->valor_integral - (float)$extrato->valor) < 0.01) {
                     $nomeFornecedor = trim(strtoupper($titulo->nome_parceiro ?? ''));
-                    $nomeValido = false;
-
                     if (!empty($nomeFornecedor)) {
                         $primeiraPalavra = explode(' ', $nomeFornecedor)[0];
                         if (strlen($primeiraPalavra) > 2 && strpos($descBanco, $primeiraPalavra) !== false) {
-                            $nomeValido = true;
+                            if ($titulo->status == 1) { $extrato->achou_pago = true; } else { $extrato->achou_pendente = true; }
+                            break;
                         }
-                    }
-
-                    if ($nomeValido) {
-                        if ($titulo->status == 1) {
-                            $extrato->achou_pago = true;
-                        } else {
-                            $extrato->achou_pendente = true;
-                        }
-                        break;
                     }
                 }
             }
         }
 
-
+        // BLOCO DE CÁLCULO DO CONFRONTO ERP x BANCO
         $resumo = null;
         if ($request->filled('conta_filtro') && $request->filled('data_inicio') && $request->filled('data_fim')) {
-            $contaResumo = ContaEmpresa::query()
-                ->where('empresa_id', $empresaId)
-                ->where('id', (int) $request->conta_filtro)
-                ->firstOrFail();
 
-            $extratoBase = BankStatementTransaction::withoutGlobalScopes()
-                ->where('empresa_id', $empresaId)
-                ->where('conta_bancaria_id', $contaResumo->id)
-                ->whereBetween('data_transacao', [$request->data_inicio, $request->data_fim]);
+            // 1. Somar apenas CRÉDITO do Banco (Entradas)
+            $extratoIn = BankStatementTransaction::where('empresa_id', $empresaId)
+                ->where('conta_bancaria_id', $request->conta_filtro)
+                ->whereBetween('data_transacao', [$request->data_inicio, $request->data_fim])
+                ->where('tipo', 'credit')
+                ->sum('valor');
 
-            $erpBase = ItemContaEmpresa::query()
-                ->where('empresa_id', $empresaId)
-                ->where('conta_id', $contaResumo->id)
-                ->whereBetween(DB::raw('DATE(data_pagamento)'), [$request->data_inicio, $request->data_fim]);
+            // 2. Somar apenas DÉBITO do Banco (Saídas)
+            $extratoOut = BankStatementTransaction::where('empresa_id', $empresaId)
+                ->where('conta_bancaria_id', $request->conta_filtro)
+                ->whereBetween('data_transacao', [$request->data_inicio, $request->data_fim])
+                ->where('tipo', 'debit')
+                ->sum('valor');
 
-            $extratoIn = (float) (clone $extratoBase)->where('tipo', 'credit')->sum('valor');
-            $extratoOut = abs((float) (clone $extratoBase)->where('tipo', 'debit')->sum('valor'));
-            $erpIn = (float) (clone $erpBase)->whereIn('tipo', ['entrada', 'ENTRADA', '1', 'c'])->sum('valor');
-            $erpOut = abs((float) (clone $erpBase)->whereIn('tipo', ['saida', 'SAIDA', '0', 'd'])->sum('valor'));
+            // 3. Somar ENTRADAS do ERP (Removido o filtro de empresa_id)
+            $erpIn = ItemContaEmpresa::where('conta_id', $request->conta_filtro)
+                ->whereRaw("DATE(data_pagamento) = ?", [$request->data_inicio])
+                // Usamos whereIn para aceitar variações caso o seu sistema grave de formas diferentes
+                ->whereIn('tipo', ['entrada', 'ENTRADA', '1', 'c'])
+                ->sum('valor');
+
+            // 4. Somar SAÍDAS do ERP (Removido o filtro de empresa_id)
+            $erpOut = ItemContaEmpresa::where('conta_id', $request->conta_filtro)
+                ->whereRaw("DATE(data_pagamento) = ?", [$request->data_inicio])
+                ->where('tipo', 'saida')
+                ->sum('valor');
 
             $resumo = [
-                'banco_in' => $extratoIn,
-                'banco_out' => $extratoOut,
-                'erp_in' => $erpIn,
-                'erp_out' => $erpOut,
-                'dif_in' => $extratoIn - $erpIn,
-                'dif_out' => $extratoOut - $erpOut,
+                'banco_in'   => $extratoIn,
+                'banco_out'  => abs($extratoOut),
+                'erp_in'     => $erpIn,
+                'erp_out'    => abs($erpOut),
+                'dif_in'     => $extratoIn - $erpIn,
+                'dif_out'    => abs($extratoOut) - abs($erpOut)
             ];
         }
+
 
         return view($this->listView, [
             'records'               => $records,
@@ -190,21 +192,15 @@ class ConciliacaoController extends BaseController
             $arquivo = $request->file('arquivo');
             $empresaId = $this->getEmpresaId();
 
-            // 1. Pega o conteúdo do ficheiro
             $conteudo = file_get_contents($request->file('arquivo')->getPathname());
-
-            // 2. Limpa o "&" do ficheiro para não dar o erro da linha 517
             $conteudo = str_replace('&', '&amp;', $conteudo);
             $conteudo = str_replace('&amp;amp;', '&amp;', $conteudo);
 
-            // 3. Pula os cabeçalhos e pega só a parte que é XML
             $posicaoOfx = strpos($conteudo, '<OFX>');
             if ($posicaoOfx !== false) {
                 $conteudo = substr($conteudo, $posicaoOfx);
             }
 
-            // 4. A MÁGICA NOVA: Fecha as tags que o banco mandou abertas!
-            // Transforma <TAG>valor em <TAG>valor</TAG>
             $conteudo = preg_replace('/<([a-zA-Z0-9_]+)>([^<\r\n]+)/', '<$1>$2</$1>', $conteudo);
 
             if ($posicaoOfx === false) {
@@ -256,14 +252,16 @@ class ConciliacaoController extends BaseController
                 }
             }
 
+            // Executa automação respeitando a trava de duplicidade
             $this->aplicarRegrasDePara($request->conta_bancaria_id);
 
-            return redirect($this->redirectPage)->with('mensagem_sucesso', "Ficheiro importado! {$inseridos} lançamentos novos.");
+            return redirect($this->redirectPage)->with('mensagem_sucesso', "Arquivo importado! {$inseridos} lançamentos do extrato processados.");
 
         } catch (\Exception $e) {
             return redirect()->back()->with('mensagem_erro', 'Erro: ' . $e->getMessage());
         }
     }
+
 
     public function conciliar(Request $request)
     {
@@ -287,19 +285,17 @@ class ConciliacaoController extends BaseController
             $contaPagarId = null;
             $contaReceberId = null;
             $origem = $request->tipo_conta === 'pagar' ? 'ContaPagar' : 'ContaReceber';
-            $tipoDocumento = $request->input('tipo_documento', 'Conciliação');
-            if (is_numeric($tipoDocumento)) {
-                $tipoDocumento = \App\Models\Venda::getTipoPagamentoNFe($tipoDocumento);
-            }
 
             foreach ($request->conta_ids as $index => $idTitulo) {
                 $titulo = $model::where('empresa_id', $empresaId)->findOrFail($idTitulo);
 
                 if ($titulo->status == 0) {
+                    // CORREÇÃO: Inicializa com o valor integral do próprio título
                     $valorPago = $titulo->valor_integral;
                     $tituloJuros = 0;
                     $tituloDesconto = 0;
 
+                    // Se for o primeiro título, ele recebe os ajustes de Juros/Desconto do extrato
                     if ($index === 0) {
                         $valorPago = $titulo->valor_integral + $jurosValor - $descontoValor;
                         $tituloJuros = $jurosValor;
@@ -315,10 +311,14 @@ class ConciliacaoController extends BaseController
 
                     $campoValor = $request->tipo_conta === 'pagar' ? 'valor_pago' : 'valor_recebido';
                     $campoDataBaixa = $request->tipo_conta === 'pagar' ? 'data_pagamento' : 'data_recebimento';
+                    $tipoDocumento = $request->tipo_documento ?? 'Conciliação';
 
+                    if (is_numeric($tipoDocumento)) {
+                        $tipoDocumento = \App\Models\Venda::getTipoPagamentoNFe($tipoDocumento);
+                    }
                     $titulo->update([
                         'status' => 1,
-                        $campoValor => $valorPago,
+                        $campoValor => $valorPago, // Agora grava o valor correto
                         'juros' => $tituloJuros,
                         'desconto' => $tituloDesconto,
                         'multa' => 0,
@@ -328,6 +328,7 @@ class ConciliacaoController extends BaseController
                     ]);
                 }
             }
+
 
             if ($request->tipo_conta === 'pagar') {
                 $contaBancaria->saldo -= $extrato->valor;
@@ -534,7 +535,7 @@ class ConciliacaoController extends BaseController
             $empresaId = $this->getEmpresaId();
             $filialId = $this->getFilialId();
 
-            // 1. Busca as regras corretas (Filial logada + Globais) - FICOU PERFEITO!
+            // 1. Busca as regras de automação
             $regras = ConciliacaoRegra::where('empresa_id', $empresaId)
                 ->when($filialId, function($q) use ($filialId) {
                     return $q->where(function($sub) use ($filialId) {
@@ -547,24 +548,43 @@ class ConciliacaoController extends BaseController
                 return redirect()->back()->with('mensagem_erro', 'Nenhuma regra de automação salva.');
             }
 
-            // 2. Busca os extratos pendentes (AGORA COM A TRAVA DA FILIAL)
+            // 2. Busca os extratos pendentes
             $pendentes = BankStatementTransaction::withoutGlobalScopes()
                 ->where('empresa_id', $empresaId)
                 ->when($filialId, function($q) use ($filialId) {
-                    return $q->where('filial_id', $filialId); // <- Ajuste adicionado aqui!
+                    return $q->where('filial_id', $filialId);
                 })
                 ->where('status', 'pending')
                 ->get();
 
             $processados = 0;
+            $duplicadosIgnorados = 0;
 
             foreach ($pendentes as $extrato) {
                 foreach ($regras as $regra) {
                     if (stripos($extrato->descricao, $regra->palavra_chave) !== false) {
 
+                        $tipoMovimentoCheck = $regra->tipo_conta === 'pagar' ? 'saida' : 'entrada';
+
+                        // --- VALIDAÇÃO DE DUPLICIDADE ---
+                        // Verifica se já existe movimento no ERP para esta conta bancária na mesma data e com o mesmo valor
+                        $jaExiste = ItemContaEmpresa::where('empresa_id', $empresaId)
+                            ->where('conta_id', $extrato->conta_bancaria_id)
+                            ->whereRaw("DATE(data_pagamento) = ?", [$extrato->data_transacao])
+                            ->where('valor', $extrato->valor)
+                            ->where('tipo', $tipoMovimentoCheck)
+                            ->exists();
+
+                        if ($jaExiste) {
+                            // Marca o extrato como concilado/processado para não ficar na fila pendente e não duplicar lançamento no ERP
+                            $extrato->update(['status' => 'reconciled']);
+                            $duplicadosIgnorados++;
+                            break;
+                        }
+                        // ----------------------------------
+
                         $model = $regra->tipo_conta === 'pagar' ? ContaPagar::class : ContaReceber::class;
                         $campoValor = $regra->tipo_conta === 'pagar' ? 'valor_pago' : 'valor_recebido';
-
                         $campoDataBaixa = $regra->tipo_conta === 'pagar' ? 'data_pagamento' : 'data_recebimento';
 
                         $dadosNovo = [
@@ -573,7 +593,7 @@ class ConciliacaoController extends BaseController
                             'usuario_id' => $this->getUsuarioId(),
                             'categoria_id' => $regra->categoria_id,
                             'referencia' => 'Robô Conciliador: ' . $extrato->descricao,
-                            'forma_pagamento' => 'pix', // Padrão para automações
+                            'forma_pagamento' => 'pix',
                             'valor_integral' => $extrato->valor,
                             $campoValor => $extrato->valor,
                             'data_vencimento' => $extrato->data_transacao,
@@ -629,7 +649,13 @@ class ConciliacaoController extends BaseController
             }
 
             DB::commit();
-            return redirect()->back()->with('mensagem_sucesso', "Mágica feita! {$processados} lançamentos baixados automaticamente.");
+
+            $msg = "Mágica feita! {$processados} lançamentos baixados automaticamente.";
+            if ($duplicadosIgnorados > 0) {
+                $msg .= " ({$duplicadosIgnorados} lançamentos já existiam na mesma data/valor e foram marcados como concilidados para evitar duplicidade).";
+            }
+
+            return redirect()->back()->with('mensagem_sucesso', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -639,9 +665,10 @@ class ConciliacaoController extends BaseController
 
     protected function aplicarRegrasDePara($contaId)
     {
-        $regras = ConciliacaoRegra::where('empresa_id', $this->getEmpresaId())->get();
+        $empresaId = $this->getEmpresaId();
+        $regras = ConciliacaoRegra::where('empresa_id', $empresaId)->get();
         $pendentes = BankStatementTransaction::withoutGlobalScopes()
-            ->where('empresa_id', $this->getEmpresaId())
+            ->where('empresa_id', $empresaId)
             ->where('conta_bancaria_id', $contaId)
             ->where('status', 'pending')
             ->get();
@@ -649,10 +676,29 @@ class ConciliacaoController extends BaseController
         foreach ($pendentes as $extrato) {
             foreach ($regras as $regra) {
                 if (stripos($extrato->descricao, $regra->palavra_chave) !== false) {
+
+                    $tipoMovimentoCheck = $regra->tipo_conta === 'pagar' ? 'saida' : 'entrada';
+
+                    // VALIDAÇÃO ANTI-DUPLICIDADE:
+                    // Verifica se já existe caixa/movimentação no ERP com a mesma data, conta e valor
+                    $jaExisteNoCaixa = ItemContaEmpresa::where('empresa_id', $empresaId)
+                        ->where('conta_id', $extrato->conta_bancaria_id)
+                        ->whereRaw("DATE(data_pagamento) = ?", [$extrato->data_transacao])
+                        ->where('valor', $extrato->valor)
+                        ->where('tipo', $tipoMovimentoCheck)
+                        ->exists();
+
+                    if ($jaExisteNoCaixa) {
+                        // Apenas marca o extrato importado como concilado sem gerar duplicidade no financeiro
+                        $extrato->update(['status' => 'reconciled']);
+                        break;
+                    }
+
                     $req = new Request([
                         'extrato_id' => $extrato->id,
                         'categoria_id' => $regra->categoria_id,
-                        'fornecedor_id' => $regra->fornecedor_id
+                        'fornecedor_id' => $regra->fornecedor_id,
+                        'cliente_id' => $regra->cliente_id
                     ]);
                     $this->criarEConciliar($req);
                     break;
@@ -660,6 +706,7 @@ class ConciliacaoController extends BaseController
             }
         }
     }
+
     public function processarLote(Request $request)
     {
         // Verifica se veio alguma caixinha marcada da tela
@@ -686,71 +733,83 @@ class ConciliacaoController extends BaseController
 
     public function getSugestoes(Request $request)
     {
-        $request->validate(['extrato_id' => ['required', 'integer']]);
+        $extrato = \App\Models\BankStatementTransaction::withoutGlobalScopes()->findOrFail($request->extrato_id);
         $empresaId = $this->getEmpresaId();
         $filialId = $this->getFilialId();
-        $extrato = BankStatementTransaction::withoutGlobalScopes()
-            ->where('empresa_id', $empresaId)
-            ->when($filialId, fn ($q) => $q->where('filial_id', $filialId))
-            ->findOrFail((int) $request->extrato_id);
+        $dataExtrato = \Carbon\Carbon::parse($extrato->data_transacao);
 
-        $dataExtrato = Carbon::parse($extrato->data_transacao);
-        $valorBusca = abs((float) $extrato->valor);
-        $isDebito = $extrato->tipo === 'debit';
-        $model = $isDebito ? ContaPagar::class : ContaReceber::class;
-        $relacao = $isDebito ? 'fornecedor' : 'cliente';
-        $dataBaixa = $isDebito ? 'data_pagamento' : 'data_recebimento';
+        $valorBusca = abs($extrato->valor);
+        $model = ($extrato->tipo === 'debit') ? \App\Models\ContaPagar::class : \App\Models\ContaReceber::class;
+        $tipoConta = ($extrato->tipo === 'debit') ? 'pagar' : 'receber';
+        $relacao = ($extrato->tipo === 'debit') ? 'fornecedor' : 'cliente';
 
-        $base = $model::query()->with($relacao)
-            ->where('empresa_id', $empresaId)
-            ->when($filialId, fn ($q) => $q->where('filial_id', $filialId));
-
-        $abertas = (clone $base)->where('status', 0)
-            ->whereBetween('valor_integral', [max(0, $valorBusca - 5), $valorBusca + 5])
-            ->orderByRaw('ABS(valor_integral - ?) ASC', [$valorBusca])
+        // 1. Busca Títulos ABERTOS (Exatos)
+        $sugestoesAbertas = $model::with([$relacao])
+            ->where('empresa_id', $empresaId)->where('status', 0)
+            ->when($filialId, fn($q) => $q->where('filial_id', $filialId))
+            ->whereBetween('valor_integral', [$valorBusca - 5, $valorBusca + 5])
+            ->orderByRaw("ABS(valor_integral - {$valorBusca}) ASC")
             ->limit(10)->get();
 
-        $pagas = (clone $base)->where('status', 1)
-            ->whereBetween('valor_integral', [max(0, $valorBusca - 5), $valorBusca + 5])
-            ->whereBetween($dataBaixa, [$dataExtrato->copy()->subDays(10)->toDateString(), $dataExtrato->copy()->addDays(10)->toDateString()])
-            ->limit(5)->get();
+        // 2. Busca Títulos JÁ PAGOS (Resolve a Elizabete)
+        $sugestoesPagas = $model::with([$relacao])
+            ->where('empresa_id', $empresaId)->where('status', 1)
+            ->when($filialId, fn($q) => $q->where('filial_id', $filialId))
+            ->whereBetween('valor_integral', [$valorBusca - 5, $valorBusca + 5])
+            ->whereBetween($tipoConta === 'pagar' ? 'data_pagamento' : 'data_recebimento', [
+                $dataExtrato->copy()->subDays(10)->format('Y-m-d'),
+                $dataExtrato->copy()->addDays(10)->format('Y-m-d')
+            ])->limit(5)->get();
 
-        $combos = [];
-        $outras = collect();
-        if ($abertas->isEmpty() && $pagas->isEmpty()) {
-            $titulos = (clone $base)->where('status', 0)
-                ->whereBetween('data_vencimento', [$dataExtrato->copy()->subDays(15)->toDateString(), $dataExtrato->copy()->addDays(15)->toDateString()])
-                ->limit(100)->get();
+        $combosEncontrados = [];
+        $outrasOpcoes = [];
 
-            foreach ($titulos as $i => $primeiro) {
-                foreach ($titulos->slice($i + 1) as $segundo) {
-                    $parceiro1 = $primeiro->fornecedor_id ?? $primeiro->cliente_id;
-                    $parceiro2 = $segundo->fornecedor_id ?? $segundo->cliente_id;
-                    if ($parceiro1 && $parceiro1 == $parceiro2 && abs(((float)$primeiro->valor_integral + (float)$segundo->valor_integral) - $valorBusca) < 0.01) {
-                        $combos[] = [$primeiro, $segundo];
-                        if (count($combos) >= 10) break 2;
+        // 3. Se não achou NENHUM exato, procura combos ou títulos com o MESMO NOME
+        if ($sugestoesAbertas->isEmpty() && $sugestoesPagas->isEmpty()) {
+            $titulosNoPeriodo = clone $model::with([$relacao])
+                ->where('empresa_id', $empresaId)->where('status', 0)
+                ->when($filialId, fn($q) => $q->where('filial_id', $filialId))
+                ->whereBetween('data_vencimento', [
+                    $dataExtrato->copy()->subDays(15)->format('Y-m-d'),
+                    $dataExtrato->copy()->addDays(15)->format('Y-m-d')
+                ])->get();
+
+            $achouCombo = false;
+            foreach ($titulosNoPeriodo as $i => $t1) {
+                foreach ($titulosNoPeriodo as $j => $t2) {
+                    if ($i >= $j) continue;
+                    $parceiro1 = $t1->fornecedor_id ?? $t1->cliente_id;
+                    $parceiro2 = $t2->fornecedor_id ?? $t2->cliente_id;
+
+                    if ($parceiro1 == $parceiro2 && abs(($t1->valor_integral + $t2->valor_integral) - $valorBusca) < 0.01) {
+                        $combosEncontrados[] = [$t1, $t2];
+                        $achouCombo = true;
                     }
                 }
             }
 
-            if (!$combos) {
-                $descricaoBanco = mb_strtoupper((string) $extrato->descricao);
-                $outras = $titulos->filter(function ($titulo) use ($descricaoBanco, $relacao) {
-                    $parceiro = $titulo->{$relacao};
-                    $nome = mb_strtoupper((string) ($parceiro->razao_social ?? $parceiro->nome_fantasia ?? ''));
-                    $primeira = preg_split('/\s+/', trim($nome))[0] ?? '';
-                    return mb_strlen($primeira) > 2 && str_contains($descricaoBanco, $primeira);
+            // CORREÇÃO: Traz apenas opções que tenham o mesmo nome (Resolve Supergasbras)
+            if (!$achouCombo) {
+                $descBanco = strtoupper($extrato->descricao);
+                $outrasOpcoes = $titulosNoPeriodo->filter(function($t) use ($descBanco) {
+                    $nome = strtoupper($t->fornecedor->razao_social ?? ($t->cliente->razao_social ?? ''));
+                    if (!$nome) return false;
+
+                    // Pega a primeira palavra do fornecedor (ex: SUPERGASBRAS) e vê se tem no extrato do banco
+                    $primeiraPalavra = explode(' ', $nome)[0];
+                    return (strlen($primeiraPalavra) > 2 && strpos($descBanco, $primeiraPalavra) !== false);
                 })->take(10)->values();
             }
         }
 
         return response()->json([
-            'valor_banco' => $valorBusca,
-            'tipo_conta' => $isDebito ? 'pagar' : 'receber',
-            'sugestoes' => $abertas,
-            'sugestoes_pagas' => $pagas,
-            'combos' => $combos,
-            'outras_opcoes' => $outras,
+            'valor_banco'    => $valorBusca,
+            'tipo_conta'     => $tipoConta,
+            'sugestoes'      => $sugestoesAbertas,
+            'sugestoes_pagas'=> $sugestoesPagas,
+            'combos'         => $combosEncontrados,
+            'outras_opcoes'  => $outrasOpcoes
         ]);
     }
+
 }

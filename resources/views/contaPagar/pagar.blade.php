@@ -1,182 +1,150 @@
 @extends('default.layout')
 @section('content')
-<div class="d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
-		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-			<div class="col-lg-12">
-				<br>
-				<form method="post" action="/contasPagar/pagar" enctype="multipart/form-data">
-					<input type="hidden" name="id" value="{{$conta->id}}">
-					@csrf
+<div class="container mt-5">
+    <form method="post" action="/contasPagar/pagar" id="form-baixa">
+        @csrf
+        <input type="hidden" name="id" value="{{$conta->id}}">
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
-							<h3 class="card-title">Pagar Conta</h3>
-						</div>
-					</div>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white d-flex align-items-center">
+                <i class="la la-money-bill-wave icon-lg mr-2"></i>
+                <h4 class="card-title my-2">Baixa de Conta Financeira</h4>
+            </div>
+            
+            <div class="card-body">
+                <div class="alert alert-custom alert-light-secondary border border-secondary mb-8 p-5">
+                    <div class="row text-center">
+                        <div class="col-md-4 border-right">
+                            <span class="text-muted d-block">Fornecedor</span>
+                            <strong class="font-size-lg">{{$conta->fornecedor ? $conta->fornecedor->razao_social : 'N/A'}}</strong>
+                        </div>
+                        <div class="col-md-4 border-right">
+                            <span class="text-muted d-block">Referência / Nota</span>
+                            <strong class="font-size-lg">{{ $conta->referencia }} / {{ ltrim($conta->numero_nota_fiscal, '0') }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <span class="text-muted d-block">Vencimento</span>
+                            <strong class="font-size-lg text-danger">{{ \Carbon\Carbon::parse($conta->data_vencimento)->format('d/m/Y')}}</strong>
+                        </div>
+                    </div>
+                </div>
 
-					<div class="row">
-						<div class="col-xl-12">
-							<div class="row">
-								<div class="col-sm-12">
-									@if($conta->compra_id != null)
-									<h5>Fornecedor: <strong>{{$conta->compra->fornecedor->razao_social}}</strong></h5>
-									@elseif($conta->fornecedor)
-									<h5>Fornecedor: <strong>{{$conta->fornecedor->razao_social}}</strong></h5>
-									@endif
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <label>Valor Integral (R$)</label>
+                        <input type="text" class="form-control bg-light" value="{{ number_format($conta->valor_integral, 2, ',', '.') }}" disabled>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Juros (+)</label>
+                        <input type="text" name="juros" class="form-control money" value="0,00">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Multa (+)</label>
+                        <input type="text" name="multa" class="form-control money" value="0,00">
+                    </div>
+                    <div class="col-md-3">
+                        <label>Desconto (-)</label>
+                        <input type="text" name="desconto" class="form-control money" value="0,00">
+                    </div>
+                </div>
 
-									<h5>Data de registro: <strong>{{ \Carbon\Carbon::parse($conta->data_registro)->format('d/m/Y')}}</strong></h5>
-									<h5>Data de vencimento: <strong>{{ \Carbon\Carbon::parse($conta->data_vencimento)->format('d/m/Y')}}</strong></h5>
-									<h5>Valor Original: <strong class="text-primary">{{ number_format($conta->valor_integral, 2, ',', '.') }}</strong></h5>
-									<h5>Categoria: <strong>{{$conta->categoria->nome}}</strong></h5>
-									<h5>Referência: <strong>{{$conta->referencia}}</strong></h5>
-								</div>
-							</div>
+                <div class="row mt-6 mb-4">
+                    <div class="col-12 text-right">
+                        <div class="p-4 bg-success text-white rounded d-inline-block">
+                            <h3 class="mb-0">Total a Pagar: R$ <span id="total_exibir">{{ number_format($conta->valor_integral, 2, ',', '.') }}</span></h3>
+                            <input type="hidden" name="valor" id="total_input" value="{{ number_format($conta->valor_integral, 2, ',', '') }}">
+                        </div>
+                    </div>
+                </div>
 
-							<div class="kt-section kt-section--first">
-								<div class="kt-section__body">
-									<br>
-									<div class="row">
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Valor Final Pago</label>
-											<input required type="text" class="form-control money" name="valor" id="valor_final" value="{{ number_format($conta->valor_integral, 2, ',', '.') }}">
-										</div>
+                <div class="p-4 bg-light-primary border-left border-primary border-4 rounded mb-6">
+                <div class="checkbox-inline">
+                    <label class="checkbox checkbox-lg">
+                        <input type="checkbox" name="usar_adiantamento" id="check_adiantamento">
+                        <span class="mr-2"></span> Usar saldo de adiantamento deste fornecedor
+                    </label>
+                </div>
+                <div id="info_adiantamento" class="mt-3 font-weight-bold text-primary" style="display:none;"></div>
+            </div>
 
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Juros (+)</label>
-											<input type="text" class="form-control money" name="juros" value="0,00">
-										</div>
+            <div class="row">
+                <div class="form-group col-md-4">
+                    <label>Data de Pagamento</label>
+                    <div class="input-group">
+                        <input type="date" name="data_pagamento" class="form-control" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <small class="text-muted">Selecione a data no calendário</small>
+                </div>
+            </div>
 
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Multa (+)</label>
-											<input type="text" class="form-control money" name="multa" value="0,00">
-										</div>
+            <div class="row div-banco-e-pagamento">
+                <div class="col-md-4">
+                    <label>Forma de Pagamento</label>
+                    <select name="tipo_pagamento" class="form-control">
+                        @foreach(App\Models\ContaPagar::tiposPagamento() as $c)
+                            <option value="{{$c}}">{{$c}}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Conta Bancária</label>
+                    <select name="conta_id" class="form-control">
+                        @foreach($contasEmpresa as $c)
+                            <option value="{{ $c->id }}">{{ $c->nome }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
 
-										<div class="form-group validated col-sm-6 col-lg-2">
-											<label class="col-form-label">Desconto (-)</label>
-											<input type="text" class="form-control money" name="desconto" value="0,00">
-										</div>
-
-										<div class="form-group validated col-sm-6 col-lg-3">
-											<label class="col-form-label">Data de pagamento</label>
-											<input required type="text" name="data_pagamento" class="form-control date-input" value="{{ date('d/m/Y') }}" id="kt_datepicker_3" />
-										</div>
-									</div>
-
-									<div class="row" id="container_adiantamento" style="display: none;">
-										<div class="form-group col-sm-12 col-lg-8">
-											<label class="checkbox checkbox-lg">
-												<input type="checkbox" name="usar_adiantamento" id="usar_adiantamento" value="1">
-												<span></span>&nbsp;&nbsp;
-												<strong id="label_adiantamento" class="text-info">Usar saldo de adiantamento do fornecedor</strong>
-											</label>
-										</div>
-									</div>
-
-									<div class="row" id="div_financeiro">
-										<div class="form-group validated col-sm-12 col-lg-4">
-											<label class="col-form-label">Tipo de Pagamento</label>
-											<select required class="custom-select form-control" id="forma" name="tipo_pagamento">
-												<option value="">Selecione o tipo</option>
-												@foreach(App\Models\ContaPagar::tiposPagamento() as $c)
-												<option value="{{$c}}">{{$c}}</option>
-												@endforeach
-											</select>
-										</div>
-
-										@if(sizeof($contasEmpresa) > 0)
-										<div class="form-group validated col-sm-12 col-lg-4">
-											<label class="col-form-label">Conta Bancária (Origem)</label>
-											<select required name="conta_id" id="conta_id" class="select2-custom custom-select">
-												<option value="">Selecione a conta</option>
-												@foreach($contasEmpresa as $c)
-												<option value="{{ $c->id }}">
-													{{ $c->nome }}
-												</option>
-												@endforeach
-											</select>
-										</div>
-										@endif
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card-footer">
-						<div class="row">
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<a style="width: 100%" class="btn btn-danger" href="/contasPagar">
-									<i class="la la-close"></i> Cancelar
-								</a>
-							</div>
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<button style="width: 100%" type="submit" class="btn btn-success">
-									<i class="la la-check"></i> Confirmar Pagamento
-								</button>
-							</div>
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
+            <div class="card-footer text-right">
+                <a href="/contasPagar" class="btn btn-secondary mr-2">Cancelar</a>
+                <button type="submit" class="btn btn-primary font-weight-bold">Confirmar Pagamento</button>
+            </div>
+        </div>
+    </form>
 </div>
 @endsection
 
 @section('javascript')
-<script type="text/javascript">
-		$(function () {
-			const fornecedorId = @json($conta->fornecedor_id);
+<script>
+    $(document).ready(function() {
+        $('.money').mask('000.000.000,00', {reverse: true});
+        $('.date-input').mask('00/00/0000');
 
-			if (fornecedorId) {
-				$.get('/adiantamentos/consulta-saldo/fornecedor/' + fornecedorId)
-					.done(function (res) {
-						const saldo = Number(res.saldo || 0);
-						if (saldo > 0) {
-							$('#label_adiantamento').text(
-								'Usar saldo de adiantamento do fornecedor (disponível: R$ ' +
-								saldo.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ')'
-							);
-							$('#container_adiantamento').show();
-						}
-					});
-			}
+        $('#check_adiantamento').change(function() {
+    if($(this).is(':checked')) {
+        $('.div-banco-e-pagamento').fadeOut();
+        $('#info_adiantamento').html('Calculando saldo...').show();
+        
+        let fornecedor_id = "{{ $conta->fornecedor_id }}"; 
+        // Chamando a sua rota existente. 
+        // Passamos 'fornecedor' como tipo e o ID do fornecedor.
+        $.get('/adiantamentos/consulta-saldo/fornecedor/' + fornecedor_id, function(data) {
+            // Ajuste o nome 'saldo' conforme o que o seu Controller retornar
+            $('#info_adiantamento').html('Saldo Disponível: <strong>R$ ' + data.saldo + '</strong>');
+        });
+    } else {
+        $('.div-banco-e-pagamento').fadeIn();
+        $('#info_adiantamento').hide();
+    }
+});
 
-			$('#usar_adiantamento').on('change', function () {
-				const usar = $(this).is(':checked');
-				$('#div_financeiro').toggle(!usar);
-				$('#conta_id, #forma').prop('required', !usar);
-			});
-		// Monitora a digitação nos campos de acréscimo e desconto
-		$('input[name="juros"], input[name="multa"], input[name="desconto"]').on('keyup', function () {
-			calcularTotal();
-		});
+        // Cálculo dinâmico
+        $('.money').on('keyup', function() {
+            let valorBase = parseFloat("{{ $conta->valor_integral }}");
+            let juros = parseMoeda($('input[name="juros"]').val());
+            let multa = parseMoeda($('input[name="multa"]').val());
+            let desconto = parseMoeda($('input[name="desconto"]').val());
+            
+            let total = valorBase + juros + multa - desconto;
+            
+            $('#total_exibir').text(total.toLocaleString('pt-br', {minimumFractionDigits: 2}));
+            $('#total_input').val(total.toFixed(2).replace('.', ','));
+        });
 
-		function calcularTotal() {
-			// Valor base que veio da conta
-			let valorBase = parseMoeda("{{ number_format($conta->valor_integral, 2, ',', '.') }}");
-			
-			let juros = parseMoeda($('input[name="juros"]').val());
-			let multa = parseMoeda($('input[name="multa"]').val());
-			let desconto = parseMoeda($('input[name="desconto"]').val());
-
-			// Lógica: Base + Juros + Multa - Desconto
-			let total = valorBase + juros + multa - desconto;
-
-			// Impede que o valor final seja negativo
-			if(total < 0) total = 0;
-
-			// Atualiza o campo "Valor Pago" com o novo total formatado
-			$('input[name="valor"]').val(total.toLocaleString('pt-br', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-		}
-
-		function parseMoeda(valor) {
-			if(!valor) return 0;
-			// Remove pontos de milhar e troca vírgula por ponto
-			let limpador = valor.replace(/\./g, '').replace(',', '.');
-			return parseFloat(limpador) || 0;
-		}
-	});
+        function parseMoeda(v) {
+            return parseFloat(v.replace(/\./g, '').replace(',', '.'));
+        }
+    });
 </script>
 @endsection

@@ -25,7 +25,6 @@ use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
 use App\Events\MovimentoRealtime;
 use App\Services\MonitorPesagemService;
-use App\Services\EstoqueFisicoPesagemService;
 use App\Services\StockService;
 use Dompdf\Dompdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -36,6 +35,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Support\PesagemReportCalculator;
+use App\Support\AuditContext;
 
 
 class PesagemController extends BaseController
@@ -213,7 +214,6 @@ class PesagemController extends BaseController
             if ($request->filled('id')) {
                 // Atualiza pesagem existente
                 $pesagem = Pesagem::findOrFail($request->id);
-                $dadosAntes = $pesagem->toArray();
                 $pesagem->update($data);
                 $mensagem = 'Pesagem atualizada com sucesso!';
                 $acao = 'update';
@@ -222,18 +222,7 @@ class PesagemController extends BaseController
                 $pesagem = Pesagem::create($data);
                 $mensagem = 'Pesagem registrada com sucesso!';
                 $acao = 'create';
-                $dadosAntes = null;
             }
-
-            // Obtém a classe correta do modelo, mesmo sendo string
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra o log da operação
-            $this->logService->registrar($acao, get_class($modelInstance), [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAntes,
-                'dados_depois' => $pesagem->toArray(),
-            ]);
 
             $tipoEvento = $acao === 'create' ? 'pesagem.created' : 'pesagem.updated';
             $this->dispararMonitoramentoPesagem($pesagem->id, $tipoEvento);
@@ -415,9 +404,6 @@ class PesagemController extends BaseController
             $avulsas = $pesagem->tickets->where('tipo', 'avulsa')->sum('peso');
             //$pesoBruto = abs($entradas - $saidas + $avulsas);
             $pesoBruto = abs($entradas + $avulsas);
-            // Captura os dados antes da atualização para log
-            $dadosAnteriores = $pesagem->toArray();
-
             // Calcula os descontos aplicáveis
             $descontos = 0;
 
@@ -455,40 +441,129 @@ class PesagemController extends BaseController
                 'status' => 'concluído',
             ]);
 
-            // Captura os dados após a atualização para log
-            $dadosDepois = $pesagem->toArray();
-
             // Atualiza todos os tickets como concluídos
             TicketPesagem::where('pesagem_id', $id)->update(['status' => 'concluído']);
 
-            // Obtém a classe correta do modelo para log
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra log da conclusão da pesagem
-            $this->logService->registrar('update', get_class($modelInstance), [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => $dadosDepois,
-            ]);
-
             $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
 
-            // Mantém o novo livro físico de estoque sincronizado sem alterar
-            // o fluxo atual de conclusão ou o saldo operacional já existente.
+            // --- INÍCIO DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
             try {
-                app(EstoqueFisicoPesagemService::class)->registrar(
-                    $pesagem->fresh(['tickets']),
-                    (int) $this->empresa_id,
-                    $this->usuario_id ? (int) $this->usuario_id : null
-                );
-            } catch (\Throwable $estoqueFisicoErro) {
-                \Log::error('Falha ao registrar estoque físico da pesagem concluída', [
-                    'empresa_id' => $this->empresa_id,
-                    'pesagem_id' => $pesagem->id,
-                    'erro' => $estoqueFisicoErro->getMessage(),
-                ]);
-            }
+                // Busca o CNPJ da empresa nas configurações
+                $configNota = \DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+                $cnpjEmpresa = $configNota ? preg_replace('/[^0-9]/', '', $configNota->cnpj) : '';
+                $filialIdSalvar = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : $pesagem->filial_id;
 
+                // 1. AGRUPAMENTO POR PRODUTO
+                $ticketsAgrupados = $pesagem->tickets->groupBy('produto_id');
+
+                foreach ($ticketsAgrupados as $produtoId => $ticketsProduto) {
+                    if (empty($produtoId)) continue;
+
+                    // Evita duplicidade
+                    $movimentoExiste = \DB::table('estoque_fisico_movimentos')
+                        ->where('pesagem_id', $pesagem->id)
+                        ->where('produto_id', $produtoId)
+                        ->exists();
+
+                    if (!$movimentoExiste) {
+
+                        // 2. TIPO DE MOVIMENTO NO ESTOQUE (Regra baseada na operação principal)
+                        $tipoMovimento = (strtolower($pesagem->tipo) === 'venda') ? 'saida' : 'entrada';
+
+                        // 3. CÁLCULO DA TARA E PESO LÍQUIDO
+                        $pesoEntrada = $ticketsProduto->where('tipo', 'entrada')->sum('peso');
+                        $pesoSaida = $ticketsProduto->where('tipo', 'saida')->sum('peso');
+
+                        $pesoLiquidoBalanca = abs($pesoEntrada - $pesoSaida);
+
+                        // Fallback de segurança para ticket único manual
+                        if ($pesoLiquidoBalanca == 0) {
+                            $pesoLiquidoBalanca = $pesoEntrada > 0 ? $pesoEntrada : $pesoSaida;
+                        }
+
+                        // Subtrai peso do bag (se preenchido nos tickets)
+                        $pesoBagTotal = $ticketsProduto->sum('peso_bag');
+                        $pesoLiquidoBalanca = max(0, $pesoLiquidoBalanca - $pesoBagTotal);
+
+                        // Se o peso líquido for zero ou negativo após descontar bag, ignora
+                        if ($pesoLiquidoBalanca <= 0) continue;
+
+                        // 4. CÁLCULO DA IMPUREZA CORRETA (Em cima do Líquido)
+                        $percentualAbatimento = 0;
+                        if ($pesagem->danificado)   { $percentualAbatimento += (float) $pesagem->danificado_desconto; }
+                        if ($pesagem->quebrado)     { $percentualAbatimento += (float) $pesagem->quebrado_desconto; }
+                        if ($pesagem->esverdeado)   { $percentualAbatimento += (float) $pesagem->esverdeado_desconto; }
+                        if ($pesagem->ardido)       { $percentualAbatimento += (float) $pesagem->ardido_desconto; }
+                        if ($pesagem->secagem)      { $percentualAbatimento += (float) $pesagem->secagem_desconto; }
+                        $percentualAbatimento += (float) $pesagem->umidade_desconto;
+                        $percentualAbatimento += (float) $pesagem->impureza_desconto;
+
+                        // Aplica a porcentagem SOMENTE no peso líquido da balança
+                        $pesoImpurezaFinal = $pesoLiquidoBalanca * ($percentualAbatimento / 100);
+
+                        // 5. PESO FINAL PARA O ESTOQUE
+                        $pesoFinalEstoque = max(0, $pesoLiquidoBalanca - $pesoImpurezaFinal);
+
+                        // 6. VALOR UNITÁRIO (Tabela de preços inteligente)
+                        $ticketRef = $ticketsProduto->firstWhere('valor_unitario', '>', 0) ?? $ticketsProduto->first();
+                        $valorUnitario = (float) ($ticketRef->valor_unitario ?? 0);
+
+                        if ($valorUnitario == 0) {
+                            $tabelaPrecoId = null;
+                            if ($tipoMovimento === 'entrada' && $pesagem->fornecedor_id) {
+                                $fornecedor = \App\Models\Fornecedor::find($pesagem->fornecedor_id);
+                                $tabelaPrecoId = $fornecedor->tabela_preco_id ?? 1;
+                            } elseif ($tipoMovimento === 'saida' && $pesagem->cliente_id) {
+                                $cliente = \App\Models\Cliente::find($pesagem->cliente_id);
+                                $tabelaPrecoId = $cliente->tabela_preco_id ?? 1;
+                            }
+
+                            if ($tabelaPrecoId) {
+                                $tipoFrete = 'ENTREGA';
+                                if ($pesagem->veiculo_id) {
+                                    $veiculo = \App\Models\Veiculo::find($pesagem->veiculo_id);
+                                    if ($veiculo && !empty($veiculo->proprietario_documento)) {
+                                        $docVeiculo = preg_replace('/[^0-9]/', '', $veiculo->proprietario_documento);
+                                        if ($docVeiculo === $cnpjEmpresa && $docVeiculo !== '00000000000000' && $docVeiculo !== '00000000000') $tipoFrete = 'COLETA';
+                                    }
+                                }
+                                $valorUnitario = \DB::table('tabela_preco_itens')
+                                    ->where('tabela_preco_id', $tabelaPrecoId)
+                                    ->where('produto_id', $produtoId)
+                                    ->where('tipo_frete', $tipoFrete)
+                                    ->value('valor_kg') ?? 0;
+                            }
+                        }
+
+                        // Se tudo falhar, pega o preço base do cadastro do produto
+                        if ($valorUnitario == 0) {
+                            $produtoBase = \App\Models\Produto::find($produtoId);
+                            $valorUnitario = $tipoMovimento === 'entrada' ? (float) ($produtoBase->valor_compra ?? 0) : (float) ($produtoBase->valor_venda ?? 0);
+                        }
+
+                        // 7. INSERE O REGISTRO CORRETO NO ESTOQUE
+                        \DB::table('estoque_fisico_movimentos')->insert([
+                            'empresa_id'     => $this->empresa_id,
+                            'filial_id'      => $filialIdSalvar,
+                            'usuario_id'     => $this->usuario_id ?? $pesagem->usuario_id,
+                            'produto_id'     => $produtoId,
+                            'pesagem_id'     => $pesagem->id,
+                            'tipo'           => $tipoMovimento,
+                            'peso_bruto'     => $pesoLiquidoBalanca,
+                            'peso_impureza'  => $pesoImpurezaFinal,
+                            'quantidade'     => $pesoFinalEstoque,
+                            'valor_unitario' => $valorUnitario,
+                            'valor_total'    => ($pesoFinalEstoque * $valorUnitario),
+                            'data_movimento' => date('Y-m-d', strtotime($pesagem->created_at ?? now())),
+                            'created_at'     => now(),
+                            'updated_at'     => now(),
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Erro ao gravar estoque físico detalhado multiempresa da pesagem ' . $pesagem->id . ': ' . $e->getMessage());
+            }
+            // --- FIM DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
             return response()->json(['success' => 'Pesagem concluída com sucesso!']);
         } catch (\Exception $e) {
             \Log::error('Erro ao concluir a pesagem', [
@@ -500,47 +575,11 @@ class PesagemController extends BaseController
     }
 
     /**
-     * Reconstrói o livro físico com base nas pesagens concluídas.
-     * O serviço é idempotente e não duplica empresa/pesagem/produto.
-     */
-    public function sincronizarEstoquePassado(Request $request, EstoqueFisicoPesagemService $service)
-    {
-        try {
-            $resultado = $service->sincronizarEmpresa(
-                (int) $this->empresa_id,
-                $this->usuario_id ? (int) $this->usuario_id : null
-            );
-
-            if (!empty($resultado['erros'])) {
-                \Log::warning('Sincronização de estoque físico concluída com falhas parciais', [
-                    'empresa_id' => $this->empresa_id,
-                    'erros' => $resultado['erros'],
-                ]);
-            }
-
-            return redirect()->back()->with(
-                'mensagem_sucesso',
-                "Sincronização concluída: {$resultado['processadas']} pesagens processadas e {$resultado['inseridos']} movimentos incluídos."
-            );
-        } catch (\Throwable $e) {
-            \Log::error('Erro ao sincronizar estoque físico das pesagens', [
-                'empresa_id' => $this->empresa_id,
-                'erro' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->with(
-                'mensagem_erro',
-                'Erro ao sincronizar o histórico de pesagens: ' . $e->getMessage()
-            );
-        }
-    }
-
-    /**
      * Listar todas as pesagens com filtros e paginação.
      */
     public function list(Request $request)
     {
-        $query = Pesagem::with(['veiculo', 'tickets'])
+        $query = Pesagem::with(['veiculo', 'tickets.produto'])
             ->where('empresa_id', $this->empresa_id);
 
         // Busca incremental
@@ -825,8 +864,8 @@ class PesagemController extends BaseController
 
     public function update(Request $request, $id)
     {
-        \Log::info('Método HTTP recebido:', ['method' => $request->method()]);
-        \Log::info('URL da requisição:', ['url' => $request->fullUrl()]);
+        \Log::debug('Método HTTP recebido:', ['method' => $request->method()]);
+        \Log::debug('URL da requisição:', ['url' => $request->fullUrl()]);
 
         $request->validate($this->rules(), $this->messages());
 
@@ -864,22 +903,8 @@ class PesagemController extends BaseController
                 }
             }
 
-            // Busca os dados antes da alteração para o log
             $pesagem = Pesagem::findOrFail($id);
-            $dadosAnteriores = $pesagem->toArray();
-
-            // Atualiza os dados
             $pesagem->update($data);
-
-            // Obtém a classe correta do modelo
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra o log da operação
-            $this->logService->registrar('update', get_class($modelInstance), [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => $pesagem->toArray(),
-            ]);
 
             $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.updated');
 
@@ -893,22 +918,8 @@ class PesagemController extends BaseController
     public function delete($id)
     {
         try {
-            // 🔹 Busca os dados antes da exclusão para o log
             $pesagem = Pesagem::findOrFail($id);
-            $dadosAnteriores = $pesagem->toArray();
-
-            // Exclui a pesagem
             $pesagem->delete();
-
-            // Obtém a classe correta do modelo
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra o log da exclusão
-            $this->logService->registrar('delete', get_class($modelInstance), [
-                'registro_id' => $id,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => null, // Exclusão, então não há dados após
-            ]);
 
             return response()->json(['success' => 'Pesagem excluída com sucesso!']);
         } catch (\Exception $e) {
@@ -925,15 +936,6 @@ class PesagemController extends BaseController
                 ->where('empresa_id', $this->empresa_id) // Filtra pelo tenant
                 ->findOrFail($id);
 
-            // Obtém a classe correta do modelo
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra log da edição
-            $this->logService->registrar('edit', get_class($modelInstance), [
-                'registro_id' => $id,
-                'dados_anteriores' => $pesagem->toArray(),
-            ]);
-
             // Retorna os dados diretamente em JSON
             return response()->json($pesagem);
         } catch (\Exception $e) {
@@ -945,18 +947,30 @@ class PesagemController extends BaseController
     public function getTotais($id)
     {
         // Busca a pesagem com os relacionamentos necessários
-        $pesagem = Pesagem::with(['veiculo', 'tickets']) // Carrega os relacionamentos
+        $pesagem = Pesagem::with(['veiculo', 'tickets.produto']) // Carrega os relacionamentos necessários apenas para apresentação
         ->where('empresa_id', $this->empresa_id) // Filtra pela empresa
         ->findOrFail($id); // Busca ou retorna erro 404
 
-        // Retorna os dados formatados em JSON
+        // Totais de apresentação: não alteram a conciliação persistida nem a base de dados.
+        $resumo = PesagemReportCalculator::summarize($pesagem);
+
         return response()->json([
-            'peso' => (float) $pesagem->peso,                             // Converte para número
-            'peso_liquido_bruto' => (float) $pesagem->peso_liquido_bruto, // Converte para número
-            'peso_final' => (float) $pesagem->peso_final,                 // Converte para número
-            'status' => $pesagem->status,                                 // Status da pesagem
-            'veiculo' => $pesagem->veiculo->placa ?? 'N/A',               // Placa do veículo
-            'tickets_count' => $pesagem->tickets->count()                 // Número de tickets associados
+            // Campos legados preservados para compatibilidade com consumidores existentes.
+            'peso' => (float) $pesagem->peso,
+            'peso_liquido_bruto' => (float) $pesagem->peso_liquido_bruto,
+            'peso_final' => (float) $pesagem->peso_final,
+
+            // Campos corretos para exibição física no front.
+            'peso_inicial' => (float) $resumo['peso_inicial'],
+            'peso_final_veiculo' => (float) $resumo['peso_final_veiculo'],
+            'peso_liquido_total' => (float) $resumo['peso_liquido_total'],
+            'peso_final_liquido' => (float) $resumo['peso_final_liquido'],
+            'descontos' => (float) $resumo['descontos'],
+            'valor_total_operacao' => (float) $resumo['valor_total_operacao'],
+
+            'status' => $pesagem->status,
+            'veiculo' => $pesagem->veiculo->placa ?? 'N/A',
+            'tickets_count' => $pesagem->tickets->count()
         ]);
     }
 
@@ -1278,12 +1292,12 @@ class PesagemController extends BaseController
             $resultado = $this->enviarWhatsApp($request, $arquivos, $mensagemFinal);
 
             if ($resultado['success']) {
-                \Log::info('Mensagem enviada com sucesso', [
+                \Log::debug('Mensagem enviada com sucesso', [
                     'numero' => $request->celular,
                     'arquivos' => $arquivos,
                 ]);
                 session()->flash('mensagem_sucesso', $resultado['message']);
-                \Log::info('Mensagem sucesso gravada na sessão', session()->all());
+                \Log::debug('Mensagem sucesso gravada na sessão');
                 return redirect()->back();
             } else {
                 \Log::error('Erro ao enviar mensagem', [
@@ -1292,7 +1306,7 @@ class PesagemController extends BaseController
                     'erro' => $resultado['message'],
                 ]);
                 session()->flash('mensagem_erro', $resultado['message']);
-                \Log::info('Mensagem erro gravada na sessão', session()->all());
+                \Log::debug('Mensagem erro gravada na sessão');
                 return redirect()->back();
             }
         } catch (\Exception $e) {
@@ -1302,7 +1316,7 @@ class PesagemController extends BaseController
                 'mensagem' => $mensagemFinal ?? '',
             ]);
             session()->flash('mensagem_erro', 'Erro ao enviar o relatório via WhatsApp: ' . $e->getMessage());
-            \Log::info('Mensagem exception gravada na sessão', session()->all());
+            \Log::debug('Mensagem exception gravada na sessão');
             return redirect()->back();
         }
     }
@@ -1315,25 +1329,9 @@ class PesagemController extends BaseController
                 ->where('empresa_id', $this->empresa_id)  // Garantir que a pesagem pertence à empresa
                 ->findOrFail($id);
 
-            // Captura os dados antes da alteração para log
-            $dadosAnteriores = $pesagem->toArray();
-
             // Alterna o valor de view_public (0 para 1 e vice-versa)
             $pesagem->view_public = $pesagem->view_public == 1 ? 0 : 1;
             $pesagem->save(); // Salva a alteração no banco
-
-            // Captura os dados após a alteração para log
-            $dadosDepois = $pesagem->toArray();
-
-            // Obtém a classe correta do modelo para log
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra log da alteração de visibilidade
-            $this->logService->registrar('update', get_class($modelInstance), [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => $dadosDepois,
-            ]);
 
             // Monta a mensagem de sucesso com o token e ID da pesagem
             $mensagemSucesso = 'Visibilidade da pesagem alterada com sucesso. ';
@@ -1433,9 +1431,6 @@ class PesagemController extends BaseController
 
             $produto = Produto::findOrFail($ticket->produto_id);
 
-            // Captura os dados antes da criação para log
-            $dadosAnteriores = $pesagem->toArray();
-
             // Criar a venda com status "DISPONÍVEL"
             $venda = Venda::create([
                 'cliente_id'    => $pesagem->cliente_id,
@@ -1520,19 +1515,6 @@ class PesagemController extends BaseController
             // Associar a venda à pesagem
             $pesagem->venda_id = $venda->id;
             $pesagem->save();
-
-            // Captura os dados após a criação para log
-            $dadosDepois = $pesagem->toArray();
-
-            // Obtém a classe correta do modelo para log
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra log da criação da venda
-            $this->logService->registrar('create', get_class($modelInstance), [
-                'registro_id'  => $pesagem->id,
-                'dados_antes'  => $dadosAnteriores,
-                'dados_depois' => $dadosDepois,
-            ]);
 
             if (config('stock_ledger.enabled')) {
                 $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_venda');
@@ -1689,16 +1671,6 @@ class PesagemController extends BaseController
             $mensagemSucesso .= 'ID da pesagem: ' . $pesagem->id . '. ';
             $mensagemSucesso .= 'ID da compra: ' . $compra->id . '.';
             session()->flash('mensagem_sucesso', $mensagemSucesso);
-
-            // Obtém a classe correta do modelo
-            $modelInstance = is_string(Compra::class) ? app(Compra::class) : Compra::class;
-
-            // 🔹 Registra log da criação da compra
-            $this->logService->registrar('create', get_class($modelInstance), [
-                'registro_id'     => $compra->id,
-                'dados_anteriores'=> [],
-                'dados_depois'    => $compra->toArray(),
-            ]);
 
             if (config('stock_ledger.enabled')) {
                 $this->registrarMovimentosPesagem($pesagem, 'PESAGEM', 'pesagem_compra');
@@ -1965,17 +1937,21 @@ class PesagemController extends BaseController
             return response()->json(['error'=>'Só é possível reabrir pesagens concluídas.'], 422);
         }
 
-        // 3) reabre em transação e registra log
+        // 3) Reabre em transação e mantém UMA única auditoria semântica.
         DB::transaction(function() use ($pesagem) {
-            $antes = $pesagem->toArray();
-            $pesagem->update([
-                'status'      => 'em andamento',
-                'view_public' => 0,
-            ]);
+            $antes = $pesagem->getAttributes();
+
+            AuditContext::withoutModelAudit(function () use ($pesagem) {
+                $pesagem->update([
+                    'status'      => 'em andamento',
+                    'view_public' => 0,
+                ]);
+            });
+
             $this->logService->registrar('reabrir', Pesagem::class, [
                 'registro_id'  => $pesagem->id,
                 'dados_antes'  => $antes,
-                'dados_depois' => $pesagem->toArray(),
+                'dados_depois' => $pesagem->getAttributes(),
             ]);
         });
 
@@ -2015,34 +1991,34 @@ class PesagemController extends BaseController
             'venda',
             'compra',
         ])
-        ->where('empresa_id', $this->empresa_id)
-        ->when($inicio, fn($q) => $q->whereDate('dt_registro', '>=', $inicio))
-        ->when($fim, fn($q) => $q->whereDate('dt_registro', '<=', $fim))
-        ->when($request->input('tipo'), fn($q, $tipo) => $q->where('tipo', $tipo))
-        ->when($request->filled('cliente_id'), fn($q) => $q->where('cliente_id', $request->cliente_id))
-        ->when($request->filled('fornecedor_id'), fn($q) => $q->where('fornecedor_id', $request->fornecedor_id))
-        ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
-        ->when($request->filled('nota'), function ($q) use ($request) {
-            if ($request->nota === 'com') {
-                $q->where(function ($sub) {
-                    $sub->whereHas('venda', function ($query) {
-                        $query->whereNotNull('chave')->where('NfNumero', '>', 0);
-                    })->orWhereHas('compra', function ($query) {
-                        $query->whereNotNull('chave')->where('numero_emissao', '>', 0);
+            ->where('empresa_id', $this->empresa_id)
+            ->when($inicio, fn($q) => $q->whereDate('dt_registro', '>=', $inicio))
+            ->when($fim, fn($q) => $q->whereDate('dt_registro', '<=', $fim))
+            ->when($request->input('tipo'), fn($q, $tipo) => $q->where('tipo', $tipo))
+            ->when($request->filled('cliente_id'), fn($q) => $q->where('cliente_id', $request->cliente_id))
+            ->when($request->filled('fornecedor_id'), fn($q) => $q->where('fornecedor_id', $request->fornecedor_id))
+            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('nota'), function ($q) use ($request) {
+                if ($request->nota === 'com') {
+                    $q->where(function ($sub) {
+                        $sub->whereHas('venda', function ($query) {
+                            $query->whereNotNull('chave')->where('NfNumero', '>', 0);
+                        })->orWhereHas('compra', function ($query) {
+                            $query->whereNotNull('chave')->where('numero_emissao', '>', 0);
+                        });
                     });
-                });
-            } elseif ($request->nota === 'sem') {
-                $q->where(function ($sub) {
-                    $sub->whereDoesntHave('venda', function ($query) {
-                        $query->whereNotNull('chave')->where('NfNumero', '>', 0);
-                    })->whereDoesntHave('compra', function ($query) {
-                        $query->whereNotNull('chave')->where('numero_emissao', '>', 0);
+                } elseif ($request->nota === 'sem') {
+                    $q->where(function ($sub) {
+                        $sub->whereDoesntHave('venda', function ($query) {
+                            $query->whereNotNull('chave')->where('NfNumero', '>', 0);
+                        })->whereDoesntHave('compra', function ($query) {
+                            $query->whereNotNull('chave')->where('numero_emissao', '>', 0);
+                        });
                     });
-                });
-            }
-        })
-        ->orderByDesc('dt_registro')
-        ->get();
+                }
+            })
+            ->orderByDesc('dt_registro')
+            ->get();
 
         $relatorio = $pesagens->map(function (Pesagem $pesagem) {
             $entradas = $pesagem->tickets
@@ -2435,18 +2411,19 @@ class PesagemController extends BaseController
         // 6) Rode tudo em transação e registre log
         DB::beginTransaction();
         try {
-            $antes = $pesagem->toArray();
+            $antes = $pesagem->getAttributes();
 
-            $pesagem->update([
-                'status'      => 'em andamento',
-                'view_public' => 0,
-            ]);
+            AuditContext::withoutModelAudit(function () use ($pesagem) {
+                $pesagem->update([
+                    'status'      => 'em andamento',
+                    'view_public' => 0,
+                ]);
+            });
 
-            // supondo que você tenha um serviço de log injetado
             $this->logService->registrar('reabrir', Pesagem::class, [
                 'registro_id'  => $pesagem->id,
                 'dados_antes'  => $antes,
-                'dados_depois' => $pesagem->toArray(),
+                'dados_depois' => $pesagem->getAttributes(),
             ]);
 
             DB::commit();
@@ -2457,4 +2434,128 @@ class PesagemController extends BaseController
         }
     }
 
+    /**
+     * Sincroniza todas as pesagens antigas já concluídas para a tabela de estoque físico.
+     */
+    public function sincronizarEstoquePassado(Request $request)
+    {
+        try {
+            // Busca o CNPJ da empresa nas configurações para a regra de frete
+            $configNota = \DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+            $cnpjEmpresa = $configNota ? preg_replace('/[^0-9]/', '', $configNota->cnpj) : '';
+
+            // Busca todas as pesagens da empresa atual que já estão concluídas
+            $pesagens = Pesagem::with('tickets')
+                ->where('empresa_id', $this->empresa_id)
+                ->where('status', 'concluído')
+                ->get();
+
+            if ($pesagens->isEmpty()) {
+                return redirect()->back()->with('warning', 'Nenhuma pesagem concluída encontrada para sincronizar.');
+            }
+
+            $inseridos = 0;
+
+            foreach ($pesagens as $pesagem) {
+                $filialIdSalvar = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : $pesagem->filial_id;
+
+                foreach ($pesagem->tickets as $ticket) {
+                    if (empty($ticket->produto_id)) {
+                        continue;
+                    }
+
+                    // Verifica duplicidade para não inserir o que já está lá
+                    $movimentoExiste = \DB::table('estoque_fisico_movimentos')
+                        ->where('pesagem_id', $pesagem->id)
+                        ->where('produto_id', $ticket->produto_id)
+                        ->exists();
+
+                    if (!$movimentoExiste) {
+                        // 1. Cálculos Físicos
+                        $pesoBrutoTicket = (float) $ticket->peso;
+                        $percentualAbatimento = 0;
+                        if ($pesagem->danificado)   { $percentualAbatimento += (float) $pesagem->danificado_desconto; }
+                        if ($pesagem->quebrado)     { $percentualAbatimento += (float) $pesagem->quebrado_desconto; }
+                        if ($pesagem->esverdeado)   { $percentualAbatimento += (float) $pesagem->esverdeado_desconto; }
+                        if ($pesagem->ardido)       { $percentualAbatimento += (float) $pesagem->ardido_desconto; }
+                        if ($pesagem->secagem)      { $percentualAbatimento += (float) $pesagem->secagem_desconto; }
+                        $percentualAbatimento += (float) $pesagem->umidade_desconto;
+                        $percentualAbatimento += (float) $pesagem->impureza_desconto;
+
+                        $pesoImpurezaTicket = ($pesoBrutoTicket * ($percentualAbatimento / 100)) + (float) $ticket->peso_bag;
+                        $pesoLiquidoTicket = max(0, $pesoBrutoTicket - $pesoImpurezaTicket);
+
+                        if ($pesoBrutoTicket <= 0) continue;
+
+                        // 2. Tipo de Movimento
+                        $tipoMovimento = ($ticket->tipo === 'saida' || $pesagem->tipo === 'venda') ? 'saida' : 'entrada';
+
+                        // 3. Busca de Preço Inteligente
+                        $valorUnitario = (float) ($ticket->valor_unitario ?? 0);
+
+                        if ($valorUnitario == 0) {
+                            $tabelaPrecoId = null;
+                            if ($tipoMovimento === 'entrada' && $pesagem->fornecedor_id) {
+                                $fornecedor = \App\Models\Fornecedor::find($pesagem->fornecedor_id);
+                                $tabelaPrecoId = $fornecedor->tabela_preco_id ?? 1;
+                            } elseif ($tipoMovimento === 'saida' && $pesagem->cliente_id) {
+                                $cliente = \App\Models\Cliente::find($pesagem->cliente_id);
+                                $tabelaPrecoId = $cliente->tabela_preco_id ?? 1;
+                            }
+
+                            if ($tabelaPrecoId) {
+                                $tipoFrete = 'ENTREGA';
+                                if ($pesagem->veiculo_id) {
+                                    $veiculo = \App\Models\Veiculo::find($pesagem->veiculo_id);
+                                    if ($veiculo && !empty($veiculo->proprietario_documento)) {
+                                        $docVeiculo = preg_replace('/[^0-9]/', '', $veiculo->proprietario_documento);
+                                        if ($docVeiculo === $cnpjEmpresa && $docVeiculo !== '00000000000000' && $docVeiculo !== '00000000000') {
+                                            $tipoFrete = 'COLETA';
+                                        }
+                                    }
+                                }
+
+                                $valorUnitario = \DB::table('tabela_preco_itens')
+                                    ->where('tabela_preco_id', $tabelaPrecoId)
+                                    ->where('produto_id', $ticket->produto_id)
+                                    ->where('tipo_frete', $tipoFrete)
+                                    ->value('valor_kg') ?? 0;
+                            }
+                        }
+
+                        if ($valorUnitario == 0) {
+                            $produtoBase = \App\Models\Produto::find($ticket->produto_id);
+                            $valorUnitario = $tipoMovimento === 'entrada' ? (float) ($produtoBase->valor_compra ?? 0) : (float) ($produtoBase->valor_venda ?? 0);
+                        }
+
+                        // 4. Inserção
+                        \DB::table('estoque_fisico_movimentos')->insert([
+                            'empresa_id'     => $this->empresa_id,
+                            'filial_id'      => $filialIdSalvar,
+                            'usuario_id'     => $this->usuario_id ?? $pesagem->usuario_id,
+                            'produto_id'     => $ticket->produto_id,
+                            'pesagem_id'     => $pesagem->id,
+                            'tipo'           => $tipoMovimento,
+                            'peso_bruto'     => $pesoBrutoTicket,
+                            'peso_impureza'  => $pesoImpurezaTicket,
+                            'quantidade'     => $pesoLiquidoTicket,
+                            'valor_unitario' => $valorUnitario,
+                            'valor_total'    => ($pesoLiquidoTicket * $valorUnitario),
+                            'data_movimento' => date('Y-m-d', strtotime($pesagem->created_at ?? now())),
+                            'created_at'     => now(),
+                            'updated_at'     => now(),
+                        ]);
+
+                        $inseridos++;
+                    }
+                }
+            }
+
+            return redirect()->back()->with('success', "Sincronização finalizada! {$inseridos} novos itens de estoque foram registrados baseados no histórico.");
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao sincronizar estoque: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => 'Erro ao sincronizar histórico: ' . $e->getMessage()]);
+        }
+    }
 }

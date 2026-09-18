@@ -11,6 +11,9 @@ use App\Models\BalancaConfig;
 use App\Services\Pesagem\PesagemTicketImagemService;
 use App\Services\Pesagem\PesagemTicketNotificacaoService;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
+use App\Support\BinaryPayloadSanitizer;
 
 class TicketPesagemController extends BaseController
 {
@@ -70,11 +73,48 @@ class TicketPesagemController extends BaseController
                 ? TicketPesagem::where('empresa_id', $this->empresa_id)->find($request->id)
                 : null;
 
+            // Edição exige confirmação explícita da interface.
+            if ($request->filled('id') && !$request->boolean('edicao_confirmada')) {
+                return response()->json([
+                    'error' => 'Confirme a edição do ticket de pesagem antes de salvar as alterações.'
+                ], 422);
+            }
+
+            // Idempotência por token: tickets_pesagem.token já possui índice UNIQUE.
+            // O mesmo token é mantido durante toda a tentativa de inclusão, inclusive
+            // enquanto o ADP captura evidências. Requisições repetidas retornam o
+            // ticket já criado em vez de gerar uma segunda pesagem.
+            $tokenSolicitado = trim((string) $request->input('token', ''));
+            if (!$request->filled('id') && $tokenSolicitado !== '') {
+                $ticketJaCriado = TicketPesagem::query()
+                    ->where('token', $tokenSolicitado)
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('pesagem_id', $request->pesagem_id)
+                    ->first();
+
+                if ($ticketJaCriado) {
+                    return response()->json([
+                        'success' => 'Ticket já havia sido salvo. A duplicidade foi impedida.',
+                        'duplicado_prevenido' => true,
+                        'ticket_id' => $ticketJaCriado->id,
+                    ], 200);
+                }
+            }
+
+            // Base64 é permitido somente durante o transporte/ciclo desta request.
+            // Nunca deve ser persistido em TicketPesagem nem seguir para a auditoria.
+            $snapshotsRaw = $request->input('camera_snapshots_json');
+            $evidenceRaw = $request->input('balanca_evidence_json');
+
             $data = $request->all();
             $data['peso_origem'] = $request->input('peso_origem', 'manual');
             $data['empresa_id'] = $this->empresa_id;
-            $data['balanca_evidence_json'] = $request->input('balanca_evidence_json');
-            $data['camera_snapshots_json'] = $request->input('camera_snapshots_json');
+            $data['balanca_evidence_json'] = is_string($evidenceRaw)
+                ? BinaryPayloadSanitizer::sanitizeJsonString($evidenceRaw)
+                : null;
+            $data['camera_snapshots_json'] = is_string($snapshotsRaw)
+                ? BinaryPayloadSanitizer::sanitizeJsonString($snapshotsRaw)
+                : null;
             $data['camera_snapshot_at'] = $request->filled('camera_snapshots_json') ? now() : null;
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
@@ -83,7 +123,10 @@ class TicketPesagemController extends BaseController
             // A fonte oficial das imagens é a tabela pesagem_ticket_imagens.
             $possuiColunaImagensPersistidas = Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json');
             if ($possuiColunaImagensPersistidas && $request->filled('imagens_persistidas_json')) {
-                $data['imagens_persistidas_json'] = $request->input('imagens_persistidas_json');
+                $imagensPersistidasRaw = $request->input('imagens_persistidas_json');
+                $data['imagens_persistidas_json'] = is_string($imagensPersistidasRaw)
+                    ? BinaryPayloadSanitizer::sanitizeJsonString($imagensPersistidasRaw)
+                    : BinaryPayloadSanitizer::sanitize($imagensPersistidasRaw);
             }
 
             $taraInformada = $request->input('tara', $request->input('peso_bag', 0));
@@ -118,7 +161,7 @@ class TicketPesagemController extends BaseController
                     : max(0, (float) $taraInformada);
 
                 if ($data['peso_bag'] <= 0) {
-                    \Log::info('TicketPesagem sem tara explícita na leitura da balança; mantendo regra atual.', [
+                    \Log::debug('TicketPesagem sem tara explícita na leitura da balança; mantendo regra atual.', [
                         'empresa_id' => $this->empresa_id,
                         'usuario_id' => $this->usuario_id,
                         'pesagem_id' => $pesagem->id,
@@ -141,7 +184,7 @@ class TicketPesagemController extends BaseController
                     ? 'ticket'
                     : 'manual';
 
-                \Log::info('TicketPesagem valor definido por regra de origem', [
+                \Log::debug('TicketPesagem valor definido por regra de origem', [
                     'empresa_id' => $this->empresa_id,
                     'usuario_id' => $this->usuario_id,
                     'pesagem_id' => $pesagem->id,
@@ -164,7 +207,7 @@ class TicketPesagemController extends BaseController
                         'error' => 'Este ticket já está concluído e não pode ser editado conforme a configuração da empresa.'
                     ], 422);
                 }
-                $dadosAnteriores = $ticket->toArray(); // Captura os dados antes da alteração
+                $dadosAnteriores = BinaryPayloadSanitizer::sanitize($ticket->getAttributes()); // Snapshot sem relações Eloquent
                 $ticket->update($data);
                 $mensagem = 'Ticket atualizado!';
                 $acao = 'update';
@@ -173,9 +216,40 @@ class TicketPesagemController extends BaseController
                 // Atualiza os totais na tabela 'pesagens'
                 $this->atualizarTotais($ticket->pesagem_id);
             } else {
-                // 🔹 Criação de um novo ticket
-                $data['token'] = md5(uniqid(rand(), true)); // Gera um token único
-                $ticket = TicketPesagem::create($data); // Armazena o ticket criado
+                // 🔹 Criação de um novo ticket.
+                // O token nasce no front antes da captura ADP e permanece estável
+                // até a resposta do servidor, permitindo idempotência real.
+                $data['token'] = $tokenSolicitado !== ''
+                    ? $tokenSolicitado
+                    : Str::random(40);
+
+                try {
+                    $ticket = TicketPesagem::create($data);
+                } catch (QueryException $e) {
+                    $ehDuplicidade = (string) $e->getCode() === '23000'
+                        || (int) ($e->errorInfo[1] ?? 0) === 1062;
+
+                    if (!$ehDuplicidade) {
+                        throw $e;
+                    }
+
+                    $ticket = TicketPesagem::query()
+                        ->where('token', $data['token'])
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('pesagem_id', $request->pesagem_id)
+                        ->first();
+
+                    if (!$ticket) {
+                        throw $e;
+                    }
+
+                    return response()->json([
+                        'success' => 'Ticket já havia sido salvo. A duplicidade foi impedida.',
+                        'duplicado_prevenido' => true,
+                        'ticket_id' => $ticket->id,
+                    ], 200);
+                }
+
                 $registroId = $ticket->id;
 
                 // Atualiza os totais na tabela 'pesagens'
@@ -190,13 +264,30 @@ class TicketPesagemController extends BaseController
             if ($request->filled('camera_snapshots_json')) {
                 try {
                     $imagensPersistidas = app(PesagemTicketImagemService::class)
-                        ->persistirDoTicket($ticket->fresh(), $request->input('camera_snapshots_json'));
+                        ->persistirDoTicket($ticket->fresh(), $snapshotsRaw);
+
+                    $referenciasPersistidas = array_values(array_filter(
+                        $imagensPersistidas,
+                        static fn (array $item) => (bool) ($item['success'] ?? false)
+                    ));
 
                     if (Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json')) {
-                        $ticket->imagens_persistidas_json = $imagensPersistidas;
+                        $ticket->imagens_persistidas_json = $referenciasPersistidas;
                     }
+
+                    // A partir deste ponto o Base64 deixa de existir na persistência.
+                    // As colunas legadas continuam existindo, mas passam a guardar
+                    // somente caminho/URL e metadados pequenos das imagens.
+                    $ticket->camera_snapshots_json = json_encode(
+                        $referenciasPersistidas,
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    );
+                    $ticket->balanca_evidence_json = $this->evidenciaPersistidaSemBase64(
+                        $evidenceRaw,
+                        $referenciasPersistidas
+                    );
                     $ticket->camera_snapshot_at = now();
-                    $ticket->save();
+                    $ticket->saveQuietly();
                 } catch (\Throwable $e) {
                     \Log::error('Erro ao persistir imagens do ticket de pesagem', [
                         'ticket_id' => $ticket->id,
@@ -221,20 +312,11 @@ class TicketPesagemController extends BaseController
                 }
             }
 
-            // 🔹 Obtém a instância correta da model TicketPesagem
-            $modelInstance = is_string(TicketPesagem::class) ? app(TicketPesagem::class) : TicketPesagem::class;
-
-            // 🔹 Registra log da criação ou atualização do ticket
-            $this->logService->registrar($acao, get_class($modelInstance), [
-                'registro_id' => $registroId,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => $ticket->toArray(),
-                'imagens_persistidas' => $imagensPersistidas,
-            ]);
-
             // Retorna como JSON para atualização dinâmica
             return response()->json([
                 'success' => $mensagem,
+                'ticket_id' => $ticket->id,
+                'acao' => $acao,
                 'imagens_persistidas' => $imagensPersistidas,
             ], 200);
         } catch (\Exception $e) {
@@ -248,6 +330,37 @@ class TicketPesagemController extends BaseController
         }
     }
 
+
+    /**
+     * Mantém a evidência funcional da balança, substituindo os snapshots
+     * transitórios por referências aos arquivos definitivamente persistidos.
+     */
+    private function evidenciaPersistidaSemBase64(mixed $evidenceRaw, array $referenciasPersistidas): ?string
+    {
+        $evidence = [];
+
+        if (is_string($evidenceRaw) && trim($evidenceRaw) !== '') {
+            $decoded = json_decode($evidenceRaw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $evidence = BinaryPayloadSanitizer::sanitize($decoded);
+            }
+        } elseif (is_array($evidenceRaw)) {
+            $evidence = BinaryPayloadSanitizer::sanitize($evidenceRaw);
+        }
+
+        if (!$evidence && !$referenciasPersistidas) {
+            return null;
+        }
+
+        $evidence['cameras'] = $referenciasPersistidas;
+
+        $encoded = json_encode(
+            $evidence,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+
+        return $encoded === false ? null : $encoded;
+    }
 
     private function validarPesagemSomenteBalanca(Request $request)
     {
@@ -304,20 +417,20 @@ class TicketPesagemController extends BaseController
                 $snapshots = json_decode((string) $request->input('camera_snapshots_json'), true) ?: [];
                 $comImagem = collect($snapshots)->contains(function ($snapshot) {
                     return (bool) data_get($snapshot, 'success') && (
-                        data_get($snapshot, 'image_data_url') ||
-                        data_get($snapshot, 'data_url') ||
-                        data_get($snapshot, 'image_base64') ||
-                        data_get($snapshot, 'base64') ||
-                        data_get($snapshot, 'response.image_base64') ||
-                        data_get($snapshot, 'response.base64') ||
-                        data_get($snapshot, 'response.data.image_base64') ||
-                        data_get($snapshot, 'response.result.image_base64') ||
-                        data_get($snapshot, 'response.image_url') ||
-                        data_get($snapshot, 'response.snapshot_url') ||
-                        data_get($snapshot, 'response.snapshot.file_path') ||
-                        data_get($snapshot, 'snapshot.file_path') ||
-                        data_get($snapshot, 'file_path')
-                    );
+                            data_get($snapshot, 'image_data_url') ||
+                            data_get($snapshot, 'data_url') ||
+                            data_get($snapshot, 'image_base64') ||
+                            data_get($snapshot, 'base64') ||
+                            data_get($snapshot, 'response.image_base64') ||
+                            data_get($snapshot, 'response.base64') ||
+                            data_get($snapshot, 'response.data.image_base64') ||
+                            data_get($snapshot, 'response.result.image_base64') ||
+                            data_get($snapshot, 'response.image_url') ||
+                            data_get($snapshot, 'response.snapshot_url') ||
+                            data_get($snapshot, 'response.snapshot.file_path') ||
+                            data_get($snapshot, 'snapshot.file_path') ||
+                            data_get($snapshot, 'file_path')
+                        );
                 });
 
                 if (!$comImagem) {
@@ -363,14 +476,8 @@ class TicketPesagemController extends BaseController
     public function delete($id)
     {
         try {
-            // 🔹 Busca o ticket antes da exclusão para capturar os dados
+            // Busca o ticket; a auditoria de exclusão é responsabilidade do BaseModel.
             $ticket = TicketPesagem::findOrFail($id);
-            $dadosAnteriores = $ticket->toArray();
-            $registroId = $ticket->id;
-
-
-            // 🔹 Obtém a instância correta da model TicketPesagem
-            $modelInstance = is_string(TicketPesagem::class) ? app(TicketPesagem::class) : TicketPesagem::class;
 
             // 🔹 Exclui imagens físicas e registros vinculados ao ticket antes da exclusão.
             app(PesagemTicketImagemService::class)->excluirDoTicket($ticket, true);
@@ -380,13 +487,6 @@ class TicketPesagemController extends BaseController
 
             // Atualiza os totais na tabela 'pesagens'
             $this->atualizarTotais($ticket->pesagem_id);
-
-            // 🔹 Registra log da exclusão do ticket
-            $this->logService->registrar('delete', get_class($modelInstance), [
-                'registro_id' => $registroId,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => null, // Não há dados depois da exclusão
-            ]);
 
             return redirect()->back()->with('success', 'Ticket excluído com sucesso!');
         } catch (\Exception $e) {
@@ -428,9 +528,6 @@ class TicketPesagemController extends BaseController
         try {
             // 🔹 Busca a pesagem com seus tickets
             $pesagem = Pesagem::with('tickets')->findOrFail($pesagemId);
-
-            // 🔹 Captura os dados antes da alteração para log
-            $dadosAnteriores = $pesagem->toArray();
 
             // Calcula os totais dos tickets
             //$entrada = $pesagem->tickets->where('tipo', 'entrada')->sum('peso');
@@ -485,18 +582,8 @@ class TicketPesagemController extends BaseController
                 'peso_final' => $pesoFinal
             ]);
 
-            // 🔹 Captura os dados depois da alteração para log
-            $dadosDepois = $pesagem->toArray();
-
-            // 🔹 Obtém a instância correta da model Pesagem
-            $modelInstance = is_string(Pesagem::class) ? app(Pesagem::class) : Pesagem::class;
-
-            // 🔹 Registra log da atualização dos totais da pesagem
-            $this->logService->registrar('update', get_class($modelInstance), [
-                'registro_id' => $pesagem->id,
-                'dados_antes' => $dadosAnteriores,
-                'dados_depois' => $dadosDepois,
-            ]);
+            // A atualização acima já é auditada uma única vez pelo BaseModel,
+            // contendo somente os campos efetivamente alterados.
 
         } catch (\Exception $e) {
             \Log::error('Erro ao atualizar totais da pesagem', [

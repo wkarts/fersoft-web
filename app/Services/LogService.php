@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Log;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Str;
+use App\Support\BinaryPayloadSanitizer;
 
 class LogService
 {
@@ -13,13 +14,18 @@ class LogService
     protected $filialId;
 
     /**
-     * Construtor que recebe a empresa e o usuário automaticamente.
+     * Fingerprints já persistidos durante a request/processo atual.
      *
-     * @param int|null $empresaId ID da empresa logada.
-     * @param int|null $usuarioId ID do usuário logado.
-     * @param int|null $filialId ID da filial logada.
- */
-    public function __construct( $empresaId, $usuarioId, $filialId)
+     * Serve como última barreira contra duas chamadas manuais idênticas ao
+     * LogService na mesma execução. Não faz SELECT no banco e, portanto, não
+     * adiciona custo de leitura ao fluxo normal.
+     */
+    protected static array $requestFingerprints = [];
+    protected static ?int $requestScopeId = null;
+
+    protected const MAX_REQUEST_FINGERPRINTS = 500;
+
+    public function __construct($empresaId, $usuarioId, $filialId)
     {
         $this->empresaId = $empresaId;
         $this->usuarioId = $usuarioId;
@@ -27,71 +33,160 @@ class LogService
     }
 
     /**
-     * Registra um evento no log de atividades do sistema.
+     * Registra um evento de auditoria no banco.
      *
-     * @param string $acao Exemplo: create, update, delete, login, logout.
-     * @param string|null $modelo Nome do Model afetado.
-     * @param array $dados Informações do registro afetado (dados antes e depois).
+     * Retorna o model criado ou null quando a entrada é vazia/duplicada.
      */
     public function registrar(string $acao, ?string $modelo, array $dados = [])
     {
         try {
-
-            // 🔹 Impede gravação de log se empresa ou usuário estiverem ausentes
-            /*
-            if (empty($this->empresaId) || empty($this->usuarioId)) {
-                return;
-            }
-            */
-            // 🔹 Se `registro_id` não for passado, tenta capturar do próprio modelo
             $registroId = $dados['registro_id'] ?? null;
 
-            // 🔹 Verifica se os dados já são JSON string e converte corretamente
-            $dadosAntes = isset($dados['dados_antes']) ? $this->formatarJson($dados['dados_antes']) : null;
-            $dadosDepois = isset($dados['dados_depois']) ? $this->formatarJson($dados['dados_depois']) : null;
+            $dadosAntes = isset($dados['dados_antes'])
+                ? $this->formatarJson(BinaryPayloadSanitizer::sanitize($dados['dados_antes']))
+                : null;
+            $dadosDepois = isset($dados['dados_depois'])
+                ? $this->formatarJson(BinaryPayloadSanitizer::sanitize($dados['dados_depois']))
+                : null;
 
-            // 🔹 Garante que o token sempre seja único e não esteja duplicado
-            $token = Str::uuid()->toString();
+            // Não persiste update sem alteração real.
+            if ($acao === 'update' && $dadosAntes !== null && $dadosAntes === $dadosDepois) {
+                return null;
+            }
 
-            // 🔹 Registra o log no banco de dados
-            Log::create([
-                'empresa_id' => in_array($this->empresaId, [null, 'null'], true) ? null : (int) $this->empresaId,
-                'usuario_id' => in_array($this->usuarioId, [null, 'null'], true) ? null : (int) $this->usuarioId,
-                'filial_id'  => in_array($this->filialId, [null, 'null', -1, '-1'], true) ? null : (int) $this->filialId,
+            $empresaId = in_array($this->empresaId, [null, 'null'], true) ? null : (int) $this->empresaId;
+            $usuarioId = in_array($this->usuarioId, [null, 'null'], true) ? null : (int) $this->usuarioId;
+            $filialId = in_array($this->filialId, [null, 'null', -1, '-1'], true) ? null : (int) $this->filialId;
+
+            $this->prepareRequestFingerprintScope();
+
+            $fingerprint = $this->fingerprint([
+                'empresa_id' => $empresaId,
+                'usuario_id' => $usuarioId,
+                'filial_id' => $filialId,
                 'acao' => $acao,
                 'modelo' => $modelo,
                 'registro_id' => $registroId,
                 'dados_anteriores' => $dadosAntes,
                 'dados_depois' => $dadosDepois,
-                'ip_address' => Request::ip(),
-                'user_agent' => Request::header('User-Agent'),
-                'token' => $token, // 🔹 Garante que o token sempre seja único
             ]);
 
+            if (isset(static::$requestFingerprints[$fingerprint])) {
+                return null;
+            }
+
+            static::$requestFingerprints[$fingerprint] = true;
+            if (count(static::$requestFingerprints) > static::MAX_REQUEST_FINGERPRINTS) {
+                // Mantém memória limitada em workers/comandos longos.
+                static::$requestFingerprints = array_slice(
+                    static::$requestFingerprints,
+                    -static::MAX_REQUEST_FINGERPRINTS,
+                    null,
+                    true
+                );
+            }
+
+            return Log::create([
+                'empresa_id' => $empresaId,
+                'usuario_id' => $usuarioId,
+                'filial_id' => $filialId,
+                'acao' => $acao,
+                'modelo' => $modelo,
+                'dados_anteriores' => $dadosAntes,
+                'dados_depois' => $dadosDepois,
+                'ip_address' => Request::ip(),
+                'user_agent' => Request::header('User-Agent'),
+                'token' => Str::uuid()->toString(),
+            ]);
         } catch (\Throwable $e) {
-            \Log::error('Erro ao registrar log de atividade', ['erro' => $e->getMessage()]);
+            \Log::error('Erro ao registrar log de atividade', [
+                'erro' => $e->getMessage(),
+                'acao' => $acao,
+                'modelo' => $modelo,
+            ]);
+
+            return null;
         }
     }
 
     /**
-     * Formata um array ou string JSON para um JSON válido.
-     *
-     * @param mixed $data
-     * @return string|null
+     * Reinicia a barreira de duplicidade quando muda o objeto Request.
+     * Isso evita que workers longos (queue/Octane/comandos) carreguem fingerprints
+     * de uma execução anterior e silenciem um evento legítimo futuro.
      */
-    protected function formatarJson($data): ?string
+    protected function prepareRequestFingerprintScope(): void
+    {
+        try {
+            if (!function_exists('app') || !app()->bound('request')) {
+                // Fora de HTTP não usamos deduplicação estática entre execuções.
+                static::$requestFingerprints = [];
+                static::$requestScopeId = null;
+                return;
+            }
+
+            $request = app('request');
+            $scopeId = is_object($request) ? spl_object_id($request) : null;
+
+            if ($scopeId === null || static::$requestScopeId !== $scopeId) {
+                static::$requestFingerprints = [];
+                static::$requestScopeId = $scopeId;
+            }
+        } catch (\Throwable $e) {
+            static::$requestFingerprints = [];
+            static::$requestScopeId = null;
+        }
+    }
+
+    protected function fingerprint(array $payload): string
+    {
+        $normalized = $this->normalizeForFingerprint($payload);
+
+        return hash(
+            'sha256',
+            json_encode(
+                $normalized,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+            ) ?: serialize($normalized)
+        );
+    }
+
+    protected function normalizeForFingerprint($value)
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        if (!array_is_list($value)) {
+            ksort($value);
+        }
+
+        foreach ($value as $key => $item) {
+            $value[$key] = $this->normalizeForFingerprint($item);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Converte strings JSON em array e deixa a serialização final para o cast
+     * da model Log, evitando JSON duplamente serializado.
+     */
+    protected function formatarJson($data): mixed
     {
         if (is_string($data)) {
-            // 🔹 Tenta decodificar e depois recodificar para evitar JSON com escapes desnecessários
             $decoded = json_decode($data, true);
+
             if (json_last_error() === JSON_ERROR_NONE) {
-                return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                return $decoded;
             }
-            return $data; // Se não puder decodificar, mantém como string original
+
+            return ['valor' => $data];
         }
+
         if (is_array($data)) {
-            return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            return $data;
         }
-        return null; // Retorna null se os dados não forem manipuláveis
+
+        return null;
     }
 }

@@ -408,28 +408,6 @@ class TransferenciaController extends Controller
                     // Atualiza o último número utilizado na filial/matriz
                     $this->atualizaUltimoNumeroNfe($item);
 
-                    // Recurso portado: gera a entrada fiscal automática no destino sem
-                    // movimentar estoque novamente, pois a transferência já realizou a baixa/entrada.
-                    try {
-                        $this->gerarEntradaDestinatario($item, $nfe['chave'], $nfe['nNf']);
-
-                        $xmlOrigem = public_path('xml_nfe/' . $nfe['chave'] . '.xml');
-                        $diretorioEntrada = public_path('xml_entrada');
-                        if (is_file($xmlOrigem)) {
-                            if (!is_dir($diretorioEntrada)) {
-                                mkdir($diretorioEntrada, 0775, true);
-                            }
-                            copy($xmlOrigem, $diretorioEntrada . DIRECTORY_SEPARATOR . $nfe['chave'] . '.xml');
-                        }
-                    } catch (\Throwable $e) {
-                        \Log::error('Falha ao gerar entrada automática de transferência aprovada.', [
-                            'empresa_id' => $this->empresa_id,
-                            'transferencia_id' => $item->id,
-                            'chave' => $nfe['chave'],
-                            'erro' => $e->getMessage(),
-                        ]);
-                    }
-
                     // Atualiza o último número utilizado na filial/matriz
                     /*
                     if ($item->filial_saida_id) {
@@ -447,9 +425,28 @@ class TransferenciaController extends Controller
                     }
                     */
 
+                    // =======================================================
+                    // AQUI ESTÁ A MÁGICA QUE FALTAVA!
+                    // Chama a função para dar entrada automática na Filial
+                    // =======================================================
+                    $this->gerarEntradaDestinatario($item, $nfe['chave'], $nfe['nNf']);
+                    // =======================================================
+                  
+                  	// =======================================================
+                    // NOVO: Copia o XML para a pasta xml_entrada
+                    // =======================================================
+                    $pathEntrada = public_path('xml_entrada/');
+                    if (!file_exists($pathEntrada)) {
+                        mkdir($pathEntrada, 0777, true);
+                    }
+                    // Faz uma cópia exata do arquivo
+                    copy(public_path('xml_nfe/' . $nfe['chave'] . '.xml'), $pathEntrada . $nfe['chave'] . '.xml');
+                    // =======================================================
+
                     importaXmlSieg(safe_file_get_contents(public_path('xml_nfe/' . $nfe['chave'] . '.xml')), $this->empresa_id);
 
                 } else {
+               
                     // 🔴 REJEITADO
                     if (empty($item->signed_xml)) {
                         $item->signed_xml = $signed;
@@ -1139,139 +1136,106 @@ class TransferenciaController extends Controller
             return response()->json(['success' => false, 'mensagem' => $e->getMessage()]);
         }
     }
-    private function gerarEntradaDestinatario(Transferencia $transferencia, $chave, $numeroNfe): void
+    private function gerarEntradaDestinatario(Transferencia $transferencia, $chave, $numeroNfe)
     {
-        $empresaId = (int)$transferencia->empresa_id;
-        $chave = preg_replace('/\D/', '', (string)$chave);
+        // 1. Verifica se já não gerou a compra para evitar duplicidade
+        $existe = \App\Models\Compra::where('chave', $chave)->first();
+        if ($existe) return;
 
-        if ($empresaId <= 0 || $empresaId !== (int)$this->empresa_id || strlen($chave) !== 44) {
-            throw new \RuntimeException('Dados inválidos para gerar a entrada automática da transferência.');
+        // 2. Carrega os dados da Origem (Quem emitiu a nota)
+        if ($transferencia->filial_saida_id == null) {
+            $emitente = \App\Models\ConfigNota::where('empresa_id', $transferencia->empresa_id)->first();
+        } else {
+            $emitente = \App\Models\Filial::find($transferencia->filial_saida_id);
+        }
+        
+        // Carrega os dados do Destino (Quem recebeu a nota)
+        if ($transferencia->filial_entrada_id == null) {
+            $destinatario = \App\Models\ConfigNota::where('empresa_id', $transferencia->empresa_id)->first();
+        } else {
+            $destinatario = \App\Models\Filial::find($transferencia->filial_entrada_id);
         }
 
-        DB::transaction(function () use ($transferencia, $empresaId, $chave, $numeroNfe) {
-            $jaExiste = \App\Models\Compra::query()
-                ->where('empresa_id', $empresaId)
-                ->where('chave', $chave)
-                ->lockForUpdate()
-                ->exists();
+        $cnpjEmitente = preg_replace('/[^0-9]/', '', $emitente->cnpj);
 
-            if ($jaExiste) {
-                return;
-            }
-
-            $emitente = $transferencia->filial_saida_id === null
-                ? \App\Models\ConfigNota::where('empresa_id', $empresaId)->first()
-                : \App\Models\Filial::where('empresa_id', $empresaId)->find($transferencia->filial_saida_id);
-
-            $destinatario = $transferencia->filial_entrada_id === null
-                ? \App\Models\ConfigNota::where('empresa_id', $empresaId)->first()
-                : \App\Models\Filial::where('empresa_id', $empresaId)->find($transferencia->filial_entrada_id);
-
-            if (!$emitente || !$destinatario) {
-                throw new \RuntimeException('Emitente ou destinatário da transferência não foi localizado.');
-            }
-
-            $cnpjEmitente = preg_replace('/\D/', '', (string)$emitente->cnpj);
-            if (strlen($cnpjEmitente) !== 14) {
-                throw new \RuntimeException('CNPJ do emitente da transferência é inválido.');
-            }
-
-            $fornecedor = \App\Models\Fornecedor::query()
-                ->where('empresa_id', $empresaId)
-                ->whereRaw("REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '/', ''), '-', '') = ?", [$cnpjEmitente])
-                ->first();
-
-            if (!$fornecedor) {
-                $codigoMunicipio = $emitente->codMun ?? $emitente->codigo_municipio ?? null;
-                $cidade = $codigoMunicipio
-                    ? \App\Models\Cidade::where('codigo', $codigoMunicipio)->first()
-                    : null;
-
-                if (!$cidade && !empty($emitente->municipio)) {
-                    $cidade = \App\Models\Cidade::query()
-                        ->where('nome', $emitente->municipio)
-                        ->when(!empty($emitente->UF), fn ($q) => $q->where('uf', $emitente->UF))
-                        ->first();
-                }
-
-                if (!$cidade) {
-                    throw new \RuntimeException('Município do emitente não cadastrado; fornecedor automático não pôde ser criado.');
-                }
-
-                $fornecedor = \App\Models\Fornecedor::create([
-                    'razao_social' => (string)$emitente->razao_social,
-                    'nome_fantasia' => (string)($emitente->nome_fantasia ?: $emitente->razao_social),
-                    'cpf_cnpj' => $cnpjEmitente,
-                    'ie_rg' => (string)($emitente->ie ?? $emitente->inscricao_estadual ?? ''),
-                    'rua' => (string)($emitente->logradouro ?? ''),
-                    'numero' => (string)($emitente->numero ?? ''),
-                    'bairro' => (string)($emitente->bairro ?? ''),
-                    'telefone' => (string)($emitente->telefone ?? ''),
-                    'complemento' => (string)($emitente->complemento ?? ''),
-                    'celular' => (string)($emitente->celular ?? ''),
-                    'email' => (string)($emitente->email ?? ''),
-                    'cep' => preg_replace('/\D/', '', (string)($emitente->cep ?? '')),
-                    'cidade_id' => $cidade->id,
-                    'empresa_id' => $empresaId,
-                    'contribuinte' => 1,
-                    'cod_pais' => 1058,
-                    'pix' => '',
-                    'tipo_pix' => 'cnpj',
-                    'ativo' => 1,
-                ]);
-            }
-
-            $transferencia->loadMissing('itens');
-            $total = (float)$transferencia->itens->sum(function ($item) {
-                return (float)$item->quantidade * (float)$item->valor_unitario;
-            });
-
-            $compra = \App\Models\Compra::create([
-                'fornecedor_id' => $fornecedor->id,
-                'usuario_id' => $transferencia->usuario_id ?: get_id_user(),
-                'empresa_id' => $empresaId,
-                'filial_id' => $transferencia->filial_entrada_id,
-                'nf' => (string)$numeroNfe,
-                'chave' => $chave,
-                'valor' => $total,
-                'desconto' => 0,
-                'estado' => 'APROVADO',
-                'observacao' => 'Entrada automática gerada pela transferência interna #' . $transferencia->id,
-                'data_emissao' => $transferencia->data_emissao ?: now(),
-                'xml_importado' => 1,
+        // 3. Busca ou cadastra o Emitente como Fornecedor
+        $fornecedor = \App\Models\Fornecedor::where('cpf_cnpj', $cnpjEmitente)->first();
+        if (!$fornecedor) {
+            $cidade = \App\Models\Cidade::where('nome', $emitente->municipio)->first();
+            $fornecedor = \App\Models\Fornecedor::create([
+                'razao_social' => $emitente->razao_social,
+                'nome_fantasia' => $emitente->nome_fantasia ?? $emitente->razao_social,
+                'cpf_cnpj' => $cnpjEmitente,
+                'rua' => $emitente->logradouro,
+                'numero' => $emitente->numero,
+                'bairro' => $emitente->bairro,
+                'cidade_id' => $cidade ? $cidade->id : 1,
+                'empresa_id' => $transferencia->empresa_id,
             ]);
+        }
 
-            $ufEmitente = strtoupper((string)($emitente->UF ?? ''));
-            $ufDestino = strtoupper((string)($destinatario->UF ?? ''));
-            $prefixoCfop = ($ufEmitente !== '' && $ufEmitente === $ufDestino) ? '1' : '2';
+        // 4. Calcula o total da nota
+        $total = 0;
+        foreach($transferencia->itens as $i) {
+            $total += $i->sub_total;
+        }
 
-            foreach ($transferencia->itens as $itemTransferencia) {
-                $produto = \App\Models\Produto::query()
-                    ->where('empresa_id', $empresaId)
-                    ->find($itemTransferencia->produto_id);
+        // 5. Gera o cabeçalho da Compra (Entrada) - Sem gerar financeiro e sem duplicar estoque
+        $compra = \App\Models\Compra::create([
+            'fornecedor_id' => $fornecedor->id,
+            'usuario_id' => $transferencia->usuario_id,
+            'empresa_id' => $transferencia->empresa_id,
+            // Graças ao seu Mutator na model Compra, passar -1 converte para null (Matriz)
+            'filial_id' => $transferencia->filial_entrada_id != null ? $transferencia->filial_entrada_id : -1,
+            'nf' => $numeroNfe,
+            'chave' => $chave,
+            'valor' => $total,
+            'estado' => 'aprovado',
+            'observacao' => 'Entrada automática gerada por Transf. Interna #' . $transferencia->id,
+            'data_emissao' => date('Y-m-d H:i:s')
+        ]);
 
-                if (!$produto) {
-                    throw new \RuntimeException('Produto da transferência não pertence à empresa atual.');
+        // ========================================================
+        // REGRAS FISCAIS: CFOP E TRIBUTOS 
+        // ========================================================
+        $ufEmitente = $emitente->UF ?? '';
+        $ufDestino = $destinatario->UF ?? '';
+        
+        // Define se é 1000 (Dentro do Estado) ou 2000 (Fora do Estado)
+        $prefixoCfop = ($ufEmitente == $ufDestino) ? '1' : '2';
+
+        // 6. Gera os itens da compra
+        foreach($transferencia->itens as $i) {
+            $produto = \App\Models\Produto::find($i->produto_id);
+            $unidadeCompra = $produto ? $produto->unidade_compra : 'UN';
+            
+            // Lógica inteligente para CFOP de Transferência
+            // Assume 152 (Com ST). Se o produto for tributação normal, altera para 151 (Sem ST)
+            $cfopEntrada = $prefixoCfop . '152'; // Padrão ex: 2152 ou 1152
+            
+            if ($produto) {
+                // Códigos de ICMS que geralmente NÃO têm ST (Tributação normal ou isenções simples)
+                $cstNormais = ['00', '20', '90', '101', '102', '400', '41', '041'];
+                if (in_array($produto->CST_CSOSN, $cstNormais)) {
+                    $cfopEntrada = $prefixoCfop . '151'; // Muda para ex: 2151 ou 1151
                 }
-
-                $cstNormais = ['00', '20', '40', '41', '90', '101', '102', '400', '041'];
-                $cst = str_pad((string)($produto->CST_CSOSN ?? ''), 2, '0', STR_PAD_LEFT);
-                $cfopEntrada = $prefixoCfop . (in_array($cst, $cstNormais, true) ? '151' : '152');
-
-                \App\Models\ItemCompra::create([
-                    'compra_id' => $compra->id,
-                    'produto_id' => $produto->id,
-                    'quantidade' => (float)$itemTransferencia->quantidade,
-                    'valor_unitario' => (float)$itemTransferencia->valor_unitario,
-                    'unidade_compra' => $produto->unidade_compra ?: ($produto->unidade_venda ?: 'UN'),
-                    'cfop_entrada' => $cfopEntrada,
-                    'cst_icms' => '041',
-                    'cst_pis' => '74',
-                    'cst_cofins' => '74',
-                    'cst_ipi' => '99',
-                ]);
             }
-        }, 3);
+
+            \App\Models\ItemCompra::create([
+                'compra_id' => $compra->id,
+                'produto_id' => $i->produto_id,
+                'quantidade' => $i->quantidade,
+                'valor_unitario' => $i->valor_unitario,
+                'unidade_compra' => $unidadeCompra,
+                'cfop_entrada' => $cfopEntrada,
+                
+                // Impostos fiscais fixados conforme sua regra (041 / 74)
+                'cst_icms' => '041',
+                'cst_pis' => '74',
+                'cst_cofins' => '74',
+                'cst_ipi' => '99',
+            ]);
+        }
     }
 
 

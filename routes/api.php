@@ -525,3 +525,8 @@ Route::group(['prefix' => 'updates'], function () {
 Route::group(['prefix' => 'ponto-mobile', 'middleware' => 'authApp'], function(){
 	Route::post('/marcacoes', 'PontoMobileController@registrarMarcacao');
 });
+
+// Integração Traccar (Webhooks e Eventos de Frota)
+Route::group(['prefix' => 'traccar'], function(){
+    Route::post('/eventos', 'TraccarWebhookController@receberEvento');
+});

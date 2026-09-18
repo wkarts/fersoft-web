@@ -5,6 +5,7 @@ namespace App\Models;
 
 class Agendamento extends BaseModel
 {
+
     protected $fillable = [
         'funcionario_id', 'cliente_id', 'data', 'inicio', 'termino', 'observacao', 'total',
         'desconto', 'acrescimo', 'status', 'empresa_id'
@@ -20,6 +21,11 @@ class Agendamento extends BaseModel
 
     public function funcionario(){
         return $this->belongsTo(Funcionario::class, 'funcionario_id');
+    }
+
+    public function veiculo()
+    {
+        return $this->belongsTo(\App\Models\ClienteVeiculo::class, 'cliente_veiculo_id');
     }
 
 }

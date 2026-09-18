@@ -13,20 +13,19 @@ use App\Models\Filial;
 
 class ConferenciaFiscalController extends Controller
 {
-    // Função central que busca os dados para a Tela, Excel e PDF
     // Função central que busca os dados para a Tela, Excel e PDF (OTIMIZADA)
     private function getDadosFiltrados(Request $request)
     {
         $sessao = session('user_logged');
         $empresa_id = $sessao['empresa'];
 
-        $dataInicial = $request->data_inicial ?? date('Y-m-01');
-        $dataFinal = $request->data_final ?? date('Y-m-t');
-        
+        $dataInicial = $request->data_inicial ? $request->data_inicial . ' 00:00:00' : date('Y-m-01 00:00:00');
+        $dataFinal = $request->data_final ? $request->data_final . ' 23:59:59' : date('Y-m-t 23:59:59');
+
         $clientePesquisa = $request->cliente;
-        $filialFiltro = $request->filial_id; 
-        $naturezaFiltro = $request->natureza_id; 
-        $tipoNotaFiltro = $request->tipo_nota; 
+        $filialFiltro = $request->filial_id;
+        $naturezaFiltro = $request->natureza_id;
+        $tipoNotaFiltro = $request->tipo_nota;
 
         $todosDados = collect();
 
@@ -34,7 +33,7 @@ class ConferenciaFiscalController extends Controller
         if (empty($tipoNotaFiltro) || $tipoNotaFiltro == 'NFe') {
             $qVendas = Venda::with(['cliente', 'itens', 'natureza'])
                 ->where('empresa_id', $empresa_id)->whereBetween('data_emissao', [$dataInicial, $dataFinal]);
-            
+
             if ($request->estado) $qVendas->where('estado', $request->estado);
             if ($naturezaFiltro) $qVendas->where('natureza_id', $naturezaFiltro);
             if ($filialFiltro === 'matriz') $qVendas->whereNull('filial_id');
@@ -47,25 +46,57 @@ class ConferenciaFiscalController extends Controller
             }
 
             $vendas = $qVendas->get();
-            
-            // OTIMIZAÇÃO EXTREMA: Busca todas as contas a receber de uma só vez!
+
+            // Busca todas as contas a receber vinculadas
             $contasVendas = ContaReceber::whereIn('venda_id', $vendas->pluck('id'))->get()->groupBy('venda_id');
 
             $vendasMapeadas = $vendas->map(function($v) use ($contasVendas) {
-                // Pega a conta vinculada sem consultar o banco de novo
                 $contas = $contasVendas->get($v->id, collect());
                 $valorRecebido = $contas->sum('valor_recebido');
                 $isTransferencia = stripos($v->natureza->natureza ?? '', 'transfer') !== false;
 
+                // Formatação do status de acordo com o estado do cliente
+                $estadoFiscal = strtoupper($v->estado);
+                $situacaoCliente = $v->estado_cliente;
+
+                if ($estadoFiscal == 'APROVADO' && !empty($situacaoCliente)) {
+                    if ($situacaoCliente == 'DEVOLVIDO') {
+                        $situacaoFormatada = 'DEVOLVIDA CLIENTE';
+                    } elseif ($situacaoCliente == 'REJEITADO_PELO_CLIENTE') {
+                        $situacaoFormatada = 'REJEITADA CLIENTE';
+                    } else {
+                        $situacaoFormatada = $situacaoCliente;
+                    }
+                } else {
+                    $situacaoFormatada = $estadoFiscal;
+                }
+
+                // Verifica se a nota teve recusa/devolução logística
+                $isRecusadaCliente = in_array($situacaoCliente, ['DEVOLVIDO', 'REJEITADO_PELO_CLIENTE']);
+
+                // Se for recusada/devolvida pelo cliente, força o Valor em Aberto para 0.00
+                if ($isRecusadaCliente) {
+                    $valorAberto = 0;
+                } else {
+                    $valorAberto = ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $v->valor_total;
+                }
+
                 return [
-                    'id' => $v->id, 'numero' => $v->NfNumero, 'data' => $v->data_emissao,
-                    'cliente' => $v->cliente->razao_social ?? '--', 
+                    'id' => $v->id,
+                    'numero' => $v->NfNumero,
+                    'data' => $v->data_emissao,
+                    'cliente' => $v->cliente->razao_social ?? '--',
                     'tipo' => $isTransferencia ? 'TRANSFERÊNCIA' : 'NFe',
-                    'valor' => $v->valor_total, 'valor_recebido' => $valorRecebido,
-                    'valor_aberto' => ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $v->valor_total,
-                    'situacao' => strtoupper($v->estado), 'integrado' => $contas->count() > 0,
-                    'qtd_itens' => $v->itens->sum('quantidade'), 'chave' => "NFe_{$v->id}",
-                    'bloqueia_integracao' => $isTransferencia 
+                    'valor' => $v->valor_total,
+                    'valor_recebido' => $valorRecebido,
+                    'valor_aberto' => $valorAberto, // <-- Atualizado para zerar
+                    'situacao' => $situacaoFormatada,
+                    'estado_cliente' => $situacaoCliente,
+                    'estado_fiscal' => $estadoFiscal,
+                    'integrado' => $contas->count() > 0,
+                    'qtd_itens' => $v->itens->sum('quantidade'),
+                    'chave' => "NFe_{$v->id}",
+                    'bloqueia_integracao' => $isTransferencia || $isRecusadaCliente
                 ];
             });
             $todosDados = $todosDados->concat($vendasMapeadas);
@@ -75,7 +106,7 @@ class ConferenciaFiscalController extends Controller
         if (empty($tipoNotaFiltro) || $tipoNotaFiltro == 'NFCe') {
             $qVendaCaixa = VendaCaixa::with(['cliente', 'itens', 'natureza'])
                 ->where('empresa_id', $empresa_id)->whereBetween('created_at', [$dataInicial . ' 00:00:00', $dataFinal . ' 23:59:59']);
-            
+
             if ($request->estado) $qVendaCaixa->where('estado', $request->estado);
             if ($naturezaFiltro) $qVendaCaixa->where('natureza_id', $naturezaFiltro);
             if ($filialFiltro === 'matriz') $qVendaCaixa->whereNull('filial_id');
@@ -94,12 +125,20 @@ class ConferenciaFiscalController extends Controller
                 $contas = $contasCaixa->get($v->id, collect());
                 $valorRecebido = $contas->sum('valor_recebido');
                 return [
-                    'id' => $v->id, 'numero' => $v->NFcNumero, 'data' => $v->created_at->format('Y-m-d'),
-                    'cliente' => $v->cliente->razao_social ?? '--', 'tipo' => 'NFCe',
-                    'valor' => $v->valor_total, 'valor_recebido' => $valorRecebido,
+                    'id' => $v->id,
+                    'numero' => $v->NFcNumero,
+                    'data' => $v->created_at->format('Y-m-d'),
+                    'cliente' => $v->cliente->razao_social ?? '--',
+                    'tipo' => 'NFCe',
+                    'valor' => $v->valor_total,
+                    'valor_recebido' => $valorRecebido,
                     'valor_aberto' => ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $v->valor_total,
-                    'situacao' => strtoupper($v->estado), 'integrado' => $contas->count() > 0,
-                    'qtd_itens' => $v->itens->sum('quantidade'), 'chave' => "NFCe_{$v->id}",
+                    'situacao' => strtoupper($v->estado),
+                    'estado_cliente' => null,
+                    'estado_fiscal' => strtoupper($v->estado),
+                    'integrado' => $contas->count() > 0,
+                    'qtd_itens' => $v->itens->sum('quantidade'),
+                    'chave' => "NFCe_{$v->id}",
                     'bloqueia_integracao' => false
                 ];
             });
@@ -110,7 +149,7 @@ class ConferenciaFiscalController extends Controller
         if (empty($tipoNotaFiltro) || $tipoNotaFiltro == 'DEVOLUCAO') {
             $qDevolucao = Devolucao::with(['fornecedor', 'itens'])
                 ->where('empresa_id', $empresa_id)->whereBetween('data_registro', [$dataInicial, $dataFinal]);
-            
+
             if ($request->estado) {
                 if (in_array($request->estado, ['APROVADO', 'AUTORIZADO'])) $qDevolucao->where('estado', 1);
                 if ($request->estado == 'CANCELADO') $qDevolucao->where('estado', 3);
@@ -128,14 +167,23 @@ class ConferenciaFiscalController extends Controller
             $devolucoes = $qDevolucao->get()->map(function($d) {
                 $situacao = $d->estado == 1 ? 'AUTORIZADO' : ($d->estado == 3 ? 'CANCELADO' : 'PENDENTE');
                 $tipoDoc = $d->tipo == 0 ? 'DEVOLUÇÃO DE VENDA' : 'DEVOLUÇÃO DE COMPRA';
-                
+
                 return [
-                    'id' => $d->id, 'numero' => $d->numero_gerado, 'data' => $d->data_registro,
-                    'cliente' => $d->fornecedor->razao_social ?? '--', 'tipo' => $tipoDoc,
-                    'valor' => $d->valor_integral, 'valor_recebido' => 0, 'valor_aberto' => 0,
-                    'situacao' => $situacao, 'integrado' => false,
-                    'qtd_itens' => $d->itens->sum('quantidade'), 'chave' => "DEV_{$d->id}",
-                    'bloqueia_integracao' => true 
+                    'id' => $d->id,
+                    'numero' => $d->numero_gerado,
+                    'data' => $d->data_registro,
+                    'cliente' => $d->fornecedor->razao_social ?? '--',
+                    'tipo' => $tipoDoc,
+                    'valor' => $d->valor_integral,
+                    'valor_recebido' => 0,
+                    'valor_aberto' => 0,
+                    'situacao' => $situacao,
+                    'estado_cliente' => null,
+                    'estado_fiscal' => $situacao,
+                    'integrado' => false,
+                    'qtd_itens' => $d->itens->sum('quantidade'),
+                    'chave' => "DEV_{$d->id}",
+                    'bloqueia_integracao' => true
                 ];
             });
             $todosDados = $todosDados->concat($devolucoes);
@@ -144,8 +192,8 @@ class ConferenciaFiscalController extends Controller
         // 4. CTe
         if (empty($tipoNotaFiltro) || $tipoNotaFiltro == 'CTe') {
             $qCte = Cte::with(['remetente', 'natureza'])
-                ->where('empresa_id', $empresa_id)->whereBetween('data_registro', [$dataInicial, $dataFinal]);
-            
+                ->where('empresa_id', $empresa_id)->whereBetween('data_emissao', [$dataInicial, $dataFinal]);
+
             if ($request->estado) $qCte->where('estado', $request->estado);
             if ($naturezaFiltro) $qCte->where('natureza_id', $naturezaFiltro);
             if ($filialFiltro === 'matriz') $qCte->whereNull('filial_id');
@@ -168,12 +216,21 @@ class ConferenciaFiscalController extends Controller
                 $valorRecebido = $contas->sum('valor_recebido');
 
                 return [
-                    'id' => $c->id, 'numero' => $c->cte_numero, 'data' => $c->data_registro,
-                    'cliente' => $c->remetente->razao_social ?? '--', 'tipo' => 'CTe',
-                    'valor' => $c->valor_receber, 'valor_recebido' => $valorRecebido, 
+                    'id' => $c->id,
+                    'numero' => $c->cte_numero,
+                    'data' => $c->data_emissao,
+                    'cliente' => $c->remetente->razao_social ?? '--',
+                    'tipo' => 'CTe',
+                    'valor' => $c->valor_receber,
+                    'valor_recebido' => $valorRecebido,
                     'valor_aberto' => ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $c->valor_receber,
-                    'situacao' => strtoupper($c->estado), 'integrado' => $contas->count() > 0,
-                    'qtd_itens' => 0, 'chave' => "CTE_{$c->id}", 'bloqueia_integracao' => false 
+                    'situacao' => strtoupper($c->estado),
+                    'estado_cliente' => null,
+                    'estado_fiscal' => strtoupper($c->estado),
+                    'integrado' => $contas->count() > 0,
+                    'qtd_itens' => 0,
+                    'chave' => "CTE_{$c->id}",
+                    'bloqueia_integracao' => false
                 ];
             });
             $todosDados = $todosDados->concat($ctesMapeados);
@@ -202,12 +259,12 @@ class ConferenciaFiscalController extends Controller
         return view('conferencia.index', $this->getDadosFiltrados($request));
     }
 
-    // --- NOVA ROTA: EXCEL ---
+    // --- ROTA: EXCEL ---
     public function exportarExcel(Request $request)
     {
         $dados = $this->getDadosFiltrados($request)['notas'];
         $fileName = 'conferencia_notas_' . date('Y-m-d_H-i') . '.csv';
-        
+
         $headers = [
             "Content-type" => "text/csv; charset=UTF-8",
             "Content-Disposition" => "attachment; filename=$fileName",
@@ -218,13 +275,16 @@ class ConferenciaFiscalController extends Controller
 
         $callback = function() use($dados) {
             $file = fopen('php://output', 'w');
-            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // Formatação para o Excel aceitar acentos perfeitamente
+            fputs($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
             fputcsv($file, ['Data', 'Tipo', 'Número', 'Cliente / Fornecedor', 'Itens', 'Valor Nota', 'Recebido', 'Aberto', 'Situação', 'Status Financeiro'], ';');
 
             foreach ($dados as $n) {
                 fputcsv($file, [
                     \Carbon\Carbon::parse($n['data'])->format('d/m/Y'),
-                    $n['tipo'], $n['numero'], $n['cliente'], $n['qtd_itens'],
+                    $n['tipo'],
+                    $n['numero'],
+                    $n['cliente'],
+                    $n['qtd_itens'],
                     number_format($n['valor'], 2, ',', ''),
                     number_format($n['valor_recebido'], 2, ',', ''),
                     number_format($n['valor_aberto'], 2, ',', ''),
@@ -238,22 +298,21 @@ class ConferenciaFiscalController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    // --- NOVA ROTA: PDF EM PAISAGEM ---
+    // --- ROTA: PDF EM PAISAGEM ---
     public function imprimir(Request $request)
     {
         return view('conferencia.print', $this->getDadosFiltrados($request));
     }
 
-    // (Mantenha a sua função integrarMassa() aqui exatamente como estava no último código)
     public function integrarMassa(Request $request)
     {
         $sessao = session('user_logged');
         $empresa_id = $sessao['empresa'];
-        
-        $notasSelecionadas = $request->notas_integrar ?? []; 
+
+        $notasSelecionadas = $request->notas_integrar ?? [];
 
         $categoriaPadrao = \App\Models\CategoriaConta::where('empresa_id', $empresa_id)->first();
-        $idCategoriaPadrao = $categoriaPadrao ? $categoriaPadrao->id : 1; 
+        $idCategoriaPadrao = $categoriaPadrao ? $categoriaPadrao->id : 1;
 
         foreach ($notasSelecionadas as $notaChave) {
             list($tipo, $id) = explode('_', $notaChave);
@@ -261,7 +320,7 @@ class ConferenciaFiscalController extends Controller
             if ($tipo == 'NFe') {
                 $venda = Venda::with('natureza')->find($id);
                 if ($venda && !ContaReceber::where('venda_id', $venda->id)->exists()) {
-                    
+
                     $catId = ($venda->natureza && $venda->natureza->categoria_conta_id) ? $venda->natureza->categoria_conta_id : $idCategoriaPadrao;
 
                     ContaReceber::create([
@@ -272,19 +331,19 @@ class ConferenciaFiscalController extends Controller
                         'valor_integral' => $venda->valor_total,
                         'valor_recebido' => 0,
                         'status' => false,
-                        'data_vencimento' => $venda->data_emissao, 
+                        'data_vencimento' => $venda->data_emissao,
                         'numero_nota_fiscal' => $venda->NfNumero,
                         'nf_numero' => $venda->NfNumero,
                         'nf_data_emissao' => $venda->data_emissao,
-                        'categoria_id' => $catId, 
+                        'categoria_id' => $catId,
                         'referencia' => 'Vendas Ref. Pedido Nº ' . $venda->id . ' NFe ' . $venda->NfNumero,
-                        'usuario_id' => get_id_user(), 
+                        'usuario_id' => get_id_user(),
                     ]);
                 }
             } elseif ($tipo == 'NFCe') {
                 $vendaCaixa = VendaCaixa::with('natureza')->find($id);
                 if ($vendaCaixa && !ContaReceber::where('venda_caixa_id', $vendaCaixa->id)->exists()) {
-                    
+
                     $catId = ($vendaCaixa->natureza && $vendaCaixa->natureza->categoria_conta_id) ? $vendaCaixa->natureza->categoria_conta_id : $idCategoriaPadrao;
 
                     ContaReceber::create([
@@ -301,10 +360,10 @@ class ConferenciaFiscalController extends Controller
                         'nf_data_emissao' => $vendaCaixa->created_at->format('Y-m-d'),
                         'categoria_id' => $catId,
                         'referencia' => 'Vendas PDV Ref. Nº ' . $vendaCaixa->id . ' NFCe ' . $vendaCaixa->NFcNumero,
-                        'usuario_id' => get_id_user(), 
+                        'usuario_id' => get_id_user(),
                     ]);
                 }
-            } elseif ($tipo == 'CTE') { 
+            } elseif ($tipo == 'CTE') {
                 $cte = Cte::with('natureza')->find($id);
                 if ($cte && !ContaReceber::where('numero_nota_fiscal', $cte->cte_numero)->where('referencia', 'LIKE', '%CTe%')->exists()) {
                     $catId = ($cte->natureza && $cte->natureza->categoria_conta_id) ? $cte->natureza->categoria_conta_id : $idCategoriaPadrao;
@@ -318,13 +377,13 @@ class ConferenciaFiscalController extends Controller
                         'valor_integral' => $cte->valor_receber,
                         'valor_recebido' => 0,
                         'status' => false,
-                        'data_vencimento' => $cte->data_registro, 
+                        'data_vencimento' => $cte->data_registro,
                         'numero_nota_fiscal' => $cte->cte_numero,
                         'nf_numero' => $cte->cte_numero,
                         'nf_data_emissao' => $cte->data_registro,
                         'categoria_id' => $catId,
                         'referencia' => 'Serviço de Transporte Ref. CTe Nº ' . $cte->cte_numero,
-                        'usuario_id' => get_id_user(), 
+                        'usuario_id' => get_id_user(),
                     ]);
                 }
             }

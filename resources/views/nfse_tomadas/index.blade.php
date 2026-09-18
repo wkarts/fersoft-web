@@ -41,13 +41,13 @@
                     <i class="la la-info-circle"></i> Como funciona?
                 </a>
 
-                <form action="{{ route('nfse.sincronizar-manuais') }}" method="POST" class="d-inline-block mr-2" onsubmit="return confirm('Deseja vincular pagamentos manuais compatíveis às NFS-e tomadas?');">
-                    @csrf
-                    <button type="submit" class="btn btn-light-primary font-weight-bold">
-                        <i class="la la-link"></i> VINCULAR MANUAIS
-                    </button>
-                </form>
-
+              	<form action="{{ route('nfse.sincronizar-manuais') }}" method="POST" style="display:inline;">
+                  @csrf
+                  <button type="submit" class="btn btn-warning">
+                      <i class="fa fa-search"></i> Vincular Lançamentos Manuais
+                  </button>
+              </form>
+              
                 <form action="/nfse-tomadas/sincronizar" method="GET" id="form-sincronizar" class="d-inline-flex align-items-center justify-content-end flex-wrap" style="gap: 10px;">
                     <select name="local" class="form-control custom-select bg-white border-success w-auto">
                         <option value="matriz">MATRIZ (Sede)</option>
@@ -92,9 +92,13 @@
                     </div>
                   
                     {{-- FORNECEDOR --}}
-                    <div class="col-lg-4 col-md-4 form-group mb-3 mb-lg-0">
-                        <label class="font-weight-bold">Fornecedor (Prestador)</label>
-                        <input type="text" name="fornecedor" class="form-control" value="{{ request('fornecedor') }}" placeholder="Nome ou CNPJ...">
+                    <div class="col-lg-3">
+                        <label>Nome do Prestador:</label>
+                        <input type="text" name="nome_prestador" class="form-control" value="{{ request('nome_prestador') }}" placeholder="NOME">
+                    </div>
+                    <div class="col-lg-3">
+                        <label>CNPJ/CPF:</label>
+                        <input type="text" name="cnpj_prestador" class="form-control" value="{{ request('cnpj_prestador') }}" placeholder="Ex: 00.000.000/0000-00">
                     </div>
 
                     {{-- N° NOTA --}}
@@ -163,11 +167,11 @@
                             $jaComprado = (bool) ($d->ja_comprado ?? false);
 
                             // Formatação do CNPJ para exibição visual limpa
-                            $cnpjNumeros = preg_replace('/[^0-9]/', '', $d->prestador_cnpj_cpf);
+                            $cnpjNumeros = preg_replace('/[^0-9]/', '', $d->prestador_cnpj);
                             if (strlen($cnpjNumeros) == 14) {
                                 $cnpjFormatadoDoERP = substr($cnpjNumeros,0,2).'.'.substr($cnpjNumeros,2,3).'.'.substr($cnpjNumeros,5,3).'/'.substr($cnpjNumeros,8,4).'-'.substr($cnpjNumeros,12,2);
                             } else {
-                                $cnpjFormatadoDoERP = $d->prestador_cnpj_cpf;
+                                $cnpjFormatadoDoERP = $d->prestador_cnpj;
                             }
                         @endphp
 
@@ -193,7 +197,9 @@
 
                             {{-- COLUNA SITUAÇÃO FISCAL / MANIFESTO --}}
                             <td>
-                                @if(($d->tipo ?? 0) == 4 || ($d->estado ?? '') == 'REJEITADA')
+                                @if(($d->situacao ?? '') == 'CANCELADA')
+                                    <span class="label label-inline label-light-danger font-weight-bold">CANCELADA ❌</span>
+                                @elseif(($d->tipo ?? 0) == 4 || ($d->estado ?? '') == 'REJEITADA')
                                     <span class="label label-inline label-light-danger font-weight-bold">REJEITADA ❌</span>
                                 @elseif(($d->tipo ?? 0) == 2 || $jaNoPagar)
                                     <span class="label label-inline label-light-success font-weight-bold">CONFIRMADA ✔</span>
@@ -250,8 +256,15 @@
                                         <i class="la la-print"></i>
                                     </a>
 
+                                    {{-- Botão Rejeitar / Manifestar Desconhecimento --}}
+                                    @if(!$jaNoPagar && ($d->tipo ?? 0) != 4)
+                                        <button onclick="setarChaveManifesto('{{$d->chave}}', '{{$d->id}}')" data-toggle="modal" data-target="#modal-rejeitar" class="btn btn-icon btn-xs btn-light-danger" title="Manifestar Rejeição do Documento">
+                                            <i class="la la-ban"></i>
+                                        </button>
+                                    @endif
+
                                     @if(!empty($d->chave))
-                                        <a href="{{ route('nfse-tomadas.xml', $d->id) }}" class="btn btn-icon btn-xs btn-light-success" title="Baixar XML Original"><i class="la la-download"></i></a>
+                                        <a href="/dfe/download/{{$d->chave}}" class="btn btn-icon btn-xs btn-light-success" title="Baixar XML Original"><i class="la la-download"></i></a>
                                     @endif
                                 </div>
                             </td>
@@ -275,6 +288,40 @@
     </div>
 </div>
 
+{{-- MODAL DE MANIFESTAÇÃO DE REJEIÇÃO COORDENADA --}}
+<div class="modal fade" id="modal-rejeitar" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+    <form method="POST" action="/nfse-tomadas/rejeitar">
+        @csrf
+        <input type="hidden" name="nota_id" id="modal-rejeitar-id" />
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title text-white font-weight-bolder">Rejeitar Documento Fiscal (Manifesto)</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">x</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold text-dark">Selecione o Motivo Comercial</label>
+                        <select class="form-control custom-select" name="evento_tipo">
+                            <option value="3">Desconhecimento da Operação</option>
+                            <option value="4">Operação não Realizada (Serviço cancelado/rejeitado)</option>
+                        </select>
+                    </div>
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold text-dark">Justificativa Legal <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="justificativa" placeholder="Informe o motivo detalhado (mínimo 15 caracteres)" required minlength="15">
+                        <span class="form-text text-muted font-size-xs mt-1">Essa justificativa será transmitida de forma oficial para o Ambiente Dados Nacional.</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light font-weight-bold" data-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-danger font-weight-bold shadow-sm">Confirmar Rejeição</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
 {{-- 📜 INTERCEPTOR JAVASCRIPT: Evita múltiplos cliques simultâneos e travamentos no cURL --}}
 <script>
     document.getElementById('form-sincronizar').addEventListener('submit', function() {
@@ -282,6 +329,10 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="la la-spinner la-spin"></i> Buscando...';
     });
+
+    function setarChaveManifesto(chave, id) {
+        document.getElementById('modal-rejeitar-id').value = id;
+    }
 </script>
 <div class="modal fade" id="modalComoFuncionaTomadas" tabindex="-1" role="dialog" aria-labelledby="modalLabelTomadas" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">

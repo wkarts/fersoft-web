@@ -24,6 +24,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClienteController extends Controller
 {
+    use \App\Traits\GeocodeTrait;
     protected $empresa_id = null;
     public function __construct(){
 
@@ -219,6 +220,14 @@ class ClienteController extends Controller
                 $request->merge([ 'observacao' => $request->observacao ?? '']);
                 $request->merge([ 'complemento' => $request->complemento ?? '']);
                 $request->merge([ 'inativo' => $request->input('inativo') ? true : false ]);
+
+                $enderecoBusca = $request->rua . ', ' . $request->numero . ', ' . $request->bairro . ', ' . ($cidadeTemp->nome ?? '');
+                $coords = $this->buscarCoordenadas($enderecoBusca);
+                $request->merge([
+                    'latitude' => $coords['latitude'],
+                    'longitude' => $coords['longitude']
+                ]);
+
 
                 $request->merge([ 'rua_cobranca' => $request->rua_cobranca ?? '']);
                 $request->merge([ 'numero_cobranca' => $request->numero_cobranca ?? '']);
@@ -445,6 +454,20 @@ class ClienteController extends Controller
             $resp->rua = strtoupper($request->input('rua'));
             $resp->numero = strtoupper($request->input('numero'));
             $resp->bairro = strtoupper($request->input('bairro'));
+
+            $cidObj = \App\Models\Cidade::find($request->cidade_id);
+            $lat = $request->input('latitude');
+            $lon = $request->input('longitude');
+
+            if(empty($lat) || empty($lon)){
+                $enderecoBusca = $resp->rua . ', ' . $resp->numero . ', ' . $resp->bairro . ', ' . ($cidObj->nome ?? '');
+                $coords = $this->buscarCoordenadas($enderecoBusca);
+                $lat = $coords['latitude'];
+                $lon = $coords['longitude'];
+            }
+
+            $resp->latitude = $lat;
+            $resp->longitude = $lon;
 
             $resp->telefone = $request->input('telefone') ?? '';
             $resp->celular = $request->input('celular') ?? '';
@@ -1125,9 +1148,9 @@ class ClienteController extends Controller
                 } elseif($c->numero_nota_fiscal) {
                     $nf = $c->numero_nota_fiscal;
                 }
-				
-              	$valor_pago_efetivo = $c->valor_recebido;
-              
+
+                $valor_pago_efetivo = $c->valor_recebido;
+
                 $dados[] = [
                     'data' => \Carbon\Carbon::parse($c->data_emissao)->format('d/m/Y'),
                     'tipo' => 'Título',

@@ -60,15 +60,50 @@
                             </td>
                         </tr>
                         
-                        {{-- Movimentações (Baixas) --}}
+                        {{-- Movimentações (Baixas de Contas) --}}
                         @foreach($l->movimentacoes as $mov)
                             @php $saldoAcumulado -= $mov->valor; @endphp
                             <tr class="text-muted">
                                 <td>{{ date('d/m/Y', strtotime($mov->data)) }}</td>
                                 <td>
                                     <i class="fas fa-level-up-alt fa-rotate-90"></i> 
-                                    Baixa: {{ $tipo == 'cliente' ? 'Venda' : 'Compra' }} 
-                                    #{{ $mov->conta_receber_id ?? $mov->conta_pagar_id }}
+                                    
+                                    @if($mov->conta_receber_id)
+                                        @php
+                                            // Carrega a conta que guardamos no backend
+                                            $contaReceber = \App\Models\ContaReceber::find($mov->conta_receber_id);
+                                            $numeroDocumento = 0;
+                                            if($contaReceber) {
+                                                $numeroDocumento = $contaReceber->numero_nota_fiscal > 0 ? $contaReceber->numero_nota_fiscal : $contaReceber->nf_numero;
+                                            }
+                                        @endphp
+
+                                        <strong>Baixa via Adiantamento</strong>
+                                        <div class="small">
+                                            @if($numeroDocumento > 0)
+                                                Nota Fiscal: <span class="badge badge-light-dark font-weight-bold">Nº {{ $numeroDocumento }}</span>
+                                            @else
+                                                Ref: <span class="text-dark">{{ $contaReceber->referencia ?? 'Venda #' . $mov->conta_receber_id }}</span>
+                                            @endif
+                                        </div>
+                                    @elseif($mov->conta_pagar_id)
+                                          @php
+                                              // Carrega a conta a pagar para pegar a nota fiscal
+                                              $contaPagar = \App\Models\ContaPagar::find($mov->conta_pagar_id);
+                                              $numeroNota = ($contaPagar && $contaPagar->numero_nota_fiscal) ? ltrim($contaPagar->numero_nota_fiscal, '0') : null;
+                                          @endphp
+
+                                          <strong>Abatimento de Compra</strong>
+                                          <div class="small">
+                                              @if($numeroNota)
+                                                  Nota Fiscal: <span class="badge badge-light-dark font-weight-bold">Nº {{ $numeroNota }}</span>
+                                              @else
+                                                  Ref: <span class="text-dark">{{ $contaPagar->referencia ?? 'Compra #' . $mov->conta_pagar_id }}</span>
+                                              @endif
+                                          </div>
+                                      @else
+                                        Baixa: {{ $tipo == 'cliente' ? 'Venda' : 'Compra' }} #{{ $mov->conta_receber_id ?? $mov->conta_pagar_id }}
+                                    @endif
                                 </td>
                                 <td>-</td>
                                 <td class="text-danger">R$ {{ number_format($mov->valor, 2, ',', '.') }}</td>
@@ -83,6 +118,7 @@
     </div>
 </div>
 
+{{-- Modal de Edição --}}
 <div class="modal fade" id="modalEditar" role="dialog" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -126,16 +162,13 @@
 
 @section('javascript')
 <script>
-    // Função fora do ready para o onclick funcionar
     function editarAdiantamento(obj) {
         $('#edit_descricao').val(obj.descricao);
         $('#edit_data').val(obj.data);
         
-        // Formata o valor para a máscara money (Ex: 1000.00 -> 1.000,00)
         let valor = obj.valor_total.toLocaleString('pt-br', {minimumFractionDigits: 2});
         $('#edit_valor').val(valor);
         
-        // Ajusta a URL do formulário dinamicamente
         let url = "{{ route('adiantamentos.update', ':id') }}".replace(':id', obj.id);
         $('#formEditar').attr('action', url);
         

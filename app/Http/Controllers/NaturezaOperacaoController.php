@@ -44,11 +44,15 @@ class NaturezaOperacaoController extends Controller
     ->where('tipo', 'receber')
     ->orderBy('nome', 'asc')->get();
 
-    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->orderBy('codigo')->get();
-    $listaClassTrib = DB::table('class_trib_ibs_cbs')->orderBy('codigo')->get();
+    // Novas consultas
+    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->get();
+    $listaClassTrib = DB::table('class_trib_ibs_cbs')->get();
 
-    return view('naturezaOperacao/register', compact('categoriasDeConta', 'listaCstIbsCbs', 'listaClassTrib'))
-    ->with('title', 'Cadastrar Natureza de Operação');
+    // Remova o ponto e vírgula da linha do title e deixe apenas no final
+    return view('naturezaOperacao/register', compact('categoriasDeConta'))
+    ->with('title', 'Cadastrar Natureza de Operação')
+    ->with('listaCstIbsCbs', $listaCstIbsCbs)
+    ->with('listaClassTrib', $listaClassTrib);
   }
 
   public function save(Request $request){
@@ -78,16 +82,18 @@ class NaturezaOperacaoController extends Controller
     ->where('tipo', 'receber')
     ->orderBy('nome', 'asc')->get();
 
-    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->orderBy('codigo')->get();
-    $listaClassTrib = DB::table('class_trib_ibs_cbs')->orderBy('codigo')->get();
+    // Novas consultas
+    $listaCstIbsCbs = DB::table('cst_ibs_cbs')->get();
+    $listaClassTrib = DB::table('class_trib_ibs_cbs')->get();
 
     if(valida_objeto($resp)){
+      // Remova o ponto e vírgula da linha do title e deixe apenas no final
       return view('naturezaOperacao/register')
       ->with('natureza', $resp)
       ->with('categoriasDeConta', $categoriasDeConta)
+      ->with('title', 'Editar natureza de operação')
       ->with('listaCstIbsCbs', $listaCstIbsCbs)
-      ->with('listaClassTrib', $listaClassTrib)
-      ->with('title', 'Editar natureza de operação');
+      ->with('listaClassTrib', $listaClassTrib);
     }else{
       return redirect('/403');
     }
@@ -112,10 +118,11 @@ class NaturezaOperacaoController extends Controller
     $resp->nao_movimenta_estoque = $request->input('nao_movimenta_estoque') ? true : false;
     $resp->finNFe = $request->input('finNFe');
     $resp->CST_CSOSN = $request->input('CST_CSOSN');
+    // ADICIONE ESTAS LINHAS:
     $resp->cst_ibs_cbs = $request->input('cst_ibs_cbs');
     $resp->class_trib_ibs_cbs = $request->input('class_trib_ibs_cbs');
-    $resp->perc_red_ibs = (float) str_replace(',', '.', (string) $request->input('perc_red_ibs', 0));
-    $resp->perc_red_cbs = (float) str_replace(',', '.', (string) $request->input('perc_red_cbs', 0));
+    $resp->perc_red_ibs = $request->input('perc_red_ibs') ? str_replace(',', '.', $request->input('perc_red_ibs')) : 0;
+    $resp->perc_red_cbs = $request->input('perc_red_cbs') ? str_replace(',', '.', $request->input('perc_red_cbs')) : 0;
 
     $result = $resp->save();
     if($result){

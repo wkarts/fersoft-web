@@ -17,8 +17,7 @@
                         <label>Matriz/Filial</label>
                         {{-- O name "filial_id" deve bater com o Controller --}}
                         <select name="filial_id" class="form-control">
-                            <option value="todos" {{ ($filial_id ?? request('filial_id')) === 'todos' ? 'selected' : '' }}>Todas</option>
-                            <option value="matriz" {{ ($filial_id ?? request('filial_id')) === 'matriz' ? 'selected' : '' }}>Matriz</option>
+                            <option value="">Todas</option>
                             @foreach($empresas as $emp)
                                 {{-- AQUI FOI CORRIGIDO: Usando 'descricao' ou 'razao_social' em vez de 'nome' --}}
                                 <option value="{{ $emp->id }}" {{ request()->filial_id == $emp->id ? 'selected' : '' }}>
@@ -27,7 +26,7 @@
                             @endforeach
                         </select>
                     </div>
-
+                  
                     <div class="form-group col-lg-3">
                         <label>Fornecedor</label>
                         <input type="text" name="fornecedor" class="form-control" value="{{ request()->fornecedor }}" />
@@ -218,8 +217,8 @@
         };
 
         swal({ 
-            title: "Gerar Guias Consolidadas?",
-            text: "Serão geradas guias para os " + idsSelecionados.length + " itens selecionados.",
+            title: "Gerar Guias Consolidadas?", 
+            text: "Serão geradas guias para os " + idsSelecionados.length + " itens selecionados.", 
             icon: "info", 
             buttons: ["Cancelar", "Gerar Agora"]
         }).then(confirm => {

@@ -13,19 +13,46 @@ class Venda extends BaseModel
 {
     //use SoftDeletes;
 use MultiEmpresaTrait;
-  
+
     public const CREATED_AT = 'created_at';
     public const UPDATED_AT = 'updated_at';
     //public const DELETED_AT = 'deleted_at';
 
     protected $fillable = [
-        'cliente_id', 'usuario_id', 'frete_id', 'valor_total', 'forma_pagamento', 'NfNumero',
-        'natureza_id', 'chave', 'path_xml', 'estado', 'observacao', 'desconto',
-        'transportadora_id', 'sequencia_cce', 'tipo_pagamento', 'empresa_id',
-        'pedido_ecommerce_id', 'bandeira_cartao', 'cnpj_cartao', 'cAut_cartao',
-        'descricao_pag_outros', 'acrescimo', 'data_entrega', 'pedido_nuvemshop_id',
-        'nSerie', 'data_emissao', 'troca', 'credito_troca', 'data_retroativa', 'numero_sequencial',
-        'vendedor_id', 'filial_id', 'data_saida',
+        'cliente_id',
+        'usuario_id',
+        'frete_id',
+        'valor_total',
+        'forma_pagamento',
+        'NfNumero',
+        'natureza_id',
+        'chave',
+        'path_xml',
+        'estado',
+        'observacao',
+        'desconto',
+        'transportadora_id',
+        'sequencia_cce',
+        'tipo_pagamento',
+        'empresa_id',
+        'pedido_ecommerce_id',
+        'bandeira_cartao',
+        'cnpj_cartao',
+        'cAut_cartao',
+        'descricao_pag_outros',
+        'acrescimo',
+        'data_entrega',
+        'pedido_nuvemshop_id',
+        'nSerie',
+        'data_emissao',
+        'troca',
+        'credito_troca',
+        'data_retroativa',
+        'numero_sequencial',
+        'vendedor_id',
+        'filial_id',
+        'data_saida',
+        'estado_cliente',
 
         // 1) ICMS Monofásico - Totais
         'total_qbcmono',

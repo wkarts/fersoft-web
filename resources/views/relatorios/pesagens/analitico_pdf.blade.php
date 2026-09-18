@@ -48,9 +48,9 @@
         <tr>
             <th>Data/Hora</th>
             <th>Tipo</th>
-            <th>Peso Bruto</th>
-            <th>Tara</th>
-            <th>Peso Líquido</th>
+            <th>Peso Inicial</th>
+            <th>Peso Final</th>
+            <th>Peso Líquido Total</th>
             <th>Status</th>
             <th>Venda</th>
             <th>Compra</th>
@@ -68,15 +68,16 @@
                 $tipoOperacao = $p->tipo === 'compra'
                     ? 'Entrada'
                     : ($p->tipo === 'venda' ? 'Saída' : '');
-                $pesoBruto   = (float) ($p->peso_bruto ?? 0);
-                $pesoLiquido = (float) ($p->peso_liquido_real ?? 0);
-                $tara        = max(0, $pesoBruto - $pesoLiquido);
+                $resumoVisual = \App\Support\PesagemReportCalculator::summarize($p);
+                $pesoInicial = (float) $resumoVisual['peso_inicial'];
+                $pesoFinalVeiculo = (float) $resumoVisual['peso_final_veiculo'];
+                $pesoLiquido = (float) $resumoVisual['peso_liquido_total'];
             @endphp
             <tr>
                 <td>{{ $dataHora ? $dataHora->format('d/m/Y H:i') : '' }}</td>
                 <td>{{ $tipoOperacao }}</td>
-                <td>{{ number_format($pesoBruto, 3, ',', '.') }}</td>
-                <td>{{ number_format($tara, 3, ',', '.') }}</td>
+                <td>{{ number_format($pesoInicial, 3, ',', '.') }}</td>
+                <td>{{ number_format($pesoFinalVeiculo, 3, ',', '.') }}</td>
                 <td>{{ number_format($pesoLiquido, 3, ',', '.') }}</td>
                 <td>{{ ucfirst($p->status) }}</td>
                 <td>{{ optional($p->venda)->id }}</td>

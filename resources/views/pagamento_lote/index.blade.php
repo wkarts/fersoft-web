@@ -9,7 +9,7 @@
     </div>
     
     <div class="card-body">
-
+        
         {{-- FILTRO DE PERÍODO --}}
         <div class="card shadow-sm mb-5 bg-light">
             <div class="card-body py-3">

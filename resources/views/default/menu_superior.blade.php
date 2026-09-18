@@ -1077,8 +1077,10 @@
 	<script type="text/javascript">
 
 		var casas_decimais = 2;
+		var casas_decimais_qtd = 2;
 
 		casas_decimais = {{$casasDecimais}}
+		casas_decimais_qtd = {{$casasDecimaisQtd}}
 
 		let prot = window.location.protocol;
 		let host = window.location.host;
@@ -1932,6 +1934,9 @@
 		</div>
 		@endif
 	@endforeach
+
+	<script type="text/javascript" src="/js/main.js"></script>
+    <script type="text/javascript" src="/js/toastr.min.js"></script>
 
 	</body>
 	<!-- end::Body -->

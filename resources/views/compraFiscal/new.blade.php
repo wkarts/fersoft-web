@@ -1,10 +1,10 @@
 @extends('default.layout')
 @section('content')
     <style>
-        /* Botão de upload */
         .btn-file {
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
         }
         .btn-file input[type="file"] {
             position: absolute;
@@ -17,132 +17,89 @@
             opacity: 0;
             cursor: pointer;
         }
-
-        /* Cabeçalho DANFE */
         #danfeHeader {
             display: none;
-            border-top: 2px solid #dee2e6;
-            border-bottom: 2px solid #dee2e6;
-            padding: 1rem;
+            border-radius: 8px;
+            padding: 1.5rem;
             margin-bottom: 1.5rem;
-            background-color: #f8f9fa;
+            background-color: #f4f6f9;
+            border: 1px solid #e4e6ef;
         }
-        .danfe-col {
-            padding: 0 1rem;
-        }
-        .titulo-danfe {
-            font-size: 1.5rem;
-            font-weight: 700;
-            letter-spacing: .05em;
-            text-transform: uppercase;
-        }
-        .subtitulo {
-            font-size: 0.85rem;
-            color: #6c757d;
-            margin-top: 0.25rem;
-        }
-        .badge-danfe {
-            font-size: 0.75rem;
-        }
-        .numero-series {
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
-        .danfe-key {
-            font-family: monospace;
-            font-size: 0.85rem;
-            word-break: break-all;
-            color: #212529;
-        }
-
-        /* Painel de detalhes */
-        #xmlDetails {
-            display: none;
-        }
-        .label-title {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #495057;
-            text-transform: uppercase;
-            margin-top: 0.5rem;
-        }
-        .label-value {
-            font-size: 1rem;
-            color: #343a40;
-            margin-bottom: 0.75rem;
-        }
-
-        /* Ajustes para telas pequenas */
+        .danfe-col { padding: 0 1rem; }
+        .titulo-danfe { font-size: 1.8rem; font-weight: 800; letter-spacing: .05em; color: #181c32; }
+        .subtitulo { font-size: 0.9rem; color: #7e8299; margin-top: 0.25rem; font-weight: 500; }
+        .badge-danfe { font-size: 0.8rem; padding: 0.4rem 0.8rem; }
+        .numero-series { font-size: 1rem; font-weight: 600; margin-top: 0.5rem; color: #3f4254; }
+        .danfe-key { font-family: monospace; font-size: 0.95rem; word-break: break-all; color: #181c32; font-weight: 600; background: #e4e6ef; padding: 0.5rem; border-radius: 4px;}
+        #xmlDetails { display: none; }
+        .label-title { font-size: 0.8rem; font-weight: 700; color: #a1a5b7; text-transform: uppercase; margin-top: 0.5rem; letter-spacing: 0.5px;}
+        .label-value { font-size: 1.05rem; color: #3f4254; margin-bottom: 1rem; font-weight: 500;}
         @media (max-width: 576px) {
-            #danfeHeader {
-                flex-direction: column;
-                text-align: center;
-            }
-            #danfeHeader .danfe-col {
-                margin-bottom: 1rem;
-            }
+            #danfeHeader { flex-direction: column; text-align: center; }
+            #danfeHeader .danfe-col { margin-bottom: 1rem; }
         }
     </style>
 
-    <div class="container-fluid py-4" id="kt_content">
+    <div class="container-fluid py-6" id="kt_content">
         <form method="POST" enctype="multipart/form-data" action="{{ url('compraFiscal/new') }}">
             @csrf
-            <div class="card shadow-sm">
-                <div class="card-header bg-white border-0">
-                    <h5 class="card-title mb-0 font-weight-bold">Importação de XML da NF-e</h5>
+            <div class="card card-custom shadow-sm border-0">
+                <div class="card-header bg-white border-bottom-0 pt-6 pb-0">
+                    <h3 class="card-title align-items-start flex-column">
+                        <span class="card-label font-weight-bolder text-dark">Importação de XML da NF-e</span>
+                        <span class="text-muted mt-1 font-weight-bold font-size-sm">Faça o upload do arquivo XML para iniciar a importação de compra</span>
+                    </h3>
                 </div>
 
                 <div class="card-body">
                     {{-- UPLOAD DE XML --}}
-                    <div class="form-group row align-items-center">
-                        <label for="xmlFileInput" class="col-md-3 col-form-label label-title">
-                            Arquivo XML
+                    <div class="form-group row align-items-center bg-light-primary p-6 rounded mb-8">
+                        <label for="xmlFileInput" class="col-md-3 col-form-label font-weight-bold text-primary text-right">
+                            <i class="flaticon2-file text-primary mr-2"></i> Arquivo XML
                         </label>
                         <div class="col-md-9 d-flex align-items-center">
-                            <label class="btn btn-outline-primary btn-file mb-0 mr-3">
+                            <label class="btn btn-primary btn-file mb-0 mr-3 shadow-sm font-weight-bold">
                                 Escolher arquivo
                                 <input type="file" id="xmlFileInput" name="file" accept=".xml">
                             </label>
-                            <div id="filename" class="text-muted flex-grow-1">
+                            <div id="filename" class="text-dark-50 font-weight-bold flex-grow-1">
                                 Nenhum arquivo selecionado
                             </div>
-                            <button type="button" id="clearBtn" class="btn btn-outline-secondary btn-sm ml-2">
-                                Limpar
+                            <button type="button" id="clearBtn" class="btn btn-light-danger btn-sm ml-2 font-weight-bold">
+                                <i class="la la-trash"></i> Limpar
                             </button>
                         </div>
                     </div>
 
                     {{-- CABEÇALHO DANFE --}}
-                    <div id="danfeHeader" class="d-flex align-items-center">
+                    <div id="danfeHeader" class="d-flex align-items-center shadow-sm">
                         <div class="danfe-col flex-fill text-uppercase">
-                            <div id="danfeEmitName" class="font-weight-bold"></div>
+                            <div id="danfeEmitName" class="font-weight-bolder text-dark font-size-lg"></div>
                             <div id="danfeEmitAddr" class="subtitulo"></div>
                         </div>
 
-                        <div class="danfe-col text-center flex-fill">
+                        <div class="danfe-col text-center flex-fill border-left border-right border-light-dark">
                             <div class="titulo-danfe">DANFE</div>
-                            <div class="subtitulo">
-                                Documento Auxiliar da Nota Fiscal Eletrônica
-                            </div>
-                            <div id="danfeTipoNF" class="mt-2 badge badge-info badge-danfe"></div>
+                            <div class="subtitulo">Documento Auxiliar da Nota Fiscal Eletrônica</div>
+                            <div id="danfeTipoNF" class="mt-3 badge badge-primary badge-danfe"></div>
                             <div class="numero-series">
-                                Nº <span id="xmlNumberHeader"></span> &nbsp; Série <span id="xmlSerieHeader"></span>
+                                Nº <span id="xmlNumberHeader" class="text-primary"></span> &nbsp;|&nbsp; Série <span id="xmlSerieHeader" class="text-primary"></span>
                             </div>
                         </div>
 
                         <div class="danfe-col flex-fill text-right">
-                            <div class="label-title">Chave de Acesso</div>
-                            <div id="danfeKey" class="danfe-key"></div>
+                            <div class="label-title mb-2">Chave de Acesso</div>
+                            <div id="danfeKey" class="danfe-key text-center"></div>
                         </div>
                     </div>
 
                     {{-- DETALHES DO XML --}}
-                    <div id="xmlDetails" class="card mt-4">
+                    <div id="xmlDetails" class="card card-custom border shadow-none mt-4">
                         <div class="card-body">
-                            <div class="row">
+                            <div class="row bg-light-secondary p-4 rounded mb-6">
                                 <div class="col-12 col-sm-6 col-lg-4">
                                     <div class="label-title">Chave NF-e</div>
-                                    <div id="xmlKey" class="label-value"></div>
+                                    <div id="xmlKey" class="label-value font-weight-bold text-info"></div>
                                     <div class="label-title">Número</div>
                                     <div id="xmlNumber" class="label-value"></div>
                                     <div class="label-title">Série</div>
@@ -156,32 +113,47 @@
                                 </div>
                             </div>
 
-                            <hr>
-
                             <div class="row">
                                 {{-- Emitente --}}
-                                <div class="col-12 col-md-6">
-                                    <h6 class="font-weight-bold mt-3">Emitente</h6>
+                                <div class="col-12 col-md-6 border-right">
+                                    <h5 class="font-weight-bolder text-dark mb-6">
+                                        <i class="flaticon2-delivery-truck text-primary mr-2"></i> Emitente
+                                    </h5>
                                     <div class="label-title">Nome / Razão Social</div>
-                                    <div id="emitName" class="label-value"></div>
-                                    <div class="label-title">CNPJ</div>
-                                    <div id="emitCNPJ" class="label-value"></div>
-                                    <div class="label-title">Inscrição Estadual</div>
-                                    <div id="emitIE" class="label-value"></div>
+                                    <div id="emitName" class="label-value font-weight-bold"></div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="label-title">CNPJ</div>
+                                            <div id="emitCNPJ" class="label-value"></div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="label-title">Inscrição Estadual</div>
+                                            <div id="emitIE" class="label-value"></div>
+                                        </div>
+                                    </div>
                                     <div class="label-title">Telefone</div>
                                     <div id="emitFone" class="label-value"></div>
                                     <div class="label-title">Endereço</div>
                                     <div id="emitAddr" class="label-value"></div>
                                 </div>
+
                                 {{-- Destinatário --}}
-                                <div class="col-12 col-md-6">
-                                    <h6 class="font-weight-bold mt-3">Destinatário</h6>
+                                <div class="col-12 col-md-6 pl-6">
+                                    <h5 class="font-weight-bolder text-dark mb-6">
+                                        <i class="flaticon2-user text-success mr-2"></i> Destinatário
+                                    </h5>
                                     <div class="label-title">Nome / Razão Social</div>
-                                    <div id="destName" class="label-value"></div>
-                                    <div class="label-title">CPF / CNPJ</div>
-                                    <div id="destCNPJCPF" class="label-value"></div>
-                                    <div class="label-title">Inscrição Estadual</div>
-                                    <div id="destIE" class="label-value"></div>
+                                    <div id="destName" class="label-value font-weight-bold"></div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="label-title">CPF / CNPJ</div>
+                                            <div id="destCNPJCPF" class="label-value"></div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="label-title">Inscrição Estadual</div>
+                                            <div id="destIE" class="label-value"></div>
+                                        </div>
+                                    </div>
                                     <div class="label-title">Telefone</div>
                                     <div id="destFone" class="label-value"></div>
                                     <div class="label-title">Endereço</div>
@@ -192,9 +164,9 @@
                     </div>
                 </div>
 
-                <div class="card-footer bg-white text-right border-0">
-                    <button type="submit" class="btn btn-success">
-                        <i class="la la-check"></i> Importar XML
+                <div class="card-footer bg-white border-top text-right pt-6 pb-6">
+                    <button type="submit" class="btn btn-success font-weight-bolder px-8">
+                        <i class="la la-check"></i> Importar XML para o Sistema
                     </button>
                 </div>
             </div>
@@ -242,7 +214,7 @@
             // limpa tudo
             function clearAll() {
                 input.value = '';
-                filename.textContent = '';
+                filename.textContent = 'Nenhum arquivo selecionado';
                 [
                     'xmlKey','xmlNumber','xmlSerie','xmlEmissao','xmlSaida',
                     'emitName','emitCNPJ','emitIE','emitFone','emitAddr',
@@ -282,7 +254,7 @@
                         );
                     }
                     const tp = doc.querySelector('tpNF')?.textContent;
-                    setText('danfeTipoNF', tp==='0'? '0 – Entrada' : '1 – Saída');
+                    setText('danfeTipoNF', tp==='0'? '0 – ENTRADA' : '1 – SAÍDA');
                     setText('danfeKey', chave.match(/.{1,4}/g)?.join(' ') || chave);
 
                     // IDE: número e série

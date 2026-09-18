@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Pesagem;
 use App\Models\Usuario;
+use App\Support\PesagemReportCalculator;
 use Carbon\Carbon;
 
 class MonitorPesagemService
@@ -59,31 +60,32 @@ class MonitorPesagemService
             $produtosResumo .= ' +' . ($produtos->count() - 2);
         }
 
-        $itensProduto = $pesagem->tickets
-            ->filter(fn ($ticket) => !empty($ticket->produto_id))
-            ->groupBy('produto_id')
-            ->map(function ($tickets) {
-                $produto = $tickets->first()->produto ?? null;
-                $pesoLiquido = $tickets->sum(function ($ticket) {
-                    $peso = (float) ($ticket->peso ?? 0);
-                    $pesoBag = (float) ($ticket->peso_bag ?? 0);
-                    return max(0, $peso - $pesoBag);
-                });
+        // Consolidação somente de apresentação. Não altera a conciliação persistida.
+        $resumoFisico = PesagemReportCalculator::summarize($pesagem);
+
+        $itensProduto = collect($resumoFisico['produtos'])
+            ->map(function ($grupo) {
+                $produto = $grupo['produto'] ?? null;
+                if (!$produto) {
+                    return null;
+                }
 
                 return [
-                    'produto_id' => (int) $tickets->first()->produto_id,
+                    'produto_id' => (int) $produto->id,
                     'produto_nome' => $produto->nome ?? '—',
-                    'peso_liquido' => (float) $pesoLiquido,
+                    'peso_liquido' => (float) ($grupo['peso_liquido'] ?? 0),
                 ];
             })
+            ->filter()
             ->values()
             ->all();
 
+        // Campos legados continuam no payload para compatibilidade.
         $pesoBruto = (float) ($pesagem->peso_bruto ?? $pesagem->peso_liquido_bruto ?? 0);
         $pesoLiquido = (float) ($pesagem->peso_liquido_real ?? $pesagem->peso ?? 0);
         $pesoFinal = (float) ($pesagem->peso_final ?? $pesagem->peso ?? 0);
         $tara = (float) ($pesagem->tara ?? max(0, $pesoBruto - $pesoLiquido));
-        $pesoBag = (float) $pesagem->tickets->sum('peso_bag');
+        $pesoBag = (float) ($resumoFisico['peso_bag_total'] ?? $pesagem->tickets->sum('peso_bag'));
 
         $valorTotal = null;
         if ($pesagem->venda) {
@@ -139,9 +141,16 @@ class MonitorPesagemService
             'produtos_count' => $produtos->count(),
             'produtos_itens' => $itensProduto,
             'pesos' => [
+                // Novos campos corretos para exibição física.
+                'inicial' => (float) $resumoFisico['peso_inicial'],
+                'final_veiculo' => (float) $resumoFisico['peso_final_veiculo'],
+                'bag' => $pesoBag,
+                'liquido_total' => (float) $resumoFisico['peso_liquido_total'],
+                'final_liquido' => (float) $resumoFisico['peso_final_liquido'],
+
+                // Legados preservados para consumidores existentes; a view nova não os usa.
                 'bruto' => $pesoBruto,
                 'tara' => $tara,
-                'bag' => $pesoBag,
                 'liquido' => $pesoLiquido,
                 'final' => $pesoFinal,
             ],

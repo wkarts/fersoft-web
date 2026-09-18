@@ -25,8 +25,7 @@
                     <label class="font-weight-bold">Técnico Responsável <span class="text-danger">*</span></label>
                     <select name="tecnico_id" class="form-control" required>
                         <option value="">Selecione o Técnico de Segurança...</option>
-                        @foreach($funcionarios as $t)
-                            <option value="{{ $t->id }}">{{ $t->nome }}</option>
+                        @foreach($tecnicos as $t) <option value="{{ $t->id }}">{{ $t->nome }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -49,30 +48,31 @@
                 <div class="col-md-3">
                     <label>Produto / EPI</label>
                     <select id="prod_temp" class="form-control custom-select">
-                        <option value="">Selecione o produto...</option>
-                        @foreach($produtos as $p)
-                            @php 
-                                // Verifica se o produto possui registro na tabela estoques, se não, saldo é 0
-                                $saldo = $p->estoque ? $p->estoque->quantidade : 0; 
-                            @endphp
-                            
-                            <option value="{{ $p->id }}" data-nome="{{ $p->nome }}" data-estoque="{{ $saldo }}" data-ca="{{ $p->ca_numero ?? $p->ca ?? '' }}" data-fabricante="{{ $p->fabricante ?? '' }}">
-                                {{ $p->nome }} (Estoque: {{ number_format($saldo, 2, ',', '.') }})
-                            </option>
-                        @endforeach
-                    </select>
+                      <option value="">Selecione o produto...</option>
+                      @foreach($produtos as $p)
+                          @php 
+                              $saldo = $p->estoque ? $p->estoque->quantidade : 0; 
+                          @endphp
+
+                          <option value="{{ $p->id }}" 
+                                  data-nome="{{ $p->nome }}" 
+                                  data-estoque="{{ $saldo }}"
+                                  data-ca="{{ $p->ca_numero ?? '' }}"
+                                  data-fabricante="{{ $p->fabricante ?? '' }}">
+                              {{ $p->nome }} (Estoque: {{ number_format($saldo, 2, ',', '.') }})
+                          </option>
+                      @endforeach
+                  </select>
                 </div>
                 
-                <div class="col-md-1">
-                    <label>Nº C.A.</label>
+                <div class="col-md-1"> <label>Nº C.A.</label>
                     <input type="text" id="ca_temp" class="form-control" placeholder="Ex: 13281" readonly>
                 </div>
 
-                <div class="col-md-2">
-                    <label>Fabricante</label>
+                <div class="col-md-2"> <label>Fabricante</label>
                     <input type="text" id="fabricante_temp" class="form-control" placeholder="Fabricante" readonly>
                 </div>
-
+              
                 <div class="col-md-2">
                     <label>Uso</label>
                     <select id="uso_temp" class="form-control custom-select">
@@ -131,10 +131,19 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // Evento para preencher os campos automaticamente ao selecionar o produto
     $('#prod_temp').on('change', function() {
-        const option = $(this).find('option:selected');
-        $('#ca_temp').val(option.val() ? (option.data('ca') || '') : '');
-        $('#fabricante_temp').val(option.val() ? (option.data('fabricante') || '') : '');
+        let option = $(this).find('option:selected');
+        
+        if (option.val()) {
+            $('#ca_temp').val(option.data('ca'));
+            // Adicionei o preenchimento automático para o Fabricante também
+            // Certifique-se de que o input id="fabricante_temp" exista no seu HTML
+            $('#fabricante_temp').val(option.data('fabricante')); 
+        } else {
+            $('#ca_temp').val('');
+            $('#fabricante_temp').val('');
+        }
     });
 
     function adicionarItem() {
@@ -148,10 +157,10 @@
 
         let option = selectProd.find('option:selected');
         let nome = option.data('nome');
+        let ca = $('#ca_temp').val(); // Pega do campo preenchido automaticamente
+        let fabricante = $('#fabricante_temp').val(); // Pega do campo preenchido automaticamente
         let estoque = parseFloat(option.data('estoque'));
         
-        let ca = $('#ca_temp').val();
-        let fabricante = $('#fabricante_temp').val();
         let uso = $('#uso_temp').val();
         let motivo = $('#motivo_temp').val();
         let qtd = parseFloat($('#qtd_temp').val());
@@ -178,7 +187,7 @@
                     <input type="hidden" name="produtos[${id}][uso]" value="${uso}">
                     <input type="hidden" name="produtos[${id}][motivo]" value="${motivo}">
                     <input type="hidden" name="produtos[${id}][qtd]" value="${qtd}">
-                    ${nome}<br><small class="text-muted">Fabricante: ${fabricante || '-'}</small>
+                    ${nome} <br><small class="text-muted">Fab: ${fabricante}</small>
                 </td>
                 <td>${ca || '-'}</td>
                 <td>${uso}</td>
@@ -192,11 +201,13 @@
 
         $('#tabela-itens tbody').append(tr);
 
+        // Limpa os campos após incluir
         selectProd.val('').trigger('change');
-        $('#ca_temp').val('');
         $('#qtd_temp').val('');
     }
 
-    
+    function removerItem(id) {
+        $('#linha_' + id).remove();
+    }
 </script>
 @endsection

@@ -242,3 +242,6 @@ public/xml_nfe/29260449916126000108550010000001581000766945.xml
 *.xml
 .env.bak
 *.7z
+*.bak
+test-merger.php
+test-merger.php

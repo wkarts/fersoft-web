@@ -14,7 +14,7 @@
             @csrf
             <div class="card card-custom gutter-b">
                 <div class="card-header"><h3 class="card-title">Apontamento de Produção</h3></div>
-
+                
                 <div class="card-body">
                     @if(session('mensagem_erro') && strpos(session('mensagem_erro'), 'Atenção') !== false)
                         <div class="alert alert-warning mb-5">

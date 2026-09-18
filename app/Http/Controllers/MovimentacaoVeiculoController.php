@@ -18,6 +18,9 @@ use Carbon\Carbon;
 
 class MovimentacaoVeiculoController extends BaseController
 {
+
+    use \App\Traits\GeocodeTrait;
+
     protected $model = MovimentacaoVeiculo::class;
     protected $resource = 'movimentacoes_veiculos';
     protected $table = 'movimentacoes_veiculos';
@@ -62,14 +65,28 @@ class MovimentacaoVeiculoController extends BaseController
     {
         $query = $this->model::where('empresa_id', $this->empresa_id);
 
-        if ($request->veiculo_id) $query->where('veiculo_id', $request->veiculo_id);
-        if ($request->data_inicio) $query->whereDate('data_hora_saida', '>=', $request->data_inicio);
-        if ($request->data_fim) $query->whereDate('data_hora_saida', '<=', $request->data_fim);
+        // Aplicação dos Filtros na Query
+        if ($request->filled('veiculo_id')) {
+            $query->where('veiculo_id', $request->veiculo_id);
+        }
+        if ($request->filled('motorista_id')) {
+            $query->where('motorista_id', $request->motorista_id);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('data_inicio')) {
+            $query->whereDate('data_hora_saida', '>=', $request->data_inicio);
+        }
+        if ($request->filled('data_fim')) {
+            $query->whereDate('data_hora_saida', '<=', $request->data_fim);
+        }
 
         $records = $query->with(['veiculo', 'motorista', 'tipoMovimentacao'])
             ->orderByDesc('data_hora_saida')
-            ->paginate(20);
+            ->get(); // Mantido como get() ou paginate() conforme sua preferência
 
+        // Montagem correta dos filtros para a View
         $filters = [
             [
                 'name' => 'veiculo_id',
@@ -80,6 +97,27 @@ class MovimentacaoVeiculoController extends BaseController
                     return ['value' => $v->id, 'label' => $v->placa];
                 })->toArray()
             ],
+            [
+                'name' => 'motorista_id',
+                'label' => 'Motorista',
+                'type' => 'select',
+                'placeholder' => 'Todos os Motoristas',
+                'options' => \App\Models\Funcionario::where('empresa_id', $this->empresa_id)->get()->map(function($f) {
+                    return ['value' => $f->id, 'label' => $f->nome];
+                })->toArray()
+            ],
+            [
+                'name' => 'status',
+                'label' => 'Status',
+                'type' => 'select',
+                'placeholder' => 'Todos os Status',
+                'options' => [
+                    ['value' => 'agendado', 'label' => 'Agendado'],
+                    ['value' => 'iniciado', 'label' => 'Iniciado'],
+                    ['value' => 'finalizado', 'label' => 'Finalizado'],
+                    ['value' => 'cancelado', 'label' => 'Cancelado']
+                ]
+            ],
             ['name' => 'data_inicio', 'label' => 'Data Início', 'type' => 'date'],
             ['name' => 'data_fim', 'label' => 'Data Fim', 'type' => 'date'],
         ];
@@ -88,7 +126,6 @@ class MovimentacaoVeiculoController extends BaseController
             'records' => $records,
             'filters' => $filters,
             'title' => $this->formTitle,
-            'links' => $records->appends($request->all())->links(),
             'headers' => $this->headers(),
             'fields' => $this->fields(),
             'filterUrl' => url($this->redirectPage),
@@ -96,7 +133,6 @@ class MovimentacaoVeiculoController extends BaseController
             'newItemText' => 'Nova Movimentação',
             'editUrl' => url("{$this->redirectPage}/edit"),
             'deleteUrl' => url("{$this->redirectPage}/delete"),
-            'printUrl' => url("{$this->redirectPage}/imprimir")
         ]);
     }
 
@@ -152,7 +188,55 @@ class MovimentacaoVeiculoController extends BaseController
                 $dados = $request->all();
                 $dados['empresa_id'] = $empresa_id;
                 $dados['filial_id'] = $filial_id;
-                $dados['status'] = $request->filled('km_final') ? 'finalizado' : 'iniciado';
+
+                // 1. Definição do Status e Herança Automática de KM (Efeito Cascata)
+                if ($request->filled('status')) {
+                    $dados['status'] = $request->status;
+                } else {
+                    if ($request->filled('km_final')) {
+                        $dados['status'] = 'finalizado';
+                    } elseif ($request->filled('km_inicial')) {
+                        $dados['status'] = 'iniciado';
+                    } else {
+                        $dados['status'] = 'agendado';
+                    }
+                }
+
+                // 🚀 EFEITO CASCATA DE KM: Se for um novo cadastro e o usuário não digitou o KM Inicial
+                if (empty($request->id) && empty($request->filled('km_inicial')) && $request->filled('veiculo_id')) {
+                    $ultimaMovimentacao = MovimentacaoVeiculo::where('empresa_id', $empresa_id)
+                        ->where('veiculo_id', $request->veiculo_id)
+                        ->whereIn('status', ['finalizado', 'iniciado'])
+                        ->orderBy('data_hora_saida', 'desc')
+                        ->first();
+
+                    if ($ultimaMovimentacao && $ultimaMovimentacao->km_final > 0) {
+                        $dados['km_inicial'] = $ultimaMovimentacao->km_final;
+                    } else {
+                        $veiculoObj = Veiculo::find($request->veiculo_id);
+                        $dados['km_inicial'] = $veiculoObj->quilometragem ?? 0;
+                    }
+                }
+
+                // 2. Mapeamento dos novos campos de horário no cliente
+                $dados['data_hora_chegada_cliente'] = $request->data_hora_chegada_cliente ?? null;
+                $dados['data_hora_saida_cliente']   = $request->data_hora_saida_cliente ?? null;
+
+                if (empty($dados['latitude_destino']) || empty($dados['longitude_destino'])) {
+                    if (!empty($dados['cliente_id'])) {
+                        $cli = \App\Models\Cliente::find($dados['cliente_id']);
+                        $dados['latitude_destino'] = $cli->latitude ?? null;
+                        $dados['longitude_destino'] = $cli->longitude ?? null;
+                    } elseif (!empty($dados['fornecedor_id'])) {
+                        $forn = \App\Models\Fornecedor::find($dados['fornecedor_id']);
+                        $dados['latitude_destino'] = $forn->latitude ?? null;
+                        $dados['longitude_destino'] = $forn->longitude ?? null;
+                    } elseif (!empty($dados['destino'])) {
+                        $coords = $this->buscarCoordenadas($dados['destino']);
+                        $dados['latitude_destino'] = $coords['latitude'] ?? null;
+                        $dados['longitude_destino'] = $coords['longitude'] ?? null;
+                    }
+                }
 
                 if ($request->id > 0) {
                     $registro = $this->model::findOrFail($request->id);
@@ -162,6 +246,18 @@ class MovimentacaoVeiculoController extends BaseController
                 } else {
                     $registro = $this->model::create($dados);
                 }
+
+                // =========================================================================
+                // 🚀 NOVO AJUSTE AQUI: SALVA OS MÚLTIPLOS AJUDANTES NA TABELA PIVÔ
+                // =========================================================================
+                if ($request->has('ajudantes_ids')) {
+                    // Sincroniza o array de IDs recebidos do formulário
+                    $registro->ajudantes()->sync($request->ajudantes_ids);
+                } else {
+                    // Se nenhum ajudante for selecionado, limpa as vinculações anteriores
+                    $registro->ajudantes()->detach();
+                }
+                // =========================================================================
 
                 // GRAVAÇÃO DOS ABASTECIMENTOS
                 if ($request->has('abastecimentos')) {
@@ -194,24 +290,23 @@ class MovimentacaoVeiculoController extends BaseController
                     }
                 }
 
-                // GRAVAÇÃO DAS DESPESAS (Corrigido o erro de Constraint)
+                // GRAVAÇÃO DAS DESPESAS
                 if ($request->has('despesas')) {
                     foreach ($request->despesas as $desp) {
                         if (!empty($desp['valor']) && $desp['valor'] > 0) {
                             $valorDespesa = str_replace(',', '.', $desp['valor']);
 
-                            // Instanciando direto (Bypass no $fillable do Laravel)
                             $novaDespesa = new DespesaMovimentacao();
 
-                            $novaDespesa->empresa_id      = $empresa_id;  // Resolve o erro do banco!
+                            $novaDespesa->empresa_id      = $empresa_id;
                             $novaDespesa->usuario_id      = $usuario_id;
-                            $novaDespesa->filial_id       = $filial_id;   // Se for Matriz, aqui vai salvar NULL direitinho
+                            $novaDespesa->filial_id       = $filial_id;
                             $novaDespesa->movimentacao_id = $registro->id;
                             $novaDespesa->tipo            = $desp['tipo'];
                             $novaDespesa->valor           = (float)$valorDespesa;
                             $novaDespesa->descricao       = $desp['descricao'] ?? '';
 
-                            $novaDespesa->save(); // Manda pro banco
+                            $novaDespesa->save();
                         }
                     }
                 }
@@ -232,6 +327,271 @@ class MovimentacaoVeiculoController extends BaseController
             session()->flash('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
             return redirect()->back()->withInput();
         }
+    }
+
+    // --- MÉTODOS ADICIONADOS PARA A AGENDA E CANCELAMENTO ---
+
+    function agenda(Request $request)
+    {
+        // Permite navegar pelos meses passados e futuros
+        $mesDesejado = $request->mes ?? date('Y-m');
+        $dt = \Carbon\Carbon::parse($mesDesejado . '-01');
+
+        $dataInicio = $dt->copy()->startOfMonth()->format('Y-m-d');
+        $dataFim    = $dt->copy()->endOfMonth()->format('Y-m-d');
+        $veiculoId  = $request->veiculo_id;
+
+        $query = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
+            ->whereBetween('data_hora_saida', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59']);
+
+        if ($veiculoId) {
+            $query->where('veiculo_id', $veiculoId);
+        }
+
+        $totalRealizadas = (clone $query)->whereIn('status', ['finalizado', 'concluida'])->count();
+        $totalCanceladas = (clone $query)->where('status', 'cancelado')->count();
+        $totalAgendadas  = (clone $query)->where('status', 'agendado')->count();
+        $totalEmPercurso = (clone $query)->where('status', 'iniciado')->count();
+
+        $coletasRegistradas = (clone $query)->with(['veiculo', 'motorista', 'cliente'])->get();
+        $coletasPorData = [];
+
+        foreach ($coletasRegistradas as $c) {
+            $dataKey = \Carbon\Carbon::parse($c->data_hora_saida)->format('Y-m-d');
+            $coletasPorData[$dataKey][] = $c;
+        }
+
+        $primeiroDiaSemana = $dt->copy()->startOfMonth()->dayOfWeek;
+        $diasNoMes = $dt->daysInMonth;
+        $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $title = "Agenda de Coletas Planejadas";
+
+        // Navegação entre meses
+        $mesAnterior = $dt->copy()->subMonth()->format('Y-m');
+        $mesProximo  = $dt->copy()->addMonth()->format('Y-m');
+
+        return view('movimentacoes_veiculos.agenda', compact(
+            'title', 'totalRealizadas', 'totalCanceladas',
+            'totalAgendadas', 'totalEmPercurso', 'coletasPorData',
+            'primeiroDiaSemana', 'diasNoMes', 'dt', 'veiculos',
+            'dataInicio', 'dataFim', 'veiculoId', 'mesAnterior', 'mesProximo'
+        ));
+    }
+
+    public function registrarHorarioCliente(Request $request, $id)
+    {
+        try {
+            $user_logged = session('user_logged');
+            $usuarioIdLogado = $user_logged['id'] ?? $user_logged['usuario_id'];
+            $isAdmin = $user_logged['adm'] ?? $user_logged['is_admin'] ?? false;
+
+            $coleta = MovimentacaoVeiculo::with(['veiculo', 'motorista'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+            $funcionarioMotorista = \App\Models\Funcionario::where('id', $coleta->motorista_id)->first();
+            $isMotoristaDaColeta = ($funcionarioMotorista && $funcionarioMotorista->usuario_id == $usuarioIdLogado);
+
+            if (!$isAdmin && !$isMotoristaDaColeta) {
+                return response()->json([
+                    'success' => false,
+                    'mensagem' => 'Acesso negado: Somente o Motorista escalado ou Administradores podem registrar horários nesta coleta.'
+                ], 403);
+            }
+
+            $tipo = $request->tipo;
+
+            if ($tipo == 'saida_garagem') {
+                $coleta->data_hora_saida_real = now();
+                if ($coleta->status == 'agendado') {
+                    $coleta->status = 'iniciado';
+                }
+            } elseif ($tipo == 'chegada') {
+                $coleta->data_hora_chegada_cliente = now();
+                if ($coleta->status == 'agendado') {
+                    $coleta->status = 'iniciado';
+                }
+            } elseif ($tipo == 'saida') {
+                $coleta->data_hora_saida_cliente = now();
+            } elseif ($tipo == 'chegada_garagem') {
+                $coleta->data_hora_chegada = now();
+                $coleta->status = 'finalizado';
+
+                // 🚀 CALCULA O KM FINAL COM RESUMO DE ROTA DO TRACCAR OU MATEMÁTICA
+                $base = $coleta->filial_id
+                    ? \Illuminate\Support\Facades\DB::table('filials')->where('id', $coleta->filial_id)->first()
+                    : \Illuminate\Support\Facades\DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+                $latBase = $base->latitude ?? null;
+                $lonBase = $base->longitude ?? null;
+
+                $latOrigem = $latBase;
+                $lonOrigem = $lonBase;
+                if ($coleta->tipo_partida == 'residencia' && $coleta->motorista) {
+                    $latOrigem = $coleta->motorista->latitude_residencia ?? $latBase;
+                    $lonOrigem = $coleta->motorista->longitude_residencia ?? $lonBase;
+                }
+
+                $calcDist = function($lat1, $lon1, $lat2, $lon2) {
+                    if (!$lat1 || !$lon1 || !$lat2 || !$lon2) return 0;
+                    $raioTerra = 6371000;
+                    $latDe = deg2rad($lat1); $lonDe = deg2rad($lon1);
+                    $latPara = deg2rad($lat2); $lonPara = deg2rad($lon2);
+                    $deltaLat = $latPara - $latDe; $deltaLon = $lonPara - $lonDe;
+                    $angulo = 2 * asin(sqrt(pow(sin($deltaLat / 2), 2) + cos($latDe) * cos($latPara) * pow(sin($deltaLon / 2), 2)));
+                    return $angulo * $raioTerra;
+                };
+
+                $kmPercorrido = 0;
+
+                if ($coleta->veiculo && $coleta->veiculo->traccar_id) {
+                    try {
+                        $config = \App\Models\TraccarConfig::where('empresa_id', $this->empresa_id)->first();
+                        if ($config && !empty($config->base_url)) {
+                            $baseUrl = rtrim($config->base_url, '/');
+                            $respDevices = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)
+                                ->get($baseUrl . '/api/devices');
+
+                            if ($respDevices->successful()) {
+                                $device = collect($respDevices->json())->firstWhere('uniqueId', $coleta->veiculo->traccar_id);
+                                if ($device) {
+                                    $idInterno = $device['id'];
+                                    $from = \Carbon\Carbon::parse($coleta->data_hora_saida_real)->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
+                                    $to = \Carbon\Carbon::now()->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
+
+                                    $urlSummary = $baseUrl . "/api/reports/summary?deviceId={$idInterno}&from={$from}&to={$to}";
+                                    $respSummary = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)
+                                        ->withHeaders(['Accept' => 'application/json'])->get($urlSummary);
+
+                                    if ($respSummary->successful() && count($respSummary->json()) > 0) {
+                                        $kmPercorrido = ($respSummary->json()[0]['distance'] ?? 0) / 1000;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Erro Traccar Manual KM: " . $e->getMessage());
+                    }
+                }
+
+                if ($kmPercorrido <= 0) {
+                    $distIda = $calcDist($latOrigem, $lonOrigem, $coleta->latitude_destino, $coleta->longitude_destino);
+                    $distVolta = $calcDist($coleta->latitude_destino, $coleta->longitude_destino, $latBase, $lonBase);
+                    $kmPercorrido = (($distIda + $distVolta) / 1000) * 1.25;
+                }
+
+                $coleta->km_final = $coleta->km_inicial + round(max(0, $kmPercorrido), 2);
+
+                if ($coleta->veiculo_id && $coleta->km_final > 0) {
+                    $veiculoObj = \App\Models\Veiculo::find($coleta->veiculo_id);
+                    if ($veiculoObj) {
+                        $veiculoObj->quilometragem = $coleta->km_final;
+                        $veiculoObj->save();
+                    }
+                }
+            }
+
+            $coleta->save();
+
+            return response()->json(['success' => true, 'mensagem' => 'Horário e status atualizados com sucesso!']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'mensagem' => $e->getMessage()], 400);
+        }
+    }
+
+    public function cancelar(Request $request, $id)
+    {
+        $movimentacao = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+        if ($movimentacao->status == 'finalizado') {
+            session()->flash('mensagem_erro', 'Não é possível cancelar uma movimentação já finalizada.');
+            return redirect()->back();
+        }
+
+        $movimentacao->status = 'cancelado';
+        $movimentacao->motivo_cancelamento = $request->motivo_cancelamento ?? 'Cancelado pelo usuário';
+        $movimentacao->data_cancelamento = now();
+        $movimentacao->save();
+
+        session()->flash('mensagem_sucesso', 'Coleta/Movimentação cancelada com sucesso!');
+        return redirect()->back();
+    }
+
+    public function relatorioColetas(Request $request)
+    {
+        $dataInicio = $request->data_inicio ?? date('Y-m-01');
+        $dataFim    = $request->data_fim ?? date('Y-m-t');
+        $veiculoId  = $request->veiculo_id;
+        $status     = $request->status;
+
+        $query = MovimentacaoVeiculo::with(['veiculo', 'motorista', 'cliente'])
+            ->where('empresa_id', $this->empresa_id)
+            ->whereBetween('data_hora_saida', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59']);
+
+        if ($veiculoId) {
+            $query->where('veiculo_id', $veiculoId);
+        }
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $coletas = $query->orderBy('data_hora_saida', 'asc')->get();
+
+        // Resumo/Métricas
+        $totalRealizadas = $coletas->whereIn('status', ['finalizado', 'concluida'])->count();
+        $totalCanceladas = $coletas->where('status', 'cancelado')->count();
+        $totalAgendadas  = $coletas->where('status', 'agendado')->count();
+        $totalEmCurso    = $coletas->where('status', 'iniciado')->count();
+
+        $veiculos = Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $title    = "Relatório Gerencial de Coletas";
+
+        return view('movimentacoes_veiculos.relatorio_coletas', compact(
+            'coletas', 'totalRealizadas', 'totalCanceladas',
+            'totalAgendadas', 'totalEmCurso', 'veiculos',
+            'dataInicio', 'dataFim', 'veiculoId', 'status', 'title'
+        ));
+    }
+
+    public function eventosCalendario(Request $request)
+    {
+        $start = $request->start;
+        $end   = $request->end;
+
+        $coletas = MovimentacaoVeiculo::with(['veiculo', 'motorista', 'cliente'])
+            ->where('empresa_id', $this->empresa_id)
+            ->whereBetween('data_hora_saida', [$start, $end])
+            ->get();
+
+        $eventos = [];
+
+        foreach ($coletas as $c) {
+            $cor = match($c->status) {
+                'agendado'               => '#ffc107', // Amarelo
+                'iniciado'               => '#007bff', // Azul
+                'finalizado', 'concluida' => '#28a745', // Verde
+                'cancelado'              => '#dc3545', // Vermelho
+                default                  => '#6c757d'
+            };
+
+            // Título formatado: "PLACA - CLIENTE" (ex: "ABC-1234 - Cliente X")
+            $placaVeiculo = $c->veiculo->placa ?? 'Sem Placa';
+            $nomeCliente   = $c->cliente->razao_social ?? $c->destino ?? '';
+            $tituloEvento = $placaVeiculo . ($nomeCliente ? ' - ' . $nomeCliente : '');
+
+            $eventos[] = [
+                'id'       => $c->id,
+                'title'    => $tituloEvento,
+                'start'    => \Carbon\Carbon::parse($c->data_hora_saida)->format('Y-m-d\TH:i:s'),
+                'color'    => $cor,
+                'extendedProps' => [
+                    'motorista' => $c->motorista->nome ?? 'Não informado',
+                    'status'    => ucfirst($c->status),
+                    'chegada'   => $c->data_chegada_cliente_formatada,
+                    'saida'     => $c->data_saida_cliente_formatada,
+                ]
+            ];
+        }
+
+        return response()->json($eventos);
     }
 
     public function dashboard(Request $request)
@@ -423,5 +783,57 @@ class MovimentacaoVeiculoController extends BaseController
     public function imprimir($id) {
         $data = $this->model::with(['veiculo', 'motorista', 'abastecimentos.produto'])->findOrFail($id);
         return view('movimentacoes_veiculos.print', compact('data'));
+    }
+
+    // Envia o link do checklist manualmente para o motorista
+    public function enviarChecklistWhatsApp($id)
+    {
+        $mov = MovimentacaoVeiculo::with(['motorista', 'veiculo'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+        if (!$mov->motorista || empty($mov->motorista->celular && $mov->motorista->telefone)) {
+            session()->flash('mensagem_erro', 'Motorista sem telefone cadastrado.');
+            return redirect()->back();
+        }
+
+        $telefone = $mov->motorista->celular ?? $mov->motorista->telefone;
+        $linkChecklist = url('/checklist/veiculo/' . $mov->id);
+
+        $msg = "📋 *CHECKLIST DE PRÉ-VIAGEM*\n\nOlá, *{$mov->motorista->nome}*! Por favor, preencha o checklist do veículo *{$mov->veiculo->placa}* clicando no link abaixo antes ou logo no início da sua rota:\n\n👉 {$linkChecklist}";
+
+        // Dispara via instância Evo do WhatsApp
+        $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $this->empresa_id)->first();
+        if ($evoInstance) {
+            $numLimpo = preg_replace('/[^0-9]/', '', $telefone);
+            if (!str_starts_with($numLimpo, '55')) $numLimpo = '55' . $numLimpo;
+
+            \Illuminate\Support\Facades\Http::withHeaders(['apikey' => $evoInstance->api_key])
+                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
+                    'number' => $numLimpo,
+                    'textMessage' => ['text' => $msg]
+                ]);
+        }
+
+        session()->flash('mensagem_sucesso', 'Link do checklist enviado com sucesso para o WhatsApp do motorista!');
+        return redirect()->back();
+    }
+
+    // Exibe as respostas e fotos do checklist no ERP
+    public function verChecklist($id)
+    {
+        $movimentacao = MovimentacaoVeiculo::with(['veiculo', 'motorista'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+        $checklist = DB::table('checklists_movimentacoes')
+            ->where('movimentacao_veiculo_id', $id)
+            ->first();
+
+        $fotos = [];
+        if ($checklist) {
+            $fotos = DB::table('checklist_fotos')
+                ->where('checklist_movimentacao_id', $checklist->id)
+                ->get();
+        }
+
+        $title = "Detalhes do Checklist - Veículo: " . ($movimentacao->veiculo->placa ?? '');
+        return view('movimentacoes_veiculos.ver_checklist', compact('movimentacao', 'checklist', 'fotos', 'title'));
     }
 }

@@ -178,14 +178,14 @@
                                     <hr>
                                     <div class="row">
                                         <h4 class="col-12 mt-4">Tributação IBS/CBS (Sobrescrita)</h4>
-
+                                        
                                         <!-- CST IBS/CBS -->
                                         <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
                                             <label class="col-form-label">CST IBS/CBS</label>
                                             <select class="custom-select form-control" name="cst_ibs_cbs">
                                                 <option value="">-- Do Produto --</option>
                                                 @foreach($listaCstIbsCbs as $cst)
-                                                    <option value="{{ $cst->cst_ibs_cbs }}"
+                                                    <option value="{{ $cst->cst_ibs_cbs }}" 
                                                         @if((isset($natureza) && $natureza->cst_ibs_cbs == $cst->cst_ibs_cbs) || old('cst_ibs_cbs') == $cst->cst_ibs_cbs) selected @endif>
                                                         {{ $cst->cst_ibs_cbs }} - {{ $cst->descricao_cst_ibs_cbs }}
                                                     </option>
@@ -199,7 +199,7 @@
                                             <select class="custom-select form-control" name="class_trib_ibs_cbs">
                                                 <option value="">-- Do Produto --</option>
                                                 @foreach($listaClassTrib as $class)
-                                                    <option value="{{ $class->cclasstrib }}"
+                                                    <option value="{{ $class->cclasstrib }}" 
                                                         @if((isset($natureza) && $natureza->class_trib_ibs_cbs == $class->cclasstrib) || old('class_trib_ibs_cbs') == $class->cclasstrib) selected @endif>
                                                         {{ $class->cclasstrib }} - {{ $class->nome_cclasstrib }}
                                                     </option>
@@ -271,7 +271,7 @@
         $('select[name="cst_ibs_cbs"]').change(function() {
             let cstSelecionado = $(this).val();
             let selectClasse = $('select[name="class_trib_ibs_cbs"]');
-
+            
             if(!cstSelecionado) {
                 selectClasse.find('option').show();
                 return;

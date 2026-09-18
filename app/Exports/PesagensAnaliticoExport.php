@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use Illuminate\Database\Eloquent\Builder;
+use App\Support\PesagemReportCalculator;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -29,9 +30,9 @@ class PesagensAnaliticoExport implements FromQuery, WithHeadings, WithMapping
         return [
             'Data/Hora',
             'Tipo Operação',
-            'Peso Bruto',
-            'Tara',
-            'Peso Líquido',
+            'Peso Inicial',
+            'Peso Final',
+            'Peso Líquido Total',
             'Status',
             'Venda',
             'Compra',
@@ -56,16 +57,17 @@ class PesagensAnaliticoExport implements FromQuery, WithHeadings, WithMapping
             $tipoOperacao = 'Saída';
         }
 
-        // Cálculos de peso usando accessors existentes no Model
-        $pesoBruto   = (float) ($pesagem->peso_bruto ?? 0);
-        $pesoLiquido = (float) ($pesagem->peso_liquido_real ?? 0);
-        $tara        = max(0, $pesoBruto - $pesoLiquido);
+        // Consolidação apenas de apresentação. Não altera persistência.
+        $resumo = PesagemReportCalculator::summarize($pesagem);
+        $pesoInicial = (float) $resumo['peso_inicial'];
+        $pesoFinalVeiculo = (float) $resumo['peso_final_veiculo'];
+        $pesoLiquido = (float) $resumo['peso_liquido_total'];
 
         return [
             $dataHora ? $dataHora->format('d/m/Y H:i') : '',
             $tipoOperacao,
-            number_format($pesoBruto, 3, ',', '.'),
-            number_format($tara, 3, ',', '.'),
+            number_format($pesoInicial, 3, ',', '.'),
+            number_format($pesoFinalVeiculo, 3, ',', '.'),
             number_format($pesoLiquido, 3, ',', '.'),
             ucfirst($pesagem->status ?? ''),
             optional($pesagem->venda)->id ?? '',

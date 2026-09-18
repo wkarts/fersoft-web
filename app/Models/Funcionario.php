@@ -26,6 +26,7 @@ class Funcionario extends BaseModel
         'categoria_cnh',
         'vencimento_cnh',
         'status_motorista',
+        'tipo_ponto',
         'data_nascimento',
         'data_admissao',
         'tipo_sanguineo',
@@ -43,8 +44,14 @@ class Funcionario extends BaseModel
         'observacao_ponto',
         'observacoes',
         'foto_funcionario',
-        'funcao_id', 
-        'filial_id'
+        'funcao_id',
+        'traccar_id',
+        'filial_id',
+        'latitude_residencia',
+        'longitude_residencia',
+        'pin_ponto',
+        'whatsapp_id',
+        'recebe_alerta_coleta'
     ];
 
     protected $appends = ['imgApp', 'img'];
@@ -119,8 +126,8 @@ class Funcionario extends BaseModel
         return $this->hasMany(Veiculo::class, 'motorista_id', 'id');
     }
 
-	 public function funcao()
-	{
-    return $this->belongsTo(\App\Models\Funcao::class, 'funcao_id');
-	}
+    public function funcao()
+    {
+        return $this->belongsTo(\App\Models\Funcao::class, 'funcao_id');
+    }
 }

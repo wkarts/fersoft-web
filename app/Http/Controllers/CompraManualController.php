@@ -8,8 +8,6 @@ use App\Models\ItemCompra;
 use App\Models\Compra;
 use App\Models\Produto;
 use App\Models\ContaPagar;
-use App\Models\ContaEmpresa;
-use App\Models\ItemContaEmpresa;
 use App\Models\ConfigNota;
 use App\Models\Fornecedor;
 use App\Helpers\StockMove;
@@ -46,7 +44,7 @@ class CompraManualController extends Controller
     }
 
     public function custoMedio(Request $request){
-        $item = Produto::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $request->id);
+        $item = Produto::findOrFail($request->id);
         $valorCompraAtual = __replace($request->valor);
         $valorCompraProduto = $item->valor_compra;
         $estoque = $item->estoque ? $item->estoque->quantidade : 0;
@@ -72,7 +70,10 @@ class CompraManualController extends Controller
 
         if($countProdutos > env("ASSINCRONO_PRODUTOS")){ return $this->compraAssincrona(); }
         else{
-            $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', 1)->orderBy('razao_social')->get();
+            $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+                          ->where('ativo', 1)
+                          ->orderBy('razao_social')
+                          ->get();
             if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
             $produtos = Produto::where('empresa_id', $this->empresa_id)->orderBy('nome')->get();
             foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
@@ -86,10 +87,6 @@ class CompraManualController extends Controller
             $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
             $listaCST_IPI = Produto::listaCST_IPI();
             $natureza = Produto::firstNatureza($this->empresa_id);
-            $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)
-                ->where('tipo', 'pagar')->orderBy('nome')->get();
-            $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-                ->where('status', true)->orderBy('nome')->get();
 
             return view('compraManual/register')
                 ->with('compraManual', true)->with('fornecedores', $fornecedores)->with('config', $config)
@@ -97,13 +94,15 @@ class CompraManualController extends Controller
                 ->with('categorias', $categorias)->with('tributacao', $tributacao)->with('anps', $anps)
                 ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('unidadesDeMedida', $unidadesDeMedida)
                 ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)->with('listaCST_IPI', $listaCST_IPI)
-                ->with('natureza', $natureza)->with('title', 'Nova Compra Manual')->with('veiculos', $veiculos)
-                ->with('categoriasDeConta', $categoriasDeConta)->with('contasEmpresa', $contasEmpresa);
+                ->with('natureza', $natureza)->with('title', 'Nova Compra Manual')->with('veiculos', $veiculos);
         }
     }
 
     protected function compraAssincrona(){
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', 1)->orderBy('razao_social')->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+                          ->where('ativo', 1)
+                          ->orderBy('razao_social')
+                          ->get();
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
         $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
@@ -117,15 +116,16 @@ class CompraManualController extends Controller
         $listaCST_IPI = Produto::listaCST_IPI();
         $natureza = Produto::firstNatureza($this->empresa_id);
         $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
-        $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', true)->orderBy('nome')->get();
-
+		$contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', 1)->get();
+      
         return view('compraManual/register_assincrono')
             ->with('compraManualAssincrono', true)->with('veiculos', $veiculos)->with('fornecedores', $fornecedores)
             ->with('transportadoras', $transportadoras)->with('config', $config)->with('categoriasDeConta', $categoriasDeConta)
             ->with('categorias', $categorias)->with('tributacao', $tributacao)->with('anps', $anps)
             ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('unidadesDeMedida', $unidadesDeMedida)
             ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)->with('listaCST_IPI', $listaCST_IPI)
-            ->with('natureza', $natureza)->with('title', 'Compra Manual')->with('contasEmpresa', $contasEmpresa);
+            ->with('natureza', $natureza)->with('title', 'Compra Manual')
+      		->with('contasEmpresa', $contasEmpresa);
     }
 
     public function salvar(Request $request)
@@ -133,6 +133,16 @@ class CompraManualController extends Controller
         try {
             $result = DB::transaction(function () use ($request) {
                 $compra = $request->compra;
+
+                  if (($compra['formaPagamento'] ?? '') == 'a_vista') {
+                      if (isset($compra['data_retroativa']) && trim($compra['data_retroativa']) !== '' && $compra['data_retroativa'] != -1) {
+                          $dataEmissao = $this->parseDate($compra['data_retroativa']);
+                      } else {
+                          $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
+                      }
+                  } else {
+                      $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
+                  }
                 $qtdVol = isset($compra['qtdVol']) ? str_replace(",", ".", $compra['qtdVol']) : 0;
                 $pesoLiquido = isset($compra['pesoL']) ? str_replace(",", ".", $compra['pesoL']) : 0;
                 $pesoBruto = isset($compra['pesoB']) ? str_replace(",", ".", $compra['pesoB']) : 0;
@@ -143,10 +153,8 @@ class CompraManualController extends Controller
 
                 if (isset($compra['data_retroativa']) && trim($compra['data_retroativa']) !== '' && $compra['data_retroativa'] != -1) {
                     $dataEmissao = $this->parseDate($compra['data_retroativa']);
-                } elseif (!empty($compra['data_emissao'])) {
-                    $dataEmissao = $this->parseDate($compra['data_emissao']);
                 } else {
-                    $dataEmissao = now();
+                    $dataEmissao = date('Y-m-d H:i:s');
                 }
 
                 $statusCalculado = 'NOVO';
@@ -155,34 +163,12 @@ class CompraManualController extends Controller
 
                 $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
 
-                $fornecedorId = (int) ($compra['fornecedor'] ?? 0);
-                Fornecedor::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->findOrFail($fornecedorId);
-
-                $categoriaContaId = !empty($compra['categoria_conta_id']) ? (int) $compra['categoria_conta_id'] : null;
-                if ($categoriaContaId) {
-                    CategoriaConta::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->where('tipo', 'pagar')
-                        ->findOrFail($categoriaContaId);
-                }
-
-                $veiculoId = !empty($compra['veiculo_id']) && (int) $compra['veiculo_id'] > 0
-                    ? (int) $compra['veiculo_id']
-                    : null;
-                if ($veiculoId) {
-                    \App\Models\Veiculo::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->findOrFail($veiculoId);
-                }
-
                 $result = Compra::create([
-                    'fornecedor_id'      => $fornecedorId,
+                    'fornecedor_id'      => $compra['fornecedor'],
                     'nf'                 => $nf,
                     'numero_emissao'     => $compra['numero_emissao'] ?? '0',
                     'data_emissao'       => $dataEmissao,
-                    'veiculo_id'         => $veiculoId,
+                    'veiculo_id'         => (!empty($compra['veiculo_id']) && $compra['veiculo_id'] > 0) ? $compra['veiculo_id'] : null,
                     'usuario_id'         => $this->usuario_id,
                     'observacao'         => $compra['observacao'] ?? '',
                     'lote'               => $compra['lote'] ?? '',
@@ -191,7 +177,7 @@ class CompraManualController extends Controller
                     'acrescimo'          => $compra['acrescimo'] != null ? str_replace(",", ".", $compra['acrescimo']) : 0,
                     'xml_path'           => '', 'estado' => $statusCalculado, 'chave' => '',
                     'empresa_id'         => $this->empresa_id,
-                    'categoria_conta_id' => $categoriaContaId,
+                    'categoria_conta_id' => $compra['categoria_conta_id'] ?? null,
                     'valor_frete'        => $valorFrete,
                     'placa'              => $compra['placaVeiculo'] ?? '',
                     'tipo'               => (int)($compra['frete'] ?? 0),
@@ -207,15 +193,11 @@ class CompraManualController extends Controller
 
                 $this->salvarItens($result->id, $compra['itens'] ?? []);
 
-                if (!empty($compra['fatura_manual']) && is_array($compra['fatura_manual'])) {
-                    $compra['fatura'] = $compra['fatura_manual'];
-                }
-
                 if (empty($compra['fatura']) || !is_array($compra['fatura'])) {
                     $compra['fatura'] = [['data' => date('d/m/Y'), 'valor' => $compra['total'], 'numero' => 1]];
                 }
 
-                $this->salvarParcela($result->id, $compra['fatura'], $fornecedorId, $categoriaContaId, $compra);
+                $this->salvarParcela($result->id, $compra['fatura'], $compra['fornecedor'], $compra['categoria_conta_id'] ?? null, $compra);
                 return $result;
             });
             return response()->json($result);
@@ -227,301 +209,205 @@ class CompraManualController extends Controller
         try {
             $result = DB::transaction(function () use ($request) {
                 $compra = $request->compra;
-                $res = Compra::query()->where('empresa_id', $this->empresa_id)->lockForUpdate()->findOrFail((int) $compra['id']);
+                $res = Compra::findOrFail($compra['id']);
 
-                $fornecedorId = (int) ($compra['fornecedor_id'] ?? $compra['fornecedor'] ?? $res->fornecedor_id);
-                Fornecedor::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->findOrFail($fornecedorId);
-
-                $categoriaContaId = !empty($compra['categoria_conta_id']) ? (int) $compra['categoria_conta_id'] : null;
-                if ($categoriaContaId) {
-                    CategoriaConta::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->where('tipo', 'pagar')
-                        ->findOrFail($categoriaContaId);
-                }
-
-                $veiculoId = !empty($compra['veiculo_id']) && (int) $compra['veiculo_id'] > 0
-                    ? (int) $compra['veiculo_id']
-                    : null;
-                if ($veiculoId) {
-                    \App\Models\Veiculo::query()
-                        ->where('empresa_id', $this->empresa_id)
-                        ->findOrFail($veiculoId);
-                }
-
-                $res->fornecedor_id = $fornecedorId;
+                $res->fornecedor_id = $compra['fornecedor_id'] ?? $compra['fornecedor'] ?? $res->fornecedor_id;
                 $res->nf = $compra['nNf'] ?? $compra['nf'] ?? '0';
                 $res->numero_emissao = $compra['numero_emissao'] ?? '0';
                 $res->data_emissao = $compra['data_emissao'] ?? $res->data_emissao;
-                $res->veiculo_id = $veiculoId;
+                $res->veiculo_id = (!empty($compra['veiculo_id']) && $compra['veiculo_id'] > 0) ? $compra['veiculo_id'] : null;
                 $res->observacao = $compra['observacao'] ?? '';
                 $res->valor = str_replace(',', '.', $compra['total']);
-                $res->categoria_conta_id = $categoriaContaId;
+                $res->categoria_conta_id = $compra['categoria_conta_id'] ?: null;
                 $res->data_retroativa = (isset($compra['data_retroativa']) && $compra['data_retroativa'] != -1) ? $this->parseDate($compra['data_retroativa']) : null;
                 $res->data_saida = (isset($compra['data_saida']) && $compra['data_saida'] != -1) ? $this->parseDate($compra['data_saida']) : null;
                 $res->save();
-
-                ContaPagar::where('empresa_id', $this->empresa_id)
-                    ->where('compra_id', $res->id)
-                    ->update(['fornecedor_id' => $res->fornecedor_id]);
+              	// ==========================================
+                // ADICIONE ESTA LINHA AQUI:
+                // Atualiza automaticamente o fornecedor de todas as contas a pagar vinculadas a esta compra
+                ContaPagar::where('compra_id', $res->id)->update(['fornecedor_id' => $res->fornecedor_id]);
+                // ==========================================
 
                 $this->removerItens($res->id);
                 $this->salvarItens($res->id, $compra['itens'] ?? []);
 
-                if (!empty($compra['faturas_removidas'])) {
-                    $idsRemover = array_values(array_filter(array_map('intval', (array) $compra['faturas_removidas'])));
-                    if ($idsRemover) {
-                        $possuiParcelaPaga = ContaPagar::query()
-                            ->where('empresa_id', $this->empresa_id)
-                            ->where('compra_id', $res->id)
-                            ->whereIn('id', $idsRemover)
-                            ->where('status', true)
-                            ->exists();
-                        if ($possuiParcelaPaga) {
-                            throw new \DomainException('Parcelas já pagas não podem ser removidas pela edição da compra.');
-                        }
-                        ContaPagar::query()
-                            ->where('empresa_id', $this->empresa_id)
-                            ->where('compra_id', $res->id)
-                            ->whereIn('id', $idsRemover)
-                            ->delete();
-                    }
-                }
-
-                if (!empty($compra['fatura_manual']) && is_array($compra['fatura_manual'])) {
-                    $compra['fatura'] = $compra['fatura_manual'];
-                }
+                if (!empty($compra['faturas_removidas'])) { ContaPagar::whereIn('id', $compra['faturas_removidas'])->delete(); }
 
                 if (empty($compra['fatura']) || !is_array($compra['fatura'])) {
                     $compra['fatura'] = [['data' => date('d/m/Y'), 'valor' => $compra['total'], 'numero' => 1]];
                 }
 
-                $this->salvarParcela($res->id, $compra['fatura'], $fornecedorId, $categoriaContaId, $compra);
+                $this->salvarParcela($res->id, $compra['fatura'], $res->fornecedor_id, $res->categoria_conta_id, $compra);
                 return $res;
             });
             return response()->json($result);
         } catch (\Exception $e) { __saveError($e, $this->empresa_id); return response()->json($e->getMessage(), 400); }
     }
 
-    public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = [])
-    {
-        $parcelas = !empty($compra['fatura_manual']) && is_array($compra['fatura_manual'])
-            ? $compra['fatura_manual']
-            : (is_array($fatura) ? $fatura : []);
-
-        if ($parcelas === []) {
-            $parcelas[] = [
+	public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
+        $cont = 0;
+        $usouCredito = (isset($compra['usar_adiantamento']) && $compra['usar_adiantamento'] == 1);
+        $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
+        
+        // CORREÇÃO: Usar a data informada na compra ao invés da data de hoje para Conta a Pagar
+        $dataEmissaoConta = !empty($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d');
+        
+        // Identifica se a condição escolhida foi À Vista
+        $isAVista = ($compra['formaPagamento'] ?? '') == 'a_vista';
+    
+        // 1. OBTÉM AS LINHAS DA TABELA DO FRONT-END (Rateio, Múltiplas Contas e Veículos já vêm prontos do JS)
+        $faturasDoFront = $compra['fatura_manual'] ?? [];
+    
+        // Fallback de segurança para não quebrar notas criadas sem a tabela
+        if (count($faturasDoFront) == 0) {
+            $faturasDoFront[] = [
                 'numero' => '001',
-                'data' => $compra['data_retroativa'] ?? $compra['data_emissao'] ?? now()->format('d/m/Y'),
-                'valor' => $compra['total'] ?? 0,
-                'forma_pagamento' => $compra['formaPagamento'] ?? 'boleto',
+                'data' => isset($compra['data_retroativa']) ? $compra['data_retroativa'] : date('d/m/Y'),
+                'valor' => $compra['total'],
+                'forma_pagamento' => 'boleto',
                 'veiculo_id' => $compra['veiculo_id'] ?? null,
-                'conta_empresa_id' => $compra['conta_empresa_id'] ?? null,
+                'conta_empresa_id' => $compra['conta_empresa_id'] ?? null
             ];
         }
-
-        $usarAdiantamento = (int) ($compra['usar_adiantamento'] ?? 0) === 1;
-        $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
-        $dataEmissao = !empty($compra['data_retroativa']) && $compra['data_retroativa'] != -1
-            ? $this->parseDate($compra['data_retroativa'])
-            : (!empty($compra['data_emissao']) ? $this->parseDate($compra['data_emissao']) : now()->toDateString());
-        $formaCompra = $compra['formaPagamento'] ?? 'a_vista';
-        $isAVista = $formaCompra === 'a_vista';
-
-        $saldoAdiantamento = 0.0;
-        if ($usarAdiantamento) {
-            $saldoAdiantamento = (float) \App\Models\Adiantamento::query()
-                ->where('empresa_id', $this->empresa_id)
-                ->where('fornecedor_id', $fornecedor_id)
-                ->where('status', 'aberto')
-                ->selectRaw('COALESCE(SUM(valor_total - valor_utilizado), 0) as saldo')
-                ->value('saldo');
+    
+        // 2. CONSULTA O SALDO DE ADIANTAMENTO
+        $saldoAdiantamento = 0;
+        if ($usouCredito) {
+            $adiantamentos = \App\Models\Adiantamento::where('empresa_id', $this->empresa_id)
+                                ->where('fornecedor_id', $fornecedor_id)
+                                ->where('status', 'aberto')->get();
+            foreach($adiantamentos as $ad) {
+                $saldoAdiantamento += ($ad->valor_total - $ad->valor_utilizado);
+            }
         }
-
-        $numeroParcela = 0;
-        $totalParcelas = round(array_sum(array_map(
-            fn ($parcela) => $this->normalizarValorMonetario($parcela['valor'] ?? 0),
-            $parcelas
-        )), 2);
-        $totalCompra = round($this->normalizarValorMonetario($compra['total'] ?? $totalParcelas), 2);
-        if ($totalCompra > 0 && abs($totalParcelas - $totalCompra) > 0.02) {
-            throw new \InvalidArgumentException('A soma das parcelas deve corresponder ao valor total da compra.');
-        }
-
-        foreach ($parcelas as $parcela) {
-            $numeroParcela++;
-            $valorParcela = $this->normalizarValorMonetario($parcela['valor'] ?? 0);
-            if ($valorParcela <= 0) {
-                continue;
+    
+        // 3. PROCESSAMENTO DE CADA LINHA DA TABELA FINANCEIRA
+        foreach($faturasDoFront as $parcela) {
+            $cont++;
+            
+            // CORREÇÃO 1: Previne o bug de converter valores flutuantes de forma errada
+            $valorStr = (string) $parcela['valor'];
+            if (strpos($valorStr, ',') !== false) {
+                $valorStr = str_replace('.', '', $valorStr);
+                $valorStr = str_replace(',', '.', $valorStr);
             }
-
-            $formaPagamento = $parcela['forma_pagamento'] ?? $formaCompra;
-            $veiculoId = !empty($parcela['veiculo_id']) ? (int) $parcela['veiculo_id'] : ($compra['veiculo_id'] ?? null);
-            $contaEmpresaId = !empty($parcela['conta_empresa_id']) ? (int) $parcela['conta_empresa_id'] : null;
-            $dataVencimento = $this->parseDate($parcela['data'] ?? $dataEmissao);
-
-            if ($veiculoId) {
-                $veiculoId = \App\Models\Veiculo::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->whereKey((int) $veiculoId)
-                    ->value('id');
-                if (!$veiculoId) {
-                    throw new \InvalidArgumentException('Uma parcela informa veículo inválido para a empresa atual.');
-                }
-            }
-            if ($contaEmpresaId) {
-                $contaEmpresaId = ContaEmpresa::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('status', true)
-                    ->whereKey($contaEmpresaId)
-                    ->value('id');
-                if (!$contaEmpresaId) {
-                    throw new \InvalidArgumentException('Uma parcela informa conta bancária inválida para a empresa atual.');
-                }
-            }
-
-            if (!empty($parcela['db_id'])) {
-                $contaExistente = ContaPagar::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('compra_id', $id)
-                    ->lockForUpdate()
-                    ->findOrFail((int) $parcela['db_id']);
-
-                if ((bool) $contaExistente->status) {
-                    $dataAtual = $contaExistente->data_vencimento
-                        ? Carbon::parse($contaExistente->data_vencimento)->toDateString()
-                        : null;
-                    $inalterada = $dataAtual === Carbon::parse($dataVencimento)->toDateString()
-                        && abs((float) $contaExistente->valor_integral - $valorParcela) <= 0.01
-                        && (string) $contaExistente->tipo_pagamento === (string) $formaPagamento
-                        && (int) ($contaExistente->veiculo_id ?? 0) === (int) ($veiculoId ?? 0);
-
-                    if (!$inalterada) {
-                        throw new \DomainException('Uma parcela já paga não pode ser alterada pela edição da compra.');
-                    }
-
-                    continue;
-                }
-
-                $contaExistente->data_vencimento = $dataVencimento;
-                $contaExistente->valor_integral = $valorParcela;
-                $contaExistente->tipo_pagamento = $formaPagamento;
-                $contaExistente->veiculo_id = $veiculoId;
-                $contaExistente->conta_empresa_id = null;
-                $contaExistente->categoria_id = $categoria_conta_id;
-                $contaExistente->fornecedor_id = $fornecedor_id;
-                $contaExistente->save();
-                continue;
-            }
-
+            
+            // Atribui o valor já limpo na variável final
+            $valorParcelaFloat = (float) $valorStr;
+            if ($valorParcelaFloat <= 0) continue;
+    
+            $formaPgto = $parcela['forma_pagamento'] ?? 'boleto';
+            $veiculoIdVinculo = $parcela['veiculo_id'] ?? null;
+            $contaEmpresaId = (!empty($parcela['conta_empresa_id'])) ? $parcela['conta_empresa_id'] : null;
+            
+            // Define a Data de Vencimento / Baixa correta
+            $dataVencimento = $this->parseDate($parcela['data']);
             if ($isAVista && !empty($compra['data_retroativa']) && $compra['data_retroativa'] != -1) {
                 $dataVencimento = $this->parseDate($compra['data_retroativa']);
             }
-
-            if ($usarAdiantamento && $saldoAdiantamento > 0) {
-                $valorAbatido = min($saldoAdiantamento, $valorParcela);
-                $contaAdiantamento = ContaPagar::create([
-                    'compra_id' => $id,
-                    'fornecedor_id' => $fornecedor_id,
-                    'usuario_id' => $this->usuario_id,
-                    'veiculo_id' => $veiculoId,
-                    'numero_nota_fiscal' => $nf,
-                    'data_emissao' => $dataEmissao,
-                    'data_vencimento' => $dataVencimento,
-                    'data_pagamento' => $dataVencimento,
-                    'valor_integral' => $valorAbatido,
-                    'valor_pago' => $valorAbatido,
-                    'status' => true,
-                    'tipo_pagamento' => 'adiantamento',
-                    'referencia' => 'Parcela '.($parcela['numero'] ?? $numeroParcela).' (Adiantamento) NF: '.$nf,
-                    'categoria_id' => $categoria_conta_id,
-                    'empresa_id' => $this->empresa_id,
-                    'filial_id' => $this->filial_id,
-                    'usuario_baixa_id' => $this->usuario_id,
-                ]);
-
-                AdiantamentoController::baixarAdiantamento(
-                    $fornecedor_id,
-                    'fornecedor',
-                    $valorAbatido,
-                    $this->empresa_id,
-                    $contaAdiantamento->id,
-                    $this->usuario_id,
-                    $this->filial_id
-                );
-
-                $saldoAdiantamento -= $valorAbatido;
-                $valorParcela -= $valorAbatido;
-                if ($valorParcela <= 0.00001) {
-                    continue;
+    
+            // Define se a parcela baixa na hora (A Vista OU se tiver conta informada com pagamentos instantâneos)
+            $statusBaixa = ($isAVista || ($contaEmpresaId && in_array($formaPgto, ['dinheiro', 'pix', 'transferencia'])));
+    
+            // ============================================
+            // LÓGICA A: ABATIMENTO POR CRÉDITO/ADIANTAMENTO 
+            // ============================================
+            if ($usouCredito && $saldoAdiantamento > 0) {
+                if ($saldoAdiantamento >= $valorParcelaFloat) {
+                    // Adiantamento cobre toda a parcela
+                    $resPaga = ContaPagar::create([
+                        'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
+                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                        'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
+                        'data_vencimento' => $dataVencimento, 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorParcelaFloat,
+                        'valor_pago' => $valorParcelaFloat, 'status' => true, 'tipo_pagamento' => 'adiantamento', 
+                        'referencia' => "Parcela " . ($parcela['numero'] ?? $cont) . " (Adiantamento) NF: " . $nf,
+                        'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id
+                    ]);
+                    \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorParcelaFloat, $this->empresa_id, $resPaga->id, $this->usuario_id, $this->filial_id);
+                    
+                    $saldoAdiantamento -= $valorParcelaFloat;
+                    continue; // Pula para a próxima linha
+                } else {
+                    // Adiantamento cobre só uma parte
+                    $valorAbater = $saldoAdiantamento;
+                    $valorRestante = $valorParcelaFloat - $saldoAdiantamento;
+                    $saldoAdiantamento = 0; // Zerou a carteira
+    
+                    $resPagaParcial = ContaPagar::create([
+                        'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
+                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                        'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
+                        'data_vencimento' => $dataVencimento, 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorAbater, 
+                        'valor_pago' => $valorAbater, 'status' => true, 'tipo_pagamento' => 'adiantamento', 
+                        'referencia' => "Parcela " . ($parcela['numero'] ?? $cont) . " (Abate Adiantamento) NF: " . $nf,
+                        'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id, 'usuario_baixa_id' => $this->usuario_id
+                    ]);
+                    \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorAbater, $this->empresa_id, $resPagaParcial->id, $this->usuario_id, $this->filial_id);
+    
+                    // O que faltou pagar vira a parcela para o fluxo normal abaixo
+                    $valorParcelaFloat = $valorRestante;
                 }
             }
-
-            $baixarImediatamente = $isAVista
-                || ($contaEmpresaId && in_array($formaPagamento, ['dinheiro', 'pix', 'transferencia'], true));
-
-            $conta = null;
-            if ($baixarImediatamente && $contaEmpresaId) {
-                $conta = ContaEmpresa::query()
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('id', $contaEmpresaId)
-                    ->where('status', true)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-            }
-
+    
+            // ============================================
+            // LÓGICA B: FLUXO NORMAL (À VISTA/PRAZO/BANCO)
+            // ============================================
             $contaPagar = ContaPagar::create([
-                'compra_id' => $id,
-                'fornecedor_id' => $fornecedor_id,
-                'usuario_id' => $this->usuario_id,
-                'veiculo_id' => $veiculoId,
-                'numero_nota_fiscal' => $nf,
-                'data_emissao' => $dataEmissao,
-                'data_vencimento' => $dataVencimento,
-                'data_pagamento' => $baixarImediatamente ? $dataVencimento : null,
-                'valor_integral' => $valorParcela,
-                'valor_pago' => $baixarImediatamente ? $valorParcela : 0,
-                'status' => $baixarImediatamente,
-                'tipo_pagamento' => $formaPagamento,
-                'conta_empresa_id' => $baixarImediatamente ? $contaEmpresaId : null,
-                'referencia' => 'Parcela '.($parcela['numero'] ?? $numeroParcela).' NF: '.$nf,
-                'categoria_id' => $categoria_conta_id,
-                'empresa_id' => $this->empresa_id,
-                'filial_id' => $this->filial_id,
-                'usuario_baixa_id' => $baixarImediatamente ? $this->usuario_id : null,
+                'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
+                'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
+                'data_vencimento' => $dataVencimento, 'data_pagamento' => $statusBaixa ? $dataVencimento : null,
+                'valor_integral' => $valorParcelaFloat, 'valor_pago' => $statusBaixa ? $valorParcelaFloat : 0,
+                'status' => $statusBaixa, 'tipo_pagamento' => $formaPgto, 'conta_empresa_id' => $statusBaixa ? $contaEmpresaId : null,
+                'referencia' => "Parcela " . ($parcela['numero'] ?? $cont) . " NF: " . $nf,
+                'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id,
+                'usuario_baixa_id' => $statusBaixa ? $this->usuario_id : null
             ]);
-
-            if ($conta) {
-                $saldoAtualizado = (float) $conta->saldo - $valorParcela;
-                ItemContaEmpresa::create([
-                    'conta_id' => $conta->id,
-                    'descricao' => 'Pagamento Compra Manual NF: '.$nf,
-                    'valor' => $valorParcela,
-                    'tipo_pagamento' => $formaPagamento,
-                    'tipo' => 'saida',
-                    'data_pagamento' => $dataVencimento,
-                    'user_id' => $this->usuario_id,
-                    'empresa_id' => $this->empresa_id,
-                    'origem' => 'Conta Pagar',
-                    'conta_pagar_id' => $contaPagar->id,
-                    'categoria_id' => $categoria_conta_id,
-                    'saldo_atual' => $saldoAtualizado,
-                ]);
-                $conta->saldo = $saldoAtualizado;
-                $conta->save();
+    
+            // ============================================
+            // LÓGICA C: ATUALIZA SALDO REAL DO BANCO/CAIXA
+            // ============================================
+            if ($statusBaixa && !empty($contaEmpresaId)) {
+                $contaBancaria = \DB::table('conta_empresas')->where('id', $contaEmpresaId)->first();
+    
+                if ($contaBancaria) {
+                    // Subtrai o valor da parcela do saldo da conta
+                    $saldoAtualizado = $contaBancaria->saldo - $valorParcelaFloat;
+    
+                    // 1. Gera o Extrato
+                    \DB::table('item_conta_empresas')->insert([
+                        'conta_id' => $contaEmpresaId,
+                        'descricao' => "Pagamento Compra Manual NF: " . $nf,
+                        'valor' => $valorParcelaFloat,
+                        'tipo_pagamento' => $formaPgto, // Guarda a string real: "dinheiro", "pix", etc.
+                        'tipo' => 'saida', // ou 'tipo' => 'saida' caso sua tabela chame só 'tipo'
+                        'data_pagamento' => $dataVencimento,
+                        'user_id' => $this->usuario_id,
+                        'empresa_id' => $this->empresa_id,
+                        'origem' => 'Conta Pagar',
+                        'conta_pagar_id' => $contaPagar->id,
+                        'saldo_atual' => $saldoAtualizado,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+    
+                    // 2. Atualiza a Conta Empresa
+                    \DB::table('conta_empresas')->where('id', $contaEmpresaId)->update([
+                        'saldo' => $saldoAtualizado,
+                        'updated_at' => now()
+                    ]);
+                }
             }
         }
-
         return true;
     }
 
     private function salvarItens($id, $itens) {
         $stockMove = new StockMove();
-        $compra = Compra::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $id);
+        $compra = Compra::findOrFail($id);
         foreach ($itens as $i) {
-            $prod = Produto::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $i['codigo']);
+            $prod = Produto::where('id', (int)$i['codigo'])->where('empresa_id', $this->empresa_id)->first();
             ItemCompra::create([
                 'compra_id' => $id, 'produto_id' => (int)$i['codigo'],
                 'quantidade' => str_replace(",", ".", $i['quantidade']),
@@ -537,14 +423,9 @@ class CompraManualController extends Controller
 
     private function removerItens($compraId) {
         $stockMove = new StockMove();
-        $querySaldos = DB::table('stock_movements')
+        $saldos = DB::table('stock_movements')
             ->select('produto_id', 'filial_id', DB::raw('SUM(CASE WHEN tipo = "entrada" THEN quantidade ELSE -quantidade END) as saldo_real'))
-            ->where('origem_tipo', 'compra')
-            ->where('origem_id', $compraId);
-        if (DB::getSchemaBuilder()->hasColumn('stock_movements', 'empresa_id')) {
-            $querySaldos->where('empresa_id', $this->empresa_id);
-        }
-        $saldos = $querySaldos->groupBy('produto_id', 'filial_id')->having('saldo_real', '>', 0)->get();
+            ->where('origem_tipo', 'compra')->where('origem_id', $compraId)->groupBy('produto_id', 'filial_id')->having('saldo_real', '>', 0)->get();
         foreach ($saldos as $saldo) { $stockMove->downStock($saldo->produto_id, $saldo->saldo_real, $saldo->filial_id, 'compra', $compraId); }
         ItemCompra::where('compra_id', $compraId)->delete();
     }
@@ -561,11 +442,7 @@ class CompraManualController extends Controller
     }
 
     public function ultimaCompra($produtoId){
-        $item = ItemCompra::query()
-            ->where('produto_id', (int) $produtoId)
-            ->whereHas('compra', fn ($query) => $query->where('empresa_id', $this->empresa_id))
-            ->orderByDesc('id')
-            ->get();
+        $item = ItemCompra::where('produto_id', $produtoId)->orderBy('id', 'desc')->get();
         if(count($item) > 0){
             $last = $item[0];
             echo json_encode(['fornecedor' => $last->compra->fornecedor->razao_social, 'valor' => $last->valor_unitario, 'quantidade' => $last->quantidade, 'data' => Carbon::parse($last->compra->created_at)->format('d/m/Y H:i:s')]);
@@ -576,10 +453,7 @@ class CompraManualController extends Controller
     {
         try {
             DB::transaction(function() use ($request) {
-                $item = ItemCompra::query()
-                    ->whereKey((int) $request->itemId)
-                    ->whereHas('compra', fn ($query) => $query->where('empresa_id', $this->empresa_id))
-                    ->firstOrFail();
+                $item = ItemCompra::findOrFail($request->itemId);
                 if ($item->produto->gerenciar_estoque) {
                     (new StockMove())->downStock($item->produto_id, $item->quantidade, $item->compra->filial_id, 'compra', $item->compra_id);
                 }
@@ -593,10 +467,7 @@ class CompraManualController extends Controller
     public function updateItem(Request $request)
     {
         try {
-            $item = ItemCompra::query()
-                    ->whereKey((int) $request->itemId)
-                    ->whereHas('compra', fn ($query) => $query->where('empresa_id', $this->empresa_id))
-                    ->firstOrFail();
+            $item = ItemCompra::findOrFail($request->itemId);
             $item->quantidade = $request->quantidade;
             $item->valor_unitario = str_replace(",", ".", $request->valor);
             $item->save();
@@ -609,11 +480,7 @@ class CompraManualController extends Controller
 
     public function editarItem(Request $request)
     {
-        $item = ItemCompra::query()
-            ->where('id', (int) $request->input('id_item'))
-            ->where('compra_id', (int) $request->input('compraId'))
-            ->whereHas('compra', fn ($query) => $query->where('empresa_id', $this->empresa_id))
-            ->first();
+        $item = ItemCompra::where('id', $request->input('id_item'))->where('compra_id', $request->input('compraId'))->first();
         if (!$item) { return response()->json(['status' => 'error', 'message' => 'Item não encontrado']); }
         $item->quantidade = $request->input('quantidade');
         $item->valor_unitario = $request->input('valor');
@@ -622,9 +489,12 @@ class CompraManualController extends Controller
     }
 
     public function editar($id){
-        $compra = Compra::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $id);
+        $compra = Compra::findOrFail($id);
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
-        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)->where('ativo', 1)->orderBy('razao_social')->get();
+        $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
+                          ->where('ativo', 1)
+                          ->orderBy('razao_social')
+                          ->get();
         $produtos = Produto::where('empresa_id', $this->empresa_id)->where('inativo', false)->orderBy('nome')->get();
         foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
         $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
@@ -639,7 +509,6 @@ class CompraManualController extends Controller
         $listaCST_IPI = Produto::listaCST_IPI();
         $natureza = Produto::firstNatureza($this->empresa_id);
         $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
-        $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', true)->orderBy('nome')->get();
 
         return view('compraManual/edit')
             ->with('compraManual', true)->with('fornecedores', $fornecedores)->with('unidadesDeMedida', $unidadesDeMedida)
@@ -647,23 +516,7 @@ class CompraManualController extends Controller
             ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
             ->with('listaCST_IPI', $listaCST_IPI)->with('natureza', $natureza)->with('anps', $anps)
             ->with('fatura', $fatura)->with('compra', $compra)->with('categorias', $categorias)
-            ->with('transportadoras', $transportadoras)->with('produtos', $produtos)->with('title', 'Editar Compra Manual')->with('veiculos', $veiculos)
-            ->with('contasEmpresa', $contasEmpresa);
-    }
-
-    private function normalizarValorMonetario($valor): float
-    {
-        if (is_numeric($valor)) {
-            return (float) $valor;
-        }
-
-        $normalizado = preg_replace('/[^0-9,.-]/', '', (string) $valor);
-        if (str_contains($normalizado, ',')) {
-            $normalizado = str_replace('.', '', $normalizado);
-            $normalizado = str_replace(',', '.', $normalizado);
-        }
-
-        return (float) $normalizado;
+            ->with('transportadoras', $transportadoras)->with('produtos', $produtos)->with('title', 'Editar Compra Manual')->with('veiculos', $veiculos);
     }
 
     private function parseDate($date){ return date('Y-m-d', strtotime(str_replace("/", "-", $date))); }
@@ -698,7 +551,7 @@ class CompraManualController extends Controller
     }
 
     public function custoMedio_aganldo_desativou_26042026(Request $request){
-        $item = Produto::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $request->id);
+        $item = Produto::findOrFail($request->id);
 
         $valorCompraAtual = __replace($request->valor);
         $valorCompraProduto = $item->valor_compra;
@@ -1538,7 +1391,7 @@ class CompraManualController extends Controller
     }
 
     public function editar_aganldo_desativou_26042026($id){
-        $compra = Compra::query()->where('empresa_id', $this->empresa_id)->findOrFail((int) $id);
+        $compra = Compra::findOrFail($id);
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
@@ -1730,10 +1583,7 @@ class CompraManualController extends Controller
     {
         try {
             DB::transaction(function() use ($request) {
-                $item = ItemCompra::query()
-                    ->whereKey((int) $request->itemId)
-                    ->whereHas('compra', fn ($query) => $query->where('empresa_id', $this->empresa_id))
-                    ->firstOrFail();
+                $item = ItemCompra::findOrFail($request->itemId);
                 $prod = Produto::find($item->produto_id);
 
                 if ($prod->gerenciar_estoque) {

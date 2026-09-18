@@ -73,7 +73,7 @@
 							</div>
 						</div>
 					</div>
-
+						
 					<div class="col-xl-12">
                         <div class="card card-custom gutter-b">
                             <div class="card-header">
@@ -81,7 +81,7 @@
 							</div>
                             <div class="card-body">
                                 {!! __view_locais_select() !!}
-
+                                
                                 <div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
                                     <table class="datatable-table" style="max-width: 100%;overflow-x: auto;">
                                         <thead class="datatable-head">
@@ -110,7 +110,7 @@
                                             <tr class="datatable-row" id="tr_{{$i['codigo']}}" style="left: 0px;">
                                                 <td class="datatable-cell"><span class="codigo" style="width: 70px;">{{$i['codigo']}}</span></td>
                                                 <td class="datatable-cell" id="th_{{$loop->index}}"><span class="nome {{$i['produtoNovo'] == true ? 'text-danger font-weight-bold' : ''}}" style="width: 180px;">{{$i['xProd']}}</span></td>
-
+                                                
                                                 <td class="datatable-cell">
                                                     <span style="width: 130px;">
                                                         <select class="form-control finalidade_input form-control-sm border-primary" style="width: 130px; font-size: 11px;">
@@ -124,7 +124,7 @@
                                                 </td>
 
                                                 <td class="datatable-cell"><span class="ncm" style="width: 80px;">{{$i['NCM']}}</span></td>
-
+                                                
                                                 <td class="datatable-cell">
                                                     <span style="width: 80px;">
                                                         <input type="text" class="form-control form-control-sm cfop_entrada_input" data-codigo="{{$i['codigo']}}" name="cfop_entrada[{{$i['codigo']}}]" value="{{$i['CFOP']}}">
@@ -177,9 +177,9 @@
 
                                                 <td class="datatable-cell" style="overflow: visible !important;">
                                                   <span style="width: 80px; display: block;">
-                                                      <a id="th_acao1_{{$loop->index}}"
-                                                         @if($i['produtoNovo']) style="display: block" @else style="display: none" @endif
-                                                         onclick="cadProd('{{$i['codigo']}}','{{$i['xProd']}}','{{$i['codBarras']}}','{{$i['NCM']}}','{{$i['CFOP']}}','{{$i['uCom']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$i['vUnCom']}}', '{{$infos['nNf']}}','{{$i['CEST']}}', '{{$loop->index}}')"
+                                                      <a id="th_acao1_{{$loop->index}}" 
+                                                         @if($i['produtoNovo']) style="display: block" @else style="display: none" @endif 
+                                                         onclick="cadProd('{{$i['codigo']}}','{{$i['xProd']}}','{{$i['codBarras']}}','{{$i['NCM']}}','{{$i['CFOP']}}','{{$i['uCom']}}','{{$i['vUnCom']}}', '{{$i['qCom']}}', '{{$i['vUnCom']}}', '{{$infos['nNf']}}','{{$i['CEST']}}', '{{$loop->index}}')" 
                                                          href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2">
                                                           <span class="svg-icon svg-icon-success">
                                                               <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24">
@@ -221,7 +221,7 @@
                                             <option value="prazo">Montar Parcelamento Manual</option>
                                         </select>
                                     </div>
-
+                                    
                                     <div class="form-group col-lg-6 id-div-rateio" style="display:none;">
                                         <label class="font-weight-bold text-success">Selecione os Veículos para dividir o valor</label>
                                         <select id="veiculos_rateio" class="form-control select2-custom" multiple="multiple" style="width: 100%">
@@ -291,7 +291,7 @@
                                         </tbody>
                                     </table>
                                 </div>
-
+                                
                                 <div class="row mt-4">
                                     <div class="col-lg-12 text-right">
                                         <button type="button" id="btn-adicionar-linha-fatura" class="btn btn-sm btn-light-primary font-weight-bold">
@@ -330,8 +330,8 @@
                                                 @endforeach
                                             </select>
                                         </div>
-
-                                    <div class="form-group col-xl-12 mt-3">
+                                      
+                                      	<div class="form-group col-xl-12 mt-3">
                                             <label class="font-weight-bold text-info" title="Usado na baixa automática">Conta Bancária para Baixa Imediata <i class="la la-info-circle"></i></label>
                                             <select name="conta_empresa_id" id="conta_empresa_id" class="form-control custom-select border-info">
                                                 <option value="">-- Nenhuma (A Prazo / Manual) --</option>
@@ -355,14 +355,14 @@
                                       </div>
                                   </div>
                               </div>
-
+                              
                                 <div class="col-lg-5 pl-8">
                                     <h4 class="mb-4">Total de Produtos: <strong class="text-primary float-right">R$ {{ moeda((float)$infos['vProd']) }}</strong></h4>
                                     <h5 class="mb-4">Desconto: <strong class="text-danger float-right">R$ {{ moeda((float)$infos['vDesc']) }}</strong></h5>
                                     <h3>Valor Líquido NFe: <strong class="text-success float-right">R$ {{ moeda((float)$infos['vNF']) }}</strong></h3>
                                 </div>
                             </div>
-
+                            
                             @if($contaSemRegistro > 0)
                             <div class="alert alert-custom alert-light-danger mt-6 mb-0" role="alert">
                                 <div class="alert-icon"><i class="flaticon-warning"></i></div>
@@ -400,7 +400,7 @@
                             </div>
                         </div>
 					</div>
-				</form>
+				</form> 
 
                 @if($dfe->venda_id == 0)
                 <div class="col-xl-12 text-right pb-10">
@@ -914,10 +914,10 @@
             } else if (tipo === 'vista') {
                 $('.div-gerador').hide();
                 $('.id-div-rateio').hide();
-
+                
                 let totalNF = "{{ number_format((double)$infos['vNF'], 2, ',', '.') }}";
                 let hoje = "{{ date('d/m/Y') }}";
-
+                
                 $('#tabela-fatura tbody').html(`
                     <tr>
                         <td><input type="text" name="fatura_num[]" class="form-control text-center font-weight-bold" value="001"></td>
@@ -1060,7 +1060,7 @@
             let numLinhas = $('#tabela-fatura tbody tr').length + 1;
             let numFormatado = String(numLinhas).padStart(3, '0');
             let hoje = "{{ date('d/m/Y') }}";
-
+            
             let novaLinha = `
                 <tr>
                     <td><input type="text" name="fatura_num[]" class="form-control text-center font-weight-bold" value="${numFormatado}"></td>
@@ -1104,7 +1104,7 @@
         $(document).on('blur', 'input[name="fatura_venc[]"], input[name="fatura_val[]"], input[name="fatura_num[]"]', function() {
             atualizarFaturaJson();
         });
-
+        
         $(document).on('change', 'select[name="fatura_veiculo[]"]', function() {
             atualizarFaturaJson();
         });
@@ -1135,7 +1135,7 @@
         $(document).on('change', '.finalidade_input', function() {
             let tr = $(this).closest('tr');
             let finalidade = $(this).val();
-            let cfopOriginal = tr.find('.cfop').val();
+            let cfopOriginal = tr.find('.cfop').val(); 
             let isInterestadual = (cfopOriginal.startsWith('6'));
 
             let cfopSugerido = '';
@@ -1146,30 +1146,30 @@
                 cfopSugerido = isInterestadual ? '2556' : '1556';
                 cstSugerido = '090';
                 pisCofinsSugerido = '70'; // Sem crédito PIS/COFINS
-
+                
             } else if (finalidade === 'uso_consumo_com_credito') {
                 cfopSugerido = isInterestadual ? '2556' : '1556';
                 cstSugerido = '090';
                 pisCofinsSugerido = '50'; // Com crédito PIS/COFINS
-
+                
             } else if (finalidade === 'combustivel') {
                 cfopSugerido = isInterestadual ? '2653' : '1653';
                 cstSugerido = '061'; // Monofásico
                 pisCofinsSugerido = '50'; // Com crédito
-
+                
             } else if (finalidade === 'imobilizado') {
                 cfopSugerido = isInterestadual ? '2551' : '1551';
                 cstSugerido = '090';
                 pisCofinsSugerido = '70';
-
-            } else {
+                
+            } else { 
                 // Lógica Padrão de Revenda
                 if (cfopOriginal === '5102') cfopSugerido = '1102';
                 else if (cfopOriginal === '6102') cfopSugerido = '2102';
                 else cfopSugerido = isInterestadual ? '2' + cfopOriginal.substring(1) : '1' + cfopOriginal.substring(1);
-
-                cstSugerido = tr.find('.vbc_icms').val() > 0 ? '000' : '090';
-                pisCofinsSugerido = '01';
+                
+                cstSugerido = tr.find('.vbc_icms').val() > 0 ? '000' : '090'; 
+                pisCofinsSugerido = '01'; 
             }
 
             // Aplica os valores instantaneamente na tela
@@ -1185,16 +1185,16 @@
                 let tr = $(this);
                 let nomeProduto = tr.find('.nome').text().toUpperCase();
                 let cfopXML = tr.find('.cfop').val();
-                let ncmXML = tr.find('.ncm').text().replace(/\./g, '');
+                let ncmXML = tr.find('.ncm').text().replace(/\./g, ''); 
 
-                let ehCombustivel = nomeProduto.includes('DIESEL') ||
-                                    nomeProduto.includes('ARLA') ||
-                                    nomeProduto.includes('GASOLINA') ||
+                let ehCombustivel = nomeProduto.includes('DIESEL') || 
+                                    nomeProduto.includes('ARLA') || 
+                                    nomeProduto.includes('GASOLINA') || 
                                     ['5656', '6656', '5653', '6653', '5652', '6652'].includes(cfopXML) ||
                                     ncmXML === '27101921';
 
                 if (ehCombustivel) {
-                    tr.find('.finalidade_input').val('combustivel').trigger('change');
+                    tr.find('.finalidade_input').val('combustivel').trigger('change'); 
                     tr.css('background-color', '#e8f5e9'); // Fundo verde claro para destacar o combustível
                 }
             });

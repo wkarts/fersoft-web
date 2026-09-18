@@ -54,13 +54,13 @@ class OrderController extends Controller
         $this->numeroSequencial();
         $orders = OrdemServico::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')
-        ->paginate(20);
+            ->orderBy('id', 'desc')
+            ->paginate(20);
         return view('os/list')
-        ->with('orders', $orders)
-        ->with('print', true)
-        ->with('links', true)
-        ->with('title', 'Orders de Serviço');
+            ->with('orders', $orders)
+            ->with('print', true)
+            ->with('links', true)
+            ->with('title', 'Orders de Serviço');
     }
 
     public function filtro(Request $request){
@@ -73,42 +73,42 @@ class OrderController extends Controller
         $orders = [];
 
         $orders = OrdemServico::orderBy('id', 'desc')
-        ->select('ordem_servicos.*')
-        ->where('ordem_servicos.empresa_id', $this->empresa_id)
-        ->where('ordem_servicos.estado', $estado)
-        ->join('clientes', 'clientes.id', '=', 'ordem_servicos.cliente_id')
-        ->when(!empty($cliente), function ($query) use ($cliente) {
-            return $query->where('clientes.razao_social', 'like', "%$cliente%");
-        })
-        ->when(!empty($nome_fantasia), function ($query) use ($nome_fantasia) {
-            return $query->where('clientes.nome_fantasia', 'like', "%$nome_fantasia%");
-        })
-        ->when(!empty($data_inicial), function ($query) use ($data_inicial) {
-            return $query->whereDate('ordem_servicos.created_at', '>=', $data_inicial);
-        })
-        ->when(!empty($data_final), function ($query) use ($data_final) {
-            return $query->whereDate('ordem_servicos.created_at', '<=', $data_final);
-        })
-        ->get();
+            ->select('ordem_servicos.*')
+            ->where('ordem_servicos.empresa_id', $this->empresa_id)
+            ->where('ordem_servicos.estado', $estado)
+            ->join('clientes', 'clientes.id', '=', 'ordem_servicos.cliente_id')
+            ->when(!empty($cliente), function ($query) use ($cliente) {
+                return $query->where('clientes.razao_social', 'like', "%$cliente%");
+            })
+            ->when(!empty($nome_fantasia), function ($query) use ($nome_fantasia) {
+                return $query->where('clientes.nome_fantasia', 'like', "%$nome_fantasia%");
+            })
+            ->when(!empty($data_inicial), function ($query) use ($data_inicial) {
+                return $query->whereDate('ordem_servicos.created_at', '>=', $data_inicial);
+            })
+            ->when(!empty($data_final), function ($query) use ($data_final) {
+                return $query->whereDate('ordem_servicos.created_at', '<=', $data_final);
+            })
+            ->get();
 
         return view('os/list')
-        ->with('orders', $orders)
-        ->with('cliente', $cliente)
-        ->with('data_inicial', $data_inicial)
-        ->with('data_final', $data_final)
-        ->with('nome_fantasia', $nome_fantasia)
-        ->with('estado', $estado)
-        ->with('title', 'Filtro Ordem de Serviço');
+            ->with('orders', $orders)
+            ->with('cliente', $cliente)
+            ->with('data_inicial', $data_inicial)
+            ->with('data_final', $data_final)
+            ->with('nome_fantasia', $nome_fantasia)
+            ->with('estado', $estado)
+            ->with('title', 'Filtro Ordem de Serviço');
     }
 
     public function numeroSequencial(){
         $verify = OrdemServico::where('empresa_id', $this->empresa_id)
-        ->where('numero_sequencial', 0)
-        ->first();
+            ->where('numero_sequencial', 0)
+            ->first();
 
         if($verify){
             $os = OrdemServico::where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $n = 1;
             foreach($os as $v){
@@ -122,12 +122,12 @@ class OrderController extends Controller
     public function new(){
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->orderBy('razao_social')->get();
+            ->where('inativo', false)
+            ->orderBy('razao_social')->get();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($config == null){
             session()->flash("mensagem_erro", "É necessário configurar o emitente!");
@@ -135,11 +135,11 @@ class OrderController extends Controller
         }
 
         return view('os/register')
-        ->with('client', true)
-        ->with('clientes', $clientes)
-        ->with('config', $config)
-        ->with('estados', EstadoOs::values())
-        ->with('title', 'Nova Ordem de Serviço');
+            ->with('client', true)
+            ->with('clientes', $clientes)
+            ->with('config', $config)
+            ->with('estados', EstadoOs::values())
+            ->with('title', 'Nova Ordem de Serviço');
     }
 
     public function delete($id){
@@ -178,32 +178,44 @@ class OrderController extends Controller
         $this->_validate($request);
 
         $order = new OrdemServico();
-        $request->merge([ 'valor' =>str_replace(",", ".", $request->input('valor'))]);
 
         $cliente = $request->input('cliente');
         $cliente = explode("-", $cliente);
         $cliente = $cliente[0];
 
-        $numero_sequencial = 0;
         $last = OrdemServico::where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')
-        ->first();
+            ->orderBy('id', 'desc')
+            ->first();
 
         $numero_sequencial = $last != null ? ($last->numero_sequencial + 1) : 1;
 
         $result = $order->create([
-            'descricao' => $request->input('descricao'),
-            'usuario_id' => get_id_user(),
-            'cliente_id' => $cliente,
-            'filial_id' => $request->filial_id > 0 ? $request->filial_id : null,
-            'empresa_id' => $this->empresa_id,
-            'numero_sequencial' => $numero_sequencial,
-            'forma_pagamento' => '',
-            'descricao' => $request->descricao ?? ''
+            'descricao'          => $request->input('descricao') ?? '',
+            'usuario_id'         => get_id_user(),
+            'cliente_id'         => $cliente,
+            'cliente_veiculo_id' => $request->cliente_veiculo_id ?? null,
+            'km_veiculo'         => $request->km_veiculo ? __replace($request->km_veiculo) : null,
+            'tipo_manutencao'    => $request->tipo_manutencao ?? 'corretiva',
+            'status_aprovacao'   => $request->status_aprovacao ?? 'orcamento',
+            'defeito_relatado'   => $request->defeito_relatado ?? '',
+            'diagnostico_tecnico'=> $request->diagnostico_tecnico ?? '',
+            'filial_id'          => $request->filial_id > 0 ? $request->filial_id : null,
+            'empresa_id'         => $this->empresa_id,
+            'numero_sequencial'  => $numero_sequencial,
+            'forma_pagamento'    => '',
         ]);
 
+        // Atualiza o KM na ficha do veículo caso tenha sido informado um KM maior
+        if ($request->cliente_veiculo_id && $request->km_veiculo) {
+            $v = \App\Models\ClienteVeiculo::find($request->cliente_veiculo_id);
+            if ($v && __replace($request->km_veiculo) > $v->km_atual) {
+                $v->km_atual = __replace($request->km_veiculo);
+                $v->save();
+            }
+        }
+
         if($result){
-            session()->flash("mensagem_sucesso", "OS gerada!");
+            session()->flash("mensagem_sucesso", "Ordem de Serviço gerada com sucesso!");
         }else{
             session()->flash('mensagem_erro', 'Erro ao gerar OS!');
         }
@@ -211,35 +223,35 @@ class OrderController extends Controller
         return redirect("/ordemServico/servicosordem/$result->id");
     }
 
-    public function servicosordem($ordemId){
-        $ordem = OrdemServico::
-        where('id', $ordemId)
-        ->first();
+    public function servicosordem($id)
+    {
+        $ordem = OrdemServico::with([
+            'cliente',
+            'veiculo',
+            'servicos.servico',
+            'produtos.produto',
+            'funcionarios.funcionario',
+            'relatorios.usuario'
+        ])->findOrFail($id);
 
-        if(valida_objeto($ordem)){
-            $servicos = Servico::
-            where('empresa_id', $this->empresa_id)
+        // Busca serviços e produtos ativos da empresa
+        $servicos = Servico::where('empresa_id', $this->empresa_id)->get();
+        $produtos = Produto::where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->orderBy('nome', 'asc')
             ->get();
 
-            $funcionarios = Funcionario::
-            where('empresa_id', $this->empresa_id)
+        // Busca funcionários e usuários
+        $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
+        $usuarios = Usuario::where('empresa_id', $this->empresa_id)
+            ->where('ativo', 1)
+            ->orderBy('nome', 'asc')
             ->get();
 
-            $temServicos = count(Servico::where('empresa_id', $this->empresa_id)->get()) > 0;
-            $temFuncionarios = count(Funcionario::where('empresa_id', $this->empresa_id)->get()) > 0;
-         // echo json_encode($ordem->servicos);
-            return view('os/detalhes')
-            ->with('ordem', $ordem)
+        $casasDecimais = $this->casasDecimais ?? 2;
+        $title = "Detalhes da Ordem de Serviço #" . ($ordem->numero_sequencial > 0 ? $ordem->numero_sequencial : $ordem->id);
 
-            ->with('servicos', $servicos)
-            ->with('funcionarios', $funcionarios)
-            ->with('temServicos', $temServicos)
-            ->with('temFuncionarios', $temFuncionarios)
-            ->with('title', 'Detalhes da OS')
-            ->with('servicoJs', true);
-        }else{
-            return redirect('/403');
-        }
+        return view('os.detalhes', compact('ordem', 'servicos', 'produtos', 'funcionarios', 'usuarios', 'casasDecimais', 'title'));
     }
 
     public function storeServico(Request $request){
@@ -307,18 +319,18 @@ class OrderController extends Controller
 
     public function deleteServico($id){
         $obj = ServicoOs
-        ::where('id', $id)
-        ->first();
+            ::where('id', $id)
+            ->first();
         $id = $obj->ordemServico->id;
 
         if(valida_objeto($obj->ordemServico)){
             $ordem = OrdemServico::
             where('id', $id)
-            ->first();
+                ->first();
 
             $servico = Servico::
             where('id', $obj->servico->id)
-            ->first();
+                ->first();
 
             $ordem->valor -= $obj->quantidade * $servico->valor;
             $ordem->save();
@@ -339,12 +351,12 @@ class OrderController extends Controller
     public function addRelatorio($id){
         $ordem = OrdemServico::
         where('id', $id)
-        ->first();
+            ->first();
 
         if(valida_objeto($ordem)){
             return view('os/addRelatorio')
-            ->with('ordem', $ordem)
-            ->with('title', 'Novo Relatório');
+                ->with('ordem', $ordem)
+                ->with('title', 'Novo Relatório');
         }else{
             return redirect('/403');
         }
@@ -353,13 +365,13 @@ class OrderController extends Controller
     public function editRelatorio($id){
         $relatorio = RelatorioOs::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($relatorio->ordemServico)){
             $ordem = $relatorio->ordemServico;
             return view('os/addRelatorio')
-            ->with('ordem', $ordem)
-            ->with('relatorio', $relatorio)
-            ->with('title', 'Editar Relatório');
+                ->with('ordem', $ordem)
+                ->with('relatorio', $relatorio)
+                ->with('title', 'Editar Relatório');
         }else{
             return redirect('/403');
         }
@@ -370,55 +382,63 @@ class OrderController extends Controller
 
         $categoriasConta = CategoriaConta::
         where('empresa_id', $this->empresa_id)
-        ->where('tipo', 'receber')
-        ->get();
+            ->where('tipo', 'receber')
+            ->get();
 
         if(valida_objeto($ordem)){
             return view('os/alterarEstado')
-            ->with('ordem', $ordem)
-            ->with('categoriasConta', $categoriasConta)
-            ->with('title', 'Alterar Estado de OS');
+                ->with('ordem', $ordem)
+                ->with('categoriasConta', $categoriasConta)
+                ->with('title', 'Alterar Estado de OS');
         }else{
             return redirect('/403');
         }
     }
 
     private function gerarContaReceber($request, $os){
+        // Trata a data de vencimento para o formato do banco (Y-m-d)
+        $vencimento = $request->vencimento_conta;
+        if (str_contains($vencimento, '/')) {
+            $vencimento = \Carbon\Carbon::createFromFormat('d/m/Y', $vencimento)->format('Y-m-d');
+        }
 
-        ContaReceber::create([
-            'venda_id' => null,
-            'data_vencimento' => $request->vencimento_conta,
-            'data_recebimento' => $request->vencimento_conta,
-            'valor_integral' => __replace($request->valor_conta),
-            'valor_recebido' => 0,
-            'status' => false,
-            'cliente_id' => $os->cliente_id,
-            'tipo_pagamento' => $request->forma_pagamento_conta,
-            'referencia' => "OS " . $os->id,
-            'categoria_id' => $request->categoria_conta_id,
-            'empresa_id' => $os->empresa_id,
-            'filial_id' => $os->filial_id,
+        \App\Models\ContaReceber::create([
+            'venda_id'         => null,
+            'data_vencimento'  => $vencimento,
+            'data_recebimento' => $vencimento,
+            'valor_integral'   => __replace($request->valor_conta),
+            'valor_recebido'   => 0,
+            'status'           => false,
+            'cliente_id'       => $os->cliente_id,
+            'tipo_pagamento'   => $request->forma_pagamento_conta ?? 'Boleto',
+            'referencia'       => "OS #" . ($os->numero_sequencial > 0 ? $os->numero_sequencial : $os->id),
+            'categoria_id'     => $request->categoria_conta_id,
+            'empresa_id'       => $os->empresa_id,
+            'filial_id'        => $os->filial_id > 0 ? $os->filial_id : null,
         ]);
     }
 
     public function alterarEstadoPost(Request $request){
-        $ordem = OrdemServico::
-        where('id', $request->id)
-        ->first();
-        if($request->gerar_conta_receber){
-            $this->gerarContaReceber($request, $ordem);
+        try {
+            $ordem = OrdemServico::findOrFail($request->id);
+
+            \Illuminate\Support\Facades\DB::transaction(function() use ($request, $ordem) {
+                // Verifica se a opção de gerar financeiro foi selecionada
+                if ($request->gerar_conta_receber == "1" || $request->gerar_conta_receber == true) {
+                    $this->gerarContaReceber($request, $ordem);
+                }
+
+                $ordem->estado = $request->novo_estado;
+                $ordem->save();
+            });
+
+            session()->flash('mensagem_sucesso', 'Estado da OS e lançamento financeiro registrados!');
+            return redirect("/ordemServico/servicosordem/$request->id");
+
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao salvar financeiro: ' . $e->getMessage());
+            return redirect()->back();
         }
-
-        $ordem->estado = $request->novo_estado;
-        $result = $ordem->save();
-
-        if($result){
-            session()->flash('mensagem_sucesso', 'Estado Alterado!');
-        }else{
-            session()->flash('mensagem_erro', 'Erro!');
-        }
-
-        return redirect("/ordemServico/servicosordem/$request->id");
     }
 
     public function saveRelatorio(Request $request){
@@ -447,7 +467,7 @@ class OrderController extends Controller
         $id = $request->input('id');
         $resp = RelatorioOs::
         where('id', $id)
-        ->first();
+            ->first();
 
         $resp->texto = $request->input('texto');
         $result = $resp->save();
@@ -463,7 +483,7 @@ class OrderController extends Controller
     public function deleteRelatorio($id){
         $obj = RelatorioOs::
         where('id', $id)
-        ->first();
+            ->first();
         if(valida_objeto($obj->ordemServico)){
             $id = $obj->ordemServico->id;
             $delete = $obj->delete();
@@ -540,12 +560,12 @@ class OrderController extends Controller
         $dateLast = $this->validDate(Date('Y-m-d'), true);
         $orders = Order::
         whereBetween('date_register', [$dateStart, $dateLast])
-        ->get();
+            ->get();
 
         return view('os/flow')
-        ->with('orders', $orders)
-        ->with('print', true)
-        ->with('title', 'Orders de Serviço');
+            ->with('orders', $orders)
+            ->with('print', true)
+            ->with('title', 'Orders de Serviço');
     }
 
     public function find(Request $request){
@@ -590,12 +610,12 @@ class OrderController extends Controller
         $dateLast = $this->validDate($request->input('date_last'), true);
         $orders = Order::
         whereBetween('date_register', [$dateStart, $dateLast])
-        ->get();
+            ->get();
 
         return view('os/flow')
-        ->with('orders', $orders)
-        ->with('print', true)
-        ->with('title', 'Orders de Serviço');
+            ->with('orders', $orders)
+            ->with('print', true)
+            ->with('title', 'Orders de Serviço');
     }
 
     private function validDate($date, $plusDay = false){
@@ -607,14 +627,14 @@ class OrderController extends Controller
 
     public function print($id){
         $order = Order
-        ::where('id', $id)
-        ->first();
+            ::where('id', $id)
+            ->first();
 
         if(valida_objeto($order)){
             return view('os/print')
-            ->with('order', $order)
-        //->with('print', true)
-            ->with('title', 'Orders de Serviço');
+                ->with('order', $order)
+                //->with('print', true)
+                ->with('title', 'Orders de Serviço');
         }else{
             return redirect('/403');
         }
@@ -625,15 +645,15 @@ class OrderController extends Controller
         if(valida_objeto($ordem)){
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             if($config == null){
                 return redirect('/configNF');
             }
 
             $p = view('os/print')
-            ->with('ordem', $ordem)
-            ->with('config', $config);
+                ->with('ordem', $ordem)
+                ->with('config', $config);
 
             $domPdf = new Dompdf(["enable_remote" => true]);
             $domPdf->loadHtml($p);
@@ -702,7 +722,7 @@ class OrderController extends Controller
 
         $ordem = OrdemServico::
         where('id', $request->input('ordem_servico_id'))
-        ->first();
+            ->first();
 
         $funcionarioObj = Funcionario::find($funcionario);
 
@@ -725,15 +745,15 @@ class OrderController extends Controller
 
     public function deleteFuncionario($id){
         $obj = FuncionarioOs
-        ::where('id', $id)
-        ->first();
+            ::where('id', $id)
+            ->first();
 
         if(valida_objeto($obj->ordemServico)){
             $id = $obj->ordemServico->id;
 
             $ordem = OrdemServico::
             where('id', $id)
-            ->first();
+                ->first();
 
             $delete = $obj->delete();
             if($delete){
@@ -751,7 +771,7 @@ class OrderController extends Controller
     public function alterarStatusServico($servicoId){
         $servicoOs = ServicoOs::
         where('id', $servicoId)
-        ->first();
+            ->first();
 
         if(valida_objeto($servicoOs->ordemServico)){
 
@@ -795,55 +815,58 @@ class OrderController extends Controller
 
             $naturezas = NaturezaOperacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
             return view('os/gerar_venda')
-            ->with('ordem', $item)
-            ->with('config', $config)
-            ->with('naturezas', $naturezas)
-            ->with('title', 'Gerar Venda');
+                ->with('ordem', $item)
+                ->with('config', $config)
+                ->with('naturezas', $naturezas)
+                ->with('title', 'Gerar Venda');
         }else{
             return redirect('/403');
         }
     }
 
     public function gerarNfse($id){
-        $ordem = OrdemServico::findOrFail($id);
+        // Carrega a OS trazendo os relacionamentos de serviços e seus cadastros base
+        $ordem = OrdemServico::with(['servicos.servico', 'cliente'])->findOrFail($id);
+
         if(valida_objeto($ordem)){
             if(sizeof($ordem->servicos) == 0){
-                session()->flash('mensagem_erro', "Nenhum serviço adicionado!");
+                session()->flash('mensagem_erro', "Nenhum serviço adicionado a esta OS!");
                 return redirect()->back();
             }
-            $clientes = Cliente::
-            where('empresa_id', $this->empresa_id)
-            ->orderBy('razao_social', 'desc')
-            ->where('inativo', false)
-            ->get();
 
-            $config = ConfigNota::
-            where('empresa_id', $this->empresa_id)
-            ->first();
+            $clientes = Cliente::where('empresa_id', $this->empresa_id)
+                ->orderBy('razao_social', 'asc')
+                ->where('inativo', false)
+                ->get();
 
-            $servicos = Servico::
-            where('empresa_id', $this->empresa_id)
-            ->orderBy('nome', 'desc')
-            ->get();
+            $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
-            $servico = $ordem->servicos[0];
+            $servicos = Servico::where('empresa_id', $this->empresa_id)
+                ->orderBy('nome', 'asc')
+                ->get();
+
+            $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->get();
+            $tiposPagamento = ['Boleto', 'Pix', 'Dinheiro', 'Cartão de Crédito', 'Cartão de Débito', 'Transferência'];
+
+            $servico = $ordem->servicos->first();
             $total = $ordem->servicos->sum('sub_total');
-            $discriminacao = "";
+
+            $discriminacao = "Serviços prestados referentes à OS #" . ($ordem->numero_sequencial > 0 ? $ordem->numero_sequencial : $ordem->id) . ": ";
             foreach($ordem->servicos as $s){
-                $discriminacao .= $s->servico->nome . " | ";
+                $nomeServico = optional($s->servico)->nome ?? 'Serviço';
+                $discriminacao .= $nomeServico . " (Qtd: " . number_format($s->quantidade, 2, ',', '.') . " x R$ " . number_format($s->valor_unitario, 2, ',', '.') . ") | ";
             }
 
-            $discriminacao = substr($discriminacao, 0, strlen($discriminacao));
-
-            return view('os/gerar_nfse', compact('clientes', 'config', 'ordem', 'servicos', 'servico',
-                'total', 'discriminacao'))
-            ->with('title', 'Gerar NFSe');
-        }else{
+            return view('os.gerar_nfse', compact(
+                'clientes', 'config', 'ordem', 'servicos', 'servico',
+                'total', 'discriminacao', 'categorias', 'tiposPagamento'
+            ))->with('title', 'Gerar NFS-e a partir da OS #' . $ordem->id);
+        } else {
             return redirect('/403');
         }
     }
@@ -954,212 +977,344 @@ class OrderController extends Controller
 
                 }
             });
-session()->flash('mensagem_sucesso', 'Venda criada!');
-return redirect('/vendas');
-}catch(\Exception $e){
-    session()->flash('mensagem_erro', 'Algo deu errado: ' . $e->getMessage());
-    return redirect()->back();
-}
-}
-
-public function gerarVendaCompleta($id){
-    $item = OrdemServico::findOrFail($id);
-    $produtos = Produto::where('tipo_servico', 1)
-    ->where('empresa_id', $this->empresa_id)
-    ->get();
-
-    $totalServico = $item->servicos->sum('sub_total');
-    $totalProdutos = $item->produtos->sum('sub_total');
-
-    return view('os/finalizar_pdv', compact('item', 'totalServico', 'totalProdutos', 'produtos'))
-    ->with('title', 'Finalizar OS');
-}
-
-public function storePdv(Request $request){
-    $os = OrdemServico::findOrFail($request->os_id);
-    $produtoServico = Produto::findOrFail($request->produto_id);
-    $totalServico = $os->servicos->sum('sub_total');
-
-    $produtosOs = [];
-    $aux = null;
-
-    foreach($os->produtos as $p){
-        $produtosOs[] = $p;
-    }
-    if($produtoServico != null){
-        $aux = new ProdutoOs();
-        $aux->produto_id = $produtoServico->id;
-        $aux->quantidade = 1;
-        $aux->valor_unitario = $totalServico;
-        $produtosOs[] = $aux;
-    }
-    $atributes = $this->addAtributes($produtosOs);
-
-    $usuario = Usuario::find(get_id_user());
-    $tiposPagamento = VendaCaixa::tiposPagamento();
-    $config = ConfigNota::
-    where('empresa_id', $this->empresa_id)
-    ->first();
-
-    $certificado = Certificado::
-    where('empresa_id', $this->empresa_id)
-    ->first();
-
-    $categorias = Categoria::
-    where('empresa_id', $this->empresa_id)
-    ->get();
-
-    $clientes = Cliente::where('empresa_id', $this->empresa_id)
-    ->where('inativo', false)
-    ->orderBy('razao_social')->get();
-
-    $atalhos = ConfigCaixa::
-    where('usuario_id', get_id_user())
-    ->first();
-    $tiposPagamentoMulti = VendaCaixa::tiposPagamentoMulti();
-
-    $funcionarios = Funcionario::
-    where('funcionarios.empresa_id', $this->empresa_id)
-    ->select('funcionarios.*')
-    ->join('usuarios', 'usuarios.id', '=', 'funcionarios.usuario_id')
-    ->get();
-
-    $view = 'main3';
-
-    $rascunhos = $this->getRascunhos();
-    $consignadas = $this->getConsignadas();
-    $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
-    $produtosMaisVendidos = $this->produtosMaisVendidos();
-    $vendedores = [];
-
-    $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-    ->where('ativo', 1)
-    ->orderBy('nome', 'asc')
-    ->get();
-
-    foreach($usuarios as $u){
-      if($u->funcionario){
-        array_push($vendedores, $u);
-    }
-}
-
-$estados = Cliente::estados();
-$cidades = Cidade::all();
-$pais = Pais::all();
-$grupos = GrupoCliente::get();
-$acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
-$funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
-
-$abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-->where('usuario_id', get_id_user())
-->where('status', 0)
-->orderBy('id', 'desc')
-->first();
-
-$filial = $abertura != null ? $abertura->filial : null;
-
-return view('frontBox/'.$view)
-->with('itens', $atributes)
-->with('atalhos', $atalhos)
-->with('estados', $estados)
-->with('cidades', $cidades)
-->with('filial', $filial)
-->with('pais', $pais)
-->with('grupos', $grupos)
-->with('os_id', $os->id)
-->with('vendedores', $vendedores)
-->with('usuarios', $usuarios)
-->with('acessores', $acessores)
-->with('produtosMaisVendidos', $produtosMaisVendidos)
-->with('rascunhos', $rascunhos)
-->with('consignadas', $consignadas)
-->with('funcionarios', $funcionarios)
-->with('cod_os', $os->id)
-->with('frenteCaixa', true)
-->with('tiposPagamento', $tiposPagamento)
-->with('tiposPagamentoMulti', $tiposPagamentoMulti)
-->with('config', $config)
-->with('usuario', $usuario)
-->with('clientes', $clientes)
-->with('categorias', $categorias)
-->with('certificado', $certificado)
-->with('title', 'Finalizar OS '.$os->numero_sequencial);
-
-}
-
-private function getRascunhos(){
-    return VendaCaixa::
-    where('rascunho', 1)
-    ->where('empresa_id', $this->empresa_id)
-    ->limit(20)
-    ->orderBy('id', 'desc')
-    ->get();
-}
-
-private function getConsignadas(){
-    return VendaCaixa::
-    where('consignado', 1)
-    ->where('empresa_id', $this->empresa_id)
-    ->limit(20)
-    ->orderBy('id', 'desc')
-    ->get();
-}
-
-private function addAtributes($itens){
-    $temp = [];
-    foreach($itens as $i){
-        $i->produto;
-
-        $i->produto->valor_venda = $i->valor_unitario;
-
-        $i->produto_id = $i->produto->id;
-        $i->produto->nome = $i->produto->nome;
-        // $i->item_pedido = $i->id;
-        $i->imagem = $i->produto->imagem;
-        array_push($temp, $i);
-    }
-
-    return $temp;
-}
-
-private function produtosMaisVendidos(){
-
-    $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-    ->where('usuario_id', get_id_user())
-    ->where('status', 0)
-    ->orderBy('id', 'desc')
-    ->first();
-    $filial = -1;
-
-    if($abertura){
-        $filial = $abertura->filial_id;
-        if($filial == null){
-            $filial = -1;
+            session()->flash('mensagem_sucesso', 'Venda criada!');
+            return redirect('/vendas');
+        }catch(\Exception $e){
+            session()->flash('mensagem_erro', 'Algo deu errado: ' . $e->getMessage());
+            return redirect()->back();
         }
     }
-    $itens = ItemVendaCaixa::
-    selectRaw('item_venda_caixas.*, count(quantidade) as qtd')
-    ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
-    ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
-    ->where('venda_caixas.empresa_id', $this->empresa_id)
-    ->groupBy('item_venda_caixas.produto_id')
-    ->orderBy('qtd')
-    ->when(empresaComFilial(), function ($q) use ($filial) {
-        return $q->where(function($query) use ($filial){
-            $query->where('produtos.locais', 'like', "%{$filial}%");
-        });
-    })
-    ->limit(21)
-    ->get();
 
-    $produtos = [];
-    foreach($itens as $i){
-        $p = Produto::find($i->produto_id);
-        if(!$p->inativo){
-            array_push($produtos, $p);
+    public function gerarVendaCompleta($id){
+        $item = OrdemServico::findOrFail($id);
+        $produtos = Produto::where('tipo_servico', 1)
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
+
+        $totalServico = $item->servicos->sum('sub_total');
+        $totalProdutos = $item->produtos->sum('sub_total');
+
+        return view('os/finalizar_pdv', compact('item', 'totalServico', 'totalProdutos', 'produtos'))
+            ->with('title', 'Finalizar OS');
+    }
+
+    public function storePdv(Request $request){
+        $os = OrdemServico::findOrFail($request->os_id);
+        $produtoServico = Produto::findOrFail($request->produto_id);
+        $totalServico = $os->servicos->sum('sub_total');
+
+        $produtosOs = [];
+        $aux = null;
+
+        foreach($os->produtos as $p){
+            $produtosOs[] = $p;
+        }
+        if($produtoServico != null){
+            $aux = new ProdutoOs();
+            $aux->produto_id = $produtoServico->id;
+            $aux->quantidade = 1;
+            $aux->valor_unitario = $totalServico;
+            $produtosOs[] = $aux;
+        }
+        $atributes = $this->addAtributes($produtosOs);
+
+        $usuario = Usuario::find(get_id_user());
+        $tiposPagamento = VendaCaixa::tiposPagamento();
+        $config = ConfigNota::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        $certificado = Certificado::
+        where('empresa_id', $this->empresa_id)
+            ->first();
+
+        $categorias = Categoria::
+        where('empresa_id', $this->empresa_id)
+            ->get();
+
+        $clientes = Cliente::where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->orderBy('razao_social')->get();
+
+        $atalhos = ConfigCaixa::
+        where('usuario_id', get_id_user())
+            ->first();
+        $tiposPagamentoMulti = VendaCaixa::tiposPagamentoMulti();
+
+        $funcionarios = Funcionario::
+        where('funcionarios.empresa_id', $this->empresa_id)
+            ->select('funcionarios.*')
+            ->join('usuarios', 'usuarios.id', '=', 'funcionarios.usuario_id')
+            ->get();
+
+        $view = 'main3';
+
+        $rascunhos = $this->getRascunhos();
+        $consignadas = $this->getConsignadas();
+        $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
+        $produtosMaisVendidos = $this->produtosMaisVendidos();
+        $vendedores = [];
+
+        $usuarios = Usuario::where('empresa_id', $this->empresa_id)
+            ->where('ativo', 1)
+            ->orderBy('nome', 'asc')
+            ->get();
+
+        foreach($usuarios as $u){
+            if($u->funcionario){
+                array_push($vendedores, $u);
+            }
+        }
+
+        $estados = Cliente::estados();
+        $cidades = Cidade::all();
+        $pais = Pais::all();
+        $grupos = GrupoCliente::get();
+        $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
+        $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
+
+        // Busca as contas da empresa para o PDV
+        $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
+
+        $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
+            ->where('usuario_id', get_id_user())
+            ->where('status', 0)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $filial = $abertura != null ? $abertura->filial : null;
+
+        return view('frontBox/'.$view)
+            ->with('itens', $atributes)
+            ->with('atalhos', $atalhos)
+            ->with('estados', $estados)
+            ->with('cidades', $cidades)
+            ->with('filial', $filial)
+            ->with('pais', $pais)
+            ->with('grupos', $grupos)
+            ->with('os_id', $os->id)
+            ->with('vendedores', $vendedores)
+            ->with('usuarios', $usuarios)
+            ->with('acessores', $acessores)
+            ->with('produtosMaisVendidos', $produtosMaisVendidos)
+            ->with('rascunhos', $rascunhos)
+            ->with('consignadas', $consignadas)
+            ->with('funcionarios', $funcionarios)
+            ->with('contasEmpresa', $contasEmpresa) // <-- Adicionado
+            ->with('cod_os', $os->id)
+            ->with('frenteCaixa', true)
+            ->with('tiposPagamento', $tiposPagamento)
+            ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+            ->with('config', $config)
+            ->with('usuario', $usuario)
+            ->with('clientes', $clientes)
+            ->with('categorias', $categorias)
+            ->with('certificado', $certificado)
+            ->with('title', 'Finalizar OS '.$os->numero_sequencial);
+    }
+    private function getRascunhos(){
+        return VendaCaixa::
+        where('rascunho', 1)
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(20)
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    private function getConsignadas(){
+        return VendaCaixa::
+        where('consignado', 1)
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(20)
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    private function addAtributes($itens){
+        $temp = [];
+        foreach($itens as $i){
+            $i->produto;
+
+            $i->produto->valor_venda = $i->valor_unitario;
+
+            $i->produto_id = $i->produto->id;
+            $i->produto->nome = $i->produto->nome;
+            // $i->item_pedido = $i->id;
+            $i->imagem = $i->produto->imagem;
+            array_push($temp, $i);
+        }
+
+        return $temp;
+    }
+
+    private function produtosMaisVendidos(){
+
+        $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
+            ->where('usuario_id', get_id_user())
+            ->where('status', 0)
+            ->orderBy('id', 'desc')
+            ->first();
+        $filial = -1;
+
+        if($abertura){
+            $filial = $abertura->filial_id;
+            if($filial == null){
+                $filial = -1;
+            }
+        }
+        $itens = ItemVendaCaixa::
+        selectRaw('item_venda_caixas.*, count(quantidade) as qtd')
+            ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+            ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
+            ->where('venda_caixas.empresa_id', $this->empresa_id)
+            ->groupBy('item_venda_caixas.produto_id')
+            ->orderBy('qtd')
+            ->when(empresaComFilial(), function ($q) use ($filial) {
+                return $q->where(function($query) use ($filial){
+                    $query->where('produtos.locais', 'like', "%{$filial}%");
+                });
+            })
+            ->limit(21)
+            ->get();
+
+        $produtos = [];
+        foreach($itens as $i){
+            $p = Produto::find($i->produto_id);
+            if(!$p->inativo){
+                array_push($produtos, $p);
+            }
+        }
+        return $produtos;
+    }
+
+
+
+
+    /**
+     * Busca veículos do cliente selecionado
+     */
+    public function getVeiculosCliente($clienteId)
+    {
+        $veiculos = \App\Models\ClienteVeiculo::where('empresa_id', $this->empresa_id)
+            ->where('cliente_id', $clienteId)
+            ->get();
+
+        return response()->json($veiculos);
+    }
+
+    public function storeVeiculoCliente(Request $request)
+    {
+        try {
+            $empresaId = $this->empresa_id ?? session('user_logged')['empresa'] ?? null;
+
+            if (!$empresaId) {
+                return response()->json(['success' => false, 'message' => 'Sessão expirada ou empresa não identificada.'], 400);
+            }
+
+            $placaLimpa = strtoupper(str_replace(['-', ' '], '', $request->placa));
+
+            $veiculo = \App\Models\ClienteVeiculo::create([
+                'empresa_id'  => $empresaId,
+                'cliente_id'  => $request->cliente_id,
+                'placa'       => $placaLimpa,
+                'marca'       => $request->marca ?? '',
+                'modelo'      => $request->modelo ?? '',
+                'ano'         => $request->ano ?? '',
+                'cor'         => $request->cor ?? '',
+                'km_atual'    => $request->km_atual ? (int)$request->km_atual : 0,
+                'combustivel' => $request->combustivel ?? 'Flex',
+                'chassi'      => $request->chassi ?? ''
+            ]);
+
+            return response()->json(['success' => true, 'veiculo' => $veiculo]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
-    return $produtos;
-}
+
+    /**
+     * Consulta a linha do tempo e histórico de manutenções da placa
+     */
+    public function historicoVeiculo($veiculoId)
+    {
+        $veiculo = \App\Models\ClienteVeiculo::with(['ordensServico.servicos.servico', 'ordensServico.produtos.produto'])
+            ->where('empresa_id', $this->empresa_id)
+            ->findOrFail($veiculoId);
+
+        return view('os.modal_historico_veiculo', compact('veiculo'));
+    }
+
+
+    /**
+     * Redireciona para o WhatsApp do cliente com o resumo da OS e orçamento
+     */
+    public function enviarWhatsapp($id)
+    {
+        $os = OrdemServico::with(['cliente', 'veiculo', 'servicos.servico', 'produtos.produto', 'tecnico'])->findOrFail($id);
+
+        $celular = preg_replace('/[^0-9]/', '', $os->cliente->celular ?? $os->cliente->telefone);
+
+        if (!$celular) {
+            session()->flash('mensagem_erro', 'O cliente não possui telefone/celular cadastrado!');
+            return redirect()->back();
+        }
+
+        // Ajusta o DDI do Brasil se necessário
+        if (strlen($celular) == 10 || strlen($celular) == 11) {
+            $celular = '55' . $celular;
+        }
+
+        $numOs = $os->numero_sequencial > 0 ? $os->numero_sequencial : $os->id;
+        $totalGeral = $os->servicos->sum('sub_total') + $os->produtos->sum('sub_total');
+
+        $texto  = "Olá, *{$os->cliente->razao_social}*! 🛠️\n";
+        $texto .= "Segue o resumo da sua *Ordem de Serviço #{$numOs}*:\n\n";
+
+        if ($os->veiculo) {
+            $texto .= "🚗 *Veículo:* {$os->veiculo->placa} - {$os->veiculo->marca} {$os->veiculo->modelo}\n";
+            $texto .= "📏 *KM:* " . number_format($os->km_veiculo ?? 0, 0, ',', '.') . "\n";
+        }
+
+        if ($os->defeito_relatado) {
+            $texto .= "🔍 *Defeito Relatado:* {$os->defeito_relatado}\n";
+        }
+
+        if ($os->diagnostico_tecnico) {
+            $texto .= "👨‍🔧 *Diagnóstico:* {$os->diagnostico_tecnico}\n";
+        }
+
+        $texto .= "\n💰 *RESUMO DO ORÇAMENTO:*\n";
+        $texto .= "• Serviços/Mão de Obra: R$ " . number_format($os->servicos->sum('sub_total'), 2, ',', '.') . "\n";
+        $texto .= "• Peças/Insumos: R$ " . number_format($os->produtos->sum('sub_total'), 2, ',', '.') . "\n";
+        $texto .= "👉 *TOTAL GERAL: R$ " . number_format($totalGeral, 2, ',', '.') . "*\n\n";
+
+        $texto .= "🛡️ *Garantia dos Serviços:* {$os->garantia_dias} dias.\n";
+        $texto .= "📄 *Link da OS/PDF:* " . url("/ordemServico/imprimir/{$os->id}") . "\n\n";
+        $texto .= "Aguardamos sua confirmação para iniciar os serviços!";
+
+        $url = "https://api.whatsapp.com/send?phone={$celular}&text=" . urlencode($texto);
+
+        return redirect()->away($url);
+    }
+
+    public function salvarChecklist(Request $request)
+    {
+        try {
+            $os = OrdemServico::findOrFail($request->ordem_servico_id);
+
+            $os->vendedor_id      = $request->vendedor_id ?? null;
+            $os->tecnico_id       = $request->tecnico_id ?? null;
+            $os->garantia_dias    = $request->garantia_dias ?? 90;
+            $os->status_aprovacao = $request->status_aprovacao ?? 'orcamento';
+            $os->parecer_tecnico  = $request->parecer_tecnico ?? '';
+            $os->save();
+
+            session()->flash('mensagem_sucesso', 'Laudo técnico e garantia atualizados!');
+            return redirect()->back();
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao salvar laudo: ' . $e->getMessage());
+            return redirect()->back();
+        }
+    }
 
 }

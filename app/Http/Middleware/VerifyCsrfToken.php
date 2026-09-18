@@ -13,5 +13,8 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'sync/data',
+        'whatsapp/ponto/webhook',
+        'api/whatsapp/ponto/webhook',
+        'whatsapp/ponto/webhook',
     ];
 }

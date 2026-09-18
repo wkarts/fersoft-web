@@ -39,6 +39,9 @@
 </head>
 <body>
 <div id="app">
+  <div style="background: red; color: white; padding: 10px;">
+        Total de alertas encontrados: {{ isset($alertas) ? count($alertas) : 'Variável não encontrada' }}
+    </div>
     <nav class="navbar navbar-expand-md navbar-light navbar-laravel">
         <div class="container">
             <a class="navbar-brand" href="{{ url('/') }}">
@@ -90,6 +93,22 @@
         </div>
     </nav>
 
+  @if(isset($alertas) && count($alertas) > 0)
+        <div class="container mt-3">
+            @foreach($alertas as $a)
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong>{{ $a['titulo'] }}</strong>: {{ $a['msg'] }}
+                    @if(isset($a['link']))
+                        <a href="{{ url($a['link']) }}" class="btn btn-sm btn-dark ml-2">Ver detalhes</a>
+                    @endif
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endforeach
+        </div>
+    @endif
+  
     <main class="py-4">
         @yield('content')
     </main>

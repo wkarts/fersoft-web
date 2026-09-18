@@ -37,8 +37,11 @@ use App\Models\Venda;
 use App\Models\Estoque;
 use App\Models\VendaCaixa;
 use App\Models\Compra;
-use App\Models\Cte; // ATIVADO!
+use App\Models\Cte; 
 use App\Models\SpedConfig;
+use App\Models\Devolucao;
+use App\Models\Transferencia;
+use App\Models\RemessaNfe;
 use App\Services\SpeedService;
 use App\Utils\SpedUtil;
 
@@ -130,7 +133,7 @@ class SpedController extends Controller
         $std->EMAIL = $config->email;
         try { $sped .= new \NFePHP\EFD\Elements\ICMSIPI\Z0005($std) . "\r\n"; } catch (\Exception $e) {}
 
-        // BLOCO 0100 (Contador)
+        // BLOCO 0100
         $contador = \App\Models\EscritorioContabil::where('empresa_id', $this->empresa_id)->first();
         if($contador == null){
             session()->flash("mensagem_erro", "Configure o contador primeiro!");
@@ -153,9 +156,10 @@ class SpedController extends Controller
         // ==========================================
         // 1. BUSCA DE NOTAS E CT-ES NO BANCO DE DADOS
         // ==========================================
+        
         $vendas = \App\Models\Venda::whereDate('data_emissao', '>=', $dataInicial)
             ->whereDate('data_emissao', '<=', $dataFinal)
-            ->where('estado', 'APROVADO')
+            ->whereIn('estado', ['APROVADO', 'aprovado', '1'])
             ->where('empresa_id', $this->empresa_id)
             ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
             ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
@@ -163,7 +167,7 @@ class SpedController extends Controller
 
         $vendasPdv = \App\Models\VendaCaixa::whereDate('data_emissao', '>=', $dataInicial)
             ->whereDate('data_emissao', '<=', $dataFinal)
-            ->where('estado', 'APROVADO')
+            ->whereIn('estado', ['APROVADO', 'aprovado', '1'])
             ->where('empresa_id', $this->empresa_id)
             ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
             ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
@@ -171,8 +175,10 @@ class SpedController extends Controller
 
         $comprasProprias = \App\Models\Compra::whereDate('data_emissao', '>=', $dataInicial)
             ->whereDate('data_emissao', '<=', $dataFinal)
-            ->where('xml_importado', 0)
-            ->where('estado', 'APROVADO')
+            ->where(function($q) {
+                $q->where('xml_importado', 0)->orWhereNull('xml_importado');
+            })
+            ->whereIn('estado', ['APROVADO', 'aprovado', '1'])
             ->where('empresa_id', $this->empresa_id)
             ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
             ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
@@ -181,21 +187,44 @@ class SpedController extends Controller
         $comprasImportadas = \App\Models\Compra::whereDate('data_emissao', '>=', $dataInicial)
             ->whereDate('data_emissao', '<=', $dataFinal)
             ->where('xml_importado', 1)
+            ->whereIn('estado', ['APROVADO', 'aprovado', '1'])
+            ->where('empresa_id', $this->empresa_id)
+            ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
+            ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
+            ->get();
+            
+        $devolucoes = \App\Models\Devolucao::whereDate('created_at', '>=', $dataInicial)
+            ->whereDate('created_at', '<=', $dataFinal)
+            ->whereIn('estado', ['1', '2', '3'])
             ->where('empresa_id', $this->empresa_id)
             ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
             ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
             ->get();
 
-        // 🟢 BUSCA DE CT-E EMITIDOS 
+        $transferencias = \App\Models\Transferencia::whereDate('created_at', '>=', $dataInicial)
+            ->whereDate('created_at', '<=', $dataFinal)
+            ->whereIn('estado', ['aprovado', '1'])
+            ->where('empresa_id', $this->empresa_id)
+            ->when(!$isFilial, function($q) { return $q->whereNull('filial_saida_id'); })
+            ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_saida_id', $filial_id); })
+            ->get();
+
+        $remessas = \App\Models\RemessaNfe::whereDate('created_at', '>=', $dataInicial)
+            ->whereDate('created_at', '<=', $dataFinal)
+            ->whereIn('estado', ['aprovado', '1'])
+            ->where('empresa_id', $this->empresa_id)
+            ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
+            ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
+            ->get();
+
         $ctesEmitidos = \App\Models\Cte::whereDate('data_emissao', '>=', $dataInicial)
             ->whereDate('data_emissao', '<=', $dataFinal)
-            ->where('estado', 'APROVADO')
+            ->whereIn('estado', ['APROVADO', 'aprovado', '1'])
             ->where('empresa_id', $this->empresa_id)
             ->when(!$isFilial, function($q) { return $q->whereNull('filial_id'); })
             ->when($isFilial, function($q) use ($filial_id) { return $q->where('filial_id', $filial_id); })
             ->get();
 		
-          
         // ==========================================
         // 2. PRÉ-PROCESSAMENTO: FILTROS E COLETA DE DADOS
         // ==========================================
@@ -217,101 +246,163 @@ class SpedController extends Controller
         $participantesUsados = []; 
         $produtosUsados = [];      
         $unidadesUsadas = [];      
+        
+        // FUNÇÃO AUXILIAR PARA NOTAS DE EXPORTAÇÃO (CNPJ ZERADO)
+        $extractDocPart = function($dest, $idFallback) {
+            if (!$dest) return null;
+            $doc = preg_replace('/[^0-9]/', '', (string)($dest->CNPJ ?? $dest->CPF ?? ''));
+            if (empty($doc) || $doc == '00000000000000') {
+                $idEstrangeiro = (string)($dest->idEstrangeiro ?? '');
+                if (!empty($idEstrangeiro)) {
+                    return 'EX' . preg_replace('/[^A-Za-z0-9]/', '', $idEstrangeiro);
+                }
+                return 'EX' . $idFallback; // Gera um código genérico para permitir a inclusão no SPED
+            }
+            return $doc;
+        };
 
-        // --- FILTRAR XMLS (VENDAS E ENTRADAS PRÓPRIAS) ---
+        // --- FILTRAR TODOS OS XMLS ---
         foreach([
             ['data' => $vendas, 'path' => 'xml_nfe/', 'tipo' => 'venda'],
             ['data' => $vendasPdv, 'path' => 'xml_nfce/', 'tipo' => 'pdv'],
-            ['data' => $comprasProprias, 'path' => 'xml_entrada_emitida/', 'tipo' => 'compra']
+            ['data' => $comprasProprias, 'path' => 'xml_entrada_emitida/', 'tipo' => 'compra'],
+            ['data' => $devolucoes, 'path' => 'xml_devolucao/', 'tipo' => 'devolucao'],
+            ['data' => $remessas, 'path' => 'xml_nfe/', 'tipo' => 'remessa'],
+            ['data' => $transferencias, 'path' => 'xml_nfe/', 'tipo' => 'transferencia']
         ] as $source){
             foreach($source['data'] as $v){
-                $xml = $speedService->getXml($v, $source['path']);
+                $xml = null;
+                $chave = preg_replace('/[^0-9]/', '', $v->chave ?? $v->chave_gerada ?? '');
+                
+                $pastaBase = $source['path'];
+                if ($source['tipo'] == 'devolucao' && isset($v->tipo) && $v->tipo == 0) {
+                    $pastaBase = 'xml_devolucao_entrada/';
+                }
+
+                if (!empty($chave)) {
+                    $pastasParaBuscar = [$pastaBase, 'xml_nfe/', 'xml_entrada_emitida/', 'xml_devolucao_entrada/', 'xml_devolucao/'];
+                    foreach ($pastasParaBuscar as $pasta) {
+                        $caminho = public_path($pasta . $chave . '.xml');
+                        if (file_exists($caminho)) {
+                            $xmlStr = file_get_contents($caminho);
+                            $xml = @simplexml_load_string($xmlStr);
+                            if ($xml) break; 
+                        }
+                    }
+                }
+                
+                if (!$xml) {
+                    try { $xml = $speedService->getXml($v, $pastaBase); } catch (\Exception $e) {}
+                }
+
                 if($xml != null){
                     $itens = $speedService->getItemNfe($xml);
                     $temProdutoValido = false;
                     foreach($itens as $item){
-                        $cfop = (string)$item->prod->CFOP;
+                        $cfop = (string)($item->prod->CFOP ?? '1102'); 
+                        // Ignora 2404 temporariamente caso tenha sido digitado errado na NF
+                        if($cfop == '2404') $cfop = '2403'; 
                         if(!in_array($cfop, ['1933', '2933'])){ 
                             $temProdutoValido = true;
                         }
                     }
                     if($temProdutoValido){
-                        $notasValidasXml[] = ['xml' => $xml, 'tipo' => $source['tipo']];
                         $dest = $speedService->getDestinatario($xml);
-                        $doc = preg_replace('/[^0-9]/', '', (string)($dest->CNPJ ?? $dest->CPF ?? ''));
-                        if($doc && $doc != '00000000000000') $participantesUsados[$doc] = $dest;
+                        $doc = $extractDocPart($dest, $v->id ?? rand(1000,9999));
+                        
+                        if($doc) {
+                            $participantesUsados[$doc] = $dest;
+                            $v->doc_part_ext = $doc; // Salva para o C100
+                        }
+                        
+                        $notasValidasXml[] = ['xml' => $xml, 'tipo' => $source['tipo'], 'obj' => $v];
+                    }
+                } 
+                else if ($source['tipo'] == 'compra') { // FALLBACK BANCO PARA COMPRA SEM XML
+                    $itensFiltrados = [];
+                    if (isset($v->itens)) {
+                        foreach($v->itens as $item){
+                            $cfop = (string)($item->cfop_entrada ?? '1102');
+                            if(!in_array($cfop, ['1933', '2933'])){ 
+                                $item->cfop_entrada = $cfop;
+                                $itensFiltrados[] = $item;
+                                $pDb = $item->produto;
+                                if ($pDb) {
+                                    $produtosUsados[(string)$item->produto_id] = [
+                                        'descr' => (string)$pDb->nome,
+                                        'unid'  => strtoupper(trim($item->unidade_compra)),
+                                        'ncm'   => preg_replace('/[^0-9]/', '', $pDb->NCM ?? ''), 
+                                        'tipo'  => str_pad($pDb->tipo_item ?? '00', 2, "0", STR_PAD_LEFT)
+                                    ];
+                                }
+                                $unidadesUsadas[strtoupper(trim($item->unidade_compra))] = true;
+                            }
+                        }
+                        if(count($itensFiltrados) > 0){
+                            $v->itens_para_sped = $itensFiltrados; 
+                            $notasValidasBanco[] = $v;
+                            if (isset($v->fornecedor)) {
+                                $docForn = $extractDocPart($v->fornecedor, $v->fornecedor->id ?? rand(1000,9999));
+                                if($docForn) {
+                                    $participantesUsados[$docForn] = $v->fornecedor; 
+                                    $v->doc_part_ext = $docForn;
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // --- 🟢 PROCESSAR XMLS CTE (LEITURA DIRETA DO ARQUIVO) ---
+        // --- PROCESSAR XMLS CTE ---
         foreach($ctesEmitidos as $cte){
-            // Tenta pegar o caminho ou conteúdo
             $path = public_path('xml_cte/' . $cte->chave . '.xml');
-            
             if(file_exists($path)){
                 $xmlCteStr = file_get_contents($path);
-                
-                // Limpeza de Namespaces para o SimpleXML não travar
                 $xmlCteStr = str_replace('xmlns="http://www.portalfiscal.inf.br/cte"', '', $xmlCteStr);
                 $xmlCte = @simplexml_load_string($xmlCteStr);
-                
                 if($xmlCte){
-                    // Busca infCte lidando com o envelope <cteProc>
                     $inf = null;
-                    if (isset($xmlCte->CTe->infCte)) {
-                        $inf = $xmlCte->CTe->infCte;
-                    } elseif (isset($xmlCte->infCte)) {
-                        $inf = $xmlCte->infCte;
-                    }
+                    if (isset($xmlCte->CTe->infCte)) { $inf = $xmlCte->CTe->infCte; } 
+                    elseif (isset($xmlCte->infCte)) { $inf = $xmlCte->infCte; }
 
                     if($inf){
                         $ctesValidosXml[] = $inf;
-                        \Log::info("CT-e Nº {$cte->cte_numero}: Conteúdo lido com sucesso.");
-
-                        // Extração do tomador para o Bloco 0150
                         $tomaNode = null;
                         if(isset($inf->ide->toma3)) {
                             $idxToma = (string)$inf->ide->toma3->toma;
                             $tagsToma = ['rem','exped','receb','dest'];
-                            $tagBusca = $tagsToma[$idxToma] ?? 'dest';
-                            $tomaNode = $inf->$tagBusca;
+                            $tomaNode = $inf->{$tagsToma[$idxToma] ?? 'dest'};
                         } elseif(isset($inf->ide->toma4)) {
                             $tomaNode = $inf->ide->toma4;
                         }
 
                         if($tomaNode){
-                            $docToma = preg_replace('/[^0-9]/', '', (string)($tomaNode->CNPJ ?? $tomaNode->CPF ?? ''));
-                            if($docToma && $docToma != '00000000000000') {
-                                $participantesUsados[$docToma] = $tomaNode;
-                            }
+                            $docToma = $extractDocPart($tomaNode, $cte->id);
+                            if($docToma) { $participantesUsados[$docToma] = $tomaNode; }
                         }
-                    } else {
-                        \Log::error("CT-e Nº {$cte->cte_numero}: Tag 'infCte' não encontrada no arquivo.");
                     }
-                } else {
-                    \Log::error("CT-e Nº {$cte->cte_numero}: XML malformado após leitura do arquivo.");
-                }
-            } else {
-                \Log::warning("CT-e Nº {$cte->cte_numero}: Arquivo não encontrado em: " . $path);
-            }
+                } 
+            } 
         }
         
         // --- FILTRAR COMPRAS DE TERCEIROS ---
         foreach($comprasImportadas as $compra){
             $itensFiltrados = [];
             foreach($compra->itens as $item){
-                $cfop = (string)$item->cfop_entrada;
+                $cfop = (string)($item->cfop_entrada ?? '1102'); 
                 if(!in_array($cfop, ['1933', '2933'])){ 
+                    $item->cfop_entrada = $cfop; 
                     $itensFiltrados[] = $item;
                     $pDb = $item->produto;
-                    $produtosUsados[(string)$item->produto_id] = [
-                        'descr' => (string)$pDb->nome,
-                        'unid'  => strtoupper(trim($item->unidade_compra)),
-                        'ncm'   => preg_replace('/[^0-9]/', '', $pDb->NCM ?? ''), 
-                        'tipo'  => str_pad($pDb->tipo_item ?? '00', 2, "0", STR_PAD_LEFT)
-                    ];
+                    if ($pDb) {
+                        $produtosUsados[(string)$item->produto_id] = [
+                            'descr' => (string)$pDb->nome,
+                            'unid'  => strtoupper(trim($item->unidade_compra)),
+                            'ncm'   => preg_replace('/[^0-9]/', '', $pDb->NCM ?? ''), 
+                            'tipo'  => str_pad($pDb->tipo_item ?? '00', 2, "0", STR_PAD_LEFT)
+                        ];
+                    }
                     $unidadesUsadas[strtoupper(trim($item->unidade_compra))] = true;
                 }
             }
@@ -330,14 +421,26 @@ class SpedController extends Controller
             $std = new \stdClass();
             $std->COD_PART = $doc; 
             $std->NOME = strtoupper(substr((string)($p->xNome ?? $p->razao_social ?? 'CONSUMIDOR'), 0, 100));
-            $std->COD_PAIS = '1058';
-            if(strlen($doc) == 11) { $std->CPF = $doc; $std->CNPJ = ''; } else { $std->CNPJ = $doc; $std->CPF = ''; }
-            $ie = preg_replace('/[^0-9]/', '', (string)($p->IE ?? $p->ie_rg ?? ''));
-            $std->IE = (empty($ie) || strtoupper($ie) == 'ISENTO') ? '' : $ie;
-            $std->COD_MUN = (string)($p->enderDest->cMun ?? $p->cidade->codigo ?? '');
+            $std->IE = preg_replace('/[^0-9]/', '', (string)($p->IE ?? $p->ie_rg ?? ''));
+            if(empty($std->IE) || strtoupper($std->IE) == 'ISENTO') $std->IE = '';
+            
             $std->END = strtoupper(substr((string)($p->enderDest->xLgr ?? $p->rua ?? 'S/N'), 0, 60));
             $std->NUM = (string)($p->enderDest->nro ?? $p->numero ?? 'S/N');
             $std->BAIRRO = strtoupper(substr((string)($p->enderDest->xBairro ?? $p->bairro ?? 'S/B'), 0, 60));
+
+            // Tratamento para Exterior / Exportação
+            if (str_starts_with($doc, 'EX')) {
+                $std->COD_PAIS = (string)($p->enderDest->cPais ?? '999');
+                if(empty($std->COD_PAIS) || $std->COD_PAIS == '1058') $std->COD_PAIS = '999';
+                $std->CNPJ = ''; 
+                $std->CPF = '';
+                $std->COD_MUN = '9999999';
+            } else {
+                $std->COD_PAIS = '1058';
+                if(strlen($doc) == 11) { $std->CPF = $doc; $std->CNPJ = ''; } else { $std->CNPJ = $doc; $std->CPF = ''; }
+                $std->COD_MUN = (string)($p->enderDest->cMun ?? $p->cidade->codigo ?? '');
+            }
+
             try { $sped .= new \NFePHP\EFD\Elements\ICMSIPI\Z0150($std) . "\r\n"; } catch (\Exception $e) {}
         }
 
@@ -365,9 +468,10 @@ class SpedController extends Controller
 
         foreach($notasValidasXml as $l){
             $ide = $speedService->getIde($l['xml']);
-            $total = $speedService->getTotal($l['xml']);
-            $dest = $speedService->getDestinatario($l['xml']);
-            $docPart = preg_replace('/[^0-9]/', '', (string)($dest->CNPJ ?? $dest->CPF ?? ''));
+            $totalXml = $l['xml']->infNFe->total->ICMSTot; // LEITURA DIRETA DO XML PARA GARANTIR ICMS
+            
+            // Pega o documento extraído pelo Helper, ou tenta recuperar
+            $docPart = $l['obj']->doc_part_ext ?? preg_replace('/[^0-9]/', '', (string)($speedService->getDestinatario($l['xml'])->CNPJ ?? ''));
 
             $std = new \stdClass();
             $std->IND_OPER = (string)$ide->tpNF; $std->IND_EMIT = '0'; $std->COD_PART = $docPart; 
@@ -375,11 +479,21 @@ class SpedController extends Controller
             $std->SER = str_pad((string)$ide->serie, 3, "0", STR_PAD_LEFT); $std->NUM_DOC = (string)$ide->nNF;
             $std->CHV_NFE = $speedService->getChave($l['xml']);
             $std->DT_DOC = \Carbon\Carbon::parse(substr((string)$ide->dhEmi, 0, 10))->format('dmY');
-            $std->DT_E_S = $std->DT_DOC; $std->VL_DOC = (float)$total->vNF;
-            $std->IND_PGTO = '2'; $std->VL_DESC = (float)$total->vDesc; $std->VL_MERC = (float)$total->vProd;
-            $std->IND_FRT = '3'; $std->VL_BC_ICMS = (float)$total->vBC; $std->VL_ICMS = (float)$total->vICMS;
-            $std->VL_BC_ICMS_ST = (float)($total->vBCST ?? 0); $std->VL_ICMS_ST = (float)($total->vST ?? 0);
-            $std->VL_IPI = (float)($total->vIPI ?? 0); $std->VL_PIS = (float)($total->vPIS ?? 0); $std->VL_COFINS = (float)($total->vCOFINS ?? 0);
+            $std->DT_E_S = $std->DT_DOC; 
+            $std->VL_DOC = (float)($totalXml->vNF ?? 0);
+            $std->IND_PGTO = '2'; 
+            $std->VL_DESC = (float)($totalXml->vDesc ?? 0); 
+            $std->VL_MERC = (float)($totalXml->vProd ?? 0);
+            $std->IND_FRT = '3'; 
+            
+            // PREENCHIMENTO ESTRITO DE ICMS NO C100 BASEADO NO XML
+            $std->VL_BC_ICMS = (float)($totalXml->vBC ?? 0); 
+            $std->VL_ICMS = (float)($totalXml->vICMS ?? 0);
+            $std->VL_BC_ICMS_ST = (float)($totalXml->vBCST ?? 0); 
+            $std->VL_ICMS_ST = (float)($totalXml->vST ?? 0);
+            $std->VL_IPI = (float)($totalXml->vIPI ?? 0); 
+            $std->VL_PIS = (float)($totalXml->vPIS ?? 0); 
+            $std->VL_COFINS = (float)($totalXml->vCOFINS ?? 0);
 
             if($std->IND_OPER == '1') $somaICMS += $std->VL_ICMS; 
             try { $sped .= new \NFePHP\EFD\Elements\ICMSIPI\C100($std) . "\r\n"; } catch (\Exception $e) {}
@@ -388,6 +502,7 @@ class SpedController extends Controller
             $itensXml = $speedService->getItemNfe($l['xml']);
             foreach($itensXml as $itemXml){
                 $cfopItem = (string)$itemXml->prod->CFOP;
+                if($cfopItem == '2404') $cfopItem = '2403'; // Ajuste temporário de erro de emissão
                 if(in_array($cfopItem, ['1933', '2933'])) continue;
                 if (isset($regras1400[$cfopItem])) {
                     $codIpm = $regras1400[$cfopItem];
@@ -401,21 +516,34 @@ class SpedController extends Controller
         }
 
         foreach($notasValidasBanco as $compra){
-            $docForn = preg_replace('/[^0-9]/', '', $compra->fornecedor->cpf_cnpj);
-            if ($docForn == '00000000000000' || empty($docForn)) continue;
+            $docForn = $compra->doc_part_ext ?? preg_replace('/[^0-9]/', '', $compra->fornecedor->cpf_cnpj ?? '');
+            if (empty($docForn) || $docForn == '00000000000000') continue;
+            
             $dtES = \Carbon\Carbon::parse($compra->created_at); if($dtES->gt($dataLimite)) $dtES = $dataLimite;
-            $chaveLimpa = preg_replace('/[^0-9]/', '', $compra->chave);
+            $chaveLimpa = preg_replace('/[^0-9]/', '', $compra->chave ?? '');
             $serieChave = substr($chaveLimpa, 22, 3);
-            $serieNota = (strlen($chaveLimpa) == 44 && is_numeric($serieChave)) ? (int)$serieChave : (int)$compra->serie;
+            $serieNota = (strlen($chaveLimpa) == 44 && is_numeric($serieChave)) ? (int)$serieChave : (int)($compra->serie ?? 1);
 
             $std = new \stdClass();
-            $std->IND_OPER = '0'; $std->IND_EMIT = '1'; $std->COD_PART = $docForn; 
+            $std->IND_OPER = '0'; 
+            $std->IND_EMIT = ($compra->xml_importado == 0) ? '0' : '1'; 
+            $std->COD_PART = $docForn; 
             $std->COD_MOD = '55'; $std->COD_SIT = '00'; $std->SER = str_pad($serieNota, 3, "0", STR_PAD_LEFT); 
             $std->NUM_DOC = $compra->nf; $std->CHV_NFE = $compra->chave;
             $std->DT_DOC = \Carbon\Carbon::parse($compra->data_emissao)->format('dmY');
             $std->DT_E_S = $dtES->format('dmY'); $std->VL_DOC = (float)$compra->valor;
             $std->IND_PGTO = '2'; $std->VL_DESC = (float)$compra->desconto; $std->VL_MERC = (float)$compra->somaItems();
-            $std->IND_FRT = '9'; $std->VL_BC_ICMS = (float)$compra->vbc_icms; $std->VL_ICMS = (float)$compra->v_icms;
+            $std->IND_FRT = '9'; 
+            
+            // SOMA AUTOMÁTICA DE ITENS PARA PREVENIR ERRO DO SPED QUANDO CAPA ESTÁ ZERADA NO BANCO
+            $sumBcIcms = 0; $sumIcms = 0;
+            foreach($compra->itens_para_sped as $item) {
+                $sumBcIcms += (float)$item->vbc_icms;
+                $sumIcms += (float)$item->v_icms;
+            }
+            $std->VL_BC_ICMS = (float)$compra->vbc_icms > 0 ? (float)$compra->vbc_icms : $sumBcIcms;
+            $std->VL_ICMS = (float)$compra->v_icms > 0 ? (float)$compra->v_icms : $sumIcms;
+            
             $std->VL_IPI = (float)$compra->v_ipi; $std->VL_PIS = (float)$compra->v_pis; $std->VL_COFINS = (float)$compra->v_cofins;
 
             $somaCreditos += $std->VL_ICMS; 
@@ -424,6 +552,7 @@ class SpedController extends Controller
             $dataC190 = [];
             foreach($compra->itens_para_sped as $idx => $item){
                 $cfopItem = (string)$item->cfop_entrada;
+                if($cfopItem == '2404') $cfopItem = '2403'; 
                 $valorTotalItem = (float)$item->quantidade * $item->valor_unitario;
                 if (isset($regras1400[$cfopItem])) {
                     $codIpm = $regras1400[$cfopItem];
@@ -434,7 +563,7 @@ class SpedController extends Controller
                 $std170->DESCR_COMPL = strtoupper(trim((string)$item->produto->nome)); $std170->QTD = (float)$item->quantidade;
                 $std170->UNID = $produtosUsados[(string)$item->produto_id]['unid'] ?? strtoupper(substr($item->unidade_compra, 0, 6)); 
                 $std170->VL_ITEM = $valorTotalItem; $std170->VL_DESC = 0; $std170->IND_MOV = '0';
-                $std170->CST_ICMS = str_pad($item->cst_icms, 3, "0", STR_PAD_LEFT); $std170->CFOP = $cfopItem;
+                $std170->CST_ICMS = str_pad($item->cst_icms ?? '000', 3, "0", STR_PAD_LEFT); $std170->CFOP = $cfopItem;
                 $std170->VL_BC_ICMS = (float)$item->vbc_icms; $std170->ALIQ_ICMS = (float)$item->p_icms; $std170->VL_ICMS = (float)$item->v_icms;
                 $std170->CST_PIS = (string)$item->cst_pis ?: '70'; $std170->VL_BC_PIS = (float)$item->vbc_pis; $std170->ALIQ_PIS = (float)$item->p_pis; $std170->VL_PIS = (float)$item->v_pis;
                 $std170->CST_COFINS = (string)$item->cst_cofins ?: '70'; $std170->VL_BC_COFINS = (float)$item->vbc_cofins; $std170->ALIQ_COFINS = (float)$item->p_cofins; $std170->VL_COFINS = (float)$item->v_cofins;
@@ -633,28 +762,51 @@ class SpedController extends Controller
 
     private function prepararStdC190($item) {
         $prod = $item->prod; $imposto = $item->imposto;
-        $vBC = $vBCST = $vICMSST = $pICMSST = $vICMS = $pRedBC = $pICMS = $vIPI = 0;
+        
+        $vBC = 0; $vICMS = 0; $pICMS = 0; $vBCST = 0; $vICMSST = 0; $pRedBC = 0; 
         $cst_csosn = '90'; $origem = '0';
+        
         if ($imposto && isset($imposto->ICMS)) {
-            $arrIcms = array_values((array)$imposto->ICMS);
-            if (isset($arrIcms[0]) && is_object($arrIcms[0])) {
-                $vBC = (float)($arrIcms[0]->vBC ?? 0); $vBCST = (float)($arrIcms[0]->vBCST ?? 0);
-                $vICMSST = (float)($arrIcms[0]->vICMSST ?? 0); $pICMSST = (float)($arrIcms[0]->pICMSST ?? 0);
-                $vICMS = (float)($arrIcms[0]->vICMS ?? 0); $pRedBC = (float)($arrIcms[0]->pRedBC ?? 0);
-                $pICMS = (float)($arrIcms[0]->pICMS ?? 0);
-                $cst_csosn = (string)($arrIcms[0]->CST ?? $arrIcms[0]->CSOSN ?? '90');
-                $origem = (string)($arrIcms[0]->orig ?? '0');
+            $icmsNodes = (array)$imposto->ICMS;
+            foreach($icmsNodes as $node) {
+                if (is_object($node)) {
+                    $vBC = (float)($node->vBC ?? 0);
+                    $vBCST = (float)($node->vBCST ?? 0);
+                    $vICMSST = (float)($node->vICMSST ?? 0);
+                    $vICMS = (float)($node->vICMS ?? 0);
+                    $pICMS = (float)($node->pICMS ?? 0);
+                    $pRedBC = (float)($node->pRedBC ?? 0);
+                    $cst_csosn = (string)($node->CST ?? $node->CSOSN ?? '90');
+                    $origem = (string)($node->orig ?? '0');
+                    break;
+                }
             }
         }
+        
         if (strlen($cst_csosn) == 2) { $cst_csosn = $origem . $cst_csosn; } else { $cst_csosn = str_pad($cst_csosn, 3, "0", STR_PAD_LEFT); }
+        
+        $vIPI = 0;
         if ($imposto && isset($imposto->IPI)) {
             $arrIpi = array_values((array)$imposto->IPI);
             if (isset($arrIpi[0]) && is_object($arrIpi[0])) { $vIPI = (float)($arrIpi[0]->IPITrib->vIPI ?? 0); }
         }
-        $std = new \stdClass(); $std->CST_ICMS = $cst_csosn; $std->CFOP = (string)$prod->CFOP;
-        $std->ALIQ_ICMS = number_format($pICMS, 2, '.', ''); $std->VL_OPR = (float)$prod->vProd;
-        $std->VL_BC_ICMS = $vBC; $std->VL_ICMS = $vICMS; $std->VL_BC_ICMS_ST = $vBCST;
-        $std->VL_ICMS_ST = $vICMSST; $std->VL_RED_BC = $pRedBC; $std->VL_IPI = $vIPI; $std->COD_OBS = '';
+        
+        $cfopItem = (string)$prod->CFOP;
+        if($cfopItem == '2404') $cfopItem = '2403'; // Proteção contra CFOP inexistente vindo do emissor
+
+        $std = new \stdClass(); 
+        $std->CST_ICMS = $cst_csosn; 
+        $std->CFOP = $cfopItem;
+        $std->ALIQ_ICMS = number_format($pICMS, 2, '.', ''); 
+        $std->VL_OPR = (float)$prod->vProd;
+        $std->VL_BC_ICMS = $vBC; 
+        $std->VL_ICMS = $vICMS; 
+        $std->VL_BC_ICMS_ST = $vBCST;
+        $std->VL_ICMS_ST = $vICMSST; 
+        $std->VL_RED_BC = $pRedBC; 
+        $std->VL_IPI = $vIPI; 
+        $std->COD_OBS = '';
+        
         return $std;
     }
 }

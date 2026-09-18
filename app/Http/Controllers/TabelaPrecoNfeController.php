@@ -2,104 +2,59 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Produto;
-use App\Models\TabelaPrecoNfe;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Models\TabelaPrecoNfe;
+use App\Models\Produto;
 
-class TabelaPrecoNfeController extends BaseController
+class TabelaPrecoNfeController extends Controller
 {
-    protected $redirectPage = '/tabelaPrecoNfe';
-    protected $formTitle = 'Tabela de Preços para NF-e';
-
-    protected function rules(): array
-    {
-        return [];
-    }
-
-    protected function messages(): array
-    {
-        return [];
-    }
-
     public function index()
     {
-        $produtos = Produto::query()
-            ->where('empresa_id', $this->empresa_id)
-            ->where(function ($query): void {
-                $query->whereNull('inativo')->orWhere('inativo', 0);
-            })
-            ->orderBy('nome')
-            ->get(['id', 'nome']);
+        $sessionData = session('user_logged');
+        $empresa_id = $sessionData['empresa'];
 
-        $precos_nfe = TabelaPrecoNfe::query()
-            ->join('produtos', function ($join): void {
-                $join->on('produtos.id', '=', 'tabela_preco_nfes.produto_id')
-                    ->on('produtos.empresa_id', '=', 'tabela_preco_nfes.empresa_id');
-            })
-            ->where('tabela_preco_nfes.empresa_id', $this->empresa_id)
-            ->select('tabela_preco_nfes.*', 'produtos.nome as produto_nome')
-            ->orderBy('produtos.nome')
+        // Busca os produtos para aparecerem no select
+        $produtos = Produto::where('empresa_id', $empresa_id)
+            ->where('inativo', 0)
+            ->orderBy('nome')
             ->get();
 
-        return view('tabela_preco_nfe.index', compact('produtos', 'precos_nfe'))
-            ->with('title', $this->formTitle);
+        // Busca os preços já cadastrados, trazendo o nome do produto junto
+        $precos_nfe = TabelaPrecoNfe::join('produtos', 'produtos.id', '=', 'tabela_preco_nfes.produto_id')
+            ->where('tabela_preco_nfes.empresa_id', $empresa_id)
+            ->select('tabela_preco_nfes.*', 'produtos.nome as produto_nome')
+            ->get();
+
+        return view('tabela_preco_nfe.index', compact('produtos', 'precos_nfe'))->with('title', 'Tabela de Preços NF-e');
     }
 
     public function save(Request $request)
     {
-        $dados = $request->validate([
-            'produto_id' => [
-                'required',
-                'integer',
-                Rule::exists('produtos', 'id')->where(fn ($query) => $query->where('empresa_id', $this->empresa_id)),
-            ],
-            'preco_nfe' => ['required', 'string', 'max:30'],
+        $sessionData = session('user_logged');
+        $empresa_id = $sessionData['empresa'];
+
+        $request->validate([
+            'produto_id' => 'required',
+            'preco_nfe' => 'required'
         ]);
 
-        $preco = $this->normalizarValor($dados['preco_nfe']);
-        if ($preco < 0) {
-            return redirect()->back()->withInput()->with('mensagem_erro', 'O preço da NF-e não pode ser negativo.');
-        }
+        // Limpa a formatação do valor (ex: de "12,90" para "12.90")
+        $preco_limpo = str_replace(',', '.', str_replace('.', '', $request->preco_nfe));
 
-        TabelaPrecoNfe::query()->updateOrCreate(
-            [
-                'empresa_id' => $this->empresa_id,
-                'produto_id' => (int) $dados['produto_id'],
-            ],
-            [
-                'filial_id' => $this->filial_id,
-                'usuario_id' => $this->usuario_id,
-                'preco_nfe' => $preco,
-            ]
+        // O updateOrCreate é mágico: se já existir preço para esse produto, ele atualiza. Se não, ele cria um novo.
+        TabelaPrecoNfe::updateOrCreate(
+            ['empresa_id' => $empresa_id, 'produto_id' => $request->produto_id],
+            ['preco_nfe' => $preco_limpo]
         );
 
-        return redirect()->back()->with('mensagem_sucesso', 'Preço de NF-e salvo com sucesso.');
+        return redirect()->back()->with('sucesso', 'Preço de NF-e salvo com sucesso!');
     }
 
     public function delete($id)
     {
-        $preco = TabelaPrecoNfe::query()
-            ->where('empresa_id', $this->empresa_id)
-            ->findOrFail($id);
-
+        $preco = TabelaPrecoNfe::findOrFail($id);
         $preco->delete();
 
-        return redirect()->back()->with('mensagem_sucesso', 'Preço removido com sucesso.');
-    }
-
-    private function normalizarValor(string $valor): float
-    {
-        $valor = trim($valor);
-        if ($valor === '') {
-            return 0;
-        }
-
-        if (str_contains($valor, ',')) {
-            $valor = str_replace('.', '', $valor);
-            $valor = str_replace(',', '.', $valor);
-        }
-
-        return round((float) preg_replace('/[^0-9.\-]/', '', $valor), 2);
+        return redirect()->back()->with('sucesso', 'Preço removido!');
     }
 }
