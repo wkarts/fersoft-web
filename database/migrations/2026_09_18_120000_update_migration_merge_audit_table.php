@@ -75,7 +75,7 @@ return new class extends Migration
     private function withAuditLock(\Closure $operation): void
     {
         if (DB::connection()->getDriverName() !== 'mysql') {
-            return;
+            throw new \RuntimeException('Esta migration deve ser validada em MySQL 8.0; SQLite não é equivalente.');
         }
         $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
         if (!preg_match('/^8\.0\./', $version) || stripos($version, 'mariadb') !== false) {
