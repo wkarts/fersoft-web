@@ -18,16 +18,42 @@ abstract class TestCase extends BaseTestCase
         }
 
         $defaultConnection = config('database.default');
-        $sqliteDatabase = config('database.connections.sqlite.database');
 
-        if ($defaultConnection !== 'sqlite' || $sqliteDatabase !== ':memory:') {
-            throw new RuntimeException(
-                sprintf(
-                    'Execução abortada: testes devem usar conexão sqlite em memória (atual: %s / %s).',
-                    $defaultConnection,
-                    $sqliteDatabase
-                )
-            );
+        if ($defaultConnection === 'sqlite') {
+            $sqliteDatabase = config('database.connections.sqlite.database');
+
+            if ($sqliteDatabase !== ':memory:') {
+                throw new RuntimeException(
+                    sprintf(
+                        'Execução abortada: testes SQLite devem usar banco em memória (atual: %s).',
+                        $sqliteDatabase
+                    )
+                );
+            }
+
+            return;
         }
+
+        if ($defaultConnection === 'mysql') {
+            $mysqlDatabase = (string) config('database.connections.mysql.database');
+
+            if ($mysqlDatabase !== 'fersoft_test') {
+                throw new RuntimeException(
+                    sprintf(
+                        'Execução abortada: testes MySQL só podem usar o banco isolado fersoft_test (atual: %s).',
+                        $mysqlDatabase
+                    )
+                );
+            }
+
+            return;
+        }
+
+        throw new RuntimeException(
+            sprintf(
+                'Execução abortada: conexão de testes não autorizada (%s).',
+                $defaultConnection
+            )
+        );
     }
 }
