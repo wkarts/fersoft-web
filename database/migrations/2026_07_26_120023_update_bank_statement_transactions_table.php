@@ -322,6 +322,14 @@ return new class extends Migration
             $typeChanged = $this->normalizeType($currentType) !== $this->normalizeType($desiredType);
         }
 
+        $desiredTypeApplied = $this->normalizeType($targetType) === $this->normalizeType($desiredType);
+        if (!$desiredTypeApplied && $this->normalizeType($currentType) !== $this->normalizeType($desiredType)) {
+            $this->warnForwardOnly(
+                "Tipo solicitado ignorado em {$tableName}.{$columnName}: "
+                . "{$currentType} -> {$desiredType} não foi considerado upgrade seguro."
+            );
+        }
+
         $currentNullable = strtoupper((string) $current->is_nullable) === 'YES';
         $desiredNullable = (bool) $upgrade['nullable'];
         $targetNullable = $desiredNullable ? true : $currentNullable;
@@ -336,6 +344,15 @@ return new class extends Migration
             if ($candidateDefault !== null && strtoupper(trim((string) $candidateDefault)) === 'NULL' && !$targetNullable) {
                 $candidateDefault = $currentDefaultSql;
             }
+
+            if (!$this->isDefaultCompatibleWithType($targetType, $candidateDefault, $targetNullable)) {
+                $this->warnForwardOnly(
+                    "Default solicitado ignorado em {$tableName}.{$columnName}: "
+                    . "o valor não é compatível com o tipo efetivamente preservado {$targetType}."
+                );
+                $candidateDefault = $currentDefaultSql;
+            }
+
             $targetDefaultSql = $candidateDefault;
             $defaultChanged = !$this->defaultSqlEquivalent($currentDefaultSql, $targetDefaultSql);
         }
@@ -343,6 +360,17 @@ return new class extends Migration
         $currentComment = (string) $current->column_comment;
         $desiredComment = $upgrade['comment'];
         $targetComment = $desiredComment !== null ? (string) $desiredComment : $currentComment;
+
+        // Se o tipo desejado não pôde ser aplicado, o comentário da nova
+        // definição pode descrever valores/semântica que o tipo preservado
+        // não possui (ex.: ENUM inglês + comentário/default em português).
+        if (!$desiredTypeApplied && $desiredComment !== null && $targetComment !== $currentComment) {
+            $this->warnForwardOnly(
+                "Comentário solicitado ignorado em {$tableName}.{$columnName} enquanto o tipo desejado não for aplicado."
+            );
+            $targetComment = $currentComment;
+        }
+
         $commentChanged = $targetComment !== $currentComment;
 
         $currentExtra = strtolower((string) $current->extra);
@@ -359,6 +387,15 @@ return new class extends Migration
         $targetOnUpdate = $upgrade['on_update'] !== null
             ? (string) $upgrade['on_update']
             : $currentOnUpdate;
+
+        if (!$desiredTypeApplied && $upgrade['on_update'] !== null
+            && $this->normalizeExpression($currentOnUpdate) !== $this->normalizeExpression($targetOnUpdate)) {
+            $this->warnForwardOnly(
+                "ON UPDATE solicitado ignorado em {$tableName}.{$columnName} enquanto o tipo desejado não for aplicado."
+            );
+            $targetOnUpdate = $currentOnUpdate;
+        }
+
         $onUpdateChanged = $this->normalizeExpression($currentOnUpdate) !== $this->normalizeExpression($targetOnUpdate);
 
         if (!$typeChanged && !$nullableChanged && !$defaultChanged && !$commentChanged && !$autoIncrementChanged && !$onUpdateChanged) {
@@ -520,6 +557,55 @@ return new class extends Migration
         }
 
         return DB::connection()->getPdo()->quote($valueString);
+    }
+
+    private function isDefaultCompatibleWithType(string $type, ?string $defaultSql, bool $nullable): bool
+    {
+        if ($defaultSql === null) {
+            return true;
+        }
+
+        $defaultSql = trim($defaultSql);
+        if (strtoupper($defaultSql) === 'NULL') {
+            return $nullable;
+        }
+
+        if (preg_match('/^enum\((.*)\)$/is', trim($type), $match) !== 1) {
+            return true;
+        }
+
+        $allowed = str_getcsv((string) $match[1], ',', "'", '\\');
+        if ($allowed === []) {
+            return false;
+        }
+
+        $literal = $this->parseSqlStringLiteral($defaultSql);
+        if ($literal === null) {
+            return false;
+        }
+
+        return in_array($literal, $allowed, true);
+    }
+
+    private function parseSqlStringLiteral(string $sql): ?string
+    {
+        $sql = trim($sql);
+        if (strlen($sql) < 2) {
+            return null;
+        }
+
+        $quote = $sql[0];
+        if (($quote !== "'" && $quote !== '"') || $sql[strlen($sql) - 1] !== $quote) {
+            return null;
+        }
+
+        if ($quote === "'") {
+            $values = str_getcsv($sql, ',', "'", '\\');
+            return isset($values[0]) ? (string) $values[0] : null;
+        }
+
+        $value = substr($sql, 1, -1);
+        return str_replace(['\\"', '""'], ['"', '"'], $value);
     }
 
     private function defaultSqlEquivalent(?string $left, ?string $right): bool
