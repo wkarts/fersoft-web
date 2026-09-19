@@ -38,7 +38,7 @@ class ApuracoesDifalNullableSetNullMigrationTest extends TestCase
         $source = $this->source();
 
         $this->assertStringContainsString(
-            "strtolower(trim($onDelete)) === 'set null'",
+            'strtolower(trim($onDelete)) === \'set null\'',
             $source
         );
 
