@@ -23,7 +23,7 @@ class ApuracoesDifalNullableSetNullMigrationTest extends TestCase
         $source = $this->source();
 
         $this->assertStringContainsString(
-            "$table->unsignedInteger('usuario_id')->nullable()",
+            '$table->unsignedInteger(\'usuario_id\')->nullable()',
             $source
         );
 
@@ -43,14 +43,14 @@ class ApuracoesDifalNullableSetNullMigrationTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            "$targetNullable = $mustBeNullable ? true : $currentlyNullable;",
+            '$targetNullable = $mustBeNullable ? true : $currentlyNullable;',
             $source
         );
 
         // Garante que o helper não volte a sair cedo apenas porque o tipo já
         // corresponde ao tipo referenciado; a nullability também precisa ser validada.
         $this->assertStringNotContainsString(
-            "if ($referencedType === '' || $localType === $referencedType) {",
+            'if ($referencedType === \'\' || $localType === $referencedType) {',
             $source
         );
     }
