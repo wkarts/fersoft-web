@@ -99,7 +99,12 @@ return new class extends Migration
             return;
         }
 
-        $this->normalizeForeignIntegerColumn($tableName, $column, $referenceTable);
+        $this->normalizeForeignIntegerColumn(
+            $tableName,
+            $column,
+            $referenceTable,
+            strtolower(trim($onDelete)) === 'set null'
+        );
 
         Schema::table($tableName, function (Blueprint $table) use ($foreignName, $column, $referenceTable, $onDelete) {
             $table->foreign($column, $foreignName)
@@ -109,21 +114,33 @@ return new class extends Migration
         });
     }
 
-    private function normalizeForeignIntegerColumn(string $tableName, string $column, string $referenceTable): void
-    {
-        if (!$this->isMysql() || !Schema::hasTable($tableName) || !Schema::hasColumn($tableName, $column) || !Schema::hasTable($referenceTable)) {
+    private function normalizeForeignIntegerColumn(
+        string $tableName,
+        string $column,
+        string $referenceTable,
+        bool $mustBeNullable = false
+    ): void {
+        if (
+            !$this->isMysql()
+            || !Schema::hasTable($tableName)
+            || !Schema::hasColumn($tableName, $column)
+            || !Schema::hasTable($referenceTable)
+        ) {
             return;
         }
 
         $databaseName = DB::getDatabaseName();
 
         $localColumn = DB::selectOne(
-            'SELECT COLUMN_TYPE, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            'SELECT COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_COMMENT '
+            . 'FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
             [$databaseName, $tableName, $column]
         );
 
         $referencedColumn = DB::selectOne(
-            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            'SELECT COLUMN_TYPE FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
             [$databaseName, $referenceTable, 'id']
         );
 
@@ -134,10 +151,6 @@ return new class extends Migration
         $localType = strtolower((string) ($localColumn->COLUMN_TYPE ?? $localColumn->column_type ?? ''));
         $referencedType = strtolower((string) ($referencedColumn->COLUMN_TYPE ?? $referencedColumn->column_type ?? ''));
 
-        if ($referencedType === '' || $localType === $referencedType) {
-            return;
-        }
-
         $allowedReferenceTypes = [
             'tinyint unsigned',
             'smallint unsigned',
@@ -146,20 +159,47 @@ return new class extends Migration
             'bigint unsigned',
         ];
 
-        if (!in_array($referencedType, $allowedReferenceTypes, true)) {
+        if ($referencedType === '' || !in_array($referencedType, $allowedReferenceTypes, true)) {
             return;
         }
 
-        $nullable = strtoupper((string) ($localColumn->IS_NULLABLE ?? $localColumn->is_nullable ?? 'NO')) === 'YES'
-            ? 'NULL'
-            : 'NOT NULL';
+        $currentlyNullable = strtoupper((string) ($localColumn->IS_NULLABLE ?? $localColumn->is_nullable ?? 'NO')) === 'YES';
+        $targetNullable = $mustBeNullable ? true : $currentlyNullable;
+
+        // Nada a alterar: tipo já compatível e nullability já atende a FK.
+        if ($localType === $referencedType && $currentlyNullable === $targetNullable) {
+            return;
+        }
+
+        $definition = strtoupper($referencedType) . ($targetNullable ? ' NULL' : ' NOT NULL');
+
+        $default = $localColumn->COLUMN_DEFAULT ?? $localColumn->column_default ?? null;
+        if ($default !== null) {
+            $defaultValue = (string) $default;
+            if (is_numeric($defaultValue)) {
+                $definition .= ' DEFAULT ' . $defaultValue;
+            } else {
+                $definition .= ' DEFAULT ' . DB::connection()->getPdo()->quote($defaultValue);
+            }
+        } elseif ($targetNullable) {
+            $definition .= ' DEFAULT NULL';
+        }
+
+        $extra = strtolower((string) ($localColumn->EXTRA ?? $localColumn->extra ?? ''));
+        if (str_contains($extra, 'auto_increment')) {
+            $definition .= ' AUTO_INCREMENT';
+        }
+
+        $comment = (string) ($localColumn->COLUMN_COMMENT ?? $localColumn->column_comment ?? '');
+        if ($comment !== '') {
+            $definition .= ' COMMENT ' . DB::connection()->getPdo()->quote($comment);
+        }
 
         DB::statement(sprintf(
-            'ALTER TABLE %s MODIFY %s %s %s',
+            'ALTER TABLE %s MODIFY COLUMN %s %s',
             $this->quoteIdentifier($tableName),
             $this->quoteIdentifier($column),
-            strtoupper($referencedType),
-            $nullable
+            $definition
         ));
     }
 
