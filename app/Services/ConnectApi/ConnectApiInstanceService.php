@@ -38,6 +38,14 @@ class ConnectApiInstanceService
         string $number = ''
     ): ConnectApiInstance
     {
+        $number = preg_replace('/\\D+/', '', $number);
+
+        if (strlen($number) < 8 || strlen($number) > 15) {
+            throw new \InvalidArgumentException(
+                'Informe um número de WhatsApp válido com DDI, DDD e número.'
+            );
+        }
+
         $instance = ConnectApiInstance::query()
             ->where('empresa_id', $empresa->id)
             ->whereNull('deleted_at')
@@ -57,14 +65,6 @@ class ConnectApiInstanceService
         $instance->created_by = $instance->created_by ?: $usuarioId;
         $instance->updated_by = $usuarioId;
         $instance->save();
-
-        $number = preg_replace('/\\D+/', '', $number);
-
-        if (strlen($number) < 8 || strlen($number) > 15) {
-            throw new \InvalidArgumentException(
-                'Informe um número de WhatsApp válido com DDI, DDD e número.'
-            );
-        }
 
         $response = $this->client->createInstance(
             $instance->instance_name,
