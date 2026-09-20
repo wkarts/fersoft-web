@@ -99,18 +99,16 @@ jobs:
           echo "VITE_REVERB_PORT=${{ secrets.VITE_REVERB_PORT }}" >> $GITHUB_ENV
           echo "VITE_REVERB_SCHEME=${{ secrets.VITE_REVERB_SCHEME }}" >> $GITHUB_ENV
 
-          echo "EVO_DDI=${{ secrets.EVO_DDI }}" >> $GITHUB_ENV
-          echo "EVO_DDD=${{ secrets.EVO_DDD }}" >> $GITHUB_ENV
-          echo "EVO_BASE_URL=${{ secrets.EVO_BASE_URL }}" >> $GITHUB_ENV
-          echo "EVO_GLOBAL_API=${{ secrets.EVO_GLOBAL_API }}" >> $GITHUB_ENV
-          echo "EVO_API_VERSION=${{ secrets.EVO_API_VERSION }}" >> $GITHUB_ENV
-          echo "EVO_QR_LOGO_BASE64=${{ secrets.EVO_QR_LOGO_BASE64 }}" >> $GITHUB_ENV
-          echo "EVO_QR_LOGO_SIZE=${{ secrets.EVO_QR_LOGO_SIZE }}" >> $GITHUB_ENV
-          echo "EVO_TOKEN_PREFIX=${{ secrets.EVO_TOKEN_PREFIX }}" >> $GITHUB_ENV
-          echo "EVO_TOKEN_ALPHABET=${{ secrets.EVO_TOKEN_ALPHABET }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_HINTBUTTON=${{ secrets.EVO_WHATSAPP_MODAL_HINTBUTTON }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_TITLE=${{ secrets.EVO_WHATSAPP_MODAL_TITLE }}" >> $GITHUB_ENV
-          echo "EVO_WHATSAPP_MODAL_HINTFOOTER=${{ secrets.EVO_WHATSAPP_MODAL_HINTFOOTER }}" >> $GITHUB_ENV
+          echo "CONNECT_API_BASE_URL=${{ secrets.CONNECT_API_BASE_URL }}" >> $GITHUB_ENV
+          echo "CONNECT_API_BOOTSTRAP_KEY=${{ secrets.CONNECT_API_BOOTSTRAP_KEY }}" >> $GITHUB_ENV
+          echo "CONNECT_API_DDI=${{ secrets.CONNECT_API_DDI }}" >> $GITHUB_ENV
+          echo "CONNECT_API_DDD=${{ secrets.CONNECT_API_DDD }}" >> $GITHUB_ENV
+          echo "CONNECT_API_INSTANCE_PREFIX=${{ secrets.CONNECT_API_INSTANCE_PREFIX }}" >> $GITHUB_ENV
+          echo "CONNECT_API_WEBHOOK_SECRET=${{ secrets.CONNECT_API_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          echo "CONNECT_API_WEBHOOK_URL=${{ secrets.CONNECT_API_WEBHOOK_URL }}" >> $GITHUB_ENV
+          echo "CONNECT_API_WHATSAPP_MODAL_HINTBUTTON=${{ secrets.CONNECT_API_WHATSAPP_MODAL_HINTBUTTON }}" >> $GITHUB_ENV
+          echo "CONNECT_API_WHATSAPP_MODAL_TITLE=${{ secrets.CONNECT_API_WHATSAPP_MODAL_TITLE }}" >> $GITHUB_ENV
+          echo "CONNECT_API_WHATSAPP_MODAL_HINTFOOTER=${{ secrets.CONNECT_API_WHATSAPP_MODAL_HINTFOOTER }}" >> $GITHUB_ENV
 
       # Gera .env COMPLETO e aplica overrides seguros para o banco configurado no CI
       - name: Bootstrap .env (integral) for CI
