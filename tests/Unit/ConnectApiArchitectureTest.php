@@ -63,6 +63,19 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('ConnectApiWebhookController', $api);
     }
 
+    public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $source = file_get_contents($root . '/app/Helpers/User.php');
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString('class="whatsapp-brand-icon"', $source);
+        $this->assertStringContainsString('fill:currentColor', $source);
+        $this->assertStringContainsString('background:transparent', $source);
+        $this->assertStringContainsString('color:#fff', $source);
+        $this->assertStringNotContainsString('<i class="fa fa-whatsapp"></i>', $source);
+    }
+
     public function testRetiredRuntimeFilesWereRemoved(): void
     {
         $root = dirname(__DIR__, 2);
