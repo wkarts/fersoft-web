@@ -51,16 +51,11 @@ class AppServiceProvider extends ServiceProvider
         }
 
         /**
-         * Register WhatsAppUtil services.
+         * Fachada WhatsApp do ERP: transporte único pela Connect|API.
          */
-        //$this->app->singleton(WhatsAppUtil::class, function ($app) {
-        //    return new WhatsAppUtil();
-        //});
-
-        $this->app->singleton(\App\Utils\WhatsAppUtil::class, function($app) {
-            // o $app->make injeta o EvoApiService corretamente
+        $this->app->singleton(\App\Utils\WhatsAppUtil::class, function ($app) {
             return new \App\Utils\WhatsAppUtil(
-                $app->make(\App\Services\EvoApiService::class)
+                $app->make(\App\Services\ConnectApi\ConnectApiMessageService::class)
             );
         });
     }
