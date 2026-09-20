@@ -901,27 +901,27 @@ HTML;
     }
 }
 
-if (! function_exists('__view_evo_whatsapp_modal_button')) {
+if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
     /**
-     * Gera botão + modais de envio de WhatsApp (texto + arquivos)
+     * Gera botão + modais de envio de WhatsApp via Connect|API (texto + arquivos)
      * sem precisar passar instância por parâmetro,
      * garantindo ordem de z-index correta.
      *
      * @return string
      */
-    function __view_evo_whatsapp_modal_button(): string
+    function __view_connect_api_whatsapp_modal_button(): string
     {
         $csrf = csrf_token();
         // título do modal vindo do .env (padrão: "Enviar WhatsApp")
-        $modalHintButton = env('EVO_WHATSAPP_MODAL_HINTBUTTON', 'Enviar WhatsApp');
-        $modalTitle = env('EVO_WHATSAPP_MODAL_TITLE', 'Enviar WhatsApp');
+        $modalHintButton = env('CONNECT_API_WHATSAPP_MODAL_HINTBUTTON', 'Enviar WhatsApp');
+        $modalTitle = env('CONNECT_API_WHATSAPP_MODAL_TITLE', 'Enviar WhatsApp');
         // texto do botão de envio vindo do .env (padrão: "Enviar")
-        $sendText   = env('EVO_WHATSAPP_SEND_BUTTON_TEXT', 'Enviar');
+        $sendText   = env('CONNECT_API_WHATSAPP_SEND_BUTTON_TEXT', 'Enviar');
 
         // caminho absoluto para evitar que rotas aninhadas tentem resolver /vendas/js/axios.min.js
         $axiosUrl = asset('js/axios.min.js');
 
-        $modalHintFooter= env('EVO_WHATSAPP_MODAL_HINTFOOTER', 'Este recurso permite o envio imediato de mensagens de texto e arquivos via WhatsApp diretamente da plataforma. Caso não esteja disponível (funcional), entre em contato com o suporte para habilitá-lo.');
+        $modalHintFooter= env('CONNECT_API_WHATSAPP_MODAL_HINTFOOTER', 'Este recurso permite o envio imediato de mensagens de texto e arquivos via WhatsApp diretamente da plataforma. Caso não esteja disponível (funcional), entre em contato com o suporte para habilitá-lo.');
 
         return <<<HTML
 <style>
@@ -1074,7 +1074,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
   function doSendGlobal(number, text, caption, files) {
     const btn = $('#wh_send_btn_global').prop('disabled', true).text('Enviando…');
-    axios.post('/evo-instances/send-whatsapp-button', {
+    axios.post('/connect-api/send-whatsapp-button', {
       number, mode:'mixed', text, caption, files
     }, {
       headers:{ 'X-CSRF-TOKEN':'{$csrf}' }
