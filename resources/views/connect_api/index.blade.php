@@ -93,7 +93,7 @@
                             {{ optional($inst->last_event_at)->format('d/m/Y H:i:s') ?: '—' }}
                         </td>
                         <td class="connect-actions">
-                            @if(!$inst->remote_instance_id)
+                            @if(!$inst->provisioned_at)
                                 @if($isSuper)
                                     <button class="btn btn-sm btn-primary js-provision-existing" data-empresa="{{ $inst->empresa_id }}">Provisionar</button>
                                 @endif
