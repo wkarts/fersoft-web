@@ -25,11 +25,35 @@ class ConnectApiAutomationDispatcher
     private function dispatchPointCompatibility(ConnectApiWebhookEvent $event): void
     {
         try {
-            $payload = $event->payload ?? [];
+            $normalized = (array) ($event->normalized_payload ?? []);
+            $remoteJid = (string) ($normalized['remote_jid'] ?? '');
+            $message = [];
+
+            if (($normalized['text'] ?? '') !== '') {
+                $message['conversation'] = (string) $normalized['text'];
+            }
+
+            if (($normalized['latitude'] ?? null) !== null && ($normalized['longitude'] ?? null) !== null) {
+                $message['locationMessage'] = [
+                    'degreesLatitude' => $normalized['latitude'],
+                    'degreesLongitude' => $normalized['longitude'],
+                ];
+            }
+
             $request = Request::create(
                 '/api/webhooks/connect-api/point-compatibility',
                 'POST',
-                $payload
+                [
+                    'data' => [
+                        'key' => [
+                            'id' => $normalized['message_id'] ?? null,
+                            'remoteJid' => $remoteJid,
+                        ],
+                        'pushName' => $normalized['push_name'] ?? null,
+                        'message' => $message,
+                        'messageTimestamp' => $normalized['timestamp'] ?? now()->timestamp,
+                    ],
+                ]
             );
 
             app(PontoWhatsAppController::class)->receberMensagem($request);
