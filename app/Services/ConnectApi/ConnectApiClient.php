@@ -59,7 +59,6 @@ class ConnectApiClient
         return $this->result($this->request()->post('/instance/create', [
             'instanceName' => $instanceName,
             'token' => $token,
-            'integration' => 'WHATSAPP-BAILEYS',
             'qrcode' => true,
             'groupsIgnore' => true,
             'alwaysOnline' => false,
@@ -136,7 +135,7 @@ class ConnectApiClient
             $this->request($instance->instance_token)
                 ->post('/message/sendText/' . rawurlencode($instance->instance_name), [
                     'number' => $number,
-                    'textMessage' => ['text' => $message],
+                    'text' => $message,
                 ])
         );
     }
@@ -190,7 +189,7 @@ class ConnectApiClient
         ];
 
         if ($version !== null) {
-            $payload['connect_api_version'] = $version;
+            $payload['version'] = $version;
         }
 
         return $this->result(
