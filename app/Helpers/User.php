@@ -939,8 +939,24 @@ if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
 </style>
 
 <!-- Botão que dispara o modal -->
-<button id="btn-whatsapp-global" class="btn btn-primary btn-sm btn-custom" title="{$modalHintButton}" style="width:28px; height:28px; padding:4px;">
-  <i class="fa fa-whatsapp"></i>
+<button
+  id="btn-whatsapp-global"
+  class="btn btn-primary btn-sm btn-custom"
+  title="{$modalHintButton}"
+  aria-label="{$modalHintButton}"
+  style="width:28px; height:28px; padding:4px; display:inline-flex; align-items:center; justify-content:center; color:#fff;"
+>
+  <svg
+    class="whatsapp-brand-icon"
+    viewBox="0 0 16 16"
+    width="17"
+    height="17"
+    aria-hidden="true"
+    focusable="false"
+    style="display:block; width:17px; height:17px; fill:currentColor; background:transparent; pointer-events:none;"
+  >
+    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994.001C3.627.001.068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.25a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.591-6.592 6.591zm3.627-4.934c-.198-.099-1.174-.58-1.355-.646-.182-.066-.314-.099-.445.099-.132.198-.513.646-.629.779-.115.132-.23.148-.428.05-.198-.1-.836-.308-1.592-.984-.588-.525-.985-1.173-1.1-1.371-.116-.198-.013-.305.086-.404.089-.088.198-.23.297-.345.099-.116.132-.198.198-.33.066-.132.033-.248-.017-.347-.05-.099-.445-1.074-.61-1.47-.16-.389-.323-.336-.445-.342-.115-.007-.247-.007-.379-.007s-.347.05-.528.248c-.182.198-.693.677-.693 1.654s.71 1.92.81 2.053c.098.132 1.398 2.137 3.393 2.997.474.205.845.328 1.133.42.476.151.91.13 1.253.079.383-.057 1.174-.48 1.34-.943.165-.462.165-.858.116-.943-.05-.084-.182-.132-.38-.23z"/>
+  </svg>
 </button>
 
 <!-- Modal de Confirmação -->
