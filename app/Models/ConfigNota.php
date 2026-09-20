@@ -72,7 +72,6 @@ class ConfigNota extends BaseModel
         'multa_padrao',
         'juro_padrao',
         'tipo_impressao_danfe',
-        'token_whatsapp',
         'cBenef_padrao',
         'gerenciar_comissao_usuario_logado',
         'modelo_pdv',
@@ -81,7 +80,6 @@ class ConfigNota extends BaseModel
         'ultimo_numero_nfse',
         'numero_serie_nfse',
         'token_sync',
-        'whatsapp_technology',
         'bloquear_pesagem_manual_balanca',
         'usar_valores_ticket_pesagem',
         'usa_produto_referenciado_pesagem',
@@ -407,13 +405,6 @@ class ConfigNota extends BaseModel
             'produtos' => 'Prdutos',
             'nfe' => 'NFe emitidas',
             'nfce' => 'NFCe emitidas',
-        ];
-    }
-
-    public static function getWhatsappTechOptions(): array
-    {
-        return [
-            'connect_api' => 'Connect|API',
         ];
     }
 
