@@ -37,7 +37,7 @@ class ConnectApiInstanceService
             ->whereNull('deleted_at')
             ->first();
 
-        if ($instance && $instance->remote_instance_id) {
+        if ($instance && $instance->provisioned_at && $instance->instance_token) {
             return $instance;
         }
 
@@ -95,6 +95,7 @@ class ConnectApiInstanceService
     {
         $instance->remote_instance_id = null;
         $instance->instance_token = null;
+        $instance->provisioned_at = null;
         $instance->connection_status = 'awaiting_provisioning';
         $instance->connected_number = null;
         $instance->connected_name = null;
