@@ -12,8 +12,13 @@ return new class extends Migration
             return;
         }
 
-        DB::table('evo_api_instances')
-            ->whereNull('deleted_at')
+        $legacy = DB::table('evo_api_instances');
+
+        if (Schema::hasColumn('evo_api_instances', 'deleted_at')) {
+            $legacy->whereNull('deleted_at');
+        }
+
+        $legacy
             ->orderBy('id')
             ->chunkById(200, function ($rows) {
                 foreach ($rows as $row) {
