@@ -4,6 +4,7 @@ namespace App\Services\ConnectApi;
 
 use App\Models\ConnectApiInstance;
 use App\Models\Empresa;
+use App\Models\ConnectApiTemplateBinding;
 use Illuminate\Support\Str;
 
 class ConnectApiInstanceService
@@ -85,6 +86,8 @@ class ConnectApiInstanceService
             $this->client->configureWebhook($instance, $webhookUrl);
         }
 
+        $this->syncDefaultTemplates($instance);
+
         return $instance->fresh();
     }
 
@@ -134,6 +137,33 @@ class ConnectApiInstanceService
         return $response;
     }
 
+    public function syncDefaultTemplates(ConnectApiInstance $instance): void
+    {
+        foreach ((array) config('connect_api.default_templates', []) as $name => $definition) {
+            $response = $this->client->createLocalTemplate(
+                $instance,
+                (string) $name,
+                (string) ($definition['language'] ?? 'pt_BR'),
+                (string) ($definition['body'] ?? '')
+            );
+
+            // Conflito/registro existente é aceitável: o binding continua válido.
+            if (($response['success'] ?? false) || in_array((int) ($response['status'] ?? 0), [400, 409, 422], true)) {
+                ConnectApiTemplateBinding::firstOrCreate(
+                    [
+                        'empresa_id' => $instance->empresa_id,
+                        'event_key' => (string) ($definition['event_key'] ?? $name),
+                    ],
+                    [
+                        'template_name' => (string) $name,
+                        'language' => (string) ($definition['language'] ?? 'pt_BR'),
+                        'enabled' => true,
+                    ]
+                );
+            }
+        }
+    }
+
     private function webhookUrl(): string
     {
         $configured = trim((string) config('connect_api.webhook_url'));
@@ -143,6 +173,15 @@ class ConnectApiInstanceService
 
         $base = rtrim((string) config('app.url'), '/');
 
-        return $base === '' ? '' : $base . '/api/webhooks/connect-api';
+        if ($base === '') {
+            return '';
+        }
+
+        $url = $base . '/api/webhooks/connect-api';
+        $secret = (string) config('connect_api.webhook_secret');
+
+        return $secret === ''
+            ? $url
+            : $url . '?secret=' . rawurlencode($secret);
     }
 }
