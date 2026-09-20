@@ -1191,9 +1191,6 @@
                                                             <small class="d-block text-muted mt-2">Não é necessário informar token manualmente.</small>
                                                         </div>
                                                     </div>
-                                                            @endif
-                                                        </div>
-                                                    </div>
 
                                                     <div class="form-group validated col-lg-4 col-md-4 col-sm-10">
                                                         <label class="col-form-label">Cód. de tributação do município (opcional)</label>
