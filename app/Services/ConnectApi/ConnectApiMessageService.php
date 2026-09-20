@@ -2,6 +2,7 @@
 
 namespace App\Services\ConnectApi;
 
+use App\Models\ConnectApiInstance;
 use App\Models\ConnectApiTemplateBinding;
 use Illuminate\Support\Str;
 
@@ -96,7 +97,7 @@ class ConnectApiMessageService
         return $digits;
     }
 
-    private function readyInstance(int $empresaId)
+    private function readyInstance(int $empresaId): ConnectApiInstance
     {
         $instance = $this->resolver->forEmpresa($empresaId);
 
