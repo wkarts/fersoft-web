@@ -91,6 +91,7 @@ class ConnectApiWebhookController extends Controller
             $request->header('X-Connect-Webhook-Secret')
             ?: $request->header('X-Webhook-Secret')
             ?: $request->bearerToken()
+            ?: $request->query('secret')
         );
 
         return $provided !== '' && hash_equals($expected, $provided);
