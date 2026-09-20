@@ -600,12 +600,12 @@
                                         </li>
 
                                         <li class="menu-item  menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
-                                            <a href="/evo-instances" class="menu-link menu-">
+                                            <a href="/connect-api" class="menu-link menu-">
                                                 <i class="menu-bullet menu-bullet-line">
 													<span>
 													</span>
                                                 </i>
-                                                <span class="menu-text">Instâncias EVO</span>
+                                                <span class="menu-text">Instâncias Connect|API</span>
                                             </a>
                                         </li>
 
@@ -914,7 +914,7 @@
                                             </a>
                                         </li>
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
-                                            {!! __view_evo_whatsapp_modal_button() !!}
+                                            {!! __view_connect_api_whatsapp_modal_button() !!}
                                         </li>
                                     @endif
 

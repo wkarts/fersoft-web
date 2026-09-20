@@ -23,6 +23,7 @@ class ConnectApiArchitectureTest extends TestCase
             'app/Http/Controllers/ConfigNotaController.php',
             'resources/views/configNota/index.blade.php',
             'resources/views/default/menu_superior.blade.php',
+            'resources/views/default/menu_lateral.blade.php',
         ];
 
         $forbidden = [
