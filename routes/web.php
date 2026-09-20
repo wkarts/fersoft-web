@@ -35,21 +35,8 @@ Route::group(['prefix' => 'checklist/veiculo'], function(){
     Route::post('/{id}/salvar', 'ChecklistMovimentacaoController@store');
 });
 
-// ==========================================
-// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
-// ==========================================
-/*Route::post('/whatsapp/ponto/webhook', 'PontoWhatsAppController@receberMensagem');*/
-
-// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
-// Autenticação da origem deve ser validada pelo controller; exclusão de CSRF restrita à rota abaixo.
-Route::group(['prefix' => 'whatsapp/ponto/webhook'], function(){
-    Route::match(['get', 'post'], '/messages-upsert', 'App\Http\Controllers\PontoWhatsAppController@receberMensagem')
-        ->withoutMiddleware([
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class
-        ]);
-});
-
+// Webhooks de comunicação entram exclusivamente por /api/webhooks/connect-api.
+// O sistema de Ponto é acionado pelo dispatcher de automações após persistência/idempotência.
 
 Route::group(['prefix' => '/ajax'], function(){
     Route::get('/', 'AjaxController@index');
