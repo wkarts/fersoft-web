@@ -3154,6 +3154,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/instances/{id}/block', 'ConnectApiInstanceController@block')->name('connect-api.block');
         Route::post('/instances/{id}/unblock', 'ConnectApiInstanceController@unblock')->name('connect-api.unblock');
         Route::post('/instances/{id}/test', 'ConnectApiInstanceController@testMessage')->name('connect-api.test');
+        Route::post('/send-whatsapp-button', 'ConnectApiInstanceController@sendWhatsAppButton')->name('connect-api.send-whatsapp-button');
     });
 
     Route::group(['prefix' => 'produto_prateleiras'], function () {
