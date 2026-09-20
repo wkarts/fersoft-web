@@ -104,6 +104,9 @@
                                 <button class="btn btn-sm btn-light-warning js-test">Testar</button>
                                 <button class="btn btn-sm btn-light-secondary js-restart">Reiniciar</button>
                                 @if($isSuper)
+                                    @if(in_array($inst->connection_status, ['not_found','error']))
+                                        <button class="btn btn-sm btn-outline-primary js-reprovision">Reprovisionar</button>
+                                    @endif
                                     <button class="btn btn-sm btn-light-danger js-block">{{ $inst->is_blocked ? 'Desbloquear' : 'Bloquear' }}</button>
                                 @endif
                             @endif
@@ -233,6 +236,12 @@
 
     document.querySelectorAll('.js-restart').forEach(btn => btn.onclick = async () => {
         try { await request('/connect-api/instances/' + rowId(btn) + '/restart', {method:'POST'}); show('Connect|API', 'Reinicialização solicitada.'); }
+        catch(e){ show('Erro', e.message); }
+    });
+
+    document.querySelectorAll('.js-reprovision').forEach(btn => btn.onclick = async () => {
+        if (!confirm('A instância remota será recriada e exigirá novo pareamento. Continuar?')) return;
+        try { await request('/connect-api/instances/' + rowId(btn) + '/reprovision', {method:'POST'}); location.reload(); }
         catch(e){ show('Erro', e.message); }
     });
 
