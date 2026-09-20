@@ -413,8 +413,7 @@ class ConfigNota extends BaseModel
     public static function getWhatsappTechOptions(): array
     {
         return [
-            'legacy' => 'Legacy (cURL)',
-            'evo'    => 'EvoAPI Service',
+            'connect_api' => 'Connect|API',
         ];
     }
 
