@@ -199,6 +199,28 @@ class ConnectApiClient
         );
     }
 
+    public function createLocalTemplate(
+        ConnectApiInstance $instance,
+        string $name,
+        string $language,
+        string $body
+    ): array {
+        return $this->result(
+            $this->request($instance->instance_token)
+                ->post('/localTemplate/create/' . rawurlencode($instance->instance_name), [
+                    'name' => $name,
+                    'language' => $language,
+                    'enabled' => true,
+                    'components' => [
+                        [
+                            'type' => 'BODY',
+                            'text' => $body,
+                        ],
+                    ],
+                ])
+        );
+    }
+
     public function listLocalTemplates(ConnectApiInstance $instance): array
     {
         return $this->result(
