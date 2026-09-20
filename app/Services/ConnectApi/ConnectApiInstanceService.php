@@ -171,7 +171,7 @@ class ConnectApiInstanceService
             );
 
             // Conflito/registro existente é aceitável: o binding continua válido.
-            if (($response['success'] ?? false) || in_array((int) ($response['status'] ?? 0), [400, 409, 422], true)) {
+            if (($response['success'] ?? false) || (int) ($response['status'] ?? 0) === 409) {
                 ConnectApiTemplateBinding::firstOrCreate(
                     [
                         'empresa_id' => $instance->empresa_id,
