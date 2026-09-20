@@ -91,6 +91,29 @@ class ConnectApiInstanceService
         return $instance->fresh();
     }
 
+    public function reprovision(ConnectApiInstance $instance, ?int $usuarioId = null): ConnectApiInstance
+    {
+        $instance->remote_instance_id = null;
+        $instance->instance_token = null;
+        $instance->connection_status = 'awaiting_provisioning';
+        $instance->connected_number = null;
+        $instance->connected_name = null;
+        $instance->paired_at = null;
+        $instance->connected_at = null;
+        $instance->disconnected_at = null;
+        $instance->last_error_code = null;
+        $instance->last_error_message = null;
+        $instance->last_error_at = null;
+        $instance->updated_by = $usuarioId;
+        $instance->save();
+
+        return $this->provision(
+            $instance->empresa,
+            $usuarioId,
+            $instance->filial_id
+        );
+    }
+
     public function refreshStatus(ConnectApiInstance $instance): ConnectApiInstance
     {
         $response = $this->client->connectionState($instance);
