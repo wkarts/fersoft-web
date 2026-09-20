@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 
 class ConnectApiInstanceController extends BaseController
 {
+    protected $redirectPage = '/connect-api';
+
     public function index()
     {
         $user = session('user_logged', []);
@@ -254,6 +256,16 @@ class ConnectApiInstanceController extends BaseController
         }
 
         return response()->json(['success' => true, 'responses' => $responses]);
+    }
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
     }
 
     private function owned(int $id, bool $superOnly = false): ConnectApiInstance
