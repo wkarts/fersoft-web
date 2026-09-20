@@ -38,6 +38,39 @@ class ConnectApiWebhookController extends Controller
             return response()->json(['status' => 'ignored', 'reason' => 'foreign_instance'], 202);
         }
 
+        if (($normalized['event'] ?? '') === 'connection-update') {
+            $state = (string) (
+                data_get($payload, 'data.state')
+                ?? data_get($payload, 'data.instance.state')
+                ?? data_get($payload, 'state')
+                ?? 'unknown'
+            );
+
+            $connected = (string) (
+                data_get($payload, 'data.wuid')
+                ?? data_get($payload, 'data.ownerJid')
+                ?? data_get($payload, 'data.instance.owner')
+                ?? ''
+            );
+
+            $instance->connection_status = $state;
+            $instance->last_status_at = now();
+
+            if ($connected !== '') {
+                $instance->connected_number = preg_replace('/\\D+/', '', explode('@', $connected)[0] ?? '');
+            }
+
+            if ($state === 'open') {
+                $instance->connected_at = $instance->connected_at ?: now();
+                $instance->paired_at = $instance->paired_at ?: now();
+                $instance->disconnected_at = null;
+            } elseif ($state === 'close') {
+                $instance->disconnected_at = now();
+            }
+
+            $instance->save();
+        }
+
         $deduplicationKey = hash('sha256', implode('|', [
             $instance->id,
             $normalized['event'] ?? '',
