@@ -90,7 +90,15 @@
                             @endif
                         </td>
                         <td class="connect-muted">
-                            {{ optional($inst->last_event_at)->format('d/m/Y H:i:s') ?: '—' }}
+                            <div>{{ optional($inst->last_event_at)->format('d/m/Y H:i:s') ?: '—' }}</div>
+                            @if($inst->webhook_configured_at)
+                                <div class="mt-1"><span class="badge badge-success">Webhook configurado</span></div>
+                            @else
+                                <div class="mt-1"><span class="badge badge-warning">Webhook pendente</span></div>
+                            @endif
+                            @if($inst->webhook_last_received_at)
+                                <div class="mt-1">Último webhook: {{ optional($inst->webhook_last_received_at)->format('d/m/Y H:i:s') }}</div>
+                            @endif
                         </td>
                         <td class="connect-actions">
                             @if(!$inst->provisioned_at)
@@ -104,6 +112,7 @@
                                 <button class="btn btn-sm btn-light-warning js-test">Testar</button>
                                 <button class="btn btn-sm btn-light-secondary js-restart">Reiniciar</button>
                                 @if($isSuper)
+                                    <button class="btn btn-sm btn-outline-secondary js-sync-webhook">Sincronizar webhook</button>
                                     @if(in_array($inst->connection_status, ['not_found','error']))
                                         <button class="btn btn-sm btn-outline-primary js-reprovision">Reprovisionar</button>
                                     @endif
@@ -237,6 +246,16 @@
     document.querySelectorAll('.js-restart').forEach(btn => btn.onclick = async () => {
         try { await request('/connect-api/instances/' + rowId(btn) + '/restart', {method:'POST'}); show('Connect|API', 'Reinicialização solicitada.'); }
         catch(e){ show('Erro', e.message); }
+    });
+
+    document.querySelectorAll('.js-sync-webhook').forEach(btn => btn.onclick = async () => {
+        try {
+            const data = await request('/connect-api/instances/' + rowId(btn) + '/sync-webhook', {method:'POST'});
+            show('Connect|API', data.message || 'Webhook sincronizado.');
+            setTimeout(() => location.reload(), 800);
+        } catch(e) {
+            show('Erro', e.message);
+        }
     });
 
     document.querySelectorAll('.js-reprovision').forEach(btn => btn.onclick = async () => {
