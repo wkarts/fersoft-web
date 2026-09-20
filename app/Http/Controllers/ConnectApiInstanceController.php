@@ -54,30 +54,68 @@ class ConnectApiInstanceController extends BaseController
     }
 
     public function provision(
+        Request $request,
         int $empresa,
-        ConnectApiInstanceService $service
+        ConnectApiInstanceService $service,
+        ConnectApiMessageService $messages
     ) {
         $this->requireSuper();
 
-        $model = Empresa::findOrFail($empresa);
-        $instance = $service->provision($model, $this->usuario_id, $this->filial_id);
+        $number = $this->provisionNumber($request, $messages);
+        if ($number instanceof \Illuminate\Http\JsonResponse) {
+            return $number;
+        }
 
-        return response()->json([
-            'success' => true,
-            'instance' => $this->present($instance),
-        ]);
+        try {
+            $model = Empresa::findOrFail($empresa);
+            $instance = $service->provision(
+                $model,
+                $this->usuario_id,
+                $this->filial_id,
+                $number
+            );
+
+            return response()->json([
+                'success' => true,
+                'instance' => $this->present($instance),
+                'message' => 'Instância provisionada. Continue o pareamento pelo código ou QR Code.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
-    public function reprovision(int $id, ConnectApiInstanceService $service)
-    {
+    public function reprovision(
+        int $id,
+        Request $request,
+        ConnectApiInstanceService $service,
+        ConnectApiMessageService $messages
+    ) {
         $this->requireSuper();
-        $instance = $this->owned($id, true);
-        $instance = $service->reprovision($instance, $this->usuario_id);
 
-        return response()->json([
-            'success' => true,
-            'instance' => $this->present($instance),
-        ]);
+        $number = $this->provisionNumber($request, $messages);
+        if ($number instanceof \Illuminate\Http\JsonResponse) {
+            return $number;
+        }
+
+        try {
+            $instance = $this->owned($id, true);
+            $instance = $service->reprovision($instance, $this->usuario_id, $number);
+
+            return response()->json([
+                'success' => true,
+                'instance' => $this->present($instance),
+                'message' => 'Instância reprovisionada. Será necessário concluir o novo pareamento.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
     public function syncWebhook(int $id, ConnectApiInstanceService $service)
@@ -267,6 +305,29 @@ class ConnectApiInstanceController extends BaseController
     protected function messages(): array
     {
         return [];
+    }
+
+    private function provisionNumber(Request $request, ConnectApiMessageService $messages)
+    {
+        $raw = trim((string) $request->input('number', ''));
+
+        if ($raw === '') {
+            return response()->json([
+                'success' => false,
+                'error' => 'Informe o número do WhatsApp para provisionar a instância.',
+            ], 422);
+        }
+
+        $number = $messages->normalizeNumber($raw);
+
+        if (strlen($number) < 8 || strlen($number) > 15) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Número inválido. Informe DDI, DDD e número do WhatsApp.',
+            ], 422);
+        }
+
+        return $number;
     }
 
     private function owned(int $id, bool $superOnly = false): ConnectApiInstance

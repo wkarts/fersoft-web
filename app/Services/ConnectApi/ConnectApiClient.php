@@ -47,18 +47,20 @@ class ConnectApiClient
         return [
             'success' => false,
             'status' => $response->status(),
-            'error' => data_get($json, 'message')
-                ?: data_get($json, 'error')
-                ?: $response->body(),
+            'error' => $this->errorMessage($response, is_array($json) ? $json : []),
             'data' => is_array($json) ? $json : [],
         ];
     }
 
-    public function createInstance(string $instanceName, string $token): array
+    public function createInstance(string $instanceName, string $token, string $number): array
     {
         return $this->result($this->request()->post('/instance/create', [
             'instanceName' => $instanceName,
+            // Provider técnico de bootstrap exigido pelo contrato atual da Connect|API.
+            // Não é uma escolha exposta ao usuário do ERP.
+            'integration' => 'WHATSAPP-BAILEYS',
             'token' => $token,
+            'number' => preg_replace('/\\D+/', '', $number),
             'qrcode' => true,
             'groupsIgnore' => true,
             'alwaysOnline' => false,
@@ -121,8 +123,8 @@ class ConnectApiClient
                     'webhook' => [
                         'enabled' => true,
                         'url' => $url,
-                        'webhookByEvents' => false,
-                        'webhookBase64' => false,
+                        'byEvents' => false,
+                        'base64' => false,
                         'events' => config('connect_api.webhook_events', []),
                     ],
                 ])
@@ -226,6 +228,33 @@ class ConnectApiClient
             $this->request($instance->instance_token)
                 ->get('/localTemplate/find/' . rawurlencode($instance->instance_name))
         );
+    }
+
+    private function errorMessage(Response $response, array $json): string
+    {
+        $candidates = [
+            data_get($json, 'message'),
+            data_get($json, 'response.message'),
+            data_get($json, 'error.message'),
+            data_get($json, 'error'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                $candidate = implode(' | ', array_map(
+                    fn ($item) => is_scalar($item) ? (string) $item : json_encode($item, JSON_UNESCAPED_UNICODE),
+                    $candidate
+                ));
+            }
+
+            if (is_scalar($candidate) && trim((string) $candidate) !== '') {
+                return trim((string) $candidate);
+            }
+        }
+
+        $body = trim($response->body());
+
+        return $body !== '' ? $body : 'Erro HTTP ' . $response->status() . ' na Connect|API.';
     }
 
     private function mediaType(string $mimeType): string
