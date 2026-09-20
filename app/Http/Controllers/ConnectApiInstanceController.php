@@ -126,9 +126,16 @@ class ConnectApiInstanceController extends BaseController
         return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
     }
 
-    public function restart(int $id, ConnectApiClient $client)
-    {
+    public function restart(
+        int $id,
+        ConnectApiClient $client,
+        ConnectApiInstanceService $service
+    ) {
         $instance = $this->owned($id);
+
+        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+            $instance = $service->syncWebhook($instance);
+        }
 
         return response()->json($client->restart($instance));
     }
@@ -182,7 +189,12 @@ class ConnectApiInstanceController extends BaseController
         );
     }
 
-    public function sendWhatsAppButton(Request $request, ConnectApiClient $client, ConnectApiMessageService $messages)
+    public function sendWhatsAppButton(
+        Request $request,
+        ConnectApiClient $client,
+        ConnectApiMessageService $messages,
+        ConnectApiInstanceService $service
+    )
     {
         $empresaId = (int) $this->empresa_id;
         if ($empresaId <= 0) {
@@ -199,6 +211,11 @@ class ConnectApiInstanceController extends BaseController
         }
 
         $instance = app(\App\Services\ConnectApi\ConnectApiIntegrationResolver::class)->forEmpresa($empresaId);
+
+        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+            $instance = $service->syncWebhook($instance);
+        }
+
         $normalized = $messages->normalizeNumber($number);
         $responses = [];
 
