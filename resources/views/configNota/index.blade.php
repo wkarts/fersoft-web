@@ -125,17 +125,12 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="form-group validated col-sm-4 col-lg-4">
-                                                        <label class="col-form-label">WhatsApp Technology</label>
-                                                        <select name="whatsapp_technology" class="custom-select form-control">
-                                                            @foreach(\App\Models\ConfigNota::getWhatsappTechOptions() as $key => $label)
-                                                                <option value="{{ $key }}"
-                                                                        @if( (old('whatsapp_technology') ?? ($config->whatsapp_technology ?? '')) === $key )
-                                                                            selected
-                                                                    @endif
-                                                                >{{ $label }}</option>
-                                                            @endforeach
-                                                        </select>
+                                                    <div class="form-group col-sm-4 col-lg-4">
+                                                        <label class="col-form-label">Comunicação WhatsApp</label>
+                                                        <div class="form-control-plaintext">
+                                                            <strong>Connect|API</strong>
+                                                            <small class="d-block text-muted">Provisionamento, credenciais, QR Code e pareamento são gerenciados automaticamente.</small>
+                                                        </div>
                                                     </div>
 
                                                 </div>
@@ -1189,15 +1184,13 @@
                                                         </div>
                                                     </div>
 
-                                                    <div class="form-group validated col-lg-6 col-md-4 col-sm-10">
-                                                        <label class="col-form-label">Token WhatsApp(opcional)</label>
-                                                        <button type="button" class="btn btn-light-info btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Integração com WhatsApp: Cadastre-se no menu Atendimento/Chat Suporte para começar a utilizar o serviço ou entre em contato conosco para efetuar a ativação."><i class="la la-info"></i></button>
-                                                        <div class="">
-                                                            <input id="token_whatsapp" type="text" class="form-control @if($errors->has('token_whatsapp')) is-invalid @endif" name="token_whatsapp" value="{{{ isset($config) ? $config->token_whatsapp : old('token_whatsapp') }}}">
-                                                            @if($errors->has('token_whatsapp'))
-                                                                <div class="invalid-feedback">
-                                                                    {{ $errors->first('token_whatsapp') }}
-                                                                </div>
+                                                    <div class="form-group col-sm-6 col-lg-6">
+                                                        <label class="col-form-label">Integração Connect|API</label>
+                                                        <div>
+                                                            <a href="/connect-api" class="btn btn-light-primary btn-sm">Gerenciar conexão WhatsApp</a>
+                                                            <small class="d-block text-muted mt-2">Não é necessário informar token manualmente.</small>
+                                                        </div>
+                                                    </div>
                                                             @endif
                                                         </div>
                                                     </div>
