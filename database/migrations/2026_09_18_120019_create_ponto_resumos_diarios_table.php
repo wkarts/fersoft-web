@@ -438,6 +438,7 @@ return new class extends Migration
         $expected = $this->expectedColumnForReferences($columnName, $expected);
         if (!Schema::hasTable($tableName)) { return; } // Apenas a criação desta própria tabela.
         $current = $this->columnInfo($tableName, $columnName);
+        $expected = $this->relaxRequiredColumnForExistingRows($tableName, $columnName, $current, $expected);
         if (!$allowRecordedChange && $this->recordedObjectIsComplete('column', $tableName . '.' . $columnName)) { return; }
         if (str_contains($expected['extra'], 'auto_increment') && ($current === null || stripos($current['extra'], 'auto_increment') === false)) {
             $primary = $this->indexDefinition($tableName, 'PRIMARY');
@@ -447,11 +448,6 @@ return new class extends Migration
             }
         }
         if ($current === null) {
-            if (!$expected['nullable'] && $expected['column_default'] === null
-                && !str_contains($expected['extra'], 'auto_increment') && DB::table($tableName)->exists()) {
-                throw new \RuntimeException('Campo obrigatório ausente em tabela com dados: ' . $tableName . '.' . $columnName
-                    . '. É necessário definir um preenchimento de negócio. Nenhuma empresa fictícia/zero será atribuída.');
-            }
             return;
         }
         if ($this->sameColumn($current, $expected)) { return; }
@@ -460,6 +456,34 @@ return new class extends Migration
         }
         $this->assertNoForeignDependency($tableName, $columnName);
         $this->assertColumnDataFits($tableName, $columnName, $current, $expected);
+    }
+
+    private function relaxRequiredColumnForExistingRows(
+        string $tableName,
+        string $columnName,
+        ?array $current,
+        array $expected
+    ): array {
+        if (
+            $current === null
+            && !(bool) ($expected['nullable'] ?? false)
+            && ($expected['column_default'] ?? null) === null
+            && !str_contains((string) ($expected['extra'] ?? ''), 'auto_increment')
+            && Schema::hasTable($tableName)
+            && DB::table($tableName)->exists()
+        ) {
+            $expected['nullable'] = true;
+
+            if (function_exists('logger')) {
+                logger()->warning('Migration forward-only relaxou coluna obrigatória ausente para nullable.', [
+                    'migration' => self::MIGRATION_NAME,
+                    'table' => $tableName,
+                    'column' => $columnName,
+                ]);
+            }
+        }
+
+        return $expected;
     }
 
     private function preserveUnspecifiedAttributes(object $definition, ?array $current, array $expected): void
@@ -488,8 +512,11 @@ return new class extends Migration
             if (isset(self::REFERENCE_COLUMNS[$column->name])) {
                 preg_match('/^(tinyint|smallint|mediumint|int|bigint)( unsigned)?$/D', $expected['column_type'], $integer);
                 $column->type = ['tinyint' => 'tinyInteger', 'smallint' => 'smallInteger', 'mediumint' => 'mediumInteger', 'int' => 'integer', 'bigint' => 'bigInteger'][$integer[1]];
-                $column->unsigned(isset($integer[2]))->nullable($expected['nullable']);
+                $column->unsigned(isset($integer[2]));
             }
+
+            $column->nullable((bool) $expected['nullable']);
+
             $this->preserveUnspecifiedAttributes($column, $current, $expected);
             if ($current !== null) { $column->change(); }
         });
