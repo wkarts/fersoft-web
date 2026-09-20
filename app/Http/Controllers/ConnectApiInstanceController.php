@@ -77,6 +77,19 @@ class ConnectApiInstanceController extends BaseController
         ]);
     }
 
+    public function syncWebhook(int $id, ConnectApiInstanceService $service)
+    {
+        $this->requireSuper();
+        $instance = $this->owned($id, true);
+        $instance = $service->syncWebhook($instance);
+
+        return response()->json([
+            'success' => true,
+            'instance' => $this->present($instance),
+            'message' => 'Webhook sincronizado automaticamente com a URL pública desta instalação.',
+        ]);
+    }
+
     public function status(int $id, ConnectApiInstanceService $service)
     {
         $instance = $this->owned($id);
@@ -265,6 +278,8 @@ class ConnectApiInstanceController extends BaseController
             'last_event_at' => optional($instance->last_event_at)->toIso8601String(),
             'last_status_at' => optional($instance->last_status_at)->toIso8601String(),
             'last_error_message' => $instance->last_error_message,
+            'webhook_configured_at' => optional($instance->webhook_configured_at)->toIso8601String(),
+            'webhook_last_received_at' => optional($instance->webhook_last_received_at)->toIso8601String(),
         ];
     }
 }
