@@ -9,7 +9,6 @@ use App\Models\ErroLog;
 use App\Models\SuperAdminAlerta;
 use App\Models\Redirect;
 use App\Models\ConfigSystem;
-use App\Http\Controllers\EvoApiInstanceController;
 use App\Helpers\UserOtpHelper;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
