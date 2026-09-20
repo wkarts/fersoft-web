@@ -167,21 +167,22 @@ class ConnectApiInstanceService
     private function webhookUrl(): string
     {
         $configured = trim((string) config('connect_api.webhook_url'));
-        if ($configured !== '') {
-            return $configured;
-        }
+        $base = $configured !== ''
+            ? $configured
+            : rtrim((string) config('app.url'), '/') . '/api/webhooks/connect-api';
 
-        $base = rtrim((string) config('app.url'), '/');
-
-        if ($base === '') {
+        if ($base === '' || $base === '/api/webhooks/connect-api') {
             return '';
         }
 
-        $url = $base . '/api/webhooks/connect-api';
         $secret = (string) config('connect_api.webhook_secret');
 
-        return $secret === ''
-            ? $url
-            : $url . '?secret=' . rawurlencode($secret);
+        if ($secret === '') {
+            return $base;
+        }
+
+        return $base
+            . (str_contains($base, '?') ? '&' : '?')
+            . 'secret=' . rawurlencode($secret);
     }
 }
