@@ -63,6 +63,31 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('ConnectApiWebhookController', $api);
     }
 
+    public function testConnectApiInstanceControllerSatisfiesBaseControllerContract(): void
+    {
+        $reflection = new \ReflectionClass(\App\Http\Controllers\ConnectApiInstanceController::class);
+
+        $this->assertFalse(
+            $reflection->isAbstract(),
+            'ConnectApiInstanceController não pode ser abstrato.'
+        );
+
+        foreach (['rules', 'messages'] as $method) {
+            $refMethod = $reflection->getMethod($method);
+            $this->assertSame(
+                \App\Http\Controllers\ConnectApiInstanceController::class,
+                $refMethod->getDeclaringClass()->getName(),
+                "O método {$method} deve ser implementado pelo ConnectApiInstanceController."
+            );
+        }
+
+        $redirect = $reflection->getProperty('redirectPage');
+        $redirect->setAccessible(true);
+        $controller = $reflection->newInstanceWithoutConstructor();
+
+        $this->assertSame('/connect-api', $redirect->getValue($controller));
+    }
+
     public function testWebhookSecurityIsPerInstanceAndNotGlobalEnv(): void
     {
         $root = dirname(__DIR__, 2);
