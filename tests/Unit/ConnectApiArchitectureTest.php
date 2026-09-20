@@ -122,6 +122,17 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('webhook_configured_at', $model);
     }
 
+    public function testConnectApiProvisioningViewRequiresPhoneAndAvoidsInternalFieldLabel(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $view = file_get_contents($root . '/resources/views/connect_api/index.blade.php');
+
+        $this->assertStringContainsString('id="connectProvisionNumber"', $view);
+        $this->assertStringContainsString('body:JSON.stringify({number})', $view);
+        $this->assertStringContainsString('ID: {{ $inst->empresa_id }}', $view);
+        $this->assertStringNotContainsString('empresa_id {{ $inst->empresa_id }}', $view);
+    }
+
     public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void
     {
         $root = dirname(__DIR__, 2);
