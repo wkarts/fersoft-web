@@ -31,7 +31,12 @@ class ConnectApiInstanceService
         return Str::limit($base, 100, '');
     }
 
-    public function provision(Empresa $empresa, ?int $usuarioId = null, ?int $filialId = null): ConnectApiInstance
+    public function provision(
+        Empresa $empresa,
+        ?int $usuarioId = null,
+        ?int $filialId = null,
+        string $number = ''
+    ): ConnectApiInstance
     {
         $instance = ConnectApiInstance::query()
             ->where('empresa_id', $empresa->id)
@@ -53,12 +58,28 @@ class ConnectApiInstanceService
         $instance->updated_by = $usuarioId;
         $instance->save();
 
-        $response = $this->client->createInstance($instance->instance_name, $instance->instance_token);
+        $number = preg_replace('/\\D+/', '', $number);
+
+        if (strlen($number) < 8 || strlen($number) > 15) {
+            throw new \InvalidArgumentException(
+                'Informe um número de WhatsApp válido com DDI, DDD e número.'
+            );
+        }
+
+        $response = $this->client->createInstance(
+            $instance->instance_name,
+            $instance->instance_token,
+            $number
+        );
 
         if (!($response['success'] ?? false)) {
             $instance->connection_status = 'error';
             $instance->last_error_code = (string) ($response['status'] ?? '');
-            $instance->last_error_message = (string) ($response['error'] ?? 'Falha ao provisionar Connect|API.');
+            $remoteError = (string) ($response['error'] ?? 'Falha ao provisionar Connect|API.');
+            $instance->last_error_message = 'Connect|API (HTTP '
+                . (string) ($response['status'] ?? 'erro')
+                . '): '
+                . $remoteError;
             $instance->last_error_at = now();
             $instance->save();
 
@@ -88,7 +109,11 @@ class ConnectApiInstanceService
         return $instance->fresh();
     }
 
-    public function reprovision(ConnectApiInstance $instance, ?int $usuarioId = null): ConnectApiInstance
+    public function reprovision(
+        ConnectApiInstance $instance,
+        ?int $usuarioId = null,
+        string $number = ''
+    ): ConnectApiInstance
     {
         $instance->remote_instance_id = null;
         $instance->instance_token = null;
@@ -112,7 +137,8 @@ class ConnectApiInstanceService
         return $this->provision(
             $instance->empresa,
             $usuarioId,
-            $instance->filial_id
+            $instance->filial_id,
+            $number
         );
     }
 
