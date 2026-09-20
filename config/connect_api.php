@@ -8,8 +8,6 @@ return [
     'ddi' => env('CONNECT_API_DDI', '55'),
     'ddd' => env('CONNECT_API_DDD', '75'),
     'instance_prefix' => env('CONNECT_API_INSTANCE_PREFIX', ''),
-    'webhook_secret' => env('CONNECT_API_WEBHOOK_SECRET', ''),
-    'webhook_url' => env('CONNECT_API_WEBHOOK_URL', ''),
     'default_templates' => [
         'ponto_boas_vindas' => [
             'event_key' => 'ponto.boas_vindas',

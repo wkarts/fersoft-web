@@ -36,3 +36,19 @@ registro local
 ## Compatibilidade de banco
 
 Migrations históricas antigas não são renomeadas nem apagadas. Elas continuam existindo no histórico para que instalações já atualizadas não tentem executá-las novamente. O runtime novo não depende desses componentes.
+
+
+## Webhook por instância
+
+Instalações que já possuíam registros `connect_api_instances` recebem os novos campos de webhook de forma aditiva e nullable.
+
+Nenhuma sessão WhatsApp é recriada para essa adaptação. Na primeira consulta de status, pareamento ou sincronização administrativa, o FERSOFT WEB:
+
+```text
+gera token exclusivo da instância
+-> detecta o domínio público em uso
+-> configura /api/webhooks/connect-api/{token} na Connect|API
+-> registra webhook_configured_at
+```
+
+`CONNECT_API_WEBHOOK_SECRET` e `CONNECT_API_WEBHOOK_URL` deixam de existir. Não é necessário editar o `.env` para cada instalação ou tenant.

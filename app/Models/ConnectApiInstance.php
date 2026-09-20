@@ -16,6 +16,10 @@ class ConnectApiInstance extends BaseModel
         'instance_name',
         'remote_instance_id',
         'instance_token',
+        'webhook_token',
+        'webhook_token_hash',
+        'webhook_configured_at',
+        'webhook_last_received_at',
         'connected_number',
         'connected_name',
         'connection_status',
@@ -33,7 +37,7 @@ class ConnectApiInstance extends BaseModel
         'updated_by',
     ];
 
-    protected $hidden = ['instance_token'];
+    protected $hidden = ['instance_token', 'webhook_token', 'webhook_token_hash'];
 
     protected $casts = [
         'is_blocked' => 'boolean',
@@ -44,9 +48,29 @@ class ConnectApiInstance extends BaseModel
         'last_event_at' => 'datetime',
         'last_status_at' => 'datetime',
         'last_error_at' => 'datetime',
+        'webhook_configured_at' => 'datetime',
+        'webhook_last_received_at' => 'datetime',
     ];
 
     protected function instanceToken(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (empty($value)) {
+                    return null;
+                }
+
+                try {
+                    return Crypt::decryptString($value);
+                } catch (\Throwable $e) {
+                    return $value;
+                }
+            },
+            set: fn ($value) => empty($value) ? null : Crypt::encryptString((string) $value),
+        );
+    }
+
+    protected function webhookToken(): Attribute
     {
         return Attribute::make(
             get: function ($value) {

@@ -532,4 +532,5 @@ Route::group(['prefix' => 'traccar'], function(){
 });
 
 // Connect|API - endpoint único de eventos/automações.
-Route::post('/webhooks/connect-api', 'ConnectApiWebhookController@receive');
+Route::post('/webhooks/connect-api/{token}', 'ConnectApiWebhookController@receive')
+    ->where('token', '[A-Za-z0-9]{32,128}');

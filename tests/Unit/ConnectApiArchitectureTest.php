@@ -63,6 +63,27 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('ConnectApiWebhookController', $api);
     }
 
+    public function testWebhookSecurityIsPerInstanceAndNotGlobalEnv(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $env = file_get_contents($root . '/.env.example');
+        $config = file_get_contents($root . '/config/connect_api.php');
+        $api = file_get_contents($root . '/routes/api.php');
+        $model = file_get_contents($root . '/app/Models/ConnectApiInstance.php');
+        $ci = file_get_contents($root . '/.github/workflows/ci.yml');
+        $bootstrap = file_get_contents($root . '/scripts/ci/bootstrap-env.sh');
+
+        foreach ([$env, $ci, $bootstrap] as $source) {
+            $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_SECRET', $source);
+            $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_URL', $source);
+        }
+        $this->assertStringNotContainsString('webhook_secret', $config);
+        $this->assertStringNotContainsString('webhook_url', $config);
+        $this->assertStringContainsString('/webhooks/connect-api/{token}', $api);
+        $this->assertStringContainsString('webhook_token_hash', $model);
+        $this->assertStringContainsString('webhook_configured_at', $model);
+    }
+
     public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void
     {
         $root = dirname(__DIR__, 2);

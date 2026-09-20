@@ -9,7 +9,7 @@ Funcionário
  -> WhatsApp
  -> Connect|API
  -> messages.upsert
- -> /api/webhooks/connect-api
+ -> /api/webhooks/connect-api/{token-da-instancia}
  -> connect_api_webhook_events
  -> ProcessConnectApiWebhookEvent
  -> ConnectApiAutomationDispatcher

@@ -77,6 +77,19 @@ class ConnectApiInstanceController extends BaseController
         ]);
     }
 
+    public function syncWebhook(int $id, ConnectApiInstanceService $service)
+    {
+        $this->requireSuper();
+        $instance = $this->owned($id, true);
+        $instance = $service->syncWebhook($instance);
+
+        return response()->json([
+            'success' => true,
+            'instance' => $this->present($instance),
+            'message' => 'Webhook sincronizado automaticamente com a URL pública desta instalação.',
+        ]);
+    }
+
     public function status(int $id, ConnectApiInstanceService $service)
     {
         $instance = $this->owned($id);
@@ -113,9 +126,16 @@ class ConnectApiInstanceController extends BaseController
         return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
     }
 
-    public function restart(int $id, ConnectApiClient $client)
-    {
+    public function restart(
+        int $id,
+        ConnectApiClient $client,
+        ConnectApiInstanceService $service
+    ) {
         $instance = $this->owned($id);
+
+        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+            $instance = $service->syncWebhook($instance);
+        }
 
         return response()->json($client->restart($instance));
     }
@@ -169,7 +189,12 @@ class ConnectApiInstanceController extends BaseController
         );
     }
 
-    public function sendWhatsAppButton(Request $request, ConnectApiClient $client, ConnectApiMessageService $messages)
+    public function sendWhatsAppButton(
+        Request $request,
+        ConnectApiClient $client,
+        ConnectApiMessageService $messages,
+        ConnectApiInstanceService $service
+    )
     {
         $empresaId = (int) $this->empresa_id;
         if ($empresaId <= 0) {
@@ -186,6 +211,11 @@ class ConnectApiInstanceController extends BaseController
         }
 
         $instance = app(\App\Services\ConnectApi\ConnectApiIntegrationResolver::class)->forEmpresa($empresaId);
+
+        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+            $instance = $service->syncWebhook($instance);
+        }
+
         $normalized = $messages->normalizeNumber($number);
         $responses = [];
 
@@ -265,6 +295,8 @@ class ConnectApiInstanceController extends BaseController
             'last_event_at' => optional($instance->last_event_at)->toIso8601String(),
             'last_status_at' => optional($instance->last_status_at)->toIso8601String(),
             'last_error_message' => $instance->last_error_message,
+            'webhook_configured_at' => optional($instance->webhook_configured_at)->toIso8601String(),
+            'webhook_last_received_at' => optional($instance->webhook_last_received_at)->toIso8601String(),
         ];
     }
 }
