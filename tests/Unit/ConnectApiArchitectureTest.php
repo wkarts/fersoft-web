@@ -81,11 +81,9 @@ class ConnectApiArchitectureTest extends TestCase
             );
         }
 
-        $redirect = $reflection->getProperty('redirectPage');
-        $redirect->setAccessible(true);
-        $controller = $reflection->newInstanceWithoutConstructor();
+        $defaults = $reflection->getDefaultProperties();
 
-        $this->assertSame('/connect-api', $redirect->getValue($controller));
+        $this->assertSame('/connect-api', $defaults['redirectPage'] ?? null);
     }
 
     public function testWebhookSecurityIsPerInstanceAndNotGlobalEnv(): void
