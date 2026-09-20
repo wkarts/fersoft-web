@@ -8,7 +8,6 @@ use App\Models\AutomationRule;
 use App\Models\ConnectApiWebhookEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Arr;
 
 class ConnectApiAutomationDispatcher
 {
@@ -98,6 +97,8 @@ class ConnectApiAutomationDispatcher
                 break;
             }
         }
+    }
+
     private function conditionsMatch(array $conditions, array $context): bool
     {
         foreach ($conditions as $condition) {
@@ -177,7 +178,5 @@ class ConnectApiAutomationDispatcher
         return preg_replace_callback('/\{([a-zA-Z0-9_.-]+)\}/', function ($matches) use ($context) {
             return (string) data_get($context, $matches[1], '');
         }, $value);
-    }
-
     }
 }
