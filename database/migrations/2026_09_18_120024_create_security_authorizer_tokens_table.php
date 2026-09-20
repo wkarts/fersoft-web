@@ -488,6 +488,7 @@ return new class extends Migration
         $this->ensureTableExists($tableName);
         $expected = $this->expectedColumnForReferences($columnName, $expected);
         $current = $this->columnInfo($tableName, $columnName);
+        $expected = $this->relaxRequiredColumnForExistingRows($tableName, $columnName, $current, $expected);
         $key = $tableName . '.' . $columnName;
         $record = $this->auditRow('column', $key);
         if (!$allowRecordedChange && $this->recordedObjectIsComplete('column', $key)) { return; }
