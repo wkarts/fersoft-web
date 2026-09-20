@@ -530,3 +530,6 @@ Route::group(['prefix' => 'ponto-mobile', 'middleware' => 'authApp'], function()
 Route::group(['prefix' => 'traccar'], function(){
     Route::post('/eventos', 'TraccarWebhookController@receberEvento');
 });
+
+// Connect|API - endpoint único de eventos/automações.
+Route::post('/webhooks/connect-api', 'ConnectApiWebhookController@receive');

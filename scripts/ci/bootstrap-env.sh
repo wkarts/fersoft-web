@@ -421,19 +421,20 @@ USUARIO_LOGIN="development"
 USUARIO_SENHA_HASH="202cb962ac59075b964b07152d234b70"
 USUARIO_EMAIL=""
 
-#EVOAPI
-EVO_DDI=55
-EVO_DDD=75
-EVO_BASE_URL=https://connect.hub.development.com.br
-EVO_GLOBAL_API=vz9u0Qhi2y6xS6HrkL3FigMbzQKsCZk2XzbAJBqwTYkbvHYhGQPMWVFbpqqCgKfb
-EVO_API_VERSION=V1
-EVO_QR_LOGO_BASE64=""
-EVO_QR_LOGO_SIZE=0.2
-EVO_TOKEN_PREFIX=\$wwtk_
-EVO_TOKEN_ALPHABET=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
-EVO_WHATSAPP_MODAL_HINTBUTTON="Envio Whatsapp"
-EVO_WHATSAPP_MODAL_TITLE="EVO - Envio Whatsapp"
-EVO_WHATSAPP_MODAL_HINTFOOTER="Este recurso permite o envio imediato de mensagens de texto e arquivos via WhatsApp diretamente da plataforma. Caso não esteja disponível (funcional), entre em contato com o suporte para habilitá-lo."
+# Connect|API
+CONNECT_API_BASE_URL=""
+CONNECT_API_BOOTSTRAP_KEY=""
+CONNECT_API_TIMEOUT=30
+CONNECT_API_CONNECT_TIMEOUT=10
+CONNECT_API_DDI=55
+CONNECT_API_DDD=75
+CONNECT_API_INSTANCE_PREFIX=""
+CONNECT_API_WEBHOOK_SECRET=""
+CONNECT_API_WEBHOOK_URL=""
+CONNECT_API_WHATSAPP_MODAL_HINTBUTTON="Enviar WhatsApp"
+CONNECT_API_WHATSAPP_MODAL_TITLE="Enviar WhatsApp"
+CONNECT_API_WHATSAPP_SEND_BUTTON_TEXT="Enviar"
+CONNECT_API_WHATSAPP_MODAL_HINTFOOTER="Envio realizado pela Connect|API configurada para esta empresa."
 
 #SOCKET NATIVO
 REVERB_SERVER=reverb
@@ -543,19 +544,18 @@ if [[ -n "${SMTP_USER:-}" ]]; then upsert_env "MAIL_USERNAME" "${SMTP_USER}"; fi
 if [[ -n "${SMTP_PASS:-}" ]]; then upsert_env "MAIL_PASSWORD" "${SMTP_PASS}"; fi
 if [[ -n "${SMTP_FROM:-}" ]]; then upsert_env "MAIL_FROM_ADDRESS" "${SMTP_FROM}"; fi
 
-# EVO (secrets)
-if [[ -n "${EVO_DDI:-}" ]]; then upsert_env "EVO_DDI" "${EVO_DDI}"; fi
-if [[ -n "${EVO_DDD:-}" ]]; then upsert_env "EVO_DDD" "${EVO_DDD}"; fi
-if [[ -n "${EVO_BASE_URL:-}" ]]; then upsert_env "EVO_BASE_URL" "${EVO_BASE_URL}"; fi
-if [[ -n "${EVO_GLOBAL_API:-}" ]]; then upsert_env "EVO_GLOBAL_API" "${EVO_GLOBAL_API}"; fi
-if [[ -n "${EVO_API_VERSION:-}" ]]; then upsert_env "EVO_API_VERSION" "${EVO_API_VERSION}"; fi
-if [[ -n "${EVO_QR_LOGO_BASE64:-}" ]]; then upsert_env "EVO_QR_LOGO_BASE64" "\"${EVO_QR_LOGO_BASE64}\""; fi
-if [[ -n "${EVO_QR_LOGO_SIZE:-}" ]]; then upsert_env "EVO_QR_LOGO_SIZE" "${EVO_QR_LOGO_SIZE}"; fi
-if [[ -n "${EVO_TOKEN_PREFIX:-}" ]]; then upsert_env "EVO_TOKEN_PREFIX" "${EVO_TOKEN_PREFIX}"; fi
-if [[ -n "${EVO_TOKEN_ALPHABET:-}" ]]; then upsert_env "EVO_TOKEN_ALPHABET" "${EVO_TOKEN_ALPHABET}"; fi
-if [[ -n "${EVO_WHATSAPP_MODAL_HINTBUTTON:-}" ]]; then upsert_env "EVO_WHATSAPP_MODAL_HINTBUTTON" "\"${EVO_WHATSAPP_MODAL_HINTBUTTON}\""; fi
-if [[ -n "${EVO_WHATSAPP_MODAL_TITLE:-}" ]]; then upsert_env "EVO_WHATSAPP_MODAL_TITLE" "\"${EVO_WHATSAPP_MODAL_TITLE}\""; fi
-if [[ -n "${EVO_WHATSAPP_MODAL_HINTFOOTER:-}" ]]; then upsert_env "EVO_WHATSAPP_MODAL_HINTFOOTER" "\"${EVO_WHATSAPP_MODAL_HINTFOOTER}\""; fi
+# Connect|API (secrets/configuração externa)
+if [[ -n "${CONNECT_API_BASE_URL:-}" ]]; then upsert_env "CONNECT_API_BASE_URL" "${CONNECT_API_BASE_URL}"; fi
+if [[ -n "${CONNECT_API_BOOTSTRAP_KEY:-}" ]]; then upsert_env "CONNECT_API_BOOTSTRAP_KEY" "${CONNECT_API_BOOTSTRAP_KEY}"; fi
+if [[ -n "${CONNECT_API_DDI:-}" ]]; then upsert_env "CONNECT_API_DDI" "${CONNECT_API_DDI}"; fi
+if [[ -n "${CONNECT_API_DDD:-}" ]]; then upsert_env "CONNECT_API_DDD" "${CONNECT_API_DDD}"; fi
+if [[ -n "${CONNECT_API_INSTANCE_PREFIX:-}" ]]; then upsert_env "CONNECT_API_INSTANCE_PREFIX" "${CONNECT_API_INSTANCE_PREFIX}"; fi
+if [[ -n "${CONNECT_API_WEBHOOK_SECRET:-}" ]]; then upsert_env "CONNECT_API_WEBHOOK_SECRET" "${CONNECT_API_WEBHOOK_SECRET}"; fi
+if [[ -n "${CONNECT_API_WEBHOOK_URL:-}" ]]; then upsert_env "CONNECT_API_WEBHOOK_URL" "${CONNECT_API_WEBHOOK_URL}"; fi
+if [[ -n "${CONNECT_API_WHATSAPP_MODAL_HINTBUTTON:-}" ]]; then upsert_env "CONNECT_API_WHATSAPP_MODAL_HINTBUTTON" "\"\${CONNECT_API_WHATSAPP_MODAL_HINTBUTTON}\""; fi
+if [[ -n "${CONNECT_API_WHATSAPP_MODAL_TITLE:-}" ]]; then upsert_env "CONNECT_API_WHATSAPP_MODAL_TITLE" "\"\${CONNECT_API_WHATSAPP_MODAL_TITLE}\""; fi
+if [[ -n "${CONNECT_API_WHATSAPP_SEND_BUTTON_TEXT:-}" ]]; then upsert_env "CONNECT_API_WHATSAPP_SEND_BUTTON_TEXT" "\"\${CONNECT_API_WHATSAPP_SEND_BUTTON_TEXT}\""; fi
+if [[ -n "${CONNECT_API_WHATSAPP_MODAL_HINTFOOTER:-}" ]]; then upsert_env "CONNECT_API_WHATSAPP_MODAL_HINTFOOTER" "\"\${CONNECT_API_WHATSAPP_MODAL_HINTFOOTER}\""; fi
 
 # Reverb (secrets)
 if [[ -n "${REVERB_APP:-}" ]]; then upsert_env "REVERB_APP" "${REVERB_APP}"; fi

@@ -216,40 +216,26 @@ class PontoWhatsAppController extends Controller
                 }
                 $urlPdf = rtrim($baseDominio, '/') . "/storage/{$caminhoRelativo}";
 
-                $evoInstance = $funcionario->empresa_id
-                    ? DB::table('evo_api_instances')->where('empresa_id', $funcionario->empresa_id)->first()
-                    : DB::table('evo_api_instances')->first();
-
-                if ($evoInstance) {
-                    $numDestino = preg_replace('/[^0-9]/', '', $telefoneNumeros);
-                    if (!str_starts_with($numDestino, '55')) {
-                        $numDestino = '55' . $numDestino;
-                    }
-
-                    $msgLegenda = "📄 *RECIBO DE PAGAMENTO DE SALÁRIO*\n\n"
-                        . "Olá, *{$funcionario->nome}*! Segue em anexo o seu contracheque.\n"
-                        . "📅 *Competência:* {$holerite->competencia}\n"
-                        . "💰 *Salário Base:* R$ " . number_format($holerite->salario_base, 2, ',', '.') . "\n"
-                        . "🟢 *Total Vencimentos:* R$ " . number_format($holerite->total_vencimentos, 2, ',', '.') . "\n"
-                        . "🔴 *Total Descontos:* R$ " . number_format($holerite->total_descontos, 2, ',', '.') . "\n"
-                        . "💵 *Valor Líquido:* R$ " . number_format($holerite->valor_liquido, 2, ',', '.') . "\n\n"
-                        . "💡 _Para consultar outro mês, envie por exemplo: *HOLERITE 06/2026*._";
-
-                    Http::withHeaders([
-                        'apikey' => $evoInstance->api_key,
-                        'Content-Type' => 'application/json'
-                    ])
-                        ->timeout(20)
-                        ->post(rtrim($evoInstance->base_url, '/') . "/message/sendMedia/{$evoInstance->name}", [
-                            'number' => $numDestino,
-                            'mediaMessage' => [
-                                'mediatype' => 'document',
-                                'caption'   => $msgLegenda,
-                                'media'     => $urlPdf,
-                                'fileName'  => $nomeArquivo
-                            ]
-                        ]);
+                $numDestino = preg_replace('/[^0-9]/', '', $telefoneNumeros);
+                if (!str_starts_with($numDestino, '55')) {
+                    $numDestino = '55' . $numDestino;
                 }
+
+                $msgLegenda = "📄 *RECIBO DE PAGAMENTO DE SALÁRIO*\n\n"
+                    . "Olá, *{$funcionario->nome}*! Segue em anexo o seu contracheque.\n"
+                    . "📅 *Competência:* {$holerite->competencia}\n"
+                    . "💰 *Salário Base:* R$ " . number_format($holerite->salario_base, 2, ',', '.') . "\n"
+                    . "🟢 *Total Vencimentos:* R$ " . number_format($holerite->total_vencimentos, 2, ',', '.') . "\n"
+                    . "🔴 *Total Descontos:* R$ " . number_format($holerite->total_descontos, 2, ',', '.') . "\n"
+                    . "💵 *Valor Líquido:* R$ " . number_format($holerite->valor_liquido, 2, ',', '.') . "\n\n"
+                    . "💡 _Para consultar outro mês, envie por exemplo: *HOLERITE 06/2026*._";
+
+                app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+                    $numDestino,
+                    $msgLegenda,
+                    (int) $funcionario->empresa_id,
+                    $urlPdf
+                );
 
                 return response()->json(['status' => 'holerite_enviado']);
             } catch (\Exception $e) {
@@ -751,40 +737,20 @@ class PontoWhatsAppController extends Controller
     private function enviarRespostaWhatsApp($empresaId, $telefone, $mensagem)
     {
         try {
-            $destino = explode('@', (string)$telefone)[0];
+            $destino = explode('@', (string) $telefone)[0];
             $numLimpo = preg_replace('/[^0-9]/', '', $destino);
 
             if (strlen($numLimpo) >= 10 && strlen($numLimpo) <= 11 && !str_starts_with($numLimpo, '55')) {
                 $numLimpo = '55' . $numLimpo;
             }
 
-            $evoInstance = $empresaId
-                ? DB::table('evo_api_instances')->where('empresa_id', $empresaId)->first()
-                : DB::table('evo_api_instances')->first();
-
-            if (!$evoInstance) {
-                Log::error("Evo API: Nenhuma instancia encontrada para empresa {$empresaId}");
-                return;
-            }
-
-            $url = rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}";
-
-            $response = Http::withHeaders([
-                'apikey' => $evoInstance->api_key,
-                'Content-Type' => 'application/json'
-            ])
-                ->timeout(15)
-                ->post($url, [
-                    'number' => $numLimpo,
-                    'textMessage' => ['text' => $mensagem]
-                ]);
-
-            Log::info("Evo API Envio para [{$numLimpo}]: Status " . $response->status(), [
-                'resposta' => $response->json()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error("Erro envio WhatsApp: " . $e->getMessage());
+            app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+                $numLimpo,
+                $mensagem,
+                (int) $empresaId
+            );
+        } catch (\Throwable $e) {
+            Log::error("Erro envio WhatsApp via Connect|API: " . $e->getMessage());
         }
     }
 

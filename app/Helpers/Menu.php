@@ -1205,8 +1205,8 @@ class Menu {
                         'rota' => '/balancas'
                     ],
                     [
-                        'nome' => 'EVO Whatsapp API',
-                        'rota' => '/evoapi'
+                        'nome' => 'Connect|API',
+                        'rota' => '/connect-api'
                     ],
                 ]
             ],

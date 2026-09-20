@@ -266,8 +266,8 @@
 											</li>
 
                                             <li class="menu-item" aria-haspopup="true">
-                                                <a href="/evo-instances" class="menu-link">
-                                                    <span class="menu-text">Instâncias EVO</span>
+                                                <a href="/connect-api" class="menu-link">
+                                                    <span class="menu-text">Instâncias Connect|API</span>
                                                 </a>
                                             </li>
 
@@ -449,7 +449,7 @@
 										PDV
 									</a>
 								</div>
-                                {!! __view_evo_whatsapp_modal_button() !!}
+                                {!! __view_connect_api_whatsapp_modal_button() !!}
 
                                 <div class="dropdown">
 									@if(sizeof($alertas) > 0)

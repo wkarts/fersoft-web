@@ -800,18 +800,12 @@ class MovimentacaoVeiculoController extends BaseController
 
         $msg = "📋 *CHECKLIST DE PRÉ-VIAGEM*\n\nOlá, *{$mov->motorista->nome}*! Por favor, preencha o checklist do veículo *{$mov->veiculo->placa}* clicando no link abaixo antes ou logo no início da sua rota:\n\n👉 {$linkChecklist}";
 
-        // Dispara via instância Evo do WhatsApp
-        $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $this->empresa_id)->first();
-        if ($evoInstance) {
-            $numLimpo = preg_replace('/[^0-9]/', '', $telefone);
-            if (!str_starts_with($numLimpo, '55')) $numLimpo = '55' . $numLimpo;
-
-            \Illuminate\Support\Facades\Http::withHeaders(['apikey' => $evoInstance->api_key])
-                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
-                    'number' => $numLimpo,
-                    'textMessage' => ['text' => $msg]
-                ]);
-        }
+        // Disparo centralizado pela Connect|API da empresa.
+        app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+            $telefone,
+            $msg,
+            (int) $this->empresa_id
+        );
 
         session()->flash('mensagem_sucesso', 'Link do checklist enviado com sucesso para o WhatsApp do motorista!');
         return redirect()->back();

@@ -36,13 +36,4 @@ class EventServiceProvider extends ServiceProvider
         return false;
     }
 
-    /**
-     * Determine if events and listeners should be automatically discovered. EVOAPI
-     */
-    protected $observers = [
-        \App\Models\EvoApiInstance::class => [
-            \App\Observers\EvoApiInstanceObserver::class,
-        ],
-    ];
-
 }

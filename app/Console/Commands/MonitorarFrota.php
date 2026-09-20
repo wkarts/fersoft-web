@@ -760,9 +760,6 @@ class MonitorarFrota extends Command
                 $telefoneLimpo = '55' . $telefoneLimpo;
             }
 
-            $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $movimentacao->empresa_id)->first();
-            if (!$evoInstance) return;
-
             $dadosEmpresa = $this->getEmpresaConfigDoRobo($movimentacao->empresa_id, $movimentacao->filial_id);
             $placa = $movimentacao->veiculo->placa ?? 'Veículo';
 
@@ -784,11 +781,11 @@ class MonitorarFrota extends Command
             $comprovante .= "----------------------------------------\n";
             $comprovante .= "_Comprovante emitido nos termos da Portaria 671/2021 MTE_";
 
-            Http::withHeaders(['apikey' => $evoInstance->api_key])
-                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
-                    'number' => $telefoneLimpo,
-                    'textMessage' => ['text' => $comprovante]
-                ]);
+            app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+                $telefoneLimpo,
+                $comprovante,
+                (int) $movimentacao->empresa_id
+            );
         } catch (\Exception $e) {
             Log::error("ROBÔ Ponto: " . $e->getMessage());
         }
@@ -797,20 +794,17 @@ class MonitorarFrota extends Command
     private function enviarRespostaWhatsApp($empresaId, $telefone, $mensagem)
     {
         try {
-            if (empty($telefone)) return;
-            $telefoneLimpo = preg_replace('/[^0-9]/', '', $telefone);
-            if (!str_starts_with($telefoneLimpo, '55')) $telefoneLimpo = '55' . $telefoneLimpo;
+            if (empty($telefone)) {
+                return;
+            }
 
-            $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $empresaId)->first();
-            if (!$evoInstance) return;
-
-            Http::withHeaders(['apikey' => $evoInstance->api_key])
-                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
-                    'number' => $telefoneLimpo,
-                    'textMessage' => ['text' => $mensagem]
-                ]);
-        } catch (\Exception $e) {
-            Log::error("ROBÔ WhatsApp: " . $e->getMessage());
+            app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+                (string) $telefone,
+                (string) $mensagem,
+                (int) $empresaId
+            );
+        } catch (\Throwable $e) {
+            Log::error("ROBÔ WhatsApp via Connect|API: " . $e->getMessage());
         }
     }
 

@@ -297,9 +297,7 @@ class ConfigNotaController extends Controller
                 'token_ibpt' => $request->token_ibpt ?? '',
                 'token_nfse' => $request->token_nfse ?? '',
                 'integracao_nfse' => $request->integracao_nfse ?? '',
-                'token_whatsapp' => $request->token_whatsapp ?? '',
                 'token_sync' => $request->token_sync ?? '',
-                'whatsapp_technology' => $request->whatsapp_technology ?? '',
                 'codigo_tributacao_municipio' => $request->codigo_tributacao_municipio ?? '',
                 'casas_decimais' => $request->casas_decimais,
                 'casas_decimais_qtd' => $request->casas_decimais_qtd,
@@ -414,9 +412,7 @@ class ConfigNotaController extends Controller
             $config->token_ibpt = $request->token_ibpt ?? '';
             $config->token_nfse = $request->token_nfse ?? '';
             $config->integracao_nfse = $request->integracao_nfse ?? '';
-            $config->token_whatsapp = $request->token_whatsapp ?? '';
             $config->token_sync = $request->token_sync ?? '';
-            $config->whatsapp_technology = $request->whatsapp_technology ?? '';
             $config->codigo_tributacao_municipio = $request->codigo_tributacao_municipio ?? '';
             $config->complemento = $request->complemento ?? '';
             $config->sobrescrita_csonn_consumidor_final = $request->sobrescrita_csonn_consumidor_final ?? '';
@@ -838,47 +834,28 @@ class ConfigNotaController extends Controller
         return redirect('configNF');
     }
 
-    public function teste(){
-
-        $config = CashBackConfig::where('empresa_id', $this->empresa_id)
-            ->first();
-
+    public function teste()
+    {
+        $config = CashBackConfig::where('empresa_id', $this->empresa_id)->first();
         $cashBackCliente = CashBackCliente::first();
-        $number = $cashBackCliente->cliente->celular;
-        $number = preg_replace('/[^0-9]/', '', $cashBackCliente->cliente->celular);
-        $message = $config->mensagem_padrao_whatsapp;
 
+        if (!$config || !$cashBackCliente || !$cashBackCliente->cliente) {
+            return response()->json(['success' => false, 'message' => 'Dados de cashback não encontrados.'], 404);
+        }
+
+        $number = preg_replace('/[^0-9]/', '', (string) $cashBackCliente->cliente->celular);
+        $message = (string) $config->mensagem_padrao_whatsapp;
         $message = str_replace("{credito}", moeda($cashBackCliente->valor_credito), $message);
         $message = str_replace("{expiracao}", __date($cashBackCliente->data_expiracao, 0), $message);
         $message = str_replace("{nome}", $cashBackCliente->cliente->razao_social, $message);
 
-        $configNota = ConfigNota::where('empresa_id', $this->empresa_id)
-            ->first();
+        $result = app(\App\Utils\WhatsAppUtil::class)->sendMessage(
+            $number,
+            $message,
+            (int) $this->empresa_id
+        );
 
-        $nodeurl = 'https://api.criarwhats.com/send';
-
-        $data = [
-            'receiver'  => '55'.$number,
-            'msgtext'   => $message,
-            'token'     => $configNota->token_whatsapp,
-        ];
-
-        // 'mediaurl'  => $mediaurl
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-        curl_setopt($ch, CURLOPT_URL, $nodeurl);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        echo $response;
-
+        return response($result, 200)->header('Content-Type', 'application/json');
     }
 
     public function testeEmail(){

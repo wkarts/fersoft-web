@@ -35,21 +35,8 @@ Route::group(['prefix' => 'checklist/veiculo'], function(){
     Route::post('/{id}/salvar', 'ChecklistMovimentacaoController@store');
 });
 
-// ==========================================
-// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
-// ==========================================
-/*Route::post('/whatsapp/ponto/webhook', 'PontoWhatsAppController@receberMensagem');*/
-
-// INTEGRACÃO DE PONTO VIA WHATSAPP (WEBHOOK)
-// Autenticação da origem deve ser validada pelo controller; exclusão de CSRF restrita à rota abaixo.
-Route::group(['prefix' => 'whatsapp/ponto/webhook'], function(){
-    Route::match(['get', 'post'], '/messages-upsert', 'App\Http\Controllers\PontoWhatsAppController@receberMensagem')
-        ->withoutMiddleware([
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class
-        ]);
-});
-
+// Webhooks de comunicação entram exclusivamente por /api/webhooks/connect-api.
+// O sistema de Ponto é acionado pelo dispatcher de automações após persistência/idempotência.
 
 Route::group(['prefix' => '/ajax'], function(){
     Route::get('/', 'AjaxController@index');
@@ -3142,31 +3129,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/import-devices', 'AdpDeviceDiscoveryController@importDevices')->name('adp.discovery.importDevices');
     });
 
-    Route::group(['prefix' => 'evo-instances'], function () {
-
-        Route::get('/',               'EvoApiInstanceController@list')->name('evo-instances.list');
-        Route::post('/save/{id?}', 'EvoApiInstanceController@save')->name('evo-instances.save');
-        Route::put('/update/{id}', 'EvoApiInstanceController@save')->name('evo-instances.update');
-        Route::get('/edit/{id}', 'EvoApiInstanceController@edit')->name('evo-instances.edit');
-        Route::delete('/delete/{id}', 'EvoApiInstanceController@delete')->name('evo-instances.delete');
-        Route::post('/create-api/{id}',   'EvoApiInstanceController@createApiInstance')->name('evo-instances.create-api');
-        Route::get('/status/{id}',        'EvoApiInstanceController@statusApiInstance')->name('evo-instances.status-api');
-        Route::get('/qr/{id}',            'EvoApiInstanceController@qrCode')->name('evo-instances.qr');
-        Route::post('/block/{id}',   'EvoApiInstanceController@block')->name('evo-instances.block');
-        Route::post('/unblock/{id}', 'EvoApiInstanceController@unblock')->name('evo-instances.unblock');
-        Route::get('/tenants/search', 'EvoApiInstanceController@tenants')->name('evo-instances.tenants.search');
-        Route::get('/credentials/{empresa}', 'EvoApiInstanceController@credentials')->name('evo-instances.credentials');
-        //Route::get('/tenant/{id?}', 'EvoApiInstanceController@tenant')->name('evo-instances.tenant');
-        Route::get('/tenant', 'EvoApiInstanceController@tenantView')->name('evo-instances.tenant');
-        //Route::post('/credentialsTenant/{id}', 'EvoApiInstanceController@credentialsTenant')->name('evo-instances.credentialsTenant');
-        Route::post('/credentials-tenant/{id}', 'EvoApiInstanceController@credentialsTenant')->name('evo-instances.credentials-tenant');
-        Route::post('/send-whatsapp/{id}', 'EvoApiInstanceController@sendWhatsApp')->name('evo-instances.send-whatsapp');
-        Route::post('/send-whatsapp-button', 'EvoApiInstanceController@sendWhatsAppButton')->name('evo-instances.send-whatsapp-button');
-
-    });
-
-    Route::group(['prefix' => 'evoapi'], function () {
-        Route::get('/', 'EvoApiInstanceController@tenantView')->name('evoapi.list');
+    Route::group(['prefix' => 'connect-api'], function () {
+        Route::get('/', 'ConnectApiInstanceController@index')->name('connect-api.index');
+        Route::get('/companies', 'ConnectApiInstanceController@companies')->name('connect-api.companies');
+        Route::post('/provision/{empresa}', 'ConnectApiInstanceController@provision')->name('connect-api.provision');
+        Route::post('/instances/{id}/reprovision', 'ConnectApiInstanceController@reprovision')->name('connect-api.reprovision');
+        Route::get('/instances/{id}/status', 'ConnectApiInstanceController@status')->name('connect-api.status');
+        Route::get('/instances/{id}/qr', 'ConnectApiInstanceController@qr')->name('connect-api.qr');
+        Route::post('/instances/{id}/pairing-code', 'ConnectApiInstanceController@pairingCode')->name('connect-api.pairing-code');
+        Route::post('/instances/{id}/restart', 'ConnectApiInstanceController@restart')->name('connect-api.restart');
+        Route::post('/instances/{id}/disconnect', 'ConnectApiInstanceController@disconnect')->name('connect-api.disconnect');
+        Route::post('/instances/{id}/block', 'ConnectApiInstanceController@block')->name('connect-api.block');
+        Route::post('/instances/{id}/unblock', 'ConnectApiInstanceController@unblock')->name('connect-api.unblock');
+        Route::post('/instances/{id}/test', 'ConnectApiInstanceController@testMessage')->name('connect-api.test');
+        Route::post('/send-whatsapp-button', 'ConnectApiInstanceController@sendWhatsAppButton')->name('connect-api.send-whatsapp-button');
     });
 
     Route::group(['prefix' => 'produto_prateleiras'], function () {
