@@ -62,3 +62,30 @@ Consulte também:
 - [TEMPLATES.md](TEMPLATES.md)
 - [POINT-INTEGRATION.md](POINT-INTEGRATION.md)
 - [MIGRATION.md](MIGRATION.md)
+
+
+## Provisionamento com telefone
+
+Ao provisionar ou reprovisionar uma instância, o Master informa o número do WhatsApp com DDI + DDD + número.
+
+Exemplo:
+
+```text
+5575999999999
+```
+
+O FERSOFT normaliza o telefone e envia à Connect|API junto com o bootstrap técnico da instância. O provider técnico necessário ao contrato da Connect|API é definido internamente e não é exposto como escolha ao usuário do ERP.
+
+O fluxo é:
+
+```text
+empresa + telefone
+ -> POST /instance/create
+ -> integration técnica WHATSAPP-BAILEYS
+ -> token da instância
+ -> número internacional
+ -> pairing/QR
+ -> webhook automático
+```
+
+Erros remotos passam a preservar a mensagem de validação retornada pela Connect|API, evitando exibir apenas `Bad Request` quando houver uma causa mais específica.
