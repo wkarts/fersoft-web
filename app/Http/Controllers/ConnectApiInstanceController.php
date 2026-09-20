@@ -157,6 +157,63 @@ class ConnectApiInstanceController extends BaseController
         );
     }
 
+    public function sendWhatsAppButton(Request $request, ConnectApiClient $client, ConnectApiMessageService $messages)
+    {
+        $empresaId = (int) $this->empresa_id;
+        if ($empresaId <= 0) {
+            return response()->json(['success' => false, 'error' => 'Empresa do usuário não identificada.'], 422);
+        }
+
+        $number = (string) $request->input('number', '');
+        $text = (string) $request->input('text', '');
+        $caption = (string) $request->input('caption', '');
+        $files = (array) $request->input('files', []);
+
+        if ($number === '') {
+            return response()->json(['success' => false, 'error' => 'Informe o número de destino.'], 422);
+        }
+
+        $instance = app(\App\Services\ConnectApi\ConnectApiIntegrationResolver::class)->forEmpresa($empresaId);
+        $normalized = $messages->normalizeNumber($number);
+        $responses = [];
+
+        if ($text !== '') {
+            $responses[] = $client->sendText($instance, $normalized, $text);
+        }
+
+        foreach ($files as $file) {
+            $data = (string) ($file['data'] ?? '');
+            $name = (string) ($file['name'] ?? 'arquivo');
+
+            if ($data === '') {
+                continue;
+            }
+
+            $mime = 'application/octet-stream';
+            if (preg_match('/^data:([^;]+);base64,(.+)$/s', $data, $matches)) {
+                $mime = $matches[1];
+                $data = $matches[2];
+            }
+
+            $responses[] = $client->sendMedia(
+                $instance,
+                $normalized,
+                $data,
+                $name,
+                $mime,
+                $caption
+            );
+        }
+
+        foreach ($responses as $response) {
+            if (!($response['success'] ?? false)) {
+                return response()->json($response, 502);
+            }
+        }
+
+        return response()->json(['success' => true, 'responses' => $responses]);
+    }
+
     private function owned(int $id, bool $superOnly = false): ConnectApiInstance
     {
         $user = session('user_logged', []);
