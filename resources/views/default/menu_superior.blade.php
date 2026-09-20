@@ -449,7 +449,7 @@
 										PDV
 									</a>
 								</div>
-                                {!! __view_evo_whatsapp_modal_button() !!}
+                                {!! __view_connect_api_whatsapp_modal_button() !!}
 
                                 <div class="dropdown">
 									@if(sizeof($alertas) > 0)
