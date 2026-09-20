@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessConnectApiWebhookEvent;
+use App\Models\ConnectApiInstance;
 use App\Models\ConnectApiWebhookEvent;
-use App\Services\ConnectApi\ConnectApiIntegrationResolver;
 use App\Services\ConnectApi\ConnectApiWebhookNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,30 +13,43 @@ class ConnectApiWebhookController extends Controller
 {
     public function receive(
         Request $request,
-        ConnectApiIntegrationResolver $resolver,
+        string $token,
         ConnectApiWebhookNormalizer $normalizer
     ) {
-        if (!$this->validSecret($request)) {
+        $token = trim($token);
+
+        if ($token === '' || strlen($token) < 32) {
+            return response()->json(['status' => 'unauthorized'], 401);
+        }
+
+        $instance = ConnectApiInstance::query()
+            ->where('webhook_token_hash', hash('sha256', $token))
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$instance) {
             return response()->json(['status' => 'unauthorized'], 401);
         }
 
         $payload = $request->all();
         $normalized = $normalizer->normalize($payload);
-        $instanceName = (string) ($normalized['instance_name'] ?? '');
+        $payloadInstanceName = (string) ($normalized['instance_name'] ?? '');
 
-        if ($instanceName === '') {
-            return response()->json(['status' => 'ignored', 'reason' => 'instance_missing'], 202);
-        }
-
-        $instance = $resolver->byInstanceName($instanceName);
-
-        if (!$instance) {
-            Log::notice('Webhook Connect|API ignorado: instância não pertence a esta instalação FERSOFT.', [
-                'instance_name' => $instanceName,
+        if ($payloadInstanceName !== '' && !hash_equals($instance->instance_name, $payloadInstanceName)) {
+            Log::warning('Webhook Connect|API rejeitado por divergência de instância.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $instance->empresa_id,
+                'payload_instance_name' => $payloadInstanceName,
             ]);
 
-            return response()->json(['status' => 'ignored', 'reason' => 'foreign_instance'], 202);
+            return response()->json([
+                'status' => 'unauthorized',
+                'reason' => 'instance_mismatch',
+            ], 403);
         }
+
+        // O token da URL é a autoridade. O payload externo não define empresa_id.
+        $normalized['instance_name'] = $instance->instance_name;
 
         if (($normalized['event'] ?? '') === 'connection-update') {
             $state = (string) (
@@ -57,7 +70,7 @@ class ConnectApiWebhookController extends Controller
             $instance->last_status_at = now();
 
             if ($connected !== '') {
-                $instance->connected_number = preg_replace('/\\D+/', '', explode('@', $connected)[0] ?? '');
+                $instance->connected_number = preg_replace('/\D+/', '', explode('@', $connected)[0] ?? '');
             }
 
             if ($state === 'open') {
@@ -67,8 +80,6 @@ class ConnectApiWebhookController extends Controller
             } elseif ($state === 'close') {
                 $instance->disconnected_at = now();
             }
-
-            $instance->save();
         }
 
         $deduplicationKey = hash('sha256', implode('|', [
@@ -100,6 +111,7 @@ class ConnectApiWebhookController extends Controller
         );
 
         $instance->last_event_at = now();
+        $instance->webhook_last_received_at = now();
         $instance->save();
 
         if ($event->wasRecentlyCreated) {
@@ -110,23 +122,5 @@ class ConnectApiWebhookController extends Controller
             'status' => $event->wasRecentlyCreated ? 'accepted' : 'duplicate',
             'event_id' => $event->id,
         ], $event->wasRecentlyCreated ? 202 : 200);
-    }
-
-    private function validSecret(Request $request): bool
-    {
-        $expected = (string) config('connect_api.webhook_secret');
-
-        if ($expected === '') {
-            return true;
-        }
-
-        $provided = (string) (
-            $request->header('X-Connect-Webhook-Secret')
-            ?: $request->header('X-Webhook-Secret')
-            ?: $request->bearerToken()
-            ?: $request->query('secret')
-        );
-
-        return $provided !== '' && hash_equals($expected, $provided);
     }
 }
