@@ -9,13 +9,14 @@ class ConnectApiMessageService
 {
     public function __construct(
         private readonly ConnectApiClient $client,
-        private readonly ConnectApiIntegrationResolver $resolver
+        private readonly ConnectApiIntegrationResolver $resolver,
+        private readonly ConnectApiInstanceService $instances
     ) {
     }
 
     public function sendText(int $empresaId, string $number, string $message): array
     {
-        $instance = $this->resolver->forEmpresa($empresaId);
+        $instance = $this->readyInstance($empresaId);
 
         return $this->client->sendText(
             $instance,
@@ -30,7 +31,7 @@ class ConnectApiMessageService
         string $file,
         string $caption = ''
     ): array {
-        $instance = $this->resolver->forEmpresa($empresaId);
+        $instance = $this->readyInstance($empresaId);
         [$media, $name, $mime] = $this->prepareMedia($file);
 
         return $this->client->sendMedia(
@@ -49,7 +50,7 @@ class ConnectApiMessageService
         string $eventKey,
         array $parameters = []
     ): array {
-        $instance = $this->resolver->forEmpresa($empresaId);
+        $instance = $this->readyInstance($empresaId);
 
         $binding = ConnectApiTemplateBinding::query()
             ->where('enabled', true)
@@ -93,6 +94,21 @@ class ConnectApiMessageService
         }
 
         return $digits;
+    }
+
+    private function readyInstance(int $empresaId)
+    {
+        $instance = $this->resolver->forEmpresa($empresaId);
+
+        if (
+            $instance->provisioned_at
+            && $instance->instance_token
+            && !$instance->webhook_configured_at
+        ) {
+            $instance = $this->instances->syncWebhook($instance);
+        }
+
+        return $instance;
     }
 
     private function prepareMedia(string $file): array
