@@ -27,8 +27,9 @@ class ConnectApiInstanceController extends BaseController
         }
 
         $records = $query->orderBy('empresa_id')->get();
+        $title = 'Connect|API';
 
-        return view('connect_api.index', compact('records', 'isSuper'));
+        return view('connect_api.index', compact('records', 'isSuper', 'title'));
     }
 
     public function companies(Request $request)

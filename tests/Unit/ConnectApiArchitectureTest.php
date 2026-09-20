@@ -86,6 +86,21 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertSame('/connect-api', $defaults['redirectPage'] ?? null);
     }
 
+    public function testConnectApiViewsAlwaysHaveATitleFallback(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents($root . '/app/Http/Controllers/ConnectApiInstanceController.php');
+        $layout = file_get_contents($root . '/resources/views/default/menu_lateral.blade.php');
+
+        $this->assertStringContainsString("\$title = 'Connect|API';", $controller);
+        $this->assertStringContainsString("compact('records', 'isSuper', 'title')", $controller);
+        $this->assertStringContainsString(
+            "{{ \$title ?? config('app.name', 'FERSOFT WEB') }}",
+            $layout
+        );
+        $this->assertStringNotContainsString('<title>{{$title}}</title>', $layout);
+    }
+
     public function testWebhookSecurityIsPerInstanceAndNotGlobalEnv(): void
     {
         $root = dirname(__DIR__, 2);
