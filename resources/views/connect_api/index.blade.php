@@ -24,7 +24,7 @@
             <div class="text-muted">Comunicação WhatsApp da instalação FERSOFT WEB</div>
         </div>
         @if($isSuper)
-            <button class="btn btn-primary" data-toggle="modal" data-target="#modalProvision">
+            <button id="btnOpenProvision" class="btn btn-primary" type="button">
                 <i class="fa fa-plus"></i> Provisionar empresa
             </button>
         @endif
@@ -74,7 +74,7 @@
                     <tr data-id="{{ $inst->id }}">
                         <td>
                             <strong>{{ optional($inst->empresa)->nome_fantasia ?: optional($inst->empresa)->nome ?: 'Empresa #' . $inst->empresa_id }}</strong>
-                            <div class="connect-muted">empresa_id {{ $inst->empresa_id }}</div>
+                            <div class="connect-muted">ID: {{ $inst->empresa_id }}</div>
                         </td>
                         <td class="connect-instance-name">{{ $inst->instance_name }}</td>
                         <td>{{ $inst->connected_number ?: '—' }}</td>
@@ -103,7 +103,11 @@
                         <td class="connect-actions">
                             @if(!$inst->provisioned_at)
                                 @if($isSuper)
-                                    <button class="btn btn-sm btn-primary js-provision-existing" data-empresa="{{ $inst->empresa_id }}">Provisionar</button>
+                                    <button
+                                        class="btn btn-sm btn-primary js-provision-existing"
+                                        data-empresa="{{ $inst->empresa_id }}"
+                                        data-nome="{{ optional($inst->empresa)->nome_fantasia ?: optional($inst->empresa)->nome ?: 'Empresa #' . $inst->empresa_id }}"
+                                    >Provisionar</button>
                                 @endif
                             @else
                                 <button class="btn btn-sm btn-light-primary js-status">Status</button>
@@ -114,7 +118,11 @@
                                 @if($isSuper)
                                     <button class="btn btn-sm btn-outline-secondary js-sync-webhook">Sincronizar webhook</button>
                                     @if(in_array($inst->connection_status, ['not_found','error']))
-                                        <button class="btn btn-sm btn-outline-primary js-reprovision">Reprovisionar</button>
+                                        <button
+                                            class="btn btn-sm btn-outline-primary js-reprovision"
+                                            data-empresa="{{ $inst->empresa_id }}"
+                                            data-nome="{{ optional($inst->empresa)->nome_fantasia ?: optional($inst->empresa)->nome ?: 'Empresa #' . $inst->empresa_id }}"
+                                        >Reprovisionar</button>
                                     @endif
                                     <button class="btn btn-sm btn-light-danger js-block">{{ $inst->is_blocked ? 'Desbloquear' : 'Bloquear' }}</button>
                                 @endif
@@ -136,9 +144,31 @@
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Provisionar Connect|API</h5><button class="close" data-dismiss="modal">&times;</button></div>
             <div class="modal-body">
-                <label>Empresa</label>
-                <select id="connectCompany" class="form-control"></select>
-                <small class="text-muted">Nome da instância e credencial serão gerados automaticamente. Será necessário novo pareamento.</small>
+                <input type="hidden" id="connectProvisionMode" value="provision">
+                <input type="hidden" id="connectProvisionInstanceId" value="">
+
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <select id="connectCompany" class="form-control"></select>
+                </div>
+
+                <div class="form-group mb-2">
+                    <label>Número do WhatsApp</label>
+                    <input
+                        type="tel"
+                        id="connectProvisionNumber"
+                        class="form-control"
+                        placeholder="5575999999999"
+                        autocomplete="tel"
+                    >
+                    <small class="text-muted">
+                        Informe DDI + DDD + número. Ex.: 5575999999999.
+                    </small>
+                </div>
+
+                <small class="text-muted d-block mt-3">
+                    A instância será criada na Connect|API e o pareamento poderá ser concluído por código ou QR Code.
+                </small>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-light" data-dismiss="modal">Cancelar</button>
@@ -258,10 +288,13 @@
         }
     });
 
-    document.querySelectorAll('.js-reprovision').forEach(btn => btn.onclick = async () => {
-        if (!confirm('A instância remota será recriada e exigirá novo pareamento. Continuar?')) return;
-        try { await request('/connect-api/instances/' + rowId(btn) + '/reprovision', {method:'POST'}); location.reload(); }
-        catch(e){ show('Erro', e.message); }
+    document.querySelectorAll('.js-reprovision').forEach(btn => btn.onclick = () => {
+        prepareProvisionModal({
+            mode: 'reprovision',
+            empresaId: btn.dataset.empresa,
+            empresaName: btn.dataset.nome,
+            instanceId: rowId(btn)
+        });
     });
 
     document.querySelectorAll('.js-block').forEach(btn => btn.onclick = async () => {
@@ -270,9 +303,12 @@
         catch(e){ show('Erro', e.message); }
     });
 
-    document.querySelectorAll('.js-provision-existing').forEach(btn => btn.onclick = async () => {
-        try { await request('/connect-api/provision/' + btn.dataset.empresa, {method:'POST'}); location.reload(); }
-        catch(e){ show('Erro', e.message); }
+    document.querySelectorAll('.js-provision-existing').forEach(btn => btn.onclick = () => {
+        prepareProvisionModal({
+            mode: 'provision',
+            empresaId: btn.dataset.empresa,
+            empresaName: btn.dataset.nome
+        });
     });
 
     @if($isSuper)
@@ -291,11 +327,73 @@
         }
     });
 
+    function prepareProvisionModal({mode, empresaId = null, empresaName = '', instanceId = ''}) {
+        document.getElementById('connectProvisionMode').value = mode || 'provision';
+        document.getElementById('connectProvisionInstanceId').value = instanceId || '';
+        document.getElementById('connectProvisionNumber').value = '';
+
+        const company = $('#connectCompany');
+        company.prop('disabled', false);
+
+        if (empresaId) {
+            const option = new Option(empresaName || ('Empresa #' + empresaId), empresaId, true, true);
+            company.empty().append(option).trigger('change');
+            company.prop('disabled', true);
+        } else {
+            company.val(null).trigger('change');
+        }
+
+        $('#modalProvision .modal-title').text(
+            mode === 'reprovision' ? 'Reprovisionar Connect|API' : 'Provisionar Connect|API'
+        );
+        document.getElementById('btnProvision').textContent =
+            mode === 'reprovision' ? 'Reprovisionar' : 'Provisionar';
+
+        $('#modalProvision').modal('show');
+    }
+
+    document.getElementById('btnOpenProvision').onclick = () => {
+        prepareProvisionModal({mode:'provision'});
+    };
+
     document.getElementById('btnProvision').onclick = async () => {
         const empresa = $('#connectCompany').val();
-        if (!empresa) return;
-        try { await request('/connect-api/provision/' + empresa, {method:'POST'}); location.reload(); }
-        catch(e){ show('Erro', e.message); }
+        const number = document.getElementById('connectProvisionNumber').value.trim();
+        const mode = document.getElementById('connectProvisionMode').value;
+        const instanceId = document.getElementById('connectProvisionInstanceId').value;
+
+        if (!empresa) {
+            show('Erro', 'Selecione a empresa.');
+            return;
+        }
+
+        if (!number) {
+            show('Erro', 'Informe o número do WhatsApp para provisionar a instância.');
+            return;
+        }
+
+        const url = mode === 'reprovision'
+            ? '/connect-api/instances/' + instanceId + '/reprovision'
+            : '/connect-api/provision/' + empresa;
+
+        const button = document.getElementById('btnProvision');
+        button.disabled = true;
+
+        try {
+            const data = await request(url, {
+                method:'POST',
+                headers:Object.assign({}, headers, {'Content-Type':'application/json'}),
+                body:JSON.stringify({number})
+            });
+
+            $('#modalProvision').modal('hide');
+            show('Connect|API', data.message || 'Instância provisionada com sucesso.');
+            setTimeout(() => location.reload(), 900);
+        } catch(e) {
+            show('Erro', e.message);
+        } finally {
+            button.disabled = false;
+        }
     };
     @endif
 })();
