@@ -70,9 +70,13 @@ class ConnectApiArchitectureTest extends TestCase
         $config = file_get_contents($root . '/config/connect_api.php');
         $api = file_get_contents($root . '/routes/api.php');
         $model = file_get_contents($root . '/app/Models/ConnectApiInstance.php');
+        $ci = file_get_contents($root . '/.github/workflows/ci.yml');
+        $bootstrap = file_get_contents($root . '/scripts/ci/bootstrap-env.sh');
 
-        $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_SECRET', $env);
-        $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_URL', $env);
+        foreach ([$env, $ci, $bootstrap] as $source) {
+            $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_SECRET', $source);
+            $this->assertStringNotContainsString('CONNECT_API_WEBHOOK_URL', $source);
+        }
         $this->assertStringNotContainsString('webhook_secret', $config);
         $this->assertStringNotContainsString('webhook_url', $config);
         $this->assertStringContainsString('/webhooks/connect-api/{token}', $api);
