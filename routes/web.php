@@ -3133,6 +3133,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'ConnectApiInstanceController@index')->name('connect-api.index');
         Route::get('/companies', 'ConnectApiInstanceController@companies')->name('connect-api.companies');
         Route::post('/provision/{empresa}', 'ConnectApiInstanceController@provision')->name('connect-api.provision');
+        Route::post('/instances/{id}/reprovision', 'ConnectApiInstanceController@reprovision')->name('connect-api.reprovision');
         Route::get('/instances/{id}/status', 'ConnectApiInstanceController@status')->name('connect-api.status');
         Route::get('/instances/{id}/qr', 'ConnectApiInstanceController@qr')->name('connect-api.qr');
         Route::post('/instances/{id}/pairing-code', 'ConnectApiInstanceController@pairingCode')->name('connect-api.pairing-code');
