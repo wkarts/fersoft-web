@@ -65,6 +65,18 @@ class ConnectApiInstanceController extends BaseController
         ]);
     }
 
+    public function reprovision(int $id, ConnectApiInstanceService $service)
+    {
+        $this->requireSuper();
+        $instance = $this->owned($id, true);
+        $instance = $service->reprovision($instance, $this->usuario_id);
+
+        return response()->json([
+            'success' => true,
+            'instance' => $this->present($instance),
+        ]);
+    }
+
     public function status(int $id, ConnectApiInstanceService $service)
     {
         $instance = $this->owned($id);
