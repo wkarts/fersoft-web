@@ -3,8 +3,9 @@
 namespace App\Services\ConnectApi;
 
 use App\Models\ConnectApiInstance;
-use App\Models\Empresa;
 use App\Models\ConnectApiTemplateBinding;
+use App\Models\Empresa;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ConnectApiInstanceService
@@ -38,7 +39,7 @@ class ConnectApiInstanceService
             ->first();
 
         if ($instance && $instance->provisioned_at && $instance->instance_token) {
-            return $instance;
+            return $this->syncWebhook($instance);
         }
 
         $instance ??= new ConnectApiInstance();
@@ -81,11 +82,7 @@ class ConnectApiInstanceService
         $instance->last_error_at = null;
         $instance->save();
 
-        $webhookUrl = $this->webhookUrl();
-        if ($webhookUrl !== '') {
-            $this->client->configureWebhook($instance, $webhookUrl);
-        }
-
+        $instance = $this->syncWebhook($instance);
         $this->syncDefaultTemplates($instance);
 
         return $instance->fresh();
@@ -95,6 +92,10 @@ class ConnectApiInstanceService
     {
         $instance->remote_instance_id = null;
         $instance->instance_token = null;
+        $instance->webhook_token = null;
+        $instance->webhook_token_hash = null;
+        $instance->webhook_configured_at = null;
+        $instance->webhook_last_received_at = null;
         $instance->provisioned_at = null;
         $instance->connection_status = 'awaiting_provisioning';
         $instance->connected_number = null;
@@ -145,11 +146,27 @@ class ConnectApiInstanceService
             $instance->save();
         }
 
+        if (!$instance->webhook_configured_at && $instance->provisioned_at && $instance->instance_token) {
+            try {
+                $instance = $this->syncWebhook($instance->fresh());
+            } catch (\Throwable $e) {
+                Log::warning('Falha ao sincronizar webhook Connect|API durante consulta de status.', [
+                    'instance_id' => $instance->id,
+                    'empresa_id' => $instance->empresa_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $instance->fresh();
     }
 
     public function pairing(ConnectApiInstance $instance, ?string $number = null): array
     {
+        if (!$instance->webhook_configured_at) {
+            $instance = $this->syncWebhook($instance);
+        }
+
         $response = $this->client->connect($instance, $number);
 
         if ($response['success'] ?? false) {
@@ -159,6 +176,83 @@ class ConnectApiInstanceService
         }
 
         return $response;
+    }
+
+    public function syncWebhook(ConnectApiInstance $instance, bool $rotateToken = false): ConnectApiInstance
+    {
+        if (!$instance->provisioned_at || !$instance->instance_token) {
+            throw new \RuntimeException('A instância Connect|API ainda não foi provisionada.');
+        }
+
+        $token = $this->ensureWebhookToken($instance, $rotateToken);
+        $webhookUrl = $this->buildWebhookUrl($token);
+
+        $response = $this->client->configureWebhook($instance, $webhookUrl);
+
+        if (!($response['success'] ?? false)) {
+            $instance->webhook_configured_at = null;
+            $instance->last_error_code = 'webhook:' . (string) ($response['status'] ?? '');
+            $instance->last_error_message = (string) ($response['error'] ?? 'Falha ao configurar webhook na Connect|API.');
+            $instance->last_error_at = now();
+            $instance->save();
+
+            throw new \RuntimeException($instance->last_error_message);
+        }
+
+        $instance->webhook_configured_at = now();
+
+        if (str_starts_with((string) $instance->last_error_code, 'webhook:')) {
+            $instance->last_error_code = null;
+            $instance->last_error_message = null;
+            $instance->last_error_at = null;
+        }
+
+        $instance->save();
+
+        return $instance->fresh();
+    }
+
+    public function detectPublicBaseUrl(): string
+    {
+        $candidates = [];
+
+        try {
+            if (app()->bound('request')) {
+                $request = request();
+                if ($request && $request->getHost()) {
+                    $candidates[] = $request->getSchemeAndHttpHost();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Sem contexto HTTP (CLI/queue): usa APP_URL como fallback.
+        }
+
+        $candidates[] = (string) config('app.url');
+
+        foreach ($candidates as $candidate) {
+            $candidate = rtrim(trim((string) $candidate), '/');
+            if ($candidate === '') {
+                continue;
+            }
+
+            $parts = parse_url($candidate);
+            $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+            $host = (string) ($parts['host'] ?? '');
+
+            if (in_array($scheme, ['http', 'https'], true) && $host !== '') {
+                $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+                return $scheme . '://' . $host . $port;
+            }
+        }
+
+        throw new \RuntimeException('Não foi possível detectar automaticamente a URL pública desta instalação FERSOFT WEB.');
+    }
+
+    public function buildWebhookUrl(string $token): string
+    {
+        return $this->detectPublicBaseUrl()
+            . '/api/webhooks/connect-api/'
+            . rawurlencode($token);
     }
 
     public function syncDefaultTemplates(ConnectApiInstance $instance): void
@@ -171,7 +265,6 @@ class ConnectApiInstanceService
                 (string) ($definition['body'] ?? '')
             );
 
-            // Conflito/registro existente é aceitável: o binding continua válido.
             if (($response['success'] ?? false) || (int) ($response['status'] ?? 0) === 409) {
                 ConnectApiTemplateBinding::firstOrCreate(
                     [
@@ -188,25 +281,23 @@ class ConnectApiInstanceService
         }
     }
 
-    private function webhookUrl(): string
+    private function ensureWebhookToken(ConnectApiInstance $instance, bool $rotateToken): string
     {
-        $configured = trim((string) config('connect_api.webhook_url'));
-        $base = $configured !== ''
-            ? $configured
-            : rtrim((string) config('app.url'), '/') . '/api/webhooks/connect-api';
+        $token = $rotateToken ? null : $instance->webhook_token;
 
-        if ($base === '' || $base === '/api/webhooks/connect-api') {
-            return '';
+        if (!$token) {
+            $token = Str::random(64);
+            $instance->webhook_token = $token;
         }
 
-        $secret = (string) config('connect_api.webhook_secret');
+        $hash = hash('sha256', $token);
 
-        if ($secret === '') {
-            return $base;
+        if ($instance->webhook_token_hash !== $hash) {
+            $instance->webhook_token_hash = $hash;
         }
 
-        return $base
-            . (str_contains($base, '?') ? '&' : '?')
-            . 'secret=' . rawurlencode($secret);
+        $instance->save();
+
+        return $token;
     }
 }
