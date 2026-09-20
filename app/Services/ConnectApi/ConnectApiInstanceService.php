@@ -219,7 +219,7 @@ class ConnectApiInstanceService
         try {
             if (app()->bound('request')) {
                 $request = request();
-                if ($request && $request->getHost()) {
+                if ($request && $request->headers->has('host') && $request->getHost()) {
                     $candidates[] = $request->getSchemeAndHttpHost();
                 }
             }
