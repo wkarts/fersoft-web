@@ -25,13 +25,6 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
-    // Credenciais técnicas da integração municipal SAATRI.
-    // Nunca embutir usuário/senha no controller ou no repositório.
-    'nfse_saatri' => [
-        'username' => env('NFSE_SAATRI_USERNAME'),
-        'password' => env('NFSE_SAATRI_PASSWORD'),
-    ],
-
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
