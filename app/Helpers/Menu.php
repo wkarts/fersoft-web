@@ -476,6 +476,28 @@ class Menu {
                 ]
             ],
             [
+                'titulo' => 'Contratos',
+                'icone' => $this->getIcone('Contratos'),
+                'subs' => [
+                    [
+                        'nome' => 'Contratos / Obras',
+                        'rota' => '/contratos'
+                    ],
+                    [
+                        'nome' => 'Medições / Faturamentos',
+                        'rota' => '/contratos/medicoes'
+                    ],
+                    [
+                        'nome' => 'Novo Lançamento',
+                        'rota' => '/contratos/medicoes/create/novo'
+                    ],
+                    [
+                        'nome' => 'Dashboard / DRE',
+                        'rota' => '/contratos/dashboard-dre'
+                    ]
+                ]
+            ],
+            [
                 'titulo' => 'Emissão de NFSe',
                 'icone' => $this->getIcone('NFSe'),
                 'subs' => [
