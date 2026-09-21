@@ -37,7 +37,7 @@ class PortedContratosEngenhariaTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
         $migration = file_get_contents(
-            $root . '/database/migrations/2026_09_21_020020_create_contrato_eng_funcionarios_table.php'
+            $root . '/database/migrations/2026_09_18_120036_create_contrato_eng_funcionarios_table.php'
         );
         $controller = file_get_contents($root . '/app/Http/Controllers/ContratoEngenhariaController.php');
 
@@ -77,30 +77,57 @@ class PortedContratosEngenhariaTest extends TestCase
         $this->assertStringContainsString('renderPdf', $controller);
     }
 
-    public function testSchemaIsSplitByResponsibility(): void
+    public function testHistoricalReconciledMigrationsAreReusedWithoutDuplicates(): void
     {
         $root = dirname(__DIR__, 2);
 
-        $createMigrations = [
+        $historical = [
+            '2026_09_18_120004_create_contratos_engenharia_table.php',
+            '2026_09_18_120007_create_faturas_engenharia_table.php',
+            '2026_09_18_120036_create_contrato_eng_funcionarios_table.php',
+            '2026_09_18_120037_create_contrato_eng_itens_table.php',
+            '2026_09_18_120038_create_fatura_eng_funcionarios_table.php',
+            '2026_09_18_120039_create_fatura_eng_itens_table.php',
+            '2026_09_18_120103_update_conta_pagars_table.php',
+        ];
+
+        foreach ($historical as $file) {
+            $this->assertFileExists($root . '/database/migrations/' . $file);
+        }
+
+        $duplicates = [
             '2026_09_21_020000_create_contratos_engenharia_table.php',
             '2026_09_21_020010_create_contrato_eng_itens_table.php',
             '2026_09_21_020020_create_contrato_eng_funcionarios_table.php',
             '2026_09_21_020030_create_faturas_engenharia_table.php',
             '2026_09_21_020040_create_fatura_eng_itens_table.php',
             '2026_09_21_020050_create_fatura_eng_funcionarios_table.php',
+            '2026_09_21_020060_add_contrato_eng_id_to_conta_pagars_table.php',
         ];
 
-        foreach ($createMigrations as $file) {
-            $source = file_get_contents($root . '/database/migrations/' . $file);
-            $this->assertIsString($source);
-            $this->assertSame(1, substr_count($source, 'Schema::create('), $file);
+        foreach ($duplicates as $file) {
+            $this->assertFileDoesNotExist(
+                $root . '/database/migrations/' . $file,
+                'Não recriar schema já conciliado pela migration histórica: ' . $file
+            );
         }
 
         $payable = file_get_contents(
-            $root . '/database/migrations/2026_09_21_020060_add_contrato_eng_id_to_conta_pagars_table.php'
+            $root . '/database/migrations/2026_09_18_120103_update_conta_pagars_table.php'
         );
-
-        $this->assertStringContainsString("Schema::table('conta_pagars'", $payable);
-        $this->assertStringNotContainsString('Schema::create(', $payable);
+        $this->assertStringContainsString('contrato_eng_id', $payable);
     }
-}
+
+    public function testPortedCodeUsesOnlyHistoricalMeasurementColumns(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $model = file_get_contents($root . '/app/Models/FaturaEngItem.php');
+        $controller = file_get_contents($root . '/app/Http/Controllers/ContratoEngMedicaoController.php');
+
+        $this->assertStringNotContainsString("'sub_total'", $model);
+        $this->assertStringNotContainsString("'descricao'", $model);
+        $this->assertStringNotContainsString("['sub_total']", $controller);
+        $this->assertStringContainsString("'empresa_id' => $fatura->empresa_id", $controller);
+        $this->assertStringContainsString("'filial_id' => $fatura->filial_id", $controller);
+        $this->assertStringContainsString("'usuario_id' => $fatura->usuario_id", $controller);
+    }}
