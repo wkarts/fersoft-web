@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Adiantamento;
 use App\Models\AdiantamentoMovimentacao;
+use App\Models\ContratoEngenharia;
 
 class ContasPagarController extends Controller
 {
@@ -269,7 +270,8 @@ class ContasPagarController extends Controller
             'usuario_id'         => session('user_logged')['id'],
             'filial_id'          => $filialParaSalvar,
             'fornecedor_id'      => $parcela['fornecedor_id'],
-            'numero_nota_fiscal' => $numeroNota
+            'numero_nota_fiscal' => $numeroNota,
+            'contrato_eng_id'     => $parcela['contrato_eng_id'] ?? null
         ]);
         echo json_encode($parcela);
     }
@@ -283,6 +285,7 @@ class ContasPagarController extends Controller
         $data['valor_integral'] = $request->valor_final ? __replace($request->valor_final) : __replace($request->valor);
         $data['usuario_id'] = session('user_logged')['id'];
         $data['empresa_id'] = $this->empresa_id;
+        $data['contrato_eng_id'] = $request->filled('contrato_eng_id') ? $request->contrato_eng_id : null;
 
         // Aplica a trava de filial no salvamento
         if ($this->filial_id != null) {
@@ -395,6 +398,7 @@ class ContasPagarController extends Controller
         $conta->tipo_pagamento   = $request->tipo_pagamento ?? '';
         $conta->veiculo_id = $request->veiculo_id == 'todos' ? null : $request->veiculo_id;
         $conta->usuario_edicao_id = session('user_logged')['id'];
+        $conta->contrato_eng_id = $request->filled('contrato_eng_id') ? $request->contrato_eng_id : null;
 
         if (empty($request->numero_nota_fiscal) && $conta->compra_id) {
             $compra = \App\Models\Compra::find($conta->compra_id);
@@ -488,6 +492,11 @@ class ContasPagarController extends Controller
         }
 
         $filial_id = $this->filial_id;
+        $contratos = ContratoEngenharia::where('empresa_id', $this->empresa_id)
+            ->with('cliente')
+            ->whereIn('status', ['Ativo', 'Suspenso'])
+            ->orderByDesc('id')
+            ->get();
 
         return view('contaPagar/register')
             ->with('categorias', $categorias)
@@ -496,6 +505,7 @@ class ContasPagarController extends Controller
             ->with('title', 'Cadastrar Contas a Pagar')
             ->with('veiculos', $veiculos)
             ->with('filial_id', $filial_id)
+            ->with('contratos', $contratos)
             ->with('contasEmpresa', $contasEmpresa);
     }
 
@@ -524,6 +534,11 @@ class ContasPagarController extends Controller
         // =========================================================
         // 2º PASSO: AGORA SIM busca os fornecedores com a trava
         // =========================================================
+        $contratos = ContratoEngenharia::where('empresa_id', $this->empresa_id)
+            ->with('cliente')
+            ->orderByDesc('id')
+            ->get();
+
         $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
             ->where(function($q) use ($conta) {
                 $q->where('ativo', 1)
@@ -537,6 +552,7 @@ class ContasPagarController extends Controller
             ->with('title', 'Editar Contas a Pagar')
             ->with('veiculos', $veiculos)
             ->with('filial_id', $this->filial_id)
+            ->with('contratos', $contratos)
             ->with('contasEmpresa', $contasEmpresa);
     }
 

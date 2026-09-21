@@ -188,6 +188,29 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('js-reprovision', $view);
     }
 
+    public function testDeletedConnectApiInstanceIsReusedInsteadOfDuplicated(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $service = file_get_contents(
+            $root . '/app/Services/ConnectApi/ConnectApiInstanceService.php'
+        );
+        $migration = file_get_contents(
+            $root . '/database/migrations/2026_09_20_010000_create_connect_api_instances_table.php'
+        );
+
+        $this->assertStringContainsString('->withDeleted()', $service);
+        $this->assertStringContainsString(
+            "if (\$instance && \$instance->trashed())",
+            $service
+        );
+        $this->assertStringContainsString("\$instance->restore();", $service);
+        $this->assertStringContainsString('resetForFreshProvisioning', $service);
+        $this->assertStringContainsString(
+            "\$table->unique('empresa_id', 'connect_api_instances_empresa_unique')",
+            $migration
+        );
+    }
+
     public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void
     {
         $root = dirname(__DIR__, 2);

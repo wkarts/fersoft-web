@@ -52,10 +52,25 @@ class ConnectApiInstanceService
             'telefone' => $this->maskNumber($number),
         ]);
 
+        // O índice empresa_id é único mesmo quando o registro foi soft-deleted.
+        // Portanto, uma nova provisão deve restaurar e reaproveitar o registro local
+        // existente, em vez de tentar inserir uma segunda linha para a mesma empresa.
         $instance = ConnectApiInstance::query()
+            ->withDeleted()
             ->where('empresa_id', $empresa->id)
-            ->whereNull('deleted_at')
             ->first();
+
+        if ($instance && $instance->trashed()) {
+            Log::info('Connect|API: reaproveitando registro local excluído.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $empresa->id,
+                'instance_name' => $instance->instance_name,
+                'usuario_id' => $usuarioId,
+            ]);
+
+            $instance->restore();
+            $this->resetForFreshProvisioning($instance, $usuarioId, $filialId);
+        }
 
         if ($instance && $instance->provisioned_at && $instance->instance_token) {
             return $this->syncWebhook($instance);
@@ -433,6 +448,36 @@ class ConnectApiInstanceService
                 );
             }
         }
+    }
+
+    private function resetForFreshProvisioning(
+        ConnectApiInstance $instance,
+        ?int $usuarioId,
+        ?int $filialId
+    ): void {
+        $instance->remote_instance_id = null;
+        $instance->instance_token = null;
+        $instance->webhook_token = null;
+        $instance->webhook_token_hash = null;
+        $instance->webhook_configured_at = null;
+        $instance->webhook_last_received_at = null;
+        $instance->connected_number = null;
+        $instance->connected_name = null;
+        $instance->connection_status = 'awaiting_provisioning';
+        $instance->is_blocked = false;
+        $instance->provisioned_at = null;
+        $instance->paired_at = null;
+        $instance->connected_at = null;
+        $instance->disconnected_at = null;
+        $instance->last_event_at = null;
+        $instance->last_status_at = null;
+        $instance->last_error_code = null;
+        $instance->last_error_message = null;
+        $instance->last_error_at = null;
+        $instance->usuario_id = $usuarioId;
+        $instance->filial_id = ($filialId && $filialId > 0) ? $filialId : null;
+        $instance->updated_by = $usuarioId;
+        $instance->save();
     }
 
     private function maskNumber(string $number): string

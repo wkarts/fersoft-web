@@ -120,6 +120,27 @@
                                               </select>
                                           </div>
                                           
+                                            <div class="form-group col-lg-4 col-md-6 col-sm-12">
+                                                <label class="col-form-label">Contrato / Obra (DRE)</label>
+                                                <select name="contrato_eng_id" class="form-control custom-select">
+                                                    <option value="">Nenhum (Despesa Geral / Administrativa)</option>
+                                                    @foreach(($contratos ?? collect()) as $contratoEng)
+                                                        <option
+                                                            value="{{ $contratoEng->id }}"
+                                                            {{ (string)old('contrato_eng_id', isset($conta) ? $conta->contrato_eng_id : '') === (string)$contratoEng->id ? 'selected' : '' }}
+                                                        >
+                                                            Contrato #{{ $contratoEng->numero_contrato ?: $contratoEng->id }}
+                                                            @if($contratoEng->cliente)
+                                                                - {{ $contratoEng->cliente->razao_social }}
+                                                            @endif
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="form-text text-muted">
+                                                    Opcional. Vincule despesas da obra para compor o DRE do contrato.
+                                                </small>
+                                            </div>
+
                                             <div class="form-group col-lg-2 col-md-9 col-sm-12">
                                                 <label class="col-form-label">Data de vencimento</label>
                                                 <div class="">

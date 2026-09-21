@@ -26,7 +26,8 @@ class ContaPagar extends BaseModel
         'categoria_id', 'status', 'empresa_id', 'fornecedor_id',
         'tipo_pagamento', 'numero_nota_fiscal', 'filial_id', 'observacao',
         'valor_inss', 'valor_iss', 'valor_pis', 'valor_cofins', 'valor_ir', 'valor_csll', 'usuario_edicao_id',
-        'outras_retencoes', 'usuario_id', 'usuario_baixa_id', 'veiculo_id','juros', 'multa'
+        'outras_retencoes', 'usuario_id', 'usuario_baixa_id', 'veiculo_id','juros', 'multa',
+        'contrato_eng_id'
     ];
 
     // Atributo virtual para retornar valor líquido
@@ -46,6 +47,11 @@ class ContaPagar extends BaseModel
     public function setFilialIdAttribute($value)
     {
         $this->attributes['filial_id'] = ((int) $value === -1 ? null : $value);
+    }
+
+    public function contratoEngenharia()
+    {
+        return $this->belongsTo(ContratoEngenharia::class, 'contrato_eng_id');
     }
 
     public function filial(){
