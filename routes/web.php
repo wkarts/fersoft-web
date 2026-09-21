@@ -692,6 +692,42 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     });
 
+    // Contratos de engenharia, locação e serviços
+    Route::group(['prefix' => 'contratos'], function(){
+        Route::get('/', 'ContratoEngenhariaController@list')->name('contratos.index');
+        Route::get('/list', 'ContratoEngenhariaController@list');
+        Route::post('/list', 'ContratoEngenhariaController@filtro');
+        Route::get('/new', 'ContratoEngenhariaController@register')->name('contratos.create');
+        Route::get('/detalhes/{id}', 'ContratoEngenhariaController@detalhes')->name('contratos.detalhes');
+        Route::get('/edit/{id}', 'ContratoEngenhariaController@edit')->name('contratos.edit');
+        Route::post('/save', 'ContratoEngenhariaController@save')->name('contratos.store');
+        Route::post('/update/{id}', 'ContratoEngenhariaController@update')->name('contratos.update');
+        Route::get('/delete/{id}', 'ContratoEngenhariaController@delete')->name('contratos.destroy');
+
+        Route::post('/alocar-funcionario/{id}', 'ContratoEngenhariaController@alocarFuncionario')->name('contratos.alocar-funcionario');
+        Route::get('/desalocar-funcionario/{alocacao_id}', 'ContratoEngenhariaController@desalocarFuncionario')->name('contratos.desalocar-funcionario');
+        Route::get('/dashboard-dre', 'ContratoEngenhariaController@dashboardDre')->name('contratos.dashboard-dre');
+        Route::get('/dashboard-dre/excel', 'ContratoEngenhariaController@exportarExcelDashboard')->name('contratos.dashboard-dre.excel');
+    });
+
+    Route::group(['prefix' => 'contratos/medicoes', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/create/novo', 'ContratoEngMedicaoController@create')->name('contratos.medicoes.create.avulso');
+        Route::get('/create/{contrato_id?}', 'ContratoEngMedicaoController@create')->name('contratos.medicoes.create');
+        Route::post('/store', 'ContratoEngMedicaoController@store')->name('contratos.medicoes.store.avulso');
+        Route::post('/store/{contrato_id?}', 'ContratoEngMedicaoController@store')->name('contratos.medicoes.store');
+        Route::get('/edit/{id}', 'ContratoEngMedicaoController@edit')->name('contratos.medicoes.edit');
+        Route::post('/update/{id}', 'ContratoEngMedicaoController@update')->name('contratos.medicoes.update');
+        Route::get('/imprimir/{id}', 'ContratoEngMedicaoController@imprimir')->name('contratos.medicoes.imprimir');
+        Route::get('/pdf/{id}', 'ContratoEngMedicaoController@gerarPdf')->name('contratos.medicoes.pdf');
+        Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsapp')->name('contratos.medicoes.whatsapp');
+        Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
+        Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
+        Route::get('/delete/{id}', 'ContratoEngMedicaoController@destroy')->name('contratos.medicoes.destroy');
+        Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
+            ->where('contrato_id', '[0-9]+')
+            ->name('contratos.medicoes.index');
+    });
+
     Route::group(['prefix' => '/locacao'], function(){
         Route::get('/', 'LocacaoController@index');
         Route::get('/pesquisa', 'LocacaoController@pesquisa');
