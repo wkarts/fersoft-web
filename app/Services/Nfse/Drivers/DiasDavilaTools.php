@@ -63,7 +63,7 @@ class DiasDavilaTools implements NfseEmissorInterface
         return $this->protocolo;
     }
 
-    private function gerarXmlRps(array $dpsData): string
+    protected function gerarXmlRps(array $dpsData): string
     {
         $inf = $dpsData['infDPS'] ?? [];
         $serv = $inf['serv'] ?? [];
@@ -174,10 +174,30 @@ class DiasDavilaTools implements NfseEmissorInterface
             );
         }
 
+        // Bloco IBS/CBS existente na implementação histórica SAATRI.
+        $ibsCbs = $declaracao->addChild('IbsCbs');
+        $ibsCbs->addChild(
+            'MunicipioIncidencia',
+            preg_replace('/\D+/', '', (string) ($inf['cLocEmi'] ?? '2910057'))
+        );
+        $ibsCbs->addChild(
+            'IndicadorOperacao',
+            (string) ($inf['IBSCBS']['cIndOp'] ?? '000001')
+        );
+        $ibsCbs->addChild(
+            'ClassificacaoTributaria',
+            (string) ($inf['IBSCBS']['cClassTrib'] ?? '000001')
+        );
+        $ibsCbs->addChild(
+            'IndicadorDestino',
+            (string) ($inf['IBSCBS']['indDest'] ?? '0')
+        );
+        $ibsCbs->addChild('BaseCalculo', $valor);
+
         return $xml->asXML();
     }
 
-    private function gerarXmlLote(string $xmlRps, array $dpsData): string
+    protected function gerarXmlLote(string $xmlRps, array $dpsData): string
     {
         $inf = $dpsData['infDPS'] ?? [];
         $cnpj = preg_replace(
@@ -204,7 +224,7 @@ class DiasDavilaTools implements NfseEmissorInterface
             . '</EnviarLoteRpsEnvio>';
     }
 
-    private function montarEnvelopeSoap(string $metodo, string $xml): string
+    protected function montarEnvelopeSoap(string $metodo, string $xml): string
     {
         $usuario = htmlspecialchars(
             (string) $this->config['usuario_saatri'],
@@ -230,7 +250,7 @@ class DiasDavilaTools implements NfseEmissorInterface
             . '</nfse:' . $metodo . '></soapenv:Body></soapenv:Envelope>';
     }
 
-    private function transmitirSoap(
+    protected function transmitirSoap(
         string $url,
         string $envelope,
         string $soapAction
