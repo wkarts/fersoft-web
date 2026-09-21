@@ -263,4 +263,33 @@ class PortedContratosEngenhariaTest extends TestCase
     }
 
 
+    public function testServiceModelExposesHistoricalFiscalFieldsUsedByMeasurementNfse(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $service = file_get_contents($root . '/app/Models/Servico.php');
+        $migration = file_get_contents(
+            $root . '/database/migrations/2026_09_18_120125_update_servicos_table.php'
+        );
+
+        foreach ([
+            'codigo_tributacao_nacional',
+            'codigo_nbs',
+            'codigo_tributacao_municipio',
+            'cst_ibscbs',
+            'aliquota_ibs',
+            'aliquota_cbs',
+            'codigo_class_trib',
+            'exige_obra',
+        ] as $field) {
+            $this->assertStringContainsString("'{$field}'", $service);
+            $this->assertStringContainsString("'{$field}'", $migration);
+        }
+
+        $this->assertStringContainsString(
+            "'exige_obra' => 'boolean'",
+            $service
+        );
+    }
+
+
 }
