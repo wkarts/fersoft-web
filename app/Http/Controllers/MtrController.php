@@ -214,8 +214,11 @@ class MtrController extends BaseController
                 ->first()
             : null;
 
-        $nfeNum = $pesagem->nf_numero ?? '';
-        $obs = "Produto: {$produtoNome} | Pesagem: #{$pesagemId}";
+        $nfeNum = $pesagem->nf_numero
+            ?? $pesagem->nfe
+            ?? $pesagem->numero_nfe
+            ?? '';
+        $obs = "Produto: {$produtoNome} | Ticket Pesagem: #{$pesagemId}";
         if ($nfeNum !== '') {
             $obs .= " | NF-e: {$nfeNum}";
         }
@@ -229,7 +232,7 @@ class MtrController extends BaseController
             ->with('ticket_pesagem_id', $ticket->id ?? null)
             ->with('residuos_importados', $residuos)
             ->with('observacao_importada', $obs)
-            ->with('sucesso', 'Pesagem importada com sucesso!');
+            ->with('sucesso', 'Ticket de Pesagem importado com sucesso!');
     }
 
     public function createNfe($vendaId)
@@ -284,13 +287,16 @@ class MtrController extends BaseController
             ->where('empresa_id', $this->empresa_id)
             ->first();
 
+        $nfeNum = $venda->numero_nfe ?? $venda->nfe ?? $venda->id;
+        $obs = 'NF-e: ' . $nfeNum . ' | Produtos: ' . implode(', ', array_unique($nomes));
+
         return redirect()->route('mtr.emissao.create.avulso')
             ->with('destinador_cnpj', $cliente->cpf_cnpj ?? null)
             ->with('origem_tipo', 'nfe')
             ->with('origem_id', $vendaId)
             ->with('venda_id', $vendaId)
             ->with('residuos_importados', $residuos)
-            ->with('observacao_importada', 'Produtos: ' . implode(', ', array_unique($nomes)))
+            ->with('observacao_importada', $obs)
             ->with('sucesso', 'Itens da Nota Fiscal importados com sucesso!');
     }
 
