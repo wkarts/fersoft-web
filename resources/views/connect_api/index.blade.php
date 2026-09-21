@@ -471,6 +471,14 @@
                 try {
                     const shouldClose = await options.onConfirm();
                     if (shouldClose !== false) closeModal('connectActionModal');
+                } catch (error) {
+                    const current = body.querySelector('.connect-modal-action-error');
+                    if (current) current.remove();
+
+                    const errorBox = document.createElement('div');
+                    errorBox.className = 'alert alert-danger mt-3 mb-0 connect-modal-action-error';
+                    errorBox.textContent = error && error.message ? error.message : 'Falha na operação.';
+                    body.appendChild(errorBox);
                 } finally {
                     setButtonBusy(confirm, false);
                 }
