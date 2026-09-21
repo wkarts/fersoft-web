@@ -236,18 +236,14 @@
                         <td>
                             <div class="connect-actions">
                                 @if(!$inst || !$inst->provisioned_at)
-                                    @if($isSuper)
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-primary js-open-provision"
-                                            data-company-id="{{ $empresa->id }}"
-                                            data-company-name="{{ $companyName }}"
-                                            data-company-phone="{{ $companyPhone }}"
-                                            data-instance-id="{{ $inst ? $inst->id : '' }}"
-                                        >Provisionar</button>
-                                    @else
-                                        <span class="connect-muted">Aguardando provisionamento</span>
-                                    @endif
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-primary js-open-provision"
+                                        data-company-id="{{ $empresa->id }}"
+                                        data-company-name="{{ $companyName }}"
+                                        data-company-phone="{{ $companyPhone }}"
+                                        data-instance-id="{{ $inst ? $inst->id : '' }}"
+                                    >{{ $isSuper ? 'Provisionar' : 'Provisionar meu WhatsApp' }}</button>
                                 @else
                                     <button type="button" class="btn btn-sm btn-light-primary js-status" data-id="{{ $inst->id }}">Status</button>
                                     <button type="button" class="btn btn-sm btn-light-success js-qr" data-id="{{ $inst->id }}">QR Code</button>
@@ -266,16 +262,17 @@
                                     <button type="button" class="btn btn-sm btn-light-secondary js-restart" data-id="{{ $inst->id }}">Reiniciar</button>
                                     <button type="button" class="btn btn-sm btn-light-secondary js-disconnect" data-id="{{ $inst->id }}">Desconectar</button>
 
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary js-reprovision"
+                                        data-id="{{ $inst->id }}"
+                                        data-company-id="{{ $empresa->id }}"
+                                        data-company-name="{{ $companyName }}"
+                                        data-company-phone="{{ $companyPhone }}"
+                                    >Reprovisionar</button>
+
                                     @if($isSuper)
                                         <button type="button" class="btn btn-sm btn-outline-secondary js-sync-webhook" data-id="{{ $inst->id }}">Webhook</button>
-                                        <button
-                                            type="button"
-                                            class="btn btn-sm btn-outline-primary js-reprovision"
-                                            data-id="{{ $inst->id }}"
-                                            data-company-id="{{ $empresa->id }}"
-                                            data-company-name="{{ $companyName }}"
-                                            data-company-phone="{{ $companyPhone }}"
-                                        >Reprovisionar</button>
                                         <button
                                             type="button"
                                             class="btn btn-sm {{ $inst->is_blocked ? 'btn-outline-success' : 'btn-outline-danger' }} js-block"
@@ -301,7 +298,6 @@
     </div>
 </div>
 
-@if($isSuper)
 <div id="connectProvisionModal" class="connect-modal" hidden aria-hidden="true">
     <div class="connect-modal-backdrop" data-close-modal="connectProvisionModal"></div>
     <div class="connect-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="connectProvisionTitle">
@@ -354,7 +350,6 @@
         </div>
     </div>
 </div>
-@endif
 
 <div id="connectActionModal" class="connect-modal" hidden aria-hidden="true">
     <div class="connect-modal-backdrop" data-close-modal="connectActionModal"></div>
@@ -512,7 +507,6 @@
         });
     }
 
-    @if($isSuper)
     const provisionModal = byId('connectProvisionModal');
     const companySelect = byId('connectProvisionCompany');
     const provisionNumber = byId('connectProvisionNumber');
@@ -641,7 +635,6 @@
             setButtonBusy(provisionSubmit, false);
         }
     });
-    @endif
 
     document.querySelectorAll('.js-status').forEach((button) => {
         button.addEventListener('click', async () => {
