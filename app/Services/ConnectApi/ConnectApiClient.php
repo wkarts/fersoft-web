@@ -58,7 +58,7 @@ class ConnectApiClient
             'instanceName' => $instanceName,
             // Provider técnico de bootstrap exigido pelo contrato atual da Connect|API.
             // Não é uma escolha exposta ao usuário do ERP.
-            'integration' => 'WHATSAPP-BAILEYS',
+            'integration' => 'WHATSAPP-ZAPO',
             'token' => $token,
             'number' => preg_replace('/\\D+/', '', $number),
             'qrcode' => true,
