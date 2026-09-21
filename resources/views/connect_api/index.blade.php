@@ -182,6 +182,9 @@
                                 @if($empresa->cnpj)
                                     <span>{{ $empresa->cnpj }}</span>
                                 @endif
+                                @if($masterCompanyId && (int) $masterCompanyId === (int) $empresa->id)
+                                    <span class="badge badge-primary">Master</span>
+                                @endif
                                 @if((int) $empresa->status === 0)
                                     <span class="badge badge-secondary">Inativa</span>
                                 @endif
