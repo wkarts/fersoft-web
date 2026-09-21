@@ -728,6 +728,51 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
             ->name('contratos.medicoes.index');
     });
 
+    // MTR 3.0 - SINIR / IEMA
+    Route::group(['prefix' => 'mtr/unidades', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/', 'MtrUnidadeController@index')->name('mtr.unidades.index');
+        Route::get('/create', 'MtrUnidadeController@create')->name('mtr.unidades.create');
+        Route::post('/store', 'MtrUnidadeController@store')->name('mtr.unidades.store');
+        Route::get('/edit/{id}', 'MtrUnidadeController@edit')->name('mtr.unidades.edit');
+        Route::match(['post', 'put'], '/update/{id}', 'MtrUnidadeController@update')->name('mtr.unidades.update');
+        Route::get('/delete/{id}', 'MtrUnidadeController@destroy')->name('mtr.unidades.destroy');
+        Route::post('/testar-conexao', 'MtrUnidadeController@testarConexao')->name('mtr.unidades.testarConexao');
+    });
+
+    Route::group(['prefix' => 'mtr/depara-residuos', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/', 'MtrDeparaController@index')->name('mtr.depara.index');
+        Route::get('/create', 'MtrDeparaController@create')->name('mtr.depara.create');
+        Route::post('/store', 'MtrDeparaController@store')->name('mtr.depara.store');
+        Route::get('/edit/{id}', 'MtrDeparaController@edit')->name('mtr.depara.edit');
+        Route::match(['post', 'put'], '/update/{id}', 'MtrDeparaController@update')->name('mtr.depara.update');
+        Route::get('/delete/{id}', 'MtrDeparaController@destroy')->name('mtr.depara.destroy');
+    });
+
+    Route::group(['prefix' => 'mtr/emissao', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/', 'MtrController@index')->name('mtr.emissao.index');
+        Route::get('/create/avulso', 'MtrController@createAvulso')->name('mtr.emissao.create.avulso');
+        Route::get('/create/nfe/{venda_id}', 'MtrController@createNfe')->name('mtr.emissao.create.nfe');
+        Route::get('/create/pesagem/{pesagem_id}', 'MtrController@createPesagem')->name('mtr.emissao.create.pesagem');
+        Route::post('/store', 'MtrController@salvarRascunho')->name('mtr.emissao.store');
+        Route::get('/edit/{id}', 'MtrController@edit')->name('mtr.emissao.edit');
+        Route::match(['post', 'put'], '/update/{id}', 'MtrController@update')->name('mtr.emissao.update');
+        Route::get('/delete/{id}', 'MtrController@destroy')->name('mtr.emissao.destroy');
+        Route::post('/transmitir/{id}', 'MtrController@transmitir')->name('mtr.emissao.transmitir');
+        Route::post('/cancelar/{id}', 'MtrController@cancelar')->name('mtr.emissao.cancelar');
+        Route::get('/consultar/{id}', 'MtrController@consultarStatus')->name('mtr.emissao.consultar');
+        Route::post('/whatsapp', 'MtrController@enviarWhatsAppMtr')->name('mtr.emissao.whatsapp');
+        Route::get('/download-pdf/{numero_mtr}', 'MtrController@downloadPdf')->name('mtr.emissao.pdf');
+        Route::get('/download-cdf/{numero_mtr}', 'MtrController@downloadCdf')->name('mtr.emissao.cdf');
+    });
+
+    Route::group(['prefix' => 'mtr', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/recepcao', 'MtrController@recepcaoIndex')->name('mtr.recepcao.index');
+        Route::post('/receber/barra', 'MtrController@receberPorCodigoBarras')->name('mtr.recepcao.barra');
+        Route::post('/receber/provisorio', 'MtrController@receberPorProvisorio')->name('mtr.recepcao.provisorio');
+        Route::get('/detalhes/{numero}', 'MtrController@detalhesMtrExterno')->name('mtr.recepcao.detalhes');
+        Route::post('/receber-completo', 'MtrController@salvarRecebimentoMtr')->name('mtr.recepcao.salvar');
+    });
+
     Route::group(['prefix' => '/locacao'], function(){
         Route::get('/', 'LocacaoController@index');
         Route::get('/pesquisa', 'LocacaoController@pesquisa');
