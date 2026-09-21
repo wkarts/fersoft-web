@@ -237,4 +237,61 @@ class ConnectApiArchitectureTest extends TestCase
             $this->assertFileDoesNotExist($root . '/' . $path, $path);
         }
     }
+    public function testWhatsappRuntimeNoLongerDependsOnLegacyManualToken(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $base = file_get_contents($root . '/app/Http/Controllers/BaseController.php');
+        $pesagens = file_get_contents($root . '/resources/views/pesagens/list.blade.php');
+
+        $this->assertStringNotContainsString('getWhatsAppConfig', $base);
+        $this->assertStringNotContainsString('token_whatsapp', $base);
+        $this->assertStringContainsString('getConnectApiWhatsAppState', $base);
+        $this->assertStringContainsString('assertWhatsAppSendSucceeded', $base);
+
+        $this->assertStringNotContainsString('token_whatsapp', $pesagens);
+        $this->assertStringNotContainsString(
+            'Necessário habilitar o token para acesso à API do WhatsApp',
+            $pesagens
+        );
+        $this->assertStringContainsString('connectApiWhatsAppReady', $pesagens);
+        $this->assertStringContainsString('data-connect-status', $pesagens);
+    }
+
+    public function testMessageServiceRequiresProvisionedAndConnectedConnectApiInstance(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $service = file_get_contents(
+            $root . '/app/Services/ConnectApi/ConnectApiMessageService.php'
+        );
+
+        $this->assertStringContainsString(
+            "if (!\$instance->provisioned_at || !\$instance->instance_token)",
+            $service
+        );
+        $this->assertStringContainsString(
+            "\$instance = \$this->instances->refreshStatus(\$instance);",
+            $service
+        );
+        $this->assertStringContainsString(
+            "if (\$instance->connection_status !== 'open')",
+            $service
+        );
+    }
+
+    public function testProvisioningRefreshesPairingResourcesWithoutManualReload(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $view = file_get_contents($root . '/resources/views/connect_api/index.blade.php');
+
+        $this->assertStringContainsString(
+            'Atualizando os recursos de QR Code, código de pareamento e teste',
+            $view
+        );
+        $this->assertStringContainsString(
+            'window.setTimeout(() => window.location.reload(), 700);',
+            $view
+        );
+    }
+
+
 }

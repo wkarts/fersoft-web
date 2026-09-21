@@ -625,9 +625,16 @@
             closeModal('connectProvisionModal');
             showMessage(
                 'Connect|API',
-                '<div class="alert alert-success mb-0">' + escapeHtml(data.message || 'Operação concluída.') + '</div>',
-                { onClose: () => window.location.reload() }
+                '<div class="alert alert-success mb-0">'
+                    + escapeHtml(data.message || 'Operação concluída.')
+                    + '<br><small>Atualizando os recursos de QR Code, código de pareamento e teste...</small>'
+                    + '</div>'
             );
+
+            // O provisionamento altera a estrutura de ações da linha.
+            // Atualiza automaticamente a tela para disponibilizar os recursos
+            // recém-criados sem exigir F5/reload manual do operador.
+            window.setTimeout(() => window.location.reload(), 700);
         } catch (error) {
             provisionError.textContent = error.message;
             provisionError.hidden = false;
