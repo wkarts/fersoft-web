@@ -442,12 +442,7 @@ class ContratoEngMedicaoController extends Controller
                 continue;
             }
 
-            $fatura = FaturaEngenharia::findOrFail($faturaId);
-
             FaturaEngItem::create([
-                'empresa_id' => $fatura->empresa_id,
-                'filial_id' => $fatura->filial_id,
-                'usuario_id' => $fatura->usuario_id,
                 'fatura_eng_id' => $faturaId,
                 'tipo_item' => $tipo,
                 'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
@@ -466,7 +461,6 @@ class ContratoEngMedicaoController extends Controller
         }
 
         FaturaEngFuncionario::where('fatura_eng_id', $faturaId)->delete();
-        $fatura = FaturaEngenharia::findOrFail($faturaId);
 
         foreach ($employees as $employee) {
             if (empty($employee['funcionario_id'])) {
@@ -477,9 +471,6 @@ class ContratoEngMedicaoController extends Controller
             $valor = $this->money($employee['valor_diaria'] ?? 0);
 
             FaturaEngFuncionario::create([
-                'empresa_id' => $fatura->empresa_id,
-                'filial_id' => $fatura->filial_id,
-                'usuario_id' => $fatura->usuario_id,
                 'fatura_eng_id' => $faturaId,
                 'funcionario_id' => $employee['funcionario_id'],
                 'funcao' => $employee['funcao'] ?? null,
