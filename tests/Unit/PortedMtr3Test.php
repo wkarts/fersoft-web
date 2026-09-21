@@ -182,18 +182,13 @@ class PortedMtr3Test extends TestCase
         );
 
         $this->assertStringContainsString(
-            "$providerResponse = json_decode($resultado, true);",
+            "\$providerResponse = json_decode(\$resultado, true);",
             $controller
         );
         $this->assertStringContainsString(
-            "!(($providerResponse['success'] ?? false))",
-            str_replace(
-                "!is_array($providerResponse) || !($providerResponse['success'] ?? false)",
-                "!(($providerResponse['success'] ?? false))",
-                $controller
-            )
+            "if (!is_array(\$providerResponse) || !(\$providerResponse['success'] ?? false))",
+            $controller
         );
     }
-
 
 }
