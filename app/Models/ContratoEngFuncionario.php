@@ -7,7 +7,8 @@ class ContratoEngFuncionario extends BaseModel
     protected $table = 'contrato_eng_funcionarios';
 
     protected $fillable = [
-        'contrato_eng_id', 'funcionario_id', 'data_alocacao', 'data_desalocacao', 'status',
+        'empresa_id', 'filial_id', 'usuario_id', 'contrato_eng_id', 'funcionario_id',
+        'data_alocacao', 'data_desalocacao', 'status', 'observacao',
     ];
 
     protected $casts = [
