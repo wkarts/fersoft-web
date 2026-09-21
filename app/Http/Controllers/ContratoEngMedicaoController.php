@@ -639,7 +639,7 @@ class ContratoEngMedicaoController extends BaseController
                 ->where('empresa_id', $empresaId)
                 ->where('referencia', 'like', '%(Medição #' . $id . ')%')
                 ->get(),
-            'title' => 'Medição #' . $fatura->id,
+            'title' => 'Impressão de Medição / Faturamento #' . $fatura->id,
         ];
     }
 
