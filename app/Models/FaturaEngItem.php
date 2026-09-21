@@ -14,7 +14,6 @@ class FaturaEngItem extends BaseModel
     protected $casts = [
         'quantidade' => 'decimal:4',
         'valor_unitario' => 'decimal:2',
-        'sub_total' => 'decimal:2',
         'valor_total' => 'decimal:2',
     ];
 
