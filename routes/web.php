@@ -735,7 +735,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     Route::group(['middleware' => 'verificaEmpresa'], function(){
         Route::get('/nfse/emitir/{id}', 'NfseNacionalController@emitir')->name('nfse.emitir');
         Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('nfse.xml');
-        Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')->name('nfse.imprimir');
+        Route::get('/nfse/imprimir-medicao/{id}', 'NfseNacionalController@imprimir')->name('nfse.medicao.imprimir');
         Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('nfse.consultar');
     });
 
