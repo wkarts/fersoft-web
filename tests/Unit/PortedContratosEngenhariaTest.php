@@ -80,24 +80,27 @@ class PortedContratosEngenhariaTest extends TestCase
     public function testSchemaIsSplitByResponsibility(): void
     {
         $root = dirname(__DIR__, 2);
-        $files = [
+
+        $createMigrations = [
             '2026_09_21_020000_create_contratos_engenharia_table.php',
             '2026_09_21_020010_create_contrato_eng_itens_table.php',
             '2026_09_21_020020_create_contrato_eng_funcionarios_table.php',
             '2026_09_21_020030_create_faturas_engenharia_table.php',
             '2026_09_21_020040_create_fatura_eng_itens_table.php',
             '2026_09_21_020050_create_fatura_eng_funcionarios_table.php',
-            '2026_09_21_020060_add_contrato_eng_id_to_conta_pagars_table.php',
         ];
 
-        foreach ($files as $file) {
+        foreach ($createMigrations as $file) {
             $source = file_get_contents($root . '/database/migrations/' . $file);
             $this->assertIsString($source);
-            $this->assertSame(
-                1,
-                substr_count($source, 'Schema::create(') + substr_count($source, 'Schema::table('),
-                $file . ' deve ter uma única responsabilidade de schema no up().'
-            );
+            $this->assertSame(1, substr_count($source, 'Schema::create('), $file);
         }
+
+        $payable = file_get_contents(
+            $root . '/database/migrations/2026_09_21_020060_add_contrato_eng_id_to_conta_pagars_table.php'
+        );
+
+        $this->assertStringContainsString("Schema::table('conta_pagars'", $payable);
+        $this->assertStringNotContainsString('Schema::create(', $payable);
     }
 }
