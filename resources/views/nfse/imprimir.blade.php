@@ -4,25 +4,109 @@
     <meta charset="UTF-8">
     <title>Espelho NFS-e #{{ $fatura->numero_nfse ?? $fatura->id }}</title>
     <style>
-        @page { size: A4; margin: 10mm; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #1a1a1a; margin: 0; padding: 0; background-color: #ffffff; }
-        .document-container { width: 100%; max-width: 800px; margin: 0 auto; border: 1px solid #1e293b; padding: 12px; box-sizing: border-box; }
-        .header-table, .grid-table, .data-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-        .header-table td, .grid-table td, .data-table td, .data-table th { border: 1px solid #64748b; padding: 5px 8px; vertical-align: top; }
-        .data-table th { background-color: #f1f5f9; font-size: 9px; font-weight: bold; text-transform: uppercase; color: #334155; }
-        .section-header { background-color: #1e293b; color: #ffffff; font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 4px 8px; margin-top: 6px; margin-bottom: 0; border: 1px solid #1e293b; }
-        .doc-title { font-size: 13px; font-weight: 800; text-align: center; text-transform: uppercase; color: #0f172a; margin: 0; }
-        .doc-subtitle { font-size: 9px; text-align: center; color: #64748b; margin-top: 2px; }
-        .label { font-size: 8px; font-weight: bold; color: #475569; text-transform: uppercase; display: block; margin-bottom: 2px; }
-        .value { font-size: 10px; font-weight: 600; color: #0f172a; }
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10px;
+            color: #1a1a1a;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+        }
+        .document-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #1e293b;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+        .header-table, .grid-table, .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+        .header-table td, .grid-table td, .data-table td, .data-table th {
+            border: 1px solid #64748b;
+            padding: 5px 8px;
+            vertical-align: top;
+        }
+        .data-table th {
+            background-color: #f1f5f9;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #334155;
+        }
+        .section-header {
+            background-color: #1e293b;
+            color: #ffffff;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            margin-top: 6px;
+            margin-bottom: 0;
+            border: 1px solid #1e293b;
+        }
+        .doc-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-align: center;
+            text-transform: uppercase;
+            color: #0f172a;
+            margin: 0;
+        }
+        .doc-subtitle {
+            font-size: 9px;
+            text-align: center;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .label {
+            font-size: 8px;
+            font-weight: bold;
+            color: #475569;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .value {
+            font-size: 10px;
+            font-weight: 600;
+            color: #0f172a;
+        }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
-        .badge-status { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px; }
+        .badge-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 9px;
+        }
         .status-ok { background-color: #dcfce7; color: #166534; }
         .status-pendente { background-color: #fef3c7; color: #92400e; }
-        .no-print { margin-top: 15px; text-align: center; }
-        .btn-print { background-color: #2563eb; color: #ffffff; border: none; padding: 8px 18px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        
+        .no-print {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .btn-print {
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
         .btn-print:hover { background-color: #1d4ed8; }
+
         @media print {
             .no-print { display: none !important; }
             .document-container { border: 1px solid #000; }
@@ -128,15 +212,15 @@
             <td>
                 <span class="label">Endereço</span>
                 <span class="value">
-                    {{ $fatura->cliente->logradouro ?? $fatura->cliente->rua ?? '' }},
-                    {{ $fatura->cliente->numero ?? 'S/N' }} -
+                    {{ $fatura->cliente->logradouro ?? $fatura->cliente->rua ?? '' }}, 
+                    {{ $fatura->cliente->numero ?? 'S/N' }} - 
                     {{ $fatura->cliente->bairro ?? '' }}
                 </span>
             </td>
             <td>
                 <span class="label">Município / UF</span>
                 <span class="value">
-                    {{ $fatura->cliente->cidade->nome ?? $fatura->cliente->cidade ?? '' }} /
+                    {{ $fatura->cliente->cidade->nome ?? $fatura->cliente->cidade ?? '' }} / 
                     {{ $fatura->cliente->uf ?? $fatura->cliente->cidade->uf ?? '' }}
                 </span>
             </td>
