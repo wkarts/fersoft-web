@@ -145,6 +145,27 @@ class ConnectApiInstanceService
         string $number = ''
     ): ConnectApiInstance
     {
+        if ($instance->provisioned_at && $instance->instance_token) {
+            $deleteResponse = $this->client->delete($instance);
+
+            if (
+                !($deleteResponse['success'] ?? false)
+                && (int) ($deleteResponse['status'] ?? 0) !== 404
+            ) {
+                throw new \RuntimeException(
+                    (string) ($deleteResponse['error'] ?? 'Falha ao remover a instância remota antes do reprovisionamento.')
+                );
+            }
+
+            Log::warning('Connect|API: instância remota removida para reprovisionamento.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $instance->empresa_id,
+                'instance_name' => $instance->instance_name,
+                'usuario_id' => $usuarioId,
+                'remote_status' => $deleteResponse['status'] ?? null,
+            ]);
+        }
+
         $instance->remote_instance_id = null;
         $instance->instance_token = null;
         $instance->webhook_token = null;
