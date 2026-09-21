@@ -108,7 +108,7 @@
         <div class="mb-2">
             <h3 class="mb-1">Connect|API</h3>
             <div class="text-muted">
-                Gerenciamento das instâncias WhatsApp desta instalação {{ config('app.name', '') }}
+                Gerenciamento das instâncias WhatsApp desta instalação FERSOFT WEB
                 @if($isSuper)
                     <span class="badge badge-primary ml-2">Master</span>
                 @endif
