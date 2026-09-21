@@ -24,6 +24,16 @@ class ConnectApiInstanceController extends BaseController
             $user = session('user_logged', []);
             $this->isSuper = (bool) ($user['super'] ?? false);
 
+            $routeName = optional($request->route())->getName();
+
+            if (
+                !$this->isSuper
+                && $routeName !== 'connect-api.send-whatsapp-button'
+                && !$this->tenantHasConnectApiAccess()
+            ) {
+                abort(403, 'Usuário sem permissão para acessar Connect|API.');
+            }
+
             return $next($request);
         });
     }
@@ -95,7 +105,7 @@ class ConnectApiInstanceController extends BaseController
         ConnectApiInstanceService $service,
         ConnectApiMessageService $messages
     ) {
-        $this->requireSuper();
+        $this->authorizeCompany($empresa);
 
         $number = $this->provisionNumber($request, $messages);
         if ($number instanceof \Illuminate\Http\JsonResponse) {
@@ -151,15 +161,13 @@ class ConnectApiInstanceController extends BaseController
         ConnectApiInstanceService $service,
         ConnectApiMessageService $messages
     ) {
-        $this->requireSuper();
-
         $number = $this->provisionNumber($request, $messages);
         if ($number instanceof \Illuminate\Http\JsonResponse) {
             return $number;
         }
 
         try {
-            $instance = $this->owned($id, true);
+            $instance = $this->owned($id);
 
             Log::warning('Connect|API reprovisionamento solicitado.', [
                 'instance_id' => $instance->id,
@@ -529,6 +537,43 @@ class ConnectApiInstanceController extends BaseController
     protected function messages(): array
     {
         return [];
+    }
+
+    private function tenantHasConnectApiAccess(): bool
+    {
+        if ($this->isSuper) {
+            return true;
+        }
+
+        $usuario = Usuario::query()
+            ->with('empresa')
+            ->find($this->usuario_id);
+
+        if (!$usuario) {
+            return false;
+        }
+
+        $permissions = json_decode((string) optional($usuario->empresa)->permissao, true);
+
+        if (!is_array($permissions) || $permissions === []) {
+            $permissions = json_decode((string) $usuario->permissao, true);
+        }
+
+        return Empresa::validaLink(
+            '/connect-api',
+            is_array($permissions) ? $permissions : []
+        );
+    }
+
+    private function authorizeCompany(int $empresaId): void
+    {
+        if ($this->isSuper) {
+            return;
+        }
+
+        if ((int) $empresaId !== (int) $this->empresa_id) {
+            abort(403, 'Tenant não pode gerenciar outra empresa.');
+        }
     }
 
     private function provisionNumber(Request $request, ConnectApiMessageService $messages)
