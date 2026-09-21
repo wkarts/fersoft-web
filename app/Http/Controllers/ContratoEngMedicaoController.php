@@ -130,7 +130,7 @@ class ContratoEngMedicaoController extends BaseController
                 'condicao_pagamento_id' => $request->input('condicao_pagamento_id'),
                 'categoria_conta_id' => $request->input('categoria_conta_id'),
                 'servico_id' => $request->input('servico_id'),
-                'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
+                'municipio_prestacao_id' => $this->municipioPrestacaoId($request),
                 'codigo_obra' => $request->input('codigo_obra'),
                 'valor_total' => $valorTotal,
                 'valor_retencao' => $valorRetencao,
@@ -207,7 +207,7 @@ class ContratoEngMedicaoController extends BaseController
                 'cliente_id' => $request->input('cliente_id'),
                 'categoria_conta_id' => $request->input('categoria_conta_id'),
                 'servico_id' => $request->input('servico_id'),
-                'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
+                'municipio_prestacao_id' => $this->municipioPrestacaoId($request),
                 'codigo_obra' => $request->input('codigo_obra'),
                 'valor_total' => $valorTotal,
                 'valor_retencao' => $valorRetencao,
@@ -324,6 +324,40 @@ class ContratoEngMedicaoController extends BaseController
         return redirect()->back()->with('mensagem_sucesso', 'Status atualizado com sucesso!');
     }
 
+    public function cancelar($id)
+    {
+        try {
+            $empresaId = $this->empresaId();
+            $fatura = FaturaEngenharia::where('empresa_id', $empresaId)->findOrFail($id);
+
+            $hasPaid = DB::table('conta_recebers')
+                ->where('empresa_id', $empresaId)
+                ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+                ->where('status', 1)
+                ->exists();
+
+            if ($hasPaid) {
+                throw new \RuntimeException(
+                    'Existem parcelas recebidas. O faturamento não pode ser cancelado.'
+                );
+            }
+
+            $fatura->status = 'Cancelado';
+            $fatura->save();
+
+            return redirect()->back()
+                ->with('mensagem_sucesso', 'Medição / faturamento cancelado com sucesso!');
+        } catch (\Throwable $e) {
+            Log::error('Falha ao cancelar medição de contrato.', [
+                'medicao_id' => $id,
+                'empresa_id' => $this->empresaId(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('mensagem_erro', $e->getMessage());
+        }
+    }
+
     public function enviarWhatsapp(Request $request, $id)
     {
         try {
@@ -434,7 +468,16 @@ class ContratoEngMedicaoController extends BaseController
             'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'categorias' => CategoriaConta::where('empresa_id', $empresaId)->where('tipo', 'receber')->orderBy('nome')->get(),
             'cidades' => Cidade::orderBy('nome')->get(),
-            'funcionarios' => DB::table('funcionarios')->where('empresa_id', $empresaId)->orderBy('nome')->get(),
+            'funcionarios' => DB::table('funcionarios as f')
+                ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
+                ->where('f.empresa_id', $empresaId)
+                ->select(
+                    'f.id',
+                    'f.nome',
+                    DB::raw("COALESCE(fn.nome, '') as funcao_nome")
+                )
+                ->orderBy('f.nome')
+                ->get(),
             'tiposPagamento' => ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'],
         ];
     }
@@ -636,6 +679,14 @@ class ContratoEngMedicaoController extends BaseController
     private function usuarioId(): ?int
     {
         $id = session('user_logged')['id'] ?? null;
+        return $id ? (int) $id : null;
+    }
+
+    private function municipioPrestacaoId(Request $request): ?int
+    {
+        $id = $request->input('municipio_prestacao_id')
+            ?: $request->input('cidade_prestacao_id');
+
         return $id ? (int) $id : null;
     }
 
