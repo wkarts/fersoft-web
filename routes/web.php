@@ -767,7 +767,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/store', 'MtrController@salvarRascunho')->name('mtr.emissao.store');
         Route::get('/edit/{id}', 'MtrController@edit')->name('mtr.emissao.edit');
         Route::match(['post', 'put'], '/update/{id}', 'MtrController@update')->name('mtr.emissao.update');
-        Route::get('/delete/{id}', 'MtrController@destroy')->name('mtr.emissao.destroy');
+        Route::match(['get', 'delete'], '/delete/{id}', 'MtrController@destroy')->name('mtr.emissao.destroy');
         Route::post('/transmitir/{id}', 'MtrController@transmitir')->name('mtr.emissao.transmitir');
         Route::post('/cancelar/{id}', 'MtrController@cancelar')->name('mtr.emissao.cancelar');
         Route::get('/consultar/{id}', 'MtrController@consultarStatus')->name('mtr.emissao.consultar');
