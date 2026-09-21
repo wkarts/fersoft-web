@@ -54,7 +54,7 @@ class PortedContratosEngenhariaTest extends TestCase
 
         $this->assertStringContainsString("'contrato_eng_id'", $model);
         $this->assertStringContainsString('contratoEngenharia()', $model);
-        $this->assertStringContainsString("$data['contrato_eng_id']", $controller);
+        $this->assertStringContainsString("\$data['contrato_eng_id']", $controller);
         $this->assertStringContainsString('name="contrato_eng_id"', $view);
 
         // Recursos preexistentes de Contas a Pagar devem continuar presentes.
