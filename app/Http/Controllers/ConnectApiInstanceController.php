@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ConnectApiInstance;
 use App\Models\Empresa;
+use App\Models\Usuario;
 use App\Services\ConnectApi\ConnectApiClient;
 use App\Services\ConnectApi\ConnectApiInstanceService;
 use App\Services\ConnectApi\ConnectApiMessageService;
@@ -49,10 +50,19 @@ class ConnectApiInstanceController extends BaseController
         $isSuper = $this->isSuper;
         $title = 'Connect|API';
 
+        $masterCompanyId = null;
+        $masterLogin = trim((string) env('USERMASTER'));
+        if ($masterLogin !== '') {
+            $masterCompanyId = Usuario::query()
+                ->where('login', $masterLogin)
+                ->value('empresa_id');
+        }
+
         return view('connect_api.index', compact(
             'companies',
             'instancesByCompany',
             'isSuper',
+            'masterCompanyId',
             'title'
         ));
     }
