@@ -39,6 +39,7 @@ class MtrUnidadeController extends BaseController
     public function index(Request $request)
     {
         $unidades = MtrConfig::query()
+            ->with('filial')
             ->where('empresa_id', $this->empresa_id)
             ->orderByDesc('id')
             ->get();
