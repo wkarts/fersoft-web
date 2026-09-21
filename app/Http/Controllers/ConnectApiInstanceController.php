@@ -31,6 +31,7 @@ class ConnectApiInstanceController extends BaseController
     public function index()
     {
         $companiesQuery = Empresa::query()
+            ->withoutDeleted()
             ->select(['id', 'nome', 'nome_fantasia', 'cnpj', 'telefone', 'status'])
             ->orderBy('id');
 
@@ -72,6 +73,7 @@ class ConnectApiInstanceController extends BaseController
         $term = trim((string) $request->get('term', ''));
 
         $query = Empresa::query()
+            ->withoutDeleted()
             ->when(!$this->isSuper, fn ($q) => $q->where('id', $this->empresa_id))
             ->when($term !== '', function ($query) use ($term) {
                 $query->where(function ($sub) use ($term) {
