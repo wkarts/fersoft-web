@@ -101,11 +101,28 @@ class ConnectApiMessageService
     {
         $instance = $this->resolver->forEmpresa($empresaId);
 
-        if (
-            $instance->provisioned_at
-            && $instance->instance_token
-            && !$instance->webhook_configured_at
-        ) {
+        if (!$instance->provisioned_at || !$instance->instance_token) {
+            throw new \RuntimeException(
+                'A instância WhatsApp ainda não foi provisionada na Connect|API.'
+            );
+        }
+
+        // O webhook mantém o estado normalmente atualizado. Quando a instância
+        // não está marcada como aberta, fazemos uma consulta pontual antes de
+        // recusar o envio para não depender de um status local eventualmente atrasado.
+        if ($instance->connection_status !== 'open') {
+            $instance = $this->instances->refreshStatus($instance);
+        }
+
+        if ($instance->connection_status !== 'open') {
+            throw new \RuntimeException(
+                'A instância WhatsApp não está conectada na Connect|API. Status atual: '
+                . ($instance->connection_status ?: 'unknown')
+                . '.'
+            );
+        }
+
+        if (!$instance->webhook_configured_at) {
             $instance = $this->instances->syncWebhook($instance);
         }
 
