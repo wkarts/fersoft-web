@@ -723,6 +723,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
         Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
         Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')->name('contratos.medicoes.cancelar');
+
+        // NFS-e vinculada à medição: mantém a mecânica histórica sem colidir
+        // com o módulo geral /nfse, que trabalha com NotaServico.
+        Route::get('/nfse/emitir/{id}', 'NfseNacionalController@emitir')->name('contratos.medicoes.nfse.emitir');
+        Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('contratos.medicoes.nfse.consultar');
+        Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')->name('contratos.medicoes.nfse.imprimir');
+        Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('contratos.medicoes.nfse.xml');
+        Route::post('/nfse/cancelar/{id}', 'NfseNacionalController@cancelar')->name('contratos.medicoes.nfse.cancelar');
+
         Route::get('/delete/{id}', 'ContratoEngMedicaoController@destroy')->name('contratos.medicoes.destroy');
         Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
             ->where('contrato_id', '[0-9]+')
