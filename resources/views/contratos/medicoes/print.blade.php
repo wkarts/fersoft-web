@@ -32,10 +32,10 @@ table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border:1px solid #
 @forelse($fatura->itens as $item)
 <tr>
     <td>{{ $item->tipo_item }}</td>
-    <td>{{ $item->descricao ?: optional($item->servico)->nome ?: optional($item->produto)->nome ?: 'Item' }}</td>
+    <td>{{ optional($item->servico)->nome ?: optional($item->produto)->nome ?: 'Item' }}</td>
     <td class="right">{{ number_format((float)$item->quantidade,2,',','.') }}</td>
     <td class="right">R$ {{ number_format((float)$item->valor_unitario,2,',','.') }}</td>
-    <td class="right">R$ {{ number_format((float)($item->sub_total ?: $item->valor_total),2,',','.') }}</td>
+    <td class="right">R$ {{ number_format((float)$item->valor_total,2,',','.') }}</td>
 </tr>
 @empty<tr><td colspan="5">Sem itens detalhados.</td></tr>@endforelse
 </tbody>
