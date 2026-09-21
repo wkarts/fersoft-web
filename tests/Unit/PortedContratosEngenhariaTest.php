@@ -165,4 +165,102 @@ class PortedContratosEngenhariaTest extends TestCase
             $this->assertStringContainsString("'usuario_id'", $model);
         }
     }
+    public function testHistoricalMeasurementViewsAndMechanicsRemainCompatible(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $index = file_get_contents(
+            $root . '/resources/views/contratos/medicoes/index.blade.php'
+        );
+        $create = file_get_contents(
+            $root . '/resources/views/contratos/medicoes/create.blade.php'
+        );
+        $edit = file_get_contents(
+            $root . '/resources/views/contratos/medicoes/edit.blade.php'
+        );
+        $controller = file_get_contents(
+            $root . '/app/Http/Controllers/ContratoEngMedicaoController.php'
+        );
+        $routes = file_get_contents($root . '/routes/web.php');
+
+        foreach ([
+            'Emitir NFS-e',
+            'Visualizar Danfe',
+            'Imprimir',
+            'Baixar XML',
+            'Consultar NFS-e',
+            'Enviar Email',
+            'Cancelar',
+            'WhatsApp',
+        ] as $label) {
+            $this->assertStringContainsString($label, $index);
+        }
+
+        $this->assertStringContainsString(
+            "url('contratos/medicoes/nfse/emitir')",
+            $index
+        );
+        $this->assertStringContainsString(
+            "url('contratos/medicoes/nfse/imprimir')",
+            $index
+        );
+        $this->assertStringContainsString(
+            "url('contratos/medicoes/nfse/xml')",
+            $index
+        );
+        $this->assertStringContainsString(
+            "url('contratos/medicoes/nfse/consultar')",
+            $index
+        );
+        $this->assertStringNotContainsString("url('nfse/emitir')", $index);
+        $this->assertStringNotContainsString("url('nfse/imprimir')", $index);
+
+        $this->assertStringContainsString(
+            'name="municipio_prestacao_id"',
+            $create
+        );
+        $this->assertStringContainsString(
+            'name="cidade_prestacao_id"',
+            $edit
+        );
+        $this->assertStringContainsString(
+            'private function municipioPrestacaoId',
+            $controller
+        );
+        $this->assertStringContainsString(
+            "Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')",
+            $routes
+        );
+    }
+
+    public function testMeasurementNfseBridgeUsesFiscalSequenceAndExternalCredentials(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents(
+            $root . '/app/Http/Controllers/NfseNacionalController.php'
+        );
+        $services = file_get_contents($root . '/config/services.php');
+        $routes = file_get_contents($root . '/routes/web.php');
+
+        $this->assertStringContainsString('extends BaseController', $controller);
+        $this->assertStringContainsString('ultimo_numero_nfse', $controller);
+        $this->assertStringContainsString('numero_serie_nfse', $controller);
+        $this->assertStringContainsString(
+            "config('services.nfse_saatri.username')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "config('services.nfse_saatri.password')",
+            $controller
+        );
+        $this->assertStringContainsString("'nfse_saatri'", $services);
+
+        foreach (['emitir', 'consultar', 'imprimir', 'xml'] as $action) {
+            $this->assertStringContainsString(
+                "/nfse/{$action}/",
+                $routes
+            );
+        }
+    }
+
+
 }
