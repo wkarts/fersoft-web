@@ -724,18 +724,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
         Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')->name('contratos.medicoes.cancelar');
 
-        // NFS-e vinculada à medição: mantém a mecânica histórica sem colidir
-        // com o módulo geral /nfse, que trabalha com NotaServico.
-        Route::get('/nfse/emitir/{id}', 'NfseNacionalController@emitir')->name('contratos.medicoes.nfse.emitir');
-        Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('contratos.medicoes.nfse.consultar');
-        Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')->name('contratos.medicoes.nfse.imprimir');
-        Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('contratos.medicoes.nfse.xml');
-        Route::post('/nfse/cancelar/{id}', 'NfseNacionalController@cancelar')->name('contratos.medicoes.nfse.cancelar');
 
         Route::get('/delete/{id}', 'ContratoEngMedicaoController@destroy')->name('contratos.medicoes.destroy');
         Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
             ->where('contrato_id', '[0-9]+')
             ->name('contratos.medicoes.index');
+    });
+
+    // NFS-e de medições: endpoints históricos consumidos pela view existente.
+    Route::group(['middleware' => 'verificaEmpresa'], function(){
+        Route::get('/nfse/emitir/{id}', 'NfseNacionalController@emitir')->name('nfse.emitir');
+        Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('nfse.xml');
+        Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')->name('nfse.imprimir');
+        Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('nfse.consultar');
+        Route::post('/nfse/cancelar/{id}', 'NfseNacionalController@cancelar')->name('nfse.cancelar');
     });
 
     // MTR 3.0 - SINIR / IEMA
@@ -762,7 +764,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'MtrController@index')->name('mtr.emissao.index');
         Route::get('/create/avulso', 'MtrController@createAvulso')->name('mtr.emissao.create.avulso');
         Route::get('/create/nfe/{venda_id}', 'MtrController@createNfe')->name('mtr.emissao.create.nfe');
-        Route::get('/create/pesagem/{pesagem_id}', 'MtrController@createPesagem')->name('mtr.emissao.create.pesagem');
+        Route::get('/create/pesagem/{ticket_id}', 'MtrController@createPesagem')->name('mtr.emissao.create.pesagem');
         Route::post('/store', 'MtrController@salvarRascunho')->name('mtr.emissao.store');
         Route::get('/edit/{id}', 'MtrController@edit')->name('mtr.emissao.edit');
         Route::match(['post', 'put'], '/update/{id}', 'MtrController@update')->name('mtr.emissao.update');
@@ -773,6 +775,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/whatsapp', 'MtrController@enviarWhatsAppMtr')->name('mtr.emissao.whatsapp');
         Route::get('/download-pdf/{numero_mtr}', 'MtrController@downloadPdf')->name('mtr.emissao.pdf');
         Route::get('/download-cdf/{numero_mtr}', 'MtrController@downloadCdf')->name('mtr.emissao.cdf');
+
+        // Recursos históricos de finalização no PDV.
+        Route::get('/ordemServico/gerarVendaCompleta/{id}', [App\Http\Controllers\OrderController::class, 'gerarVendaCompleta']);
+        Route::post('/ordemServico/storePdv', [App\Http\Controllers\OrderController::class, 'storePdv']);
     });
 
     Route::group(['prefix' => 'mtr', 'middleware' => 'verificaEmpresa'], function(){
