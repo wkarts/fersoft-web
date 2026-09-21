@@ -433,7 +433,7 @@ class ContratoEngMedicaoController extends Controller
             $tipo = ($item['tipo_item'] ?? 'Servico') === 'Locacao' ? 'Locacao' : 'Servico';
             $qtd = $this->decimal($item['quantidade'] ?? 1);
             $valor = $this->money($item['valor_unitario'] ?? $item['valor'] ?? 0);
-            $total = $this->money($item['sub_total'] ?? $item['subtotal'] ?? ($qtd * $valor));
+            $total = $this->money($item['valor_total'] ?? ($qtd * $valor));
 
             if (
                 empty($item['servico_id'])
