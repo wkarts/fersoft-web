@@ -593,12 +593,17 @@ class ContratoEngMedicaoController extends BaseController
             ->where('referencia', 'like', '%(Medição #' . $fatura->id . ')%');
 
         if ((clone $query)->where('status', 1)->exists()) {
-            $query->update([
+            $update = [
                 'categoria_id' => $fatura->categoria_conta_id,
-                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($request->filled('tipo_pagamento')) {
+                $update['tipo_pagamento'] = $request->input('tipo_pagamento');
+            }
+
+            $query->update($update);
             return;
         }
 
@@ -614,13 +619,20 @@ class ContratoEngMedicaoController extends BaseController
             $value = $index === $rows->count() - 1 ? $remaining : $base;
             $remaining -= $value;
 
-            DB::table('conta_recebers')->where('id', $row->id)->update([
+            $update = [
                 'valor_integral' => $value,
                 'categoria_id' => $fatura->categoria_conta_id,
-                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($request->filled('tipo_pagamento')) {
+                $update['tipo_pagamento'] = $request->input('tipo_pagamento');
+            }
+
+            DB::table('conta_recebers')
+                ->where('id', $row->id)
+                ->update($update);
         }
     }
 
