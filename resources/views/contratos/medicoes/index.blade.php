@@ -267,10 +267,10 @@
         let rotas = {
             'imprimir': "{{ url('contratos/medicoes/imprimir') }}/" + id,
             'whatsapp': "{{ url('contratos/medicoes/enviar-whatsapp') }}/" + id,
-            'emitir_nfse': "{{ url('nfse/emitir') }}/" + id,
-            'danfe': "{{ url('nfse/imprimir') }}/" + id,       // <--- MAPEADO (Abre o espelho/DANFE da Nota)
-            'baixar_xml': "{{ url('nfse/xml') }}/" + id,
-            'consultar': "{{ url('nfse/consultar') }}/" + id,  // <--- MAPEADO
+            'emitir_nfse': "{{ url('contratos/medicoes/nfse/emitir') }}/" + id,
+            'danfe': "{{ url('contratos/medicoes/nfse/imprimir') }}/" + id,       // <--- MAPEADO (Abre o espelho/DANFE da Nota)
+            'baixar_xml': "{{ url('contratos/medicoes/nfse/xml') }}/" + id,
+            'consultar': "{{ url('contratos/medicoes/nfse/consultar') }}/" + id,  // <--- MAPEADO
             'cancelar': "{{ url('contratos/medicoes/cancelar') }}/" + id,
             'email': "{{ url('contratos/medicoes/enviar-email') }}/" + id
         };
