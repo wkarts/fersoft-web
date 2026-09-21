@@ -7,8 +7,8 @@ class FaturaEngItem extends BaseModel
     protected $table = 'fatura_eng_itens';
 
     protected $fillable = [
-        'fatura_eng_id', 'tipo_item', 'servico_id', 'produto_id', 'descricao',
-        'quantidade', 'valor_unitario', 'sub_total', 'valor_total',
+        'empresa_id', 'filial_id', 'usuario_id', 'fatura_eng_id', 'tipo_item',
+        'servico_id', 'produto_id', 'quantidade', 'valor_unitario', 'valor_total',
     ];
 
     protected $casts = [
