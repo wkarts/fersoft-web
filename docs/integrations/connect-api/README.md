@@ -111,3 +111,53 @@ O gerenciador Connect|API preserva o comportamento funcional da antiga tela de i
 A tela não depende de jQuery/Select2 para funcionar. Os modais e ações do módulo usam JavaScript nativo, evitando falhas de `$ is not defined` quando o tema carrega scripts em ordem diferente.
 
 As operações administrativas relevantes escrevem no log da aplicação sem registrar API keys ou tokens.
+
+
+## Compatibilidade de permissões EvoAPI
+
+A antiga permissão de menu era identificada pela rota:
+
+```text
+/evoapi
+```
+
+Durante a migração para Connect|API, essa permissão é herdada automaticamente.
+
+O runtime considera equivalentes para acesso ao gerenciador:
+
+```text
+/connect-api
+/evoapi
+/evo-instances
+```
+
+Migrations adicionam `/connect-api` aos registros existentes que já possuíam acesso EvoAPI em:
+
+- `perfil_acessos.permissao`;
+- `empresas.permissao`;
+- `usuarios.permissao`.
+
+Nenhuma outra permissão é removida.
+
+Perfis novos exibem e gravam diretamente `/connect-api`. Perfis antigos aparecem com Connect|API marcado mesmo antes da migration graças ao alias de compatibilidade.
+
+## Autoatendimento do tenant
+
+Tenant não-super com permissão Connect|API:
+
+- enxerga somente a própria empresa;
+- pode provisionar a própria instância;
+- informa o número desejado no momento do provisionamento;
+- pode consultar status;
+- gerar QR Code;
+- gerar código de pareamento;
+- testar envio;
+- reiniciar/desconectar;
+- reprovisionar a própria instância.
+
+Ações de administração global continuam exclusivas do Master:
+
+- listar todas as empresas;
+- excluir instância;
+- bloquear/desbloquear;
+- sincronização manual administrativa de webhook.
