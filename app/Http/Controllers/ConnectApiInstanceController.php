@@ -8,49 +8,73 @@ use App\Services\ConnectApi\ConnectApiClient;
 use App\Services\ConnectApi\ConnectApiInstanceService;
 use App\Services\ConnectApi\ConnectApiMessageService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ConnectApiInstanceController extends BaseController
 {
     protected $redirectPage = '/connect-api';
+    protected bool $isSuper = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->middleware(function ($request, $next) {
+            $user = session('user_logged', []);
+            $this->isSuper = (bool) ($user['super'] ?? false);
+
+            return $next($request);
+        });
+    }
 
     public function index()
     {
-        $user = session('user_logged', []);
-        $isSuper = (bool) ($user['super'] ?? false);
+        $companiesQuery = Empresa::query()
+            ->select(['id', 'nome', 'nome_fantasia', 'cnpj', 'telefone', 'status'])
+            ->orderBy('id');
 
-        $query = ConnectApiInstance::query()
-            ->with('empresa')
-            ->whereNull('deleted_at');
-
-        if (!$isSuper) {
-            $query->where('empresa_id', $this->empresa_id);
+        if (!$this->isSuper) {
+            $companiesQuery->where('id', $this->empresa_id);
         }
 
-        $records = $query->orderBy('empresa_id')->get();
+        $companies = $companiesQuery->get();
+        $companyIds = $companies->pluck('id');
+
+        $instancesByCompany = ConnectApiInstance::query()
+            ->whereNull('deleted_at')
+            ->whereIn('empresa_id', $companyIds)
+            ->get()
+            ->keyBy('empresa_id');
+
+        $isSuper = $this->isSuper;
         $title = 'Connect|API';
 
-        return view('connect_api.index', compact('records', 'isSuper', 'title'));
+        return view('connect_api.index', compact(
+            'companies',
+            'instancesByCompany',
+            'isSuper',
+            'title'
+        ));
     }
 
     public function companies(Request $request)
     {
-        $this->requireSuper();
-
         $term = trim((string) $request->get('term', ''));
 
-        return response()->json(
-            Empresa::query()
-                ->where('status', 1)
-                ->when($term !== '', function ($query) use ($term) {
-                    $query->where(function ($sub) use ($term) {
-                        $sub->where('nome', 'like', "%{$term}%")
-                            ->orWhere('nome_fantasia', 'like', "%{$term}%")
-                            ->orWhere('cnpj', 'like', "%{$term}%");
-                    });
-                })
-                ->limit(50)
-                ->get(['id', 'nome', 'nome_fantasia', 'cnpj'])
-        );
+        $query = Empresa::query()
+            ->when(!$this->isSuper, fn ($q) => $q->where('id', $this->empresa_id))
+            ->when($term !== '', function ($query) use ($term) {
+                $query->where(function ($sub) use ($term) {
+                    $sub->where('nome', 'like', "%{$term}%")
+                        ->orWhere('nome_fantasia', 'like', "%{$term}%")
+                        ->orWhere('cnpj', 'like', "%{$term}%")
+                        ->orWhere('telefone', 'like', "%{$term}%");
+                });
+            })
+            ->orderBy('id')
+            ->get(['id', 'nome', 'nome_fantasia', 'cnpj', 'telefone', 'status']);
+
+        return response()->json($query);
     }
 
     public function provision(
@@ -68,6 +92,13 @@ class ConnectApiInstanceController extends BaseController
 
         try {
             $model = Empresa::findOrFail($empresa);
+
+            Log::info('Connect|API provisionamento solicitado.', [
+                'empresa_id' => $model->id,
+                'usuario_id' => $this->usuario_id,
+                'telefone' => $this->maskNumber($number),
+            ]);
+
             $instance = $service->provision(
                 $model,
                 $this->usuario_id,
@@ -75,12 +106,26 @@ class ConnectApiInstanceController extends BaseController
                 $number
             );
 
+            Log::info('Connect|API provisionamento concluído.', [
+                'empresa_id' => $model->id,
+                'instance_id' => $instance->id,
+                'instance_name' => $instance->instance_name,
+                'status' => $instance->connection_status,
+            ]);
+
             return response()->json([
                 'success' => true,
                 'instance' => $this->present($instance),
                 'message' => 'Instância provisionada. Continue o pareamento pelo código ou QR Code.',
             ]);
         } catch (\Throwable $e) {
+            Log::error('Falha ao provisionar Connect|API.', [
+                'empresa_id' => $empresa,
+                'usuario_id' => $this->usuario_id,
+                'telefone' => $this->maskNumber($number),
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -103,6 +148,15 @@ class ConnectApiInstanceController extends BaseController
 
         try {
             $instance = $this->owned($id, true);
+
+            Log::warning('Connect|API reprovisionamento solicitado.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $instance->empresa_id,
+                'instance_name' => $instance->instance_name,
+                'usuario_id' => $this->usuario_id,
+                'telefone' => $this->maskNumber($number),
+            ]);
+
             $instance = $service->reprovision($instance, $this->usuario_id, $number);
 
             return response()->json([
@@ -111,6 +165,48 @@ class ConnectApiInstanceController extends BaseController
                 'message' => 'Instância reprovisionada. Será necessário concluir o novo pareamento.',
             ]);
         } catch (\Throwable $e) {
+            Log::error('Falha ao reprovisionar Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 502);
+        }
+    }
+
+    public function deleteInstance(int $id, ConnectApiInstanceService $service)
+    {
+        $this->requireSuper();
+
+        try {
+            $instance = $this->owned($id, true);
+            $empresaId = (int) $instance->empresa_id;
+            $instanceName = $instance->instance_name;
+
+            $service->deleteInstance($instance, $this->usuario_id);
+
+            Log::warning('Instância Connect|API excluída pelo Master.', [
+                'instance_id' => $id,
+                'empresa_id' => $empresaId,
+                'instance_name' => $instanceName,
+                'usuario_id' => $this->usuario_id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Instância excluída local e remotamente.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao excluir instância Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -121,50 +217,96 @@ class ConnectApiInstanceController extends BaseController
     public function syncWebhook(int $id, ConnectApiInstanceService $service)
     {
         $this->requireSuper();
-        $instance = $this->owned($id, true);
-        $instance = $service->syncWebhook($instance);
 
-        return response()->json([
-            'success' => true,
-            'instance' => $this->present($instance),
-            'message' => 'Webhook sincronizado automaticamente com a URL pública desta instalação.',
-        ]);
+        try {
+            $instance = $this->owned($id, true);
+            $instance = $service->syncWebhook($instance);
+
+            return response()->json([
+                'success' => true,
+                'instance' => $this->present($instance),
+                'message' => 'Webhook sincronizado automaticamente com a URL pública desta instalação.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao sincronizar webhook Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 502);
+        }
     }
 
     public function status(int $id, ConnectApiInstanceService $service)
     {
-        $instance = $this->owned($id);
-        $instance = $service->refreshStatus($instance);
+        try {
+            $instance = $this->owned($id);
+            $instance = $service->refreshStatus($instance);
 
-        return response()->json([
-            'success' => true,
-            'instance' => $this->present($instance),
-        ]);
+            return response()->json([
+                'success' => true,
+                'instance' => $this->present($instance),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao consultar status Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     public function qr(int $id, ConnectApiInstanceService $service)
     {
-        $instance = $this->owned($id);
-        $response = $service->pairing($instance);
+        try {
+            $instance = $this->owned($id);
+            $response = $service->pairing($instance);
 
-        return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+            return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gerar QR Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     public function pairingCode(
         int $id,
         Request $request,
-        ConnectApiInstanceService $service
+        ConnectApiInstanceService $service,
+        ConnectApiMessageService $messages
     ) {
         $instance = $this->owned($id);
-        $number = preg_replace('/\D+/', '', (string) $request->input('number', ''));
+        $number = $messages->normalizeNumber((string) $request->input('number', ''));
 
         if ($number === '') {
             return response()->json(['success' => false, 'error' => 'Informe o número do WhatsApp.'], 422);
         }
 
-        $response = $service->pairing($instance, $number);
+        try {
+            $response = $service->pairing($instance, $number);
 
-        return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+            return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao gerar código de pareamento Connect|API.', [
+                'instance_id' => $id,
+                'empresa_id' => $instance->empresa_id,
+                'telefone' => $this->maskNumber($number),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     public function restart(
@@ -172,47 +314,95 @@ class ConnectApiInstanceController extends BaseController
         ConnectApiClient $client,
         ConnectApiInstanceService $service
     ) {
-        $instance = $this->owned($id);
+        try {
+            $instance = $this->owned($id);
 
-        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
-            $instance = $service->syncWebhook($instance);
+            if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+                $instance = $service->syncWebhook($instance);
+            }
+
+            $response = $client->restart($instance);
+
+            return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao reiniciar Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
         }
-
-        return response()->json($client->restart($instance));
     }
 
     public function disconnect(int $id, ConnectApiClient $client)
     {
-        $instance = $this->owned($id);
-        $response = $client->logout($instance);
+        try {
+            $instance = $this->owned($id);
+            $response = $client->logout($instance);
 
-        if ($response['success'] ?? false) {
-            $instance->connection_status = 'close';
-            $instance->disconnected_at = now();
-            $instance->save();
+            if ($response['success'] ?? false) {
+                $instance->connection_status = 'close';
+                $instance->disconnected_at = now();
+                $instance->save();
+            }
+
+            return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao desconectar Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
         }
-
-        return response()->json($response);
     }
 
-    public function block(int $id)
+    public function block(int $id, ConnectApiInstanceService $service)
     {
         $this->requireSuper();
-        $instance = $this->owned($id, true);
-        $instance->is_blocked = true;
-        $instance->save();
 
-        return response()->json(['success' => true]);
+        try {
+            $instance = $this->owned($id, true);
+            $instance = $service->blockInstance($instance, $this->usuario_id);
+
+            return response()->json([
+                'success' => true,
+                'instance' => $this->present($instance),
+                'message' => 'Instância bloqueada e desconectada.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Falha ao bloquear Connect|API.', [
+                'instance_id' => $id,
+                'usuario_id' => $this->usuario_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     public function unblock(int $id)
     {
         $this->requireSuper();
+
         $instance = $this->owned($id, true);
         $instance->is_blocked = false;
+        $instance->updated_by = $this->usuario_id;
         $instance->save();
 
-        return response()->json(['success' => true]);
+        Log::info('Instância Connect|API desbloqueada.', [
+            'instance_id' => $id,
+            'empresa_id' => $instance->empresa_id,
+            'usuario_id' => $this->usuario_id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'instance' => $this->present($instance),
+            'message' => 'Instância desbloqueada.',
+        ]);
     }
 
     public function testMessage(int $id, Request $request, ConnectApiMessageService $messages)
@@ -225,9 +415,20 @@ class ConnectApiInstanceController extends BaseController
             return response()->json(['success' => false, 'error' => 'Informe o número de destino.'], 422);
         }
 
-        return response()->json(
-            $messages->sendText((int) $instance->empresa_id, $number, $message)
-        );
+        try {
+            $response = $messages->sendText((int) $instance->empresa_id, $number, $message);
+
+            return response()->json($response, ($response['success'] ?? false) ? 200 : 502);
+        } catch (\Throwable $e) {
+            Log::error('Falha no teste de mensagem Connect|API.', [
+                'instance_id' => $id,
+                'empresa_id' => $instance->empresa_id,
+                'telefone' => $this->maskNumber($number),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     public function sendWhatsAppButton(
@@ -251,50 +452,61 @@ class ConnectApiInstanceController extends BaseController
             return response()->json(['success' => false, 'error' => 'Informe o número de destino.'], 422);
         }
 
-        $instance = app(\App\Services\ConnectApi\ConnectApiIntegrationResolver::class)->forEmpresa($empresaId);
+        try {
+            $instance = app(\App\Services\ConnectApi\ConnectApiIntegrationResolver::class)->forEmpresa($empresaId);
 
-        if (!$instance->webhook_configured_at && $instance->provisioned_at) {
-            $instance = $service->syncWebhook($instance);
-        }
-
-        $normalized = $messages->normalizeNumber($number);
-        $responses = [];
-
-        if ($text !== '') {
-            $responses[] = $client->sendText($instance, $normalized, $text);
-        }
-
-        foreach ($files as $file) {
-            $data = (string) ($file['data'] ?? '');
-            $name = (string) ($file['name'] ?? 'arquivo');
-
-            if ($data === '') {
-                continue;
+            if (!$instance->webhook_configured_at && $instance->provisioned_at) {
+                $instance = $service->syncWebhook($instance);
             }
 
-            $mime = 'application/octet-stream';
-            if (preg_match('/^data:([^;]+);base64,(.+)$/s', $data, $matches)) {
-                $mime = $matches[1];
-                $data = $matches[2];
+            $normalized = $messages->normalizeNumber($number);
+            $responses = [];
+
+            if ($text !== '') {
+                $responses[] = $client->sendText($instance, $normalized, $text);
             }
 
-            $responses[] = $client->sendMedia(
-                $instance,
-                $normalized,
-                $data,
-                $name,
-                $mime,
-                $caption
-            );
-        }
+            foreach ($files as $file) {
+                $data = (string) ($file['data'] ?? '');
+                $name = (string) ($file['name'] ?? 'arquivo');
 
-        foreach ($responses as $response) {
-            if (!($response['success'] ?? false)) {
-                return response()->json($response, 502);
+                if ($data === '') {
+                    continue;
+                }
+
+                $mime = 'application/octet-stream';
+                if (preg_match('/^data:([^;]+);base64,(.+)$/s', $data, $matches)) {
+                    $mime = $matches[1];
+                    $data = $matches[2];
+                }
+
+                $responses[] = $client->sendMedia(
+                    $instance,
+                    $normalized,
+                    $data,
+                    $name,
+                    $mime,
+                    $caption
+                );
             }
-        }
 
-        return response()->json(['success' => true, 'responses' => $responses]);
+            foreach ($responses as $response) {
+                if (!($response['success'] ?? false)) {
+                    return response()->json($response, 502);
+                }
+            }
+
+            return response()->json(['success' => true, 'responses' => $responses]);
+        } catch (\Throwable $e) {
+            Log::error('Falha no botão global Connect|API.', [
+                'empresa_id' => $empresaId,
+                'usuario_id' => $this->usuario_id,
+                'telefone' => $this->maskNumber($number),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 502);
+        }
     }
 
     protected function rules(): array
@@ -332,16 +544,13 @@ class ConnectApiInstanceController extends BaseController
 
     private function owned(int $id, bool $superOnly = false): ConnectApiInstance
     {
-        $user = session('user_logged', []);
-        $isSuper = (bool) ($user['super'] ?? false);
-
-        if ($superOnly && !$isSuper) {
+        if ($superOnly && !$this->isSuper) {
             abort(403);
         }
 
         $query = ConnectApiInstance::query()->whereNull('deleted_at');
 
-        if (!$isSuper) {
+        if (!$this->isSuper) {
             $query->where('empresa_id', $this->empresa_id);
         }
 
@@ -350,10 +559,19 @@ class ConnectApiInstanceController extends BaseController
 
     private function requireSuper(): void
     {
-        $user = session('user_logged', []);
-        if (!($user['super'] ?? false)) {
+        if (!$this->isSuper) {
             abort(403);
         }
+    }
+
+    private function maskNumber(string $number): string
+    {
+        $digits = preg_replace('/\D+/', '', $number);
+        if ($digits === '') {
+            return '';
+        }
+
+        return str_repeat('*', max(0, strlen($digits) - 4)) . substr($digits, -4);
     }
 
     private function present(ConnectApiInstance $instance): array
