@@ -669,10 +669,19 @@ class MtrController extends BaseController
                 (int) $this->empresa_id
             );
 
+            $providerResponse = json_decode($resultado, true);
+            if (!is_array($providerResponse) || !($providerResponse['success'] ?? false)) {
+                throw new \RuntimeException(
+                    is_array($providerResponse)
+                        ? ($providerResponse['message'] ?? 'Falha ao enviar MTR via WhatsApp.')
+                        : 'Resposta inválida ao enviar MTR via WhatsApp.'
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'MTR enviado via WhatsApp com sucesso!',
-                'provider_response' => json_decode($resultado, true),
+                'provider_response' => $providerResponse,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
