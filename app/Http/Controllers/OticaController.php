@@ -214,101 +214,140 @@ class OticaController extends BaseController
     }
 
     // --- FATURAMENTO (GERAÇÃO DE VENDA PARA O ERP) ---
+    // --- FATURAMENTO (GERAÇÃO DE VENDA PARA O ERP) ---
     public function faturar(Request $request, $id)
     {
-        return DB::transaction(function () use ($request, $id) {
-            $os = ReceitaOtica::findOrFail($id);
+        $tipo = $request->get('tipo', 'nfe');
+        $preVendaId = null;
+        $vendaId = null;
 
-            if ($os->status == 'entregue' || $os->venda_id) {
-                return redirect()->back()->with('error', 'Esta OS já possui uma venda vinculada.');
-            }
+        try {
+            DB::transaction(function () use ($id, $tipo, &$preVendaId, &$vendaId) {
+                $os = ReceitaOtica::findOrFail($id);
 
-            $user_session = session('user_logged');
-            $empresa_id   = $user_session['empresa'] ?? 1;
-            $usuario_id   = $user_session['id'] ?? 1;
-            $filial_id    = !empty($user_session['filial']) ? $user_session['filial'] : null;
+                if ($os->status == 'entregue' || $os->venda_id) {
+                    throw new \RuntimeException('Esta OS já possui uma venda vinculada.');
+                }
 
-            $configNota = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
-            $natureza_id = $configNota->nat_op_padrao ?? null;
+                $userSession = session('user_logged');
+                $empresaId = $userSession['empresa'] ?? 1;
+                $usuarioId = $userSession['id'] ?? 1;
+                $filialId = !empty($userSession['filial']) ? $userSession['filial'] : null;
 
-            if (!$natureza_id) {
-                $n = \App\Models\NaturezaOperacao::where('empresa_id', $empresa_id)->first();
-                $natureza_id = $n->id ?? null;
-            }
+                $configNota = \App\Models\ConfigNota::where('empresa_id', $empresaId)->first();
+                $naturezaId = $configNota->nat_op_padrao ?? null;
 
-            if (!$natureza_id) {
-                return redirect()->back()->with('error', 'Configuração de Natureza de Operação não encontrada.');
-            }
+                if (!$naturezaId) {
+                    $natureza = \App\Models\NaturezaOperacao::where('empresa_id', $empresaId)->first();
+                    $naturezaId = $natureza->id ?? null;
+                }
 
-            $tipo = $request->get('tipo', 'nfe');
-            $valorTotal = $os->valor_lente + $os->valor_armacao;
+                if (!$naturezaId) {
+                    throw new \RuntimeException('Configuração de Natureza de Operação não encontrada.');
+                }
 
-            if ($tipo == 'pdv') {
-                $preVenda = \App\Models\VendaCaixaPreVenda::create([
-                    'empresa_id'     => $empresa_id,
-                    'filial_id'      => $filial_id,
-                    'usuario_id'     => $usuario_id,
-                    'cliente_id'     => $os->cliente_id,
-                    'natureza_id'    => $natureza_id,
-                    'valor_total'    => $valorTotal,
-                    'estado'         => 'DISPONIVEL',
-                    'prevenda_nivel' => 2,
-                    'observacao'     => "Origem OS Ótica #" . $os->id
+                $valorTotal = ($os->valor_lente ?? 0) + ($os->valor_armacao ?? 0);
+
+                if ($tipo === 'pdv') {
+                    $preVenda = \App\Models\VendaCaixaPreVenda::create([
+                        'empresa_id' => $empresaId,
+                        'filial_id' => $filialId,
+                        'usuario_id' => $usuarioId,
+                        'cliente_id' => $os->cliente_id,
+                        'natureza_id' => $naturezaId,
+                        'valor_total' => $valorTotal,
+                        'estado' => 'DISPONIVEL',
+                        'prevenda_nivel' => 2,
+                        'observacao' => 'Origem OS Ótica #' . $os->id,
+                    ]);
+
+                    if ($os->lente_id && $os->valor_lente > 0) {
+                        \App\Models\ItemVendaCaixaPreVenda::create([
+                            'venda_caixa_prevenda_id' => $preVenda->id,
+                            'produto_id' => $os->lente_id,
+                            'quantidade' => $os->qtd_lente ?? 1,
+                            'valor' => $os->valor_lente / ($os->qtd_lente ?? 1),
+                        ]);
+                    }
+
+                    if ($os->armacao_id && $os->valor_armacao > 0) {
+                        \App\Models\ItemVendaCaixaPreVenda::create([
+                            'venda_caixa_prevenda_id' => $preVenda->id,
+                            'produto_id' => $os->armacao_id,
+                            'quantidade' => $os->qtd_armacao ?? 1,
+                            'valor' => $os->valor_armacao / ($os->qtd_armacao ?? 1),
+                        ]);
+                    }
+
+                    $os->update([
+                        'status' => 'entregue',
+                        'venda_id' => $preVenda->id,
+                    ]);
+
+                    $preVendaId = $preVenda->id;
+                    return;
+                }
+
+                $venda = \App\Models\Venda::create([
+                    'empresa_id' => $empresaId,
+                    'filial_id' => $filialId,
+                    'usuario_id' => $usuarioId,
+                    'cliente_id' => $os->cliente_id,
+                    'natureza_id' => $naturezaId,
+                    'valor_total' => $valorTotal,
+                    'estado' => 'DISPONIVEL',
+                    'observacao' => 'Origem OS Ótica #' . $os->id,
                 ]);
 
                 if ($os->lente_id && $os->valor_lente > 0) {
-                    \App\Models\ItemVendaCaixaPreVenda::create([
-                        'venda_caixa_prevenda_id' => $preVenda->id,
+                    \App\Models\ItemVenda::create([
+                        'empresa_id' => $empresaId,
+                        'venda_id' => $venda->id,
                         'produto_id' => $os->lente_id,
                         'quantidade' => $os->qtd_lente ?? 1,
-                        'valor' => $os->valor_lente / ($os->qtd_lente ?? 1)
+                        'valor' => $os->valor_lente / ($os->qtd_lente ?? 1),
                     ]);
                 }
 
                 if ($os->armacao_id && $os->valor_armacao > 0) {
-                    \App\Models\ItemVendaCaixaPreVenda::create([
-                        'venda_caixa_prevenda_id' => $preVenda->id,
+                    \App\Models\ItemVenda::create([
+                        'empresa_id' => $empresaId,
+                        'venda_id' => $venda->id,
                         'produto_id' => $os->armacao_id,
                         'quantidade' => $os->qtd_armacao ?? 1,
-                        'valor' => $os->valor_armacao / ($os->qtd_armacao ?? 1)
+                        'valor' => $os->valor_armacao / ($os->qtd_armacao ?? 1),
                     ]);
                 }
 
-                $os->update(['status' => 'entregue', 'venda_id' => $preVenda->id]);
-                return redirect('/frenteCaixa')->with('success', 'Pré-venda gerada com sucesso!');
-
-            } else {
-                $venda = \App\Models\Venda::create([
-                    'empresa_id'  => $empresa_id,
-                    'filial_id'   => $filial_id,
-                    'usuario_id'  => $usuario_id,
-                    'cliente_id'  => $os->cliente_id,
-                    'natureza_id' => $natureza_id,
-                    'valor_total' => $valorTotal,
-                    'estado'      => 'DISPONIVEL',
-                    'observacao'  => "Origem OS Ótica #" . $os->id
+                $os->update([
+                    'status' => 'entregue',
+                    'venda_id' => $venda->id,
                 ]);
 
-                if ($os->lente_id && $os->valor_lente > 0) {
-                    \App\Models\ItemVenda::create([
-                        'empresa_id' => $empresa_id, 'venda_id' => $venda->id,
-                        'produto_id' => $os->lente_id, 'quantidade' => $os->qtd_lente ?? 1,
-                        'valor' => $os->valor_lente / ($os->qtd_lente ?? 1)
-                    ]);
-                }
+                $vendaId = $venda->id;
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Falha ao faturar OS de Ótica.', [
+                'os_id' => $id,
+                'tipo' => $tipo,
+                'error' => $e->getMessage(),
+            ]);
 
-                if ($os->armacao_id && $os->valor_armacao > 0) {
-                    \App\Models\ItemVenda::create([
-                        'empresa_id' => $empresa_id, 'venda_id' => $venda->id,
-                        'produto_id' => $os->armacao_id, 'quantidade' => $os->qtd_armacao ?? 1,
-                        'valor' => $os->valor_armacao / ($os->qtd_armacao ?? 1)
-                    ]);
-                }
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
-                $os->update(['status' => 'entregue', 'venda_id' => $venda->id]);
-                return redirect('/vendas/edit/'.$venda->id)->with('success', 'Venda gerada para NF-e!');
-            }
-        });
+        // Só redireciona depois do commit, evitando navegação antes da conclusão da transação.
+        if ($tipo === 'pdv' && $preVendaId) {
+            return redirect('/frenteCaixa?prevenda_id=' . $preVendaId)
+                ->with('success', 'Pré-venda gerada com sucesso!');
+        }
+
+        if ($vendaId) {
+            return redirect('/vendas/edit/' . $vendaId)
+                ->with('success', 'Venda gerada para NF-e!');
+        }
+
+        return redirect()->back()->with('error', 'Ocorreu um erro ao processar o faturamento.');
     }
 
     // --- BUSCA INTELIGENTE DE CLIENTES (SELECT2) ---
