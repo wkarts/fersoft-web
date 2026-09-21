@@ -2,215 +2,234 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MtrConfig;
-use App\Services\SinirIemaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Services\SinirIemaService;
+use Exception;
 
-class MtrUnidadeController extends BaseController
+class MtrUnidadeController extends Controller
 {
-    protected $model = MtrConfig::class;
-    protected $redirectPage = '/mtr/unidades';
-    protected $formTitle = 'Credencial MTR';
-
-    protected function rules(): array
+    private function getDadosSessao()
     {
+        $session = session('user_logged');
         return [
-            'orgao' => 'required',
-            'cpf_cnpj' => 'required',
-            'unidade_id' => 'required',
-            'ambiente' => 'required',
-            'perfil' => 'required',
-        ];
-    }
-
-    protected function messages(): array
-    {
-        return [
-            'orgao.required' => 'Informe o órgão do MTR.',
-            'cpf_cnpj.required' => 'Informe o CPF/CNPJ da unidade.',
-            'unidade_id.required' => 'Informe a unidade do portal MTR.',
-            'ambiente.required' => 'Informe o ambiente.',
-            'perfil.required' => 'Informe o perfil.',
+            'empresa_id' => $session['empresa'] ?? null,
+            'usuario_id' => $session['id'] ?? null,
+            'filial_id'  => session('filial_id') ?? null
         ];
     }
 
     public function index(Request $request)
     {
-        $unidades = MtrConfig::query()
-            ->where('empresa_id', $this->empresa_id)
-            ->orderByDesc('id')
+        $sessao = $this->getDadosSessao();
+
+        $unidades = DB::table('mtr_configs')
+            ->leftJoin('filials', 'mtr_configs.filial_id', '=', 'filials.id')
+            ->leftJoin('usuarios', 'mtr_configs.usuario_id', '=', 'usuarios.id')
+            ->where('mtr_configs.empresa_id', $sessao['empresa_id'])
+            ->select(
+                'mtr_configs.*',
+                'filials.descricao as filial_nome',
+                'usuarios.nome as usuario_nome'
+            )
+            ->orderBy('mtr_configs.id', 'desc')
             ->get();
 
-        $filiais = DB::table('filials')
-            ->where('empresa_id', $this->empresa_id)
-            ->pluck('descricao', 'id');
-
-        return view('mtr.unidades.index', [
-            'unidades' => $unidades,
-            'filiais' => $filiais,
-            'title' => 'Unidades e Credenciais MTR',
-        ]);
+        $title = 'Unidades e Credenciais MTR';
+        return view('mtr.unidades.index', compact('unidades', 'title'));
     }
 
     public function create(Request $request)
     {
-        return view('mtr.unidades.create', $this->formData() + [
-            'title' => 'Nova Credencial / Unidade MTR',
-        ]);
+        $sessao = $this->getDadosSessao();
+
+        $filiais = DB::table('filials')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'descricao')
+            ->get();
+
+        $clientes = DB::table('clientes')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'razao_social', 'cpf_cnpj')
+            ->orderBy('razao_social')
+            ->get();
+
+        $produtos = DB::table('produtos')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'nome', 'NCM')
+            ->orderBy('nome')
+            ->get();
+
+        $title = 'Nova Credencial / Unidade MTR';
+        return view('mtr.unidades.create', compact('filiais', 'clientes', 'produtos', 'title'));
     }
 
     public function store(Request $request)
     {
-        $request->validate($this->rules(), $this->messages());
+        $regras = [
+            'orgao'      => 'required',
+            'cpf_cnpj'   => 'required',
+            'unidade_id' => 'required',
+            'ambiente'   => 'required',
+            'perfil'     => 'required',
+        ];
 
-        if ($request->input('perfil') === 'Gerador' && !$request->filled('senha')) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['senha' => 'A senha/token do Portal MTR é obrigatória para o perfil Gerador.']);
+        if ($request->input('perfil') === 'Gerador') {
+            $regras['senha'] = 'required';
         }
 
+        $request->validate($regras, [
+            'senha.required' => 'A senha do Portal MTR é obrigatória para o perfil Gerador.'
+        ]);
+
+        $sessao = $this->getDadosSessao();
+
         try {
-            MtrConfig::create($this->payload($request, true));
+            DB::table('mtr_configs')->insert([
+                'empresa_id'  => $sessao['empresa_id'],
+                'filial_id'   => $request->filled('filial_id') ? $request->filial_id : $sessao['filial_id'],
+                'usuario_id'  => $sessao['usuario_id'],
+                'orgao'       => $request->orgao,
+                'cpf_cnpj'    => preg_replace('/\D/', '', $request->cpf_cnpj),
+                'cpf_usuario' => preg_replace('/\D/', '', $request->input('cpf_usuario', '')),
+                'senha'       => $request->senha ?? '',
+                'unidade_id'  => $request->unidade_id,
+                'perfil'      => $request->input('perfil', 'Gerador'),
+                'descricao'   => $request->input('descricao', ''),
+                'ambiente'    => $request->ambiente,
+                'ativo'       => $request->has('ativo') ? 1 : 0,
+                'created_at'  => now(),
+                'updated_at'  => now()
+            ]);
 
             return redirect()->route('mtr.unidades.index')
                 ->with('sucesso', 'Unidade cadastrada com sucesso!');
-        } catch (\Throwable $e) {
-            Log::error('Erro ao salvar credencial MTR.', [
-                'empresa_id' => $this->empresa_id,
-                'usuario_id' => $this->usuario_id,
-                'error' => $e->getMessage(),
-            ]);
 
-            return redirect()->back()->withInput()
-                ->with('erro', 'Erro ao salvar unidade: ' . $e->getMessage());
+        } catch (Exception $e) {
+            return redirect()->back()->withInput()->with('erro', 'Erro ao salvar unidade: ' . $e->getMessage());
         }
     }
 
     public function edit(Request $request, $id)
     {
-        $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
+        $sessao = $this->getDadosSessao();
 
-        return view('mtr.unidades.edit', $this->formData() + [
-            'unidade' => $unidade,
-            'title' => 'Editar Credencial MTR',
-        ]);
+        $unidade = DB::table('mtr_configs')
+            ->where('id', $id)
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->first();
+
+        if (!$unidade) {
+            return redirect()->route('mtr.unidades.index')->with('erro', 'Registro não encontrado.');
+        }
+
+        $filiais = DB::table('filials')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'descricao')
+            ->get();
+
+        $clientes = DB::table('clientes')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'razao_social', 'cpf_cnpj')
+            ->get();
+
+        $produtos = DB::table('produtos')
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->select('id', 'nome', 'NCM')
+            ->get();
+
+        $title = 'Editar Credencial MTR';
+        return view('mtr.unidades.edit', compact('unidade', 'filiais', 'clientes', 'produtos', 'title'));
     }
 
     public function update(Request $request, $id)
     {
-        $request->validate($this->rules(), $this->messages());
+        $sessao = $this->getDadosSessao();
 
         try {
-            $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
-            $unidade->fill($this->payload($request, false));
-            $unidade->save();
+            $dadosUpdate = [
+                'filial_id'   => $request->filled('filial_id') ? $request->filial_id : $sessao['filial_id'],
+                'usuario_id'  => $sessao['usuario_id'],
+                'orgao'       => $request->orgao,
+                'cpf_cnpj'    => preg_replace('/\D/', '', $request->cpf_cnpj),
+                'cpf_usuario' => preg_replace('/\D/', '', $request->input('cpf_usuario', '')),
+                'unidade_id'  => $request->unidade_id,
+                'perfil'      => $request->input('perfil', 'Gerador'),
+                'descricao'   => $request->input('descricao', ''),
+                'ambiente'    => $request->ambiente,
+                'ativo'       => $request->has('ativo') ? 1 : 0,
+                'updated_at'  => now()
+            ];
 
-            return redirect()->route('mtr.unidades.index')
-                ->with('sucesso', 'Credenciais atualizadas com sucesso!');
-        } catch (\Throwable $e) {
-            Log::error('Erro ao atualizar credencial MTR.', [
-                'empresa_id' => $this->empresa_id,
-                'registro_id' => $id,
-                'error' => $e->getMessage(),
-            ]);
+            // Preserva a senha existente se o usuário não preencheu uma nova na tela
+            if ($request->filled('senha')) {
+                $dadosUpdate['senha'] = $request->senha;
+            }
 
-            return redirect()->back()->withInput()
-                ->with('erro', 'Erro ao atualizar credenciais: ' . $e->getMessage());
+            DB::table('mtr_configs')
+                ->where('id', $id)
+                ->where('empresa_id', $sessao['empresa_id'])
+                ->update($dadosUpdate);
+
+            return redirect()->route('mtr.unidades.index')->with('sucesso', 'Credenciais atualizadas com sucesso!');
+
+        } catch (Exception $e) {
+            return redirect()->back()->withInput()->with('erro', 'Erro ao atualizar credenciais: ' . $e->getMessage());
         }
     }
 
     public function destroy(Request $request, $id)
     {
-        $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
-        $unidade->delete();
+        $sessao = $this->getDadosSessao();
 
-        return redirect()->route('mtr.unidades.index')
-            ->with('sucesso', 'Credencial removida com sucesso!');
+        DB::table('mtr_configs')
+            ->where('id', $id)
+            ->where('empresa_id', $sessao['empresa_id'])
+            ->delete();
+
+        return redirect()->route('mtr.unidades.index')->with('sucesso', 'Credencial removida com sucesso!');
     }
 
     public function testarConexao(Request $request)
     {
         try {
-            $orgao = $request->input('orgao', 'SINIR');
-            $ambiente = $request->input('ambiente', 'homologacao');
-            $cpfCnpj = preg_replace('/\D+/', '', (string) $request->input('cpf_cnpj'));
-            $cpfUsuario = preg_replace('/\D+/', '', (string) $request->input('cpf_usuario'));
-            $senha = (string) $request->input('senha', '');
-            $unidade = (string) $request->input('unidade_id', '1');
+            $sessao     = $this->getDadosSessao();
+            $orgao      = $request->input('orgao', 'SINIR');
+            $ambiente   = $request->input('ambiente', 'homologacao');
+            $cpfUsuario = preg_replace('/\D/', '', $request->input('cpf_usuario', $request->input('cpf_cnpj')));
+            $senha      = $request->input('senha');
+            $unidade    = $request->input('unidade_id', '1');
+            $unidadeDb  = $request->input('unidade_db_id');
 
-            if ($senha === '' && $request->filled('unidade_db_id')) {
-                $config = MtrConfig::where('empresa_id', $this->empresa_id)
-                    ->findOrFail($request->unidade_db_id);
-                $senha = (string) $config->senha;
-                $cpfCnpj = $cpfCnpj ?: preg_replace('/\D+/', '', (string) $config->cpf_cnpj);
-                $cpfUsuario = $cpfUsuario ?: preg_replace('/\D+/', '', (string) $config->cpf_usuario);
+            // Se a senha veio vazia na tela de edição, busca a senha salva no banco
+            if (empty($senha) && !empty($unidadeDb)) {
+                $configSalva = DB::table('mtr_configs')
+                    ->where('id', $unidadeDb)
+                    ->where('empresa_id', $sessao['empresa_id'])
+                    ->first();
+
+                if ($configSalva && !empty($configSalva->senha)) {
+                    $senha = $configSalva->senha;
+                }
             }
 
-            if ($senha === '') {
+            if (empty($senha)) {
                 return response()->json([
-                    'sucesso' => false,
-                    'mensagem' => 'Informe a senha/token do Portal MTR para realizar o teste.',
-                ], 422);
+                    'sucesso'  => false, 
+                    'mensagem' => 'Informe a Senha do Portal MTR para realizar o teste de login.'
+                ], 400);
             }
 
             $service = new SinirIemaService($orgao, $ambiente);
-            $service->getToken($cpfCnpj, $senha, $unidade, $cpfUsuario ?: null);
+            $token = $service->getToken($cpfUsuario, $senha, $unidade);
 
             return response()->json([
-                'sucesso' => true,
-                'mensagem' => "Autenticação realizada com sucesso no {$orgao}!",
+                'sucesso'  => true,
+                'mensagem' => "Autenticação realizada com sucesso no {$orgao}!"
             ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'sucesso' => false,
-                'mensagem' => $e->getMessage(),
-            ], 400);
+
+        } catch (Exception $e) {
+            return response()->json(['sucesso' => false, 'mensagem' => $e->getMessage()], 400);
         }
-    }
-
-    private function formData(): array
-    {
-        return [
-            'filiais' => DB::table('filials')
-                ->where('empresa_id', $this->empresa_id)
-                ->select('id', 'descricao')
-                ->orderBy('descricao')
-                ->get(),
-            'clientes' => DB::table('clientes')
-                ->where('empresa_id', $this->empresa_id)
-                ->select('id', 'razao_social', 'cpf_cnpj')
-                ->orderBy('razao_social')
-                ->get(),
-            'produtos' => DB::table('produtos')
-                ->where('empresa_id', $this->empresa_id)
-                ->select('id', 'nome', 'NCM')
-                ->orderBy('nome')
-                ->get(),
-        ];
-    }
-
-    private function payload(Request $request, bool $creating): array
-    {
-        $data = [
-            'filial_id' => $request->filled('filial_id') ? $request->filial_id : null,
-            'orgao' => strtoupper((string) $request->orgao),
-            'cpf_cnpj' => preg_replace('/\D+/', '', (string) $request->cpf_cnpj),
-            'cpf_usuario' => preg_replace('/\D+/', '', (string) $request->input('cpf_usuario', '')),
-            'unidade_id' => $request->unidade_id,
-            'perfil' => $request->input('perfil', 'Gerador'),
-            'descricao' => $request->input('descricao', ''),
-            'ambiente' => $request->ambiente,
-            'ativo' => $request->boolean('ativo'),
-        ];
-
-        if ($request->filled('senha')) {
-            $data['senha'] = $request->senha;
-        } elseif ($creating) {
-            $data['senha'] = null;
-        }
-
-        return $data;
     }
 }

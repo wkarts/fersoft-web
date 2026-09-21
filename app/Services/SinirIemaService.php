@@ -2,8 +2,9 @@
 
 namespace App\Services;
 
-use Exception;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class SinirIemaService
 {
@@ -12,183 +13,147 @@ class SinirIemaService
 
     public function __construct(string $orgao = 'SINIR', string $ambiente = 'homologacao')
     {
-        $this->orgao = strtoupper($orgao);
+        $this->orgao = $orgao;
 
-        if ($this->orgao === 'IEMA') {
-            $this->baseUrl = $ambiente === 'producao'
+        if ($orgao === 'IEMA') {
+            $this->baseUrl = ($ambiente === 'producao')
                 ? 'https://mtr.iema.es.gov.br/apiws/rest'
                 : 'https://mtr-homologacao.iema.es.gov.br/apiws/rest';
         } else {
-            $this->baseUrl = $ambiente === 'producao'
+            // Padrão do Novo MTR Nacional / SINIR
+            $this->baseUrl = ($ambiente === 'producao')
                 ? 'https://admin.sinir.gov.br/api'
                 : 'https://admin-homologacao.sinir.gov.br/api';
         }
     }
 
-    public function getToken(
-        string $cpfCnpj,
-        string $senha,
-        string $unidade = '1',
-        ?string $cpfUsuario = null
-    ): string {
+    /**
+     * Autenticação conforme documentação Swagger do SINIR
+     */
+    /**
+     * Retorna o token para autenticação
+     */
+    /**
+     * Retorna o token para autenticação
+     */
+    /**
+     * Retorna o token para autenticação
+     */
+    public function getToken(string $cpfCnpj, string $senha, string $unidade = '1'): string
+    {
         $senhaLimpa = trim($senha);
 
-        if ($senhaLimpa === '') {
-            throw new Exception('A credencial MTR não possui senha/token configurado.');
-        }
-
+        // Se a senha for o Token Gigante (Token de Integração)
         if (strlen($senhaLimpa) > 100) {
-            $response = Http::withHeaders([
+            
+            $endpointToken = "{$this->baseUrl}/token";
+            
+            $responseToken = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $senhaLimpa,
-                'Accept' => 'application/json',
-            ])
-                ->connectTimeout(10)
-                ->timeout(30)
-                ->post($this->baseUrl . '/token');
+                'Accept'        => 'application/json',
+            ])->post($endpointToken);
 
-            if ($response->failed()) {
-                throw new Exception(
-                    "Falha ao gerar Token de Acesso (HTTP {$response->status()}): "
-                    . $this->safeBody($response->body())
-                );
+            if ($responseToken->successful()) {
+                $dadosToken = $responseToken->json();
+                
+                // O Swagger do governo indica que o token curto vem dentro de "objetoResposta"
+                if (isset($dadosToken['objetoResposta'])) {
+                    // Removemos a palavra "Bearer " caso a API já a envie junta, para não duplicar depois
+                    return trim(str_replace('Bearer ', '', $dadosToken['objetoResposta']));
+                }
+                
+                if (isset($dadosToken['access_token'])) {
+                    return $dadosToken['access_token'];
+                }
+                
+                if (isset($dadosToken['token'])) {
+                    return $dadosToken['token'];
+                }
+                
+                throw new Exception("Autenticado com sucesso, mas o formato da resposta do SINIR mudou. Resposta: " . json_encode($dadosToken));
             }
 
-            return $this->extractToken((array) $response->json());
+            throw new Exception("Falha ao gerar Token de Acesso de 8h (Status {$responseToken->status()}): " . strip_tags($responseToken->body()));
         }
 
-        $identificacao = preg_replace('/\D+/', '', $cpfUsuario ?: $cpfCnpj);
+        // =========================================================
+        // LEGADO (Para o IEMA ou quem ainda usa utilizador/senha curtos)
+        // =========================================================
+        $endpoint = "{$this->baseUrl}/autenticar";
+        
+        $config = DB::table('mtr_configs')->where('cpf_cnpj', preg_replace('/\D/', '', $cpfCnpj))->first();
+        $identificacaoLogin = ($config && !empty($config->cpf_usuario)) 
+            ? preg_replace('/\D/', '', $config->cpf_usuario) 
+            : preg_replace('/\D/', '', $cpfCnpj);
 
-        $response = Http::acceptJson()
-            ->asJson()
-            ->connectTimeout(10)
-            ->timeout(30)
-            ->post($this->baseUrl . '/autenticar', [
-                'cpfCnpj' => $identificacao,
-                'senha' => $senhaLimpa,
-                'unidade' => (int) $unidade,
-            ]);
+        $payload = [
+            'cpfCnpj' => $identificacaoLogin,
+            'senha'   => $senhaLimpa,
+            'unidade' => (int)$unidade,
+        ];
 
-        if ($response->failed()) {
-            throw new Exception(
-                "Falha de autenticação no {$this->orgao} (HTTP {$response->status()}): "
-                . $this->safeBody($response->body())
-            );
+        $responseAuth = Http::withHeaders([
+            'Accept'       => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->post($endpoint, $payload);
+
+        if ($responseAuth->failed()) {
+            throw new Exception("Falha de Autenticação Legada: " . strip_tags($responseAuth->body()));
         }
 
-        return $this->extractToken((array) $response->json(), true);
+        $dadosAuth = $responseAuth->json();
+        
+        if (isset($dadosAuth['objetoResposta'])) {
+            return trim(str_replace('Bearer ', '', $dadosAuth['objetoResposta']));
+        }
+        
+        return $dadosAuth['token'] ?? $dadosAuth['api_key'] ?? "CONEXAO_OK";
     }
+  
+    /**
+     * Transmissão do Lote de Manifestos
+     */
+    public function transmitirManifesto(string $token, string $cpfCnpj, string $senha, string $unidade, array $payloadMtr): array
+    {
+        $endpoint = "{$this->baseUrl}/salvarManifestoLote";
 
-    public function transmitirManifesto(
-        string $token,
-        string $cpfCnpj,
-        string $senha,
-        string $unidade,
-        array $payloadMtr
-    ): array {
+        // PASSO 2: Envia o MTR usando o Token de Acesso que pegamos lá em cima
         $response = Http::withToken($token)
-            ->acceptJson()
-            ->asJson()
-            ->connectTimeout(10)
-            ->timeout(45)
-            ->post($this->baseUrl . '/salvarManifestoLote', $payloadMtr);
+            ->withHeaders([
+                'Accept'       => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->post($endpoint, $payloadMtr);
 
         if ($response->failed()) {
-            if ($response->status() === 401) {
-                throw new Exception('Token de acesso expirado ou inválido para este CNPJ.');
+            $bodyErro = $response->body();
+
+            if ($response->status() == 401) {
+                throw new Exception("Erro 401 (Acesso Não Autorizado): O Token de Acesso expirou ou é inválido para este CNPJ.");
             }
 
-            throw new Exception(
-                "Erro ao emitir MTR (HTTP {$response->status()}): "
-                . $this->safeBody($response->body())
-            );
+            if (str_contains(strtolower($bodyErro), '<html') || str_contains(strtolower($bodyErro), '<body')) {
+                throw new Exception("Erro 400 do SINIR. O payload recusado foi: " . json_encode($payloadMtr));
+            }
+
+            throw new Exception("Erro ao emitir MTR (Status {$response->status()}): " . strip_tags($bodyErro));
         }
 
-        return (array) $response->json();
+        return $response->json();
     }
-
+  
+  /**
+     * Busca os tratamentos válidos direto da API do SINIR
+     */
     public function getTratamentos(string $token): array
     {
         $response = Http::withToken($token)
-            ->acceptJson()
-            ->connectTimeout(10)
-            ->timeout(30)
-            ->get($this->baseUrl . '/dominio/tratamento');
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get("{$this->baseUrl}/dominio/tratamento"); // Endpoint padrão do SINIR para listar tratamentos
 
-        if ($response->failed()) {
-            throw new Exception(
-                'Falha ao buscar tratamentos: ' . $this->safeBody($response->body())
-            );
+        if ($response->successful()) {
+            return $response->json();
         }
 
-        return (array) $response->json();
-    }
-
-    public function requestWithToken(string $token, string $method, string $path, array $payload = []): array
-    {
-        $request = Http::withToken($token)
-            ->acceptJson()
-            ->asJson()
-            ->connectTimeout(10)
-            ->timeout(45);
-
-        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
-
-        $response = strtoupper($method) === 'GET'
-            ? $request->get($url, $payload)
-            : $request->send(strtoupper($method), $url, ['json' => $payload]);
-
-        if ($response->failed()) {
-            throw new Exception(
-                "Falha na operação MTR (HTTP {$response->status()}): "
-                . $this->safeBody($response->body())
-            );
-        }
-
-        return (array) $response->json();
-    }
-
-    public function downloadWithToken(string $token, string $path): string
-    {
-        $response = Http::withToken($token)
-            ->accept('*/*')
-            ->connectTimeout(10)
-            ->timeout(45)
-            ->get(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/'));
-
-        if ($response->failed()) {
-            throw new Exception(
-                "Falha no download MTR (HTTP {$response->status()}): "
-                . $this->safeBody($response->body())
-            );
-        }
-
-        return $response->body();
-    }
-
-    private function extractToken(array $data, bool $allowConnectionOk = false): string
-    {
-        $token = $data['objetoResposta']
-            ?? $data['access_token']
-            ?? $data['token']
-            ?? $data['api_key']
-            ?? null;
-
-        if (is_string($token) && trim($token) !== '') {
-            return trim(str_replace('Bearer ', '', $token));
-        }
-
-        if ($allowConnectionOk && ($data['sucesso'] ?? false)) {
-            return 'CONEXAO_OK';
-        }
-
-        throw new Exception(
-            'Autenticação concluída, mas a API não retornou um token reconhecido.'
-        );
-    }
-
-    private function safeBody(string $body): string
-    {
-        $text = preg_replace('/\s+/', ' ', strip_tags($body));
-        return mb_substr(trim((string) $text), 0, 1200);
+        throw new Exception("Falha ao buscar domínios de tratamento do SINIR: " . $response->body());
     }
 }

@@ -2,9 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
-class ContratoEngItem extends Model
+class ContratoEngItem extends BaseModel
 {
     protected $table = 'contrato_eng_itens';
 
