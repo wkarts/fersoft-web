@@ -77,6 +77,34 @@ class PortedContratosEngenhariaTest extends TestCase
         $this->assertStringContainsString('renderPdf', $controller);
     }
 
+    public function testNewContractControllersAndModelsFollowProjectBaseClasses(): void
+    {
+        $root = dirname(__DIR__, 2);
+
+        foreach ([
+            'app/Http/Controllers/ContratoEngenhariaController.php',
+            'app/Http/Controllers/ContratoEngMedicaoController.php',
+        ] as $path) {
+            $source = file_get_contents($root . '/' . $path);
+            $this->assertStringContainsString('extends BaseController', $source, $path);
+            $this->assertStringContainsString('protected function rules(): array', $source, $path);
+            $this->assertStringContainsString('protected function messages(): array', $source, $path);
+            $this->assertStringContainsString('redirectPage', $source, $path);
+        }
+
+        foreach ([
+            'app/Models/ContratoEngenharia.php',
+            'app/Models/ContratoEngItem.php',
+            'app/Models/ContratoEngFuncionario.php',
+            'app/Models/FaturaEngenharia.php',
+            'app/Models/FaturaEngItem.php',
+            'app/Models/FaturaEngFuncionario.php',
+        ] as $path) {
+            $source = file_get_contents($root . '/' . $path);
+            $this->assertStringContainsString('extends BaseModel', $source, $path);
+        }
+    }
+
     public function testHistoricalReconciledMigrationsAreReusedWithoutDuplicates(): void
     {
         $root = dirname(__DIR__, 2);
