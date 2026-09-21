@@ -82,9 +82,8 @@ class ContratoEngenhariaController extends BaseController
         $data = $query->orderByDesc('id')->get();
         $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
         $filiaisLista = Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get();
-        $title = $this->formatString($this->listTitle, [
-            'form_title' => $this->formTitle,
-        ]);
+        // Mantém o título histórico da tela; o controller continua no padrão BaseController.
+        $title = 'Contratos de Locação / Serviços';
 
         return view('contratos.list', [
             'data' => $data,
@@ -135,10 +134,8 @@ class ContratoEngenhariaController extends BaseController
             ->orderBy('funcionarios.nome')
             ->get();
 
-        // Mantém o título histórico usado pela view, inclusive na edição.
-        $title = $this->formatString($this->registerTitle, [
-            'form_title' => $this->formTitle,
-        ]);
+        // Mantém a apresentação histórica sem abrir mão da estrutura BaseController.
+        $title = $data ? 'Editar Contrato' : 'Novo Contrato';
 
         return view('contratos.register', [
             'data' => $data,
