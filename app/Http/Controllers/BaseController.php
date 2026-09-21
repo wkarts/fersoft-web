@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use App\Services\LogService;
+use App\Models\ConfigNota;
 use App\Models\ConnectApiInstance;
 use App\Models\BaseModel;
 use App\Utils\WhatsAppUtil;
@@ -104,8 +105,11 @@ abstract class BaseController extends Controller
             // 🔹 Inicializa o LogService com empresa e usuário automaticamente
             $this->logService = new LogService($this->empresa_id, $this->usuario_id, $this->filial_id);
 
-            // Compartilha apenas o estado operacional da Connect|API com as views.
-            // O token legado de ConfigNota não participa mais da disponibilidade do WhatsApp.
+            // Mantém a configuração geral já compartilhada com views antigas.
+            // A disponibilidade do WhatsApp, porém, é definida exclusivamente pela Connect|API.
+            $configSystemWhats = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            view()->share('configSystemWhats', $configSystemWhats);
+
             $connectApiWhatsApp = $this->getConnectApiWhatsAppState();
             view()->share('connectApiWhatsAppInstance', $connectApiWhatsApp['instance']);
             view()->share('connectApiWhatsAppReady', $connectApiWhatsApp['ready']);
@@ -281,6 +285,7 @@ abstract class BaseController extends Controller
             'form_title' => $this->formTitle,
         ]);
 
+        $configSystemWhats = ConfigNota::where('empresa_id', $this->empresa_id)->first();
         $connectApiWhatsApp = $this->getConnectApiWhatsAppState();
 
         $filiais = $this->filial_id;
@@ -296,6 +301,7 @@ abstract class BaseController extends Controller
             'deleteUrl' => "{$this->redirectPage}/delete",
             'filterUrl' => "{$this->redirectPage}/list",
             'filters' => $this->getFilters($request),
+            'configSystemWhats' => $configSystemWhats,
             'connectApiWhatsAppInstance' => $connectApiWhatsApp['instance'],
             'connectApiWhatsAppReady' => $connectApiWhatsApp['ready'],
             'connectApiWhatsAppStatus' => $connectApiWhatsApp['status'],
@@ -840,23 +846,39 @@ abstract class BaseController extends Controller
      */
     protected function getConnectApiWhatsAppState(): array
     {
-        $instance = ConnectApiInstance::query()
-            ->where('empresa_id', $this->empresa_id)
-            ->whereNull('deleted_at')
-            ->first();
+        try {
+            $instance = ConnectApiInstance::query()
+                ->where('empresa_id', $this->empresa_id)
+                ->whereNull('deleted_at')
+                ->first();
 
-        $status = $instance?->connection_status ?: 'not_provisioned';
-        $provisioned = (bool) ($instance && $instance->provisioned_at && $instance->instance_token);
-        $ready = $provisioned
-            && !$instance->is_blocked
-            && $status === 'open';
+            $status = $instance ? ($instance->connection_status ?: 'unknown') : 'not_provisioned';
+            $provisioned = (bool) ($instance && $instance->provisioned_at && $instance->instance_token);
+            $ready = $provisioned
+                && !$instance->is_blocked
+                && $status === 'open';
 
-        return [
-            'instance' => $instance,
-            'provisioned' => $provisioned,
-            'ready' => $ready,
-            'status' => $status,
-        ];
+            return [
+                'instance' => $instance,
+                'provisioned' => $provisioned,
+                'ready' => $ready,
+                'status' => $status,
+            ];
+        } catch (\Throwable $e) {
+            // Evita indisponibilizar telas do ERP durante update/migration antes
+            // de a tabela da Connect|API estar pronta.
+            Log::warning('Não foi possível obter o estado da Connect|API para a view.', [
+                'empresa_id' => $this->empresa_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'instance' => null,
+                'provisioned' => false,
+                'ready' => false,
+                'status' => 'not_provisioned',
+            ];
+        }
     }
 
     /**
