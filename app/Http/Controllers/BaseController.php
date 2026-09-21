@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use App\Services\LogService;
-use App\Models\ConfigNota;
 use App\Models\ConnectApiInstance;
 use App\Models\BaseModel;
 use App\Utils\WhatsAppUtil;
