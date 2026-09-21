@@ -148,6 +148,46 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString("Route::delete('/instances/{id}'", $routes);
     }
 
+    public function testLegacyEvoPermissionGrantsConnectApiAccess(): void
+    {
+        $this->assertTrue(\App\Models\Empresa::validaLink('/connect-api', ['/evoapi']));
+        $this->assertTrue(\App\Models\Empresa::validaLink('/connect-api', ['/evo-instances']));
+        $this->assertTrue(\App\Models\Empresa::validaLink('/connect-api', ['/connect-api']));
+        $this->assertFalse(\App\Models\Empresa::validaLink('/connect-api', ['/clientes']));
+    }
+
+    public function testLegacyPermissionMigrationCoversProfilesCompaniesAndUsers(): void
+    {
+        $root = dirname(__DIR__, 2);
+
+        $migrations = [
+            'database/migrations/2026_09_20_010500_inherit_connect_api_permission_in_perfil_acessos.php',
+            'database/migrations/2026_09_20_010510_inherit_connect_api_permission_in_empresas.php',
+            'database/migrations/2026_09_20_010520_inherit_connect_api_permission_in_usuarios.php',
+        ];
+
+        foreach ($migrations as $migration) {
+            $source = file_get_contents($root . '/' . $migration);
+
+            $this->assertIsString($source);
+            $this->assertStringContainsString("'/evoapi'", $source);
+            $this->assertStringContainsString("'/connect-api'", $source);
+        }
+    }
+
+    public function testTenantCanSelfProvisionOnlyItsOwnConnectApiCompany(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents($root . '/app/Http/Controllers/ConnectApiInstanceController.php');
+        $view = file_get_contents($root . '/resources/views/connect_api/index.blade.php');
+
+        $this->assertStringContainsString('tenantHasConnectApiAccess', $controller);
+        $this->assertStringContainsString('authorizeCompany($empresa)', $controller);
+        $this->assertStringContainsString("'Tenant não pode gerenciar outra empresa.'", $controller);
+        $this->assertStringContainsString('Provisionar meu WhatsApp', $view);
+        $this->assertStringContainsString('js-reprovision', $view);
+    }
+
     public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void
     {
         $root = dirname(__DIR__, 2);
