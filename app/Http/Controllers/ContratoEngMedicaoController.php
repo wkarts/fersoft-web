@@ -418,7 +418,7 @@ class ContratoEngMedicaoController extends Controller
             'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
             'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'categorias' => CategoriaConta::where('empresa_id', $empresaId)->orderBy('nome')->get(),
+            'categorias' => CategoriaConta::where('empresa_id', $empresaId)->where('tipo', 'receber')->orderBy('nome')->get(),
             'cidades' => Cidade::orderBy('nome')->get(),
             'funcionarios' => DB::table('funcionarios')->where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'tiposPagamento' => ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'],
