@@ -25,7 +25,7 @@ class ConnectApiProvisioningTest extends TestCase
                 'instance' => [
                     'instanceName' => 'FERSOFT-TESTE',
                     'instanceId' => 'uuid',
-                    'integration' => 'WHATSAPP-BAILEYS',
+                    'integration' => 'WHATSAPP-ZAPO',
                     'status' => 'connecting',
                 ],
                 'hash' => 'instance-token',
@@ -48,7 +48,7 @@ class ConnectApiProvisioningTest extends TestCase
             return $request->url() === 'https://connect.test/instance/create'
                 && $request->hasHeader('apikey', 'bootstrap-key')
                 && $request['instanceName'] === 'FERSOFT-TESTE'
-                && $request['integration'] === 'WHATSAPP-BAILEYS'
+                && $request['integration'] === 'WHATSAPP-ZAPO'
                 && $request['number'] === '5575999999999'
                 && $request['qrcode'] === true;
         });

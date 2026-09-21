@@ -46,6 +46,12 @@ class ConnectApiInstanceService
             );
         }
 
+        Log::info('Connect|API: início do provisionamento.', [
+            'empresa_id' => $empresa->id,
+            'usuario_id' => $usuarioId,
+            'telefone' => $this->maskNumber($number),
+        ]);
+
         $instance = ConnectApiInstance::query()
             ->where('empresa_id', $empresa->id)
             ->whereNull('deleted_at')
@@ -72,6 +78,13 @@ class ConnectApiInstanceService
             $number
         );
 
+        Log::info('Connect|API: resposta de criação recebida.', [
+            'empresa_id' => $empresa->id,
+            'instance_name' => $instance->instance_name,
+            'http_status' => $response['status'] ?? null,
+            'success' => (bool) ($response['success'] ?? false),
+        ]);
+
         if (!($response['success'] ?? false)) {
             $instance->connection_status = 'error';
             $instance->last_error_code = (string) ($response['status'] ?? '');
@@ -83,6 +96,13 @@ class ConnectApiInstanceService
             $instance->last_error_at = now();
             $instance->save();
 
+            Log::error('Connect|API: falha ao criar instância remota.', [
+                'empresa_id' => $empresa->id,
+                'instance_name' => $instance->instance_name,
+                'http_status' => $response['status'] ?? null,
+                'error' => $remoteError,
+            ]);
+
             throw new \RuntimeException($instance->last_error_message);
         }
 
@@ -91,7 +111,9 @@ class ConnectApiInstanceService
             ?: data_get($data, 'instance.instance_id')
             ?: data_get($data, 'instance.id');
 
-        $returnedToken = data_get($data, 'hash.apikey') ?: data_get($data, 'apikey');
+        $returnedToken = data_get($data, 'hash.apikey')
+            ?: data_get($data, 'hash')
+            ?: data_get($data, 'apikey');
         if ($returnedToken) {
             $instance->instance_token = $returnedToken;
         }
@@ -106,6 +128,14 @@ class ConnectApiInstanceService
         $instance = $this->syncWebhook($instance);
         $this->syncDefaultTemplates($instance);
 
+        Log::info('Connect|API: provisionamento concluído.', [
+            'empresa_id' => $empresa->id,
+            'instance_id' => $instance->id,
+            'instance_name' => $instance->instance_name,
+            'remote_instance_id' => $instance->remote_instance_id,
+            'status' => $instance->connection_status,
+        ]);
+
         return $instance->fresh();
     }
 
@@ -115,6 +145,27 @@ class ConnectApiInstanceService
         string $number = ''
     ): ConnectApiInstance
     {
+        if ($instance->provisioned_at && $instance->instance_token) {
+            $deleteResponse = $this->client->delete($instance);
+
+            if (
+                !($deleteResponse['success'] ?? false)
+                && (int) ($deleteResponse['status'] ?? 0) !== 404
+            ) {
+                throw new \RuntimeException(
+                    (string) ($deleteResponse['error'] ?? 'Falha ao remover a instância remota antes do reprovisionamento.')
+                );
+            }
+
+            Log::warning('Connect|API: instância remota removida para reprovisionamento.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $instance->empresa_id,
+                'instance_name' => $instance->instance_name,
+                'usuario_id' => $usuarioId,
+                'remote_status' => $deleteResponse['status'] ?? null,
+            ]);
+        }
+
         $instance->remote_instance_id = null;
         $instance->instance_token = null;
         $instance->webhook_token = null;
@@ -140,6 +191,68 @@ class ConnectApiInstanceService
             $instance->filial_id,
             $number
         );
+    }
+
+    public function deleteInstance(ConnectApiInstance $instance, ?int $usuarioId = null): void
+    {
+        $remoteResponse = null;
+
+        if ($instance->provisioned_at && $instance->instance_token) {
+            $remoteResponse = $this->client->delete($instance);
+
+            if (
+                !($remoteResponse['success'] ?? false)
+                && (int) ($remoteResponse['status'] ?? 0) !== 404
+            ) {
+                throw new \RuntimeException(
+                    (string) ($remoteResponse['error'] ?? 'Falha ao excluir instância na Connect|API.')
+                );
+            }
+        }
+
+        Log::warning('Connect|API: exclusão de instância.', [
+            'instance_id' => $instance->id,
+            'empresa_id' => $instance->empresa_id,
+            'instance_name' => $instance->instance_name,
+            'usuario_id' => $usuarioId,
+            'remote_status' => $remoteResponse['status'] ?? null,
+        ]);
+
+        $instance->updated_by = $usuarioId;
+        $instance->delete();
+    }
+
+    public function blockInstance(
+        ConnectApiInstance $instance,
+        ?int $usuarioId = null
+    ): ConnectApiInstance {
+        if ($instance->provisioned_at && $instance->instance_token) {
+            $response = $this->client->logout($instance);
+
+            if (
+                !($response['success'] ?? false)
+                && !in_array((int) ($response['status'] ?? 0), [404, 409], true)
+            ) {
+                throw new \RuntimeException(
+                    (string) ($response['error'] ?? 'Falha ao desconectar instância antes do bloqueio.')
+                );
+            }
+        }
+
+        $instance->is_blocked = true;
+        $instance->connection_status = 'blocked';
+        $instance->disconnected_at = now();
+        $instance->updated_by = $usuarioId;
+        $instance->save();
+
+        Log::warning('Connect|API: instância bloqueada.', [
+            'instance_id' => $instance->id,
+            'empresa_id' => $instance->empresa_id,
+            'instance_name' => $instance->instance_name,
+            'usuario_id' => $usuarioId,
+        ]);
+
+        return $instance->fresh();
     }
 
     public function refreshStatus(ConnectApiInstance $instance): ConnectApiInstance
@@ -213,6 +326,13 @@ class ConnectApiInstanceService
         $token = $this->ensureWebhookToken($instance, $rotateToken);
         $webhookUrl = $this->buildWebhookUrl($token);
 
+        Log::info('Connect|API: sincronizando webhook.', [
+            'instance_id' => $instance->id,
+            'empresa_id' => $instance->empresa_id,
+            'instance_name' => $instance->instance_name,
+            'webhook_host' => parse_url($webhookUrl, PHP_URL_HOST),
+        ]);
+
         $response = $this->client->configureWebhook($instance, $webhookUrl);
 
         if (!($response['success'] ?? false)) {
@@ -221,6 +341,14 @@ class ConnectApiInstanceService
             $instance->last_error_message = (string) ($response['error'] ?? 'Falha ao configurar webhook na Connect|API.');
             $instance->last_error_at = now();
             $instance->save();
+
+            Log::error('Connect|API: falha na sincronização do webhook.', [
+                'instance_id' => $instance->id,
+                'empresa_id' => $instance->empresa_id,
+                'instance_name' => $instance->instance_name,
+                'http_status' => $response['status'] ?? null,
+                'error' => $instance->last_error_message,
+            ]);
 
             throw new \RuntimeException($instance->last_error_message);
         }
@@ -305,6 +433,15 @@ class ConnectApiInstanceService
                 );
             }
         }
+    }
+
+    private function maskNumber(string $number): string
+    {
+        $digits = preg_replace('/\D+/', '', $number);
+
+        return $digits === ''
+            ? ''
+            : str_repeat('*', max(0, strlen($digits) - 4)) . substr($digits, -4);
     }
 
     private function ensureWebhookToken(ConnectApiInstance $instance, bool $rotateToken): string

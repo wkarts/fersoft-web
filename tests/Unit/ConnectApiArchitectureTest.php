@@ -93,7 +93,8 @@ class ConnectApiArchitectureTest extends TestCase
         $layout = file_get_contents($root . '/resources/views/default/menu_lateral.blade.php');
 
         $this->assertStringContainsString("\$title = 'Connect|API';", $controller);
-        $this->assertStringContainsString("compact('records', 'isSuper', 'title')", $controller);
+        $this->assertStringContainsString("'companies'", $controller);
+        $this->assertStringContainsString("'instancesByCompany'", $controller);
         $this->assertStringContainsString(
             "{{ \$title ?? config('app.name', 'FERSOFT WEB') }}",
             $layout
@@ -122,15 +123,29 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString('webhook_configured_at', $model);
     }
 
-    public function testConnectApiProvisioningViewRequiresPhoneAndAvoidsInternalFieldLabel(): void
+    public function testConnectApiManagerRestoresMasterGridWithoutJqueryDependency(): void
     {
         $root = dirname(__DIR__, 2);
         $view = file_get_contents($root . '/resources/views/connect_api/index.blade.php');
+        $controller = file_get_contents($root . '/app/Http/Controllers/ConnectApiInstanceController.php');
+        $routes = file_get_contents($root . '/routes/web.php');
 
+        $this->assertStringContainsString('@forelse($companies as $empresa)', $view);
+        $this->assertStringContainsString('ID: {{ $empresa->id }}', $view);
         $this->assertStringContainsString('id="connectProvisionNumber"', $view);
-        $this->assertStringContainsString('body:JSON.stringify({number})', $view);
-        $this->assertStringContainsString('ID: {{ $inst->empresa_id }}', $view);
-        $this->assertStringNotContainsString('empresa_id {{ $inst->empresa_id }}', $view);
+        $this->assertStringContainsString('JSON.stringify({ number })', $view);
+        $this->assertStringContainsString('class="connect-modal"', $view);
+        $this->assertStringContainsString('js-delete', $view);
+        $this->assertStringNotContainsString("$('#", $view);
+        $this->assertStringNotContainsString('$.', $view);
+        $this->assertStringNotContainsString('.select2(', $view);
+        $this->assertStringNotContainsString('empresa_id {{', $view);
+
+        $this->assertStringContainsString('protected bool $isSuper = false;', $controller);
+        $this->assertStringContainsString('Empresa::query()', $controller);
+        $this->assertStringContainsString("->keyBy('empresa_id')", $controller);
+        $this->assertStringContainsString('Log::error', $controller);
+        $this->assertStringContainsString("Route::delete('/instances/{id}'", $routes);
     }
 
     public function testGlobalWhatsappButtonUsesEmbeddedWhiteTransparentIcon(): void

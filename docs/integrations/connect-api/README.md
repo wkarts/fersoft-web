@@ -81,7 +81,7 @@ O fluxo é:
 ```text
 empresa + telefone
  -> POST /instance/create
- -> integration técnica WHATSAPP-BAILEYS
+ -> integration técnica WHATSAPP-ZAPO
  -> token da instância
  -> número internacional
  -> pairing/QR
@@ -89,3 +89,25 @@ empresa + telefone
 ```
 
 Erros remotos passam a preservar a mensagem de validação retornada pela Connect|API, evitando exibir apenas `Bad Request` quando houver uma causa mais específica.
+
+
+## Gerenciador Master
+
+O gerenciador Connect|API preserva o comportamento funcional da antiga tela de instâncias:
+
+- usuário `super` enxerga todas as empresas cadastradas;
+- tenant comum enxerga somente a própria empresa;
+- empresas sem instância também aparecem na grade;
+- provisionamento individual por empresa;
+- provisionamento manual pelo botão superior;
+- QR Code e código de pareamento;
+- teste de envio;
+- restart e disconnect;
+- bloqueio/desbloqueio;
+- sincronização do webhook;
+- reprovisionamento;
+- exclusão local + remota pelo Master.
+
+A tela não depende de jQuery/Select2 para funcionar. Os modais e ações do módulo usam JavaScript nativo, evitando falhas de `$ is not defined` quando o tema carrega scripts em ordem diferente.
+
+As operações administrativas relevantes escrevem no log da aplicação sem registrar API keys ou tokens.
