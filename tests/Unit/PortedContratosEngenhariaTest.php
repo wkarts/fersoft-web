@@ -42,7 +42,7 @@ class PortedContratosEngenhariaTest extends TestCase
         $controller = file_get_contents($root . '/app/Http/Controllers/ContratoEngenhariaController.php');
 
         $this->assertStringContainsString("Schema::create('contrato_eng_funcionarios'", $migration);
-        $this->assertStringContainsString("DB::table('contrato_eng_funcionarios'", $controller);
+        $this->assertStringContainsString('ContratoEngFuncionario::create', $controller);
     }
 
     public function testPayablesCanBeLinkedToContractWithoutChangingExistingWorkflow(): void
@@ -118,17 +118,23 @@ class PortedContratosEngenhariaTest extends TestCase
         $this->assertStringContainsString('contrato_eng_id', $payable);
     }
 
-    public function testPortedCodeUsesOnlyHistoricalMeasurementColumns(): void
+    public function testPortedCodeUsesHistoricalColumnsAndBaseModelTenantInjection(): void
     {
         $root = dirname(__DIR__, 2);
-        $model = file_get_contents($root . '/app/Models/FaturaEngItem.php');
+        $itemModel = file_get_contents($root . '/app/Models/FaturaEngItem.php');
+        $employeeModel = file_get_contents($root . '/app/Models/FaturaEngFuncionario.php');
+        $contractItemModel = file_get_contents($root . '/app/Models/ContratoEngItem.php');
         $controller = file_get_contents($root . '/app/Http/Controllers/ContratoEngMedicaoController.php');
 
-        $this->assertStringNotContainsString("'sub_total'", $model);
-        $this->assertStringNotContainsString("'descricao'", $model);
+        $this->assertStringNotContainsString("'sub_total'", $itemModel);
+        $this->assertStringNotContainsString("'descricao'", $itemModel);
         $this->assertStringNotContainsString("['sub_total']", $controller);
-        $this->assertStringContainsString("'empresa_id' => \$fatura->empresa_id", $controller);
-        $this->assertStringContainsString("'filial_id' => \$fatura->filial_id", $controller);
-        $this->assertStringContainsString("'usuario_id' => \$fatura->usuario_id", $controller);
+
+        foreach ([$itemModel, $employeeModel, $contractItemModel] as $model) {
+            $this->assertStringContainsString('extends BaseModel', $model);
+            $this->assertStringContainsString("'empresa_id'", $model);
+            $this->assertStringContainsString("'filial_id'", $model);
+            $this->assertStringContainsString("'usuario_id'", $model);
+        }
     }
 }
