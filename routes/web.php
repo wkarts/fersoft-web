@@ -763,7 +763,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'MtrController@index')->name('mtr.emissao.index');
         Route::get('/create/avulso', 'MtrController@createAvulso')->name('mtr.emissao.create.avulso');
         Route::get('/create/nfe/{venda_id}', 'MtrController@createNfe')->name('mtr.emissao.create.nfe');
-        Route::get('/create/pesagem/{ticket_id}', 'MtrController@createPesagem')->name('mtr.emissao.create.pesagem');
+        Route::get('/create/pesagem/{pesagem_id}', 'MtrController@createPesagem')->name('mtr.emissao.create.pesagem');
         Route::post('/store', 'MtrController@salvarRascunho')->name('mtr.emissao.store');
         Route::get('/edit/{id}', 'MtrController@edit')->name('mtr.emissao.edit');
         Route::match(['post', 'put'], '/update/{id}', 'MtrController@update')->name('mtr.emissao.update');
@@ -775,9 +775,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/download-pdf/{numero_mtr}', 'MtrController@downloadPdf')->name('mtr.emissao.pdf');
         Route::get('/download-cdf/{numero_mtr}', 'MtrController@downloadCdf')->name('mtr.emissao.cdf');
 
-        // Recursos históricos de finalização no PDV.
-        Route::get('/ordemServico/gerarVendaCompleta/{id}', [App\Http\Controllers\OrderController::class, 'gerarVendaCompleta']);
-        Route::post('/ordemServico/storePdv', [App\Http\Controllers\OrderController::class, 'storePdv']);
     });
 
     Route::group(['prefix' => 'mtr', 'middleware' => 'verificaEmpresa'], function(){
