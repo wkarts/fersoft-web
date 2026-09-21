@@ -7,7 +7,8 @@ class FaturaEngFuncionario extends BaseModel
     protected $table = 'fatura_eng_funcionarios';
 
     protected $fillable = [
-        'fatura_eng_id', 'funcionario_id', 'funcao', 'diarias', 'valor_diaria', 'valor_total',
+        'empresa_id', 'filial_id', 'usuario_id', 'fatura_eng_id', 'funcionario_id',
+        'funcao', 'diarias', 'valor_diaria', 'valor_total',
     ];
 
     protected $casts = [
