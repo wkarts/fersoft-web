@@ -72,13 +72,22 @@ class ContratoEngenhariaController extends BaseController
         $data = $query->orderByDesc('id')->get();
         $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
         $filiaisLista = Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get();
+        $title = $this->formatString($this->listTitle, [
+            'form_title' => $this->formTitle,
+        ]);
 
         return view('contratos.list', [
             'data' => $data,
+            'lista' => $data,
             'clientes' => $clientes,
             'filiaisLista' => $filiaisLista,
             'search' => $request->all(),
-            'title' => 'Contratos de Locação / Serviços',
+            'title' => $title,
+            'newItemUrl' => "{$this->redirectPage}/new",
+            'newItemText' => 'Novo Contrato',
+            'actionNew' => "{$this->redirectPage}/new",
+            'actionEdit' => "{$this->redirectPage}/edit",
+            'actionDelete' => "{$this->redirectPage}/delete",
         ]);
     }
 
@@ -109,6 +118,14 @@ class ContratoEngenhariaController extends BaseController
             ->orderBy('funcionarios.nome')
             ->get();
 
+        $title = $this->formatString(
+            $data ? $this->editTitle : $this->registerTitle,
+            [
+                'form_title' => $this->formTitle,
+                'registro_id' => $data?->id,
+            ]
+        );
+
         return view('contratos.register', [
             'data' => $data,
             'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
@@ -117,7 +134,10 @@ class ContratoEngenhariaController extends BaseController
             'cidades' => Cidade::orderBy('nome')->get(),
             'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'title' => $data ? 'Editar Contrato' : 'Novo Contrato',
+            'title' => $title,
+            'actionSave' => "{$this->redirectPage}/save",
+            'actionUpdate' => "{$this->redirectPage}/update",
+            'actionCancel' => $this->redirectPage,
         ]);
     }
 
