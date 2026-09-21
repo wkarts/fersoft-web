@@ -141,7 +141,7 @@
                                 
                                 <!-- Botão de Imprimir/Visualizar NFS-e Oficial (Só acende se tiver número) -->
                                 @if(!empty($medicao->numero_nfse))
-                                    <a href="{{ url('nfse/imprimir', $medicao->id) }}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir NFS-e Oficial">
+                                    <a href="{{ url('nfse/imprimir-medicao', $medicao->id) }}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir NFS-e Oficial">
                                         <i class="fa fa-print"></i>
                                     </a>
                                 @else
@@ -268,7 +268,7 @@
             'imprimir': "{{ url('contratos/medicoes/imprimir') }}/" + id,
             'whatsapp': "{{ url('contratos/medicoes/enviar-whatsapp') }}/" + id,
             'emitir_nfse': "{{ url('nfse/emitir') }}/" + id,
-            'danfe': "{{ url('nfse/imprimir') }}/" + id,       // <--- MAPEADO (Abre o espelho/DANFE da Nota)
+            'danfe': "{{ url('nfse/imprimir-medicao') }}/" + id,       // <--- MAPEADO (Abre o espelho/DANFE da Nota)
             'baixar_xml': "{{ url('nfse/xml') }}/" + id,
             'consultar': "{{ url('nfse/consultar') }}/" + id,  // <--- MAPEADO
             'cancelar': "{{ url('contratos/medicoes/cancelar') }}/" + id,
