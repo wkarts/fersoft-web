@@ -475,47 +475,47 @@ class Menu {
                     // ]
                 ]
             ],
-            [
-                'titulo' => 'Contratos',
-                'icone' => $this->getIcone('Contratos'),
-                'subs' => [
-                    [
-                        'nome' => 'Contratos / Obras',
-                        'rota' => '/contratos'
-                    ],
-                    [
-                        'nome' => 'Medições / Faturamentos',
-                        'rota' => '/contratos/medicoes'
-                    ],
-                    [
-                        'nome' => 'Novo Lançamento',
-                        'rota' => '/contratos/medicoes/create/novo'
-                    ],
-                    [
-                        'nome' => 'Dashboard / DRE',
-                        'rota' => '/contratos/dashboard-dre'
-                    ]
-                ]
-            ],
+          	[
+				'titulo' => 'Contratos',
+				'icone' => $this->getIcone('Serviços'),
+				'subs' => [
+					[
+						'nome' => 'Contratos',
+						'rota' => '/contratos'
+					],
+					[
+						'nome' => 'Medições',
+						'rota' => '/contratos/medicoes'
+					],
+					[
+						'nome' => 'Incluir Lançamentos',
+						'rota' => '/contratos/medicoes/create/novo'
+					],
+					[
+						'nome' => 'Dashboard DRE',
+						'rota' => '/contratos/dashboard-dre'
+					]
+				]
+			],
             [
                 'titulo' => 'MTR 3.0',
-                'icone' => $this->getIcone('MTR'),
-                'subs' => [
+                'icone'  => $this->getIcone('MTR'),
+                'subs'   => [
                     [
                         'nome' => 'Lançamento de MTR',
-                        'rota' => '/mtr/emissao'
+                        'rota' => '/mtr/emissao',
                     ],
                     [
                         'nome' => 'Recepção e Transporte',
-                        'rota' => '/mtr/recepcao'
+                        'rota' => '/mtr/recepcao',
                     ],
                     [
                         'nome' => 'Cadastro de Resíduos',
-                        'rota' => '/mtr/depara-residuos'
+                        'rota' => '/mtr/depara-residuos',
                     ],
                     [
-                        'nome' => 'Unidades / Credenciais',
-                        'rota' => '/mtr/unidades'
+                        'nome' => 'Cadastro de Unidades / Credenciais',
+                        'rota' => '/mtr/unidades',
                     ]
                 ]
             ],
@@ -1385,6 +1385,19 @@ class Menu {
           </span>';
         }
 
+      	if ($titulo == 'MTR') {
+            return '<span class="svg-icon menu-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+                    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                        <rect x="0" y="0" width="24" height="24"/>
+                        <!-- Ícone de Reciclagem / Caminhão de Resíduos -->
+                        <path d="M12,2 C6.48,2 2,6.48 2,12 C2,17.52 6.48,22 12,22 C17.52,22 22,17.52 22,12 C22,6.48 17.52,2 12,2 Z M12,20 C7.59,20 4,16.41 4,12 C4,7.59 7.59,4 12,4 C16.41,4 20,7.59 20,12 C20,16.41 16.41,20 12,20 Z" fill="currentColor" opacity="0.3"/>
+                        <path d="M13,7 L11,7 L11,11 L8,11 L12,16 L16,11 L13,11 L13,7 Z" fill="currentColor"/>
+                    </g>
+                </svg>
+            </span>';
+        }
+    
         if($titulo == 'VendaBalcao'){
             return '<span class="svg-icon menu-icon">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -1469,6 +1482,19 @@ class Menu {
           </span>';
         }
 
+      if ($titulo == 'Serviços' || $titulo == 'Servicos') {
+			return '<span class="svg-icon menu-icon">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
+					<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+						<rect x="0" y="0" width="24" height="24"/>
+						<path d="M6,7 L18,7 C19.1045695,7 20,7.8954305 20,9 L20,18 C20,19.1045695 19.1045695,20 18,20 L6,20 C4.8954305,20 4,19.1045695 4,18 L4,9 C4,7.8954305 4.8954305,7 6,7 Z" fill="#000000" opacity="0.3"/>
+						<path d="M10,4 L14,4 C15.1045695,4 16,4.8954305 16,6 L16,7 L8,7 L8,6 C8,4.8954305 8.8954305,4 10,4 Z" fill="#000000"/>
+						<rect fill="#000000" opacity="0.3" x="9" y="11" width="6" height="2" rx="1"/>
+					</g>
+				</svg>
+			</span>';
+		}
+	
         if($titulo == 'MDF-e'){
             return '<span class="svg-icon menu-icon">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">

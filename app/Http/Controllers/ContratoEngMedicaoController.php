@@ -2,654 +2,719 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CategoriaConta;
-use App\Models\Cidade;
-use App\Models\Cliente;
+use Illuminate\Http\Request;
 use App\Models\ContratoEngenharia;
 use App\Models\FaturaEngenharia;
 use App\Models\FaturaEngFuncionario;
 use App\Models\FaturaEngItem;
-use App\Models\Produto;
+use App\Models\Cliente;
+use App\Models\Filial;
 use App\Models\Servico;
-use Illuminate\Http\Request;
+use App\Models\Produto;
+use App\Models\CategoriaConta;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Funcionario;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Cidade;
 
-class ContratoEngMedicaoController extends BaseController
+class ContratoEngMedicaoController extends Controller
 {
-    protected $model = FaturaEngenharia::class;
-    protected $redirectPage = '/contratos/medicoes';
-    protected $formTitle = 'Medição / Faturamento de Contrato';
-
-    protected function rules(): array
+    /**
+     * Lista as medições e lançamentos de Locação / Serviços
+     */
+    public function index(Request $request, $contrato_id = null)
     {
-        return [];
-    }
-
-    protected function messages(): array
-    {
-        return [];
-    }
-
-    public function index(Request $request, $contratoId = null)
-    {
-        $empresaId = $this->empresaId();
-
-        $query = FaturaEngenharia::where('empresa_id', $empresaId);
-
-        if ($contratoId) {
-            $query->where('contrato_eng_id', $contratoId);
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        
+        $query = FaturaEngenharia::where('empresa_id', $empresa_id);
+        
+        if ($contrato_id) {
+            $query->where('contrato_eng_id', $contrato_id);
         }
+
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->cliente_id);
         }
+
         if ($request->filled('contrato_eng_id')) {
             $query->where('contrato_eng_id', $request->contrato_eng_id);
         }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+
         if ($request->filled('data_inicial')) {
             $query->whereDate('data_faturamento', '>=', $request->data_inicial);
         }
+
         if ($request->filled('data_final')) {
             $query->whereDate('data_faturamento', '<=', $request->data_final);
         }
 
+        $medicoes = $query->with(['contrato', 'cliente'])->orderBy('id', 'desc')->paginate(15);
+        
+        $clientes = Cliente::where('empresa_id', $empresa_id)->get();
+        $contratos = ContratoEngenharia::where('empresa_id', $empresa_id)->get();
+        $contratoSelecionado = $contrato_id ? ContratoEngenharia::find($contrato_id) : null;
+
         return view('contratos.medicoes.index', [
-            'medicoes' => $query->with(['contrato', 'cliente'])->orderByDesc('id')->paginate(15),
-            'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
-            'contratos' => ContratoEngenharia::where('empresa_id', $empresaId)->orderByDesc('id')->get(),
-            'contrato_id' => $contratoId,
-            'contratoSelecionado' => $contratoId
-                ? ContratoEngenharia::where('empresa_id', $empresaId)->find($contratoId)
-                : null,
-            'title' => 'Locação e Serviços - Medições e Faturamento',
+            'medicoes' => $medicoes,
+            'clientes' => $clientes,
+            'contratos' => $contratos,
+            'contrato_id' => $contrato_id,
+            'contratoSelecionado' => $contratoSelecionado,
+            'title' => 'Locação e Serviços - Medições e Faturamento'
         ]);
     }
 
-    public function create($contratoId = null)
+    /**
+     * Exibe o formulário de cadastro (Com Contrato ou Avulso)
+     */
+    public function create($contrato_id = null)
     {
-        $empresaId = $this->empresaId();
+        $empresa_id = session('user_logged')['empresa'] ?? null;
 
-        $contratos = ContratoEngenharia::where('empresa_id', $empresaId)
+        $contratos = ContratoEngenharia::where('empresa_id', $empresa_id)
             ->where('status', 'Ativo')
-            ->with(['cliente', 'itens.servico', 'itens.produto'])
+            ->with(['cliente', 'itens'])
+            ->get()
+            ->map(function($con) {
+                $con->funcionarios = DB::table('contrato_eng_funcionarios as cf')
+                    ->join('funcionarios as f', 'f.id', '=', 'cf.funcionario_id')
+                    ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
+                    ->where('cf.contrato_eng_id', $con->id)
+                    ->select(
+                        'f.id as funcionario_id',
+                        'f.nome',
+                        DB::raw("COALESCE(fn.nome, '') as funcao")
+                    )
+                    ->get();
+
+                return $con;
+            });
+
+        $clientes   = Cliente::where('empresa_id', $empresa_id)->get();
+        $servicos   = Servico::where('empresa_id', $empresa_id)->get();
+        $produtos   = Produto::where('empresa_id', $empresa_id)->get();
+        $categorias = CategoriaConta::where('empresa_id', $empresa_id)->get();
+        $cidades    = Cidade::orderBy('nome', 'asc')->get();
+        
+        $funcionarios = DB::table('funcionarios')
+            ->leftJoin('funcoes', 'funcoes.id', '=', 'funcionarios.funcao_id')
+            ->where('funcionarios.empresa_id', $empresa_id)
+            ->select(
+                'funcionarios.id',
+                'funcionarios.nome',
+                DB::raw("COALESCE(funcoes.nome, 'Sem Função') as funcao_nome")
+            )
+            ->orderBy('funcionarios.nome')
             ->get();
 
-        foreach ($contratos as $contrato) {
-            $contrato->funcionarios = DB::table('contrato_eng_funcionarios as cf')
-                ->join('funcionarios as f', 'f.id', '=', 'cf.funcionario_id')
-                ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
-                ->where('cf.contrato_eng_id', $contrato->id)
-                ->where('cf.status', 'Ativo')
-                ->where('f.empresa_id', $empresaId)
-                ->select('f.id as funcionario_id', 'f.nome', DB::raw("COALESCE(fn.nome, '') as funcao"))
-                ->get();
-        }
+        $tiposPagamento = ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'];
+        $contratoSelecionado = $contrato_id ? ContratoEngenharia::find($contrato_id) : null;
 
-        return view('contratos.medicoes.create', $this->formData($empresaId) + [
-            'contratos' => $contratos,
-            'contratoSelecionado' => $contratoId
-                ? ContratoEngenharia::where('empresa_id', $empresaId)->find($contratoId)
-                : null,
-            'title' => 'Novo Lançamento - Locação e Serviços',
+        return view('contratos.medicoes.create', [
+            'contratos'           => $contratos,
+            'cidades'             => $cidades,
+            'clientes'            => $clientes,
+            'servicos'            => $servicos,
+            'produtos'            => $produtos,
+            'categorias'          => $categorias,
+            'funcionarios'        => $funcionarios,
+            'tiposPagamento'      => $tiposPagamento,
+            'contratoSelecionado' => $contratoSelecionado,
+            'title'               => 'Novo Lançamento - Locação e Serviços'
         ]);
     }
 
-    public function store(Request $request, $contratoId = null)
+    /**
+     * Salva o lançamento (Vinculado ao contrato ou avulso)
+     */
+    public function store(Request $request, $contrato_id = null)
     {
-        DB::beginTransaction();
-
         try {
-            $empresaId = $this->empresaId();
-            $usuarioId = $this->usuarioId();
-            $contratoEngId = $request->input('contrato_eng_id') ?: $contratoId;
+            DB::beginTransaction();
 
-            $contrato = $contratoEngId
-                ? ContratoEngenharia::where('empresa_id', $empresaId)->findOrFail($contratoEngId)
-                : null;
-
-            $clienteId = $request->input('cliente_id') ?: optional($contrato)->cliente_id;
-            if (!$clienteId) {
-                throw new \RuntimeException('Informe o cliente da medição.');
+            $empresa_id = session('user_logged')['empresa'] ?? null;
+            $usuario_id = session('user_logged')['id'] ?? null;
+            
+            $contratoEngId = $request->input('contrato_eng_id') ?? $contrato_id;
+            
+            $contrato = null;
+            if ($contratoEngId) {
+                $contrato = ContratoEngenharia::where('empresa_id', $empresa_id)->find($contratoEngId);
             }
 
-            $valorTotal = $this->money($request->input('valor_total', 0));
-            $valorRetencao = $this->money($request->input('valor_retencao', 0));
+            $clienteId = $request->input('cliente_id') ?? ($contrato ? $contrato->cliente_id : null);
+            
+            $valorTotalMedicao = str_replace(['.', ','], ['', '.'], $request->input('valor_total', '0'));
+            $valorRetencao = str_replace(['.', ','], ['', '.'], $request->input('valor_retencao', '0'));
+            $valorLiquido = $valorTotalMedicao - $valorRetencao;
+            
+            $dataFaturamento = $request->input('nf_data_emissao') ?? date('Y-m-d');
+            $filialId = $request->input('filial_id') ?? (session('user_logged')['filial'] ?? 1);
 
+            // 1. Cria a Fatura principal com os dados de NFS-e / Obra
             $fatura = FaturaEngenharia::create([
-                'empresa_id' => $empresaId,
-                'filial_id' => $request->filled('filial_id') ? $request->filial_id : (session('user_logged')['filial'] ?? null),
-                'usuario_id' => $usuarioId,
-                'contrato_eng_id' => $contrato?->id,
-                'cliente_id' => $clienteId,
-                'vendedor_id' => $request->input('vendedor_id'),
-                'condicao_pagamento_id' => $request->input('condicao_pagamento_id'),
-                'categoria_conta_id' => $request->input('categoria_conta_id'),
-                'servico_id' => $request->input('servico_id'),
+                'empresa_id'             => $empresa_id,
+                'filial_id'              => $filialId,
+                'contrato_eng_id'        => $contratoEngId ?: null,
+                'cliente_id'             => $clienteId,
+                'vendedor_id'            => $request->input('vendedor_id'),
+                'condicao_pagamento_id'  => $request->input('condicao_pagamento_id'),
+                'categoria_conta_id'     => $request->input('categoria_conta_id'),
+                'usuario_id'             => $usuario_id,
+                'valor_total'            => $valorTotalMedicao,
+                'valor_retencao'         => $valorRetencao,
+                'valor_liquido'          => $valorLiquido,
+                'data_faturamento'       => $dataFaturamento,
+                'observacao'             => $request->input('observacao'),
+                'servico_id'             => $request->input('servico_id'),
+                'codigo_obra'            => $request->input('codigo_obra'),
                 'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
-                'codigo_obra' => $request->input('codigo_obra'),
-                'valor_total' => $valorTotal,
-                'valor_retencao' => $valorRetencao,
-                'valor_liquido' => $valorTotal - $valorRetencao,
-                'data_faturamento' => $request->input('nf_data_emissao') ?: date('Y-m-d'),
-                'observacao' => $request->input('observacao'),
-                'status' => 'Pendente',
+                'status'                 => 'Pendente'
             ]);
 
-            $this->replaceItems($fatura->id, (array) ($request->input('itens') ?: $request->input('servicos') ?: []));
-            $this->replaceEmployees($fatura->id, (array) $request->input('funcionarios', []));
-            $this->createReceivables($fatura, (array) $request->input('parcelas', []), $request);
+            // 2. Salva os ITENS / SERVIÇOS da Medição
+            $itensInput = $request->input('itens') ?? $request->input('servicos') ?? [];
+            if (!empty($itensInput) && is_array($itensInput)) {
+                foreach ($itensInput as $item) {
+                    if (!empty($item['servico_id']) || !empty($item['descricao'])) {
+                        $qtd = str_replace(['.', ','], ['', '.'], ($item['quantidade'] ?? '1'));
+                        $vlUnit = str_replace(['.', ','], ['', '.'], ($item['valor_unitario'] ?? $item['valor'] ?? '0'));
+                        $subTotal = str_replace(['.', ','], ['', '.'], ($item['sub_total'] ?? $item['subtotal'] ?? ($qtd * $vlUnit)));
 
+                        FaturaEngItem::create([
+                            'fatura_eng_id'  => $fatura->id,
+                            'servico_id'     => $item['servico_id'] ?? null,
+                            'descricao'      => $item['descricao'] ?? null,
+                            'quantidade'     => $qtd,
+                            'valor_unitario' => $vlUnit,
+                            'sub_total'      => $subTotal,
+                        ]);
+                    }
+                }
+            }
+
+            // 3. Salva as Parcelas no Contas a Receber
+            if ($request->has('parcelas') && is_array($request->parcelas)) {
+                foreach ($request->parcelas as $key => $parcela) {
+                    $vlParcela = str_replace(['.', ','], ['', '.'], ($parcela['valor'] ?? '0'));
+                    
+                    $numParcela = $key + 1;
+                    $totalParcelas = count($request->parcelas);
+                    
+                    $referenciaTexto = $contrato 
+                        ? "Contrato Nº " . ($contrato->numero_contrato ?? $contrato->id) . " (Medição #" . $fatura->id . ") - Parcela {$numParcela}/{$totalParcelas}"
+                        : "Serviço Avulso (Faturamento #" . $fatura->id . ") - Parcela {$numParcela}/{$totalParcelas}";
+
+                    DB::table('conta_recebers')->insert([
+                        'empresa_id'      => $empresa_id,
+                        'cliente_id'      => $clienteId,
+                        'usuario_id'      => $usuario_id,
+                        'categoria_id'    => $request->input('categoria_conta_id'),
+                        'valor_integral'  => $vlParcela,
+                        'data_vencimento' => $parcela['vencimento'],
+                        'nf_data_emissao' => $dataFaturamento,
+                        'status'          => 0,
+                        'referencia'      => $referenciaTexto,
+                        'observacao'      => $request->input('observacao'),
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ]);
+                }
+            }
+
+            // 4. Salva os Funcionários/Equipe da Medição
+            if ($request->has('funcionarios') && is_array($request->funcionarios)) {
+                foreach ($request->funcionarios as $func) {
+                    if (!empty($func['funcionario_id'])) {
+                        $diarias = str_replace(['.', ','], ['', '.'], ($func['diarias'] ?? '1'));
+                        $vlDiaria = str_replace(['.', ','], ['', '.'], ($func['valor_diaria'] ?? '0'));
+                        
+                        FaturaEngFuncionario::create([
+                            'fatura_eng_id'  => $fatura->id,
+                            'funcionario_id' => $func['funcionario_id'],
+                            'funcao'         => $func['funcao'] ?? null,
+                            'diarias'        => $diarias,
+                            'valor_diaria'   => $vlDiaria,
+                            'valor_total'    => $diarias * $vlDiaria,
+                        ]);
+                    }
+                }
+            }
+
+            // 5. Se tiver contrato vinculado, atualiza o acumulado faturado
             if ($contrato) {
-                $contrato->increment('valor_faturado', $valorTotal);
+                $contrato->increment('valor_faturado', $valorTotalMedicao);
             }
 
             DB::commit();
+
+            session()->flash('mensagem_sucesso', 'Lançamento gerado e integrado ao financeiro com sucesso!');
+            session()->flash('imprimir_fatura_id', $fatura->id);
 
             return redirect()->route('contratos.medicoes.index')
-                ->with('mensagem_sucesso', 'Lançamento e financeiro atualizados com sucesso!')
-                ->with('imprimir_id', $fatura->id);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao gerar medição de contrato.', [
-                'empresa_id' => $this->empresaId(),
-                'error' => $e->getMessage(),
-            ]);
+                 ->with('mensagem_sucesso', 'Lançamento e financeiro atualizados com sucesso!')
+                 ->with('imprimir_id', $fatura->id);
 
-            return redirect()->back()->withInput()->with('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
+            return redirect()->back()->withInput();
         }
     }
 
+    /**
+     * Exibe o formulário de edição da medição
+     */
     public function edit($id)
     {
-        $empresaId = $this->empresaId();
-
-        $fatura = FaturaEngenharia::where('empresa_id', $empresaId)
-            ->with(['itens.servico', 'itens.produto', 'funcionarios.funcionario'])
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)
+            ->with(['itens.servico', 'funcionarios'])
             ->findOrFail($id);
 
-        if ($fatura->status === 'Finalizado') {
-            return redirect('/contratos/medicoes')
-                ->with('mensagem_erro', 'Este lançamento está finalizado e não pode ser editado.');
+        if ($fatura->status == 'Finalizado') {
+            session()->flash('mensagem_erro', 'Este lançamento está finalizado e não pode ser editado.');
+            return redirect('/contratos/medicoes');
         }
+        
+        $contratos      = ContratoEngenharia::where('empresa_id', $empresa_id)->get();
+        $clientes       = Cliente::where('empresa_id', $empresa_id)->get();
+        $categorias     = CategoriaConta::where('empresa_id', $empresa_id)->get();
+        $servicos       = Servico::where('empresa_id', $empresa_id)->get();
+        $produtos       = Produto::where('empresa_id', $empresa_id)->get();
+        $cidades        = Cidade::orderBy('nome', 'asc')->get();
+        $funcionarios   = DB::table('funcionarios')->where('empresa_id', $empresa_id)->get();
+        $tiposPagamento = ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'];
 
-        return view('contratos.medicoes.edit', $this->formData($empresaId) + [
-            'fatura' => $fatura,
-            'contratos' => ContratoEngenharia::where('empresa_id', $empresaId)->orderByDesc('id')->get(),
-            'title' => 'Editar Medição / Faturamento #' . $fatura->id,
+        return view('contratos.medicoes.edit', [
+            'fatura'         => $fatura,
+            'contratos'      => $contratos,
+            'clientes'       => $clientes,
+            'categorias'     => $categorias,
+            'servicos'       => $servicos,
+            'produtos'       => $produtos,
+            'cidades'        => $cidades,
+            'funcionarios'   => $funcionarios,
+            'tiposPagamento' => $tiposPagamento,
+            'title'          => 'Editar Medição / Faturamento #' . $fatura->id
         ]);
     }
 
+    /**
+     * Atualiza os dados da medição
+     */
     public function update(Request $request, $id)
     {
-        DB::beginTransaction();
-
         try {
-            $empresaId = $this->empresaId();
-            $fatura = FaturaEngenharia::where('empresa_id', $empresaId)->findOrFail($id);
-            $oldTotal = (float) $fatura->valor_total;
-            $oldContratoId = $fatura->contrato_eng_id;
+            DB::beginTransaction();
+            $empresa_id = session('user_logged')['empresa'] ?? null;
 
-            $novoContratoId = $request->input('contrato_eng_id') ?: null;
-            if ($novoContratoId) {
-                ContratoEngenharia::where('empresa_id', $empresaId)->findOrFail($novoContratoId);
-            }
+            $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
 
-            $valorTotal = $this->money($request->input('valor_total', 0));
-            $valorRetencao = $this->money($request->input('valor_retencao', 0));
+            $valorTotalMedicao = str_replace(['.', ','], ['', '.'], $request->input('valor_total', '0'));
+            $valorRetencao = str_replace(['.', ','], ['', '.'], $request->input('valor_retencao', '0'));
+            $valorLiquido = $valorTotalMedicao - $valorRetencao;
 
+            // Atualiza os dados principais incluindo os campos da NFS-e/Obra
             $fatura->update([
-                'contrato_eng_id' => $novoContratoId,
-                'cliente_id' => $request->input('cliente_id'),
-                'categoria_conta_id' => $request->input('categoria_conta_id'),
-                'servico_id' => $request->input('servico_id'),
+                'contrato_eng_id'        => $request->input('contrato_eng_id'),
+                'cliente_id'             => $request->input('cliente_id'),
+                'categoria_conta_id'     => $request->input('categoria_conta_id'),
+                'valor_total'            => $valorTotalMedicao,
+                'valor_retencao'         => $valorRetencao,
+                'valor_liquido'          => $valorLiquido,
+                'data_faturamento'       => $request->input('nf_data_emissao'),
+                'observacao'             => $request->input('observacao'),
+                'servico_id'             => $request->input('servico_id'),
+                'codigo_obra'            => $request->input('codigo_obra'),
                 'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
-                'codigo_obra' => $request->input('codigo_obra'),
-                'valor_total' => $valorTotal,
-                'valor_retencao' => $valorRetencao,
-                'valor_liquido' => $valorTotal - $valorRetencao,
-                'data_faturamento' => $request->input('nf_data_emissao'),
-                'observacao' => $request->input('observacao'),
-                'status' => $request->input('status') ?: $fatura->status,
+                'status'                 => $request->input('status') ?? $fatura->status
             ]);
 
-            $this->replaceItems($fatura->id, (array) ($request->input('itens') ?: $request->input('servicos') ?: []));
-            $this->replaceEmployees($fatura->id, (array) $request->input('funcionarios', []), false);
-            $this->syncOpenReceivables($fatura, $request);
+            // Atualiza os ITENS (Deleta e recria)
+            $itensInput = $request->input('itens') ?? $request->input('servicos') ?? [];
+            if (is_array($itensInput)) {
+                FaturaEngItem::where('fatura_eng_id', $id)->delete();
+                foreach ($itensInput as $item) {
+                    if (!empty($item['servico_id']) || !empty($item['descricao'])) {
+                        $qtd = str_replace(['.', ','], ['', '.'], ($item['quantidade'] ?? '1'));
+                        $vlUnit = str_replace(['.', ','], ['', '.'], ($item['valor_unitario'] ?? $item['valor'] ?? '0'));
+                        $subTotal = str_replace(['.', ','], ['', '.'], ($item['sub_total'] ?? $item['subtotal'] ?? ($qtd * $vlUnit)));
 
-            if ($oldContratoId && (int) $oldContratoId === (int) $novoContratoId) {
-                ContratoEngenharia::where('empresa_id', $empresaId)
-                    ->where('id', $oldContratoId)
-                    ->update([
-                        'valor_faturado' => DB::raw('GREATEST(0, valor_faturado + ' . ($valorTotal - $oldTotal) . ')'),
-                        'updated_at' => now(),
-                    ]);
-            } else {
-                if ($oldContratoId) {
-                    ContratoEngenharia::where('empresa_id', $empresaId)
-                        ->where('id', $oldContratoId)
-                        ->update([
-                            'valor_faturado' => DB::raw('GREATEST(0, valor_faturado - ' . $oldTotal . ')'),
-                            'updated_at' => now(),
+                        FaturaEngItem::create([
+                            'fatura_eng_id'  => $id,
+                            'servico_id'     => $item['servico_id'] ?? null,
+                            'descricao'      => $item['descricao'] ?? null,
+                            'quantidade'     => $qtd,
+                            'valor_unitario' => $vlUnit,
+                            'sub_total'      => $subTotal,
                         ]);
-                }
-                if ($novoContratoId) {
-                    ContratoEngenharia::where('empresa_id', $empresaId)
-                        ->where('id', $novoContratoId)
-                        ->increment('valor_faturado', $valorTotal);
+                    }
                 }
             }
+
+            // Sincroniza o valor alterado no Contas a Receber
+            DB::table('conta_recebers')
+                ->where('empresa_id', $empresa_id)
+                ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+                ->update([
+                    'valor_integral' => $valorTotalMedicao,
+                    'categoria_id'   => $request->input('categoria_conta_id'),
+                    'observacao'     => $request->input('observacao'),
+                    'updated_at'     => now()
+                ]);
 
             DB::commit();
 
-            return redirect('/contratos/medicoes')
-                ->with('mensagem_sucesso', 'Lançamento e financeiro atualizados com sucesso!');
-        } catch (\Throwable $e) {
+            session()->flash('mensagem_sucesso', 'Lançamento e financeiro atualizados com sucesso!');
+            return redirect('/contratos/medicoes');
+
+        } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withInput()->with('mensagem_erro', 'Erro ao atualizar: ' . $e->getMessage());
+            session()->flash('mensagem_erro', 'Erro ao atualizar: ' . $e->getMessage());
+            return redirect()->back()->withInput();
         }
     }
 
     public function imprimir($id)
     {
-        return view('contratos.medicoes.print', $this->printData($id));
-    }
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)
+            ->with(['contrato.itens.servico', 'contrato.itens.produto', 'cliente', 'funcionarios.funcionario', 'categoriaConta', 'itens.servico'])
+            ->findOrFail($id);
 
-    public function gerarPdf($id)
-    {
-        $data = $this->printData($id);
-        $html = view('contratos.medicoes.print', $data)->render();
-        $pdf = $this->renderPdf($html);
+        $empresa = DB::table('empresas')->where('id', $empresa_id)->first();
+        $configNota = DB::table('config_notas')->where('empresa_id', $empresa_id)->first();
 
-        return response($pdf, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="Medicao_Faturamento_' . $id . '.pdf"',
+        $parcelas = DB::table('conta_recebers')
+            ->where('empresa_id', $empresa_id)
+            ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+            ->get();
+
+        return view('contratos.medicoes.print', [
+            'fatura'     => $fatura,
+            'empresa'    => $empresa,
+            'configNota' => $configNota,
+            'parcelas'   => $parcelas,
+            'title'      => 'Impressão de Medição / Faturamento #' . $fatura->id
         ]);
     }
 
     public function destroy($id)
     {
-        DB::beginTransaction();
-
         try {
-            $empresaId = $this->empresaId();
-            $fatura = FaturaEngenharia::where('empresa_id', $empresaId)->findOrFail($id);
+            DB::beginTransaction();
+            $empresa_id = session('user_logged')['empresa'] ?? null;
 
-            $hasPaid = DB::table('conta_recebers')
-                ->where('empresa_id', $empresaId)
-                ->where('referencia', 'like', '%(Medição #' . $id . ')%')
-                ->where('status', 1)
-                ->exists();
-
-            if ($hasPaid) {
-                throw new \RuntimeException('Existem parcelas recebidas. A medição não pode ser excluída.');
-            }
+            $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
 
             DB::table('conta_recebers')
-                ->where('empresa_id', $empresaId)
+                ->where('empresa_id', $empresa_id)
                 ->where('referencia', 'like', '%(Medição #' . $id . ')%')
                 ->delete();
 
             FaturaEngItem::where('fatura_eng_id', $id)->delete();
             FaturaEngFuncionario::where('fatura_eng_id', $id)->delete();
 
-            if ($fatura->contrato_eng_id) {
-                ContratoEngenharia::where('empresa_id', $empresaId)
-                    ->where('id', $fatura->contrato_eng_id)
-                    ->update([
-                        'valor_faturado' => DB::raw('GREATEST(0, valor_faturado - ' . (float) $fatura->valor_total . ')'),
-                        'updated_at' => now(),
-                    ]);
-            }
-
             $fatura->delete();
+
             DB::commit();
 
-            return redirect()->back()->with('mensagem_sucesso', 'Lançamento e títulos financeiros excluídos com sucesso!');
-        } catch (\Throwable $e) {
+            session()->flash('mensagem_sucesso', 'Lançamento e títulos financeiros excluídos com sucesso!');
+            return redirect()->back();
+
+        } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('mensagem_erro', 'Erro ao excluir: ' . $e->getMessage());
+            session()->flash('mensagem_erro', 'Erro ao excluir: ' . $e->getMessage());
+            return redirect()->back();
         }
     }
 
     public function mudarStatus(Request $request, $id)
     {
-        $fatura = FaturaEngenharia::where('empresa_id', $this->empresaId())->findOrFail($id);
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
+        
         $fatura->update(['status' => $request->input('status')]);
 
-        return redirect()->back()->with('mensagem_sucesso', 'Status atualizado com sucesso!');
+        session()->flash('mensagem_sucesso', 'Status atualizado com sucesso!');
+        return redirect()->back();
     }
 
     public function enviarWhatsapp(Request $request, $id)
     {
+        Log::info("=== INICIANDO ENVIO DE WHATSAPP COM PDF (Medição #{$id}) ===");
+
         try {
-            $data = $this->printData($id);
-            $fatura = $data['fatura'];
+            set_time_limit(60); 
 
-            $numeroOriginal = $fatura->cliente->celular
-                ?? $fatura->cliente->whatsapp
-                ?? $fatura->cliente->telefone
-                ?? '';
+            $empresaId = session('user_logged')['empresa'] ?? 1;
 
-            $numero = preg_replace('/\D+/', '', $numeroOriginal);
-            if (strlen($numero) < 10) {
-                throw new \RuntimeException('O cliente não possui número de WhatsApp válido.');
-            }
-            if (!str_starts_with($numero, '55')) {
-                $numero = '55' . $numero;
+            $medicao = FaturaEngenharia::with(['cliente', 'contrato'])->where('empresa_id', $empresaId)->find($id);
+
+            if (!$medicao || !$medicao->cliente) {
+                return redirect()->back()->with('mensagem_erro', "Medição ou cliente não encontrado.");
             }
 
-            $html = view('contratos.medicoes.print', $data)->render();
-            $pdf = $this->renderPdf($html);
+            $numeroOriginal = $medicao->cliente->celular ?? $medicao->cliente->whatsapp ?? $medicao->cliente->telefone ?? '';
+            $numero = preg_replace('/[^0-9]/', '', $numeroOriginal);
 
-            $dir = public_path('pdf/faturas');
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
+            if (empty($numero) || strlen($numero) < 10) {
+                $nomeCliente = $medicao->cliente->razao_social ?? $medicao->cliente->nome ?? 'Cliente';
+                return redirect()->back()->with('mensagem_erro', "Atenção: O cliente '{$nomeCliente}' não possui número de WhatsApp válido.");
             }
 
-            $path = $dir . '/Medicao_Faturamento_' . $id . '.pdf';
-            if (safe_file_put_contents($path, $pdf) === false) {
-                throw new \RuntimeException('Não foi possível gravar o PDF temporário da medição.');
+            if (substr($numero, 0, 2) !== '55') {
+                $numero = "55" . $numero;
             }
 
-            $cliente = $fatura->cliente->razao_social ?? 'Cliente';
-            $contrato = $fatura->contrato?->numero_contrato ?? $fatura->contrato_eng_id ?? 'Avulso';
-            $mensagem = "📄 *MEDIÇÃO / FATURAMENTO #{$fatura->id}*\n\n"
-                . "Olá, *{$cliente}*!\n"
-                . "Contrato: {$contrato}\n"
-                . "Valor: R$ " . number_format((float) $fatura->valor_total, 2, ',', '.') . "\n"
-                . "Data: " . optional($fatura->data_faturamento)->format('d/m/Y') . "\n\n"
-                . "Segue o comprovante em PDF.";
-
-            $result = app(\App\Utils\WhatsAppUtil::class)
-                ->sendMessage($numero, $mensagem, $this->empresaId(), $path);
-
-            $decoded = json_decode($result, true);
-            if (is_array($decoded) && ($decoded['success'] ?? true) === false) {
-                throw new \RuntimeException($decoded['message'] ?? 'Falha ao enviar WhatsApp.');
-            }
-
-            return redirect()->back()->with('mensagem_sucesso', 'Fatura enviada por WhatsApp com sucesso!');
-        } catch (\Throwable $e) {
-            Log::error('Falha no WhatsApp da medição.', ['medicao_id' => $id, 'error' => $e->getMessage()]);
-            return redirect()->back()->with('mensagem_erro', $e->getMessage());
-        }
-    }
-
-    public function enviarEmail(Request $request, $id)
-    {
-        try {
-            $data = $this->printData($id);
-            $fatura = $data['fatura'];
-
-            if (!$fatura->cliente || empty($fatura->cliente->email)) {
-                throw new \RuntimeException('O cliente não possui e-mail cadastrado.');
-            }
-
-            $config = $this->emailConfig($this->empresaId());
-            if ($config) {
-                config([
-                    'mail.mailers.smtp.host' => $config->host,
-                    'mail.mailers.smtp.port' => $config->porta ?? $config->port ?? 587,
-                    'mail.mailers.smtp.encryption' => strtolower($config->criptografia ?? $config->encryption ?? 'tls'),
-                    'mail.mailers.smtp.username' => $config->email ?? $config->usuario,
-                    'mail.mailers.smtp.password' => $config->senha ?? $config->password,
-                    'mail.from.address' => $config->email ?? config('mail.from.address'),
-                    'mail.from.name' => $config->nome ?? config('app.name'),
-                ]);
-            }
-
-            $pdf = $this->renderPdf(view('contratos.medicoes.print', $data)->render());
-            $clienteNome = $fatura->cliente->razao_social ?? 'Cliente';
-            $empresaNome = $data['empresa']->nome ?? config('app.name');
-
-            Mail::send([], [], function ($message) use ($fatura, $pdf, $clienteNome, $empresaNome) {
-                $body = '<p>Olá, <strong>' . e($clienteNome) . '</strong>!</p>'
-                    . '<p>Segue o comprovante da Medição / Faturamento #' . $fatura->id . '.</p>'
-                    . '<p>Valor total: <strong>R$ ' . number_format((float) $fatura->valor_total, 2, ',', '.') . '</strong></p>'
-                    . '<p>Atenciosamente,<br><strong>' . e($empresaNome) . '</strong></p>';
-
-                $message->to($fatura->cliente->email, $clienteNome)
-                    ->subject('Medição / Faturamento #' . $fatura->id . ' - ' . $empresaNome)
-                    ->html($body)
-                    ->attachData($pdf, 'Medicao_Faturamento_' . $fatura->id . '.pdf', ['mime' => 'application/pdf']);
-            });
-
-            return redirect()->back()->with('mensagem_sucesso', 'E-mail enviado com sucesso!');
-        } catch (\Throwable $e) {
-            Log::error('Falha no e-mail da medição.', ['medicao_id' => $id, 'error' => $e->getMessage()]);
-            return redirect()->back()->with('mensagem_erro', $e->getMessage());
-        }
-    }
-
-    private function formData(int $empresaId): array
-    {
-        return [
-            'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
-            'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'categorias' => CategoriaConta::where('empresa_id', $empresaId)->where('tipo', 'receber')->orderBy('nome')->get(),
-            'cidades' => Cidade::orderBy('nome')->get(),
-            'funcionarios' => DB::table('funcionarios')->where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'tiposPagamento' => ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'],
-        ];
-    }
-
-    private function replaceItems(int $faturaId, array $items): void
-    {
-        FaturaEngItem::where('fatura_eng_id', $faturaId)->delete();
-
-        foreach ($items as $item) {
-            $tipo = ($item['tipo_item'] ?? 'Servico') === 'Locacao' ? 'Locacao' : 'Servico';
-            $qtd = $this->decimal($item['quantidade'] ?? 1);
-            $valor = $this->money($item['valor_unitario'] ?? $item['valor'] ?? 0);
-            $total = $this->money($item['valor_total'] ?? ($qtd * $valor));
-
-            if (
-                empty($item['servico_id'])
-                && empty($item['produto_id'])
-            ) {
-                continue;
-            }
-
-            FaturaEngItem::create([
-                'fatura_eng_id' => $faturaId,
-                'tipo_item' => $tipo,
-                'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
-                'produto_id' => $tipo === 'Locacao' ? ($item['produto_id'] ?? null) : null,
-                'quantidade' => $qtd,
-                'valor_unitario' => $valor,
-                'valor_total' => $total,
-            ]);
-        }
-    }
-
-    private function replaceEmployees(int $faturaId, array $employees, bool $replaceWhenEmpty = true): void
-    {
-        if (!$replaceWhenEmpty && $employees === []) {
-            return;
-        }
-
-        FaturaEngFuncionario::where('fatura_eng_id', $faturaId)->delete();
-
-        foreach ($employees as $employee) {
-            if (empty($employee['funcionario_id'])) {
-                continue;
-            }
-
-            $diarias = $this->decimal($employee['diarias'] ?? 1);
-            $valor = $this->money($employee['valor_diaria'] ?? 0);
-
-            FaturaEngFuncionario::create([
-                'fatura_eng_id' => $faturaId,
-                'funcionario_id' => $employee['funcionario_id'],
-                'funcao' => $employee['funcao'] ?? null,
-                'diarias' => $diarias,
-                'valor_diaria' => $valor,
-                'valor_total' => $diarias * $valor,
-            ]);
-        }
-    }
-
-    private function createReceivables(FaturaEngenharia $fatura, array $parcelas, Request $request): void
-    {
-        if ($parcelas === []) {
-            $parcelas = [[
-                'valor' => $fatura->valor_total,
-                'vencimento' => $fatura->data_faturamento?->format('Y-m-d') ?: date('Y-m-d'),
-            ]];
-        }
-
-        $totalParcelas = count($parcelas);
-
-        foreach ($parcelas as $key => $parcela) {
-            $valor = $this->money($parcela['valor'] ?? 0);
-            if ($valor <= 0) {
-                continue;
-            }
-
-            $contrato = $fatura->contrato;
-            $referencia = $contrato
-                ? 'Contrato Nº ' . ($contrato->numero_contrato ?: $contrato->id)
-                    . ' (Medição #' . $fatura->id . ') - Parcela ' . ($key + 1) . '/' . $totalParcelas
-                : 'Serviço Avulso (Faturamento #' . $fatura->id . ') - Parcela ' . ($key + 1) . '/' . $totalParcelas;
-
-            DB::table('conta_recebers')->insert([
-                'empresa_id' => $fatura->empresa_id,
-                'filial_id' => $fatura->filial_id,
-                'cliente_id' => $fatura->cliente_id,
-                'usuario_id' => $fatura->usuario_id,
-                'categoria_id' => $fatura->categoria_conta_id,
-                'valor_integral' => $valor,
-                'data_vencimento' => $parcela['vencimento'] ?? date('Y-m-d'),
-                'nf_data_emissao' => $fatura->data_faturamento,
-                'status' => 0,
-                'referencia' => $referencia,
-                'observacao' => $request->input('observacao'),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function syncOpenReceivables(FaturaEngenharia $fatura, Request $request): void
-    {
-        $query = DB::table('conta_recebers')
-            ->where('empresa_id', $fatura->empresa_id)
-            ->where('referencia', 'like', '%(Medição #' . $fatura->id . ')%');
-
-        if ((clone $query)->where('status', 1)->exists()) {
-            $query->update([
-                'categoria_id' => $fatura->categoria_conta_id,
-                'observacao' => $request->input('observacao'),
-                'updated_at' => now(),
-            ]);
-            return;
-        }
-
-        $rows = $query->orderBy('id')->get();
-        if ($rows->isEmpty()) {
-            return;
-        }
-
-        $base = round((float) $fatura->valor_total / $rows->count(), 2);
-        $remaining = (float) $fatura->valor_total;
-
-        foreach ($rows as $index => $row) {
-            $value = $index === $rows->count() - 1 ? $remaining : $base;
-            $remaining -= $value;
-
-            DB::table('conta_recebers')->where('id', $row->id)->update([
-                'valor_integral' => $value,
-                'categoria_id' => $fatura->categoria_conta_id,
-                'observacao' => $request->input('observacao'),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function printData(int $id): array
-    {
-        $empresaId = $this->empresaId();
-        $fatura = FaturaEngenharia::where('empresa_id', $empresaId)
-            ->with([
-                'contrato.itens.servico',
-                'contrato.itens.produto',
-                'cliente',
-                'funcionarios.funcionario',
-                'categoriaConta',
-                'itens.servico',
-                'itens.produto',
-                'cidadePrestacao',
-            ])
-            ->findOrFail($id);
-
-        return [
-            'fatura' => $fatura,
-            'empresa' => DB::table('empresas')->where('id', $empresaId)->first(),
-            'configNota' => DB::table('config_notas')->where('empresa_id', $empresaId)->first(),
-            'parcelas' => DB::table('conta_recebers')
+            $empresa = DB::table('empresas')->where('id', $empresaId)->first();
+            $configNota = DB::table('config_notas')->where('empresa_id', $empresaId)->first();
+            $parcelas = DB::table('conta_recebers')
                 ->where('empresa_id', $empresaId)
                 ->where('referencia', 'like', '%(Medição #' . $id . ')%')
-                ->get(),
-            'title' => 'Medição #' . $fatura->id,
-        ];
+                ->get();
+
+            $html = view('contratos.medicoes.print', [
+                'fatura'     => $medicao,
+                'empresa'    => $empresa,
+                'configNota' => $configNota,
+                'parcelas'   => $parcelas,
+                'title'      => 'Medição #' . $medicao->id
+            ])->render();
+
+            $options = new \Dompdf\Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('defaultFont', 'sans-serif');
+
+            $dompdf = new \Dompdf\Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $diretorio = public_path('pdf/faturas');
+            if (!file_exists($diretorio)) {
+                mkdir($diretorio, 0755, true);
+            }
+
+            $nomeArquivo = "Medicao_Faturamento_{$id}.pdf";
+            $caminhoPdf = $diretorio . '/' . $nomeArquivo;
+            
+            file_put_contents($caminhoPdf, $dompdf->output());
+
+            $nomeEmpresa = $empresa->nome ?? $empresa->razao_social ?? 'FerSoft ERP';
+            $nomeCliente = $medicao->cliente->razao_social ?? $medicao->cliente->nome;
+            $numContrato = $medicao->contrato ? ($medicao->contrato->numero_contrato ?? $medicao->contrato->id) : 'Avulso';
+            $valorFormatado = number_format($medicao->valor_total, 2, ',', '.');
+            $dataFaturamento = date('d/m/Y', strtotime($medicao->data_faturamento ?? $medicao->created_at));
+
+            $mensagem  = "📄 *COMPROVANTE DE MEDIÇÃO / FATURAMENTO #{$medicao->id}*\n\n";
+            $mensagem .= "Olá, *{$nomeCliente}*!\n\n";
+            $mensagem .= "Segue em anexo o PDF da fatura e o resumo da medição:\n\n";
+            $mensagem .= "• *Contrato:* Nº {$numContrato}\n";
+            $mensagem .= "• *Data da Medição:* {$dataFaturamento}\n";
+            $mensagem .= "• *Valor Total:* R$ {$valorFormatado}\n";
+
+            if (!empty($medicao->observacao)) {
+                $mensagem .= "• *Observação:* {$medicao->observacao}\n";
+            }
+
+            $mensagem .= "\nFicamos à disposição para dúvidas.\n\n";
+            $mensagem .= "Atenciosamente,\n*{$nomeEmpresa}*";
+
+            $instanciaWhats = app('\App\Utils\WhatsAppUtil');
+            $retornoJson = $instanciaWhats->sendMessage($numero, $mensagem, $empresaId, $caminhoPdf);
+            
+            $res = json_decode($retornoJson, true);
+            if (isset($res['success']) && $res['success'] === false) {
+                $msgErro = $res['message'] ?? 'Falha ao enviar arquivo via WhatsApp';
+                return redirect()->back()->with('mensagem_erro', "Erro no envio do WhatsApp: " . $msgErro);
+            }
+
+            return redirect()->back()->with('mensagem_sucesso', "Fatura em PDF enviada por WhatsApp para {$nomeCliente}!");
+
+        } catch (\Throwable $e) {
+            Log::error("WhatsApp Medição #{$id}: Erro - " . $e->getMessage());
+            return redirect()->back()->with('mensagem_erro', 'Falha ao gerar/enviar PDF por WhatsApp: ' . $e->getMessage());
+        }
     }
 
-    private function renderPdf(string $html): string
+    public function gerarPdf($id)
     {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)
+            ->with(['contrato.itens.servico', 'contrato.itens.produto', 'cliente', 'funcionarios.funcionario', 'categoriaConta', 'itens.servico'])
+            ->findOrFail($id);
+
+        $empresa = DB::table('empresas')->where('id', $empresa_id)->first();
+        $configNota = DB::table('config_notas')->where('empresa_id', $empresa_id)->first();
+
+        $parcelas = DB::table('conta_recebers')
+            ->where('empresa_id', $empresa_id)
+            ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+            ->get();
+
+        $html = view('contratos.medicoes.print', [
+            'fatura'     => $fatura,
+            'empresa'    => $empresa,
+            'configNota' => $configNota,
+            'parcelas'   => $parcelas,
+            'title'      => 'Medicação_' . $fatura->id
+        ])->render();
+
         $options = new \Dompdf\Options();
         $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'sans-serif');
 
         $dompdf = new \Dompdf\Dompdf($options);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        return $dompdf->output();
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Medicao_Faturamento_' . $id . '.pdf"'
+        ]);
     }
 
-    private function emailConfig(int $empresaId): ?object
+    public function enviarEmail(Request $request, $id)
     {
-        foreach (['config_email', 'config_emails', 'email_configs'] as $table) {
-            if (Schema::hasTable($table)) {
-                $config = DB::table($table)->where('empresa_id', $empresaId)->first();
-                if ($config) {
-                    return $config;
-                }
+        Log::info("=== INICIANDO ENVIO DE E-MAIL MULTIEMPRESA (Medição #{$id}) ===");
+
+        try {
+            set_time_limit(60);
+
+            $empresaId = session('user_logged')['empresa'] ?? 1;
+
+            $medicao = FaturaEngenharia::with(['cliente', 'contrato'])->where('empresa_id', $empresaId)->findOrFail($id);
+
+            if (!$medicao->cliente || empty($medicao->cliente->email)) {
+                $nomeCliente = $medicao->cliente->razao_social ?? $medicao->cliente->nome ?? 'Cliente';
+                return redirect()->back()->with('mensagem_erro', "Atenção: O cliente '{$nomeCliente}' não possui um e-mail cadastrado.");
             }
+
+            $emailCliente = trim($medicao->cliente->email);
+
+            $empresa    = DB::table('empresas')->where('id', $empresaId)->first();
+            $configNota = DB::table('config_notas')->where('empresa_id', $empresaId)->first();
+            
+            $configEmail = null;
+            if (Schema::hasTable('config_email')) {
+                $configEmail = DB::table('config_email')->where('empresa_id', $empresaId)->first();
+            } elseif (Schema::hasTable('config_emails')) {
+                $configEmail = DB::table('config_emails')->where('empresa_id', $empresaId)->first();
+            } elseif (Schema::hasTable('email_configs')) {
+                $configEmail = DB::table('email_configs')->where('empresa_id', $empresaId)->first();
+            }
+
+            $nomeEmpresa = $empresa->nome ?? $empresa->razao_social ?? 'FerSoft ERP';
+            
+            $usarEmailProprio = ($configNota->usar_email_proprio ?? 0) == 1 
+                                && $configEmail 
+                                && !empty($configEmail->email) 
+                                && !empty($configEmail->host);
+
+            if ($usarEmailProprio) {
+                config([
+                    'mail.mailers.smtp.host'       => $configEmail->host,
+                    'mail.mailers.smtp.port'       => $configEmail->porta ?? $configEmail->port ?? 587,
+                    'mail.mailers.smtp.encryption' => strtolower($configEmail->criptografia ?? $configEmail->encryption ?? 'tls'),
+                    'mail.mailers.smtp.username'   => $configEmail->email ?? $configEmail->usuario,
+                    'mail.mailers.smtp.password'   => $configEmail->senha ?? $configEmail->password,
+                    'mail.from.address'            => $configEmail->email,
+                    'mail.from.name'               => $configEmail->nome ?? $nomeEmpresa,
+                ]);
+
+                $emailRemetente = $configEmail->email;
+                $nomeRemetente  = $configEmail->nome ?? $nomeEmpresa;
+            } else {
+                $emailRemetente = env('MAIL_USERNAME', 'notafiscal@fersofterp.com.br');
+                $nomeRemetente  = $nomeEmpresa;
+
+                config([
+                    'mail.from.address' => $emailRemetente,
+                    'mail.from.name'    => $nomeRemetente,
+                ]);
+            }
+
+            $parcelas = DB::table('conta_recebers')
+                ->where('empresa_id', $empresaId)
+                ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+                ->get();
+
+            $html = view('contratos.medicoes.print', [
+                'fatura'     => $medicao,
+                'empresa'    => $empresa,
+                'configNota' => $configNota,
+                'parcelas'   => $parcelas,
+                'title'      => 'Medição #' . $medicao->id
+            ])->render();
+
+            $options = new \Dompdf\Options();
+            $options->set('isRemoteEnabled', true);
+            $options->set('defaultFont', 'sans-serif');
+
+            $dompdf = new \Dompdf\Dompdf($options);
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $pdfContent  = $dompdf->output();
+            $nomeArquivo = "Medicao_Faturamento_{$id}.pdf";
+
+            $nomeCliente     = $medicao->cliente->razao_social ?? $medicao->cliente->nome;
+            $numContrato     = $medicao->contrato ? ($medicao->contrato->numero_contrato ?? $medicao->contrato->id) : 'Avulso';
+            $valorFormatado  = number_format($medicao->valor_total, 2, ',', '.');
+            $dataFaturamento = date('d/m/Y', strtotime($medicao->data_faturamento ?? $medicao->created_at));
+
+            $dadosEmail = [
+                'nomeCliente'     => $nomeCliente,
+                'id'              => $id,
+                'numContrato'     => $numContrato,
+                'dataFaturamento' => $dataFaturamento,
+                'valorFormatado'  => $valorFormatado,
+                'observacao'      => $medicao->observacao,
+                'nomeEmpresa'     => $nomeEmpresa
+            ];
+
+            Mail::send([], [], function ($message) use ($emailCliente, $nomeCliente, $id, $pdfContent, $nomeArquivo, $dadosEmail, $emailRemetente, $nomeRemetente) {
+                $body  = "<p>Olá, <strong>{$dadosEmail['nomeCliente']}</strong>!</p>";
+                $body .= "<p>Segue em anexo o comprovante referente à <strong>Medição / Faturamento #{$dadosEmail['id']}</strong>.</p>";
+                $body .= "<ul>";
+                $body .= "<li><strong>Contrato:</strong> Nº {$dadosEmail['numContrato']}</li>";
+                $body .= "<li><strong>Data da Medição:</strong> {$dadosEmail['dataFaturamento']}</li>";
+                $body .= "<li><strong>Valor Total:</strong> R$ {$dadosEmail['valorFormatado']}</li>";
+                if (!empty($dadosEmail['observacao'])) {
+                    $body .= "<li><strong>Observação:</strong> {$dadosEmail['observacao']}</li>";
+                }
+                $body .= "</ul>";
+                $body .= "<p>Ficamos à disposição para dúvidas ou esclarecimentos.</p>";
+                $body .= "<p>Atenciosamente,<br><strong>{$dadosEmail['nomeEmpresa']}</strong></p>";
+
+                $message->from($emailRemetente, $nomeRemetente)
+                        ->to($emailCliente, $nomeCliente)
+                        ->subject("Comprovante de Medição / Faturamento #{$id} - {$dadosEmail['nomeEmpresa']}")
+                        ->html($body)
+                        ->attachData($pdfContent, $nomeArquivo, [
+                            'mime' => 'application/pdf',
+                        ]);
+            });
+
+            return redirect()->back()->with('mensagem_sucesso', "E-mail com a fatura em PDF enviado com sucesso para {$emailCliente}!");
+
+        } catch (\Throwable $e) {
+            Log::error("E-mail Medição #{$id}: Erro - " . $e->getMessage());
+            return redirect()->back()->with('mensagem_erro', 'Falha ao enviar e-mail: ' . $e->getMessage());
         }
-
-        return null;
-    }
-
-    private function empresaId(): int
-    {
-        return (int) (session('user_logged')['empresa'] ?? 0);
-    }
-
-    private function usuarioId(): ?int
-    {
-        $id = session('user_logged')['id'] ?? null;
-        return $id ? (int) $id : null;
-    }
-
-    private function money($value): float
-    {
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
-    }
-
-    private function decimal($value): float
-    {
-        return $this->money($value);
     }
 }

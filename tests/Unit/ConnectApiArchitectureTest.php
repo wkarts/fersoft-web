@@ -96,7 +96,7 @@ class ConnectApiArchitectureTest extends TestCase
         $this->assertStringContainsString("'companies'", $controller);
         $this->assertStringContainsString("'instancesByCompany'", $controller);
         $this->assertStringContainsString(
-            "{{ \$title ?? config('app.name', 'FERSOFT WEB') }}",
+            "{{ \$title ?? config('app.name', '') }}",
             $layout
         );
         $this->assertStringNotContainsString('<title>{{$title}}</title>', $layout);

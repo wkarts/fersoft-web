@@ -2,30 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cliente;
-use App\Models\ContratoEngenharia;
-use App\Models\ContratoEngItem;
-use App\Models\ContratoEngFuncionario;
-use App\Models\FaturaEngenharia;
-use App\Models\Filial;
-use App\Models\Funcionario;
-use App\Models\Cidade;
-use App\Models\Produto;
-use App\Models\Servico;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\ContratoEngenharia;
+use App\Models\Cliente;
+use App\Models\Funcionario;
+use App\Models\Filial;
+use App\Models\Cidade;
+use App\Models\Servico;
+use App\Models\Produto;
 
 class ContratoEngenhariaController extends BaseController
 {
     public function __construct()
     {
         parent::__construct();
-
-        $this->model = ContratoEngenharia::class;
-        $this->redirectPage = '/contratos';
-        $this->formTitle = 'Contrato de Locação / Serviços';
-        $this->listView = 'contratos.list';
+        
+        $this->model = ContratoEngenharia::class; 
+        $this->redirectPage = '/contratos'; 
+        $this->formTitle = 'Contrato de Locação / Serviços'; 
+        
+        $this->listView = 'contratos.list'; 
         $this->registerView = 'contratos.register';
     }
 
@@ -47,212 +43,248 @@ class ContratoEngenhariaController extends BaseController
         ];
     }
 
+    protected function headers(): array
+    {
+        return ['Nº Contrato', 'Cliente', 'Filial / Matriz', 'Data Início', 'Valor Total (R$)', 'Status'];
+    }
+
+    protected function fields(): array
+    {
+        return ['numero_contrato', 'cliente_id', 'filial_id', 'data_inicio', 'valor_contrato', 'status'];
+    }
+
+    /**
+     * Atende às rotas GET '/' e GET '/list' definidas no web.php
+     */
     public function list(Request $request)
     {
-        $empresaId = (int) $this->empresa_id;
+        $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id;
 
-        $query = ContratoEngenharia::query()
-            ->where('empresa_id', $empresaId)
-            ->with(['cliente', 'filial']);
+        $title = $this->formatString($this->listTitle, [
+            'form_title' => $this->formTitle,
+        ]);
 
+        $query = $this->model::where('empresa_id', $empresa_id)->with(['cliente', 'filial']);
+
+        // Filtro por Cliente
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->cliente_id);
         }
 
+        // Filtro por Status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('filial_id')) {
-            $request->filial_id === 'matriz'
-                ? $query->whereNull('filial_id')
-                : $query->where('filial_id', $request->filial_id);
+        // Filtro por Filial / Matriz (Matriz = null)
+        if ($request->has('filial_id') && $request->filial_id !== '') {
+            if ($request->filial_id == 'matriz') {
+                $query->whereNull('filial_id');
+            } else {
+                $query->where('filial_id', $request->filial_id);
+            }
         }
 
-        $data = $query->orderByDesc('id')->get();
-        $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
-        $filiaisLista = Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get();
+        $data = $query->orderBy('id', 'desc')->get();
+        $clientes = Cliente::where('empresa_id', $empresa_id)->get();
+        $filiaisLista = Filial::where('empresa_id', $empresa_id)->get();
 
-        return view('contratos.list', [
+        return view($this->listView, [
             'data' => $data,
+            'lista' => $data,
+            'title' => $title,
+            'search' => $request->all(),
             'clientes' => $clientes,
             'filiaisLista' => $filiaisLista,
-            'search' => $request->all(),
-            'title' => 'Contratos de Locação / Serviços',
+            'headers' => $this->headers(),
+            'fields' => $this->fields(),
+            'newItemUrl' => "{$this->redirectPage}/new",
+            'newItemText' => 'Novo Contrato',
+            'actionNew' => "{$this->redirectPage}/new",
+            'actionEdit' => "{$this->redirectPage}/edit",
+            'actionDelete' => "{$this->redirectPage}/delete",
         ]);
     }
 
+    /**
+     * Atende à rota POST '/list' para os filtros
+     */
     public function filtro(Request $request)
     {
         return $this->list($request);
     }
 
     public function register($id = null)
-    {
-        $empresaId = (int) $this->empresa_id;
+{
+    $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id;
 
-        $data = null;
-        if ($id) {
-            $data = ContratoEngenharia::where('empresa_id', $empresaId)
-                ->with('itens')
-                ->findOrFail($id);
-        }
+    // Garante que $data seja uma instância do Model ou null (e não um número inteiro)
+    $data = null;
+    if ($id && is_numeric($id)) {
+        $data = $this->model::where('empresa_id', $empresa_id)
+            ->with('itens')
+            ->find($id);
+    }
 
-        $vendedores = Funcionario::query()
-            ->leftJoin('funcoes', 'funcoes.id', '=', 'funcionarios.funcao_id')
-            ->where('funcionarios.empresa_id', $empresaId)
-            ->where(function ($query) {
-                $query->where('funcoes.nome', 'like', '%Vendedor%')
-                    ->orWhere('funcoes.nome', 'like', '%Vendedora%');
+    $title = $this->formatString($this->registerTitle, [
+        'form_title' => $this->formTitle,
+    ]);
+
+    $clientes     = Cliente::where('empresa_id', $empresa_id)->orderBy('razao_social')->get();
+    $filiaisLista = Filial::where('empresa_id', $empresa_id)->get();
+
+    // 🎯 FILTRO ESTRITO: Puxa SOMENTE quem tem a função de Vendedor / Vendedora
+        $vendedores = Funcionario::join('funcoes', 'funcoes.id', '=', 'funcionarios.funcao_id')
+            ->where('funcionarios.empresa_id', $empresa_id)
+            ->where(function($q) {
+                $q->where('funcoes.nome', 'LIKE', '%Vendedor%')
+                  ->orWhere('funcoes.nome', 'LIKE', '%Vendedora%');
             })
             ->select('funcionarios.id', 'funcionarios.nome', 'funcoes.nome as funcao_nome')
             ->orderBy('funcionarios.nome')
             ->get();
 
-        return view('contratos.register', [
-            'data' => $data,
-            'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
-            'filiaisLista' => Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get(),
-            'vendedores' => $vendedores,
-            'cidades' => Cidade::orderBy('nome')->get(),
-            'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'title' => $data ? 'Editar Contrato' : 'Novo Contrato',
-        ]);
-    }
+    $cidades  = Cidade::all();
+    $servicos = Servico::where('empresa_id', $empresa_id)->get();
+    $produtos = Produto::where('empresa_id', $empresa_id)->get();
 
+    return view($this->registerView, [
+        'data'         => $data,
+        'title'        => $title,
+        'actionSave'   => "{$this->redirectPage}/save",
+        'actionUpdate' => "{$this->redirectPage}/update",
+        'actionCancel' => $this->redirectPage,
+        'filiaisLista' => $filiaisLista,
+        'clientes'     => $clientes,
+        'vendedores'   => $vendedores,
+        'cidades'      => $cidades,
+        'servicos'     => $servicos,
+        'produtos'     => $produtos
+    ]);
+}
     public function save(Request $request)
     {
-        if (!$this->validateRequest($request)) {
-            return redirect()->back()->withInput();
-        }
-
-        DB::beginTransaction();
-
         try {
-            $empresaId = (int) $this->empresa_id;
-            $data = $request->except(['_token', 'itens', 'arquivo_contrato']);
+            $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id;
+            $dados = $request->except(['itens']);
+            
+            if (isset($dados['valor_contrato'])) {
+                $dados['valor_contrato'] = str_replace(['.', ','], ['', '.'], $dados['valor_contrato']);
+            }
 
-            $data['valor_contrato'] = $this->money($request->valor_contrato);
-            $data['valor_faturado'] = $data['valor_faturado'] ?? 0;
-            $data['percentual_retencao'] = $this->money($request->input('percentual_retencao', 0));
-            $data['filial_id'] = $request->filled('filial_id') ? $request->filial_id : null;
-
-            if ($request->hasFile('arquivo_contrato') && $request->file('arquivo_contrato')->isValid()) {
-                $dir = public_path('uploads/contratos');
-                if (!is_dir($dir)) {
-                    mkdir($dir, 0755, true);
-                }
-
+            if ($request->hasFile('arquivo_contrato')) {
                 $file = $request->file('arquivo_contrato');
-                $name = time() . '_' . preg_replace('/[^A-Za-z0-9_.-]/', '_', $file->getClientOriginalName());
-                $file->move($dir, $name);
-                $data['arquivo_contrato'] = $name;
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/contratos'), $fileName);
+                $dados['arquivo_contrato'] = $fileName;
             }
 
             if ($request->filled('id')) {
-                $contrato = ContratoEngenharia::where('empresa_id', $empresaId)
-                    ->findOrFail($request->id);
-                $contrato->fill($data);
-                $contrato->save();
+                $contrato = ContratoEngenharia::findOrFail($request->id);
+                $contrato->update($dados);
+                $contrato_id = $contrato->id;
             } else {
-                $data['empresa_id'] = $empresaId;
-                $data['usuario_id'] = $this->usuario_id;
-                $contrato = ContratoEngenharia::create($data);
+                $dados['empresa_id'] = $empresa_id;
+                $dados['usuario_id'] = session('user_logged')['id'] ?? null;
+                $contrato = ContratoEngenharia::create($dados);
+                $contrato_id = $contrato->id;
             }
 
-            ContratoEngItem::where('contrato_eng_id', $contrato->id)->delete();
-
-            foreach ((array) $request->input('itens', []) as $item) {
-                $tipo = ($item['tipo_item'] ?? 'Servico') === 'Locacao' ? 'Locacao' : 'Servico';
-                $qtd = $this->decimal($item['quantidade_prevista'] ?? 0);
-                $valor = $this->money($item['valor_unitario'] ?? 0);
-
-                if ($qtd <= 0 || $valor < 0) {
-                    continue;
+            \Illuminate\Support\Facades\DB::table('contrato_eng_itens')->where('contrato_eng_id', $contrato_id)->delete();
+            
+            if ($request->has('itens')) {
+                foreach ($request->itens as $item) {
+                    $vl_unit = str_replace(['.', ','], ['', '.'], ($item['valor_unitario'] ?? '0'));
+                    $qtd = str_replace(['.', ','], ['', '.'], ($item['quantidade_prevista'] ?? '0'));
+                    
+                    \Illuminate\Support\Facades\DB::table('contrato_eng_itens')->insert([
+                        'contrato_eng_id' => $contrato_id,
+                        'tipo_item' => $item['tipo_item'] ?? 'Servico',
+                        'servico_id' => ($item['tipo_item'] == 'Servico') ? ($item['servico_id'] ?? null) : null,
+                        'produto_id' => ($item['tipo_item'] == 'Locacao') ? ($item['produto_id'] ?? null) : null,
+                        'quantidade_prevista' => $qtd,
+                        'valor_unitario' => $vl_unit,
+                        'valor_total' => $qtd * $vl_unit,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
                 }
-
-                ContratoEngItem::create([
-                    'contrato_eng_id' => $contrato->id,
-                    'tipo_item' => $tipo,
-                    'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
-                    'produto_id' => $tipo === 'Locacao' ? ($item['produto_id'] ?? null) : null,
-                    'quantidade_prevista' => $qtd,
-                    'valor_unitario' => $valor,
-                    'valor_total' => $qtd * $valor,
-                ]);
             }
 
-            DB::commit();
+            session()->flash('mensagem_sucesso', 'Contrato e Itens salvos com sucesso!');
+            return redirect($this->redirectPage);
 
-            return redirect('/contratos')->with('mensagem_sucesso', 'Contrato e itens salvos com sucesso!');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Erro ao salvar contrato de engenharia.', [
-                'empresa_id' => $this->empresa_id,
-                'usuario_id' => $this->usuario_id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()->withInput()->with('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
+            return redirect()->back()->withInput();
         }
     }
-
-    public function update(Request $request, $id)
-    {
-        $request->merge(['id' => $id]);
-        return $this->save($request);
-    }
-
+  
+  /**
+     * Sobrescreve o edit para tratar corretamente a empresa logada
+     */
     public function edit($id)
     {
         return $this->register($id);
     }
 
+    /**
+     * Sobrescreve o delete para tratar com segurança e excluir os itens vinculados
+     */
     public function delete($id)
     {
-        DB::beginTransaction();
-
         try {
-            $contrato = ContratoEngenharia::where('empresa_id', $this->empresa_id)
-                ->findOrFail($id);
+            $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id;
+            $contrato = ContratoEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
 
-            if (FaturaEngenharia::where('contrato_eng_id', $id)->exists()) {
-                throw new \RuntimeException(
-                    'O contrato possui medições/faturamentos vinculados e não pode ser excluído.'
-                );
-            }
-
-            ContratoEngItem::where('contrato_eng_id', $id)->delete();
-            ContratoEngFuncionario::where('contrato_eng_id', $id)->delete();
+            // Deleta os itens do contrato primeiro
+            \Illuminate\Support\Facades\DB::table('contrato_eng_itens')->where('contrato_eng_id', $id)->delete();
+            
+            // Deleta o contrato
             $contrato->delete();
 
-            DB::commit();
-            return redirect('/contratos')->with('mensagem_sucesso', 'Contrato excluído com sucesso!');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return redirect('/contratos')->with('mensagem_erro', $e->getMessage());
+            session()->flash('mensagem_sucesso', 'Contrato excluído com sucesso!');
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao excluir: ' . $e->getMessage());
         }
+
+        return redirect($this->redirectPage);
     }
 
-    public function detalhes($id)
+    /**
+     * Tela de Histórico, Movimentações e Saldos do Contrato
+     */
+   public function detalhes($id)
     {
-        $empresaId = (int) $this->empresa_id;
+        $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id ?? 1;
 
-        $contrato = ContratoEngenharia::where('empresa_id', $empresaId)
-            ->with(['cliente', 'filial', 'itens.servico', 'itens.produto'])
-            ->findOrFail($id);
+        // 1. Busca o contrato
+        $contratoEng = \DB::table('contratos_engenharia')
+            ->where('id', (int) $id)
+            ->first();
 
-        $medicoes = FaturaEngenharia::where('empresa_id', $empresaId)
-            ->where('contrato_eng_id', $contrato->id)
-            ->orderByDesc('id')
+        if (!$contratoEng) {
+            return redirect('/contratos')->with('mensagem_erro', 'Contrato não encontrado.');
+        }
+
+        // 2. Busca o cliente
+        $cliente = null;
+        if (!empty($contratoEng->cliente_id)) {
+            $cliente = \DB::table('clientes')
+                ->where('id', $contratoEng->cliente_id)
+                ->first();
+        }
+
+        // 3. Busca as medições (Receitas)
+        $medicoes = \DB::table('faturas_engenharia')
+            ->where('contrato_eng_id', $contratoEng->id)
             ->get();
 
-        $despesas = DB::table('conta_pagars')
+        // 4. Busca as Contas a Pagar lançadas para este contrato com as tabelas e nomes corretos
+        $despesas = \DB::table('conta_pagars')
             ->leftJoin('fornecedors', 'fornecedors.id', '=', 'conta_pagars.fornecedor_id')
             ->leftJoin('categoria_contas', 'categoria_contas.id', '=', 'conta_pagars.categoria_id')
-            ->where('conta_pagars.empresa_id', $empresaId)
-            ->where('conta_pagars.contrato_eng_id', $contrato->id)
+            ->where('conta_pagars.contrato_eng_id', $contratoEng->id)
             ->select(
                 'conta_pagars.*',
                 'fornecedors.razao_social as fornecedor_nome',
@@ -260,204 +292,241 @@ class ContratoEngenhariaController extends BaseController
             )
             ->get();
 
-        $equipeAlocada = DB::table('contrato_eng_funcionarios as cf')
-            ->join('funcionarios as f', 'f.id', '=', 'cf.funcionario_id')
-            ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
-            ->where('cf.contrato_eng_id', $contrato->id)
-            ->where('cf.status', 'Ativo')
-            ->where('f.empresa_id', $empresaId)
-            ->select('cf.id as alocacao_id', 'cf.data_alocacao', 'f.nome', DB::raw("COALESCE(fn.nome, 'Operacional') as cargo_nome"))
+        // 5. Busca a equipe alocada na obra
+        $equipeAlocada = \DB::table('contrato_eng_funcionarios')
+            ->join('funcionarios', 'funcionarios.id', '=', 'contrato_eng_funcionarios.funcionario_id')
+            ->leftJoin('funcoes', 'funcoes.id', '=', 'funcionarios.funcao_id')
+            ->where('contrato_eng_funcionarios.contrato_eng_id', $contratoEng->id)
+            ->where('contrato_eng_funcionarios.status', 'Ativo')
+            ->select(
+                'contrato_eng_funcionarios.id as alocacao_id',
+                'contrato_eng_funcionarios.data_alocacao',
+                'funcionarios.nome',
+                \DB::raw("COALESCE(funcoes.nome, 'Operacional') as cargo_nome")
+            )
             ->get();
 
-        $todosFuncionarios = DB::table('funcionarios as f')
-            ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
-            ->where('f.empresa_id', $empresaId)
-            ->select('f.id', 'f.nome', DB::raw("COALESCE(fn.nome, 'Operacional') as cargo_nome"))
-            ->orderBy('f.nome')
+        // 6. Busca os funcionários para o modal
+        $todosFuncionarios = \DB::table('funcionarios')
+            ->leftJoin('funcoes', 'funcoes.id', '=', 'funcionarios.funcao_id')
+            ->select('funcionarios.id', 'funcionarios.nome', \DB::raw("COALESCE(funcoes.nome, 'Operacional') as cargo_nome"))
             ->get();
 
-        $totalReceitas = (float) $medicoes->sum('valor_total');
-        $totalDespesas = (float) $despesas->sum('valor_integral');
-        $lucro = $totalReceitas - $totalDespesas;
-        $valorTotal = (float) $contrato->valor_contrato;
-        $margem = $totalReceitas > 0 ? ($lucro / $totalReceitas) * 100 : 0;
+        // 7. Consolidação da DRE do Contrato (Receitas vs Despesas)
+        $totalReceitas = $medicoes->sum('valor_total');
+        $totalDespesas = $despesas->sum('valor_integral') ?? $despesas->sum('valor') ?? 0;
+        $lucroPrejuizo = $totalReceitas - $totalDespesas;
+        $margemLucro   = $totalReceitas > 0 ? ($lucroPrejuizo / $totalReceitas) * 100 : 0;
+        
+        $valorTotal    = (float) ($contratoEng->valor_contrato ?? $contratoEng->valor_total ?? 0);
+        $saldoAFaturar = $valorTotal - $totalReceitas;
 
+        // 8. Retorno
         return view('contratos.detalhes', [
-            'contratoEng' => $contrato,
-            'cliente' => $contrato->cliente,
-            'medicoes' => $medicoes,
-            'despesas' => $despesas,
-            'equipeAlocada' => $equipeAlocada,
+            'contratoEng'       => $contratoEng,
+            'cliente'           => $cliente,
+            'medicoes'          => $medicoes,
+            'despesas'          => $despesas,
+            'equipeAlocada'     => $equipeAlocada,
             'todosFuncionarios' => $todosFuncionarios,
-            'valorTotal' => $valorTotal,
-            'totalReceitas' => $totalReceitas,
-            'totalDespesas' => $totalDespesas,
-            'lucroPrejuizo' => $lucro,
-            'margemLucro' => $margem,
-            'saldoAFaturar' => $valorTotal - $totalReceitas,
-            'title' => 'DRE e Histórico do Contrato #' . ($contrato->numero_contrato ?: $contrato->id),
+            'valorTotal'        => $valorTotal,
+            'totalReceitas'     => $totalReceitas,
+            'totalDespesas'     => $totalDespesas,
+            'lucroPrejuizo'     => $lucroPrejuizo,
+            'margemLucro'       => $margemLucro,
+            'saldoAFaturar'     => $saldoAFaturar,
+            'title'             => 'DRE e Histórico do Contrato #' . ($contratoEng->numero_contrato ?? $contratoEng->id)
         ]);
     }
+  
+  // Método para Alocar Funcionário
+public function alocarFuncionario(Request $request, $id)
+{
+    \DB::table('contrato_eng_funcionarios')->insert([
+        'contrato_eng_id' => $id,
+        'funcionario_id'  => $request->funcionario_id,
+        'data_alocacao'   => $request->data_alocacao ?? date('Y-m-d'),
+        'status'          => 'Ativo',
+        'created_at'      => now(),
+        'updated_at'      => now()
+    ]);
 
-    public function alocarFuncionario(Request $request, $id)
-    {
-        $contrato = ContratoEngenharia::where('empresa_id', $this->empresa_id)->findOrFail($id);
+    return redirect()->back()->with('mensagem_sucesso', 'Funcionário alocado com sucesso!');
+}
 
-        $funcionario = Funcionario::where('empresa_id', $this->empresa_id)
-            ->findOrFail($request->funcionario_id);
-
-        ContratoEngFuncionario::create([
-            'contrato_eng_id' => $contrato->id,
-            'funcionario_id' => $funcionario->id,
-            'data_alocacao' => $request->input('data_alocacao', date('Y-m-d')),
-            'status' => 'Ativo',
+// Método para Remover / Desalocar Funcionário
+public function desalocarFuncionario($alocacao_id)
+{
+    \DB::table('contrato_eng_funcionarios')
+        ->where('id', $alocacao_id)
+        ->update([
+            'status'           => 'Finalizado',
+            'data_desalocacao' => date('Y-m-d'),
+            'updated_at'       => now()
         ]);
 
-        return redirect()->back()->with('mensagem_sucesso', 'Funcionário alocado com sucesso!');
+    return redirect()->back()->with('mensagem_sucesso', 'Funcionário removido da obra!');
+}
+  
+  
+  public function dashboardDre(Request $request)
+{
+    $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id ?? 1;
+    $statusFiltro = $request->input('status', 'Ativo');
+
+    // 1. Consulta Base de Contratos com Cliente
+    $query = \DB::table('contratos_engenharia as c')
+        ->leftJoin('clientes as cl', 'cl.id', '=', 'c.cliente_id')
+        ->where('c.empresa_id', $empresa_id);
+
+    if ($statusFiltro != 'todos') {
+        $query->where('c.status', $statusFiltro);
     }
 
-    public function desalocarFuncionario($alocacaoId)
-    {
-        $alocacao = DB::table('contrato_eng_funcionarios as cf')
-            ->join('contratos_engenharia as c', 'c.id', '=', 'cf.contrato_eng_id')
-            ->where('cf.id', $alocacaoId)
-            ->where('c.empresa_id', $this->empresa_id)
-            ->select('cf.id')
-            ->first();
+    $contratos = $query->select(
+        'c.id',
+        'c.numero_contrato',
+        'c.valor_contrato',
+        'c.data_inicio',
+        'c.data_fim',
+        'c.status',
+        'cl.razao_social as cliente_nome'
+    )->get();
 
-        abort_if(!$alocacao, 404);
+    // 2. Cálculo dos Resultados Financeiros
+    $relatorio = $contratos->map(function ($contrato) {
+        $receitas = \DB::table('faturas_engenharia')
+            ->where('contrato_eng_id', $contrato->id)
+            ->sum('valor_total') ?? 0;
 
-        DB::table('contrato_eng_funcionarios')
-            ->where('id', $alocacaoId)
-            ->update([
-                'status' => 'Finalizado',
-                'data_desalocacao' => date('Y-m-d'),
-                'updated_at' => now(),
-            ]);
+        $despesas = \DB::table('conta_pagars')
+            ->where('contrato_eng_id', $contrato->id)
+            ->sum('valor_integral') ?? 0;
 
-        return redirect()->back()->with('mensagem_sucesso', 'Funcionário removido da obra!');
-    }
+        $lucro  = $receitas - $despesas;
+        $margem = $receitas > 0 ? ($lucro / $receitas) * 100 : 0;
 
-    public function dashboardDre(Request $request)
-    {
-        $status = $request->input('status', 'Ativo');
+        $diasRestantes = null;
+        $proximoFim    = false;
+        if (!empty($contrato->data_fim)) {
+            $dataFim = \Carbon\Carbon::parse($contrato->data_fim);
+            $hoje    = \Carbon\Carbon::now();
+            $diasRestantes = (int) $hoje->diffInDays($dataFim, false);
 
-        $query = ContratoEngenharia::where('empresa_id', $this->empresa_id)
-            ->with('cliente');
-
-        if ($status !== 'todos') {
-            $query->where('status', $status);
-        }
-
-        $contratos = $query->get();
-
-        $relatorio = $contratos->map(function ($contrato) {
-            $receitas = (float) FaturaEngenharia::where('contrato_eng_id', $contrato->id)->sum('valor_total');
-            $despesas = (float) DB::table('conta_pagars')->where('contrato_eng_id', $contrato->id)->sum('valor_integral');
-            $lucro = $receitas - $despesas;
-            $margem = $receitas > 0 ? ($lucro / $receitas) * 100 : 0;
-
-            $diasRestantes = null;
-            $proximoFim = false;
-            if ($contrato->data_fim) {
-                $diasRestantes = now()->startOfDay()->diffInDays($contrato->data_fim, false);
-                $proximoFim = $diasRestantes >= 0 && $diasRestantes <= 30 && $contrato->status === 'Ativo';
+            if ($diasRestantes >= 0 && $diasRestantes <= 30 && $contrato->status == 'Ativo') {
+                $proximoFim = true;
             }
-
-            $contrato->total_receitas = $receitas;
-            $contrato->total_despesas = $despesas;
-            $contrato->lucro = $lucro;
-            $contrato->margem = $margem;
-            $contrato->proximo_fim = $proximoFim;
-            $contrato->dias_restantes = $diasRestantes;
-            $contrato->margem_critica = ($receitas > 0 && $margem < 15) || $lucro < 0;
-
-            return $contrato;
-        });
-
-        $totalReceitas = $relatorio->sum('total_receitas');
-        $totalDespesas = $relatorio->sum('total_despesas');
-        $lucro = $totalReceitas - $totalDespesas;
-
-        return view('contratos.dashboard_dre', [
-            'relatorio' => $relatorio,
-            'totalContratosAtivos' => ContratoEngenharia::where('empresa_id', $this->empresa_id)->where('status', 'Ativo')->count(),
-            'totalProximosFim' => $relatorio->where('proximo_fim', true)->count(),
-            'totalMargemCritica' => $relatorio->where('margem_critica', true)->count(),
-            'totalReceitasGeral' => $totalReceitas,
-            'totalDespesasGeral' => $totalDespesas,
-            'lucroGeral' => $lucro,
-            'margemGeral' => $totalReceitas > 0 ? ($lucro / $totalReceitas) * 100 : 0,
-            'statusFiltro' => $status,
-            'chartLabels' => $relatorio->map(fn ($c) => 'Contrato #' . ($c->numero_contrato ?: $c->id))->values()->toJson(),
-            'chartReceitas' => $relatorio->pluck('total_receitas')->values()->toJson(),
-            'chartDespesas' => $relatorio->pluck('total_despesas')->values()->toJson(),
-            'title' => 'Dashboard & DRE Gerencial de Obras',
-        ]);
-    }
-
-    public function exportarExcelDashboard(Request $request)
-    {
-        $response = $this->dashboardDreData($request);
-        $rows = '';
-
-        foreach ($response as $c) {
-            $rows .= '<tr>'
-                . '<td>' . e($c->numero_contrato ?: $c->id) . '</td>'
-                . '<td>' . e(optional($c->cliente)->razao_social ?: 'N/A') . '</td>'
-                . '<td>' . e(optional($c->data_inicio)->format('d/m/Y') ?: '-') . '</td>'
-                . '<td>' . e(optional($c->data_fim)->format('d/m/Y') ?: '-') . '</td>'
-                . '<td>' . e($c->status) . '</td>'
-                . '<td>' . number_format((float) $c->valor_contrato, 2, ',', '.') . '</td>'
-                . '<td>' . number_format((float) $c->total_receitas, 2, ',', '.') . '</td>'
-                . '<td>' . number_format((float) $c->total_despesas, 2, ',', '.') . '</td>'
-                . '<td>' . number_format((float) $c->lucro, 2, ',', '.') . '</td>'
-                . '<td>' . number_format((float) $c->margem, 1, ',', '.') . '%</td>'
-                . '</tr>';
         }
 
-        $html = '<table border="1"><thead><tr>'
-            . '<th>Nº Contrato</th><th>Cliente</th><th>Início</th><th>Fim</th><th>Status</th>'
-            . '<th>Valor Contrato</th><th>Receitas</th><th>Despesas</th><th>Lucro</th><th>Margem</th>'
-            . '</tr></thead><tbody>' . $rows . '</tbody></table>';
+        $contrato->total_receitas  = $receitas;
+        $contrato->total_despesas  = $despesas;
+        $contrato->lucro           = $lucro;
+        $contrato->margem          = $margem;
+        $contrato->proximo_fim     = $proximoFim;
+        $contrato->dias_restantes  = $diasRestantes;
+        $contrato->margem_critica  = ($receitas > 0 && $margem < 15) || $lucro < 0;
 
-        return response($html)
-            ->header('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="DRE_Obras_' . date('Y_m_d_H_i') . '.xls"');
+        return $contrato;
+    });
+
+    // 3. Totais Consolidados
+    $totalContratosAtivos = \DB::table('contratos_engenharia')->where('empresa_id', $empresa_id)->where('status', 'Ativo')->count();
+    $totalProximosFim     = $relatorio->where('proximo_fim', true)->count();
+    $totalMargemCritica   = $relatorio->where('margem_critica', true)->count();
+    $totalReceitasGeral   = $relatorio->sum('total_receitas');
+    $totalDespesasGeral   = $relatorio->sum('total_despesas');
+    $lucroGeral           = $totalReceitasGeral - $totalDespesasGeral;
+    $margemGeral          = $totalReceitasGeral > 0 ? ($lucroGeral / $totalReceitasGeral) * 100 : 0;
+
+    // 4. Monta os Dados Formatados para o Gráfico (Chart.js)
+    $chartLabels   = [];
+    $chartReceitas = [];
+    $chartDespesas = [];
+
+    foreach ($relatorio as $item) {
+        $chartLabels[]   = "Contrato #" . ($item->numero_contrato ?? $item->id);
+        $chartReceitas[] = round($item->total_receitas, 2);
+        $chartDespesas[] = round($item->total_despesas, 2);
     }
 
-    private function dashboardDreData(Request $request)
-    {
-        $status = $request->input('status', 'Ativo');
-        $query = ContratoEngenharia::where('empresa_id', $this->empresa_id)->with('cliente');
+    return view('contratos.dashboard_dre', [
+        'relatorio'            => $relatorio,
+        'totalContratosAtivos' => $totalContratosAtivos,
+        'totalProximosFim'     => $totalProximosFim,
+        'totalMargemCritica'   => $totalMargemCritica,
+        'totalReceitasGeral'   => $totalReceitasGeral,
+        'totalDespesasGeral'   => $totalDespesasGeral,
+        'lucroGeral'           => $lucroGeral,
+        'margemGeral'          => $margemGeral,
+        'statusFiltro'         => $statusFiltro,
+        'chartLabels'          => json_encode($chartLabels),
+        'chartReceitas'        => json_encode($chartReceitas),
+        'chartDespesas'        => json_encode($chartDespesas),
+        'title'                => 'Dashboard & DRE Gerencial de Obras'
+    ]);
+}
 
-        if ($status !== 'todos') {
-            $query->where('status', $status);
-        }
+// Método de Exportação em Excel nativo do Laravel
+public function exportarExcelDashboard(Request $request)
+{
+    $empresa_id = session('user_logged')['empresa'] ?? $this->empresa_id ?? 1;
+    $statusFiltro = $request->input('status', 'Ativo');
 
-        return $query->get()->map(function ($contrato) {
-            $contrato->total_receitas = (float) FaturaEngenharia::where('contrato_eng_id', $contrato->id)->sum('valor_total');
-            $contrato->total_despesas = (float) DB::table('conta_pagars')->where('contrato_eng_id', $contrato->id)->sum('valor_integral');
-            $contrato->lucro = $contrato->total_receitas - $contrato->total_despesas;
-            $contrato->margem = $contrato->total_receitas > 0
-                ? ($contrato->lucro / $contrato->total_receitas) * 100
-                : 0;
+    $query = \DB::table('contratos_engenharia as c')
+        ->leftJoin('clientes as cl', 'cl.id', '=', 'c.cliente_id')
+        ->where('c.empresa_id', $empresa_id);
 
-            return $contrato;
-        });
+    if ($statusFiltro != 'todos') {
+        $query->where('c.status', $statusFiltro);
     }
 
-    private function money($value): float
-    {
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
+    $contratos = $query->select(
+        'c.id', 'c.numero_contrato', 'c.valor_contrato',
+        'c.data_inicio', 'c.data_fim', 'c.status', 'cl.razao_social as cliente_nome'
+    )->get();
 
-        return (float) str_replace(',', '.', str_replace('.', '', (string) $value));
+    $html = '<table border="1">
+        <thead>
+            <tr style="background-color: #212529; color: #ffffff;">
+                <th>Nº Contrato</th>
+                <th>Cliente</th>
+                <th>Data Inicio</th>
+                <th>Data Fim</th>
+                <th>Status</th>
+                <th>Valor Contrato (R$)</th>
+                <th>Receitas Faturadas (R$)</th>
+                <th>Custos/Despesas (R$)</th>
+                <th>Lucro Liquido (R$)</th>
+                <th>Margem (%)</th>
+            </tr>
+        </thead>
+        <tbody>';
+
+    foreach ($contratos as $c) {
+        $rec = \DB::table('faturas_engenharia')->where('contrato_eng_id', $c->id)->sum('valor_total') ?? 0;
+        $des = \DB::table('conta_pagars')->where('contrato_eng_id', $c->id)->sum('valor_integral') ?? 0;
+        $luc = $rec - $des;
+        $mar = $rec > 0 ? ($luc / $rec) * 100 : 0;
+
+        $html .= '<tr>
+            <td>' . ($c->numero_contrato ?? $c->id) . '</td>
+            <td>' . ($c->cliente_nome ?? 'N/A') . '</td>
+            <td>' . (!empty($c->data_inicio) ? date('d/m/Y', strtotime($c->data_inicio)) : '-') . '</td>
+            <td>' . (!empty($c->data_fim) ? date('d/m/Y', strtotime($c->data_fim)) : '-') . '</td>
+            <td>' . $c->status . '</td>
+            <td>' . number_format($c->valor_contrato, 2, ',', '.') . '</td>
+            <td>' . number_format($rec, 2, ',', '.') . '</td>
+            <td>' . number_format($des, 2, ',', '.') . '</td>
+            <td>' . number_format($luc, 2, ',', '.') . '</td>
+            <td>' . number_format($mar, 1, ',', '.') . '%</td>
+        </tr>';
     }
 
-    private function decimal($value): float
-    {
-        return $this->money($value);
-    }
+    $html .= '</tbody></table>';
+
+    $filename = "DRE_Obras_" . date('Y_m_d_H_i') . ".xls";
+    return response($html)
+        ->header('Content-Type', 'application/vnd.ms-excel')
+        ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+}
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
 
-    <title>{{ $title ?? config('app.name', 'FERSOFT WEB') }}</title>
+    <title>{{ $title ?? config('app.name', '') }}</title>
     <meta name="description" content="Updates and statistics">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="theme-color" content="{{ $cor }}">
