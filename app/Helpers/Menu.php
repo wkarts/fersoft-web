@@ -3,6 +3,7 @@
 namespace App\Helpers;
 use App\Models\Usuario;
 use App\Models\Tributacao;
+use App\Models\Empresa;
 
 class Menu {
 
@@ -1784,10 +1785,11 @@ class Menu {
         where('id', $value['id'])
             ->first();
 
-        $permissoesAtivas = json_decode($usuario->empresa->permissao);
+        $permissoesAtivas = json_decode((string) $usuario->empresa->permissao);
         if(!$permissoesAtivas){
-            $permissoesAtivas = json_decode($usuario->permissao);
+            $permissoesAtivas = json_decode((string) $usuario->permissao);
         }
+        $permissoesAtivas = is_array($permissoesAtivas) ? $permissoesAtivas : [];
 
         // for($i=0; $i < sizeof($menu); $i++){
         //  $temp = false;
@@ -1813,7 +1815,7 @@ class Menu {
 
             for($j=0; $j < sizeof($menu[$i]['subs']); $j++){
 
-                if(in_array($menu[$i]['subs'][$j]['rota'], $permissoesAtivas)){
+                if(Empresa::validaLink($menu[$i]['subs'][$j]['rota'], $permissoesAtivas)){
                     $temp = true;
                 }else{
 
