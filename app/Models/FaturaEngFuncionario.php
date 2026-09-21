@@ -7,12 +7,14 @@ class FaturaEngFuncionario extends BaseModel
     protected $table = 'fatura_eng_funcionarios';
 
     protected $fillable = [
-        'fatura_eng_id',
-        'funcionario_id',
-        'funcao',
-        'diarias',
-        'valor_diaria',
-        'valor_total'
+        'empresa_id', 'filial_id', 'usuario_id', 'fatura_eng_id', 'funcionario_id',
+        'funcao', 'diarias', 'valor_diaria', 'valor_total',
+    ];
+
+    protected $casts = [
+        'diarias' => 'decimal:2',
+        'valor_diaria' => 'decimal:2',
+        'valor_total' => 'decimal:2',
     ];
 
     public function fatura()
@@ -22,6 +24,6 @@ class FaturaEngFuncionario extends BaseModel
 
     public function funcionario()
     {
-        return $this->belongsTo(Funcionario::class, 'funcionario_id'); // Ajuste o nome do Model de funcionários do seu ERP se necessário
+        return $this->belongsTo(Funcionario::class, 'funcionario_id');
     }
 }
