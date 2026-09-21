@@ -457,14 +457,17 @@ class NfseNacionalController extends BaseController
             ],
         ];
 
+        // Mantém a mecânica histórica: a DPS sempre leva cNBS porque
+        // o grupo IBS/CBS utilizado pelo emissor depende desse código.
         $cNbs = preg_replace(
             '/\D+/',
             '',
-            (string) ($servico->codigo_nbs ?? '')
+            (string) ($servico->codigo_nbs ?? '101010000')
         );
 
         $cServ = [
             'cTribNac' => $codigoServico,
+            'cNBS' => $cNbs !== '' ? $cNbs : '101010000',
             'xDescServ' => (string) (
                 $fatura->observacao
                 ?? $servico->descricao_padrao
@@ -472,10 +475,6 @@ class NfseNacionalController extends BaseController
                 ?? 'PRESTAÇÃO DE SERVIÇO'
             ),
         ];
-
-        if ($cNbs !== '') {
-            $cServ['cNBS'] = $cNbs;
-        }
 
         $dados = [
             'infDPS' => [
@@ -527,13 +526,26 @@ class NfseNacionalController extends BaseController
                                 ? 2
                                 : 1,
                             'pAliq' => number_format(
-                                (float) ($servico->aliquota_iss ?? 0),
+                                (float) ($servico->aliquota_iss ?? 3.00),
                                 2,
                                 '.',
                                 ''
                             ),
                         ],
+                        'tribFed' => [
+                            'pIBS' => '0.00',
+                            'vIBS' => '0.00',
+                            'pCBS' => '0.00',
+                            'vCBS' => '0.00',
+                            'CST' => (string) ($servico->cst_ibscbs ?? '01'),
+                        ],
                     ],
+                ],
+                'IBSCBS' => [
+                    'cIndOp' => (string) ($servico->codigo_indicador_operacao ?? '000001'),
+                    'indDest' => '1',
+                    'CST' => (string) ($servico->cst_ibscbs ?? '000'),
+                    'cClassTrib' => (string) ($servico->codigo_class_trib ?? '000001'),
                 ],
             ],
         ];
