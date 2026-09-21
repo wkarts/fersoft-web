@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Services\Nfse\NfseEmissorInterface;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 use NFePHP\Common\Certificate;
 use RobRichards\XMLSecLibs\XMLSecurityDSig;
 use RobRichards\XMLSecLibs\XMLSecurityKey;
@@ -36,13 +37,7 @@ class NfseNacionalTools implements NfseEmissorInterface
         $xml = $this->gerarDpsXml($dpsData);
         $xmlAssinado = $this->assinarXml($xml, 'infDPS');
 
-        $response = $this->request(
-            'POST',
-            $this->baseUrl() . '/nfse',
-            ['dpsXmlGZipB64' => base64_encode(gzencode($xmlAssinado))]
-        );
-
-        $this->hidratarRetorno($response);
+        $response = $this->transmitirParaSefaz($xmlAssinado);
 
         return [
             'xml_retorno' => $this->xmlNfseAutorizada ?: $xmlAssinado,
@@ -94,14 +89,7 @@ class NfseNacionalTools implements NfseEmissorInterface
 
         $assinado = $this->assinarXml($xml->asXML(), 'infPedReg');
 
-        return $this->request(
-            'POST',
-            $this->baseUrl() . '/nfse/' . rawurlencode($chave) . '/eventos',
-            [
-                'pedidoRegistroEventoXmlGZipB64' =>
-                    base64_encode(gzencode($assinado)),
-            ]
-        );
+        return $this->transmitirEventoParaSefaz($chave, $assinado);
     }
 
     public function getChave()
@@ -156,6 +144,24 @@ class NfseNacionalTools implements NfseEmissorInterface
         $valor = (float) ($inf['valores']['vServPrest']['vServ'] ?? 0);
         if ($valor <= 0) {
             $erros[] = 'Valor do serviço deve ser maior que zero.';
+        }
+
+        // Regras preservadas da implementação histórica.
+        $descontoIncondicional = (float) (
+            $inf['valores']['trib']['vDescIncond'] ?? 0
+        );
+        if (
+            $descontoIncondicional > 0
+            && $descontoIncondicional >= $valor
+        ) {
+            $erros[] = 'O valor do desconto incondicionado deve ser estritamente menor que o valor do serviço.';
+        }
+
+        if (
+            isset($inf['valores']['trib']['tribFed']['pIBS'])
+            && empty($serv['cServ']['cNBS'])
+        ) {
+            $erros[] = 'O código NBS (cNBS) é obrigatório quando o grupo de tributação IBS/CBS for informado.';
         }
 
         return $erros;
@@ -293,12 +299,11 @@ class NfseNacionalTools implements NfseEmissorInterface
             )
         );
 
-        if (!empty($inf['serv']['cServ']['cNBS'])) {
-            $cServ->addChild(
-                'cNBS',
-                preg_replace('/\D+/', '', (string) $inf['serv']['cServ']['cNBS'])
-            );
-        }
+        $cNbs = $inf['serv']['cServ']['cNBS'] ?? '101010100';
+        $cServ->addChild(
+            'cNBS',
+            preg_replace('/\D+/', '', (string) $cNbs)
+        );
 
         if (!empty($inf['serv']['obra']['cObra'])) {
             $obra = $serv->addChild('obra');
@@ -361,6 +366,36 @@ class NfseNacionalTools implements NfseEmissorInterface
             }
         }
 
+        // Totalizadores tributários existentes no service histórico.
+        $totTrib = $trib->addChild('totTrib');
+        $vTotTrib = $totTrib->addChild('vTotTrib');
+        $vTotTrib->addChild('vTotTribFed', '0.00');
+        $vTotTrib->addChild('vTotTribEst', '0.00');
+        $vTotTrib->addChild('vTotTribMun', '0.00');
+
+        // Grupo IBS/CBS da implementação histórica. Mantém a mecânica
+        // fiscal anterior sem alterar views ou fluxo de emissão.
+        $ibscbs = $node->addChild('IBSCBS');
+        $ibscbs->addChild('finNFSe', '0');
+        $ibscbs->addChild('cIndOp', (string) ($inf['IBSCBS']['cIndOp'] ?? '000001'));
+        $ibscbs->addChild('indDest', (string) ($inf['IBSCBS']['indDest'] ?? '1'));
+
+        $ibscbsValores = $ibscbs->addChild('valores');
+        $ibscbsTrib = $ibscbsValores->addChild('trib');
+        $gIbscbs = $ibscbsTrib->addChild('gIBSCBS');
+        $gIbscbs->addChild(
+            'CST',
+            (string) ($inf['IBSCBS']['CST'] ?? '000')
+        );
+        $gIbscbs->addChild(
+            'cClassTrib',
+            (string) ($inf['IBSCBS']['cClassTrib'] ?? '000001')
+        );
+
+        Log::info('XML DPS gerado antes da assinatura.', [
+            'chave_dps' => $this->chave,
+        ]);
+
         return $xml->asXML();
     }
 
@@ -417,6 +452,37 @@ class NfseNacionalTools implements NfseEmissorInterface
         $signature->appendSignature($doc->documentElement);
 
         return $doc->saveXML();
+    }
+
+    protected function transmitirParaSefaz(string $xmlSigned): array
+    {
+        return $this->executarPostSefaz(
+            $this->baseUrl() . '/nfse',
+            ['dpsXmlGZipB64' => base64_encode(gzencode($xmlSigned))]
+        );
+    }
+
+    protected function transmitirEventoParaSefaz(
+        string $chaveNfse,
+        string $xmlSigned
+    ): array {
+        return $this->executarPostSefaz(
+            $this->baseUrl() . '/nfse/' . rawurlencode($chaveNfse) . '/eventos',
+            [
+                'pedidoRegistroEventoXmlGZipB64' =>
+                    base64_encode(gzencode($xmlSigned)),
+            ]
+        );
+    }
+
+    protected function executarPostSefaz(
+        string $urlApi,
+        array $jsonPayload
+    ): array {
+        $response = $this->request('POST', $urlApi, $jsonPayload);
+        $this->hidratarRetorno($response);
+
+        return $response;
     }
 
     private function request(
