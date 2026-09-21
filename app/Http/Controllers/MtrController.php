@@ -53,12 +53,22 @@ class MtrController extends BaseController
         foreach ([
             'transportador_nome' => 'transportadora',
             'motorista_nome' => 'motorista',
-            'status' => 'status',
         ] as $column => $input) {
             if ($request->filled($input)) {
-                $column === 'status'
-                    ? $query->where($column, $request->{$input})
-                    : $query->where($column, 'like', '%' . $request->{$input} . '%');
+                $query->where($column, 'like', '%' . $request->{$input} . '%');
+            }
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'recebido') {
+                // A view histórica possui o estado visual "recebido", enquanto
+                // o schema conciliado preserva o enum anterior. Mantemos o
+                // banco em "transmitido" e reconhecemos o recebimento pelo
+                // retorno da integração.
+                $query->where('status', 'transmitido')
+                    ->where('mensagem_retorno', 'like', '%recebid%');
+            } else {
+                $query->where('status', $request->status);
             }
         }
 
@@ -84,6 +94,17 @@ class MtrController extends BaseController
         $manifestos = $query->orderByDesc('id')
             ->paginate(15)
             ->appends($request->all());
+
+        $manifestos->getCollection()->transform(function (MtrManifesto $manifesto) {
+            if (
+                $manifesto->status === 'transmitido'
+                && stripos((string) $manifesto->mensagem_retorno, 'recebid') !== false
+            ) {
+                $manifesto->setAttribute('status', 'recebido');
+            }
+
+            return $manifesto;
+        });
 
         $vendasImportacao = DB::table('vendas')
             ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
