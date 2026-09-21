@@ -217,26 +217,30 @@ class Empresa extends BaseModel
 		return 0;
 	}
 
-	public static function validaLink($link, $permissoes){
+	public static function validaLink($link, $permissoes)
+	{
+        $permissoes = is_array($permissoes) ? $permissoes : [];
 
-		if(in_array($link, $permissoes)){
+        if ($link === '/connect-api') {
+            foreach (['/connect-api', '/evoapi', '/evo-instances'] as $alias) {
+                if (in_array($alias, $permissoes, true)) {
+                    return true;
+                }
+            }
+        }
+
+		if (in_array($link, $permissoes, true)) {
 			return true;
-		}else{
-			if(strlen($link) > 60){
-				$rt = str_replace(".", "_", $link);
-				if(in_array($rt, $permissoes)){
-					return true;
-				}else{
-					return false;
-				}
-
-			}else{
-				return false;
-			}
-
 		}
 
+		if (strlen($link) > 60) {
+			$rt = str_replace('.', '_', $link);
+			return in_array($rt, $permissoes, true);
+		}
+
+		return false;
 	}
+
 
     public function cidade()
     {
@@ -246,8 +250,8 @@ class Empresa extends BaseModel
   
   public function contabilidade()
 {
-    // O hasOne significa que a Empresa "tem um" escritório contabil 
-    // amarrado a ela através da coluna empresa_id
+    // O hasOne significa que a Empresa "tem um" escritÃ³rio contabil 
+    // amarrado a ela atravÃ©s da coluna empresa_id
     return $this->hasOne(EscritorioContabil::class, 'empresa_id', 'id');
 }
 }
