@@ -130,13 +130,10 @@ class ContratoEngenhariaController extends BaseController
             ->orderBy('funcionarios.nome')
             ->get();
 
-        $title = $this->formatString(
-            $data ? $this->editTitle : $this->registerTitle,
-            [
-                'form_title' => $this->formTitle,
-                'registro_id' => $data?->id,
-            ]
-        );
+        // Mantém o título histórico usado pela view, inclusive na edição.
+        $title = $this->formatString($this->registerTitle, [
+            'form_title' => $this->formTitle,
+        ]);
 
         return view('contratos.register', [
             'data' => $data,
