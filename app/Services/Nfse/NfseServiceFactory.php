@@ -2,21 +2,24 @@
 
 namespace App\Services\Nfse;
 
-use App\Services\Nfse\Drivers\DiasDavilaTools;
-use App\Services\Nfse\Drivers\SalvadorTools;
-use App\Services\NfseNacionalTools;
-
 class NfseServiceFactory
 {
-    public static function criar(string $provedor, array $config, $certificado): NfseEmissorInterface
+    public static function criar(string $provedor, array $config, $certificado)
     {
-        return match (strtolower(trim($provedor))) {
-            'nacional', 'sefin' => new NfseNacionalTools($config, $certificado),
-            'diasdavila', 'saatri' => new DiasDavilaTools($config, $certificado),
-            'salvador' => new SalvadorTools($config, $certificado),
-            default => throw new \InvalidArgumentException(
-                "Provedor NFS-e '{$provedor}' não suportado."
-            ),
-        };
+        switch (strtolower($provedor)) {
+            case 'nacional':
+            case 'sefin':
+                return new \App\Services\NfseNacionalTools($config, $certificado);
+
+            case 'diasdavila':
+            case 'saatri':
+                return new \App\Services\Nfse\Drivers\DiasDavilaTools($config, $certificado);
+
+            case 'salvador':
+                return new \App\Services\Nfse\Drivers\SalvadorTools($config, $certificado);
+
+            default:
+                throw new \InvalidArgumentException("Provedor NFS-e '{$provedor}' não suportado.");
+        }
     }
 }
