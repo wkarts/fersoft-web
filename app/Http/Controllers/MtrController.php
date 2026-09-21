@@ -200,9 +200,9 @@ class MtrController extends BaseController
         $residuos = [[
             'codigo_ibama' => $depara->cod_ibama ?? '',
             'quantidade' => $pesoLiquido,
-            'unidade' => $depara->unidade_medida ?? 'Kg',
+            'unidade' => $depara->unidade_medida ?? 2,
             'estado_fisico' => $depara->estado_fisico ?? 1,
-            'classe_residuo' => $depara->classe_residuo ?? 'II',
+            'classe_residuo' => $depara->classe_residuo ?? 42,
             'acondicionamento' => $depara->acondicionamento_id ?? 8,
             'tratamento' => $depara->tratamento_id ?? 43,
         ]];
@@ -271,9 +271,9 @@ class MtrController extends BaseController
             $residuos[] = [
                 'codigo_ibama' => $depara->cod_ibama ?? '',
                 'quantidade' => $item->quantidade,
-                'unidade' => $depara->unidade_medida ?? 'Kg',
+                'unidade' => $depara->unidade_medida ?? 2,
                 'estado_fisico' => $depara->estado_fisico ?? 1,
-                'classe_residuo' => $depara->classe_residuo ?? 'II',
+                'classe_residuo' => $depara->classe_residuo ?? 42,
                 'acondicionamento' => $depara->acondicionamento_id ?? 8,
                 'tratamento' => $depara->tratamento_id ?? 43,
             ];
