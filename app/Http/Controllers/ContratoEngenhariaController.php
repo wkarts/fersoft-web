@@ -404,6 +404,9 @@ class ContratoEngenhariaController extends BaseController
                 $proximoFim = $diasRestantes >= 0 && $diasRestantes <= 30 && $contrato->status === 'Ativo';
             }
 
+            $contrato->cliente_nome = $contrato->cliente->razao_social
+                ?? $contrato->cliente->nome
+                ?? null;
             $contrato->total_receitas = $receitas;
             $contrato->total_despesas = $despesas;
             $contrato->lucro = $lucro;
