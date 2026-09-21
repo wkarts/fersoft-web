@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use App\Models\ContratoEngenharia;
+use App\Models\ContratoEngItem;
+use App\Models\ContratoEngFuncionario;
 use App\Models\FaturaEngenharia;
 use App\Models\Filial;
 use App\Models\Funcionario;
@@ -159,9 +161,7 @@ class ContratoEngenhariaController extends BaseController
                 $contrato = ContratoEngenharia::create($data);
             }
 
-            DB::table('contrato_eng_itens')
-                ->where('contrato_eng_id', $contrato->id)
-                ->delete();
+            ContratoEngItem::where('contrato_eng_id', $contrato->id)->delete();
 
             foreach ((array) $request->input('itens', []) as $item) {
                 $tipo = ($item['tipo_item'] ?? 'Servico') === 'Locacao' ? 'Locacao' : 'Servico';
@@ -172,10 +172,7 @@ class ContratoEngenhariaController extends BaseController
                     continue;
                 }
 
-                DB::table('contrato_eng_itens')->insert([
-                    'empresa_id' => $empresaId,
-                    'filial_id' => $contrato->filial_id,
-                    'usuario_id' => $this->usuario_id,
+                ContratoEngItem::create([
                     'contrato_eng_id' => $contrato->id,
                     'tipo_item' => $tipo,
                     'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
@@ -183,8 +180,6 @@ class ContratoEngenhariaController extends BaseController
                     'quantidade_prevista' => $qtd,
                     'valor_unitario' => $valor,
                     'valor_total' => $qtd * $valor,
-                    'created_at' => now(),
-                    'updated_at' => now(),
                 ]);
             }
 
@@ -228,8 +223,8 @@ class ContratoEngenhariaController extends BaseController
                 );
             }
 
-            DB::table('contrato_eng_itens')->where('contrato_eng_id', $id)->delete();
-            DB::table('contrato_eng_funcionarios')->where('contrato_eng_id', $id)->delete();
+            ContratoEngItem::where('contrato_eng_id', $id)->delete();
+            ContratoEngFuncionario::where('contrato_eng_id', $id)->delete();
             $contrato->delete();
 
             DB::commit();
@@ -311,16 +306,11 @@ class ContratoEngenhariaController extends BaseController
         $funcionario = Funcionario::where('empresa_id', $this->empresa_id)
             ->findOrFail($request->funcionario_id);
 
-        DB::table('contrato_eng_funcionarios')->insert([
-            'empresa_id' => $this->empresa_id,
-            'filial_id' => $contrato->filial_id,
-            'usuario_id' => $this->usuario_id,
+        ContratoEngFuncionario::create([
             'contrato_eng_id' => $contrato->id,
             'funcionario_id' => $funcionario->id,
             'data_alocacao' => $request->input('data_alocacao', date('Y-m-d')),
             'status' => 'Ativo',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         return redirect()->back()->with('mensagem_sucesso', 'Funcionário alocado com sucesso!');
