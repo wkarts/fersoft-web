@@ -577,7 +577,7 @@ class NfseNacionalTools implements NfseEmissorInterface
     {
         return (int) ($this->config['tpAmb'] ?? 1) === 1
             ? 'https://sefin.nfse.gov.br/SefinNacional'
-            : 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional';
+            : 'https://sefin.homologacao.nfse.gov.br/SefinNacional';
     }
 
     private function hidratarRetorno(array $data): void
