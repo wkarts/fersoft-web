@@ -17,8 +17,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
-class ContratoEngMedicaoController extends Controller
+class ContratoEngMedicaoController extends BaseController
 {
+    protected $model = FaturaEngenharia::class;
+    protected $redirectPage = '/contratos/medicoes';
+    protected $formTitle = 'Medição / Faturamento de Contrato';
+
+    protected function rules(): array
+    {
+        return [];
+    }
+
+    protected function messages(): array
+    {
+        return [];
+    }
+
     public function index(Request $request, $contratoId = null)
     {
         $empresaId = $this->empresaId();
