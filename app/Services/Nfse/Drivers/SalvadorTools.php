@@ -47,7 +47,7 @@ class SalvadorTools implements NfseEmissorInterface
         return $this->protocolo;
     }
 
-    private function gerarXmlSalvador(array $dpsData): string
+    protected function gerarXmlSalvador(array $dpsData): string
     {
         $inf = $dpsData['infDPS'] ?? [];
         $serv = $inf['serv'] ?? [];
@@ -221,7 +221,7 @@ class SalvadorTools implements NfseEmissorInterface
         return $dom->saveXML();
     }
 
-    private function transmitirSoap(string $xml): array
+    protected function transmitirSoap(string $xml): array
     {
         $certificado = (string) (
             $this->certificate->publicKey
