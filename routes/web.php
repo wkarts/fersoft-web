@@ -722,6 +722,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsapp')->name('contratos.medicoes.whatsapp');
         Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
         Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
+        Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')->name('contratos.medicoes.cancelar');
         Route::get('/delete/{id}', 'ContratoEngMedicaoController@destroy')->name('contratos.medicoes.destroy');
         Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
             ->where('contrato_id', '[0-9]+')
