@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use App\Services\LogService;
 use App\Models\ConfigNota;
+use App\Models\ConnectApiInstance;
 use App\Models\BaseModel;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\DB;
@@ -104,9 +105,12 @@ abstract class BaseController extends Controller
             // 🔹 Inicializa o LogService com empresa e usuário automaticamente
             $this->logService = new LogService($this->empresa_id, $this->usuario_id, $this->filial_id);
 
-            // Compartilha a configuração do WhatsApp com todas as views
-            $configSystemWhats = ConfigNota::where('empresa_id', $this->empresa_id)->first();
-            view()->share('configSystemWhats', $configSystemWhats);
+            // Compartilha apenas o estado operacional da Connect|API com as views.
+            // O token legado de ConfigNota não participa mais da disponibilidade do WhatsApp.
+            $connectApiWhatsApp = $this->getConnectApiWhatsAppState();
+            view()->share('connectApiWhatsAppInstance', $connectApiWhatsApp['instance']);
+            view()->share('connectApiWhatsAppReady', $connectApiWhatsApp['ready']);
+            view()->share('connectApiWhatsAppStatus', $connectApiWhatsApp['status']);
 
             return $next($request);
         });
@@ -278,7 +282,7 @@ abstract class BaseController extends Controller
             'form_title' => $this->formTitle,
         ]);
 
-        $configSystemWhats = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $connectApiWhatsApp = $this->getConnectApiWhatsAppState();
 
         $filiais = $this->filial_id;
 
@@ -293,7 +297,9 @@ abstract class BaseController extends Controller
             'deleteUrl' => "{$this->redirectPage}/delete",
             'filterUrl' => "{$this->redirectPage}/list",
             'filters' => $this->getFilters($request),
-            'configSystemWhats' => $configSystemWhats,
+            'connectApiWhatsAppInstance' => $connectApiWhatsApp['instance'],
+            'connectApiWhatsAppReady' => $connectApiWhatsApp['ready'],
+            'connectApiWhatsAppStatus' => $connectApiWhatsApp['status'],
             'filiais' => $filiais,
         ]);
     }
@@ -622,10 +628,6 @@ abstract class BaseController extends Controller
     {
         try {
             $numero = preg_replace('/[^0-9]/', '', $request->celular);
-            $configNota = $this->getWhatsAppConfig();
-
-            $numero = "55" . $numero; // Adiciona o código do país
-
             // Define uma mensagem padrão caso nenhuma mensagem seja fornecida
             $mensagemPadrao = "Olá, segue os arquivos solicitados. Caso desconheça a origem, favor desconsiderar esta mensagem.";
 
@@ -653,11 +655,13 @@ abstract class BaseController extends Controller
             foreach ($arquivosAsUrls as $key => $fileUrl) {
                 $texto = $key === 0 ? $mensagem : ''; // Envia mensagem apenas no primeiro arquivo
                 $retorno = $this->whatsapputil->sendMessage($numero, $texto, $this->empresa_id, $fileUrl);
+                $this->assertWhatsAppSendSucceeded($retorno);
             }
 
             // Caso não haja arquivos, envia apenas a mensagem
             if (empty($arquivos) && !empty($mensagem)) {
                 $retorno = $this->whatsapputil->sendMessage($numero, $mensagem, $this->empresa_id);
+                $this->assertWhatsAppSendSucceeded($retorno);
             }
 
             // 🔹 Registra o log do envio de WhatsApp
@@ -722,10 +726,6 @@ abstract class BaseController extends Controller
     {
         try {
             $numero = preg_replace('/[^0-9]/', '', $request->celular);
-            $configNota = $this->getWhatsAppConfig();
-
-            $numero = "55" . $numero; // Adiciona o código do país
-
             // Define uma mensagem padrão caso nenhuma mensagem seja fornecida
             $mensagemPadrao = "Olá, segue os arquivos solicitados. Caso desconheça a origem, favor desconsiderar esta mensagem.";
 
@@ -752,11 +752,13 @@ abstract class BaseController extends Controller
             foreach ($arquivosAsUrls as $key => $fileUrl) {
                 $texto = $key === 0 ? $mensagem : ''; // Envia mensagem apenas no primeiro arquivo
                 $retorno = $this->whatsapputil->sendMessage($numero, $texto, $this->empresa_id, $fileUrl);
+                $this->assertWhatsAppSendSucceeded($retorno);
             }
 
             // Caso não haja arquivos, envia apenas a mensagem
             if (empty($arquivos) && !empty($mensagem)) {
                 $retorno = $this->whatsapputil->sendMessage($numero, $mensagem, $this->empresa_id);
+                $this->assertWhatsAppSendSucceeded($retorno);
             }
 
             // 🔹 Registra o log do envio de WhatsApp
@@ -832,24 +834,46 @@ abstract class BaseController extends Controller
     }
 
     /**
-     * Obtém o Token do Tenant.
+     * Estado operacional do WhatsApp desta empresa na Connect|API.
      *
-     * Obtém Token de WhatsApp API nas configurações do Tenant
+     * Não utiliza token manual/configuração legada. A disponibilidade depende
+     * exclusivamente da instância local provisionada, não bloqueada e conectada.
      */
-    protected function getWhatsAppConfig()
+    protected function getConnectApiWhatsAppState(): array
     {
-        try {
-            $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $instance = ConnectApiInstance::query()
+            ->where('empresa_id', $this->empresa_id)
+            ->whereNull('deleted_at')
+            ->first();
 
-            if (!$configNota || !$configNota->token_whatsapp) {
-                throw new \Exception('Configuração do WhatsApp inválida ou não encontrada.');
-            }
+        $status = $instance?->connection_status ?: 'not_provisioned';
+        $provisioned = (bool) ($instance && $instance->provisioned_at && $instance->instance_token);
+        $ready = $provisioned
+            && !$instance->is_blocked
+            && $status === 'open';
 
-            session()->flash('mensagem_sucesso', 'Configuração do WhatsApp obtida com sucesso.');
-            return $configNota;
-        } catch (\Exception $e) {
-            session()->flash('mensagem_erro', $e->getMessage());
-            throw $e; // Repassa a exceção para ser tratada em outros níveis
+        return [
+            'instance' => $instance,
+            'provisioned' => $provisioned,
+            'ready' => $ready,
+            'status' => $status,
+        ];
+    }
+
+    /**
+     * Converte o retorno JSON da fachada WhatsApp em falha de domínio quando a
+     * Connect|API rejeita o envio. Evita falso positivo nos módulos legados.
+     */
+    protected function assertWhatsAppSendSucceeded(?string $response): void
+    {
+        $payload = json_decode((string) $response, true);
+
+        if (!is_array($payload) || !($payload['success'] ?? false)) {
+            $message = is_array($payload)
+                ? ($payload['message'] ?? 'Falha ao enviar mensagem pela Connect|API.')
+                : 'Resposta inválida recebida da Connect|API.';
+
+            throw new \RuntimeException((string) $message);
         }
     }
 
