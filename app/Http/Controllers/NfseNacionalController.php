@@ -287,10 +287,7 @@ class NfseNacionalController extends BaseController
             $this->empresa_id
         )->first();
 
-        return view(
-            'contratos.medicoes.nfse_imprimir',
-            compact('fatura', 'configNota')
-        );
+        return view('nfse.imprimir', compact('fatura', 'configNota'));
     }
 
     private function fatura(int $id): FaturaEngenharia
