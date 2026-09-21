@@ -40,8 +40,8 @@ class PortedOticaLocacaoFeaturesTest extends TestCase
         $this->assertStringContainsString('$preVendaId = null;', $controller);
         $this->assertStringContainsString('$vendaId = null;', $controller);
         $this->assertStringContainsString('DB::transaction(function () use ($id, $tipo, &$preVendaId, &$vendaId)', $controller);
-        $this->assertStringContainsString("redirect('/frenteCaixa?prevenda_id=' . $preVendaId)", $controller);
-        $this->assertStringContainsString("redirect('/vendas/edit/' . $vendaId)", $controller);
+        $this->assertStringContainsString("redirect('/frenteCaixa?prevenda_id=' . \$preVendaId)", $controller);
+        $this->assertStringContainsString("redirect('/vendas/edit/' . \$vendaId)", $controller);
         $this->assertStringContainsString("Log::error('Falha ao faturar OS de Ótica.'", $controller);
     }
 
