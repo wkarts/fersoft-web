@@ -498,6 +498,28 @@ class Menu {
                 ]
             ],
             [
+                'titulo' => 'MTR 3.0',
+                'icone' => $this->getIcone('MTR'),
+                'subs' => [
+                    [
+                        'nome' => 'Lançamento de MTR',
+                        'rota' => '/mtr/emissao'
+                    ],
+                    [
+                        'nome' => 'Recepção e Transporte',
+                        'rota' => '/mtr/recepcao'
+                    ],
+                    [
+                        'nome' => 'Cadastro de Resíduos',
+                        'rota' => '/mtr/depara-residuos'
+                    ],
+                    [
+                        'nome' => 'Unidades / Credenciais',
+                        'rota' => '/mtr/unidades'
+                    ]
+                ]
+            ],
+            [
                 'titulo' => 'Emissão de NFSe',
                 'icone' => $this->getIcone('NFSe'),
                 'subs' => [
