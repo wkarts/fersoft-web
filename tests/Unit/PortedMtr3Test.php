@@ -122,4 +122,78 @@ class PortedMtr3Test extends TestCase
             $this->assertStringContainsString($needle, $menu);
         }
     }
+    public function testHistoricalMtrViewsKeepOriginalMechanics(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $create = file_get_contents(
+            $root . '/resources/views/mtr/emissao/create.blade.php'
+        );
+        $edit = file_get_contents(
+            $root . '/resources/views/mtr/emissao/edit.blade.php'
+        );
+        $index = file_get_contents(
+            $root . '/resources/views/mtr/emissao/index.blade.php'
+        );
+        $recepcao = file_get_contents(
+            $root . '/resources/views/mtr/recepcao/index.blade.php'
+        );
+        $routes = file_get_contents($root . '/routes/web.php');
+
+        $this->assertStringContainsString('name="nome_motorista"', $create);
+        $this->assertStringContainsString('name="origem_tipo"', $create);
+        $this->assertStringContainsString('name="codigo_ibama"', $create);
+        $this->assertStringContainsString('name="nome_motorista"', $edit);
+        $this->assertStringNotContainsString(
+            "@include('mtr.emissao.form')",
+            $create
+        );
+        $this->assertStringNotContainsString(
+            "@include('mtr.emissao.form')",
+            $edit
+        );
+
+        foreach ([
+            'mtr.emissao.transmitir',
+            'mtr.emissao.pdf',
+            'mtr.emissao.cdf',
+            'mtr.emissao.create.nfe',
+            'mtr.emissao.create.pesagem',
+        ] as $route) {
+            $this->assertStringContainsString($route, $index);
+        }
+
+        $this->assertStringContainsString('/mtr/detalhes/', $recepcao);
+        $this->assertStringContainsString('/mtr/receber-completo', $recepcao);
+        $this->assertStringContainsString(
+            "Route::get('/detalhes/{numero}'",
+            $routes
+        );
+        $this->assertStringContainsString(
+            "Route::post('/receber-completo'",
+            $routes
+        );
+    }
+
+    public function testMtrWhatsappPropagatesProviderFailure(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents(
+            $root . '/app/Http/Controllers/MtrController.php'
+        );
+
+        $this->assertStringContainsString(
+            "$providerResponse = json_decode($resultado, true);",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "!(($providerResponse['success'] ?? false))",
+            str_replace(
+                "!is_array($providerResponse) || !($providerResponse['success'] ?? false)",
+                "!(($providerResponse['success'] ?? false))",
+                $controller
+            )
+        );
+    }
+
+
 }
