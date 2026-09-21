@@ -173,6 +173,9 @@ class ContratoEngenhariaController extends BaseController
                 }
 
                 DB::table('contrato_eng_itens')->insert([
+                    'empresa_id' => $empresaId,
+                    'filial_id' => $contrato->filial_id,
+                    'usuario_id' => $this->usuario_id,
                     'contrato_eng_id' => $contrato->id,
                     'tipo_item' => $tipo,
                     'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
@@ -309,6 +312,9 @@ class ContratoEngenhariaController extends BaseController
             ->findOrFail($request->funcionario_id);
 
         DB::table('contrato_eng_funcionarios')->insert([
+            'empresa_id' => $this->empresa_id,
+            'filial_id' => $contrato->filial_id,
+            'usuario_id' => $this->usuario_id,
             'contrato_eng_id' => $contrato->id,
             'funcionario_id' => $funcionario->id,
             'data_alocacao' => $request->input('data_alocacao', date('Y-m-d')),
