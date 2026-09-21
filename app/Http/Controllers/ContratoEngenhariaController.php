@@ -117,6 +117,11 @@ class ContratoEngenhariaController extends BaseController
             $data = ContratoEngenharia::where('empresa_id', $empresaId)
                 ->with('itens')
                 ->findOrFail($id);
+
+            // A view histórica usa funcionario_id para o vendedor/responsável.
+            // O schema consolidado usa vendedor_id: adaptamos no controller,
+            // sem alterar a view nem sua mecânica.
+            $data->funcionario_id = $data->vendedor_id;
         }
 
         $vendedores = Funcionario::query()
@@ -161,6 +166,12 @@ class ContratoEngenhariaController extends BaseController
         try {
             $empresaId = (int) $this->empresa_id;
             $data = $request->except(['_token', 'itens', 'arquivo_contrato']);
+
+            // Compatibilidade com o nome histórico do campo da view.
+            $data['vendedor_id'] = $request->filled('funcionario_id')
+                ? $request->input('funcionario_id')
+                : null;
+            unset($data['funcionario_id']);
 
             $data['valor_contrato'] = $this->money($request->valor_contrato);
             $data['valor_faturado'] = $data['valor_faturado'] ?? 0;
