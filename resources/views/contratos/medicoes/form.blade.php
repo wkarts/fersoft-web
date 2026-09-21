@@ -6,10 +6,9 @@
         'tipo_item'=>$i->tipo_item,
         'servico_id'=>$i->servico_id,
         'produto_id'=>$i->produto_id,
-        'descricao'=>$i->descricao,
         'quantidade'=>$i->quantidade,
         'valor_unitario'=>$i->valor_unitario,
-        'sub_total'=>$i->sub_total ?: $i->valor_total,
+        'valor_total'=>$i->valor_total,
     ])->toArray() : []);
 @endphp
 
@@ -76,7 +75,7 @@
             </div>
             <div class="table-responsive">
                 <table class="table table-bordered" id="med_itens">
-                    <thead><tr><th>Tipo</th><th>Serviço / Produto</th><th>Descrição</th><th>Qtd.</th><th>Valor Unit.</th><th>Subtotal</th><th></th></tr></thead>
+                    <thead><tr><th>Tipo</th><th>Serviço / Produto</th><th>Qtd.</th><th>Valor Unit.</th><th>Total</th><th></th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -146,10 +145,9 @@
         const i=itemIdx++, tr=document.createElement('tr');
         tr.innerHTML='<td><select name="itens['+i+'][tipo_item]" class="form-control tipo"><option value="Servico">Serviço</option><option value="Locacao">Locação</option></select></td>'+
             '<td><select name="itens['+i+'][servico_id]" class="form-control servico">'+opts(services,item.servico_id)+'</select><select name="itens['+i+'][produto_id]" class="form-control produto" style="display:none">'+opts(products,item.produto_id)+'</select></td>'+
-            '<td><input name="itens['+i+'][descricao]" class="form-control" value="'+esc(item.descricao||'')+'"></td>'+
             '<td><input name="itens['+i+'][quantidade]" class="form-control qtd" value="'+esc(item.quantidade||1)+'"></td>'+
             '<td><input name="itens['+i+'][valor_unitario]" class="form-control valor" value="'+esc(item.valor_unitario||0)+'"></td>'+
-            '<td><input name="itens['+i+'][sub_total]" class="form-control subtotal" readonly value="'+esc(item.sub_total||0)+'"></td>'+
+            '<td><input name="itens['+i+'][valor_total]" class="form-control subtotal" readonly value="'+esc(item.valor_total||0)+'"></td>'+
             '<td><button type="button" class="btn btn-sm btn-danger del">×</button></td>';
         document.querySelector('#med_itens tbody').appendChild(tr);
         const tipo=tr.querySelector('.tipo'); tipo.value=item.tipo_item||'Servico';
