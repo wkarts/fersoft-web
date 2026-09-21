@@ -574,16 +574,13 @@
 
                                             @endif
 
-                                            @if($configSystemWhats && !empty($configSystemWhats->token_whatsapp))
-
-                                            @endif
-
-                                            <!-- Botão para abrir o modal de envio de WhatsApp -->
+                                            <!-- Botão para abrir o modal de envio de WhatsApp via Connect|API -->
                                             <button type="button"
-                                                    class="btn btn-{{ !$configSystemWhats || empty($configSystemWhats->token_whatsapp) ? 'secondary' : 'success' }} btn-sm btn-custom btn-enviar-whatsapp"
+                                                    class="btn btn-{{ ($connectApiWhatsAppReady ?? false) ? 'success' : 'secondary' }} btn-sm btn-custom btn-enviar-whatsapp"
                                                     data-id="{{ $pesagem->id }}"
                                                     data-token="{{ $pesagem->token }}"
-                                                    data-disabled="{{ !$configSystemWhats || empty($configSystemWhats->token_whatsapp) ? 'true' : 'false' }}">
+                                                    data-connect-status="{{ $connectApiWhatsAppStatus ?? 'not_provisioned' }}"
+                                                    data-disabled="{{ ($connectApiWhatsAppReady ?? false) ? 'false' : 'true' }}">
                                                 <i class="fa fa-whatsapp"></i>
                                             </button>
 
@@ -2108,21 +2105,28 @@
 
             // Evento para abrir o modal de envio de WhatsApp
             $(document).on('click', '.btn-enviar-whatsapp', function () {
-                const isDisabled = $(this).attr('data-disabled') === 'true'; // Verifica se o botão está desabilitado
-
-                console.log('Botão clicado:', $(this));
-                console.log('Desabilitado:', isDisabled);
+                const isDisabled = $(this).attr('data-disabled') === 'true';
+                const connectStatus = $(this).attr('data-connect-status') || 'not_provisioned';
 
                 if (isDisabled) {
-                    console.log('Abrindo modal de mensagem.');
-                    abrirModalMensagem(
-                        'Aviso',
-                        'Necessário habilitar o token para acesso à API do WhatsApp nas configurações do sistema.'
-                    );
-                    return; // Interrompe a execução caso o botão esteja desabilitado
-                }
+                    const statusMessages = {
+                        not_provisioned: 'WhatsApp ainda não provisionado na Connect|API para esta empresa.',
+                        awaiting_provisioning: 'A instância WhatsApp está aguardando provisionamento na Connect|API.',
+                        provisioning: 'A instância WhatsApp ainda está sendo provisionada na Connect|API.',
+                        awaiting_pairing: 'A instância WhatsApp está aguardando pareamento por QR Code ou código.',
+                        connecting: 'A instância WhatsApp ainda está conectando. Aguarde a conexão antes de enviar.',
+                        close: 'A instância WhatsApp está desconectada na Connect|API.',
+                        closed: 'A instância WhatsApp está desconectada na Connect|API.',
+                        blocked: 'A integração Connect|API desta empresa está bloqueada.',
+                        error: 'A instância WhatsApp está com erro na Connect|API.'
+                    };
 
-                console.log('Continuando com o envio.');
+                    abrirModalMensagem(
+                        'WhatsApp indisponível',
+                        statusMessages[connectStatus] || 'A instância WhatsApp não está conectada na Connect|API.'
+                    );
+                    return;
+                }
 
                 const pesagemId = $(this).data('id'); // Obtém o ID da pesagem
                 const pesagemToken = $(this).data('token'); // Obtém o Token da pesagem
