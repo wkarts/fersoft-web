@@ -764,7 +764,7 @@ class MtrController extends BaseController
             'mtrsDestinador' => $mtrsDestinador,
             'dtInicio' => $dtInicio,
             'dtFim' => $dtFim,
-            'title' => 'Recepção e Transporte de MTR',
+            'title' => 'Recepção e Transporte de MTR (SINIR)',
         ]);
     }
 
