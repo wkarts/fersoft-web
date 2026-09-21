@@ -3579,7 +3579,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::delete('/delete/{id}', 'OticaController@destroy');
         Route::get('/buscar-clientes', 'OticaController@buscarClientes')->name('otica.buscarClientes');
         Route::get('/buscar-produtos', 'OticaController@buscarProdutos')->name('otica.buscarProdutos');
-        Route::post('/cliente-rapido', 'OticaController@clienteRapido')->name('otica.clienteRapido');
+        Route::post('/cliente-rapido', 'OticaController@cadastroRapidoCliente')->name('otica.clienteRapido');
+        Route::get('/buscar-cidades', 'OticaController@buscarCidades')->name('otica.buscarCidades');
+        Route::post('/enviar-whatsapp-direto', 'OticaController@enviarWhatsAppDireto')->name('otica.enviarWhatsAppDireto');
         Route::post('/alterar-status', 'OticaController@alterarStatus')->name('otica.alterarStatus');
         Route::get('/faturar/{id}', 'OticaController@faturar')->name('otica.faturar');
         Route::get('/imprimir-os/{id}', 'OticaController@imprimirOS')->name('otica.imprimirOS');

@@ -47,12 +47,26 @@
                                     <!-- CAMPO CLIENTE -->
                                     <div class="form-group validated col-lg-9 col-md-8 col-sm-6" id="box_cliente">
                                         <label class="col-form-label font-weight-bold">Cliente</label>
-                                        <select class="form-control select2" style="width: 100%" id="kt_select2_cliente" name="cliente_id">
-                                            <option value="">Selecione o cliente</option>
-                                            @foreach($clientes as $c)
-                                                <option @if(isset($locacao) && $locacao->cliente_id == $c->id) selected @endif value="{{$c->id}}">{{$c->razao_social}}</option>
-                                            @endforeach
-                                        </select>
+                                        <div class="input-group">
+                                            <select class="form-control select2" style="width: calc(100% - 44px)" id="kt_select2_cliente" name="cliente_id">
+                                                <option value="">Selecione o cliente</option>
+                                                @foreach($clientes as $c)
+                                                    <option @if(isset($locacao) && $locacao->cliente_id == $c->id) selected @endif value="{{$c->id}}">{{$c->razao_social}}</option>
+                                                @endforeach
+                                            </select>
+                                            <div class="input-group-append">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-info"
+                                                    title="Cadastrar cliente rapidamente"
+                                                    data-toggle="modal"
+                                                    data-target="#modal-cliente-locacao"
+                                                >
+                                                    <i class="la la-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted">Use o botão + para cadastrar um cliente sem sair da locação.</small>
                                     </div>
 
                                     <!-- CAMPO FORNECEDOR -->
@@ -208,13 +222,100 @@
         </div>
     </div>
 
+    <div class="modal fade" id="modal-cliente-locacao" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Cliente</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">x</button>
+                </div>
+                <div class="modal-body">
+                    <div id="locacao_cliente_rapido_erro" class="alert alert-danger d-none"></div>
+                    <div class="row">
+                        <div class="form-group col-md-8">
+                            <label class="font-weight-bold">Razão Social / Nome *</label>
+                            <input id="loc_cli_razao_social" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>CPF / CNPJ</label>
+                            <input id="loc_cli_cpf_cnpj" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Telefone</label>
+                            <input id="loc_cli_telefone" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Celular</label>
+                            <input id="loc_cli_celular" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-8">
+                            <label>Rua</label>
+                            <input id="loc_cli_rua" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Número</label>
+                            <input id="loc_cli_numero" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-5">
+                            <label>Bairro</label>
+                            <input id="loc_cli_bairro" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>CEP</label>
+                            <input id="loc_cli_cep" type="text" class="form-control">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>Cidade</label>
+                            <select id="loc_cli_cidade_id" class="form-control select2" style="width:100%">
+                                <option value="">Selecione</option>
+                                @foreach(App\Models\Cidade::all() as $cidadeRapida)
+                                    <option value="{{ $cidadeRapida->id }}">{{ $cidadeRapida->nome }} ({{ $cidadeRapida->uf }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>E-mail</label>
+                            <input id="loc_cli_email" type="email" class="form-control">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Consumidor Final</label>
+                            <select id="loc_cli_consumidor_final" class="form-control">
+                                <option value="1">SIM</option>
+                                <option value="0">NÃO</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Contribuinte</label>
+                            <select id="loc_cli_contribuinte" class="form-control">
+                                <option value="0">NÃO</option>
+                                <option value="1">SIM</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-danger" data-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btn-locacao-salvar-cliente" class="btn btn-success">Salvar cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @section('javascript')
         <script type="text/javascript">
             $(document).ready(function() {
                 $("#kt_select2_cliente").select2();
                 $("#kt_select2_fornecedor").select2();
                 $("#kt_select2_cidade_entrega").select2();
+                $("#loc_cli_cidade_id").select2({
+                    dropdownParent: $('#modal-cliente-locacao'),
+                    width: '100%'
+                });
                 alternarFinalidade();
+
+                $('#btn-locacao-salvar-cliente').on('click', function() {
+                    salvarClienteRapidoLocacao();
+                });
 
                 // PUXAR ENDEREÇO DO CLIENTE
                 $('#kt_select2_cliente').change(function() {
@@ -263,6 +364,66 @@
                     $('#box_faturamento').addClass('d-none');
                     $('.box_financeiro_campo').addClass('d-none');
                 }
+            }
+
+            function salvarClienteRapidoLocacao() {
+                const erro = $('#locacao_cliente_rapido_erro');
+                erro.addClass('d-none').text('');
+
+                const data = {
+                    razao_social: $('#loc_cli_razao_social').val().trim(),
+                    nome_fantasia: $('#loc_cli_razao_social').val().trim(),
+                    cpf_cnpj: $('#loc_cli_cpf_cnpj').val().trim(),
+                    ie_rg: '',
+                    rua: $('#loc_cli_rua').val().trim(),
+                    numero: $('#loc_cli_numero').val().trim(),
+                    bairro: $('#loc_cli_bairro').val().trim(),
+                    cep: $('#loc_cli_cep').val().trim(),
+                    telefone: $('#loc_cli_telefone').val().trim(),
+                    celular: $('#loc_cli_celular').val().trim(),
+                    email: $('#loc_cli_email').val().trim(),
+                    consumidor_final: $('#loc_cli_consumidor_final').val(),
+                    contribuinte: $('#loc_cli_contribuinte').val(),
+                    limite_venda: '0',
+                    cidade_id: $('#loc_cli_cidade_id').val() || 1
+                };
+
+                if (!data.razao_social) {
+                    erro.removeClass('d-none').text('Informe a razão social ou nome do cliente.');
+                    return;
+                }
+
+                const button = $('#btn-locacao-salvar-cliente');
+                button.prop('disabled', true).text('Salvando...');
+
+                $.post(path + 'clientes/quickSave', {
+                    _token: '{{ csrf_token() }}',
+                    data: data
+                }).done((res) => {
+                    const select = $('#kt_select2_cliente');
+                    if (select.find('option[value="' + res.id + '"]').length === 0) {
+                        select.append(new Option(res.razao_social, res.id, true, true));
+                    }
+                    select.val(res.id).trigger('change');
+                    $('#modal-cliente-locacao').modal('hide');
+
+                    $('#loc_cli_razao_social, #loc_cli_cpf_cnpj, #loc_cli_telefone, #loc_cli_celular, #loc_cli_rua, #loc_cli_numero, #loc_cli_bairro, #loc_cli_cep, #loc_cli_email').val('');
+                    $('#loc_cli_cidade_id').val(null).trigger('change');
+
+                    if (typeof swal === 'function') {
+                        swal('Sucesso', 'Cliente cadastrado e selecionado.', 'success');
+                    }
+                }).fail((xhr) => {
+                    let message = 'Não foi possível cadastrar o cliente.';
+                    if (xhr.responseJSON) {
+                        message = typeof xhr.responseJSON === 'string'
+                            ? xhr.responseJSON
+                            : (xhr.responseJSON.message || message);
+                    }
+                    erro.removeClass('d-none').text(message);
+                }).always(() => {
+                    button.prop('disabled', false).text('Salvar cliente');
+                });
             }
 
             function buscarCepEntrega() {
