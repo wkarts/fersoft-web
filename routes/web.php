@@ -3142,6 +3142,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/instances/{id}/disconnect', 'ConnectApiInstanceController@disconnect')->name('connect-api.disconnect');
         Route::post('/instances/{id}/block', 'ConnectApiInstanceController@block')->name('connect-api.block');
         Route::post('/instances/{id}/unblock', 'ConnectApiInstanceController@unblock')->name('connect-api.unblock');
+        Route::delete('/instances/{id}', 'ConnectApiInstanceController@deleteInstance')->name('connect-api.delete');
         Route::post('/instances/{id}/test', 'ConnectApiInstanceController@testMessage')->name('connect-api.test');
         Route::post('/send-whatsapp-button', 'ConnectApiInstanceController@sendWhatsAppButton')->name('connect-api.send-whatsapp-button');
     });
