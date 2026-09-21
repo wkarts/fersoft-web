@@ -6,6 +6,7 @@ use App\Models\CategoriaConta;
 use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\ContratoEngenharia;
+use App\Models\ContaReceber;
 use App\Models\FaturaEngenharia;
 use App\Models\FaturaEngFuncionario;
 use App\Models\FaturaEngItem;
@@ -483,7 +484,7 @@ class ContratoEngMedicaoController extends BaseController
                 )
                 ->orderBy('f.nome')
                 ->get(),
-            'tiposPagamento' => ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'],
+            'tiposPagamento' => ContaReceber::tiposPagamento(),
         ];
     }
 
@@ -572,6 +573,7 @@ class ContratoEngMedicaoController extends BaseController
                 'cliente_id' => $fatura->cliente_id,
                 'usuario_id' => $fatura->usuario_id,
                 'categoria_id' => $fatura->categoria_conta_id,
+                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'valor_integral' => $valor,
                 'data_vencimento' => $parcela['vencimento'] ?? date('Y-m-d'),
                 'nf_data_emissao' => $fatura->data_faturamento,
@@ -593,6 +595,7 @@ class ContratoEngMedicaoController extends BaseController
         if ((clone $query)->where('status', 1)->exists()) {
             $query->update([
                 'categoria_id' => $fatura->categoria_conta_id,
+                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
             ]);
@@ -614,6 +617,7 @@ class ContratoEngMedicaoController extends BaseController
             DB::table('conta_recebers')->where('id', $row->id)->update([
                 'valor_integral' => $value,
                 'categoria_id' => $fatura->categoria_conta_id,
+                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
             ]);
