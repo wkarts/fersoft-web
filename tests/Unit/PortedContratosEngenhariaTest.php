@@ -127,7 +127,8 @@ class PortedContratosEngenhariaTest extends TestCase
         $this->assertStringNotContainsString("'sub_total'", $model);
         $this->assertStringNotContainsString("'descricao'", $model);
         $this->assertStringNotContainsString("['sub_total']", $controller);
-        $this->assertStringContainsString("'empresa_id' => $fatura->empresa_id", $controller);
-        $this->assertStringContainsString("'filial_id' => $fatura->filial_id", $controller);
-        $this->assertStringContainsString("'usuario_id' => $fatura->usuario_id", $controller);
-    }}
+        $this->assertStringContainsString("'empresa_id' => \$fatura->empresa_id", $controller);
+        $this->assertStringContainsString("'filial_id' => \$fatura->filial_id", $controller);
+        $this->assertStringContainsString("'usuario_id' => \$fatura->usuario_id", $controller);
+    }
+}
