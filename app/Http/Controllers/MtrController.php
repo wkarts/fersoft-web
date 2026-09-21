@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MtrConfig;
+use App\Models\MtrDeparaResiduo;
 use App\Models\MtrManifesto;
 use App\Models\MtrManifestoItem;
 use App\Services\SinirIemaService;
@@ -185,7 +186,7 @@ class MtrController extends BaseController
 
             if ($produto) {
                 $produtoNome = $produto->nome;
-                $depara = DB::table('mtr_depara_residuos')
+                $depara = MtrDeparaResiduo::query()
                     ->where('empresa_id', $this->empresa_id)
                     ->where(function ($q) use ($produto) {
                         $q->where('produto_id', $produto->id)
@@ -258,7 +259,7 @@ class MtrController extends BaseController
 
             $nomes[] = $produto->nome;
 
-            $depara = DB::table('mtr_depara_residuos')
+            $depara = MtrDeparaResiduo::query()
                 ->where('empresa_id', $this->empresa_id)
                 ->where(function ($q) use ($produto) {
                     $q->where('produto_id', $produto->id)
