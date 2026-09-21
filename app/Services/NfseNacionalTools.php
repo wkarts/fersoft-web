@@ -114,7 +114,7 @@ class NfseNacionalTools implements NfseEmissorInterface
         return $this->protocolo;
     }
 
-    private function validarDps(array $dpsData): array
+    public function validarDps(array $dpsData): array
     {
         $inf = $dpsData['infDPS'] ?? [];
         $serv = $inf['serv'] ?? [];
