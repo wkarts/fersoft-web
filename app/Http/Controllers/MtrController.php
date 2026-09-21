@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MtrConfig;
+use App\Models\MtrDeparaResiduo;
 use App\Models\MtrManifesto;
 use App\Models\MtrManifestoItem;
 use App\Services\SinirIemaService;
@@ -52,12 +53,22 @@ class MtrController extends BaseController
         foreach ([
             'transportador_nome' => 'transportadora',
             'motorista_nome' => 'motorista',
-            'status' => 'status',
         ] as $column => $input) {
             if ($request->filled($input)) {
-                $column === 'status'
-                    ? $query->where($column, $request->{$input})
-                    : $query->where($column, 'like', '%' . $request->{$input} . '%');
+                $query->where($column, 'like', '%' . $request->{$input} . '%');
+            }
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'recebido') {
+                // A view histórica possui o estado visual "recebido", enquanto
+                // o schema conciliado preserva o enum anterior. Mantemos o
+                // banco em "transmitido" e reconhecemos o recebimento pelo
+                // retorno da integração.
+                $query->where('status', 'transmitido')
+                    ->where('mensagem_retorno', 'like', '%recebid%');
+            } else {
+                $query->where('status', $request->status);
             }
         }
 
@@ -83,6 +94,17 @@ class MtrController extends BaseController
         $manifestos = $query->orderByDesc('id')
             ->paginate(15)
             ->appends($request->all());
+
+        $manifestos->getCollection()->transform(function (MtrManifesto $manifesto) {
+            if (
+                $manifesto->status === 'transmitido'
+                && stripos((string) $manifesto->mensagem_retorno, 'recebid') !== false
+            ) {
+                $manifesto->setAttribute('status', 'recebido');
+            }
+
+            return $manifesto;
+        });
 
         $vendasImportacao = DB::table('vendas')
             ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
@@ -185,7 +207,7 @@ class MtrController extends BaseController
 
             if ($produto) {
                 $produtoNome = $produto->nome;
-                $depara = DB::table('mtr_depara_residuos')
+                $depara = MtrDeparaResiduo::query()
                     ->where('empresa_id', $this->empresa_id)
                     ->where(function ($q) use ($produto) {
                         $q->where('produto_id', $produto->id)
@@ -199,9 +221,9 @@ class MtrController extends BaseController
         $residuos = [[
             'codigo_ibama' => $depara->cod_ibama ?? '',
             'quantidade' => $pesoLiquido,
-            'unidade' => $depara->unidade_medida ?? 'Kg',
+            'unidade' => $depara->unidade_medida ?? 2,
             'estado_fisico' => $depara->estado_fisico ?? 1,
-            'classe_residuo' => $depara->classe_residuo ?? 'II',
+            'classe_residuo' => $depara->classe_residuo ?? 42,
             'acondicionamento' => $depara->acondicionamento_id ?? 8,
             'tratamento' => $depara->tratamento_id ?? 43,
         ]];
@@ -213,8 +235,11 @@ class MtrController extends BaseController
                 ->first()
             : null;
 
-        $nfeNum = $pesagem->nf_numero ?? '';
-        $obs = "Produto: {$produtoNome} | Pesagem: #{$pesagemId}";
+        $nfeNum = $pesagem->nf_numero
+            ?? $pesagem->nfe
+            ?? $pesagem->numero_nfe
+            ?? '';
+        $obs = "Produto: {$produtoNome} | Ticket Pesagem: #{$pesagemId}";
         if ($nfeNum !== '') {
             $obs .= " | NF-e: {$nfeNum}";
         }
@@ -228,7 +253,7 @@ class MtrController extends BaseController
             ->with('ticket_pesagem_id', $ticket->id ?? null)
             ->with('residuos_importados', $residuos)
             ->with('observacao_importada', $obs)
-            ->with('sucesso', 'Pesagem importada com sucesso!');
+            ->with('sucesso', 'Ticket de Pesagem importado com sucesso!');
     }
 
     public function createNfe($vendaId)
@@ -258,7 +283,7 @@ class MtrController extends BaseController
 
             $nomes[] = $produto->nome;
 
-            $depara = DB::table('mtr_depara_residuos')
+            $depara = MtrDeparaResiduo::query()
                 ->where('empresa_id', $this->empresa_id)
                 ->where(function ($q) use ($produto) {
                     $q->where('produto_id', $produto->id)
@@ -270,9 +295,9 @@ class MtrController extends BaseController
             $residuos[] = [
                 'codigo_ibama' => $depara->cod_ibama ?? '',
                 'quantidade' => $item->quantidade,
-                'unidade' => $depara->unidade_medida ?? 'Kg',
+                'unidade' => $depara->unidade_medida ?? 2,
                 'estado_fisico' => $depara->estado_fisico ?? 1,
-                'classe_residuo' => $depara->classe_residuo ?? 'II',
+                'classe_residuo' => $depara->classe_residuo ?? 42,
                 'acondicionamento' => $depara->acondicionamento_id ?? 8,
                 'tratamento' => $depara->tratamento_id ?? 43,
             ];
@@ -283,13 +308,16 @@ class MtrController extends BaseController
             ->where('empresa_id', $this->empresa_id)
             ->first();
 
+        $nfeNum = $venda->numero_nfe ?? $venda->nfe ?? $venda->id;
+        $obs = 'NF-e: ' . $nfeNum . ' | Produtos: ' . implode(', ', array_unique($nomes));
+
         return redirect()->route('mtr.emissao.create.avulso')
             ->with('destinador_cnpj', $cliente->cpf_cnpj ?? null)
             ->with('origem_tipo', 'nfe')
             ->with('origem_id', $vendaId)
             ->with('venda_id', $vendaId)
             ->with('residuos_importados', $residuos)
-            ->with('observacao_importada', 'Produtos: ' . implode(', ', array_unique($nomes)))
+            ->with('observacao_importada', $obs)
             ->with('sucesso', 'Itens da Nota Fiscal importados com sucesso!');
     }
 
@@ -669,10 +697,19 @@ class MtrController extends BaseController
                 (int) $this->empresa_id
             );
 
+            $providerResponse = json_decode($resultado, true);
+            if (!is_array($providerResponse) || !($providerResponse['success'] ?? false)) {
+                throw new \RuntimeException(
+                    is_array($providerResponse)
+                        ? ($providerResponse['message'] ?? 'Falha ao enviar MTR via WhatsApp.')
+                        : 'Resposta inválida ao enviar MTR via WhatsApp.'
+                );
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'MTR enviado via WhatsApp com sucesso!',
-                'provider_response' => json_decode($resultado, true),
+                'provider_response' => $providerResponse,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -754,7 +791,7 @@ class MtrController extends BaseController
             'mtrsDestinador' => $mtrsDestinador,
             'dtInicio' => $dtInicio,
             'dtFim' => $dtFim,
-            'title' => 'Recepção e Transporte de MTR',
+            'title' => 'Recepção e Transporte de MTR (SINIR)',
         ]);
     }
 

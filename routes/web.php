@@ -722,10 +722,21 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsapp')->name('contratos.medicoes.whatsapp');
         Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
         Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
+        Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')->name('contratos.medicoes.cancelar');
+
+
         Route::get('/delete/{id}', 'ContratoEngMedicaoController@destroy')->name('contratos.medicoes.destroy');
         Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
             ->where('contrato_id', '[0-9]+')
             ->name('contratos.medicoes.index');
+    });
+
+    // NFS-e de medições: endpoints históricos consumidos pela view existente.
+    Route::group(['middleware' => 'verificaEmpresa'], function(){
+        Route::get('/nfse/emitir/{id}', 'NfseNacionalController@emitir')->name('nfse.emitir');
+        Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('nfse.xml');
+        Route::get('/nfse/imprimir-medicao/{id}', 'NfseNacionalController@imprimir')->name('nfse.medicao.imprimir');
+        Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('nfse.consultar');
     });
 
     // MTR 3.0 - SINIR / IEMA
@@ -756,13 +767,14 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/store', 'MtrController@salvarRascunho')->name('mtr.emissao.store');
         Route::get('/edit/{id}', 'MtrController@edit')->name('mtr.emissao.edit');
         Route::match(['post', 'put'], '/update/{id}', 'MtrController@update')->name('mtr.emissao.update');
-        Route::get('/delete/{id}', 'MtrController@destroy')->name('mtr.emissao.destroy');
+        Route::match(['get', 'delete'], '/delete/{id}', 'MtrController@destroy')->name('mtr.emissao.destroy');
         Route::post('/transmitir/{id}', 'MtrController@transmitir')->name('mtr.emissao.transmitir');
         Route::post('/cancelar/{id}', 'MtrController@cancelar')->name('mtr.emissao.cancelar');
         Route::get('/consultar/{id}', 'MtrController@consultarStatus')->name('mtr.emissao.consultar');
         Route::post('/whatsapp', 'MtrController@enviarWhatsAppMtr')->name('mtr.emissao.whatsapp');
         Route::get('/download-pdf/{numero_mtr}', 'MtrController@downloadPdf')->name('mtr.emissao.pdf');
         Route::get('/download-cdf/{numero_mtr}', 'MtrController@downloadCdf')->name('mtr.emissao.cdf');
+
     });
 
     Route::group(['prefix' => 'mtr', 'middleware' => 'verificaEmpresa'], function(){

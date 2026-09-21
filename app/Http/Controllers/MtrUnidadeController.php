@@ -39,6 +39,7 @@ class MtrUnidadeController extends BaseController
     public function index(Request $request)
     {
         $unidades = MtrConfig::query()
+            ->with('filial')
             ->where('empresa_id', $this->empresa_id)
             ->orderByDesc('id')
             ->get();
@@ -202,7 +203,9 @@ class MtrUnidadeController extends BaseController
             'perfil' => $request->input('perfil', 'Gerador'),
             'descricao' => $request->input('descricao', ''),
             'ambiente' => $request->ambiente,
-            'ativo' => $request->boolean('ativo'),
+            'ativo' => $creating && !$request->has('ativo')
+                ? true
+                : $request->boolean('ativo'),
         ];
 
         if ($request->filled('senha')) {

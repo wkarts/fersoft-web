@@ -47,6 +47,16 @@ class ContratoEngenhariaController extends BaseController
         ];
     }
 
+    protected function headers(): array
+    {
+        return ['Nº Contrato', 'Cliente', 'Filial / Matriz', 'Data Início', 'Valor Total (R$)', 'Status'];
+    }
+
+    protected function fields(): array
+    {
+        return ['numero_contrato', 'cliente_id', 'filial_id', 'data_inicio', 'valor_contrato', 'status'];
+    }
+
     public function list(Request $request)
     {
         $empresaId = (int) $this->empresa_id;
@@ -72,13 +82,23 @@ class ContratoEngenhariaController extends BaseController
         $data = $query->orderByDesc('id')->get();
         $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
         $filiaisLista = Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get();
+        // Mantém o título histórico da tela; o controller continua no padrão BaseController.
+        $title = 'Contratos de Locação / Serviços';
 
         return view('contratos.list', [
             'data' => $data,
+            'lista' => $data,
             'clientes' => $clientes,
             'filiaisLista' => $filiaisLista,
             'search' => $request->all(),
-            'title' => 'Contratos de Locação / Serviços',
+            'title' => $title,
+            'headers' => $this->headers(),
+            'fields' => $this->fields(),
+            'newItemUrl' => "{$this->redirectPage}/new",
+            'newItemText' => 'Novo Contrato',
+            'actionNew' => "{$this->redirectPage}/new",
+            'actionEdit' => "{$this->redirectPage}/edit",
+            'actionDelete' => "{$this->redirectPage}/delete",
         ]);
     }
 
@@ -96,6 +116,11 @@ class ContratoEngenhariaController extends BaseController
             $data = ContratoEngenharia::where('empresa_id', $empresaId)
                 ->with('itens')
                 ->findOrFail($id);
+
+            // A view histórica usa funcionario_id para o vendedor/responsável.
+            // O schema consolidado usa vendedor_id: adaptamos no controller,
+            // sem alterar a view nem sua mecânica.
+            $data->funcionario_id = $data->vendedor_id;
         }
 
         $vendedores = Funcionario::query()
@@ -109,6 +134,9 @@ class ContratoEngenhariaController extends BaseController
             ->orderBy('funcionarios.nome')
             ->get();
 
+        // Mantém a apresentação histórica sem abrir mão da estrutura BaseController.
+        $title = $data ? 'Editar Contrato' : 'Novo Contrato';
+
         return view('contratos.register', [
             'data' => $data,
             'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
@@ -117,7 +145,10 @@ class ContratoEngenhariaController extends BaseController
             'cidades' => Cidade::orderBy('nome')->get(),
             'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'title' => $data ? 'Editar Contrato' : 'Novo Contrato',
+            'title' => $title,
+            'actionSave' => "{$this->redirectPage}/save",
+            'actionUpdate' => "{$this->redirectPage}/update",
+            'actionCancel' => $this->redirectPage,
         ]);
     }
 
@@ -132,6 +163,12 @@ class ContratoEngenhariaController extends BaseController
         try {
             $empresaId = (int) $this->empresa_id;
             $data = $request->except(['_token', 'itens', 'arquivo_contrato']);
+
+            // Compatibilidade com o nome histórico do campo da view.
+            $data['vendedor_id'] = $request->filled('funcionario_id')
+                ? $request->input('funcionario_id')
+                : null;
+            unset($data['funcionario_id']);
 
             $data['valor_contrato'] = $this->money($request->valor_contrato);
             $data['valor_faturado'] = $data['valor_faturado'] ?? 0;
@@ -364,6 +401,9 @@ class ContratoEngenhariaController extends BaseController
                 $proximoFim = $diasRestantes >= 0 && $diasRestantes <= 30 && $contrato->status === 'Ativo';
             }
 
+            $contrato->cliente_nome = $contrato->cliente->razao_social
+                ?? $contrato->cliente->nome
+                ?? null;
             $contrato->total_receitas = $receitas;
             $contrato->total_despesas = $despesas;
             $contrato->lucro = $lucro;

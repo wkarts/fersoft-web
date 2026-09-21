@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MtrDeparaResiduo;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
@@ -39,7 +40,7 @@ class MtrImportService
 
         $itensMtr = [];
         foreach ($itensVenda as $item) {
-            $depara = DB::table('mtr_depara_residuos')
+            $depara = MtrDeparaResiduo::query()
                 ->where('empresa_id', $venda->empresa_id)
                 ->where('orgao', $orgao)
                 ->where('produto_id', $item->produto_id)
@@ -110,7 +111,7 @@ class MtrImportService
             throw new Exception("Ticket de Pesagem #{$ticketId} não encontrado neste tenant.");
         }
 
-        $depara = DB::table('mtr_depara_residuos')
+        $depara = MtrDeparaResiduo::query()
             ->where('empresa_id', $ticket->empresa_id)
             ->where('orgao', $orgao)
             ->where('produto_id', $ticket->produto_id)

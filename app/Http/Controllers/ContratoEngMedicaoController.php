@@ -6,6 +6,7 @@ use App\Models\CategoriaConta;
 use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\ContratoEngenharia;
+use App\Models\ContaReceber;
 use App\Models\FaturaEngenharia;
 use App\Models\FaturaEngFuncionario;
 use App\Models\FaturaEngItem;
@@ -45,8 +46,13 @@ class ContratoEngMedicaoController extends BaseController
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->cliente_id);
         }
-        if ($request->filled('contrato_eng_id')) {
-            $query->where('contrato_eng_id', $request->contrato_eng_id);
+        // A view histórica envia contrato_id; o schema/model consolidado usa
+        // contrato_eng_id. O controller faz a compatibilidade sem alterar a tela.
+        $contratoFiltroId = $request->input('contrato_eng_id')
+            ?: $request->input('contrato_id');
+
+        if ($contratoFiltroId) {
+            $query->where('contrato_eng_id', $contratoFiltroId);
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -130,7 +136,7 @@ class ContratoEngMedicaoController extends BaseController
                 'condicao_pagamento_id' => $request->input('condicao_pagamento_id'),
                 'categoria_conta_id' => $request->input('categoria_conta_id'),
                 'servico_id' => $request->input('servico_id'),
-                'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
+                'municipio_prestacao_id' => $this->municipioPrestacaoId($request),
                 'codigo_obra' => $request->input('codigo_obra'),
                 'valor_total' => $valorTotal,
                 'valor_retencao' => $valorRetencao,
@@ -200,14 +206,16 @@ class ContratoEngMedicaoController extends BaseController
             }
 
             $valorTotal = $this->money($request->input('valor_total', 0));
-            $valorRetencao = $this->money($request->input('valor_retencao', 0));
+            $valorRetencao = $request->filled('valor_retencao')
+                ? $this->money($request->input('valor_retencao'))
+                : (float) $fatura->valor_retencao;
 
             $fatura->update([
                 'contrato_eng_id' => $novoContratoId,
                 'cliente_id' => $request->input('cliente_id'),
                 'categoria_conta_id' => $request->input('categoria_conta_id'),
                 'servico_id' => $request->input('servico_id'),
-                'municipio_prestacao_id' => $request->input('cidade_prestacao_id'),
+                'municipio_prestacao_id' => $this->municipioPrestacaoId($request),
                 'codigo_obra' => $request->input('codigo_obra'),
                 'valor_total' => $valorTotal,
                 'valor_retencao' => $valorRetencao,
@@ -324,6 +332,40 @@ class ContratoEngMedicaoController extends BaseController
         return redirect()->back()->with('mensagem_sucesso', 'Status atualizado com sucesso!');
     }
 
+    public function cancelar($id)
+    {
+        try {
+            $empresaId = $this->empresaId();
+            $fatura = FaturaEngenharia::where('empresa_id', $empresaId)->findOrFail($id);
+
+            $hasPaid = DB::table('conta_recebers')
+                ->where('empresa_id', $empresaId)
+                ->where('referencia', 'like', '%(Medição #' . $id . ')%')
+                ->where('status', 1)
+                ->exists();
+
+            if ($hasPaid) {
+                throw new \RuntimeException(
+                    'Existem parcelas recebidas. O faturamento não pode ser cancelado.'
+                );
+            }
+
+            $fatura->status = 'Cancelado';
+            $fatura->save();
+
+            return redirect()->back()
+                ->with('mensagem_sucesso', 'Medição / faturamento cancelado com sucesso!');
+        } catch (\Throwable $e) {
+            Log::error('Falha ao cancelar medição de contrato.', [
+                'medicao_id' => $id,
+                'empresa_id' => $this->empresaId(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('mensagem_erro', $e->getMessage());
+        }
+    }
+
     public function enviarWhatsapp(Request $request, $id)
     {
         try {
@@ -434,8 +476,17 @@ class ContratoEngMedicaoController extends BaseController
             'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
             'categorias' => CategoriaConta::where('empresa_id', $empresaId)->where('tipo', 'receber')->orderBy('nome')->get(),
             'cidades' => Cidade::orderBy('nome')->get(),
-            'funcionarios' => DB::table('funcionarios')->where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'tiposPagamento' => ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'],
+            'funcionarios' => DB::table('funcionarios as f')
+                ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
+                ->where('f.empresa_id', $empresaId)
+                ->select(
+                    'f.id',
+                    'f.nome',
+                    DB::raw("COALESCE(fn.nome, '') as funcao_nome")
+                )
+                ->orderBy('f.nome')
+                ->get(),
+            'tiposPagamento' => ContaReceber::tiposPagamento(),
         ];
     }
 
@@ -524,6 +575,7 @@ class ContratoEngMedicaoController extends BaseController
                 'cliente_id' => $fatura->cliente_id,
                 'usuario_id' => $fatura->usuario_id,
                 'categoria_id' => $fatura->categoria_conta_id,
+                'tipo_pagamento' => $request->input('tipo_pagamento'),
                 'valor_integral' => $valor,
                 'data_vencimento' => $parcela['vencimento'] ?? date('Y-m-d'),
                 'nf_data_emissao' => $fatura->data_faturamento,
@@ -543,11 +595,17 @@ class ContratoEngMedicaoController extends BaseController
             ->where('referencia', 'like', '%(Medição #' . $fatura->id . ')%');
 
         if ((clone $query)->where('status', 1)->exists()) {
-            $query->update([
+            $update = [
                 'categoria_id' => $fatura->categoria_conta_id,
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($request->filled('tipo_pagamento')) {
+                $update['tipo_pagamento'] = $request->input('tipo_pagamento');
+            }
+
+            $query->update($update);
             return;
         }
 
@@ -563,12 +621,20 @@ class ContratoEngMedicaoController extends BaseController
             $value = $index === $rows->count() - 1 ? $remaining : $base;
             $remaining -= $value;
 
-            DB::table('conta_recebers')->where('id', $row->id)->update([
+            $update = [
                 'valor_integral' => $value,
                 'categoria_id' => $fatura->categoria_conta_id,
                 'observacao' => $request->input('observacao'),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($request->filled('tipo_pagamento')) {
+                $update['tipo_pagamento'] = $request->input('tipo_pagamento');
+            }
+
+            DB::table('conta_recebers')
+                ->where('id', $row->id)
+                ->update($update);
         }
     }
 
@@ -596,7 +662,7 @@ class ContratoEngMedicaoController extends BaseController
                 ->where('empresa_id', $empresaId)
                 ->where('referencia', 'like', '%(Medição #' . $id . ')%')
                 ->get(),
-            'title' => 'Medição #' . $fatura->id,
+            'title' => 'Impressão de Medição / Faturamento #' . $fatura->id,
         ];
     }
 
@@ -636,6 +702,14 @@ class ContratoEngMedicaoController extends BaseController
     private function usuarioId(): ?int
     {
         $id = session('user_logged')['id'] ?? null;
+        return $id ? (int) $id : null;
+    }
+
+    private function municipioPrestacaoId(Request $request): ?int
+    {
+        $id = $request->input('municipio_prestacao_id')
+            ?: $request->input('cidade_prestacao_id');
+
         return $id ? (int) $id : null;
     }
 

@@ -39,6 +39,7 @@ class MtrDeparaController extends BaseController
     public function index(Request $request)
     {
         $deparas = MtrDeparaResiduo::query()
+            ->with(['produto', 'categoria', 'subCategoria.categoria'])
             ->where('empresa_id', $this->empresa_id)
             ->orderByDesc('id')
             ->get();

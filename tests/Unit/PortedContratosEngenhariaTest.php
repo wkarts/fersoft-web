@@ -165,4 +165,31 @@ class PortedContratosEngenhariaTest extends TestCase
             $this->assertStringContainsString("'usuario_id'", $model);
         }
     }
+    public function testMeasurementNfsePrintRouteDoesNotShadowExistingNfseModule(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $routes = file_get_contents($root . '/routes/web.php');
+        $view = file_get_contents(
+            $root . '/resources/views/contratos/medicoes/index.blade.php'
+        );
+
+        $this->assertStringContainsString(
+            "Route::get('/nfse/imprimir-medicao/{id}', 'NfseNacionalController@imprimir')",
+            $routes
+        );
+        $this->assertStringContainsString(
+            "Route::get('/imprimir/{id}', 'NfseController@imprimir')",
+            $routes
+        );
+        $this->assertStringContainsString(
+            "url('nfse/imprimir-medicao')",
+            $view
+        );
+        $this->assertStringNotContainsString(
+            "Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')",
+            $routes
+        );
+    }
+
+
 }

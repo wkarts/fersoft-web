@@ -24,6 +24,17 @@ class MtrConfig extends BaseModel
         'usuario_id' => 'integer',
     ];
 
+    public function filial()
+    {
+        return $this->belongsTo(Filial::class, 'filial_id');
+    }
+
+    public function getFilialNomeAttribute(): ?string
+    {
+        return $this->filial?->descricao
+            ?? $this->filial?->nome;
+    }
+
     protected function senha(): Attribute
     {
         return Attribute::make(
