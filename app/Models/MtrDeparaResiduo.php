@@ -17,4 +17,46 @@ class MtrDeparaResiduo extends BaseModel
     protected $casts = [
         'fator_conversao' => 'decimal:4',
     ];
+
+    public function produto()
+    {
+        return $this->belongsTo(Produto::class, 'produto_id');
+    }
+
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class, 'categoria_id');
+    }
+
+    public function subCategoria()
+    {
+        return $this->belongsTo(SubCategoria::class, 'sub_categoria_id');
+    }
+
+    public function getProdutoNomeAttribute(): ?string
+    {
+        return $this->produto?->nome;
+    }
+
+    public function getProdutoNcmAttribute(): ?string
+    {
+        return $this->produto?->NCM;
+    }
+
+    public function getCategoriaNomeAttribute(): ?string
+    {
+        if ($this->categoria) {
+            return $this->categoria->nome;
+        }
+
+        if ($this->subCategoria) {
+            $categoria = $this->subCategoria->categoria?->nome;
+
+            return $categoria
+                ? $categoria . ' / ' . $this->subCategoria->nome
+                : $this->subCategoria->nome;
+        }
+
+        return null;
+    }
 }
