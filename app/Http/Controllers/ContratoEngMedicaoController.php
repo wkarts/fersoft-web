@@ -45,8 +45,13 @@ class ContratoEngMedicaoController extends BaseController
         if ($request->filled('cliente_id')) {
             $query->where('cliente_id', $request->cliente_id);
         }
-        if ($request->filled('contrato_eng_id')) {
-            $query->where('contrato_eng_id', $request->contrato_eng_id);
+        // A view histórica envia contrato_id; o schema/model consolidado usa
+        // contrato_eng_id. O controller faz a compatibilidade sem alterar a tela.
+        $contratoFiltroId = $request->input('contrato_eng_id')
+            ?: $request->input('contrato_id');
+
+        if ($contratoFiltroId) {
+            $query->where('contrato_eng_id', $contratoFiltroId);
         }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
