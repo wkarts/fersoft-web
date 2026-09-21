@@ -737,7 +737,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('nfse.xml');
         Route::get('/nfse/imprimir-medicao/{id}', 'NfseNacionalController@imprimir')->name('nfse.medicao.imprimir');
         Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('nfse.consultar');
-        Route::post('/nfse/cancelar/{id}', 'NfseNacionalController@cancelar')->name('nfse.cancelar');
     });
 
     // MTR 3.0 - SINIR / IEMA
