@@ -206,7 +206,9 @@ class ContratoEngMedicaoController extends BaseController
             }
 
             $valorTotal = $this->money($request->input('valor_total', 0));
-            $valorRetencao = $this->money($request->input('valor_retencao', 0));
+            $valorRetencao = $request->filled('valor_retencao')
+                ? $this->money($request->input('valor_retencao'))
+                : (float) $fatura->valor_retencao;
 
             $fatura->update([
                 'contrato_eng_id' => $novoContratoId,
