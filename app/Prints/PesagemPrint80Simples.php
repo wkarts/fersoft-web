@@ -447,16 +447,9 @@ class PesagemPrint80Simples extends Common
 
         // Consolidação exclusivamente de apresentação. A conciliação persistida permanece intacta.
         $resumo = PesagemReportCalculator::summarize($this->pesagem);
-        $pesoInicial = (float) $resumo['peso_inicial'];
-        $pesoFinalVeiculo = (float) $resumo['peso_final'];
         $pesoLiquido = (float) $resumo['peso_liquido_total'];
         $descontos = (float) $resumo['descontos'];
         $pesoFinal = (float) $resumo['peso_final_liquido'];
-
-        $this->pdf->Ln(2);
-        $this->pdf->SetFont('Arial','B',8);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Inicial: '.number_format($pesoInicial,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final: '.number_format($pesoFinalVeiculo,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
 
         // 6) Detalhes por produto com datas por tipo
         $this->pdf->Ln(2);
@@ -499,12 +492,12 @@ class PesagemPrint80Simples extends Common
             }
         }
 
-        // 7) Resumo final
+        // 7) Resumo final - mantém a semântica histórica do comprovante simples
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial','B',8);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido Total: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Descontos: '.number_format($descontos, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final Líquido: '.number_format($pesoFinal, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Impurezas: '.number_format($descontos, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final: '.number_format($pesoFinal, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
         if ((bool) ($this->config->pesagem_exibir_valores_relatorio ?? true)) {
             $this->pdf->Cell(0,5, mb_convert_encoding('Valor Total da Operação: '.'R$ '.number_format((float) $resumo['valor_total_operacao'], 2, ',', '.'),'ISO-8859-1','UTF-8'), 0,1,'L');
         }
