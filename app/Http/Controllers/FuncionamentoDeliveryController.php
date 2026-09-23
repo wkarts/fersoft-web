@@ -5,10 +5,38 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\FuncionamentoDelivery;
 
-class FuncionamentoDeliveryController extends Controller
+class FuncionamentoDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = FuncionamentoDelivery::class;
+    protected $resource = 'funcionamentoDelivery';
+    protected $formTitle = 'Funcionamento do Delivery';
+    protected $listView = 'funcionamentoDelivery.index';
+    protected $registerView = 'funcionamentoDelivery.index';
+    protected $redirectPage = '/funcionamentoDelivery';
+
+    public function rules(): array
+    {
+        return [
+                    'inicio' => 'required|min:5',
+                    'fim' => 'required|min:5',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'inicio.required' => 'Campo obrigatório.',
+                    'fim.required' => 'Campo obrigatório.',
+                    'inicio.min' => 'Campo inválido.',
+                    'fim.min' => 'Campo inválido.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	protected $empresa_id = null;
 	public function __construct(){
+		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');

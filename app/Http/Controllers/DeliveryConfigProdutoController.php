@@ -18,10 +18,40 @@ use App\Models\ClienteDelivery;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-class DeliveryConfigProdutoController extends Controller
+class DeliveryConfigProdutoController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = ProdutoDelivery::class;
+    protected $resource = 'deliveryProduto';
+    protected $formTitle = 'Produtos Delivery';
+    protected $listView = 'produtoDelivery.list';
+    protected $registerView = 'produtoDelivery.register';
+    protected $redirectPage = '/deliveryProduto';
+
+    public function rules(): array
+    {
+        return [
+                    'ingredientes' => 'max:255',
+                    'descricao' => 'max:255',
+                    'descricao_curta' => 'max:50',
+                    'limite_diario' => 'required',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'ingredientes.max' => '255 caracteres maximos permitidos.',
+                    'descricao.max' => '255 caracteres maximos permitidos.',
+                    'descricao_curta.max' => '50 caracteres maximos permitidos.',
+                    'limite_diario.required' => 'O campo limite diário é obrigatório',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -480,7 +510,7 @@ class DeliveryConfigProdutoController extends Controller
         }
     }
 
-    public function update(Request $request){
+    public function update(Request $request, $id = null){
     	$produto = new ProdutoDelivery();
 
     	$id = $request->input('id');
@@ -499,6 +529,31 @@ class DeliveryConfigProdutoController extends Controller
         $resp->destaque = $request->input('destaque') ? true : false;
         $resp->status = $request->input('status') ? true : false;
         $resp->tem_adicionais = $request->input('tem_adicionais') ? true : false;
+
+        // A view atual permite trocar a imagem durante a edição.
+        // Mantém o diretório canônico do Delivery e a galeria existente.
+        if($request->hasFile('file')){
+            $file = $request->file('file');
+            $extensao = $file->getClientOriginalExtension();
+            $nomeImagem = md5($file->getClientOriginalName()).".".$extensao;
+
+            $file->move(public_path('imagens_produtos'), $nomeImagem);
+
+            if(count($resp->galeria) > 0){
+                $img = $resp->galeria[0];
+                $arquivoAnterior = public_path('imagens_produtos/' . $img->path);
+                if($img->path != '' && file_exists($arquivoAnterior)){
+                    unlink($arquivoAnterior);
+                }
+                $img->path = $nomeImagem;
+                $img->save();
+            }else{
+                ImagensProdutoDelivery::create([
+                    'produto_id' => $resp->id,
+                    'path' => $nomeImagem
+                ]);
+            }
+        }
 
         $controlUpdatePizza = [];
         foreach($resp->pizza as $p){

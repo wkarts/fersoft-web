@@ -4,10 +4,40 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\CidadeDelivery;
-class CidadeDeliveryController extends Controller
+class CidadeDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = CidadeDelivery::class;
+    protected $resource = 'cidadeDelivery';
+    protected $formTitle = 'Cidades Delivery';
+    protected $listView = 'cidadeDelivery.list';
+    protected $registerView = 'cidadeDelivery.register';
+    protected $redirectPage = '/cidadeDelivery';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:50',
+                    'cep' => 'required|max:9',
+                    'uf' => 'required',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '50 caracteres maximos permitidos.',
+                    'cep.required' => 'O campo cep é obrigatório.',
+                    'cep.max' => '9 caracteres maximos permitidos.',
+                    'uf.required' => 'O campo uf é obrigatório.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	protected $empresa_id = null;
 	public function __construct(){
+		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');
@@ -61,7 +91,7 @@ class CidadeDeliveryController extends Controller
 
 	}
 
-	public function update(Request $request){
+	public function update(Request $request, $id = null){
 		$cidade = new CidadeDelivery();
 
 		$id = $request->input('id');

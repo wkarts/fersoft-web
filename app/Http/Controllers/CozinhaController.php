@@ -8,11 +8,31 @@ use App\Models\ItemPedido;
 use App\Models\ItemPedidoDelivery;
 use App\Models\TelaPedido;
 
-class CozinhaController extends Controller
+class CozinhaController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = Pedido::class;
+    protected $resource = 'controleCozinha';
+    protected $formTitle = 'Controle de Cozinha';
+    protected $listView = 'controleCozinha.index';
+    protected $registerView = 'controleCozinha.selecionar';
+    protected $redirectPage = '/controleCozinha/selecionar';
+
+    public function rules(): array
+    {
+        return [];
+    }
+
+    public function messages(): array
+    {
+        return [];
+    }
+    /* --- Fim contrato BaseController --- */
+
 
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -217,5 +237,147 @@ class CozinhaController extends Controller
         }else{
             return redirect('/controleCozinha/controle');
         }
+    }
+
+    public function pedidosPendentes(Request $request)
+    {
+        $itens = \App\Models\ItemPedido::with(['pedido', 'produto', 'tamanho', 'itensAdicionais.adicional'])
+            ->where('status', false)
+            ->whereHas('pedido', function ($query) {
+                $query->where('empresa_id', $this->empresa_id);
+            })
+            ->get();
+
+        $pedidosAgrupados = [];
+        foreach ($itens as $item) {
+            $pedidoId = $item->pedido_id;
+            if (!isset($pedidosAgrupados[$pedidoId])) {
+                $pedido = $item->pedido;
+                $pedido->setRelation('itens', collect());
+                $pedidosAgrupados[$pedidoId] = $pedido;
+            }
+            $pedidosAgrupados[$pedidoId]->itens->push($item);
+        }
+
+        return response()->json(array_values($pedidosAgrupados));
+    }
+
+    public function atualizarStatus($id, $status)
+    {
+        $pedido = Pedido::where('empresa_id', $this->empresa_id)->find($id);
+
+        if (!$pedido) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pedido não encontrado para esta empresa.',
+            ], 404);
+        }
+
+        $pedido->status = $status;
+        $pedido->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function apiPedidosPendentes()
+    {
+        try {
+            $resultado = [];
+
+            $pedidosDelivery = \App\Models\PedidoDelivery::with([
+                'itens.produto.produto',
+                'itens.tamanho',
+                'itens.itensAdicionais.adicional',
+                'cliente',
+            ])
+                ->where('empresa_id', $this->empresa_id)
+                ->where('estado', 'aprovado')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($pedidosDelivery as $pedido) {
+                $itensPendentes = [];
+
+                foreach ($pedido->itens as $item) {
+                    if ((int) $item->status !== 0) {
+                        continue;
+                    }
+
+                    $adicionais = [];
+                    foreach ($item->itensAdicionais ?? [] as $adicionalItem) {
+                        $adicional = $adicionalItem->adicional ?? null;
+                        if (!$adicional) {
+                            continue;
+                        }
+
+                        $nome = method_exists($adicional, 'nome')
+                            ? $adicional->nome()
+                            : ($adicional->nome ?? 'Extra');
+
+                        $adicionais[] = ['nome' => $nome];
+                    }
+
+                    $tamanho = $item->tamanho;
+                    $nomeTamanho = '';
+                    if ($tamanho) {
+                        $nomeTamanho = method_exists($tamanho, 'nome')
+                            ? $tamanho->nome()
+                            : ($tamanho->nome ?? '');
+                    }
+
+                    $itensPendentes[] = [
+                        'id' => $item->id,
+                        'nome' => $item->produto->produto->nome
+                            ?? $item->produto->nome
+                            ?? ('Produto ID: ' . $item->produto_id),
+                        'tamanho' => $nomeTamanho,
+                        'quantidade' => (int) $item->quantidade,
+                        'observacao' => $item->observacao ?? '',
+                        'adicionais' => $adicionais,
+                    ];
+                }
+
+                if ($itensPendentes) {
+                    $dataPedido = $pedido->data_registro ?? $pedido->created_at;
+                    $resultado[] = [
+                        'id' => $pedido->id,
+                        'tipo' => 'delivery',
+                        'nome_cliente' => $pedido->cliente->nome ?? 'Cliente Delivery',
+                        'hora' => $dataPedido ? \Carbon\Carbon::parse($dataPedido)->format('H:i') : '',
+                        'itens' => $itensPendentes,
+                    ];
+                }
+            }
+
+            return response()->json($resultado);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'erro' => 'Não foi possível carregar a fila da cozinha.',
+            ], 500);
+        }
+    }
+
+    public function concluirPedidoCozinha($tipo, $id)
+    {
+        if ($tipo === 'delivery') {
+            $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->find($id);
+            if (!$pedido) {
+                return response()->json(['sucesso' => false], 404);
+            }
+
+            \App\Models\ItemPedidoDelivery::where('pedido_id', $pedido->id)
+                ->update(['status' => 1]);
+        } else {
+            $pedido = Pedido::where('empresa_id', $this->empresa_id)->find($id);
+            if (!$pedido) {
+                return response()->json(['sucesso' => false], 404);
+            }
+
+            \App\Models\ItemPedido::where('pedido_id', $pedido->id)
+                ->update(['status' => 1]);
+        }
+
+        return response()->json(['sucesso' => true]);
     }
 }

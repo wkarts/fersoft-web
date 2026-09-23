@@ -297,6 +297,17 @@
 					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
 						<a class="btn btn-success" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}">Ir para frente de caixa</a>
 					</div>
+					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
+						@if($pedido->entregue)
+							<span class="btn btn-light-success disabled" style="width: 100%;">
+								<i class="la la-check-circle"></i> Pedido entregue
+							</span>
+						@else
+							<a class="btn btn-light-primary" style="width: 100%;" href="/pedidosDelivery/marcarComoEntregue/{{$pedido->id}}">
+								<i class="la la-truck"></i> Marcar como entregue
+							</a>
+						@endif
+					</div>
 					@endif
 				</div>
 			</div>

@@ -161,6 +161,19 @@
 											</div>
 										</div>
 
+										<div class="form-group validated col-sm-6 col-lg-6">
+											<label class="col-form-label">WhatsApp da Loja (Para receber avisos)</label>
+											<div class="input-group">
+												<div class="input-group-prepend">
+													<span class="input-group-text"><i class="fa fa-whatsapp text-success"></i></span>
+												</div>
+												<input type="text" name="celular_notificacao" id="celular_notificacao" class="form-control"
+													value="{{ isset($config) ? $config->celular_notificacao : old('celular_notificacao') }}"
+													placeholder="Ex: 71999999999">
+											</div>
+											<span class="form-text text-muted">Número utilizado pelo Delivery para avisos operacionais da loja.</span>
+										</div>
+
 										<div class="form-group validated col-sm-4 col-lg-3 col-6">
 											<label class="col-form-label">Tempo Medio de Entrega (Min)</label>
 											<div class="">

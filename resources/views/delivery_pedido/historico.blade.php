@@ -117,11 +117,11 @@
 
 							<h3>Total: R$ <strong class="text-danger">R$ {{number_format($p->valor_total, 2, ',', '.')}}</strong></h3>
 							<h4>Estado: 
-								@if($p->estado == 'nv')
+								@if(in_array($p->estado, ['nv', 'novo']))
 								<strong class="text-primary">Novo Pedido</strong>
-								@elseif($p->estado == 'ap')
+								@elseif(in_array($p->estado, ['ap', 'aprovado']))
 								<strong class="text-primary">Pedido Aprovado</strong>
-								@elseif($p->estado == 'rp')
+								@elseif(in_array($p->estado, ['rp', 'cancelado']))
 								<strong class="text-danger">Pedido Reprovado</strong>
 								@elseif($p->estado == 'rc')
 								<strong class="text-warning">Pedido Recusado</strong>
@@ -151,11 +151,11 @@
 							</strong></h4>
 
 
-							@if($p->estado != 'nv')
+							@if(!in_array($p->estado, ['nv', 'novo']))
 							<a href="/carrinho/pedir_novamente/{{$p->id}}" class="btn btn-success">Pedir Novamente</a>
 							@endif
 
-							@if($p->estado == 'nv' || $p->estado == 'ap')
+							@if(in_array($p->estado, ['nv', 'novo', 'ap', 'aprovado']))
 							<div class="card">
 								<div class="container">
 									<h4>Tempo médio para entrega: <strong>{{$config->tempo_medio_entrega}}</strong></h4>
