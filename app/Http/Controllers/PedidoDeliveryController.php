@@ -7,7 +7,7 @@ use App\Models\PedidoDelivery;
 use App\Models\ItemPedidoDelivery;
 use App\Models\DeliveryConfig;
 use App\Models\ClienteDelivery;
-use NFePHP\DA\NFe\PedidoPrint;
+use App\Services\Delivery\PedidoDeliveryPrintService;
 use App\Models\VendaCaixa;
 use App\Models\ConfigNota;
 use Comtele\Services\CreditService;
@@ -672,24 +672,18 @@ class PedidoDeliveryController extends BaseController
 		return $pedidos;
 	}
 
-	public function print($id){
-		$pedido = PedidoDelivery::
-		where('id', $id)
-		->first();
+	public function print($id, PedidoDeliveryPrintService $printService)
+	{
+		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
+			->findOrFail($id);
 
-		if(valida_objeto($pedido)){
-			$public = env('SERVIDOR_WEB') ? 'public/' : '';
-			$ped = new PedidoPrint($pedido);
-			$ped->monta();
-			$pdf = $ped->render();
+		$pdf = $printService->render($pedido);
 
-			return response($pdf)
-			->header('Content-Type', 'application/pdf');
-		}else{
-			return redirect('/403');
-		}
+		return response($pdf, 200, [
+			'Content-Type' => 'application/pdf',
+			'Content-Disposition' => 'inline; filename="pedido-delivery-' . $pedido->id . '.pdf"',
+		]);
 	}
-
 	public function sendSms(Request $request){
 
 		$phone = $request['telefone'];
