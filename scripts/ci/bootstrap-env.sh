@@ -391,8 +391,8 @@ POSTHOG_SR_CAPTURE_CANVAS=false
 
 POSTHOG_IDENTIFY_ENABLED=true
 
-CHATWOOT_BASE_URL=https://hubsaas.development.com.br
-CHATWOOT_TOKEN=EsJkZ4nje1nxk9qzhu3wa6B8
+HUB_BASE_URL=https://hubsaas.development.com.br
+HUB_TOKEN=EsJkZ4nje1nxk9qzhu3wa6B8
 
 FOOTER_COMPANY_NAME=WWSoftware's
 FOOTER_COMPANY_URL=https://portal.development.com.br

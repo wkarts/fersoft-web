@@ -550,4 +550,173 @@ class OticaController extends BaseController
             ]);
         }
     }
+
+    public function processarImportacao(Request $request)
+    {
+        ini_set('max_execution_time', 600);
+        ini_set('memory_limit', '1024M');
+
+        $request->validate([
+            'arquivo_clientes' => 'required|file|mimes:csv,txt',
+            'arquivo_receitas' => 'required|file|mimes:csv,txt',
+        ]);
+
+        try {
+            $empresa_id = session('user_logged')['empresa'] ?? 1;
+
+            // Função auxiliar para limpar BOM (caractere invisível de codificação) de chaves do CSV
+            $limpaChave = function($key) {
+                return trim(str_replace("\xEF\xBB\xBF", '', $key));
+            };
+
+            // --- 1. PROCESSAR CLIENTES ---
+            $caminhoClientes = $request->file('arquivo_clientes')->getRealPath();
+            $linhasClientes = file($caminhoClientes, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+            if (empty($linhasClientes)) {
+                return redirect()->back()->with('error', 'O arquivo de clientes está vazio.');
+            }
+
+            $cabecalhoClientes = array_map($limpaChave, str_getcsv(array_shift($linhasClientes), ";"));
+            $mapaClientesIds = [];
+            $totalClientesImportados = 0;
+
+            foreach ($linhasClientes as $linhaStr) {
+                $linha = str_getcsv($linhaStr, ";");
+                if (count($linha) < 2) continue;
+
+                $col = [];
+                foreach ($cabecalhoClientes as $index => $colName) {
+                    $col[$colName] = $linha[$index] ?? null;
+                }
+
+                $idVelho = trim($col['CLI_IDCLIENTE'] ?? '');
+                if (empty($idVelho)) continue;
+
+                $razaoSocial = mb_strtoupper($col['CLI_RAZAOSOCIAL'] ?? 'CLIENTE IMPORTADO', 'UTF-8');
+                if (empty(trim($razaoSocial))) $razaoSocial = 'CLIENTE IMPORTADO';
+
+                // Pega o nome fantasia ou usa a razão social se estiver vazio
+                $nomeFantasia = mb_strtoupper($col['CLI_NOMEFANTASIA'] ?? '', 'UTF-8');
+                if (empty(trim($nomeFantasia))) {
+                    $nomeFantasia = $razaoSocial;
+                }
+
+                $cpfCnpj = preg_replace('/[^0-9]/', '', $col['CLI_CNPJCPF'] ?? '');
+
+                $cliente = \App\Models\Cliente::create([
+                    'empresa_id'       => $empresa_id,
+                    'razao_social'     => $razaoSocial,
+                    'nome_fantasia'    => mb_strtoupper($col['CLI_NOMEFANTASIA'] ?? $razaoSocial, 'UTF-8'),
+                    'cpf_cnpj'         => !empty($cpfCnpj) ? $col['CLI_CNPJCPF'] : '000.000.000-' . str_pad($idVelho, 3, '0', STR_PAD_LEFT),
+                    'rua'              => mb_strtoupper($col['CLI_ENDERECO'] ?? 'INDEFINIDO', 'UTF-8'),
+                    'numero'           => $col['CLI_ENDNUMERO'] ?? 'S/N',
+                    'bairro'           => mb_strtoupper($col['CLI_ENDBAIRRO'] ?? 'CENTRO', 'UTF-8'),
+                    'cep'              => preg_replace('/[^0-9]/', '', $col['CLI_ENDCEP'] ?? '00000000'),
+                    'cidade_id'        => 2163,
+                    'consumidor_final' => 1,
+                    'contribuinte'     => 0,
+                    'inativo'          => 0
+                ]);
+
+                $mapaClientesIds[$idVelho] = $cliente->id;
+                $totalClientesImportados++;
+            }
+
+            // --- 2. PROCESSAR RECEITAS / OS ---
+            $caminhoReceitas = $request->file('arquivo_receitas')->getRealPath();
+            $linhasReceitas = file($caminhoReceitas, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+            if (empty($linhasReceitas)) {
+                return redirect()->back()->with('error', 'O arquivo de receitas está vazio.');
+            }
+
+            $cabecalhoReceitas = array_map($limpaChave, str_getcsv(array_shift($linhasReceitas), ";"));
+            $totalReceitasImportadas = 0;
+
+            foreach ($linhasReceitas as $linhaStr) {
+                $linha = str_getcsv($linhaStr, ";");
+                if (count($linha) < 2) continue;
+
+                $col = [];
+                foreach ($cabecalhoReceitas as $index => $colName) {
+                    $col[$colName] = $linha[$index] ?? null;
+                }
+
+                $idVelhoCliente = trim($col['ID_CLIENTE'] ?? '');
+
+                if (!isset($mapaClientesIds[$idVelhoCliente])) continue;
+
+                $idNovoCliente = $mapaClientesIds[$idVelhoCliente];
+
+                $dataReceita = !empty($col['DT_RECEITA']) ? date('Y-m-d', strtotime(str_replace('/', '-', $col['DT_RECEITA']))) : date('Y-m-d');
+                $dataPrevRetorno = !empty($col['DT_PREV_RETORNO']) ? date('Y-m-d', strtotime(str_replace('/', '-', $col['DT_PREV_RETORNO']))) : null;
+
+                $limpaDecimal = function($val) {
+                    if (empty($val)) return null;
+                    return str_replace(',', '.', trim($val));
+                };
+
+                \App\Models\ReceitaOtica::create([
+                    'empresa_id'       => $empresa_id,
+                    'cliente_id'       => $idNovoCliente,
+
+                    // LONGE
+                    'esf_od_longe'     => $limpaDecimal($col['ODL_ESF'] ?? null),
+                    'cil_od_longe'     => $limpaDecimal($col['ODL_CIL'] ?? null),
+                    'eixo_od_longe'    => $limpaDecimal($col['ODL_EIXO'] ?? null),
+                    'dnp_od_longe'     => $limpaDecimal($col['ODL_DNP'] ?? null),
+                    'dp_od_longe'      => $limpaDecimal($col['ODL_DP'] ?? null),
+
+                    'esf_oe_longe'     => $limpaDecimal($col['OEL_ESF'] ?? null),
+                    'cil_oe_longe'     => $limpaDecimal($col['OEL_CIL'] ?? null),
+                    'eixo_oe_longe'    => $limpaDecimal($col['OEL_EIXO'] ?? null),
+                    'dnp_oe_longe'     => $limpaDecimal($col['OEL_DNP'] ?? null),
+
+                    // PERTO
+                    'esf_od_perto'     => $limpaDecimal($col['ODP_ESF'] ?? null),
+                    'cil_od_perto'     => $limpaDecimal($col['ODP_CIL'] ?? null),
+                    'eixo_od_perto'    => $limpaDecimal($col['OPD_EIXO'] ?? null),
+                    'adicao_od_perto'  => $limpaDecimal($col['OPD_ADICAO'] ?? null),
+                    'altura_od_perto'  => $limpaDecimal($col['ODP_ALTURA'] ?? null),
+                    'dnp_od_perto'     => $limpaDecimal($col['ODP_DNP'] ?? null),
+                    'dp_od_perto'      => $limpaDecimal($col['ODP_DP'] ?? null),
+
+                    'esf_oe_perto'     => $limpaDecimal($col['OEP_ESF'] ?? null),
+                    'cil_oe_perto'     => $limpaDecimal($col['OEP_CIL'] ?? null),
+                    'eixo_oe_perto'    => $limpaDecimal($col['OEP_EIXO'] ?? null),
+                    'adicao_oe_perto'  => floatval($limpaDecimal($col['OEP_ADICAO'] ?? 0)),
+                    'altura_oe_perto'  => floatval($limpaDecimal($col['OEP_ALTURA'] ?? 0)),
+                    'dnp_oe_perto'     => floatval($limpaDecimal($col['OEP_DNP'] ?? 0)),
+
+                    // PRODUTOS & VALORES
+                    'armacao'          => $col['ARMACAO'] ?? null,
+                    'qtd_armacao'      => intval($col['ARMACAO_QUANTIDADE'] ?? 1),
+                    'valor_armacao'    => floatval($limpaDecimal($col['ARMACAO_VALOR'] ?? 0)),
+
+                    'lente'            => $col['LENTE'] ?? null,
+                    'qtd_lente'        => intval($col['LENTE_QUANTIDADE'] ?? 1),
+                    'valor_lente'      => floatval($limpaDecimal($col['LENTE_VALOR'] ?? 0)),
+
+                    // DETALHES CLÍNICOS
+                    'tratamento'       => $col['TRATAMENTO'] ?? null,
+                    'medico'           => $col['TRATAMENTO_MEDICO'] ?? null,
+                    'tipo_lente'       => $col['LENTE_TIPO'] ?? null,
+                    'referencia'       => $col['REFERENCIA'] ?? null,
+                    'observacao'       => mb_strtoupper($col['OBSERVACAO'] ?? '', 'UTF-8'),
+
+                    // STATUS E DATAS
+                    'data'             => $dataReceita,
+                    'data_entrega'     => $dataPrevRetorno,
+                    'status'           => 'entregue'
+                ]);
+                $totalReceitasImportadas++;
+            }
+
+            return redirect()->back()->with('success', "Importação realizada com sucesso! Clientes importados: {$totalClientesImportados} | Receitas importadas: {$totalReceitasImportadas}");
+
+        } catch (\Exception $e) {
+            dd("Erro na linha: " . $e->getLine(), "Mensagem: " . $e->getMessage());
+        }
+    }
 }

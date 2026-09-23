@@ -12,6 +12,10 @@
                 <a href="{{ route('otica.create') }}" class="btn btn-success font-weight-bolder">
                     <i class="fa fa-plus"></i> Nova OS / Receita
                 </a>
+
+                <a href="#" data-toggle="modal" data-target="#modalImportacao" class="btn btn-warning font-weight-bolder mr-2">
+                    <i class="fa fa-upload"></i> Importar Receita
+                </a>
             </div>
         </div>
 
@@ -197,6 +201,39 @@
                 </table>
             </div>
             <div class="d-flex justify-content-between align-items-center flex-wrap mt-5">{{ $data->links() }}</div>
+        </div>
+    </div>
+    <div class="modal fade" id="modalImportacao" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <form action="{{ route('otica.processarImportacao') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title font-weight-bold text-dark">Importar Clientes e Receitas</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-custom alert-light-info fade show mb-5" role="alert">
+                            <div class="alert-text">
+                                Converta as suas planilhas para o formato <b>CSV (Separado por vírgulas)</b> antes de enviar. As receitas importadas já entrarão com o status <b>Entregue / Faturado</b>.
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">1. Arquivo de Clientes (CSV)</label>
+                            <input type="file" name="arquivo_clientes" class="form-control-file" accept=".csv" required>
+                        </div>
+                        <hr>
+                        <div class="form-group">
+                            <label class="font-weight-bold">2. Arquivo de Receitas (CSV)</label>
+                            <input type="file" name="arquivo_receitas" class="form-control-file" accept=".csv" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning font-weight-bold">Processar Importação</button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 @endsection
