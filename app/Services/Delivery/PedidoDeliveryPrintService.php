@@ -9,8 +9,8 @@ use Illuminate\Support\Carbon;
 class PedidoDeliveryPrintService
 {
     private const PAPER_WIDTH_MM = 80.0;
-    private const MIN_HEIGHT_MM = 160.0;
-    private const MAX_HEIGHT_MM = 1000.0;
+    private const MIN_HEIGHT_MM = 80.0;
+    private const MAX_HEIGHT_MM = 5000.0;
 
     /**
      * Renderiza o cupom operacional do Delivery.
@@ -34,16 +34,9 @@ class PedidoDeliveryPrintService
 
         $dados = $this->buildViewData($pedido);
 
-        $paper = [
-            0,
-            0,
-            $this->mmToPoints(self::PAPER_WIDTH_MM),
-            $this->mmToPoints($this->estimateHeightMm($dados)),
-        ];
+        $heightMm = $this->resolveSinglePageHeightMm($dados);
 
-        return Pdf::loadView('pedidosDelivery.impressao_pedido', $dados)
-            ->setPaper($paper, 'portrait')
-            ->output();
+        return $this->makePdf($dados, $heightMm)->output();
     }
 
     protected function buildViewData(PedidoDelivery $pedido): array
@@ -265,6 +258,80 @@ class PedidoDeliveryPrintService
         };
 
         return 'data:' . $mime . ';base64,' . base64_encode($content);
+    }
+
+    /**
+     * Determina a menor altura de papel que mantém todo o cupom em uma única
+     * página. Em impressora térmica de bobina não existe quebra lógica de
+     * página: a altura do PDF precisa acompanhar o conteúdo real.
+     */
+    protected function resolveSinglePageHeightMm(array $dados): float
+    {
+        $estimated = max(self::MIN_HEIGHT_MM, $this->estimateHeightMm($dados));
+
+        // Primeiro valida a estimativa normal. Na maioria dos pedidos este
+        // único render já será suficiente.
+        if ($this->pageCountAtHeight($dados, $estimated) === 1) {
+            $low = self::MIN_HEIGHT_MM;
+
+            if ($low >= $estimated || $this->pageCountAtHeight($dados, $low) === 1) {
+                return $low;
+            }
+
+            $high = $estimated;
+        } else {
+            // A estimativa ficou curta. Ela passa a ser o limite inferior
+            // conhecido e aumentamos a bobina até todo o conteúdo caber.
+            $low = $estimated;
+            $high = $estimated;
+
+            do {
+                $high = min(self::MAX_HEIGHT_MM, max($high + 20.0, $high * 1.35));
+                $pageCount = $this->pageCountAtHeight($dados, $high);
+            } while ($pageCount > 1 && $high < self::MAX_HEIGHT_MM);
+
+            if ($pageCount > 1) {
+                // Pedido anormalmente grande. Mantém o maior papel térmico
+                // suportado em vez de mascarar/truncar conteúdo.
+                return self::MAX_HEIGHT_MM;
+            }
+        }
+
+        // Busca binária do menor comprimento de bobina que ainda gera 1 página.
+        // A margem final evita que diferenças mínimas de métricas de fonte
+        // empurrem rodapé/endereço para uma segunda página.
+        for ($i = 0; $i < 7; $i++) {
+            $mid = ($low + $high) / 2;
+
+            if ($this->pageCountAtHeight($dados, $mid) === 1) {
+                $high = $mid;
+            } else {
+                $low = $mid;
+            }
+        }
+
+        return min(self::MAX_HEIGHT_MM, $high + 2.0);
+    }
+
+    protected function pageCountAtHeight(array $dados, float $heightMm): int
+    {
+        $pdf = $this->makePdf($dados, $heightMm);
+        $pdf->render();
+
+        return (int) $pdf->getDomPDF()->getCanvas()->get_page_count();
+    }
+
+    protected function makePdf(array $dados, float $heightMm)
+    {
+        $paper = [
+            0,
+            0,
+            $this->mmToPoints(self::PAPER_WIDTH_MM),
+            $this->mmToPoints($heightMm),
+        ];
+
+        return Pdf::loadView('pedidosDelivery.impressao_pedido', $dados)
+            ->setPaper($paper, 'portrait');
     }
 
     protected function estimateHeightMm(array $dados): float
