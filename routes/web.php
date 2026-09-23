@@ -3626,6 +3626,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/faturar/{id}', 'OticaController@faturar')->name('otica.faturar');
         Route::get('/imprimir-os/{id}', 'OticaController@imprimirOS')->name('otica.imprimirOS');
         Route::get('/imprimir-recibo/{id}', 'OticaController@imprimirRecibo')->name('otica.imprimirRecibo');
+        Route::get('/importar-antigo', 'OticaController@viewImportacao')->name('otica.viewImportacao');
+        Route::post('/processar-importacao', 'OticaController@processarImportacao')->name('otica.processarImportacao');
     });
 
 });
