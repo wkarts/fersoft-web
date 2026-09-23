@@ -8,7 +8,7 @@ class EnderecoDelivery extends BaseModel
 {
 	protected $fillable = [
 		'cliente_id', 'rua', 'numero', 'bairro', 'bairro_id', 'referencia', 'latitude', 'longitude',
-        'cidade_id', 'tipo', 'cep', 'padrao'
+        'cidade_id', 'tipo', 'cep', 'principal', 'padrao'
 	];
 
 	public function cliente(){

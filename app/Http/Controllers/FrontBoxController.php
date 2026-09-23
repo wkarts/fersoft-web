@@ -1705,6 +1705,10 @@ class FrontBoxController extends Controller
                 'balanca_valor_peso' => $request->balanca_valor_peso,
                 'balanca_digito_verificador' => $request->balanca_digito_verificador ?? 5,
                 'impressora_modelo' => $request->impressora_modelo ?? 80,
+                'impressora_nome' => $request->impressora_nome ?? '',
+                'id_ifood' => $request->id_ifood ?? '',
+                'id_ze_delivery' => $request->id_ze_delivery ?? '',
+                'id_anota_ai' => $request->id_anota_ai ?? '',
                 'impressao_pre_venda' => $request->impressao_pre_venda ?? 80,
                 'cupom_modelo' => $request->cupom_modelo ?? 1,
                 'usuario_id' => get_id_user(),
@@ -1751,6 +1755,10 @@ class FrontBoxController extends Controller
             $config->mercadopago_public_key = $request->mercadopago_public_key ?? '';
             $config->mercadopago_access_token = $request->mercadopago_access_token ?? '';
             $config->impressora_modelo = $request->impressora_modelo ?? 80;
+            $config->impressora_nome = $request->impressora_nome ?? '';
+            $config->id_ifood = $request->id_ifood ?? '';
+            $config->id_ze_delivery = $request->id_ze_delivery ?? '';
+            $config->id_anota_ai = $request->id_anota_ai ?? '';
             $config->impressao_pre_venda = $request->impressao_pre_venda ?? 80;
             $config->cupom_modelo = $request->cupom_modelo ?? 1;
             $config->tipos_pagamento = json_encode($request->tipos_pagamento);

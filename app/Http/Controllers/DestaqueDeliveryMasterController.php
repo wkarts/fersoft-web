@@ -7,8 +7,32 @@ use App\Models\CategoriaDestaqueMasterDelivery;
 use App\Models\ProdutoDestaqueMasterDelivery;
 use App\Models\ProdutoDelivery;
 
-class DestaqueDeliveryMasterController extends Controller
+class DestaqueDeliveryMasterController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = ProdutoDestaqueMasterDelivery::class;
+    protected $resource = 'produtosDestaque';
+    protected $formTitle = 'Produtos em Destaque Delivery';
+    protected $listView = 'produtosDestaque.list';
+    protected $registerView = 'produtosDestaque.register';
+    protected $redirectPage = '/produtosDestaque';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:50',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '50 caracteres maximos permitidos.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	public function index(){
 		$produtos = ProdutoDestaqueMasterDelivery::all();
 

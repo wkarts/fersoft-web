@@ -6,10 +6,37 @@ use Illuminate\Http\Request;
 use App\Models\ComplementoDelivery;
 use App\Models\CategoriaProdutoDelivery;
 
-class DeliveryComplementoController extends Controller
+class DeliveryComplementoController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = ComplementoDelivery::class;
+    protected $resource = 'deliveryComplemento';
+    protected $formTitle = 'Adicionais do Delivery';
+    protected $listView = 'complementoDelivery.list';
+    protected $registerView = 'complementoDelivery.register';
+    protected $redirectPage = '/deliveryComplemento';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:50',
+                    'valor' => 'required',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '50 caracteres maximos permitidos.',
+                    'valor.required' => 'O campo valor é obrigatório.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -77,7 +104,7 @@ class DeliveryComplementoController extends Controller
         }
     }
 
-    public function update(Request $request){
+    public function update(Request $request, $id = null){
         $complemento = new ComplementoDelivery();
 
         $id = $request->input('id');

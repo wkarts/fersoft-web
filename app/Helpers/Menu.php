@@ -964,6 +964,10 @@ class Menu {
                         'rota' => '/configDelivery'
                     ],
                     [
+                        'nome' => 'Painel Kanban',
+                        'rota' => '/pedidosDelivery/kanban'
+                    ],
+                    [
                         'nome' => 'Pedidos',
                         'rota' => '/pedidosDelivery'
                     ],

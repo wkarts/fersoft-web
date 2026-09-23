@@ -5,10 +5,35 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\CategoriaMasterDelivery;
 
-class CategoriaMasterDeliveryController extends Controller
+class CategoriaMasterDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = CategoriaMasterDelivery::class;
+    protected $resource = 'categoriaMasterDelivery';
+    protected $formTitle = 'Categorias Master Delivery';
+    protected $listView = 'categoriaMaster.list';
+    protected $registerView = 'categoriaMaster.register';
+    protected $redirectPage = '/categoriaMasterDelivery';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:30',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '30 caracteres maximos permitidos.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	protected $empresa_id = null;
 	public function __construct(){
+		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');
@@ -79,7 +104,7 @@ class CategoriaMasterDeliveryController extends Controller
 
 	}
 
-	public function update(Request $request){
+	public function update(Request $request, $id = null){
 		$categoria = new CategoriaMasterDelivery();
 
 		$id = $request->input('id');

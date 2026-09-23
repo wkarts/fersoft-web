@@ -8,10 +8,78 @@ use App\Models\CidadeDelivery;
 use App\Models\DeliveryConfigGaleria;
 use Illuminate\Support\Str;
 
-class ConfigDeliveryController extends Controller
+class ConfigDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = DeliveryConfig::class;
+    protected $resource = 'configDelivery';
+    protected $formTitle = 'Configuração do Delivery';
+    protected $listView = 'configDelivery.index';
+    protected $registerView = 'configDelivery.index';
+    protected $redirectPage = '/configDelivery';
+
+    public function rules(): array
+    {
+        return [
+                    'link_face' => 'max:255',
+                    'link_twiteer' => 'max:255',
+                    'link_google' => 'max:255',
+                    'link_instagram' => 'max:255',
+                    'telefone' => 'required|max:20',
+                    'rua' => 'required|max:80',
+                    'numero' => 'required|max:15',
+                    'bairro' => 'required|max:30',
+                    'cep' => 'required|max:9',
+                    'tempo_medio_entrega' => 'required|max:10',
+                    'tempo_maximo_cancelamento' => 'required',
+                    'valor_entrega' => 'required',
+                    'nome' => 'required|max:30',
+                    'descricao' => 'required|max:200',
+                    'politica_privacidade' => 'max:400',
+                    'maximo_adicionais' => 'required',
+                    'maximo_adicionais_pizza' => 'required',
+                    'cidade_id' => 'required',
+                    'tipo_entrega' => 'required',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'link_face.max' => '255 caracteres maximos permitidos.',
+                    'link_twiteer.max' => '255 caracteres maximos permitidos.',
+                    'link_google.max' => '255 caracteres maximos permitidos.',
+                    'link_instagram.max' => '255 caracteres maximos permitidos.',
+                    'telefone.required' => 'O campo Telefone é obrigatório.',
+                    'telefone.max' => '20 caracteres maximos permitidos.',
+                    'rua.required' => 'O campo rua é obrigatório.',
+                    'rua.max' => '80 caracteres maximos permitidos.',
+                    'numero.required' => 'O campo número é obrigatório.',
+                    'numero.max' => '15 caracteres maximos permitidos.',
+                    'bairro.required' => 'O campo bairro é obrigatório.',
+                    'bairro.max' => '30 caracteres maximos permitidos.',
+                    'cep.required' => 'O campo cep é obrigatório.',
+                    'cep.max' => '9 caracteres maximos permitidos.',
+                    'tempo_medio_entrega.required' => 'O campo Tempo Medio de Entrega é obrigatório.',
+                    'tempo_maximo_cancelamento.required' => 'O campo Tempo Maximo de Cancelamento é obrigatório.',
+                    'tempo_medio_entrega.max' => '10 caracteres maximos permitidos.',
+                    'valor_entrega.required' => 'O campo Valor de Entrega é obrigatório.',
+                    'nome.required' => 'O campo Nome Exibição é obrigatório.',
+                    'nome.max' => '30 caracteres maximos permitidos.',
+                    'descricao.required' => 'O campo descrição é obrigatório.',
+                    'descricao.max' => '200 caracteres maximos permitidos.',
+                    'politica_privacidade.max' => '400 caracteres maximos permitidos.',
+                    'maximo_adicionais.required' => 'Campo obrigatório.',
+                    'maximo_adicionais_pizza.required' => 'Campo obrigatório.',
+                    'cidade_id.required' => 'Campo obrigatório.',
+                    'tipo_entrega.required' => 'Campo obrigatório.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	protected $empresa_id = null;
 	public function __construct(){
+		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');
@@ -68,6 +136,7 @@ class ConfigDeliveryController extends Controller
 				'link_google' => $request->link_google ?? '',
 				'link_instagram' => $request->link_instagram ?? '',
 				'telefone' => $this->sanitizeString($request->telefone),
+				'celular_notificacao' => $request->celular_notificacao ? preg_replace('/[^0-9]/', '', $request->celular_notificacao) : '',
 				'rua' => $request->rua,
 				'numero' => $request->numero,
 				'bairro' => $request->bairro,
@@ -121,6 +190,7 @@ class ConfigDeliveryController extends Controller
 			$config->link_google = $request->link_google ?? '';
 			$config->link_instagram = $request->link_instagram ?? '';
 			$config->telefone = $this->sanitizeString($request->telefone);
+			$config->celular_notificacao = $request->celular_notificacao ? preg_replace('/[^0-9]/', '', $request->celular_notificacao) : '';
 			$config->rua = $request->rua;
 			$config->numero = $request->numero;
 			$config->bairro = $request->bairro;

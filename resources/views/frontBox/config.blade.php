@@ -244,6 +244,22 @@
 											</div>
 										</div>
 
+
+										<div class="form-group validated col-sm-6 col-lg-4">
+											<label class="col-form-label">Impressora (QZ Tray)</label>
+											<div class="input-group">
+												<select id="impressora_nome" name="impressora_nome" class="form-control">
+													<option value="{{ $config->impressora_nome ?? '' }}">{{ $config->impressora_nome ?? 'Selecione ou busque...' }}</option>
+												</select>
+												<div class="input-group-append">
+													<button type="button" class="btn btn-info" id="btn-buscar-impressoras" onclick="carregarImpressorasQZ()">
+														<i class="la la-search"></i> Buscar
+													</button>
+												</div>
+											</div>
+											<small class="form-text text-muted">Ligue o QZ Tray antes de clicar em Buscar.</small>
+										</div>
+
 										<div class="form-group validated col-sm-6 col-lg-4 col-12">
 											<label class="col-form-label">Mercado pago public key</label>
 											<div class="">
@@ -422,6 +438,29 @@
 						</div>
 					</div>
 
+
+                    <div class="row" style="padding: 20px;">
+                        <div class="col-12 mt-4" style="border-top: 1px solid #EBEDF3; padding-top: 20px;">
+                            <h5 class="text-info">Integrações de Delivery (Opcional)</h5>
+                            <p>Preencha somente as integrações utilizadas neste caixa.</p>
+                        </div>
+
+                        <div class="form-group validated col-sm-6 col-lg-4">
+                            <label class="col-form-label">ID Loja iFood</label>
+                            <input type="text" class="form-control" name="id_ifood" value="{{{ isset($config) ? $config->id_ifood : old('id_ifood') }}}">
+                        </div>
+
+                        <div class="form-group validated col-sm-6 col-lg-4">
+                            <label class="col-form-label">Token Zé Delivery</label>
+                            <input type="text" class="form-control" name="id_ze_delivery" value="{{{ isset($config) ? $config->id_ze_delivery : old('id_ze_delivery') }}}">
+                        </div>
+
+                        <div class="form-group validated col-sm-6 col-lg-4">
+                            <label class="col-form-label">Token Anota Aí</label>
+                            <input type="text" class="form-control" name="id_anota_ai" value="{{{ isset($config) ? $config->id_anota_ai : old('id_anota_ai') }}}">
+                        </div>
+                    </div>
+
 					<div class="card-footer">
 
 						<div class="row">
@@ -452,6 +491,7 @@
 @endsection
 
 @section('javascript')
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.min.js"></script>
 <script type="text/javascript">
 	$(function(){
 		selectModelo()
@@ -469,5 +509,45 @@
 			$('.div-produto-lateral').addClass('d-none')
 		}
 	}
+
+	function carregarImpressorasQZ() {
+		let $btn = $('#btn-buscar-impressoras');
+		$btn.addClass('spinner spinner-white spinner-right').attr('disabled', true);
+
+		if (typeof qz === 'undefined') {
+			$btn.removeClass('spinner spinner-white spinner-right').removeAttr('disabled');
+			swal("Erro", "Biblioteca QZ Tray não encontrada na página.", "error");
+			return;
+		}
+
+		function executarBusca() {
+			qz.printers.find().then(function(printers) {
+				$btn.removeClass('spinner spinner-white spinner-right').removeAttr('disabled');
+				let $select = $('#impressora_nome');
+				let impressoraAtual = $select.val();
+				$select.empty().append('<option value="">-- Selecione a Impressora --</option>');
+				printers.forEach(function(printerName) {
+					let selected = (printerName === impressoraAtual) ? 'selected' : '';
+					$select.append(`<option value="${printerName}" ${selected}>${printerName}</option>`);
+				});
+				swal("Sucesso!", `${printers.length} impressoras encontradas.`, "success");
+			}).catch(function(e) {
+				$btn.removeClass('spinner spinner-white spinner-right').removeAttr('disabled');
+				console.error("Erro QZ:", e);
+				swal("Erro", "A requisição de busca foi recusada pelo QZ Tray.", "error");
+			});
+		}
+
+		if (!qz.websocket.isActive()) {
+			qz.websocket.connect().then(executarBusca).catch(function(err) {
+				$btn.removeClass('spinner spinner-white spinner-right').removeAttr('disabled');
+				console.error("Erro Conexão QZ:", err);
+				swal("Erro", "Não foi possível conectar ao QZ Tray. Verifique se o aplicativo está em execução.", "error");
+			});
+		} else {
+			executarBusca();
+		}
+	}
+
 </script>
 @endsection

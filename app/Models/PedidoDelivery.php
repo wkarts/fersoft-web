@@ -13,6 +13,8 @@ class PedidoDelivery extends BaseModel
 
 	protected $fillable = [
         'empresa_id',
+        'filial_id',
+        'usuario_id',
         'cliente_id',
         'endereco_id',
         'cliente_id',
@@ -35,7 +37,8 @@ class PedidoDelivery extends BaseModel
 		'pedido_lido',
         'horario_cricao',
         'horario_leitura',
-        'horario_entrega'
+        'horario_entrega',
+        'entregue'
 	];
 
 	public function itens(){
@@ -78,7 +81,7 @@ class PedidoDelivery extends BaseModel
 
 	public function somaItens(){
 
-		$config = DeliveryConfig::first();
+		$config = DeliveryConfig::where('empresa_id', $this->empresa_id)->first();
 		$total = 0;
 
 		if($this->valor_total > 0){
@@ -148,7 +151,7 @@ class PedidoDelivery extends BaseModel
 	}
 
 	public function somaCarrinho(){
-		$config = DeliveryConfig::first();
+		$config = DeliveryConfig::where('empresa_id', $this->empresa_id)->first();
 		$total = 0;
 		if($this->valor_total == 0){
 			foreach($this->itens as $i){

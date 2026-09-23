@@ -8,10 +8,37 @@ use App\Models\ListaComplementoDelivery;
 use App\Models\ComplementoDelivery;
 use App\Models\TamanhoPizza;
 
-class DeliveryConfigCategoriaController extends Controller
+class DeliveryConfigCategoriaController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = CategoriaProdutoDelivery::class;
+    protected $resource = 'deliveryCategoria';
+    protected $formTitle = 'Categorias de Produto Delivery';
+    protected $listView = 'categoriaDelivery.list';
+    protected $registerView = 'categoriaDelivery.register';
+    protected $redirectPage = '/deliveryCategoria';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:30',
+                    'descricao' => 'max:120',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '30 caracteres maximos permitidos.',
+                    'descricao.max' => '120 caracteres maximos permitidos.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
   protected $empresa_id = null;
   public function __construct(){
+		parent::__construct();
     $this->middleware(function ($request, $next) {
       $this->empresa_id = $request->empresa_id;
       $value = session('user_logged');
@@ -119,7 +146,7 @@ class DeliveryConfigCategoriaController extends Controller
 
   }
 
-  public function update(Request $request){
+  public function update(Request $request, $id = null){
     $categoria = new CategoriaProdutoDelivery();
 
     $id = $request->input('id');

@@ -7,10 +7,30 @@ use App\Models\DestaqueDelivery;
 use App\Models\DeliveryConfig;
 use Illuminate\Support\Str;
 
-class DestaqueDeliveryController extends Controller
+class DestaqueDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = DestaqueDelivery::class;
+    protected $resource = 'destaquesDelivery';
+    protected $formTitle = 'Destaques Delivery';
+    protected $listView = 'destaqueDelivery.list';
+    protected $registerView = 'destaqueDelivery.register';
+    protected $redirectPage = '/destaquesDelivery';
+
+    public function rules(): array
+    {
+        return [];
+    }
+
+    public function messages(): array
+    {
+        return [];
+    }
+    /* --- Fim contrato BaseController --- */
+
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -133,7 +153,7 @@ class DestaqueDeliveryController extends Controller
 
     }
 
-    public function update(Request $request){
+    public function update(Request $request, $id = null){
 
         $item = DestaqueDelivery::findOrFail($request->id);
         try{

@@ -10,10 +10,46 @@ use App\Rules\CelularDup;
 use App\Models\DeliveryConfig;
 use App\Models\ProdutoFavoritoDelivery;
 
-class ClienteDeliveryController extends Controller
+class ClienteDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = ClienteDelivery::class;
+    protected $resource = 'clientesDelivery';
+    protected $formTitle = 'Clientes Delivery';
+    protected $listView = 'clienteDelivery.list';
+    protected $registerView = 'clienteDelivery.register';
+    protected $redirectPage = '/clientesDelivery';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:30',
+                    'sobre_nome' => 'required|max:30',
+                    'celular' => 'required|min:11|max:15',
+                    'email' => 'required|max:50|email',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => 'Maximo de 30 caracteres',
+                    'sobre_nome.required' => 'O campo sobre nome é obrigatório.',
+                    'sobre_nome.max' => 'Maximo de 30 caracteres',
+                    'celular.required' => 'O campo celular é obrigatório.',
+                    'celular.min' => 'Minimo de 11 caracteres',
+                    'celular.max' => 'Maximo de 15 caracteres',
+                    'email.required' => 'O campo email é obrigatório.',
+                    'email.max' => 'Maximo de 50 caracteres',
+                    'email.email' => 'Email inválido',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
 	protected $empresa_id = null;
 	public function __construct(){
+		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');
@@ -109,7 +145,7 @@ class ClienteDeliveryController extends Controller
 		return redirect('/clientesDelivery');
 	}
 
-	public function update(Request $request){
+	public function update(Request $request, $id = null){
 		
 		$cliente = ClienteDelivery::
 		where('id', $request->id)

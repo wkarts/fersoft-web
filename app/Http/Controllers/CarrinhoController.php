@@ -13,31 +13,77 @@ use App\Models\ProdutoPizza;
 use App\Models\ItemPizzaPedido;
 use App\Models\CodigoDesconto;
 use App\Models\FuncionamentoDelivery;
-use App\Models\BairroDelivery;
+use App\Models\BairroDeliveryLoja;
+use App\Models\Usuario;
 
 class CarrinhoController extends Controller
 {	
 	protected $config = null;
+    public function __construct()
+    {
+        $empresaId = session('empresa_id') ?? (session('user_logged')['empresa'] ?? null);
+        $this->config = $empresaId
+            ? DeliveryConfig::where('empresa_id', $empresaId)->first()
+            : DeliveryConfig::first();
 
-	public function __construct(){
-		$this->config = DeliveryConfig::first();
-		$this->middleware(function ($request, $next) {
-			$value = session('cliente_log');
-			if(!$value){
-				session()->flash("message_erro", "Voce precisa estar logado para comprar nossos produtos");
-				return redirect('/autenticar'); 
-			}
-			return $next($request);
-		});
-	}
+        // Fluxo histórico "fricção zero" preservado, mas sempre limitado à empresa da sessão.
+        $this->middleware(function ($request, $next) {
+            $clienteLog = session('cliente_log');
+            $telefone = session('telefone_cliente');
+            $empresaId = session('empresa_id');
+
+            if (!$clienteLog) {
+                if ($telefone && $empresaId) {
+                    $cliente = ClienteDelivery::where('empresa_id', $empresaId)
+                        ->where('celular', $telefone)
+                        ->first();
+
+                    if (!$cliente) {
+                        $cliente = ClienteDelivery::create([
+                            'nome' => 'Cliente',
+                            'sobre_nome' => '.',
+                            'celular' => $telefone,
+                            'email' => uniqid('delivery_', true) . '@friccaozero.local',
+                            'senha' => md5(uniqid((string) $empresaId, true)),
+                            'ativo' => 1,
+                            'token' => random_int(100000, 999999),
+                            'empresa_id' => $empresaId,
+                            'cpf' => '',
+                            'foto' => '',
+                            'uid' => uniqid('cli_', false),
+                        ]);
+                    }
+
+                    session(['cliente_log' => [
+                        'id' => $cliente->id,
+                        'nome' => $cliente->nome,
+                    ]]);
+                } else {
+                    if ($request->ajax()) {
+                        return response()->json(false, 401);
+                    }
+
+                    session()->flash('message_erro', 'Informe seu celular para pedir.');
+
+                    if ($empresaId) {
+                        return redirect('/pedir/' . $empresaId);
+                    }
+
+                    return redirect('/autenticar');
+                }
+            }
+
+            return $next($request);
+        });
+    }
 
 	public function carrinho(){
 
 		$clienteLog = session('cliente_log');
 		$pedido = PedidoDelivery::
-		where('estado', 'nv')
-		->where('valor_total', 0)
+		where('estado', 'novo')
 		->where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->first();
 
 		return view('delivery/carrinho')
@@ -60,23 +106,37 @@ class CarrinhoController extends Controller
 			$clienteLog = session('cliente_log');
 		//verifica se cliente nao possui pedido estado novo 'nv'
 
-			$pedido = PedidoDelivery::where('estado', 'nv')
+			$pedido = PedidoDelivery::where('estado', 'novo')
 			->where('cliente_id', $clienteLog['id'])
+			->where('empresa_id', session('empresa_id'))
 			->first();
 			if($pedido == null){ // cria um novo
+				$usuarioId = Usuario::where('empresa_id', session('empresa_id'))->where('ativo', 1)->orderBy('id')->value('id');
+				if (!$usuarioId) {
+					return response()->json(['erro' => 'Nenhum usuário ativo vinculado à empresa para registrar o pedido.'], 422);
+				}
+
 				$pedido = PedidoDelivery::create([
+					'empresa_id' => session('empresa_id'),
+					'usuario_id' => $usuarioId,
 					'cliente_id' => $clienteLog['id'],
 					'valor_total' => 0,
 					'telefone' => '',
 					'observacao' => '',
 					'forma_pagamento' => '',
-					'estado'=> 'nv',
+					'estado'=> 'novo',
 					'motivoEstado'=> '',
 					'endereco_id' => NULL,
 					'troco_para' => 0,
 					'desconto' => 0,
 					'cupom_id' => NULL,
-					'app' => false
+					'app' => false,
+					'valor_entrega' => 0,
+					'qr_code_base64' => '',
+					'qr_code' => '',
+					'horario_cricao' => date('H:i'),
+					'horario_leitura' => '',
+					'horario_entrega' => ''
 				]);
 			} // se nao usa o ja existe
 
@@ -123,24 +183,38 @@ class CarrinhoController extends Controller
 		//verifica se cliente nao possui pedido estado novo 'nv'
 
 		$pedido = PedidoDelivery
-		::where('estado', 'nv')
+		::where('estado', 'novo')
 		->where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->first();
 		if($pedido == null){ // cria um novo
 			
+			$usuarioId = Usuario::where('empresa_id', session('empresa_id'))->where('ativo', 1)->orderBy('id')->value('id');
+			if (!$usuarioId) {
+				return response()->json(['erro' => 'Nenhum usuário ativo vinculado à empresa para registrar o pedido.'], 422);
+			}
+
 			$pedido = PedidoDelivery::create([
+				'empresa_id' => session('empresa_id'),
+				'usuario_id' => $usuarioId,
 				'cliente_id' => $clienteLog['id'],
 				'valor_total' => 0,
 				'telefone' => '',
 				'observacao' => '',
 				'forma_pagamento' => '',
-				'estado'=> 'nv',
+				'estado'=> 'novo',
 				'motivoEstado'=> '',
 				'endereco_id' => NULL,
 				'troco_para' => 0,
 				'desconto' => 0,
 				'cupom_id' => NULL,
-				'app' => false
+				'app' => false,
+					'valor_entrega' => 0,
+					'qr_code_base64' => '',
+					'qr_code' => '',
+					'horario_cricao' => date('H:i'),
+					'horario_leitura' => '',
+					'horario_entrega' => ''
 				
 			]);
 		} // se nao usa o ja existe
@@ -184,14 +258,26 @@ class CarrinhoController extends Controller
 	}
 
 	public function removeItem($id){
-		$item = ItemPedidoDelivery::where('id', $id)->first();
+		$item = ItemPedidoDelivery::where('id', $id)
+		->whereHas('pedido', function($query){
+			$query->where('empresa_id', session('empresa_id'))
+			->where('cliente_id', session('cliente_log.id'))
+			->where('estado', 'novo');
+		})
+		->firstOrFail();
 		$item->delete();
 		echo json_encode($item);
 	}
 
 	public function refreshItem($id, $quantidade){
 		if($quantidade > 0){
-			$item = ItemPedidoDelivery::where('id', $id)->first();
+			$item = ItemPedidoDelivery::where('id', $id)
+			->whereHas('pedido', function($query){
+				$query->where('empresa_id', session('empresa_id'))
+				->where('cliente_id', session('cliente_log.id'))
+				->where('estado', 'novo');
+			})
+			->firstOrFail();
 			$item->quantidade = $quantidade;
 
 		//verifica os adicionais
@@ -220,9 +306,9 @@ class CarrinhoController extends Controller
 		if($funcionamento['status']){
 			$clienteLog = session('cliente_log');
 			$pedido = PedidoDelivery::
-			where('estado', 'nv')
-			->where('valor_total', '==', 0)
+			where('estado', 'novo')
 			->where('cliente_id', $clienteLog['id'])
+			->where('empresa_id', session('empresa_id'))
 			->first();
 
 			if($pedido){
@@ -254,7 +340,8 @@ class CarrinhoController extends Controller
 
 					$cliente = ClienteDelivery::
 					where('id', $clienteLog['id'])
-					->first();
+					->where('empresa_id', session('empresa_id'))
+					->firstOrFail();
 
 					$enderecos = $cliente->enderecos;
 
@@ -263,14 +350,16 @@ class CarrinhoController extends Controller
 
 						$ultimoPedido = PedidoDelivery::
 						where('cliente_id', $cliente->id)
+						->where('empresa_id', session('empresa_id'))
 						->where('valor_total', '>', 0)
 						->orderBy('id', 'desc')
 						->first();
 
 						$cartoes = $this->getPedidosPagSeguro($cliente->id);
-						$d = DeliveryConfig::first();
+						$d = DeliveryConfig::where('empresa_id', session('empresa_id'))->first();
 
-						$bairros = BairroDelivery::orderBy('nome')->get();
+						$bairros = BairroDeliveryLoja::where('empresa_id', session('empresa_id'))
+                        ->orderBy('nome')->get();
 
 						return view('delivery/forma_pagamento')
 						->with('pedido', $pedido)
@@ -314,6 +403,7 @@ class CarrinhoController extends Controller
 
 	private function getPedidosPagSeguro($clienteId){
 		$pedidos = PedidoDelivery::where('cliente_id', $clienteId)
+		->where('empresa_id', session('empresa_id'))
 		->get();
 		$arr = [];
 		$cartaoInserido = [];
@@ -335,7 +425,9 @@ class CarrinhoController extends Controller
 		$data = $request['data'];
 		$pedido = PedidoDelivery::
 		where('id', $data['pedido_id'])
-		->where('estado', 'nv')
+		->where('estado', 'novo')
+		->where('cliente_id', session('cliente_log.id'))
+		->where('empresa_id', session('empresa_id'))
 		->first();
 		if($pedido){
 			$total = 0;
@@ -369,8 +461,10 @@ class CarrinhoController extends Controller
 			}
 
 			if($data['endereco_id'] != 'balcao'){
-				// $config = DeliveryConfig::first();
 				$total += $data['valor_entrega'];
+				$pedido->valor_entrega = $data['valor_entrega'];
+			}else{
+				$pedido->valor_entrega = 0;
 			}
 
 			$pedido->forma_pagamento = $data['forma_pagamento'];
@@ -387,15 +481,60 @@ class CarrinhoController extends Controller
 				where('codigo', $data['cupom'])
 				->first();
 
-				if($cupom->cliente_id != null){
+				if($cupom && $cupom->cliente_id != null){
 					$cupom->ativo = false;
 					$cupom->save();
 				}
 
-				$pedido->cupom_id= $cupom ? $cupom->id : NULL;
+				$pedido->cupom_id = $cupom ? $cupom->id : NULL;
 			}
 
 			$pedido->save();
+
+			// Mantém o cadastro fricção-zero útil após o primeiro fechamento.
+			if(!empty($data['nome'])){
+				$nomeCompleto = trim((string) $data['nome']);
+				$partes = preg_split('/\s+/', $nomeCompleto, -1, PREG_SPLIT_NO_EMPTY);
+				$cliente = ClienteDelivery::where('empresa_id', session('empresa_id'))
+					->find($pedido->cliente_id);
+				if($cliente && count($partes) > 0){
+					$cliente->nome = substr(array_shift($partes), 0, 30);
+					$cliente->sobre_nome = substr(implode(' ', $partes), 0, 30);
+					$cliente->save();
+				}
+			}
+
+			// Recupera as notificações históricas usando exclusivamente a fachada Connect|API atual.
+			try{
+				$whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+				$empresaId = (int) session('empresa_id');
+				$nomeCliente = $pedido->cliente->nome ?? 'Cliente';
+
+				$textoCliente = "*🍔 PEDIDO RECEBIDO!*\n\nOlá *{$nomeCliente}*! Recebemos o pedido *#{$pedido->id}*.\n";
+				$textoCliente .= "Total: *R$ " . number_format((float) $pedido->valor_total, 2, ',', '.') . "*\n";
+				$textoCliente .= "Forma de pagamento: *" . strtoupper((string) $pedido->forma_pagamento) . "*\n\nAguarde a confirmação da loja.";
+
+				if(!empty($pedido->telefone)){
+					$numeroCliente = preg_replace('/[^0-9]/', '', $pedido->telefone);
+					if(!str_starts_with($numeroCliente, '55')){
+						$numeroCliente = '55' . $numeroCliente;
+					}
+					$whatsappUtil->sendMessage($numeroCliente, $textoCliente, $empresaId);
+				}
+
+				$configDelivery = DeliveryConfig::where('empresa_id', $empresaId)->first();
+				if($configDelivery && !empty($configDelivery->celular_notificacao)){
+					$numeroLoja = preg_replace('/[^0-9]/', '', $configDelivery->celular_notificacao);
+					if(!str_starts_with($numeroLoja, '55')){
+						$numeroLoja = '55' . $numeroLoja;
+					}
+					$textoLoja = "*🚨 NOVO PEDIDO #{$pedido->id}*\nCliente: {$nomeCliente}\nTotal: R$ " . number_format((float) $pedido->valor_total, 2, ',', '.');
+					$whatsappUtil->sendMessage($numeroLoja, $textoLoja, $empresaId);
+				}
+			}catch(\Throwable $e){
+				\Log::warning('Falha ao notificar novo pedido Delivery via Connect|API: ' . $e->getMessage());
+			}
+
 			echo json_encode($pedido);
 		}else{
 			echo json_encode(false);
@@ -406,6 +545,7 @@ class CarrinhoController extends Controller
 		$clienteLog = session('cliente_log');
 		$pedidos = PedidoDelivery::
 		where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->orderBy('id', 'desc')
 		->where('valor_total', '>', 0)
 		->get();
@@ -421,8 +561,9 @@ class CarrinhoController extends Controller
 		$clienteLog = session('cliente_log');
 
 		$pedidoTemp = PedidoDelivery
-		::where('estado', 'nv')
+		::where('estado', 'novo')
 		->where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->first();
 
 		if($pedidoTemp != null){ // delete pedido novo
@@ -431,25 +572,41 @@ class CarrinhoController extends Controller
 
 		$pedidoAnterior = PedidoDelivery::
 		where('id', $id)
+		->where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->first();
 
-		if($pedidoAnterior->estado != 'nv'){
+		if($pedidoAnterior->estado != 'novo'){
 
 			$clienteLog = session('cliente_log');
 
+			$usuarioId = Usuario::where('empresa_id', session('empresa_id'))->where('ativo', 1)->orderBy('id')->value('id');
+			if (!$usuarioId) {
+				session()->flash('message_erro', 'Nenhum usuário ativo vinculado à empresa para registrar o pedido.');
+				return redirect('/carrinho/historico');
+			}
+
 			$pedido = PedidoDelivery::create([
+				'empresa_id' => session('empresa_id'),
+				'usuario_id' => $usuarioId,
 				'cliente_id' => $pedidoAnterior->cliente_id,
 				'valor_total' => 0,
 				'telefone' => '',
 				'observacao' => '',
 				'forma_pagamento' => '',
-				'estado'=> 'nv',
+				'estado'=> 'novo',
 				'motivoEstado'=> '',
 				'endereco_id' => NULL,
 				'troco_para' => 0,
 				'cupom_id' => NULL,
 				'desconto' => 0,
-				'app' => false
+				'app' => false,
+					'valor_entrega' => 0,
+					'qr_code_base64' => '',
+					'qr_code' => '',
+					'horario_cricao' => date('H:i'),
+					'horario_leitura' => '',
+					'horario_entrega' => ''
 			]);
 
 
@@ -495,10 +652,11 @@ class CarrinhoController extends Controller
 	public function finalizado($id){
 		$clienteLog = session('cliente_log');
 		$pedido = PedidoDelivery::
-		where('estado', 'nv')
+		where('estado', 'novo')
 		->where('valor_total', '!=', 0)
 		->where('id', $id)
 		->where('cliente_id', $clienteLog['id'])
+		->where('empresa_id', session('empresa_id'))
 		->first();
 
 		if($pedido){
@@ -514,7 +672,7 @@ class CarrinhoController extends Controller
 	}
 
 	public function configDelivery(){
-		$d = DeliveryConfig::first();
+		$d = DeliveryConfig::where('empresa_id', session('empresa_id'))->first();
 		echo json_encode($d);
 	}
 
@@ -557,6 +715,7 @@ class CarrinhoController extends Controller
 
 		$pedido = PedidoDelivery::
 		where('cliente_id', $cliente)
+		->where('empresa_id', session('empresa_id'))
 		->where('cupom_id', $cupom->id)
 		->first();
 
@@ -567,7 +726,9 @@ class CarrinhoController extends Controller
 		$atual = strtotime(date('H:i'));
 		$dias = FuncionamentoDelivery::dias();
 		$hoje = $dias[date('w')];
-		$func = FuncionamentoDelivery::where('dia', $hoje)->first();
+		$func = FuncionamentoDelivery::where('dia', $hoje)
+		->where('empresa_id', session('empresa_id'))
+		->first();
 
 		if($func){
 			if($atual >= strtotime($func->inicio_expediente) && $atual < strtotime($func->fim_expediente) && $func->ativo){
@@ -582,7 +743,7 @@ class CarrinhoController extends Controller
 
 	public function getDadosCalculoEntrega(Request $request){
 		try{
-			$config = DeliveryConfig::first();
+			$config = DeliveryConfig::where('empresa_id', session('empresa_id'))->first();
 			if($config->usar_bairros == 0){
 				$latitude_local = $config->latitude;
 				$longitude_local = $config->longitude;
@@ -604,4 +765,26 @@ class CarrinhoController extends Controller
 	}
 
 
+
+
+    public function meusPedidos()
+    {
+        $clienteLog = session('cliente_log');
+        $empresaId = session('empresa_id');
+
+        if (!$clienteLog) {
+            return $empresaId ? redirect('/pedir/' . $empresaId) : redirect('/autenticar');
+        }
+
+        $pedidos = PedidoDelivery::where('cliente_id', $clienteLog['id'])
+            ->when($empresaId, function ($query) use ($empresaId) {
+                $query->where('empresa_id', $empresaId);
+            })
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return view('delivery.meus_pedidos', compact('pedidos'))
+            ->with('config', $this->config)
+            ->with('title', 'Meus Pedidos');
+    }
 }

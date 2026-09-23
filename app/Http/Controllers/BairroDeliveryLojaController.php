@@ -6,10 +6,37 @@ use Illuminate\Http\Request;
 use App\Models\BairroDeliveryLoja;
 use App\Models\BairroDelivery;
 use App\Models\DeliveryConfig;
-class BairroDeliveryLojaController extends Controller
+class BairroDeliveryLojaController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = BairroDeliveryLoja::class;
+    protected $resource = 'bairrosDeliveryLoja';
+    protected $formTitle = 'Bairros do Delivery';
+    protected $listView = 'bairros_loja.list';
+    protected $registerView = 'bairros_loja.register';
+    protected $redirectPage = '/bairrosDeliveryLoja';
+
+    public function rules(): array
+    {
+        return [
+                    'nome' => 'required|max:50',
+                    'valor_entrega' => 'required',
+                ];
+    }
+
+    public function messages(): array
+    {
+        return [
+                    'nome.required' => 'O campo nome é obrigatório.',
+                    'nome.max' => '50 caracteres maximos permitidos.',
+                    'valor_entrega.required' => 'O campo valor de entrega é obrigatório.',
+                ];
+    }
+    /* --- Fim contrato BaseController --- */
+
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -104,7 +131,7 @@ class BairroDeliveryLojaController extends Controller
 
     }
 
-    public function update(Request $request){
+    public function update(Request $request, $id = null){
         $bairro = new BairroDeliveryLoja();
         $request->merge(['valor_entrega' => str_replace(",", ".", $request->valor_entrega)]);
         

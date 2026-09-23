@@ -6,10 +6,30 @@ use Illuminate\Http\Request;
 use App\Models\CarrosselDelivery;
 use Illuminate\Support\Str;
 
-class CarrosselDeliveryController extends Controller
+class CarrosselDeliveryController extends BaseController
 {
+    /* --- Contrato obrigatório do BaseController --- */
+    protected $model = CarrosselDelivery::class;
+    protected $resource = 'carrosselDelivery';
+    protected $formTitle = 'Carrossel Delivery';
+    protected $listView = 'carroselDelivery.index';
+    protected $registerView = 'carroselDelivery.index';
+    protected $redirectPage = '/carrosselDelivery';
+
+    public function rules(): array
+    {
+        return [];
+    }
+
+    public function messages(): array
+    {
+        return [];
+    }
+    /* --- Fim contrato BaseController --- */
+
     protected $empresa_id = null;
     public function __construct(){
+		parent::__construct();
         if(!is_dir(public_path('carrossel_delivery'))){
             mkdir(public_path('carrossel_delivery'), 0777, true);
         }

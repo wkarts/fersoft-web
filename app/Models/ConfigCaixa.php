@@ -16,7 +16,7 @@ class ConfigCaixa extends BaseModel
 		'modelo_pdv', 'impressora_modelo', 'setar_quantidade', 'finalizar_fiscal',
 		'finalizar_nao_fiscal', 'tipos_pagamento', 'tipo_pagamento_padrao', 'exibe_produtos',
 		'botao_nao_fiscal', 'cupom_modelo', 'impressao_pre_venda', 'mensagem_padrao_cupom',
-		'exibe_modal_cartoes', 'imprimir_ticket_troca'
+		'exibe_modal_cartoes', 'imprimir_ticket_troca', 'impressora_nome', 'id_ifood', 'id_ze_delivery', 'id_anota_ai'
 	];
 
 	public static function getTiposPagamento(){

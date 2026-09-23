@@ -15,7 +15,7 @@ class DeliveryConfig extends BaseModel
 		'cidade_id', 'status', 'tipos_pagamento', 'tipo_divisao_pizza', 'tipo_entrega',
 		'pedido_minimo', 'mercadopago_public_key', 'mercadopago_access_token', 
 		'avaliacao_media', 'maximo_sabores_pizza', 'api_token', 'notificacao_novo_pedido',
-		'autenticacao_sms', 'confirmacao_pedido_cliente'
+		'autenticacao_sms', 'confirmacao_pedido_cliente', 'celular_notificacao', 'valor_minimo_pedido'
 	];
 
 	protected $appends = [
