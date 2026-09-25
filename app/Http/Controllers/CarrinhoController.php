@@ -640,8 +640,9 @@ class CarrinhoController extends Controller
 		$pedidos = PedidoDelivery::
 		where('empresa_id', $this->empresa_id)
 		->where('cliente_id', $clienteLog['id'])
-		->orderBy('id', 'desc')
 		->where('valor_total', '>', 0)
+		->where('forma_pagamento', '<>', '')
+		->orderBy('id', 'desc')
 		->get();
 
 		return view('delivery/historico')
@@ -723,11 +724,19 @@ class CarrinhoController extends Controller
 	}
 
 	public function finalizado($id){
-        $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', session('cliente_log.id'))->find($id);
+        $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)
+            ->where('cliente_id', session('cliente_log.id'))
+            ->where('valor_total', '>', 0)
+            ->where('forma_pagamento', '<>', '')
+            ->find($id);
 
         if(!$pedido) {
-            return redirect('/cardapio');
+            session()->flash('message_erro', 'Pedido não encontrado ou ainda não foi finalizado.');
+            return redirect('/carrinho/meus-pedidos');
         }
+
+        // Ao abrir um pedido válido, ele passa a ser o pedido acompanhado pelo atalho do menu.
+        session(['ultimo_pedido_id' => $pedido->id]);
 
         $valorEntrega = $pedido->valor_entrega ?? 0;
 
@@ -839,11 +848,14 @@ class CarrinhoController extends Controller
     $clienteLog = session('cliente_log');
     if(!$clienteLog) return redirect('/autenticar');
 
-    $pedidos = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', $clienteLog['id'])
+    // Não mistura carrinhos em montagem com pedidos efetivamente enviados.
+    $pedidos = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)
+                ->where('cliente_id', $clienteLog['id'])
+                ->where('valor_total', '>', 0)
+                ->where('forma_pagamento', '<>', '')
                 ->orderBy('id', 'desc')
                 ->get();
 
-    // Adicionamos o ->with('config', $this->config) para a tela não quebrar
     return view('delivery.meus_pedidos', compact('pedidos'))
         ->with('config', $this->config)
         ->with('title', 'Meus Pedidos');
