@@ -3886,6 +3886,7 @@ Route::group(['prefix' => '/carrinho'], function(){
     Route::get('/forma_pagamento/{cupom?}', 'CarrinhoController@forma_pagamento');
     Route::post('/finalizarPedido', 'CarrinhoController@finalizarPedido');
     Route::get('/finalizado/{id}', 'CarrinhoController@finalizado');
+    Route::get('/status/{id}', 'CarrinhoController@statusPedido');
     Route::get('/meus-pedidos', 'CarrinhoController@meusPedidos');
     Route::get('/configDelivery', 'CarrinhoController@configDelivery');
     Route::get('/historico', 'CarrinhoController@historico');
