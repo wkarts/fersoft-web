@@ -19,6 +19,14 @@ var TOKENCARTAO = '';
 var DADOSCALCULOENTREGA = null;
 DISTANCIA = 0;
 
+function formaPagamentoSelecionada(){
+	return $('input[name="gridRadios"]:checked').val() || '';
+}
+
+function enderecoSelecionadoAtual(){
+	return $('#endereco_selecionado').val() || enderecoSelecionado;
+}
+
 $(function(){
 	getDadosCalculoEntrega((res) => {
 
@@ -57,16 +65,17 @@ $(function(){
 		}
 	}
 
-	$.get(path + 'pagseguro/getSessao')
-	.done((success) => {
-		let token = success.id
-
-		let res = PagSeguroDirectPayment.setSessionId(token);
-
-	})
-	.fail((err) => {
-		console.log(err)
-	})
+	if($('#pagseguro').length > 0 && typeof PagSeguroDirectPayment !== 'undefined'){
+		$.get(path + 'pagseguro/getSessao')
+		.done((success) => {
+			if(success && success.id){
+				PagSeguroDirectPayment.setSessionId(success.id);
+			}
+		})
+		.fail((err) => {
+			console.log('Falha ao inicializar PagSeguro:', err);
+		});
+	}
 
 
 })
@@ -235,16 +244,15 @@ function calculaCupom(cupom){
 	})
 }
 
-$('#maquineta').click(() => {
+$('#maquineta, #pix').click(() => {
 	verificaBotaoFinalizarSemCartao();
 	$('#div_do_troco').css('display', 'none');
 })
+
 $('#pagseguro').click(() => {
 	verificaBotaoFinalizarSemCartao();
 
-	let formaPagamento = $('#maquineta').is(':checked') ? 'maquineta' :  
-	$('#dinheiro').is(':checked') ? 'dinheiro' : $('#pagseguro').is(':checked') ?
-	'pagseguro' : '';
+	let formaPagamento = formaPagamentoSelecionada();
 
 	let troco = $('#troco_para').val();
 	let telefone = $('#telefone').val();
@@ -353,6 +361,9 @@ $('#salvar_endereco').click(() => {
 })
 
 function set_endereco(id){
+	$('.card-selecionavel').removeClass('ativo');
+	$('#endereco_select_'+id).addClass('ativo');
+	$('#endereco_selecionado').val(id);
 	$('#endereco_select_'+enderecoSelecionado).css('background', '#fff');
 	$('#entrega-distante').css('display', 'none');
 	$('#frete-gratuito').css('display', 'none');
@@ -464,12 +475,11 @@ function set_endereco(id){
 
 
 $('#finalizar-venda').click(() => {
+	enderecoSelecionado = enderecoSelecionadoAtual();
   	console.log("ID do endereço selecionado:", enderecoSelecionado);
-	let formaPagamento = $('#maquineta').is(':checked') ? 'maquineta' :  
-	$('#dinheiro').is(':checked') ? 'dinheiro' : $('#pagseguro').is(':checked') ?
-	'pagseguro' : '';
+	let formaPagamento = formaPagamentoSelecionada();
 
-	let troco = $('#troco_para').val();
+	let troco = $('#troco_para').val() || '';
 	let telefone = $('#telefone').val();
 	let cupom = $('#cupom').val();
   	let nome_cliente = $('#nome-cliente').val();
@@ -504,7 +514,7 @@ $('#finalizar-venda').click(() => {
 
 	}
 
-	else if(formaPagamento == 'dinheiro' && troco.length == 0 || parseFloat(troco.replace(",", ".")) == 0){
+	else if(formaPagamento == 'dinheiro' && (troco.length == 0 || parseFloat(troco.replace(",", ".")) == 0)){
 
 		swal("Atenção!", "Por favor insira o valor de troco para!", "warning")
 	}
@@ -583,8 +593,17 @@ function getCurrentLocation(call){
 }
 
 
+let tentativasGoogleMaps = 0;
 function initMap(lat, lng){
+	if(typeof google === 'undefined' || !google.maps){
+		if(tentativasGoogleMaps < 20){
+			tentativasGoogleMaps++;
+			setTimeout(() => initMap(lat, lng), 250);
+		}
+		return;
+	}
 
+	tentativasGoogleMaps = 0;
 	LAT = lat;
 	LNG = lng;
 	const position = new google.maps.LatLng(lat, lng);
@@ -715,11 +734,9 @@ $('#finalizar-venda-cartao').click(() => {
 	getTokenCartao();
 	$('#icon-spin').css('display', 'inline-block')
 
-	let formaPagamento = $('#maquineta').is(':checked') ? 'maquineta' :  
-	$('#dinheiro').is(':checked') ? 'dinheiro' : $('#pagseguro').is(':checked') ?
-	'pagseguro' : '';
+	let formaPagamento = formaPagamentoSelecionada();
 
-	let troco = $('#troco_para').val();
+	let troco = $('#troco_para').val() || '';
 	let telefone = $('#telefone').val();
 	let cupom = $('#cupom').val();
 	let cpf = $('#cpf').val().replace("-", "").replace(".", "").replace(".", "");
