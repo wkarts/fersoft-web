@@ -117,20 +117,34 @@ function adicionar(){
 		observacao: observacao
 	};
 
-	$.post(path + "carrinho/addPizza", js
+	$.post("/carrinho/addPizza", js
 		)
 	.done(function(data) {
+        if (typeof data === 'string' && data !== '401' && data !== 'false') {
+            try { data = JSON.parse(data); } catch (e) {
+                swal("Erro", "Resposta inesperada. Reabra o link do cardápio.", "error");
+                return;
+            }
+        }
 		if(data == '401'){
-			swal("", "Você precisa estar logado", "error")
+			location.href = "/autenticar";
 		}
 		else if(data == 'false'){
 			swal("", "Você está com um pedido pendente, aguarde o processamento", "warning")
 
 		}else{
+            if (!data || !data.id) {
+                swal("Erro", "Não foi possível adicionar o produto.", "error");
+                return;
+            }
 			sucesso();
 		}
 	})
 	.fail( function(err) {
+        if (err.status === 401 || err.status === 419) {
+            location.href = '/autenticar';
+            return;
+        }
 		console.log(err)
 
 	});
@@ -141,6 +155,6 @@ function sucesso(){
 	$('#content').css('display', 'none');
 	$('#anime').css('display', 'block');
 	setTimeout(() => {
-		location.href = path + 'carrinho';
+		location.href = '/carrinho';
 	}, 3000)
 }

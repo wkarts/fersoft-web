@@ -104,7 +104,7 @@ class EnderecoDeliveryController extends Controller
             return response()->json(null, 401);
         }
 
-        $endereco = EnderecoDelivery::where('id', $request->endereco_id)
+        $endereco = EnderecoDelivery::where('id', $request->route('endereco_id') ?? $request->endereco_id)
             ->where('cliente_id', $cliente->id)
             ->first();
 
@@ -120,7 +120,7 @@ class EnderecoDeliveryController extends Controller
             return response()->json(0.00, 401);
         }
 
-        $endereco = EnderecoDelivery::where('id', $request->endereco_id)
+        $endereco = EnderecoDelivery::where('id', $request->route('endereco_id') ?? $request->endereco_id)
             ->where('cliente_id', $cliente->id)
             ->first();
 

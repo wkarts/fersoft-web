@@ -18,23 +18,48 @@ use App\Models\BairroDelivery;
 class CarrinhoController extends Controller
 {	
 	protected $config = null;
+    protected $empresa_id = null;
 
 	public function __construct(){
-		$this->config = DeliveryConfig::first();
 		
         // O NOVO PORTEIRO INTELIGENTE E BLINDADO (FRICÇÃO ZERO)
 		$this->middleware(function ($request, $next) {
 			$clienteLog = session('cliente_log');
             $telefone = session('telefone_cliente');
             $empresa_id = session('empresa_id'); // Pega a empresa atual
+            $this->empresa_id = $empresa_id;
+            $this->config = $empresa_id
+                ? DeliveryConfig::where('empresa_id', $empresa_id)->where('status', 1)
+                    ->whereHas('empresa', function ($query) { $query->where('status', 1); })->first()
+                : null;
+            if (!$this->config) {
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'Acesse pelo link da empresa.'], 404)
+                    : response('Cardápio indisponível. Acesse pelo link da empresa.', 404);
+            }
+            if ($clienteLog && !ClienteDelivery::where('id', $clienteLog['id'] ?? null)
+                ->where('empresa_id', $empresa_id)->where('ativo', 1)->exists()) {
+                session()->forget(['cliente_log', 'telefone_cliente', 'ultimo_pedido_id']);
+                $clienteLog = null;
+                $telefone = null;
+            }
 
 			if(!$clienteLog){
                 if($telefone){
+                    $telefoneNumeros = preg_replace('/[^0-9]/', '', (string) $telefone);
+                    if (!preg_match('/^[0-9]{10,13}$/', $telefoneNumeros)) {
+                        return $request->expectsJson()
+                            ? response()->json(['message' => 'Informe um telefone válido.'], 422)
+                            : redirect('/pedir/' . $empresa_id)->with('message_erro', 'Informe um telefone válido.');
+                    }
                     // Procura o cliente vinculado a ESTA empresa especificamente
-                    $cliente = \App\Models\ClienteDelivery::where('celular', $telefone)
+                    $cliente = \App\Models\ClienteDelivery::whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(celular, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?", [$telefoneNumeros])
                                 ->where('empresa_id', $empresa_id)
                                 ->first();
                     
+                    if ($cliente && !$cliente->ativo) {
+                        return response('Cadastro indisponível para pedidos.', 403);
+                    }
                     if(!$cliente){
                         $cliente = new \App\Models\ClienteDelivery();
                         $cliente->nome = 'Cliente';
@@ -45,10 +70,14 @@ class CarrinhoController extends Controller
                         $cliente->ativo = 1;
                         $cliente->token = rand(100000, 888888); 
                         $cliente->empresa_id = $empresa_id; // SALVA O ID DA EMPRESA!
+                        $cliente->cpf = '';
+                        $cliente->foto = '';
+                        $cliente->uid = uniqid('cli_', false);
                         $cliente->save(); 
                     }
 
                     // Força o login na sessão!
+                    session()->regenerate();
                     session(['cliente_log' => [
                         'id' => $cliente->id,
                         'nome' => $cliente->nome,
@@ -57,11 +86,10 @@ class CarrinhoController extends Controller
                 } else {
                     // Se a pessoa tentou hackear a URL sem celular
                     if($request->ajax()){
-                        echo json_encode(false);
-                        exit;
+                        return response()->json(['message' => 'Informe seu celular para pedir.'], 401);
                     }else{
                         session()->flash("message_erro", "Informe seu celular para pedir.");
-                        return redirect('/pedir/' . ($empresa_id ?? '1')); 
+                        return redirect('/pedir/' . $empresa_id);
                     }
                 }
 			}
@@ -76,7 +104,7 @@ class CarrinhoController extends Controller
           // O comando 'withoutGlobalScopes' é o segredo. Ele manda o Laravel ignorar
           // qualquer regra que esconda pedidos de clientes.
           // O 'with' garante que carregamos os itens mesmo com o filtro desligado.
-          $pedido = PedidoDelivery::withoutGlobalScopes()
+          $pedido = PedidoDelivery::withoutGlobalScopes()->where('empresa_id', $this->empresa_id)
               ->with(['itens' => function($query) {
                   $query->withoutGlobalScopes();
               }])
@@ -93,6 +121,16 @@ class CarrinhoController extends Controller
       }
 
 	public function add(Request $request){
+        $request->validate([
+            'produto_id' => 'required|integer',
+            'quantidade' => 'required|numeric|gt:0', 'observacao' => 'nullable|string|max:50',
+            'adicionais' => 'nullable|array', 'adicionais.*.id' => 'required|integer',
+        ]);
+        \App\Models\ProdutoDelivery::where('empresa_id', $this->empresa_id)->where('status', 1)->findOrFail($request->produto_id);
+        foreach ($request->input('adicionais', []) ?? [] as $adicional) {
+            \App\Models\ComplementoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($adicional['id']);
+        }
+
         $adicionais = $request['adicionais'];
         $produto_id = $request['produto_id'];
         $quantidade = $request['quantidade'];
@@ -101,11 +139,14 @@ class CarrinhoController extends Controller
         $clienteLog = session('cliente_log');
         $empresa_id = session('empresa_id'); 
         
-        $usuario_valido = \Illuminate\Support\Facades\DB::table('usuarios')->first();
-        $id_usuario = $usuario_valido ? $usuario_valido->id : 1;
+        $usuario_valido = \Illuminate\Support\Facades\DB::table('usuarios')->where('empresa_id', $empresa_id)->first();
+        if (!$usuario_valido) {
+            return response()->json(['message' => 'A loja não possui usuário configurado para o pedido.'], 422);
+        }
+        $id_usuario = $usuario_valido->id;
 
         // Impede a criação de carrinhos duplicados!
-        $pedido = PedidoDelivery::withoutGlobalScopes()
+        $pedido = PedidoDelivery::withoutGlobalScopes()->where('empresa_id', $this->empresa_id)
         ->where('estado', 'novo')
         ->where('cliente_id', $clienteLog['id'])
         ->orderBy('id', 'desc')
@@ -127,13 +168,19 @@ class CarrinhoController extends Controller
             $pedido->desconto = 0;
             $pedido->cupom_id = null;
             $pedido->app = false;
+            $pedido->valor_entrega = 0;
+            $pedido->qr_code_base64 = '';
+            $pedido->qr_code = '';
+            $pedido->horario_cricao = date('H:i');
+            $pedido->horario_leitura = '';
+            $pedido->horario_entrega = '';
             $pedido->save(); 
         } 
 
         if($pedido->estado == 'novo'){
           
           	// withoutGlobalScopes aqui garante que o produto será achado!
-          	$produto = \App\Models\ProdutoDelivery::withoutGlobalScopes()->find($produto_id);
+            $produto = \App\Models\ProdutoDelivery::withoutGlobalScopes()->where('empresa_id', $this->empresa_id)->where('status', 1)->find($produto_id);
             
             if(!$produto) {
                 echo json_encode(['error' => 'Produto não encontrado']);
@@ -177,6 +224,19 @@ class CarrinhoController extends Controller
 	}
 
 	public function addPizza(Request $request){
+        $request->validate([
+            'sabores' => 'required|array|min:1', 'sabores.*' => 'required|integer', 'tamanho' => 'required|integer',
+            'quantidade' => 'required|numeric|gt:0', 'observacao' => 'nullable|string|max:50',
+            'adicionais' => 'nullable|array', 'adicionais.*.id' => 'required|integer',
+        ]);
+        foreach ($request->sabores as $saborId) {
+            \App\Models\ProdutoDelivery::where('empresa_id', $this->empresa_id)->where('status', 1)->findOrFail($saborId);
+        }
+        \App\Models\TamanhoPizza::where('empresa_id', $this->empresa_id)->findOrFail($request->tamanho);
+        foreach ($request->input('adicionais', []) ?? [] as $adicional) {
+            \App\Models\ComplementoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($adicional['id']);
+        }
+
 		$adicionais = $request['adicionais'];
 		$sabores = $request['sabores'];
 		$quantidade = $request['quantidade'];
@@ -186,10 +246,13 @@ class CarrinhoController extends Controller
 		$clienteLog = session('cliente_log');
         $empresa_id = session('empresa_id'); 
         
-        $usuario_valido = \Illuminate\Support\Facades\DB::table('usuarios')->first();
-        $id_usuario = $usuario_valido ? $usuario_valido->id : 1;
+        $usuario_valido = \Illuminate\Support\Facades\DB::table('usuarios')->where('empresa_id', $empresa_id)->first();
+        if (!$usuario_valido) {
+            return response()->json(['message' => 'A loja não possui usuário configurado para o pedido.'], 422);
+        }
+        $id_usuario = $usuario_valido->id;
 
-		$pedido = PedidoDelivery::withoutGlobalScopes()
+		$pedido = PedidoDelivery::withoutGlobalScopes()->where('empresa_id', $this->empresa_id)
 		->where('estado', 'novo')
 		->where('cliente_id', $clienteLog['id'])
         ->orderBy('id', 'desc')
@@ -211,6 +274,12 @@ class CarrinhoController extends Controller
             $pedido->desconto = 0;
             $pedido->cupom_id = null;
             $pedido->app = false;
+            $pedido->valor_entrega = 0;
+            $pedido->qr_code_base64 = '';
+            $pedido->qr_code = '';
+            $pedido->horario_cricao = date('H:i');
+            $pedido->horario_leitura = '';
+            $pedido->horario_entrega = '';
             $pedido->save(); 
 		} 
 
@@ -223,6 +292,8 @@ class CarrinhoController extends Controller
             $item->observacao = $observacao ?? '';
             $item->quantidade = $quantidade;
             $item->tamanho_id = $tamanho;
+            // Sem snapshot: o preço continua calculado pelos sabores no fluxo existente.
+            $item->valor = 0;
             $item->save();
 
 			if($sabores){
@@ -252,7 +323,9 @@ class CarrinhoController extends Controller
   
 	public function refreshItem($id, $quantidade){
 		if($quantidade > 0){
-			$item = ItemPedidoDelivery::where('id', $id)->first();
+			$item = ItemPedidoDelivery::whereHas('pedido', function ($query) {
+                $query->where('empresa_id', $this->empresa_id)->where('cliente_id', session('cliente_log.id'))->where('estado', 'novo');
+            })->where('id', $id)->firstOrFail();
 			$item->quantidade = $quantidade;
 
 			foreach($item->itensAdicionais as $a){
@@ -279,7 +352,8 @@ class CarrinhoController extends Controller
 		if($funcionamento['status']){
 			$clienteLog = session('cliente_log');
 			$pedido = PedidoDelivery::
-			where('estado', 'novo')
+			where('empresa_id', $this->empresa_id)
+			->where('estado', 'novo')
 			//->where('valor_total', '==', 0)
 			->where('cliente_id', $clienteLog['id'])
 			->first();
@@ -311,13 +385,14 @@ class CarrinhoController extends Controller
 					$enderecos = $cliente->enderecos;
 
 					$ultimoPedido = PedidoDelivery::
-					where('cliente_id', $cliente->id)
+					where('empresa_id', $this->empresa_id)
+					->where('cliente_id', $cliente->id)
 					->where('valor_total', '>', 0)
 					->orderBy('id', 'desc')
 					->first();
 
 					$cartoes = $this->getPedidosPagSeguro($cliente->id);
-					$d = DeliveryConfig::first();
+					$d = $this->config;
 
 					$bairros = BairroDelivery::orderBy('nome')->get();
 
@@ -340,11 +415,11 @@ class CarrinhoController extends Controller
 					
 				}else{
 					session()->flash("message_erro", "Carrinho vazio!");
-					return redirect('/'); 
+					return redirect('/cardapio');
 				}
 			}else{
 				session()->flash("message_erro", "Carrinho vazio!");
-				return redirect('/'); 
+				return redirect('/cardapio');
 			}
 		}else{
 			if($funcionamento['funcionamento'] != null){
@@ -352,12 +427,12 @@ class CarrinhoController extends Controller
 			}else{
 				session()->flash("message_erro", "Não haverá delivery no dia de hoje!");
 			}
-			return redirect('/'); 
+			return redirect('/cardapio');
 		}
 	}
 
 	private function getPedidosPagSeguro($clienteId){
-		$pedidos = PedidoDelivery::where('cliente_id', $clienteId)->get();
+		$pedidos = PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', $clienteId)->get();
 		$arr = [];
 		$cartaoInserido = [];
 		foreach($pedidos as $p){
@@ -374,9 +449,15 @@ class CarrinhoController extends Controller
 	}
 
 	public function finalizarPedido(Request $request){
+        $request->validate(['data' => 'required|array', 'data.pedido_id' => 'required|integer', 'data.endereco_id' => 'required']);
+        if ($request->input('data.endereco_id') !== 'balcao') {
+            EnderecoDelivery::where('cliente_id', session('cliente_log.id'))->findOrFail($request->input('data.endereco_id'));
+        }
 		$data = $request['data'];
 		$pedido = PedidoDelivery::
-		where('id', $data['pedido_id'])
+		where('empresa_id', $this->empresa_id)
+		->where('id', $data['pedido_id'])
+        ->where('cliente_id', session('cliente_log.id'))
 		->where('estado', 'novo')
 		->first();
         
@@ -425,8 +506,9 @@ class CarrinhoController extends Controller
 			$pedido->desconto = $data['desconto'] ? str_replace(",", ".", $data['desconto']) : 0;
 
 			if($data['cupom'] != ''){
-				$cupom = CodigoDesconto::where('codigo', $data['cupom'])->first();
-				if($cupom->cliente_id != null){
+				$cupom = CodigoDesconto::where('empresa_id', $this->empresa_id)->where('codigo', $data['cupom'])->where('ativo', 1)
+                    ->where(function ($query) { $query->whereNull('cliente_id')->orWhere('cliente_id', session('cliente_log.id')); })->first();
+				if($cupom && $cupom->cliente_id != null){
 					$cupom->ativo = false;
 					$cupom->save();
 				}
@@ -556,7 +638,8 @@ class CarrinhoController extends Controller
 	public function historico(){
 		$clienteLog = session('cliente_log');
 		$pedidos = PedidoDelivery::
-		where('cliente_id', $clienteLog['id'])
+		where('empresa_id', $this->empresa_id)
+		->where('cliente_id', $clienteLog['id'])
 		->orderBy('id', 'desc')
 		->where('valor_total', '>', 0)
 		->get();
@@ -572,21 +655,24 @@ class CarrinhoController extends Controller
 		$clienteLog = session('cliente_log');
 
 		$pedidoTemp = PedidoDelivery
-		::where('estado', 'novo')
+		::where('empresa_id', $this->empresa_id)->where('estado', 'novo')
 		->where('cliente_id', $clienteLog['id'])
 		->first();
 
-		if($pedidoTemp != null){ 
+		$pedidoAnterior = PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', $clienteLog['id'])->where('id', $id)->firstOrFail();
+
+		if($pedidoTemp != null && $pedidoAnterior->estado != 'novo'){
 			$pedidoTemp->delete();
 		}
-
-		$pedidoAnterior = PedidoDelivery::where('id', $id)->first();
 
 		if($pedidoAnterior->estado != 'novo'){
 			$clienteLog = session('cliente_log');
 
 			$pedido = PedidoDelivery::create([
 				'cliente_id' => $pedidoAnterior->cliente_id,
+                'empresa_id' => $this->empresa_id,
+                'valor_entrega' => 0, 'qr_code_base64' => '', 'qr_code' => '',
+                'horario_cricao' => date('H:i'), 'horario_leitura' => '', 'horario_entrega' => '',
 				'valor_total' => 0,
 				'telefone' => '',
 				'observacao' => '',
@@ -607,7 +693,8 @@ class CarrinhoController extends Controller
 					'status' => false,
 					'observacao' => $i->observacao,
 					'quantidade' => $i->quantidade,
-					'tamanho_id' => $i->tamanho_id
+					'tamanho_id' => $i->tamanho_id,
+                    'valor' => $i->valor ?? 0
 				]);
 
 				if($i->tamanho != null){
@@ -636,7 +723,7 @@ class CarrinhoController extends Controller
 	}
 
 	public function finalizado($id){
-        $pedido = \App\Models\PedidoDelivery::find($id);
+        $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', session('cliente_log.id'))->find($id);
 
         if(!$pedido) {
             return redirect('/cardapio');
@@ -655,20 +742,21 @@ class CarrinhoController extends Controller
     }
   
 	public function configDelivery(){
-    $d = DeliveryConfig::first();
+    $d = $this->config;
     
     // Se por acaso a tabela estiver vazia, evita que o sistema quebre enviando um objeto em branco
     if (!$d) {
         return response()->json(['valor_km' => 0, 'valor_entrega' => 0], 200);
     }
 
-    return response()->json($d, 200);
+    return response()->json($d->only(['valor_km', 'valor_entrega', 'valor_entrega_gratis', 'entrega_gratis_ate', 'usar_bairros', 'maximo_km_entrega', 'latitude', 'longitude']), 200);
 }
 
 	public function cupons(){
 		$clienteLog = session('cliente_log');
 		$cupons = CodigoDesconto::
-		where('cliente_id', $clienteLog['id'])
+		where('empresa_id', $this->empresa_id)
+		->where('cliente_id', $clienteLog['id'])
 		->orderBy('id', 'desc')
 		->get();
 
@@ -681,7 +769,8 @@ class CarrinhoController extends Controller
 	public function cupom($codigo){
 		$clienteLog = session('cliente_log');
 		$cupom = CodigoDesconto::
-		where('codigo', $codigo)
+		where('empresa_id', $this->empresa_id)
+		->where('codigo', $codigo)
 		->where('ativo', true)
 		->first();
 
@@ -700,7 +789,8 @@ class CarrinhoController extends Controller
 
 	private function validaClienteNaoUsouCupom($cliente, $cupom){
 		$pedido = PedidoDelivery::
-		where('cliente_id', $cliente)
+		where('empresa_id', $this->empresa_id)
+		->where('cliente_id', $cliente)
 		->where('cupom_id', $cupom->id)
 		->first();
 		return $pedido == null ? false : true;
@@ -710,7 +800,7 @@ class CarrinhoController extends Controller
 		$atual = strtotime(date('H:i'));
 		$dias = FuncionamentoDelivery::dias();
 		$hoje = $dias[date('w')];
-		$func = FuncionamentoDelivery::where('dia', $hoje)->first();
+		$func = FuncionamentoDelivery::where('empresa_id', $this->empresa_id)->where('dia', $hoje)->first();
 
 		if($func){
 			if($atual >= strtotime($func->inicio_expediente) && $atual < strtotime($func->fim_expediente) && $func->ativo){
@@ -725,7 +815,7 @@ class CarrinhoController extends Controller
 
 	public function getDadosCalculoEntrega(Request $request){
 		try{
-			$config = DeliveryConfig::first();
+			$config = $this->config;
 			if($config->usar_bairros == 0){
 				$latitude_local = $config->latitude;
 				$longitude_local = $config->longitude;
@@ -747,9 +837,9 @@ class CarrinhoController extends Controller
   
   	public function meusPedidos() {
     $clienteLog = session('cliente_log');
-    if(!$clienteLog) return redirect('/login');
+    if(!$clienteLog) return redirect('/autenticar');
 
-    $pedidos = \App\Models\PedidoDelivery::where('cliente_id', $clienteLog['id'])
+    $pedidos = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->where('cliente_id', $clienteLog['id'])
                 ->orderBy('id', 'desc')
                 ->get();
 
@@ -762,7 +852,9 @@ class CarrinhoController extends Controller
     public function removeItem($id) {
         try {
             // 1. Busca o item no banco de dados usando o ID que veio da tela
-            $item = \App\Models\ItemPedidoDelivery::find($id);
+            $item = ItemPedidoDelivery::whereHas('pedido', function ($query) {
+                $query->where('empresa_id', $this->empresa_id)->where('cliente_id', session('cliente_log.id'))->where('estado', 'novo');
+            })->findOrFail($id);
 
             if ($item) {
                 $pedido = $item->pedido; // Guarda a referência do pedido para atualizar o total depois

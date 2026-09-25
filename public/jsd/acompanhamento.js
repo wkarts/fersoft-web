@@ -115,8 +115,8 @@ function adicionar(){
 	let quantidade = $('#quantidade').val();
 	let observacao = $('#observacao').val();
 
-    // A MÁGICA ESTÁ AQUI: Apontamos diretamente para a rota certa!
-    let url_certa = "https://homolog.fersofterp.com.br/carrinho/add";
+    // Usa a mesma instalação e a mesma sessão do cardápio aberto.
+    let url_certa = "/carrinho/add";
 
 	$.post(url_certa, 
 	{
@@ -127,15 +127,29 @@ function adicionar(){
 		observacao: observacao
 	})
 	.done(function(data) {
+        if (typeof data === 'string' && data !== '401' && data !== 'false') {
+            try { data = JSON.parse(data); } catch (e) {
+                swal("Erro", "Resposta inesperada. Reabra o link do cardápio.", "error");
+                return;
+            }
+        }
 		if(data == '401'){
-			location.href = "/";
+			location.href = "/autenticar";
 		}else if(data == 'false'){
 			swal("Ops!", "Você está com um pedido pendente, aguarde o processamento", "warning")
 		}else{
+            if (!data || !data.id) {
+                swal("Erro", "Não foi possível adicionar o produto.", "error");
+                return;
+            }
 			sucesso();
 		}
 	})
 	.fail( function(err) {
+        if (err.status === 401 || err.status === 419) {
+            location.href = '/autenticar';
+            return;
+        }
 		console.log("Erro na requisição:", err);
         swal("Erro", "Não foi possível conectar ao servidor.", "error");
 	});
@@ -146,7 +160,7 @@ function sucesso(){
 	$('#content').css('display', 'none');
 	$('#anime').css('display', 'block');
 	setTimeout(() => {
-		location.href = path + 'carrinho';
+		location.href = '/carrinho';
 	}, 3000)
 }
 

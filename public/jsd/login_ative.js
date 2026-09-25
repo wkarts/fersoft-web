@@ -75,7 +75,7 @@ function validaCodigo(){
 	})
 	.done((res) => {
 
-		location.href=path;
+		location.href="/cardapio";
 	})
 	.fail((err) => {
 		console.log(err)
