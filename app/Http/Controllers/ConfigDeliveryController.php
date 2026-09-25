@@ -7,6 +7,7 @@ use App\Models\DeliveryConfig;
 use App\Models\CidadeDelivery;
 use App\Models\DeliveryConfigGaleria;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ConfigDeliveryController extends BaseController
 {
@@ -40,6 +41,7 @@ class ConfigDeliveryController extends BaseController
                     'maximo_adicionais_pizza' => 'required',
                     'cidade_id' => 'required',
                     'tipo_entrega' => 'required',
+                    'public_link_mode' => 'nullable|in:auto,slug,hash,token',
                 ];
     }
 
@@ -106,16 +108,66 @@ class ConfigDeliveryController extends BaseController
 			$config->tipos_pagamento = json_decode($config->tipos_pagamento);
 
 		$cidades = CidadeDelivery::all();
+
+		$modoLinkPublico = $config->public_link_mode ?? 'auto';
+		$valorLinkPublico = $config->public_link_value ?? null;
+		$identificadorLinkPublico = $modoLinkPublico === 'auto' || !$valorLinkPublico
+			? $this->empresa_id
+			: $valorLinkPublico;
+
 		return view('configDelivery/index')
 		->with('config', $config)
 		->with('cidades', $cidades)
-		->with('linkPublico', url('/pedir/' . $this->empresa_id))
+		->with('linkPublico', url('/pedir/' . rawurlencode((string) $identificadorLinkPublico)))
+		->with('linkPublicoPadrao', url('/pedir/' . $this->empresa_id))
+		->with('modoLinkPublico', $modoLinkPublico)
+		->with('valorLinkPublico', $valorLinkPublico)
 		->with('title', 'Configurar Parametros de Delivery');
 	}
 
 
 	public function save(Request $request){
+		$configAtual = $request->id
+			? DeliveryConfig::where('empresa_id', $this->empresa_id)->where('id', $request->id)->first()
+			: null;
+
+		$modoLinkPublico = $request->input('public_link_mode', $configAtual->public_link_mode ?? 'auto');
+		if(!in_array($modoLinkPublico, ['auto', 'slug', 'hash', 'token'], true)){
+			$modoLinkPublico = 'auto';
+		}
+
+		$valorLinkPublico = null;
+		if($modoLinkPublico === 'slug'){
+			$valorLinkPublico = Str::slug((string) $request->public_link_value);
+			$request->merge(['public_link_value' => $valorLinkPublico]);
+		}
+
+		$request->merge(['public_link_mode' => $modoLinkPublico]);
 		$this->_validate($request);
+
+		if($modoLinkPublico === 'hash' || $modoLinkPublico === 'token'){
+			$manterAtual = $configAtual
+				&& $configAtual->public_link_mode === $modoLinkPublico
+				&& !empty($configAtual->public_link_value)
+				&& !$request->boolean('public_link_regenerate');
+
+			if($manterAtual){
+				$valorLinkPublico = $configAtual->public_link_value;
+			}else{
+				do{
+					$valorLinkPublico = $modoLinkPublico === 'hash'
+						? strtolower(Str::random(8))
+						: bin2hex(random_bytes(16));
+				}while(
+					DeliveryConfig::where('public_link_value', $valorLinkPublico)
+						->when($configAtual, function($query) use ($configAtual){
+							$query->where('id', '<>', $configAtual->id);
+						})
+						->exists()
+				);
+			}
+		}
+
 		$result = false;
 		$nomeImagem = "";
 		if($request->hasFile('file')){
@@ -170,6 +222,8 @@ class ConfigDeliveryController extends BaseController
 				'tipo_entrega' => $request->tipo_entrega,
 				'empresa_id' => $this->empresa_id,
 				'api_token' => $request->api_token ?? "",
+				'public_link_mode' => $modoLinkPublico,
+				'public_link_value' => $valorLinkPublico,
 				'logo' => $nomeImagem,
 				'tipos_pagamento' => json_encode($request->tipos_pagamento)
 			]);
@@ -222,6 +276,8 @@ class ConfigDeliveryController extends BaseController
 			$config->maximo_adicionais_pizza = $request->maximo_adicionais_pizza;
 			$config->cidade_id = $request->cidade_id;
 			$config->api_token = $request->api_token ?? "";
+			$config->public_link_mode = $modoLinkPublico;
+			$config->public_link_value = $valorLinkPublico;
 			$config->tipo_divisao_pizza = $request->tipo_divisao_pizza;
 			if($nomeImagem != ""){
 				$config->logo = $nomeImagem;
@@ -264,6 +320,16 @@ class ConfigDeliveryController extends BaseController
 			'maximo_adicionais_pizza' => 'required',
 			'cidade_id' => 'required',
 			'tipo_entrega' => 'required',
+			'public_link_mode' => 'nullable|in:auto,slug,hash,token',
+			'public_link_value' => [
+				'nullable',
+				'required_if:public_link_mode,slug',
+				'min:3',
+				'max:60',
+				'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+				'not_regex:/^[0-9]+$/',
+				Rule::unique('delivery_configs', 'public_link_value')->ignore($request->id ?: null),
+			],
 			'file' => $request->id == 0 ? 'required' : '',
 		];
 
@@ -301,6 +367,13 @@ class ConfigDeliveryController extends BaseController
 			'cidade_id.required' => 'Campo obrigatório.',
 			'file.required' => 'Logo é obrigatória.',
 			'tipo_entrega.required' => 'Campo obrigatório.',
+			'public_link_mode.in' => 'Selecione um tipo de link público válido.',
+			'public_link_value.required_if' => 'Informe o slug do link público.',
+			'public_link_value.min' => 'O slug precisa ter pelo menos 3 caracteres.',
+			'public_link_value.max' => 'O slug pode ter no máximo 60 caracteres.',
+			'public_link_value.regex' => 'Use apenas letras minúsculas, números e hífen no slug.',
+			'public_link_value.not_regex' => 'O slug não pode conter apenas números.',
+			'public_link_value.unique' => 'Este identificador de link público já está em uso.',
 		];
 		$this->validate($request, $rules, $messages);
 	}
