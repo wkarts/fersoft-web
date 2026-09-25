@@ -18,40 +18,10 @@ use App\Models\ClienteDelivery;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-class DeliveryConfigProdutoController extends BaseController
+class DeliveryConfigProdutoController extends Controller
 {
-    /* --- Contrato obrigatório do BaseController --- */
-    protected $model = ProdutoDelivery::class;
-    protected $resource = 'deliveryProduto';
-    protected $formTitle = 'Produtos Delivery';
-    protected $listView = 'produtoDelivery.list';
-    protected $registerView = 'produtoDelivery.register';
-    protected $redirectPage = '/deliveryProduto';
-
-    public function rules(): array
-    {
-        return [
-                    'ingredientes' => 'max:255',
-                    'descricao' => 'max:255',
-                    'descricao_curta' => 'max:50',
-                    'limite_diario' => 'required',
-                ];
-    }
-
-    public function messages(): array
-    {
-        return [
-                    'ingredientes.max' => '255 caracteres maximos permitidos.',
-                    'descricao.max' => '255 caracteres maximos permitidos.',
-                    'descricao_curta.max' => '50 caracteres maximos permitidos.',
-                    'limite_diario.required' => 'O campo limite diário é obrigatório',
-                ];
-    }
-    /* --- Fim contrato BaseController --- */
-
     protected $empresa_id = null;
     public function __construct(){
-		parent::__construct();
         $this->middleware(function ($request, $next) {
             $this->empresa_id = $request->empresa_id;
             $value = session('user_logged');
@@ -510,12 +480,12 @@ class DeliveryConfigProdutoController extends BaseController
         }
     }
 
-    public function update(Request $request, $id = null){
-    	$produto = new ProdutoDelivery();
+    public function update(Request $request){
+        $produto = new ProdutoDelivery();
 
-    	$id = $request->input('id');
-    	$resp = $produto
-    	->where('id', $id)->first(); 
+        $id = $request->input('id');
+        $resp = $produto
+        ->where('id', $id)->first(); 
 
         $this->_validate($request);
 
@@ -530,30 +500,34 @@ class DeliveryConfigProdutoController extends BaseController
         $resp->status = $request->input('status') ? true : false;
         $resp->tem_adicionais = $request->input('tem_adicionais') ? true : false;
 
-        // A view atual permite trocar a imagem durante a edição.
-        // Mantém o diretório canônico do Delivery e a galeria existente.
+        // =======================================================
+        // CORREÇÃO: LÓGICA DE UPLOAD DE IMAGEM INSERIDA AQUI!
+        // =======================================================
         if($request->hasFile('file')){
             $file = $request->file('file');
             $extensao = $file->getClientOriginalExtension();
             $nomeImagem = md5($file->getClientOriginalName()).".".$extensao;
 
+            // Move a imagem para a pasta correta
             $file->move(public_path('imagens_produtos'), $nomeImagem);
 
+            // Verifica se a galeria já tem uma imagem. Se sim, atualiza e apaga a antiga. Se não, cria.
             if(count($resp->galeria) > 0){
                 $img = $resp->galeria[0];
-                $arquivoAnterior = public_path('imagens_produtos/' . $img->path);
-                if($img->path != '' && file_exists($arquivoAnterior)){
-                    unlink($arquivoAnterior);
+                $public = env('SERVIDOR_WEB') ? 'public/' : '';
+                if($img->path != '' && file_exists($public . 'imagens_produtos/'.$img->path)){
+                    unlink($public . 'imagens_produtos/'.$img->path);
                 }
                 $img->path = $nomeImagem;
                 $img->save();
-            }else{
+            } else {
                 ImagensProdutoDelivery::create([
                     'produto_id' => $resp->id,
                     'path' => $nomeImagem
                 ]);
             }
         }
+        // =======================================================
 
         $controlUpdatePizza = [];
         foreach($resp->pizza as $p){
@@ -568,7 +542,6 @@ class DeliveryConfigProdutoController extends BaseController
             ->get();
             if(count($tamanhosPizza) > count($resp->pizza)){
             //precisa inserir tambem
-
                 foreach($tamanhosPizza as $t){
                     if(!in_array($t->id, $controlUpdatePizza)){
                     //entao insere
@@ -581,7 +554,6 @@ class DeliveryConfigProdutoController extends BaseController
                 }
             }
         }
-        
 
         $result = $resp->save();
         if($result){
@@ -592,7 +564,7 @@ class DeliveryConfigProdutoController extends BaseController
 
         return redirect('/deliveryProduto'); 
     }
-
+  
     public function delete($id){
         $produto = ProdutoDelivery
         ::where('id', $id)

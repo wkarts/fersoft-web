@@ -1,267 +1,168 @@
 @extends('delivery.default')
 @section('content')
 
-<div class="clearfix"></div>
+<div class="container" style="padding-top: 20px; padding-bottom: 120px;">
+    
+    <!-- CABEÇALHO COM RESUMO DA PIZZA -->
+    <div class="card-moderno mb-4">
+        <h2 style="font-size: 18px; font-weight: 800; margin-bottom: 5px;">
+            Montando sua Pizza
+        </h2>
+        <p style="font-size: 14px; color: var(--cor-texto-claro); margin: 0;">
+            {{ session('tamanho_pizza')['tamanho'] }} | {{ session('tamanho_pizza')['sabores'] }} sabor(es)
+        </p>
+    </div>
 
+    <!-- BUSCA MODERNA -->
+    <form action="/pizza/pesquisa" method="get" class="mb-4">
+        <div class="input-group">
+            <input type="text" name="pesquisa" class="form-control" placeholder="Pesquisar sabor..." required>
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary"><i class="fa fa-search"></i></button>
+            </div>
+        </div>
+        <input type="hidden" name="link" value="{{$_SERVER['REQUEST_URI']}}">
+    </form>
 
-<div class="main-banner-2">
+    <!-- LISTA DE SABORES DISPONÍVEIS -->
+    <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 15px; color: var(--cor-texto-escuro);">
+        Escolha os Sabores ({{count($saboresIncluidos)}} / {{session('tamanho_pizza')['sabores']}})
+    </h3>
+
+    @if(env("DIVISAO_VALOR_PIZZA") == 0)
+    <p style="font-size: 12px; color: var(--cor-primaria); margin-bottom: 15px;">*Prevalecerá o preço do sabor mais caro.</p>
+    @endif
+
+    <div class="row">
+        @foreach($pizzas as $p)
+            @if(isset($pesquisa) || $p->produto->categoria->id == $categoria)
+                @if($p->produto->status && $p->valor > 0)
+                    <div class="col-6 col-md-4 mb-3" onclick="select_pizza({{$p->produto}}, {{$p->produto->galeria}}, {{$p->produto->produto}})">
+                        <a href="{{ session('tamanho_pizza')['sabores'] > count($saboresIncluidos) ? '#add-pizza' : '#!' }}" style="text-decoration: none;">
+                            <div class="card-moderno p-0" style="overflow: hidden; {{ session('tamanho_pizza')['sabores'] == count($saboresIncluidos) ? 'opacity: 0.5;' : '' }}">
+                                @if(count($p->produto->galeria) > 0)
+                                    <img src="/imagens_produtos/{{$p->produto->galeria[0]->path}}" style="width: 100%; height: 120px; object-fit: cover;">
+                                @else
+                                    <img src="/imagens/sem-imagem.png" style="width: 100%; height: 120px; object-fit: cover;">
+                                @endif
+                                <div class="p-2">
+                                    <h4 style="font-size: 14px; font-weight: bold; margin: 0;">{{$p->produto->produto->nome}}</h4>
+                                    <span style="font-size: 13px; color: #10b981; font-weight: 700;">R${{$p->valor}}</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                @endif
+            @endif
+        @endforeach
+    </div>
+
+    <!-- SABORES ADICIONADOS (LISTA ELEGANTE) -->
+    @if(count($saboresIncluidos) > 0)
+        <h3 style="font-size: 16px; font-weight: 700; margin: 20px 0 15px 0;">Sabores Selecionados</h3>
+        @foreach($saboresIncluidos as $s)
+            <div class="card-moderno d-flex justify-content-between align-items-center p-3 mb-2">
+                <span style="font-weight: bold;">{{$s['produto']['nome']}}</span>
+                <a href="/pizza/removeSabor/{{$s['id']}}" style="color: #ef4444;"><i class="fa fa-trash"></i></a>
+            </div>
+        @endforeach
+    @endif
 
 </div>
 
-
-
-
-<section class="portfolio py-5">
-	<div class="container py-xl-5 py-lg-3">
-		<div class="title-section text-center mb-md-5 mb-4">
-			<h3 class="w3ls-title mb-3"><span>Pizzas</span></h3>
-			<p class="titile-para-text mx-auto">Selecionado 
-
-				<?php
-				$t = '';
-				$temp = explode("_", session('tamanho_pizza')['tamanho']);
-				if(sizeof($temp) > 1){
-					$t = "";
-					foreach($temp as $tp){
-						$t .= $tp . " ";
-					}
-				}else{
-					$t = session('tamanho_pizza')['tamanho'];
-				}
-				?>
-				{{$t}}
-
-				- 
-				{{session('tamanho_pizza')['sabores']}} {{session('tamanho_pizza')['sabores'] == 1 ? 
-			'sabor' : 'sabores'}}</p>
-
-		</div>
-		<form action="/pizza/pesquisa" method="get">
-			<div class="row">
-				<div class="col-lg-12 form-group">
-					<input type="text" class="form-control" name="pesquisa" placeholder="Pesquisar sabor" required="">
-				</div>
-				<input type="hidden" name="link" value="{{$_SERVER['REQUEST_URI']}}">
-			</div>
-			<button type="submit" class="btn submit-contact-main"><span class="fa fa-search mr-2"></span> Buscar</button>
-		</form>
-		<br>
-
-		<a href="/pizza/adicionais" type="button" id="finalizar-venda" class="btn btn-success btn-lg btn-block @if(count($saboresIncluidos) < session('tamanho_pizza')['sabores']) disabled @endif">
-			<span class="fa fa-check mr-2"></span> ADICIONAR <strong id="total">R$ {{number_format($valorPizza, 2)}}</strong>
-		</a>
-		<a href="#sabores" class="btn btn-warning btn-lg btn-block @if(count($saboresIncluidos) == 0) disabled @endif">
-			<span class="fa fa-cutlery mr-2"></span> VER SABORES ADICIONADOS 
-		</a>
-
-		@if(session()->has('message_sucesso'))
-		<br>
-		<div class="p-3 mb-2 bg-success text-white">{{ session()->get('message_sucesso') }}</div>
-		@endif
-
-		<?php $ativo = false; ?>
-		<br><br>
-		<div class="row">
-			<div class="col-lg-12">
-				<h3 class="w3ls-title mb-3">Selecione {{session('tamanho_pizza')['sabores'] == 1 ? 
-					'o' : 'os'}} {{session('tamanho_pizza')['sabores'] == 1 ? 
-				'sabor' : 'sabores'}}</h3>
-				@if(env("DIVISAO_VALOR_PIZZA") == 0)
-				<p style="color: red">*Prevalecerá o preço do sabor com maior valor</p>
-				@endif
-			</div>
-		</div>
-
-
-
-		<div class="row mt-4">
-
-			@foreach($pizzas as $p)
-			@if(isset($pesquisa) || $p->produto->categoria->id == $categoria)
-			@if($p->produto->status && $p->valor > 0)
-			<div class="col-md-4" 
-			onclick="select_pizza({{$p->produto}}, {{$p->produto->galeria}}, {{$p->produto->produto}})">
-			@if(session('tamanho_pizza')['sabores'] > count($saboresIncluidos))
-
-			
-			<a href="#add-pizza">
-				@else
-				<a href="#!">
-					@endif
-					<div @if(session('tamanho_pizza')['sabores'] == count($saboresIncluidos))style="opacity: 0.3" @endif class="gallery-demo" id="pizza_{{$p->produto->id}}">
-						@if(count($p->produto->galeria) > 0)
-						<img loading="lazy" src="/imagens_produtos/{{$p->produto->galeria[0]->path}}" 
-						alt="" style="height: 200px; width: 100%" class="img-fluid" />
-						@else
-						<img style="height: 200px; width: 100%" src="/imagens/sem-imagem.png" class="img-fluid" >
-						@endif
-
-						<h4 class="p-mask">{{$p->produto->produto->nome}} - 
-
-							<span>R${{$p->valor}}</span>
-
-						</h4>
-
-					</div>
-				</a>
-			</div>
-			<?php $ativo = true; ?>
-			@endif
-			@endif
-
-
-			@endforeach
-
-
-		</div>
-
-		<div class="title-section text-center mb-md-5 mb-4">
-			@if(isset($pesquisa) && count($pizzas) == 0)
-			<h3 class="w3ls-title mb-3 "><span>Nada encontrado!</span></h3>
-
-			@else
-			@if(!$ativo)
-			<h4 class="w3ls-title mb-3 "><span>Esta categoria ainda não possui produtos :(</span></h4>
-			@endif
-			@endif
-		</div>
-
-
-		<br>
-		@if(session('tamanho_pizza')['sabores'] == count($saboresIncluidos))
-		<div class="row">
-			<h3>Sabores escolhidos adicione ao carrinho!</h3>
-		</div>
-		
-		@endif
-
-	</div>
-
-
-</section>
-
-
-
-
-
-@if(count($saboresIncluidos) == 0)
-<div class="container py-xl-5 py-lg-3">
-	<div class="title-section text-center mb-md-5 mb-4">
-
-	</div>
-</div>
-@else
-
-
-<section class="blog_w3ls py-5" id="sabores">
-
-	<div class="container py-xl-5 py-lg-3 card">
-
-		<div class="title-section text-center mb-md-5 mb-4">
-			<h3 class="w3ls-title mb-3">Sabores Adicionados</h3>
-			<p class="titile-para-text mx-auto">Este são os sabores adicionados,
-
-				<span style="color: red">Faltando: {{session('tamanho_pizza')['sabores'] - count($saboresIncluidos)}}</span> para adicionar esta pizza ao carrinho
-			</p>
-
-		</div>
-
-		<div class="row">
-
-			
-			@foreach($saboresIncluidos as $s)
-			<div class="col-lg-4 col-md-6">
-				<div class="card border-0">
-					<div class="card-header p-0">
-
-
-						<a href="#!">
-							@if(count($s['galeria']) > 0)
-							<img src="/imagens_produtos/{{$s['galeria'][0]->path}}" 
-							alt="" style="height: 200px; width: 100%" class="img-fluid" />
-							@else
-							<img style="height: 200px; width: 100%" src="/imagens/sem-imagem.png" class="img-fluid" >
-							@endif
-
-
-						</a>
-
-					</div>
-					<div class="card-body text-center pt-5 mt-2">
-						<h5 class="blog-title card-title mb-2"><a href="single.html">{{$s['produto']['nome']}}</a></h5>
-						<div class="blog_w3icon border-top border-bottom py-1 mb-3">
-							<span>
-							{{$s['descricao']}}</span>
-						</div>
-						<p>{{$s['ingredientes']}}</p>
-						<a href="/pizza/removeSabor/{{$s['id']}}" class="btn btn-danger btn-block mb-4">Remover
-							<span class="fa fa-times" aria-hidden="true"></span>
-						</a>
-					</div>
-				</div>
-			</div>
-			@endforeach
-
-		</div>
-	</div>
-</section>
-
-@endif
-
-
-
-<a href="/pizza/adicionais" type="button" id="finalizar-venda" class="btn btn-success btn-lg btn-block @if(count($saboresIncluidos) < session('tamanho_pizza')['sabores'] )
-disabled
-@endif">
-<span class="fa fa-check mr-2"></span> ADICIONAR <strong id="total">R$ {{number_format($valorPizza, 2)}}</strong>
-</a>
-<br>
-
-
-<div id="add-pizza" class="pop-overlay active">
-	<div class="popup">
-
-		<form method="post" action="/pizza/adicionarSabor">
-			@csrf
-			<section class="" id="blog">
-				<div class="">
-					<div class="title-section text-center mb-md-5 mb-4">
-						<h3 class="w3ls-title mb-3">Adicionar sabor a pizza</h3>
-
-					</div>
-					<div class="row">
-						<!-- blog grid -->
-						<div class="col-lg-12 col-md-12">
-							<div class="card border-0">
-								<div class="card-header p-0">
-									<a href="single.html">
-										<img style="height: 200px; width: 100%" src="" id="img" class="card-img-bottom img-fluid" alt="image">
-									</a>
-
-								</div>
-								<div class="card-body text-center pt-5 mt-2">
-									<h5 class="blog-title card-title mb-2" id="sabor"></h5>
-									<div class="blog_w3icon border-top border-bottom py-1 mb-3">
-										<span id="descricao"></span>
-									</div>
-									<p id="ingredientes"></p>
-
-									<input type="hidden" id="pizza_id" name="pizza_id" value="">
-									<input type="hidden" id="link" name="link" value="{{isset($link) ? $link : ''}}">
-									<button type="submit" class="btn btn-danger btn-block mb-4">Adicionar
-									</button>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
-		</form>
-
-
-		<a class="close" href="#!">×</a>
-	</div>
+<!-- BOTÃO FLUTUANTE DE FINALIZAR -->
+<div style="position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 10px; background: white; border-top: 2px solid #f1f5f9; z-index: 1000; box-shadow: 0 -5px 15px rgba(0,0,0,0.08);">
+    <div class="container">
+        @if(count($saboresIncluidos) < session('tamanho_pizza')['sabores'])
+            <button class="btn btn-secondary btn-block" style="padding: 16px; font-weight: bold; border-radius: 12px; cursor: not-allowed; opacity: 0.6;">
+                Selecione {{ session('tamanho_pizza')['sabores'] }} sabores
+            </button>
+        @else
+            <a href="/pizza/adicionais" class="btn btn-success btn-block" style="padding: 16px; font-weight: 800; border-radius: 12px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; text-decoration: none; background-color: #10b981 !important;">
+                <span>Continuar (Adicionais)</span>
+                <strong>R$ {{number_format($valorPizza, 2, ',', '.')}}</strong>
+            </a>
+        @endif
+    </div>
 </div>
 
-@endsection	
+<!-- MODAL DE ADIÇÃO DE SABOR (ESTILO MODERNO) -->
+<div id="add-pizza" class="pop-overlay">
+    <div class="popup" style="border-radius: 16px;">
+        <form method="post" action="/pizza/adicionarSabor">
+            @csrf
+            <div class="text-center p-3">
+                <img src="" id="img" style="width: 100%; height: 180px; object-fit: cover; border-radius: 12px;">
+                <h4 class="mt-3" id="sabor" style="font-weight: 800;"></h4>
+                <p id="descricao" style="font-size: 13px; color: #666;"></p>
+                <input type="hidden" id="pizza_id" name="pizza_id">
+                <input type="hidden" name="link" value="{{$_SERVER['REQUEST_URI']}}">
+                <button type="submit" class="btn-principal mt-3">Confirmar Sabor</button>
+            </div>
+        </form>
+        <a class="close" href="#!">×</a>
+    </div>
+</div>
+<style>
+    /* 1. Estilização dos Cards de Sabor */
+    .card-opcao {
+        padding: 20px !important;
+        margin-bottom: 15px !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        cursor: pointer;
+    }
+    
+    .card-opcao:has(input:checked) {
+        border-color: #ea1d2c !important;
+        background-color: #fff5f5 !important;
+    }
 
+    /* 2. Esconde o radio button padrão */
+    .sr-only { 
+        position: absolute; width: 1px; height: 1px; overflow: hidden; 
+    }
+
+    /* 3. Bolinha de seleção */
+    .radio-indicator {
+        width: 24px; height: 24px; border-radius: 50%; border: 2px solid #cbd5e1;
+        transition: 0.2s;
+    }
+    .card-opcao:has(input:checked) .radio-indicator {
+        border: 7px solid #ea1d2c;
+    }
+
+    /* 4. Estilização do Botão Fixo no Rodapé */
+    .btn-continuar {
+        width: 100%;
+        padding: 18px;
+        font-size: 18px;
+        font-weight: 800;
+        border-radius: 12px;
+        text-transform: uppercase;
+        border: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-decoration: none;
+        transition: 0.3s;
+    }
+    .btn-ativo { background-color: #10b981 !important; color: white !important; }
+    .btn-inativo { background-color: #94a3b8 !important; color: white !important; cursor: not-allowed; }
+</style>
+
+<div style="position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px; background: white; border-top: 2px solid #f1f5f9; z-index: 1000; box-shadow: 0 -5px 15px rgba(0,0,0,0.08);">
+    <div class="container">
+        @if(count($saboresIncluidos) < session('tamanho_pizza')['sabores'])
+            <div class="btn-continuar btn-inativo">
+                <span>Selecione {{ session('tamanho_pizza')['sabores'] }} sabor(es)</span>
+            </div>
+        @else
+            <a href="/pizza/adicionais" class="btn-continuar btn-ativo">
+                <span>Continuar (Adicionais)</span>
+                <strong>R$ {{number_format($valorPizza, 2, ',', '.')}}</strong>
+            </a>
+        @endif
+    </div>
+</div>
+@endsection

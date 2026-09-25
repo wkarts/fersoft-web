@@ -18,24 +18,15 @@ use App\Models\ItemPedidoDelivery;
 use App\Models\EnderecoDelivery;
 use App\Models\PedidoDelivery;
 use App\Models\BairroDelivery;
-use App\Models\BairroDeliveryLoja;
 use App\Models\CategoriaMasterDelivery;
 use App\Models\FuncionamentoDelivery;
 
 class DeliveryController extends Controller
 {
     protected $config = null;
-    protected $empresa_id = null;
-    public function __construct()
-    {
-        // Delivery é fluxo público: não herda BaseController porque não usa user_logged.
-        // Mantém a empresa do link/sessão como escopo canônico do cardápio.
-        $empresaId = session('empresa_id') ?? (session('user_logged')['empresa'] ?? null);
-        $this->empresa_id = $empresaId ? (int) $empresaId : null;
 
-        $this->config = $empresaId
-            ? DeliveryConfig::where('empresa_id', $empresaId)->first()
-            : DeliveryConfig::first();
+    public function __construct(){
+        $this->config = DeliveryConfig::first();
     }
 
     public function index(){
@@ -49,114 +40,87 @@ class DeliveryController extends Controller
         session()->forget('tamanho_pizza');
         session()->forget('sabores');
         $categorias = CategoriaMasterDelivery::all();
-        $destaques = ProdutoDelivery::
-        where('destaque', true)
-        ->where('status', true)
-        ->get();
+        $destaques = ProdutoDelivery::where('destaque', true)->where('status', true)->get();
 
         $dataHoje = date('Y-m-d');
         $categoriasMaster = CategoriaMasterDelivery::all();
 
-        return view('multi_delivery/index')
+        return view('multi_delivery.index')
         ->with('categorias', $categorias)
         ->with('categoriasMaster', $categoriasMaster)
         ->with('destaques', $destaques)
         ->with('config', $this->config)
         ->with('tokenJs', true)
-        ->with('cliente_logado', $clienteLog['nome'])
+        ->with('cliente_logado', $clienteLog['nome'] ?? '')
         ->with('title', 'INICIO');
     }
 
     public function cardapio(){
-
         $funcionamento = $this->funcionamento();
+        
         if(!$funcionamento['status']){
             if($funcionamento['funcionamento'] != null){
                 session()->flash("message_erro", "Delivery das " .$funcionamento['funcionamento']->inicio_expediente. " às ".$funcionamento['funcionamento']->fim_expediente);
-
             }else{
                 session()->flash("message_erro", "Não haverá delivery no dia de hoje!");
             }
-            return redirect('/');
+            return back(); 
         }
-        $value = session('cliente_log');
-        if($value){
-            session()->forget('tamanho_pizza');
-            session()->forget('sabores');
-            $categorias = CategoriaProdutoDelivery::where('empresa_id', $this->empresa_id)->get();
 
-            return view('delivery/categorias')
-            ->with('categorias', $categorias)
-            ->with('config', $this->config)
-            ->with('tokenJs', true)
-            ->with('title', 'CARDÁPIO');
-        }else{
-            session()->flash("message_erro", "Voce precisa estar logado para comprar nossos produtos");
-            return redirect('/autenticar');
-        }
+        session()->forget('tamanho_pizza');
+        session()->forget('sabores');
+        
+        $categorias = \App\Models\CategoriaProdutoDelivery::all();
+        $destaques = \App\Models\ProdutoDelivery::where('destaque', true)->where('status', true)->get();
+
+        return view('delivery.index')
+        ->with('categorias', $categorias)
+        ->with('destaques', $destaques)
+        ->with('config', $this->config)
+        ->with('tokenJs', true)
+        ->with('title', 'CARDÁPIO');
     }
 
     public function produtos($id){
-
         $funcionamento = $this->funcionamento();
         if(!$funcionamento['status']){
             if($funcionamento['funcionamento'] != null){
                 session()->flash("message_erro", "Delivery das " .$funcionamento['funcionamento']->inicio_expediente. " às ".$funcionamento['funcionamento']->fim_expediente);
-
             }else{
                 session()->flash("message_erro", "Não haverá delivery no dia de hoje!");
             }
             return redirect('/');
         }
 
-        $value = session('cliente_log');
-        if($value){
-            $categoria = CategoriaProdutoDelivery::where('id', $id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
+        // Acesso direto à categoria
+        $categoria = CategoriaProdutoDelivery::where('id', $id)->first();
 
-            if(strpos(strtolower($categoria->nome), 'izza') !== false){
-
-                $tamanhos = TamanhoPizza::where('empresa_id', $this->empresa_id)->get();
-
-                return view('delivery/tipoPizza')
-                ->with('tamanhos', $tamanhos)
-                ->with('config', $this->config)
-                ->with('categoria', $categoria)
-                ->with('title', 'TIPO DA PIZZA');
-
-            }else{
-                return view('delivery/produtos')
-                ->with('produtos', $categoria->produtos)
-                ->with('categoria', $categoria)
-                ->with('config', $this->config)
-                ->with('title', 'PRODUTOS');
-            }
+        if(strpos(strtolower($categoria->nome), 'izza') !== false){
+            $tamanhos = TamanhoPizza::where('empresa_id', session('empresa_id'))->get();
+            return view('delivery.tipoPizza')
+            ->with('tamanhos', $tamanhos)
+            ->with('config', $this->config)
+            ->with('categoria', $categoria)
+            ->with('title', 'TIPO DA PIZZA');
+        }else{
+            return view('delivery.produtos')
+            ->with('produtos', $categoria->produtos)
+            ->with('categoria', $categoria)
+            ->with('config', $this->config)
+            ->with('title', 'PRODUTOS');
         }
-        else{
-            session()->flash("message_erro", "Voce precisa estar logado para comprar nossos produtos");
-            return redirect('/autenticar');
-        }
-
     }
 
     public function verProduto($id){
-
-        $produto = ProdutoDelivery
-        ::where('id', $id)
-        ->where('empresa_id', $this->empresa_id)
-        ->firstOrFail();
+        $produto = ProdutoDelivery::where('id', $id)->first();
 
         return view('delivery/ver_produto')
         ->with('produto', $produto)
         ->with('config', $this->config)
         ->with('title', 'ADICIONAR');
-
-
     }
 
     public function escolherSabores(Request $request){
-
         if($request->tipo){
             $tipo = $request->tipo;
             $tamanho = explode("-", $tipo)[0];
@@ -170,13 +134,8 @@ class DeliveryController extends Controller
 
             session(['tamanho_pizza' => $session]);
 
-
-            $t = TamanhoPizza::
-            where('nome', $tamanho)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
+            $t = TamanhoPizza::where('nome', $tamanho)->first();
             $tamanho = session('tamanho_pizza');
-
             $sabores = session('sabores');
 
             if(empty($sabores) && $request->produto > 0){
@@ -186,26 +145,21 @@ class DeliveryController extends Controller
                 session(['sabores' => $session]);
                 $sabores = session('sabores');
                 if($auxSabor == 1){
-                    return redirect('/pizza/adicionais');
+                    // ATENÇÃO: Verifique se essa rota está liberada no web.php
+                    return redirect('/pizza/adicionais'); 
                 }
             }
 
-
             $saboresIncluidos = [];
-            $valorPizza;
             $somaValores = 0;
             $valorPizza = 0;
             $maiorValor = 0;
+
             if($sabores){
                 foreach($sabores as $s){
-                    $p = ProdutoDelivery::
-                    where('id', $s)
-                    ->where('empresa_id', $this->empresa_id)
-                    ->firstOrFail();
-
+                    $p = ProdutoDelivery::where('id', $s)->first();
                     $p->produto;
                     $p->galeria;
-
 
                     foreach($p->pizza as $pz){
                         if($tamanho['tamanho'] == $pz->tamanho->nome){
@@ -241,11 +195,6 @@ class DeliveryController extends Controller
 
     public function pesquisa(Request $request){
         $pesquisa = $request->input('pesquisa');
-    // $pizzas = ProdutoDelivery::
-    // select('produto_pizzas.*')
-    // ->join('produto_deliveries', 'produto_pizzas.produto_id', '=', 'produto_deliveries.id')
-    // ->join('produtos', 'produtos.id', '=', 'produto_deliveries.produto_id')
-    // ->where('produtos.nome', 'LIKE', "%$pesquisa%")->get();
         $tamanho = session('tamanho_pizza');
         $produtos = ProdutoPizza::
         select('produto_pizzas.*')
@@ -253,7 +202,6 @@ class DeliveryController extends Controller
         ->join('tamanho_pizzas', 'produto_pizzas.tamanho_id', '=', 'tamanho_pizzas.id')
         ->join('produtos', 'produtos.id', '=', 'produto_deliveries.produto_id')
         ->where('produtos.nome', 'LIKE', "%$pesquisa%")
-        ->where('produto_deliveries.empresa_id', $this->empresa_id)
         ->where('tamanho_pizzas.nome', $tamanho['tamanho'])
         ->get();
 
@@ -264,10 +212,7 @@ class DeliveryController extends Controller
         $maiorValor = 0;
         if($sabores){
             foreach($sabores as $s){
-                $p = ProdutoDelivery::
-                where('id', $s)
-                ->first();
-
+                $p = ProdutoDelivery::where('id', $s)->first();
                 $p->produto;
                 $p->galeria;
                 $valor = 0;
@@ -302,30 +247,26 @@ class DeliveryController extends Controller
     }
 
     public function adicionais(){
-    //Pizza
-        $value = session('cliente_log');
-        if($value){
-            $sabores = session('sabores');
-            $tamanho = session('tamanho_pizza');
-            $saboresIncluidos = [];
-            $tamanhoId = 0;
+        $sabores = session('sabores');
+        $tamanho = session('tamanho_pizza');
+        $saboresIncluidos = [];
+        $tamanhoId = 0;
 
-            $maiorValor = 0;
-            $somaValores = 0;
-            if($sabores){
-                foreach($sabores as $s){
-                    $p = ProdutoDelivery::
-                    select('produto_deliveries.*')
-                    ->join('produto_pizzas', 'produto_pizzas.produto_id', '=', 'produto_deliveries.id')
-                    ->join('tamanho_pizzas', 'produto_pizzas.tamanho_id', '=', 'tamanho_pizzas.id')
-                    ->where('produto_deliveries.id', $s)
-                    ->where('produto_deliveries.empresa_id', $this->empresa_id)
-                    ->where('tamanho_pizzas.nome', $tamanho['tamanho'])
-                    ->first();
+        $maiorValor = 0;
+        $somaValores = 0;
+        if($sabores){
+            foreach($sabores as $s){
+                $p = ProdutoDelivery::
+                select('produto_deliveries.*')
+                ->join('produto_pizzas', 'produto_pizzas.produto_id', '=', 'produto_deliveries.id')
+                ->join('tamanho_pizzas', 'produto_pizzas.tamanho_id', '=', 'tamanho_pizzas.id')
+                ->where('produto_deliveries.id', $s)
+                ->where('tamanho_pizzas.nome', $tamanho['tamanho'])
+                ->first();
 
+                if($p){
                     $p->produto;
                     $p->galeria;
-
                     array_push($saboresIncluidos, $p);
 
                     foreach($p->pizza as $t){
@@ -338,53 +279,46 @@ class DeliveryController extends Controller
                         }
                     }
                 }
-                if(env("DIVISAO_VALOR_PIZZA") == 1){
-                    $maiorValor = number_format(($somaValores/sizeof($sabores)),2);
-                }
             }
+            if(env("DIVISAO_VALOR_PIZZA") == 1 && sizeof($sabores) > 0){
+                $maiorValor = number_format(($somaValores/sizeof($sabores)),2);
+            }
+        }
 
+        $produto = $saboresIncluidos[0] ?? null;
+        if(!$produto) return redirect('/');
 
-            $produto = $saboresIncluidos[0];
+        $add = $produto->categoria->adicionais;
+        $tamanhoStr = substr($tamanho['tamanho'], 0, 1);
 
-            $add = $produto->categoria->adicionais;
-            $tamanho = substr($tamanho['tamanho'], 0, 1);
+        $adicionais = [];
 
-            $adicionais = [];
+        foreach($add as $a){
+            $nome = $a->complemento->nome;
+            $ex = explode('>', $nome);
 
-            foreach($add as $a){
-                $nome = $a->complemento->nome;
-                $ex = explode('>', $nome);
-
-                if(sizeof($ex) > 1){
-                    if(strtolower($ex[0]) == strtolower($tamanho)){
-                        array_push($adicionais, $a);
-                    }
-                }else{
+            if(sizeof($ex) > 1){
+                if(strtolower($ex[0]) == strtolower($tamanhoStr)){
                     array_push($adicionais, $a);
                 }
-
+            }else{
+                array_push($adicionais, $a);
             }
-
-            return view('delivery/adicionalPizza')
-            ->with('maiorValor', $maiorValor)
-            ->with('saboresIncluidos', $saboresIncluidos)
-            ->with('acompanhamentoPizza', true)
-            ->with('sabores', $sabores)
-            ->with('tamanho', $tamanhoId)
-            ->with('adicionais', $adicionais)
-            ->with('config', $this->config)
-            ->with('title', 'Adicionais para Pizza');
-        }else{
-            session()->flash("message_erro", "Voce precisa estar logado para comprar nossos produtos");
-            return redirect('/autenticar');
         }
-    }
 
+        return view('delivery/adicionalPizza')
+        ->with('maiorValor', $maiorValor)
+        ->with('saboresIncluidos', $saboresIncluidos)
+        ->with('acompanhamentoPizza', true)
+        ->with('sabores', $sabores)
+        ->with('tamanho', $tamanhoId)
+        ->with('adicionais', $adicionais)
+        ->with('config', $this->config)
+        ->with('title', 'Adicionais para Pizza');
+    }
+  
     public function pizzas(Request $request){
-        $categorias = CategoriaProdutoDelivery::
-        where('nome', 'like', '%izza%')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+        $categorias = CategoriaProdutoDelivery::where('nome', 'like', '%izza%')->get();
         $produtos = [];
         foreach($categorias as $categoria){
             foreach($categoria->produtos as $p){
@@ -395,25 +329,20 @@ class DeliveryController extends Controller
                            $p->tamanhoValor = $pp->valor;
                        }
                    }
-
                } else{
                  $p->produto;
                  $p->tamanhoValor = 0;
              }
-
              array_push($produtos, $p);
          }
      }
-
      echo json_encode($produtos);
  }
-
 
  public function adicionarSabor(Request $request){
     $sabores = session('sabores');
     if($sabores){
         array_push($sabores, $request->pizza_id);
-
         session(['sabores' => $sabores]);
     }else{
         $session = [
@@ -427,7 +356,6 @@ class DeliveryController extends Controller
         return redirect($link);
     else
         return redirect()->back();
-
 }
 
 public function removeSabor($id){
@@ -459,18 +387,12 @@ public function verificaPizzaAdicionada(Request $request){
 }
 
 public function acompanhamento($id){
-
-    $value = session('cliente_log');
-    if($value){
-        $produto = ProdutoDelivery::where('id', $id)
-        ->where('empresa_id', $this->empresa_id)
-        ->firstOrFail();
+        $produto = ProdutoDelivery::where('id', $id)->first();
 
         $funcionamento = $this->funcionamento();
         if(!$funcionamento['status']){
             if($funcionamento['funcionamento'] != null){
                 session()->flash("message_erro", "Delivery das " .$funcionamento['funcionamento']->inicio_expediente. " às ".$funcionamento['funcionamento']->fim_expediente);
-
             }else{
                 session()->flash("message_erro", "Não haverá delivery no dia de hoje!");
             }
@@ -478,8 +400,7 @@ public function acompanhamento($id){
         }
 
         if(strpos(strtolower($produto->categoria->nome), 'izza') !== false){
-
-            $tamanhos = TamanhoPizza::where('empresa_id', $this->empresa_id)->get();
+            $tamanhos = TamanhoPizza::where('empresa_id', session('empresa_id'))->get();
 
             return view('delivery/tipoPizza')
             ->with('tamanhos', $tamanhos)
@@ -488,7 +409,6 @@ public function acompanhamento($id){
             ->with('categoria', $produto->categoria)
             ->with('title', 'TIPO DA PIZZA');
         }else{
-
             return view('delivery/acompanhamentos')
             ->with('produto', $produto)
             ->with('acompanhamento', true)
@@ -496,11 +416,7 @@ public function acompanhamento($id){
             ->with('config', $this->config)
             ->with('title', 'ACOMPANHAMENTO');
         }
-    }else{
-        session()->flash("message_erro", "Voce precisa estar logado para comprar nossos produtos");
-        return redirect('/autenticar');
     }
-}
 
 public function login(){
     return view('delivery/login')
@@ -517,39 +433,30 @@ private function setaMascaraPhone($phone){
 }
 
 public function autenticar(Request $request){
-
     $mailPhone = $request->mail_phone;
     $mailPhone = str_replace(" ", "", $mailPhone);
     $senha = md5($request->senha);
     $cliente = null;
     if(is_numeric($mailPhone)){
-
         if(strlen($mailPhone) != 11){
             session()->flash('message_erro_telefone', 'Digite o telefone seguindo este padrao de exemplo 43999998888 - 11 Digitos.');
             return redirect("/autenticar");
         }
-
         $cliente = ClienteDelivery::where('celular', $this->setaMascaraPhone($mailPhone))
-        ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
         ->where('senha', $senha)
         ->first();
-
     }else{
         $cliente = ClienteDelivery::where('email', $mailPhone)
-        ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
         ->where('senha', $senha)
         ->first();
     }
     if($cliente == null){
-
         session()->flash('message_erro', 'Credenciais inválidas.');
         return redirect('/autenticar');
     }else{
-
         if(env("AUTENTICACAO_SMS") == 0 && env("AUTENTICACAO_EMAIL") == 0){
             $cliente->ativo = 1;
             $cliente->save();
-
             $session = [
                 'id' => $cliente->id,
                 'nome' => $cliente->nome,
@@ -558,14 +465,11 @@ public function autenticar(Request $request){
             session()->flash("message_sucesso", "Bem vindo ". $cliente->nome);
             return redirect('/');
         }
-
         if($cliente->ativo == 0){
-
             $celular = $cliente->celular;
             $celular = str_replace("-", "", $celular);
             $celular = str_replace(" ", "", $celular);
             if(env("AUTENTICACAO_SMS") == 1) $this->sendSms($celular, $cliente->token);
-
             if(env("AUTENTICACAO_EMAIL") == 1) $this->sendEmailLink($cliente->email, $cliente->token);
             return view('delivery/ativar')
             ->with('config', $this->config)
@@ -581,40 +485,29 @@ public function autenticar(Request $request){
             session()->flash("message_sucesso", "Bem vindo ". $cliente->nome);
             return redirect('/');
         }
-
     }
-
 }
 
 public function refreshToken(Request $request){
-    $cliente = ClienteDelivery::where('id', $request->id)
-    ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-    ->firstOrFail();
+    $cliente = ClienteDelivery::where('id', $request->id)->first();
     $cod = rand(100000, 888888);
-
     $celular = $cliente->celular;
     $celular = str_replace(" ", "", $celular);
     $celular = str_replace("-", "", $celular);
     if(env("AUTENTICACAO_SMS") == 1) $this->sendSms($celular, $cod);
-    // $this->sendEmailCod($cliente->email, $cod);
     if(env("AUTENTICACAO_EMAIL") == 1 && env("SERVIDOR_WEB_TYPE") == 1) $this->sendEmailLink($cliente->email, $cod);
     $cliente->token = $cod;
     if($cliente->save())
         return response()->json($cliente, 200);
     else
         return response()->json(false, 204);
-
 }
-
-
 
 public function logoff(){
     session()->forget('cliente_log');
-
     session()->flash('message_erro', 'Logoff realizado.');
     return redirect("/autenticar");
 }
-
 
 public function registro(){
     $clienteLog = session('cliente_log');
@@ -629,19 +522,14 @@ public function registro(){
 }
 
 public function salvarRegistro(Request $request){
-
     $this->_validate($request);
     $cod = rand(100000, 888888);
     $request->merge([ 'senha' => md5($request->senha)]);
     $request->merge([ 'ativo' => false]);
     $request->merge([ 'token' => $cod]);
-    if($this->empresa_id){
-        $request->merge(['empresa_id' => $this->empresa_id]);
-    }
 
     $result = ClienteDelivery::create($request->all());
     if($result){
-
         $celular = $request->celular;
         $celular = str_replace(" ", "", $celular);
         $celular = str_replace("-", "", $celular);
@@ -652,9 +540,7 @@ public function salvarRegistro(Request $request){
         else if(env("AUTENTICACAO_EMAIL") == 1) {
             $this->sendEmailLink($request->email, $cod);
         }else{
-            $cliente = ClienteDelivery::where('id', $result->id)
-            ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-            ->firstOrFail();
+            $cliente = ClienteDelivery::find($result->id);
             $session = [
                 'id' => $cliente->id,
                 'nome' => $cliente->nome,
@@ -665,13 +551,11 @@ public function salvarRegistro(Request $request){
             session()->flash("message_sucesso", "Bem vindo ". $cliente->nome);
             return redirect('/');
         }
-
         return view('delivery/autenticarCliente')
         ->with('config', $this->config)
         ->with('celular', $celular)
         ->with('cadastro_ative', true)
         ->with('title', 'AUTENTICAR');
-
     }else{
         session()->flash('message_erro', 'Erro ao se registrar!');
         return redirect('/');
@@ -698,7 +582,6 @@ private function sendEmailCod($email, $cod){
     });
 }
 
-
 public function validaToken(Request $request){
     $token = $request->codToken;
     $celular = $request->celular;
@@ -708,9 +591,7 @@ public function validaToken(Request $request){
     else
         $validCelular = $celular;
 
-    $cliente = ClienteDelivery::where('celular', $validCelular)
-    ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-    ->first();
+    $cliente = ClienteDelivery::where('celular', $validCelular)->first();
 
     if($cliente->token == $token){
         $cliente->ativo = true;
@@ -742,7 +623,6 @@ private function _validate(Request $request){
         'celular' => ['required','min:13', 'max:15', new CelularDup],
         'email' => ['required', 'max:50','email', new EmailDup],
         'senha_confirma' => 'required'
-
     ];
 
     $messages = [
@@ -773,25 +653,16 @@ public function recuperarSenha(){
 
 public function enviarSenha(Request $request){
     $mailPhone = $request->mail_phone;
-
     $mailPhone = str_replace(" ", "", $mailPhone);
-
     $cliente = null;
     if(is_numeric($mailPhone)){
-
         if(strlen($mailPhone) != 11){
             session()->flash('message_erro_telefone', 'Digite o telefone seguindo este padrao de exemplo 43999998888 - 11 Digitos.');
             return redirect("/autenticar/esqueceu_a_senha");
         }
-
-        $cliente = ClienteDelivery::where('celular', $this->setaMascaraPhone($mailPhone))
-        ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-        ->first();
-
+        $cliente = ClienteDelivery::where('celular', $this->setaMascaraPhone($mailPhone))->first();
     }else{
-        $cliente = ClienteDelivery::where('email', $mailPhone)
-        ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-        ->first();
+        $cliente = ClienteDelivery::where('email', $mailPhone)->first();
     }
 
     if($cliente == null){
@@ -800,7 +671,6 @@ public function enviarSenha(Request $request){
     }else{
         $newPass = $this->randomPassword();
         if(env("AUTENTICACAO_SMS") == 1) {
-
             $this->sendSmsSenha($mailPhone, $newPass);
             $cliente->senha = md5($newPass);
             $cliente->save();
@@ -808,13 +678,10 @@ public function enviarSenha(Request $request){
             return redirect('/autenticar');
         }
         if(env("AUTENTICACAO_EMAIL") == 1 && env("SERVIDOR_WEB_TYPE") == 1) {
-
             Mail::send('mail.nova_senha', ['senha' => $newPass], function($m) use ($cliente){
-
                 $nomeEmail = env('MAIL_NAME');
                 $nomeEmail = str_replace("_", " ", $nomeEmail);
                 $m->from(env('MAIL_USERNAME'), $nomeEmail);
-
                 $m->subject('recuperacao de senha');
                 $m->to($cliente->email);
             });
@@ -826,10 +693,7 @@ public function enviarSenha(Request $request){
             session()->flash('message_sucesso', 'Nada configurado.');
             return redirect('/autenticar');
         }
-
-
     }
-
 }
 
 private function sendSmsSenha($phone, $cod){
@@ -854,9 +718,7 @@ private function randomPassword() {
 }
 
 public function saveTokenWeb(Request $request){
-    $tk = TokenWeb::
-    where('token', $request->token)
-    ->first();
+    $tk = TokenWeb::where('token', $request->token)->first();
 
     if($tk == null){
         $res = TokenWeb::create([
@@ -864,7 +726,6 @@ public function saveTokenWeb(Request $request){
             'cliente_id' => $request->user > 0 ? $request->user : null
         ]);
         echo json_encode('insert');
-
     }else{
         if($request->user > 0){
             $tk->cliente_id = $request->user;
@@ -885,10 +746,7 @@ private function sendEmailLink($email, $cod){
 }
 
 public function autenticarClienteEmail($cod){
-
-    $clientes = ClienteDelivery::when($this->empresa_id, function($query){
-        $query->where('empresa_id', $this->empresa_id);
-    })->get();
+    $clientes = ClienteDelivery::all();
     $cliente = null;
     foreach($clientes as $c){
         if(md5("$c->token-$c->email") == $cod){
@@ -909,18 +767,13 @@ public function autenticarClienteEmail($cod){
     }else{
         echo "Erro";
     }
-
 }
 
 private function funcionamento(){
     $atual = strtotime(date('H:i'));
     $dias = FuncionamentoDelivery::dias();
     $hoje = $dias[date('w')];
-    $func = FuncionamentoDelivery::where('dia', $hoje)
-    ->when($this->empresa_id, function($query){
-        $query->where('empresa_id', $this->empresa_id);
-    })
-    ->first();
+    $func = FuncionamentoDelivery::where('dia', $hoje)->first();
 
     if($func){
         if($atual >= strtotime($func->inicio_expediente) && $atual < strtotime($func->fim_expediente) && $func->ativo){
@@ -934,11 +787,10 @@ private function funcionamento(){
 }
 
 public function rotaEntrega($id){
-
-    $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->find($id);
+    $pedido = PedidoDelivery::find($id);
     $endereco = $pedido->endereco;
 
-    $config = $this->empresa_id ? DeliveryConfig::where('empresa_id', $this->empresa_id)->first() : DeliveryConfig::first();
+    $config = DeliveryConfig::first();
 
     if($endereco != null){
         return view('clienteDelivery/enderecoMap2')
@@ -954,7 +806,7 @@ public function rotaEntrega($id){
 public function infos(){
     $clienteLog = session('cliente_log');
     if($clienteLog){
-        $cliente = ClienteDelivery::where('empresa_id', $this->empresa_id)->find($clienteLog['id']);
+        $cliente = ClienteDelivery::find($clienteLog['id']);
 
         return view('delivery/infos')
         ->with('cliente', $cliente)
@@ -969,20 +821,13 @@ public function infos(){
 
 public function atualizarSenha(Request $request){
     try{
-        $clienteLog = session('cliente_log');
-        if(!$clienteLog || (int)$clienteLog['id'] !== (int)$request->id){
-            return response()->json("Não autorizado", 403);
-        }
-        $cliente = ClienteDelivery::where('id', $request->id)
-        ->when($this->empresa_id, function($query){ $query->where('empresa_id', $this->empresa_id); })
-        ->firstOrFail();
+        $cliente = ClienteDelivery::find($request->id);
         $novaSenha = md5($request->senha);
         $cliente->senha = $novaSenha;
         $cliente->save();
         return response()->json($novaSenha, 200);
     }catch(\Exception $e){
         return response()->json("Erro", 404);
-
     }
 }
 
@@ -996,9 +841,7 @@ public function alterarEndereco($id){
             session()->flash("message_erro", "Nada encontrado!!");
             return redirect('/info');
         }else{
-
-            $bairros = BairroDeliveryLoja::where('empresa_id', $this->empresa_id)
-            ->orderBy('nome')->get();
+            $bairros = BairroDelivery::orderBy('nome')->get();
 
             return view('delivery/alterar_endereco')
             ->with('config', $this->config)
@@ -1014,40 +857,22 @@ public function alterarEndereco($id){
 
 public function updateEndereco(Request $request){
     try{
-        $clienteLog = session('cliente_log');
-        if(!$clienteLog){
-            return redirect('/autenticar');
-        }
-
-        $cliente = ClienteDelivery::where('id', $clienteLog['id'])
-        ->where('empresa_id', $this->empresa_id)
-        ->firstOrFail();
-
-        $endereco = EnderecoDelivery::where('id', $request->endereco_id)
-        ->where('cliente_id', $cliente->id)
-        ->firstOrFail();
-
+        $endereco = EnderecoDelivery::find($request->endereco_id);
         $endereco->rua = $request->rua;
         $endereco->numero = $request->numero;
         $endereco->referencia = $request->referencia;
         if($request->bairro_id){
-            $bairro = BairroDeliveryLoja::where('id', $request->bairro_id)
-            ->where('empresa_id', $this->empresa_id)
-            ->firstOrFail();
-            $endereco->bairro_id = $bairro->id;
-            $endereco->bairro = $bairro->nome;
+            $endereco->bairro_id = $request->bairro_id;
         }else{
             $endereco->bairro = $request->bairro;
         }
         $endereco->save();
-        session()->flash("message_sucesso", "Endereço atualizado!!");
+        session()->flash("message_sucesso", "Endereço atualziado!!");
         return redirect('/info');
 
     }catch(\Exception $e){
-        session()->flash("message_erro", "Não foi possível atualizar o endereço.");
-        return redirect('/info');
+
     }
 }
-
 
 }
