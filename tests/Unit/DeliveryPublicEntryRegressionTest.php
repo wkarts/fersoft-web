@@ -6,43 +6,29 @@ use Tests\TestCase;
 
 class DeliveryPublicEntryRegressionTest extends TestCase
 {
-    public function test_delivery_config_status_does_not_block_historical_public_entry(): void
+    public function test_delivery_config_status_does_not_block_public_entry_or_cart(): void
     {
-        $controller = file_get_contents(app_path('Http/Controllers/DeliveryController.php'));
+        $deliveryController = file_get_contents(app_path('Http/Controllers/DeliveryController.php'));
+        $cartController = file_get_contents(app_path('Http/Controllers/CarrinhoController.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
 
         $this->assertStringNotContainsString(
             "DeliveryConfig::where('empresa_id', \$this->empresa_id)->where('status', 1)",
-            $controller
+            $deliveryController
+        );
+
+        $this->assertStringNotContainsString(
+            "DeliveryConfig::where('empresa_id', \$empresa_id)->where('status', 1)",
+            $cartController
         );
 
         $this->assertStringNotContainsString(
             "DeliveryConfig::where('empresa_id', \$empresa->id)->where('status', 1)",
             $routes
         );
-
-        $this->assertStringContainsString(
-            "DeliveryConfig::where('empresa_id', \$empresa->id)->first()",
-            $routes
-        );
     }
 
-    public function test_config_delivery_exposes_existing_company_public_link_without_migration(): void
-    {
-        $controller = file_get_contents(app_path('Http/Controllers/ConfigDeliveryController.php'));
-        $view = file_get_contents(resource_path('views/configDelivery/index.blade.php'));
-
-        $this->assertStringContainsString(
-            "url('/pedir/' . \$this->empresa_id)",
-            $controller
-        );
-
-        $this->assertStringContainsString('Link público do cardápio', $view);
-        $this->assertStringContainsString('delivery_public_link', $view);
-        $this->assertStringContainsString('Abrir cardápio', $view);
-    }
-
-    public function test_direct_cardapio_still_requires_company_context_instead_of_guessing_first_company(): void
+    public function test_direct_cardapio_requires_company_and_whatsapp_context(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/DeliveryController.php'));
 
@@ -56,9 +42,79 @@ class DeliveryPublicEntryRegressionTest extends TestCase
             $controller
         );
 
-        $this->assertStringNotContainsString(
-            "\$this->config = DeliveryConfig::first();\n                return \$next(\$request);\n            }\n\n            \$this->empresa_id = session('empresa_id');\n            \$this->config = DeliveryConfig::first();",
+        $this->assertStringContainsString(
+            "!session('telefone_cliente') && !session('cliente_log')",
             $controller
+        );
+
+        $this->assertStringContainsString(
+            'Você precisa informar um WhatsApp para continuar.',
+            $controller
+        );
+    }
+
+    public function test_public_link_is_not_a_free_form_full_url(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/ConfigDeliveryController.php'));
+        $view = file_get_contents(resource_path('views/configDelivery/index.blade.php'));
+
+        $this->assertStringContainsString(
+            "url('/pedir/' . rawurlencode((string) \$identificadorLinkPublico))",
+            $controller
+        );
+
+        $this->assertStringContainsString('name="public_link_mode"', $view);
+        $this->assertStringContainsString('name="public_link_value"', $view);
+        $this->assertStringContainsString('id="delivery_public_link"', $view);
+        $this->assertStringContainsString('readonly', $view);
+        $this->assertStringContainsString('Padrão automático (empresa)', $view);
+        $this->assertStringContainsString('Slug personalizado', $view);
+        $this->assertStringContainsString('Hash curto automático', $view);
+        $this->assertStringContainsString('Token automático', $view);
+        $this->assertStringContainsString('Link padrão permanente:', $view);
+    }
+
+    public function test_public_link_modes_are_persisted_with_safe_defaults(): void
+    {
+        $model = file_get_contents(app_path('Models/DeliveryConfig.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ConfigDeliveryController.php'));
+        $migration = file_get_contents(
+            database_path('migrations/2026_09_25_162500_add_public_link_fields_to_delivery_configs_table.php')
+        );
+
+        $this->assertStringContainsString("'public_link_mode', 'public_link_value'", $model);
+        $this->assertStringContainsString("'public_link_mode' => 'nullable|in:auto,slug,hash,token'", $controller);
+        $this->assertStringContainsString("Str::slug((string) \$request->public_link_value)", $controller);
+        $this->assertStringContainsString("strtolower(Str::random(8))", $controller);
+        $this->assertStringContainsString("bin2hex(random_bytes(16))", $controller);
+
+        $this->assertStringContainsString("->default('auto')", $migration);
+        $this->assertStringContainsString("->nullable()", $migration);
+        $this->assertStringContainsString("delivery_configs_public_link_value_unique", $migration);
+    }
+
+    public function test_routes_resolve_custom_identifier_and_keep_company_id_link(): void
+    {
+        $routes = file_get_contents(base_path('routes/web.php'));
+
+        $this->assertStringContainsString(
+            "->where('public_link_value', \$parametro)",
+            $routes
+        );
+
+        $this->assertStringContainsString(
+            "if (ctype_digit((string) \$parametro))",
+            $routes
+        );
+
+        $this->assertStringContainsString(
+            "->where('id', (int) \$parametro)",
+            $routes
+        );
+
+        $this->assertStringContainsString(
+            "return redirect('/pedir/' . rawurlencode((string) \$parametro))",
+            $routes
         );
     }
 }
