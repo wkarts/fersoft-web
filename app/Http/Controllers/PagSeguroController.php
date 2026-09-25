@@ -217,7 +217,7 @@ class PagSeguroController extends Controller
 
 		$pedido = PedidoDelivery::
 		where('id', $data['pedido_id'])
-		->where('estado', 'nv')
+		->where('estado', 'novo')
 		->first();
 		if($pedido){
 			$total = 0;
@@ -288,6 +288,7 @@ class PagSeguroController extends Controller
 			}
 
 			$pedido->save();
+            session(['ultimo_pedido_id' => $pedido->id]);
 
 			$pagseguro = PedidoPagSeguro::create(
 				[
@@ -465,7 +466,7 @@ class PagSeguroController extends Controller
 	public function incluiPedidoCartaoApp($request, $referencia, $codigoTransacao, $status){
 		$pedido = PedidoDelivery::
 		where('id', $request->pedido)
-		->where('estado', 'nv')
+		->where('estado', 'novo')
 		->first();
 
 		if($pedido){
@@ -525,6 +526,7 @@ class PagSeguroController extends Controller
 			$pedido->app = true;
 
 			$pedido->save();
+            session(['ultimo_pedido_id' => $pedido->id]);
 
 			$pagseguro = PedidoPagSeguro::create(
 				[
