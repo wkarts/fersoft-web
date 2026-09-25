@@ -3724,18 +3724,46 @@ Route::get('/teste-livre', function() {
 // ==============================================================================
 
 Route::get('/pedir/{parametro}', function ($parametro) {
-    $empresaQuery = \Illuminate\Support\Facades\DB::table('empresas');
+    $empresa = null;
+    $config = null;
 
     if (ctype_digit((string) $parametro)) {
-        $empresaQuery->where('id', (int) $parametro);
+        $empresa = \Illuminate\Support\Facades\DB::table('empresas')
+            ->where('id', (int) $parametro)
+            ->where('status', 1)
+            ->first();
+
+        $config = $empresa
+            ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first()
+            : null;
     } else {
-        $empresaQuery->where('nome_fantasia', $parametro);
+        $configs = \App\Models\DeliveryConfig::with('empresa')
+            ->where('public_link_value', $parametro)
+            ->whereHas('empresa', function ($query) {
+                $query->where('status', 1);
+            })
+            ->limit(2)
+            ->get();
+
+        if ($configs->count() === 1) {
+            $config = $configs->first();
+            $empresa = $config->empresa;
+        } else {
+            // Compatibilidade com links históricos por nome fantasia exato.
+            $empresas = \Illuminate\Support\Facades\DB::table('empresas')
+                ->where('nome_fantasia', $parametro)
+                ->where('status', 1)
+                ->limit(2)
+                ->get();
+
+            $empresa = $empresas->count() === 1 ? $empresas->first() : null;
+            $config = $empresa
+                ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first()
+                : null;
+        }
     }
 
-    $empresas = $empresaQuery->where('status', 1)->limit(2)->get();
-    $empresa = $empresas->count() === 1 ? $empresas->first() : null;
-    $config = $empresa ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first() : null;
-    if (!$config) {
+    if (!$empresa || !$config) {
         return response('Cardápio indisponível. Confira o link da empresa.', 404);
     }
 
@@ -3744,7 +3772,7 @@ Route::get('/pedir/{parametro}', function ($parametro) {
     }
     session()->put('empresa_id', $empresa->id);
 
-    // ALTERADO AQUI DE login_pedido PARA login:
+    // O identificador recebido é mantido no POST (ID, slug, hash ou token).
     return view('delivery.login', [
         'nome_empresa' => $parametro,
         'config' => $config,
@@ -3755,27 +3783,62 @@ Route::get('/pedir/{parametro}', function ($parametro) {
 
 Route::post('/pedir/{parametro}/entrar', function(\Illuminate\Http\Request $request, $parametro) {
     // Confere também o POST: não depende de um GET anterior ou de uma empresa antiga na sessão.
-    $empresaQuery = \Illuminate\Support\Facades\DB::table('empresas')->where('status', 1);
+    $empresa = null;
+    $config = null;
+
     if (ctype_digit((string) $parametro)) {
-        $empresaQuery->where('id', (int) $parametro);
+        $empresa = \Illuminate\Support\Facades\DB::table('empresas')
+            ->where('id', (int) $parametro)
+            ->where('status', 1)
+            ->first();
+
+        $config = $empresa
+            ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first()
+            : null;
     } else {
-        $empresaQuery->where('nome_fantasia', $parametro);
+        $configs = \App\Models\DeliveryConfig::with('empresa')
+            ->where('public_link_value', $parametro)
+            ->whereHas('empresa', function ($query) {
+                $query->where('status', 1);
+            })
+            ->limit(2)
+            ->get();
+
+        if ($configs->count() === 1) {
+            $config = $configs->first();
+            $empresa = $config->empresa;
+        } else {
+            $empresas = \Illuminate\Support\Facades\DB::table('empresas')
+                ->where('nome_fantasia', $parametro)
+                ->where('status', 1)
+                ->limit(2)
+                ->get();
+
+            $empresa = $empresas->count() === 1 ? $empresas->first() : null;
+            $config = $empresa
+                ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first()
+                : null;
+        }
     }
-    $empresas = $empresaQuery->limit(2)->get();
-    $empresa = $empresas->count() === 1 ? $empresas->first() : null;
-    if (!$empresa || !\App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->exists()) {
+
+    if (!$empresa || !$config) {
         return response('Cardápio indisponível. Confira o link da empresa.', 404);
     }
+
     $telefone = preg_replace('/[^0-9]/', '', (string) $request->telefone);
     if (!preg_match('/^[0-9]{10,13}$/', $telefone)) {
-        return redirect('/pedir/' . $empresa->id)->with('message_erro', 'Informe um telefone válido.');
+        return redirect('/pedir/' . rawurlencode((string) $parametro))
+            ->with('message_erro', 'Informe um telefone válido.');
     }
+
     if ((int) session('empresa_id') !== (int) $empresa->id ||
         preg_replace('/[^0-9]/', '', (string) session('telefone_cliente')) !== $telefone) {
         session()->forget(['cliente_log', 'ultimo_pedido_id', 'sabores', 'tamanho_pizza']);
     }
+
     session()->put('empresa_id', $empresa->id);
     session()->put('telefone_cliente', $request->telefone);
+
     return redirect('/cardapio');
 });
 
