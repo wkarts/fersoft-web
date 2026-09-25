@@ -268,6 +268,20 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         );
     }
 
+    public function test_pagseguro_relation_uses_the_real_model_namespace(): void
+    {
+        $model = file_get_contents(app_path('Models/PedidoDelivery.php'));
+
+        $this->assertStringContainsString(
+            "App\\Models\\PedidoPagSeguro",
+            $model
+        );
+        $this->assertStringNotContainsString(
+            "App\\Moddels\\PedidoPagSeguro",
+            $model
+        );
+    }
+
     public function test_delivery_logout_clears_the_last_tracked_order(): void
     {
         $routes = file_get_contents(base_path('routes/web.php'));
