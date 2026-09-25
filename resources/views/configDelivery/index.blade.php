@@ -36,6 +36,24 @@
 						<i class="la la-photo"></i> Galeria de imagens da loja
 					</a>
 
+					<div class="alert alert-light-primary mt-4 mb-4">
+						<label class="font-weight-bold mb-1">Link público do cardápio</label>
+						<div class="input-group">
+							<input type="text" id="delivery_public_link" class="form-control" value="{{ $linkPublico }}" readonly>
+							<div class="input-group-append">
+								<a class="btn btn-primary" href="{{ $linkPublico }}" target="_blank" rel="noopener">
+									<i class="la la-external-link"></i> Abrir cardápio
+								</a>
+								<button type="button" class="btn btn-secondary" onclick="copiarLinkDelivery()">
+									<i class="la la-copy"></i> Copiar link
+								</button>
+							</div>
+						</div>
+						<small class="form-text text-muted">
+							Envie este endereço ao cliente. A rota /cardapio, sozinha, não identifica a empresa.
+						</small>
+					</div>
+
 					@if($config->latitude != "")
 					<br><br>
 					<h5>Latitude: <strong class="lat">{{$config->latitude}}</strong></h5>
@@ -539,6 +557,29 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"
 async defer></script>
 <script type="text/javascript">
+
+	function copiarLinkDelivery(){
+		let input = document.getElementById('delivery_public_link');
+		if(!input) return;
+
+		let concluido = function(){
+			if(typeof swal === 'function'){
+				swal("Pronto!", "Link público do cardápio copiado.", "success");
+			}
+		};
+
+		if(navigator.clipboard && window.isSecureContext){
+			navigator.clipboard.writeText(input.value).then(concluido).catch(function(){
+				input.select();
+				document.execCommand('copy');
+				concluido();
+			});
+		}else{
+			input.select();
+			document.execCommand('copy');
+			concluido();
+		}
+	}
 
 	$('[data-toggle="popover"]').popover()
 
