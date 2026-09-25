@@ -3734,7 +3734,7 @@ Route::get('/pedir/{parametro}', function ($parametro) {
 
     $empresas = $empresaQuery->where('status', 1)->limit(2)->get();
     $empresa = $empresas->count() === 1 ? $empresas->first() : null;
-    $config = $empresa ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->where('status', 1)->first() : null;
+    $config = $empresa ? \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first() : null;
     if (!$config) {
         return response('Cardápio indisponível. Confira o link da empresa.', 404);
     }
@@ -3763,7 +3763,7 @@ Route::post('/pedir/{parametro}/entrar', function(\Illuminate\Http\Request $requ
     }
     $empresas = $empresaQuery->limit(2)->get();
     $empresa = $empresas->count() === 1 ? $empresas->first() : null;
-    if (!$empresa || !\App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->where('status', 1)->exists()) {
+    if (!$empresa || !\App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->exists()) {
         return response('Cardápio indisponível. Confira o link da empresa.', 404);
     }
     $telefone = preg_replace('/[^0-9]/', '', (string) $request->telefone);
