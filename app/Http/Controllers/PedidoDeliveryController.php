@@ -1430,7 +1430,7 @@ class PedidoDeliveryController extends Controller
 	}
 
   public function marcarComoEntregue($id) {
-    $pedido = \App\Models\PedidoDelivery::find($id);
+    $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->find($id);
     if($pedido) {
         $pedido->entregue = 1; 
 
@@ -1456,29 +1456,84 @@ class PedidoDeliveryController extends Controller
   
   public function ultimoPedidoNovo() {
 		try {
-			// Removemos a trava de empresa temporariamente para garantir que ele ache o pedido
-			$pedido = \App\Models\PedidoDelivery::with(['cliente'])
+			// Só notifica pedido realmente finalizado pelo cliente, nunca carrinho em montagem.
+			$pedido = \App\Models\PedidoDelivery::with([
+				'cliente',
+				'itens.produto.produto'
+			])
+				->where('empresa_id', $this->empresa_id)
 				->where('estado', 'novo')
+				->where('forma_pagamento', '<>', '')
+				->where('valor_total', '>', 0)
 				->orderBy('id', 'desc')
 				->first();
 
 			if ($pedido) {
+				$clienteNome = trim(($pedido->cliente->nome ?? 'Cliente Delivery') . ' ' . ($pedido->cliente->sobre_nome ?? ''));
+				$telefone = $pedido->telefone ?: ($pedido->cliente->celular ?? '');
+				$valorFormatado = number_format((float)$pedido->valor_total, 2, ',', '.');
+				$hora = \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i');
+
 				return response()->json([
 					'id' => $pedido->id,
-					'cliente' => $pedido->nome ?? ($pedido->cliente->nome ?? 'Cliente Delivery'),
-					'valor' => number_format((float)$pedido->valor_total, 2, ',', '.'),
-					'hora' => \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i')
+					'cliente' => [
+						'nome' => $clienteNome ?: 'Cliente Delivery',
+						'telefone' => $telefone,
+					],
+					'valor_total' => $valorFormatado,
+					'forma_pagamento' => $pedido->forma_pagamento,
+					'tipo_entrega' => $pedido->endereco_id ? 'Entrega' : 'Retirada no balcão',
+					'itens' => $pedido->itens->map(function ($item) {
+						return [
+							'quantidade' => $item->quantidade,
+							'valor' => number_format((float)$item->valor, 2, ',', '.'),
+							'produto' => [
+								'nome' => $item->produto->produto->nome ?? ($item->produto->nome ?? 'Item'),
+							],
+						];
+					})->values(),
+					// Compatibilidade com o alerta histórico da lista de pedidos.
+					'valor' => $valorFormatado,
+					'hora' => $hora,
 				]);
 			}
 			
 			return response()->json(['nenhum' => true]);
 
 		} catch (\Exception $e) {
-			// Se der erro, ele devolve o erro em texto para não quebrar o painel
-			return response()->json(['erro' => $e->getMessage()]);
+			\Log::error('Erro ao consultar último pedido novo do delivery: ' . $e->getMessage());
+			return response()->json(['erro' => 'Não foi possível consultar o pedido.'], 500);
 		}
 	}
   
+public function mudarStatus(Request $request, $id, $status)
+{
+    $mapaStatus = [
+        'pendente' => 'aprovado',
+        'aprovado' => 'aprovado',
+        'cancelado' => 'cancelado',
+        'finalizado' => 'finalizado',
+        'entregue' => 'entregue',
+    ];
+
+    if (!isset($mapaStatus[$status])) {
+        abort(422, 'Status de delivery inválido.');
+    }
+
+    $request->merge([
+        'id' => $id,
+        'estado' => $mapaStatus[$status],
+        'motivo' => $request->motivo,
+    ]);
+
+    return $this->actualizarStatusKanban($request);
+}
+
+public function marcarEntregue($id)
+{
+    return $this->marcarComoEntregue($id);
+}
+
 public function kanban(Request $request)
 {
     $dataInicial = $request->data_inicial ?? date("Y-m-d");
@@ -1505,7 +1560,8 @@ public function kanban(Request $request)
 public function actualizarStatusKanban(Request $request)
 {
     try {
-        $pedido = PedidoDelivery::findOrFail($request->id);
+        $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
+            ->findOrFail($request->id);
         $novoEstado = $request->estado; 
 
         // Se for uma ação que não altera o estado (como enviar para o caixa), apenas retorne sucesso
