@@ -36,22 +36,77 @@
 						<i class="la la-photo"></i> Galeria de imagens da loja
 					</a>
 
-					<div class="alert alert-light-primary mt-4 mb-4">
-						<label class="font-weight-bold mb-1">Link público do cardápio</label>
-						<div class="input-group">
-							<input type="text" id="delivery_public_link" class="form-control" value="{{ $linkPublico }}" readonly>
-							<div class="input-group-append">
-								<a class="btn btn-primary" href="{{ $linkPublico }}" target="_blank" rel="noopener">
-									<i class="la la-external-link"></i> Abrir cardápio
-								</a>
-								<button type="button" class="btn btn-secondary" onclick="copiarLinkDelivery()">
-									<i class="la la-copy"></i> Copiar link
-								</button>
+					<div class="card card-custom bg-light-primary border-0 mt-4 mb-4">
+						<div class="card-body py-4">
+							<div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+								<div>
+									<h5 class="font-weight-bold mb-1">Link público do cardápio</h5>
+									<small class="text-muted">A URL final é gerada pelo sistema. O endereço completo não é editável.</small>
+								</div>
+							</div>
+
+							<div class="row">
+								<div class="form-group col-lg-4 col-md-6">
+									<label class="font-weight-bold">Tipo de link</label>
+									<select name="public_link_mode" id="public_link_mode" class="form-control">
+										<option value="auto" @if(($modoLinkPublico ?? 'auto') === 'auto') selected @endif>Padrão automático (empresa)</option>
+										<option value="slug" @if(($modoLinkPublico ?? '') === 'slug') selected @endif>Slug personalizado</option>
+										<option value="hash" @if(($modoLinkPublico ?? '') === 'hash') selected @endif>Hash curto automático</option>
+										<option value="token" @if(($modoLinkPublico ?? '') === 'token') selected @endif>Token automático</option>
+									</select>
+								</div>
+
+								<div class="form-group col-lg-8 col-md-6" id="public_link_value_group">
+									<label class="font-weight-bold">Identificador</label>
+									<div class="input-group">
+										<div class="input-group-prepend">
+											<span class="input-group-text">{{ url('/pedir') }}/</span>
+										</div>
+										<input
+											type="text"
+											name="public_link_value"
+											id="public_link_value"
+											class="form-control @if($errors->has('public_link_value')) is-invalid @endif"
+											value="{{ old('public_link_value', $valorLinkPublico ?? '') }}"
+											placeholder="ex.: fersoft-delivery"
+										>
+										<div class="input-group-append" id="public_link_regenerate_group">
+											<button type="button" class="btn btn-warning" onclick="marcarRegeneracaoLink()">
+												<i class="la la-refresh"></i> Gerar novo ao salvar
+											</button>
+										</div>
+									</div>
+									<input type="hidden" name="public_link_regenerate" id="public_link_regenerate" value="0">
+
+									@if($errors->has('public_link_value'))
+									<div class="invalid-feedback d-block">{{ $errors->first('public_link_value') }}</div>
+									@endif
+
+									<small class="form-text text-muted" id="public_link_mode_help"></small>
+								</div>
+							</div>
+
+							<div class="form-group mb-2">
+								<label class="font-weight-bold">Link atual</label>
+								<div class="input-group">
+									<input type="text" id="delivery_public_link" class="form-control" value="{{ $linkPublico }}" readonly>
+									<div class="input-group-append">
+										<a class="btn btn-primary" href="{{ $linkPublico }}" target="_blank" rel="noopener">
+											<i class="la la-external-link"></i> Abrir cardápio
+										</a>
+										<button type="button" class="btn btn-secondary" onclick="copiarLinkDelivery()">
+											<i class="la la-copy"></i> Copiar link
+										</button>
+									</div>
+								</div>
+							</div>
+
+							<div class="alert alert-light mb-0 py-2">
+								<strong>Link padrão permanente:</strong>
+								<code>{{ $linkPublicoPadrao }}</code>
+								<span class="text-muted"> — continua válido mesmo usando slug, hash ou token.</span>
 							</div>
 						</div>
-						<small class="form-text text-muted">
-							Envie este endereço ao cliente. A rota /cardapio, sozinha, não identifica a empresa.
-						</small>
 					</div>
 
 					@if($config->latitude != "")
@@ -557,6 +612,50 @@
 <script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"
 async defer></script>
 <script type="text/javascript">
+
+	function atualizarCamposLinkPublico(){
+		let modo = $('#public_link_mode').val();
+		let input = $('#public_link_value');
+		let regenerate = $('#public_link_regenerate_group');
+		let help = $('#public_link_mode_help');
+
+		$('#public_link_regenerate').val('0');
+
+		if(modo === 'auto'){
+			$('#public_link_value_group').hide();
+			input.prop('readonly', true);
+			regenerate.hide();
+			help.text('');
+			return;
+		}
+
+		$('#public_link_value_group').show();
+
+		if(modo === 'slug'){
+			input.prop('readonly', false);
+			regenerate.hide();
+			help.text('Digite apenas o identificador. O sistema mantém o domínio e o prefixo /pedir/.');
+			return;
+		}
+
+		input.prop('readonly', true);
+		regenerate.show();
+		help.text(modo === 'hash'
+			? 'Hash curto gerado automaticamente. Use “Gerar novo ao salvar” para trocar.'
+			: 'Token longo gerado automaticamente. Use “Gerar novo ao salvar” para trocar.');
+	}
+
+	function marcarRegeneracaoLink(){
+		$('#public_link_regenerate').val('1');
+		if(typeof swal === 'function'){
+			swal("Pronto!", "Um novo identificador será gerado quando você salvar.", "info");
+		}
+	}
+
+	$('#public_link_mode').on('change', atualizarCamposLinkPublico);
+	$(function(){
+		atualizarCamposLinkPublico();
+	});
 
 	function copiarLinkDelivery(){
 		let input = document.getElementById('delivery_public_link');

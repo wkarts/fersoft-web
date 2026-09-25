@@ -49,6 +49,20 @@ class DeliveryController extends Controller
                 ->where('empresa_id', $this->empresa_id)->where('ativo', 1)->exists()) {
                 session()->forget(['cliente_log', 'telefone_cliente', 'ultimo_pedido_id']);
             }
+
+            // O cardápio só é liberado depois da identificação pelo link público.
+            // Ter apenas empresa_id na sessão não substitui o WhatsApp/cliente.
+            if ($request->is('cardapio', 'cardapio/*', 'pizza/*')
+                && !session('telefone_cliente') && !session('cliente_log')) {
+                $identificador = ($this->config->public_link_mode ?? 'auto') !== 'auto'
+                    && !empty($this->config->public_link_value)
+                    ? $this->config->public_link_value
+                    : $this->empresa_id;
+
+                return redirect('/pedir/' . rawurlencode((string) $identificador))
+                    ->with('message_erro', 'Você precisa informar um WhatsApp para continuar.');
+            }
+
             return $next($request);
         });
     }
