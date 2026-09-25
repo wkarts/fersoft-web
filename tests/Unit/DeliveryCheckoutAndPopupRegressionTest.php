@@ -24,16 +24,21 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         );
     }
 
-    public function test_checkout_persists_delivery_selection_and_does_not_lose_it_on_finalize(): void
+    public function test_checkout_persists_delivery_selection_and_validates_payment_on_backend(): void
     {
         $view = file_get_contents(resource_path('views/delivery/forma_pagamento.blade.php'));
         $js = file_get_contents(public_path('jsd/forma_pagamento.js'));
+        $controller = file_get_contents(app_path('Http/Controllers/CarrinhoController.php'));
 
         $this->assertStringContainsString('id="endereco_selecionado"', $view);
         $this->assertStringContainsString("$('#endereco_selecionado').val(id);", $js);
         $this->assertStringContainsString(
             'enderecoSelecionado = enderecoSelecionadoAtual();',
             $js
+        );
+        $this->assertStringContainsString(
+            "'data.forma_pagamento' => 'required|in:maquineta,pix,dinheiro,pagseguro'",
+            $controller
         );
     }
 
@@ -75,14 +80,22 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             "alterarStatusPedido('cancelado'",
             $layout
         );
+        $this->assertStringContainsString(
+            "response.forma_pagamento_label || response.forma_pagamento",
+            $layout
+        );
     }
 
-    public function test_new_order_payload_is_company_scoped_and_has_the_fields_used_by_popup(): void
+    public function test_new_order_payload_is_company_scoped_unread_and_complete(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
 
         $this->assertStringContainsString(
-            "->where('empresa_id', $this->empresa_id)",
+            "->where('empresa_id', \$this->empresa_id)",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "->where('pedido_lido', false)",
             $controller
         );
         $this->assertStringContainsString(
@@ -90,31 +103,31 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             $controller
         );
         $this->assertStringContainsString(
-            "'valor_total' => $valorFormatado",
+            "'valor_total' => \$valorFormatado",
             $controller
         );
         $this->assertStringContainsString(
-            "'forma_pagamento' => $pedido->forma_pagamento",
+            "'forma_pagamento' => \$pedido->forma_pagamento",
             $controller
         );
         $this->assertStringContainsString(
-            "'forma_pagamento_label' => $formaPagamentoLabel",
+            "'forma_pagamento_label' => \$formaPagamentoLabel",
             $controller
         );
         $this->assertStringContainsString(
-            "'tipo_entrega' => $pedido->endereco_id ? 'Entrega' : 'Retirada no balcão'",
+            "'tipo_entrega' => \$pedido->endereco_id ? 'Entrega' : 'Retirada no balcão'",
             $controller
         );
         $this->assertStringContainsString(
-            "'endereco' => $enderecoEntrega",
+            "'endereco' => \$enderecoEntrega",
             $controller
         );
         $this->assertStringContainsString(
-            "'observacao' => $pedido->observacao ?? ''",
+            "'observacao' => \$pedido->observacao ?? ''",
             $controller
         );
         $this->assertStringContainsString(
-            "'itens' => $pedido->itens->map",
+            "'itens' => \$pedido->itens->map",
             $controller
         );
     }
@@ -124,15 +137,15 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
 
         $this->assertStringContainsString(
-            "$estadosPermitidos = ['aprovado', 'cancelado', 'finalizado', 'entregue', 'finalizar_caixa'];",
+            "\$estadosPermitidos = ['aprovado', 'cancelado', 'finalizado', 'entregue', 'finalizar_caixa'];",
             $controller
         );
         $this->assertStringContainsString(
-            "$pedido->pedido_lido = true;",
+            "\$pedido->pedido_lido = true;",
             $controller
         );
         $this->assertStringContainsString(
-            "$pedido->motivoEstado = trim((string) ($request->motivo ?? ''));",
+            "\$pedido->motivoEstado = trim((string) (\$request->motivo ?? ''));",
             $controller
         );
         $this->assertStringContainsString(
@@ -174,11 +187,11 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $layout = file_get_contents(resource_path('views/delivery/default.blade.php'));
 
         $this->assertStringContainsString(
-            "$pedidoAtivoId = session('ultimo_pedido_id') ?? null;",
+            "\$pedidoAtivoId = session('ultimo_pedido_id') ?? null;",
             $layout
         );
         $this->assertStringNotContainsString(
-            "$pedido->id ?? session('ultimo_pedido_id')",
+            "\$pedido->id ?? session('ultimo_pedido_id')",
             $layout
         );
     }
@@ -201,7 +214,7 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         );
     }
 
-    public function test_tracking_has_all_terminal_states_without_full_page_auto_reload(): void
+    public function test_tracking_has_all_states_without_full_page_auto_reload(): void
     {
         $view = file_get_contents(resource_path('views/delivery/pedido_finalizado.blade.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
@@ -234,11 +247,11 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $pagSeguro = file_get_contents(app_path('Http/Controllers/PagSeguroController.php'));
 
         $this->assertStringContainsString(
-            "$pedido->forma_pagamento == 'pix'",
+            "\$pedido->forma_pagamento == 'pix'",
             $view
         );
         $this->assertStringContainsString(
-            "$nome_pagamento = \"Pix\";",
+            "\$nome_pagamento = \"Pix\";",
             $view
         );
         $this->assertStringNotContainsString(
@@ -250,7 +263,7 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             $pagSeguro
         );
         $this->assertStringContainsString(
-            "session(['ultimo_pedido_id' => $pedido->id]);",
+            "session(['ultimo_pedido_id' => \$pedido->id]);",
             $pagSeguro
         );
     }
