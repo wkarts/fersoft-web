@@ -140,6 +140,9 @@ class ConfigDeliveryController extends BaseController
 		if($modoLinkPublico === 'slug'){
 			$valorLinkPublico = Str::slug((string) $request->public_link_value);
 			$request->merge(['public_link_value' => $valorLinkPublico]);
+		}else{
+			// Hash/token são gerados no servidor e o modo automático não usa alias.
+			$request->merge(['public_link_value' => null]);
 		}
 
 		$request->merge(['public_link_mode' => $modoLinkPublico]);
