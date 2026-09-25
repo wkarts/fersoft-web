@@ -260,8 +260,9 @@
                             
                             <li>
                                   @php
-                                      // Tenta pegar o ID do pedido da variável atual ou da sessão recente do cliente
-                                      $pedidoAtivoId = $pedido->id ?? session('ultimo_pedido_id') ?? null;
+                                      // O acompanhamento usa somente um pedido realmente finalizado e gravado na sessão.
+                                      // Não usa $pedido da tela atual, pois no carrinho/checkout ele ainda é um pedido em montagem.
+                                      $pedidoAtivoId = session('ultimo_pedido_id') ?? null;
                                   @endphp
 
                                   @if($pedidoAtivoId)
