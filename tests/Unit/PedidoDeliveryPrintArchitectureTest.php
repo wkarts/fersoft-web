@@ -89,6 +89,11 @@ class PedidoDeliveryPrintArchitectureTest extends TestCase
 
     public function test_restored_view_renders_a_single_page_thermal_pdf(): void
     {
+        // O composer global carrega avisos e menus do banco, fora do escopo
+        // desta fixture. Isolamos apenas esse evento nesta aplicação de teste;
+        // Blade, a view restaurada e o motor DomPDF continuam sendo reais.
+        $this->app['events']->forget('composing: *');
+
         // Fixture independente de banco, de serviços externos e de pedidos reais.
         $dados = [
             'pedido' => (object) ['id' => 235],
