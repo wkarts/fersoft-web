@@ -28,10 +28,18 @@ class PagSeguroController extends Controller
 
 	public function getSessao(){
 
-		$data['token'] = env('PAGSEGURO_TOKEN'); 
-		$emailPagseguro = env('PAGSEGURO_EMAIL');
+		if(!env('PAGSEGURO_ATIVO')){
+			return response()->json(['message' => 'PagSeguro desativado.'], 409);
+		}
 
-		$data = http_build_query($data);
+		$token = (string) env('PAGSEGURO_TOKEN');
+		$emailPagseguro = (string) env('PAGSEGURO_EMAIL');
+
+		if(strlen($token) < 10 || strlen($emailPagseguro) < 5){
+			return response()->json(['message' => 'Credenciais do PagSeguro não configuradas.'], 422);
+		}
+
+		$data = http_build_query(['token' => $token]);
 		$url = $this->url . "sessions";
 
 		$curl = curl_init();
@@ -40,19 +48,41 @@ class PagSeguroController extends Controller
 			'Content-Type: application/x-www-form-urlencoded; charset=ISO-8859-1'
 		);
 
-		curl_setopt($curl, CURLOPT_URL, $url . "?email=" . $emailPagseguro);
+		curl_setopt($curl, CURLOPT_URL, $url . "?email=" . rawurlencode($emailPagseguro));
 		curl_setopt($curl, CURLOPT_POST, true);
-		curl_setopt( $curl,CURLOPT_HTTPHEADER, $headers );
-		curl_setopt( $curl,CURLOPT_RETURNTRANSFER, true );
+		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-		//curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 		curl_setopt($curl, CURLOPT_HEADER, false);
-		$xml = simplexml_load_string(curl_exec($curl));
 
+		$body = curl_exec($curl);
+		$httpCode = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		$curlError = curl_error($curl);
 		curl_close($curl);
 
-		return response()->json($xml, 200);
+		if($body === false || $curlError !== ''){
+			\Log::warning('Falha de comunicação com PagSeguro ao criar sessão.', [
+				'http_code' => $httpCode,
+				'curl_error' => $curlError,
+			]);
+			return response()->json(['message' => 'Não foi possível iniciar o PagSeguro.'], 502);
+		}
+
+		libxml_use_internal_errors(true);
+		$xml = simplexml_load_string($body);
+		libxml_clear_errors();
+		libxml_use_internal_errors(false);
+
+		if($httpCode < 200 || $httpCode >= 300 || $xml === false || empty($xml->id)){
+			\Log::warning('Resposta inválida do PagSeguro ao criar sessão.', [
+				'http_code' => $httpCode,
+				'response_preview' => mb_substr(strip_tags((string) $body), 0, 500),
+			]);
+			return response()->json(['message' => 'PagSeguro retornou uma resposta inválida.'], 502);
+		}
+
+		return response()->json(['id' => (string) $xml->id], 200);
 	}
 
 	public function getFuncionamento(){
