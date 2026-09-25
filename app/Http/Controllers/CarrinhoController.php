@@ -29,7 +29,7 @@ class CarrinhoController extends Controller
             $empresa_id = session('empresa_id'); // Pega a empresa atual
             $this->empresa_id = $empresa_id;
             $this->config = $empresa_id
-                ? DeliveryConfig::where('empresa_id', $empresa_id)->where('status', 1)
+                ? DeliveryConfig::where('empresa_id', $empresa_id)
                     ->whereHas('empresa', function ($query) { $query->where('status', 1); })->first()
                 : null;
             if (!$this->config) {
