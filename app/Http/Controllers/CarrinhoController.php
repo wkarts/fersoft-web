@@ -750,6 +750,23 @@ class CarrinhoController extends Controller
         ]);
     }
   
+    public function statusPedido($id){
+        $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)
+            ->where('cliente_id', session('cliente_log.id'))
+            ->where('valor_total', '>', 0)
+            ->where('forma_pagamento', '<>', '')
+            ->findOrFail($id);
+
+        return response()->json([
+            'id' => $pedido->id,
+            'estado' => $pedido->estado,
+            'entregue' => (bool) $pedido->entregue,
+            'motivo' => $pedido->motivoEstado ?? '',
+            'updated_at' => optional($pedido->updated_at)->toIso8601String(),
+        ]);
+    }
+
+  
 	public function configDelivery(){
     $d = $this->config;
     
