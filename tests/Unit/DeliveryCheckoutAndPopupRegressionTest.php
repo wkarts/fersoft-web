@@ -40,6 +40,21 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             "'data.forma_pagamento' => 'required|in:maquineta,pix,dinheiro,pagseguro'",
             $controller
         );
+
+        $this->assertStringNotContainsString(
+            "const pagamentoSelecionado = document.querySelector('input[name=\"gridRadios\"]:checked');",
+            $view
+        );
+    }
+
+    public function test_checkout_javascript_uses_automatic_cache_version(): void
+    {
+        $layout = file_get_contents(resource_path('views/delivery/default.blade.php'));
+
+        $this->assertStringContainsString(
+            "/jsd/forma_pagamento.js?v={{ filemtime(public_path('jsd/forma_pagamento.js')) }}",
+            $layout
+        );
     }
 
     public function test_pagseguro_is_not_initialized_when_online_payment_is_not_available(): void
