@@ -99,4 +99,13 @@ class DeliveryConfig extends BaseModel
 			'Cartão pelo App',
 		];
 	}
+  
+  	public static function nomeExib($index = 0) {
+		$config = self::first();
+		if ($config && isset($config->nome)) {
+			$partes = explode(' ', $config->nome);
+			return $partes[$index] ?? $config->nome;
+		}
+		return $index == 0 ? 'Delivery' : '';
+	}
 }

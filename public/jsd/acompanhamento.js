@@ -115,7 +115,10 @@ function adicionar(){
 	let quantidade = $('#quantidade').val();
 	let observacao = $('#observacao').val();
 
-	$.post(path + "carrinho/add", 
+    // A MÁGICA ESTÁ AQUI: Apontamos diretamente para a rota certa!
+    let url_certa = "https://homolog.fersofterp.com.br/carrinho/add";
+
+	$.post(url_certa, 
 	{
 		_token: tk, 
 		produto_id: produto_id,
@@ -125,22 +128,21 @@ function adicionar(){
 	})
 	.done(function(data) {
 		if(data == '401'){
-			location.href = path;
+			location.href = "/";
 		}else if(data == 'false'){
-			swal("", "Você está com um pedido pendente, aguarde o processamento", "warning")
+			swal("Ops!", "Você está com um pedido pendente, aguarde o processamento", "warning")
 		}else{
 			sucesso();
 		}
 	})
 	.fail( function(err) {
-		console.log(err)
-
+		console.log("Erro na requisição:", err);
+        swal("Erro", "Não foi possível conectar ao servidor.", "error");
 	});
-
 }
 
 function sucesso(){
-	audioSuccess()
+	//audioSuccess()
 	$('#content').css('display', 'none');
 	$('#anime').css('display', 'block');
 	setTimeout(() => {

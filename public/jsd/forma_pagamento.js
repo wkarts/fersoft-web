@@ -290,168 +290,181 @@ function getCupom(cupom, call){
 }
 
 $('#salvar_endereco').click(() => {
-	let rua = $('#rua').val()
-	let numero = $('#numero').val()
-	let bairro = $('#bairro').val()
-	let referencia = $('#referencia').val()
-	let cliente_id = $('#cliente_id').val()
-	let tk = $('#_token').val()
+    let rua = $('#rua').val()
+    let numero = $('#numero').val()
+    let bairro = $('#bairro').val()
+    let referencia = $('#referencia').val()
+    let cliente_id = $('#cliente_id').val()
+    let tk = $('#_token').val()
+    let cep = $('#cep').val() 
 
-	let js = {
-		rua: rua,
-		numero: numero,
-		bairro: bairro,
-		referencia: referencia,
-		cliente_id: cliente_id,
-		latitude: LAT,
-		longitude: LNG
-	}
+    let js = {
+        cep: cep, 
+        rua: rua,
+        numero: numero,
+        bairro: bairro,
+        referencia: referencia,
+        cliente_id: cliente_id,
+        latitude: LAT,
+        longitude: LNG
+    }
 
-	$.post(path+'enderecoDelivery/save', {_token : tk, data: js})
-	.done(function(data){
-		data = JSON.parse(data)
+    // Usando o 'path' nativo do sistema para evitar problemas de HTTPS/HTTP
+    $.post(path + "enderecoDelivery/save", {_token : tk, data: js})
+    .done(function(data){
+        let jsonRetorno = JSON.parse(data);
 
-		let ht = '<div class="col-lg-4 col-md-6" onclick="set_endereco('+data.id+')">'+
-		'<div id="endereco_select_'+data.id+'" class="card border-0 med-blog">'+
+        // Se o PHP mandou um erro, mostra na tela e para tudo!
+        if(jsonRetorno.erro_php) {
+            swal("Erro no Banco de Dados!", jsonRetorno.erro_php, "error");
+            console.log(jsonRetorno.erro_php);
+            return;
+        }
 
-		'<div class="card-body border border-top-0">'+
-		'<h5 class="blog-title card-title m-0">'+
-		rua + ', ' + numero+
-		'</h5>'+
-		// '<h5>'+bairro+'</h5>'+
-		'<p>Referencia: '+ referencia +'</p>'+
-		'</div>'+
-		'</div>'+
-		'</div>';
+        // Monta o endereço na tela (Adicionei a linha do bairro para ficar igual aos outros)
+        let ht = '<div class="col-lg-4 col-md-6" onclick="set_endereco('+jsonRetorno.id+')">'+
+        '<div id="endereco_select_'+jsonRetorno.id+'" class="card border-0 med-blog">'+
+        '<div class="card-body border border-top-0">'+
+        '<h5 class="blog-title card-title m-0">'+
+        rua + ', ' + numero+
+        '</h5>'+
+        '<h5>'+ bairro +'</h5>'+
+        '<p>Referencia: '+ referencia +'</p>'+
+        '</div>'+
+        '</div>'+
+        '</div>';
 
-		$( ".ends" ).append( ht );
-	})
-	.fail( function(err) {
-		console.log(err)
+        $( ".ends" ).append( ht );
+        
+        // Fecha o modal automaticamente se salvar com sucesso
+        $('.close').click();
 
-	});
-
+        // ==========================================================
+        // A MÁGICA AQUI: Auto-seleciona o endereço para cobrar a taxa
+        // ==========================================================
+        set_endereco(jsonRetorno.id);
+        
+        swal("Sucesso", "Endereço adicionado com sucesso!", "success");
+    })
+    .fail( function(err) {
+        console.log(err);
+        swal("Erro", "Não foi possível salvar o endereço.", "error");
+    });
 })
 
 function set_endereco(id){
-	TOTAL -= parseFloat(VALORENTREGA)
-	$('#endereco_select_'+enderecoSelecionado).css('background', '#fff')
-	$('#entrega-distante').css('display', 'none')
-	$('#frete-gratuito').css('display', 'none')
-	let adicionou = false;
+	$('#endereco_select_'+enderecoSelecionado).css('background', '#fff');
+	$('#entrega-distante').css('display', 'none');
+	$('#frete-gratuito').css('display', 'none');
 	
+	// ====================================================================
+	// FUNÇÃO MÁGICA: Atualiza a tela toda de uma vez para não ter erro
+	// ====================================================================
+	function atualizarTodosOsTotais() {
+		// Pega sempre o subtotal limpo original para não somar taxas duplicadas
+		let subtotal = parseFloat($('#total-init').val()) || 0;
+		TOTAL = subtotal + VALORENTREGA;
+
+		let totalFormatado = TOTAL.toFixed(2).replace('.', ',');
+		let entregaFormatada = VALORENTREGA.toFixed(2).replace('.', ',');
+
+		// Atualiza a parte de CIMA e o BOTÃO
+		$('#valor-entrega').html(entregaFormatada);
+		$('#total').html("R$ " + totalFormatado);
+		$('#finalizar-venda').html('<i class="fa fa-check"></i> FINALIZAR R$ ' + totalFormatado);
+
+		// Atualiza o RESUMO DE BAIXO
+		$('#valor-entrega-resumo').html(entregaFormatada);
+		$('#total-resumo').html("R$ " + totalFormatado);
+		
+		if (VALORENTREGA > 0) {
+			$('#acrescimo-entrega').css('display', 'block');
+			$('#acrescimo-entrega-resumo').css('display', 'flex');
+		} else {
+			$('#acrescimo-entrega').css('display', 'none');
+			$('#acrescimo-entrega-resumo').css('display', 'none');
+		}
+	}
+
 	if(id == 'balcao'){
-		$('#endereco_select_balcao').css('background', '#81c784')
-		$('#acrescimo-entrega').css('display', 'none')
+		$('#endereco_select_balcao').css('background', '#81c784');
+		
 		if(ENTREGA == true){
 			VALORENTREGA = 0;
-			$('#total').html("R$ "+parseFloat(TOTAL).toFixed(2))
+			atualizarTodosOsTotais();
 		}
 
-
-	}else{
+	} else {
 		getValorEntrega((d) => {
-			let j = JSON.parse(d)
-			console.log(j)
+			let j;
+			if (typeof d === 'string') { j = JSON.parse(d); } else { j = d; }
 
 			getEndereco(id, (enderecoData) => {
 
 				if(USARBAIRROS == 1){
-
 					getValorBairro(id, (valor) => {
-
-						if(valor == false){
-							VALORENTREGA = j.valor_entrega;
-						}else{
-
-							VALORENTREGA = parseFloat(valor)
+						let taxa = 0;
+						if (typeof valor === 'object') {
+							taxa = parseFloat(valor.valor_entrega || valor.valor || 0);
+						} else {
+							let valorLimpo = String(valor).replace(',', '.').replace(/[^\d.-]/g, '');
+							taxa = parseFloat(valorLimpo) || 0;
 						}
+						
+						VALORENTREGA = taxa;
+						atualizarTodosOsTotais();
+					});
 
-						TOTAL += parseFloat(VALORENTREGA)
-
-						$('#acrescimo-entrega').css('display', 'block')
-
-
-						if(VALORENTREGA > 0){ 
-							$('#valor-entrega').html(parseFloat(VALORENTREGA).toFixed(2))
-						}
-						else{ 
-							$('#valor-entrega').html('0.00') 
-						}
-
-						$('#total').html("R$ "+parseFloat(TOTAL).toFixed(2))
-					})
-				}else if(DADOSCALCULOENTREGA.valor_km > 0){
-
+				} else if(DADOSCALCULOENTREGA.valor_km > 0){
 					getDistancia(enderecoData.latitude, enderecoData.longitude, (distacia) => {
-
 						if(distacia == 0 || enderecoData == false || DADOSCALCULOENTREGA.valor_km == 0){
-							VALORENTREGA = j.valor_entrega;
+							VALORENTREGA = parseFloat(j.valor_entrega);
 						}else{
-
 							if(DADOSCALCULOENTREGA.maximo_km_entrega > 0 && distacia > DADOSCALCULOENTREGA.maximo_km_entrega){
 								ENTREGADISTANTE = true;
-
-								$('#entrega-distante').css('display', 'block')
-								$('#frete-gratuito').css('display', 'none')
-								$('#acrescimo-entrega').css('display', 'none')
-
-
+								$('#entrega-distante').css('display', 'block');
+								$('#frete-gratuito').css('display', 'none');
+								$('#acrescimo-entrega').css('display', 'none');
+								$('#acrescimo-entrega-resumo').css('display', 'none');
 							}else{
 								ENTREGADISTANTE = false;
 								distacia = parseInt(distacia);
 								if(distacia >= DADOSCALCULOENTREGA.entrega_gratis_ate){
 									VALORENTREGA = DADOSCALCULOENTREGA.valor_km * distacia;
-									$('#frete-gratuito').css('display', 'none')
-
+									$('#frete-gratuito').css('display', 'none');
 								}else{
 									VALORENTREGA = 0;
-									$('#frete-gratuito').css('display', 'block')
-
-
+									$('#frete-gratuito').css('display', 'block');
 								}
 							}
 						}
 
-						TOTAL += parseFloat(VALORENTREGA)
 						if(ENTREGADISTANTE == false){
-							$('#acrescimo-entrega').css('display', 'block')
+							atualizarTodosOsTotais();
 						}
-
-						if(VALORENTREGA > 0){ 
-							$('#valor-entrega').html(parseFloat(VALORENTREGA).toFixed(2))
-						}
-						else{ 
-							$('#valor-entrega').html('0.00') 
-						}
-						$('#total').html("R$ "+parseFloat(TOTAL).toFixed(2))
-
 					})
-				}else{
-					//valor padrao
 
-					VALORENTREGA = j.valor_entrega;
-					TOTAL += parseFloat(VALORENTREGA)
-					$('#total').html("R$ "+parseFloat(TOTAL).toFixed(2))
-					$('#valor-entrega').html(parseFloat(VALORENTREGA).toFixed(2))
-					$('#acrescimo-entrega').css('display', 'block')
-
+				} else {
+					// Regra do Valor Padrão
+					VALORENTREGA = parseFloat(j.valor_entrega);
+					atualizarTodosOsTotais();
 				}
 			})
 
 			ENTREGA = true;
 		})
 
-		$('#endereco_select_balcao').css('background', '#fff')
-		$('#endereco_select_'+id).css('background', '#81c784')
-		
+		$('#endereco_select_balcao').css('background', '#fff');
+		$('#endereco_select_'+id).css('background', '#81c784');
 	}
+	
 	enderecoSelecionado = id;
 	verificaBotaoFinalizarSemCartao();
 }
 
 
 $('#finalizar-venda').click(() => {
+  	console.log("ID do endereço selecionado:", enderecoSelecionado);
 	let formaPagamento = $('#maquineta').is(':checked') ? 'maquineta' :  
 	$('#dinheiro').is(':checked') ? 'dinheiro' : $('#pagseguro').is(':checked') ?
 	'pagseguro' : '';
@@ -459,7 +472,10 @@ $('#finalizar-venda').click(() => {
 	let troco = $('#troco_para').val();
 	let telefone = $('#telefone').val();
 	let cupom = $('#cupom').val();
+  	let nome_cliente = $('#nome-cliente').val();
+  
 	let js = {
+        nome: nome_cliente,
 		forma_pagamento: formaPagamento,
 		troco: troco.replace(",", "."),
 		observacao: $('#observacao').val(),
@@ -470,6 +486,12 @@ $('#finalizar-venda').click(() => {
 		valor_entrega: VALORENTREGA,
 		cupom: DESCONTO > 0 ? cupom : ''
 	}
+    
+    if(nome_cliente.trim() == '' || nome_cliente.trim() == 'Cliente .' || nome_cliente.trim() == 'Cliente'){
+        swal("Atenção!", "Por favor, informe quem vai receber o pedido (Seu Nome)!", "warning");
+        $('#nome-cliente').focus(); // Joga o cursor piscando pro campo do nome
+        return; // Para tudo e não deixa finalizar
+    }
 
 	if(!formaPagamento){
 		swal("Atenção!", "Por favor selecione a forma de pagamento!", "warning")
@@ -505,7 +527,7 @@ $('#finalizar-venda').click(() => {
 
 		$.post(path+'carrinho/finalizarPedido', {_token : tk, data: js})
 		.done(function(data){
-			data = JSON.parse(data)
+			//data = JSON.parse(data)
 
 			sucesso(data.id)
 
@@ -864,6 +886,7 @@ function getDistancia(latitude, longitude, call){
 function getValorBairro(endereco_id, call){
 	$.get(path + 'enderecoDelivery/getValorBairro', {endereco_id: endereco_id})
 	.done((res) => {
+        console.log("Retorno do Bairro:", res); // <--- ADICIONE ESTA LINHA AQUI
 		call(res)
 	})
 	.fail((err) => {
@@ -881,3 +904,28 @@ function getEndereco(endereco_id, call){
 		call(false)
 	})
 }
+
+// Função mágica do ViaCEP
+$('#cep').keyup(function() {
+    let cep = $(this).val().replace(/\D/g, ''); // Tira o traço
+    
+    if (cep.length === 8) {
+        // Mostra a procurar...
+        $('#rua').val('A procurar CEP...');
+        $('#bairro').val('A procurar...');
+        
+        $.getJSON('https://viacep.com.br/ws/' + cep + '/json/', function(dados) {
+            if (!("erro" in dados)) {
+                // Se encontrou, preenche os campos!
+                $('#rua').val(dados.logradouro);
+                $('#bairro').val(dados.bairro);
+                $('#numero').focus(); // Salta direto para o número
+                validaCamposNovoEndereco();
+            } else {
+                swal("Atenção", "CEP não encontrado.", "warning");
+                $('#rua').val('');
+                $('#bairro').val('');
+            }
+        });
+    }
+});

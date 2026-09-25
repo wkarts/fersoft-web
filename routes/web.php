@@ -903,6 +903,63 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     });
 
+    Route::group(['prefix' => '/autenticar'], function(){
+        Route::get('/', 'DeliveryController@login');
+        Route::post('/', 'DeliveryController@autenticar');
+        Route::get('/registro', 'DeliveryController@registro');
+        Route::get('/logoff', 'DeliveryController@logoff');
+        Route::get('/novo', 'DeliveryController@autenticarCliente');
+        Route::post('/registro', 'DeliveryController@salvarRegistro');
+        Route::get('/esqueceu_a_senha', 'DeliveryController@recuperarSenha');
+        Route::post('/esqueceu_a_senha', 'DeliveryController@enviarSenha');
+        Route::post('/validaToken', 'DeliveryController@validaToken');
+        Route::get('/ativar/{cliente_id}', 'DeliveryController@ativar');
+        Route::post('/refreshToken', 'DeliveryController@refreshToken');
+        Route::get('/saveTokenWeb', 'DeliveryController@saveTokenWeb');
+        Route::get('/cliente/{cod}', 'DeliveryController@autenticarClienteEmail');
+    });
+
+
+    Route::group(['prefix' => '/pizza'], function(){
+        Route::get('/escolherSabores', 'DeliveryController@escolherSabores');
+        Route::post('/adicionarSabor', 'DeliveryController@adicionarSabor');
+        Route::get('/verificaPizzaAdicionada', 'DeliveryController@verificaPizzaAdicionada');
+        Route::get('/removeSabor/{id}', 'DeliveryController@removeSabor');
+        Route::get('/adicionais', 'DeliveryController@adicionais');
+        Route::get('/pesquisa', 'DeliveryController@pesquisa');
+        Route::get('/pizzas', 'DeliveryController@pizzas');
+    });
+
+    Route::group(['prefix' => '/info'], function(){
+        Route::get('/', 'DeliveryController@infos');
+        Route::get('/alterarEndereco/{id}', 'DeliveryController@alterarEndereco');
+        Route::post('/atualizarSenha', 'DeliveryController@atualizarSenha');
+        Route::post('/updateEndereco', 'DeliveryController@updateEndereco');
+    });
+
+
+    Route::group(['prefix' => '/enderecoDelivery'], function(){
+        // Route::get('/{id}', 'EnderecoDeliveryController@index');
+        Route::post('/save', 'EnderecoDeliveryController@save');
+        Route::get('/', 'EnderecoDeliveryController@get');
+        Route::get('/getValorBairro', 'EnderecoDeliveryController@getValorBairro');
+    });
+
+    Route::group(['prefix' => '/pedidosMesa'], function(){
+        Route::get('/', 'PedidoMesaController@index');
+        Route::get('/naoAutorizados', 'PedidoMesaController@naoAutorizados');
+        Route::get('/recusar/{id}', 'PedidoMesaController@recusar');
+        Route::get('/ver/{id}', 'PedidoMesaController@ver');
+        Route::get('/delete/{id}', 'PedidoMesaController@delete');
+        Route::post('/alterarStatusPedido', 'PedidoMesaController@alterarStatusPedido');
+        Route::put('/alterarEstado/{id}', 'PedidoMesaController@alterarEstado');
+
+        Route::get('/controle', 'PedidoMesaController@controle');
+        Route::get('/itensPendentes', 'PedidoMesaController@itensPendentes');
+        Route::get('/entregue/{id}', 'PedidoMesaController@entregue');
+
+    });
+
     Route::group(['prefix' => '/pedidosDelivery'], function(){
         Route::get('/', 'PedidoDeliveryController@today');
         Route::get('/verPedido/{id}', 'PedidoDeliveryController@verPedido');
@@ -944,13 +1001,17 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/lerPedido', 'PedidoDeliveryController@lerPedido');
         Route::get('/teste', 'PedidoDeliveryController@teste');
         Route::get('/delete/{id}', 'PedidoDeliveryController@delete');
-
-        // Recursos históricos do Delivery mantidos dentro do grupo operacional existente.
         Route::get('/verificar-novos-pedidos', 'PedidoDeliveryController@verificarNovosPedidos');
+        Route::get('/mudarStatus/{id}/{status}', 'PedidoDeliveryController@mudarStatus');
+        Route::get('/marcarEntregue/{id}', 'PedidoDeliveryController@marcarEntregue');
+        Route::get('/pedidos-pendentes', 'Api\PedidoController@pedidosPendentes');
+        Route::get('/verificar-novos-pedidos', 'PedidoDeliveryController@verificarNovos');
+        Route::get('/marcarComoEntregue/{id}', 'PedidoDeliveryController@marcarComoEntregue');
+        Route::get('/emAberto', 'PedidoDeliveryController@emAberto');
         Route::get('/ultimoPedidoNovo', 'PedidoDeliveryController@ultimoPedidoNovo');
         Route::get('/kanban', 'PedidoDeliveryController@kanban');
         Route::post('/actualizarStatusKanban', 'PedidoDeliveryController@actualizarStatusKanban');
-        Route::get('/marcarComoEntregue/{id}', 'PedidoDeliveryController@marcarComoEntregue');
+
 
     });
 
@@ -3633,8 +3694,71 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 });
 
 // ==============================================================================
-// DELIVERY PÚBLICO — fluxo histórico compatibilizado com a estrutura 5.0.181
+// ROTAS DO CARDÁPIO DIGITAL (MANTENHA ESTA ESTRUTURA NO FINAL DO WEB.PHP)
 // ==============================================================================
+
+// AS ROTAS ANTIGAS DO PEDIDO QUE RECORTÁMOS (AGORA LIVRES DE LOGIN!)
+Route::group(['prefix' => 'pedido', 'middleware' => ['pedidoAtivo']], function(){
+    Route::get('/', 'PedidoQrCodeController@index');
+    Route::get('/erro', 'PedidoQrCodeController@erro');
+    Route::get('/cardapio/{id}', 'PedidoQrCodeController@cardapio');
+
+    Route::get('/escolherSabores', 'PedidoQrCodeController@escolherSabores');
+    Route::post('/adicionarSabor', 'PedidoQrCodeController@adicionarSabor');
+    Route::get('/verificaPizzaAdicionada', 'PedidoQrCodeController@verificaPizzaAdicionada');
+    Route::get('/removeSabor/{id}', 'PedidoQrCodeController@removeSabor');
+    Route::get('/adicionais/{id}', 'PedidoQrCodeController@adicionais');
+    Route::get('/adicionaisPizza', 'PedidoQrCodeController@adicionaisPizza');
+    Route::get('/pesquisa', 'PedidoQrCodeController@pesquisa');
+    Route::get('/pizzas', 'DeliveryController@pizzas');
+    Route::get('/ver', 'PedidoQrCodeController@ver');
+
+    Route::post('/addPizza', 'PedidoQrCodeController@addPizza')->middleware('mesaAtiva');
+    Route::post('/addProd', 'PedidoQrCodeController@addProd')->middleware('mesaAtiva');
+
+    Route::get('/refreshItem/{id}/{quantidade}', 'PedidoQrCodeController@refreshItem');
+    Route::get('/removeItem/{id}', 'PedidoQrCodeController@removeItem');
+    Route::get('/finalizar', 'PedidoQrCodeController@finalizar');
+
+    Route::get('/api/pedidos-pendentes', 'ControleCozinhaController@pedidosPendentes');
+    Route::get('/pedido/status/{id}/{status}', 'ControleCozinhaController@atualizarStatus');
+});
+
+// ==============================================================================
+// ROTAS DO CARDÁPIO DIGITAL (REDIRECIONAMENTO LIMPO)
+// ==============================================================================
+
+Route::get('/open/{token}', function($token) {
+    // 1. Busca a mesa
+    $mesa = \App\Models\Mesa::where('token', $token)->first();
+    if (!$mesa) return "Mesa não encontrada.";
+
+    // 2. Chama o método open do controller sem passar pelo redirecionamento da rota
+    return app(\App\Http\Controllers\PedidoQrCodeController::class)->open($mesa->id);
+});
+
+// Removemos a necessidade de middleware web para estas rotas para evitar loops de sessão
+Route::post('/cardapio-web/addProd', [\App\Http\Controllers\PedidoQrCodeController::class, 'addProd']);
+Route::post('/cardapio-web/addPizza', [\App\Http\Controllers\PedidoQrCodeController::class, 'addPizza']);
+Route::get('/cardapio-web/ver', [\App\Http\Controllers\PedidoQrCodeController::class, 'ver']);
+Route::get('/cardapio-web/adicionais/{id}', [\App\Http\Controllers\PedidoQrCodeController::class, 'adicionais']);
+Route::get('/cardapio-web/removerItem/{id}', [\App\Http\Controllers\PedidoQrCodeController::class, 'removeItem']);
+Route::get('/cardapio-web/finalizar', [\App\Http\Controllers\PedidoQrCodeController::class, 'finalizar']);
+Route::post('/cardapio-web/enviarParaCozinha', [\App\Http\Controllers\PedidoQrCodeController::class, 'enviarParaCozinha']);
+
+// Rota de mesa (para o redirecionamento funcionar)
+Route::get('/cardapio-web/mesa/{id}', function($id) {
+    return app(\App\Http\Controllers\PedidoQrCodeController::class)->open($id);
+});
+
+Route::get('/teste-livre', function() {
+    return "<h1>PARABÉNS! A ROTA ESTÁ TOTALMENTE LIVRE!</h1>";
+});
+
+// ==============================================================================
+// 🌍 FLUXO PÚBLICO E EXCLUSIVO DO DELIVERY (LIVRE DE SENHAS / FRICÇÃO ZERO)
+// ==============================================================================
+
 Route::get('/pedir/{parametro}', function ($parametro) {
     $empresaQuery = \Illuminate\Support\Facades\DB::table('empresas');
 
@@ -3653,7 +3777,8 @@ Route::get('/pedir/{parametro}', function ($parametro) {
     session()->put('empresa_id', $empresa->id);
     session()->forget(['cliente_log', 'telefone_cliente']);
 
-    return view('delivery.login_pedido', [
+    // ALTERADO AQUI DE login_pedido PARA login:
+    return view('delivery.login', [
         'nome_empresa' => $parametro,
         'config' => \App\Models\DeliveryConfig::where('empresa_id', $empresa->id)->first(),
         'tokenJs' => true,
@@ -3661,63 +3786,9 @@ Route::get('/pedir/{parametro}', function ($parametro) {
     ]);
 });
 
-Route::post('/pedir/{parametro}/entrar', function (\Illuminate\Http\Request $request, $parametro) {
-    $empresaId = session('empresa_id');
-
-    if (!$empresaId) {
-        return redirect('/pedir/' . $parametro);
-    }
-
-    $telefone = preg_replace('/[^0-9]/', '', (string) $request->telefone);
-
-    if (strlen($telefone) < 10 || strlen($telefone) > 13) {
-        return redirect('/pedir/' . $parametro)
-            ->with('message_erro', 'Informe um telefone válido para continuar.');
-    }
-
-    $cliente = \App\Models\ClienteDelivery::where('empresa_id', $empresaId)
-        ->where('celular', $telefone)
-        ->first();
-
-    if (!$cliente) {
-        $cliente = \App\Models\ClienteDelivery::create([
-            'nome' => 'Cliente',
-            'sobre_nome' => '.',
-            'celular' => $telefone,
-            'email' => uniqid('delivery_', true) . '@friccaozero.local',
-            'senha' => md5(uniqid((string) $empresaId, true)),
-            'ativo' => 1,
-            'token' => random_int(100000, 999999),
-            'empresa_id' => $empresaId,
-            'cpf' => '',
-            'foto' => '',
-            'uid' => uniqid('cli_', false),
-        ]);
-    }
-
-    session()->put('telefone_cliente', $telefone);
-    session()->put('cliente_log', [
-        'id' => $cliente->id,
-        'nome' => $cliente->nome,
-    ]);
-
+Route::post('/pedir/{parametro}/entrar', function(\Illuminate\Http\Request $request, $parametro) {
+    session()->put('telefone_cliente', $request->telefone);
     return redirect('/cardapio');
-});
-
-Route::group(['prefix' => '/autenticar'], function(){
-    Route::get('/', 'DeliveryController@login');
-    Route::post('/', 'DeliveryController@autenticar');
-    Route::get('/registro', 'DeliveryController@registro');
-    Route::get('/logoff', 'DeliveryController@logoff');
-    Route::get('/novo', 'DeliveryController@autenticarCliente');
-    Route::post('/registro', 'DeliveryController@salvarRegistro');
-    Route::get('/esqueceu_a_senha', 'DeliveryController@recuperarSenha');
-    Route::post('/esqueceu_a_senha', 'DeliveryController@enviarSenha');
-    Route::post('/validaToken', 'DeliveryController@validaToken');
-    Route::get('/ativar/{cliente_id}', 'DeliveryController@ativar');
-    Route::post('/refreshToken', 'DeliveryController@refreshToken');
-    Route::get('/saveTokenWeb', 'DeliveryController@saveTokenWeb');
-    Route::get('/cliente/{cod}', 'DeliveryController@autenticarClienteEmail');
 });
 
 Route::group(['prefix' => '/cardapio'], function(){
@@ -3725,23 +3796,6 @@ Route::group(['prefix' => '/cardapio'], function(){
     Route::get('/{id}', 'DeliveryController@produtos');
     Route::get('/acompanhamento/{id}', 'DeliveryController@acompanhamento');
     Route::get('/verProduto/{id}', 'DeliveryController@verProduto');
-});
-
-Route::group(['prefix' => '/pizza'], function(){
-    Route::get('/escolherSabores', 'DeliveryController@escolherSabores');
-    Route::post('/adicionarSabor', 'DeliveryController@adicionarSabor');
-    Route::get('/verificaPizzaAdicionada', 'DeliveryController@verificaPizzaAdicionada');
-    Route::get('/removeSabor/{id}', 'DeliveryController@removeSabor');
-    Route::get('/adicionais', 'DeliveryController@adicionais');
-    Route::get('/pesquisa', 'DeliveryController@pesquisa');
-    Route::get('/pizzas', 'DeliveryController@pizzas');
-});
-
-Route::group(['prefix' => '/info'], function(){
-    Route::get('/', 'DeliveryController@infos');
-    Route::get('/alterarEndereco/{id}', 'DeliveryController@alterarEndereco');
-    Route::post('/atualizarSenha', 'DeliveryController@atualizarSenha');
-    Route::post('/updateEndereco', 'DeliveryController@updateEndereco');
 });
 
 Route::group(['prefix' => '/carrinho'], function(){
@@ -3752,28 +3806,47 @@ Route::group(['prefix' => '/carrinho'], function(){
     Route::get('/refreshItem/{id}/{quantidade}', 'CarrinhoController@refreshItem');
     Route::get('/forma_pagamento/{cupom?}', 'CarrinhoController@forma_pagamento');
     Route::post('/finalizarPedido', 'CarrinhoController@finalizarPedido');
-    Route::get('/historico', 'CarrinhoController@historico');
-    Route::get('/meus-pedidos', 'CarrinhoController@meusPedidos');
-    Route::get('/pedir_novamente/{id}', 'CarrinhoController@pedir_novamente');
     Route::get('/finalizado/{id}', 'CarrinhoController@finalizado');
+    Route::get('/meus-pedidos', 'CarrinhoController@meusPedidos');
     Route::get('/configDelivery', 'CarrinhoController@configDelivery');
-    Route::get('/cupons', 'CarrinhoController@cupons');
-    Route::get('/getDadosCalculoEntrega', 'CarrinhoController@getDadosCalculoEntrega');
-    Route::get('/cupom/{codigo}', 'CarrinhoController@cupom');
 });
 
 Route::group(['prefix' => '/enderecoDelivery'], function(){
-    // Route::get('/{id}', 'EnderecoDeliveryController@index');
     Route::post('/save', 'EnderecoDeliveryController@save');
-    Route::get('/', 'EnderecoDeliveryController@get');
-    Route::get('/getValorBairro', 'EnderecoDeliveryController@getValorBairro');
+    Route::get('/get/{endereco_id}', 'EnderecoDeliveryController@get');
+    Route::get('/getValorBairro/{endereco_id}', 'EnderecoDeliveryController@getValorBairro');
+});
+
+Route::group(['prefix' => '/pizza'], function(){
+    Route::any('/escolherSabores', 'DeliveryController@escolherSabores');
+    Route::get('/adicionais', 'DeliveryController@adicionais');
+    Route::any('/adicionarSabor', 'DeliveryController@adicionarSabor');
+    Route::get('/removeSabor/{id}', 'DeliveryController@removeSabor');
+    Route::get('/pesquisa', 'DeliveryController@pesquisa');
 });
 
 Route::get('/delivery-logoff', function () {
-    $empresaId = session('empresa_id');
-    session()->forget(['telefone_cliente', 'cliente_log']);
+    $empresa_id = session('empresa_id'); // Guardamos o ID para voltar para a empresa certa
+    session()->forget(['telefone_cliente', 'cliente_log', 'empresa_id']);
 
-    return $empresaId ? redirect('/pedir/' . $empresaId) : redirect('/');
+    // Volta para a tela inicial da empresa específica
+    return redirect('/pedir/' . $empresa_id);
+});
+
+Route::get('/verificar-novos-pedidos', function() {
+    $novos = \App\Models\PedidoDelivery::where('estado', 'novo')->count();
+    return response()->json(['novos' => $novos]);
+});
+
+Route::post('/enderecoDelivery/save', 'EnderecoDeliveryController@save');
+
+
+Route::get('/clear-all', function () {
+    \Artisan::call('config:clear');
+    \Artisan::call('cache:clear');
+    \Artisan::call('view:clear');
+    \Artisan::call('route:clear');
+    return "<h1>Todos os caches limpos com sucesso!</h1>";
 });
 
 

@@ -118,7 +118,7 @@
         });
     });
 
-    const audioAlerta = new Audio('/audio/delivery_1.mp3'); 
+    const audioAlerta = new Audio('/assets/alerta.mp3'); 
 
 // Loop de verificação
 setInterval(() => {

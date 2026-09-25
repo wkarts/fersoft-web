@@ -38,30 +38,10 @@ use App\Models\PedidoMotoboy;
 use App\Models\AberturaCaixa;
 use App\Models\ItemVendaCaixa;
 
-class PedidoDeliveryController extends BaseController
+class PedidoDeliveryController extends Controller
 {
-    /* --- Contrato obrigatório do BaseController --- */
-    protected $model = PedidoDelivery::class;
-    protected $resource = 'pedidosDelivery';
-    protected $formTitle = 'Pedidos Delivery';
-    protected $listView = 'pedidosDelivery.list';
-    protected $registerView = 'pedidosDelivery.frente';
-    protected $redirectPage = '/pedidosDelivery';
-
-    public function rules(): array
-    {
-        return [];
-    }
-
-    public function messages(): array
-    {
-        return [];
-    }
-    /* --- Fim contrato BaseController --- */
-
 	protected $empresa_id = null;
 	public function __construct(){
-		parent::__construct();
 		$this->middleware(function ($request, $next) {
 			$this->empresa_id = $request->empresa_id;
 			$value = session('user_logged');
@@ -105,6 +85,18 @@ class PedidoDeliveryController extends BaseController
 
 	}
 
+      public function verificarNovosPedidos() {
+        // Pega a data de hoje para bater com a tela "Pedidos de Hoje"
+        $dataInicial = date("Y-m-d");
+        $dataFinal = date('Y-m-d', strtotime('+1 day'));
+
+        // Usa a sua própria função de filtro para contar apenas pedidos válidos da empresa logada
+        $pedidosNovo = $this->filtroPedidos($dataInicial, $dataFinal, 'novo');
+
+        // Retorna no formato JSON que o seu JavaScript está esperando
+        return response()->json(['novos' => count($pedidosNovo)]);
+    }
+  
 	private function somaPedidos($arr){
 		$v = 0;
 		foreach($arr as $r){
@@ -170,7 +162,6 @@ class PedidoDeliveryController extends BaseController
 	public function verCarrinho($id){
 		$pedido = PedidoDelivery::
 		where('id', $id)
-		->where('empresa_id', $this->empresa_id)
 		->first();
 
 		return view('pedidosDelivery/verCarrinho')
@@ -181,7 +172,6 @@ class PedidoDeliveryController extends BaseController
 	public function push($id){
 		$pedido = PedidoDelivery::
 		where('id', $id)
-		->where('empresa_id', $this->empresa_id)
 		->first();
 
 		return view('push/new')
@@ -221,25 +211,28 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function verPedido($id){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$pedido = PedidoDelivery::findOrFail($id);
 
 		$saldoSms = 0;
 		// $this->gerarQrCode($pedido);
 
-		return view('pedidosDelivery/detalhe')
-		->with('tipo', 'Detalhes do Pedido')
-		->with('pedido', $pedido)
-		->with('pedidoDeliveryJs', true)
-		->with('title', 'Pedidos de Delivery');
+      	$pedidosFinalizado = PedidoDelivery::where('empresa_id', $this->empresa_id)
+          ->where('estado', 'finalizado')
+          ->orderBy('id', 'desc')->get();
+
+      return view('pedidosDelivery/detalhe')
+          ->with('tipo', 'Detalhes do Pedido')
+          ->with('pedido', $pedido)
+          ->with('pedidosFinalizado', $pedidosFinalizado) // <--- ESTA LINHA EVITA O ERRO
+          ->with('pedidoDeliveryJs', true)
+          ->with('title', 'Pedidos de Delivery');
 		
 	}
 
 	public function alterarStatus($id){
-		$item = ItemPedidoDelivery::where('id', $id)
-		->whereHas('pedido', function($query){
-			$query->where('empresa_id', $this->empresa_id);
-		})
-		->firstOrFail();
+		$item = ItemPedidoDelivery
+		::where('id', $id)
+		->first();
 
 		$item->status = true;
 		$item->save();
@@ -250,7 +243,7 @@ class PedidoDeliveryController extends BaseController
 		$id = $request->id;
 		$tipo = $request->tipo;
 
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$pedido = PedidoDelivery::findOrFail($id);
 		$motoboys = Motoboy::where('empresa_id', $this->empresa_id)
 		->get();
 
@@ -270,14 +263,13 @@ class PedidoDeliveryController extends BaseController
 		$pedidos = PedidoDelivery::
 		where('estado', 'novo')
 		->where('valor_total', '>', 0)
-		->where('empresa_id', $this->empresa_id)
 		->get();
 
 		return response()->json(count($pedidos), 200);
 	}
 
 	public function confirmarAlteracao(Request $request){
-		$config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+		$config = ConfigNota::first();
 
 		if($config == null){
 
@@ -288,15 +280,18 @@ class PedidoDeliveryController extends BaseController
 		$id = $request->id;
 		$tipo = $request->tipo;
 
-		$pedido = PedidoDelivery
-		::where('id', $id)
-		->where('empresa_id', $this->empresa_id)
-		->firstOrFail();
+		$pedido = PedidoDelivery::with([
+			'itens.produto.produto', 
+			'itens.sabores.produto.produto', 
+			'itens.itensAdicionais.adicional',
+			'cliente',
+			'endereco._bairro'
+		])->where('id', $id)->first();
 
 		$valorEntrega = 0;
 
 		if($request->motoboy_id){
-			$motoboy = Motoboy::where('empresa_id', $this->empresa_id)->findOrFail($request->motoboy_id);
+			$motoboy = Motoboy::findOrFail($request->motoboy_id);
 
 			PedidoMotoboy::create([
 				'motoboy_id' => $motoboy->id, 
@@ -308,36 +303,38 @@ class PedidoDeliveryController extends BaseController
 		}
 		
 		$msg = '';
+		$msgWhatsApp = '';
+
 		if($tipo == 'aprovado'){
-			$msg = 'Seu pedido foi aprovado, esta sendo preparado par envio';
+			$msg = 'Seu pedido foi aprovado, está sendo preparado para o envio!';
+			$msgWhatsApp = "*✅ PEDIDO CONFIRMADO!* \n\nOlá, seu pedido *#{$pedido->id}* foi aceito pelo restaurante e já entrou em preparação! 🍳🍟";
 		}
 
 		if($tipo == 'cancelado'){
 			$msg = 'Seu pedido foi cancelado!';
+			$msgWhatsApp = "*❌ PEDIDO CANCELADO* \n\nInfelizmente seu pedido *#{$pedido->id}* foi cancelado. Se tiver dúvidas, entre em contato conosco.";
 		}
 
+		if($tipo == 'finalizado'){
+			$msg = 'Seu pedido foi finalizado!';
+			$msgWhatsApp = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!* \n\nOba! O motoboy já recolheu o seu pedido *#{$pedido->id}* e está a caminho do seu endereço. Prepare a mesa! 😋🍕";
+		}
+
+		// Envia a notificação Push antiga (se houver)
 		if(strlen($msg) > 0){
 			$this->sendPushAlteracao($msg, $pedido->cliente);
 		}
 
-		$msgWhatsApp = '';
-		if($tipo == 'aprovado'){
-			$msgWhatsApp = "*✅ PEDIDO CONFIRMADO!*\n\nSeu pedido *#{$pedido->id}* foi aceito e já entrou em preparação.";
-		}elseif($tipo == 'cancelado'){
-			$msgWhatsApp = "*❌ PEDIDO CANCELADO*\n\nSeu pedido *#{$pedido->id}* foi cancelado.";
-		}elseif($tipo == 'finalizado'){
-			$msgWhatsApp = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!*\n\nSeu pedido *#{$pedido->id}* está a caminho.";
-		}
-
-		if($msgWhatsApp !== '' && !empty($pedido->telefone)){
-			try{
-				$numero = preg_replace('/[^0-9]/', '', $pedido->telefone);
-				if(!str_starts_with($numero, '55')){
-					$numero = '55' . $numero;
-				}
-				$this->whatsapputil->sendMessage($numero, $msgWhatsApp, (int) $this->empresa_id);
-			}catch(\Exception $e){
-				\Log::error('Erro ao enviar WhatsApp de status do Delivery: ' . $e->getMessage());
+		// =========================================================
+		// DISPARO DE WHATSAPP AUTOMÁTICO DE STATUS
+		// =========================================================
+		if(strlen($msgWhatsApp) > 0 && !empty($pedido->telefone)){
+			try {
+				$whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+				$numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
+				$whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
+			} catch (\Exception $e) {
+				\Log::error("Erro ao enviar WhatsApp de status: " . $e->getMessage());
 			}
 		}
 
@@ -393,6 +390,10 @@ class PedidoDeliveryController extends BaseController
 			$rascunhos = $this->getRascunhos();
 			$funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get(); 
 			$produtosMaisVendidos = $this->produtosMaisVendidos();
+          
+            
+            $filial = null;
+          	$contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
 
 			return view('frontBox/main3')
 			->with('itens', $this->addAtributes($pedido->itens))
@@ -419,6 +420,8 @@ class PedidoDeliveryController extends BaseController
 			->with('tiposPagamentoMulti', $tiposPagamentoMulti)
 			->with('categorias', $categorias)
 			->with('clientes', $clientes)
+            ->with('filial', $filial)
+            ->with('contasEmpresa', $contasEmpresa)
 			->with('title', 'Finalizar Comanda '.$id);
 		}else{
 
@@ -429,53 +432,53 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	private function produtosMaisVendidos(){
+        $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
+        ->where('usuario_id', get_id_user())
+        ->where('status', 0)
+        ->orderBy('id', 'desc')
+        ->first();
+        $filial = -1;
 
-		$abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-		->where('usuario_id', get_id_user())
-		->where('status', 0)
-		->orderBy('id', 'desc')
-		->first();
-		$filial = -1;
+        if($abertura){
+            $filial = $abertura->filial_id;
+            if($filial == null){
+                $filial = -1;
+            }
+        }
+        $itens = ItemVendaCaixa::
+        selectRaw('item_venda_caixas.*, count(quantidade) as qtd')
+        ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+        ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
+        ->where('venda_caixas.empresa_id', $this->empresa_id)
+        ->groupBy('item_venda_caixas.produto_id')
+        ->orderBy('qtd')
+        // 👇 CORREÇÃO AQUI: Adicionado "use ($filial)" no primeiro escopo 👇
+        ->when(empresaComFilial(), function ($q) use ($filial) {
+            return $q->where(function($query) use ($filial){
+                $query->where('produtos.locais', 'like', "%{$filial}%");
+            });
+        })
+        ->limit(21)
+        ->get();
 
-		if($abertura){
-			$filial = $abertura->filial_id;
-			if($filial == null){
-				$filial = -1;
-			}
-		}
-		$itens = ItemVendaCaixa::
-		selectRaw('item_venda_caixas.*, count(quantidade) as qtd')
-		->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
-		->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
-		->where('venda_caixas.empresa_id', $this->empresa_id)
-		->groupBy('item_venda_caixas.produto_id')
-		->orderBy('qtd')
-		->when(empresaComFilial(), function ($q) use ($filial) {
-			return $q->where(function($query) use ($filial){
-				$query->where('produtos.locais', 'like', "%{$filial}%");
-			});
-		})
-		->limit(21)
-		->get();
+        $produtos = [];
+        foreach($itens as $i){
+            $p = Produto::find($i->produto_id);
+            if($p && !$p->inativo){
+                array_push($produtos, $p);
+            }
+        }
+        return $produtos;
+    }
 
-		$produtos = [];
-		foreach($itens as $i){
-			$p = Produto::find($i->produto_id);
-			if(!$p->inativo){
-				array_push($produtos, $p);
-			}
-		}
-		return $produtos;
-	}
-
-	private function getRascunhos(){
-		return VendaCaixa::
-		where('rascunho', 1)
-		->where('empresa_id', $this->empresa_id)
-		->limit(20)
-		->orderBy('id', 'desc')
-		->get();
-	}
+        private function getRascunhos(){
+            return VendaCaixa::
+            where('rascunho', 1)
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(20)
+            ->orderBy('id', 'desc')
+            ->get();
+        }
 
 
 	private function sendPushAlteracao($msg, $cliente){
@@ -530,54 +533,66 @@ class PedidoDeliveryController extends BaseController
 	private function addAtributes($itens){
 		$temp = [];
 		foreach($itens as $i){
-			$i->produto;
+			// Proteção contra produto nulo
+			if(!$i->produto) continue;
 
 			$valorAdicional = 0;
-
-			foreach($i->itensAdicionais as $ad){
-				$valorAdicional += $ad->adicional->valor;
+			if(isset($i->itensAdicionais)){
+				foreach($i->itensAdicionais as $ad){
+					$valorAdicional += $ad->adicional->valor ?? 0;
+				}
 			}
 
 			$i->valorAdicional = $valorAdicional;
 			$somaValores = 0;
-			if(sizeof($i->sabores) > 0){
-				$i->sabores;
 
+			if(isset($i->sabores) && sizeof($i->sabores) > 0){
 				$maiorValor = 0;
-
 				foreach($i->sabores as $sb){
-
-					
-					$sb->produto->produto;
-					
 					$v = $sb->maiorValor($sb->sabor_id, $i->tamanho_id);
 					$somaValores += $v;
 					if($v > $maiorValor) $maiorValor = $v;
-
-
 				}
 				if(env("DIVISAO_VALOR_PIZZA") == 1){
 					$maiorValor = $somaValores/sizeof($i->sabores);
 				}
-
 				$i->maiorValor = $maiorValor;
-			}else{
-				$i->produto->valor_venda = $i->produto->valor;
+			} else {
+				// Garante que o valor_venda seja tratado como valor
+				$i->produto->valor_venda = $i->produto->valor ?? 0;
 			}
-			$i->produto_id = $i->produto->produto->id; // converte id de delivery para produto comum
-			$i->produto->nome = $i->produto->produto->nome;
-			$i->produto->imagem = $i->produto->produto->imagem;
+
+			// --- O SEGREDO DO PDV ---
+			// Identifica qual é o produto real (Delivery vs Cadastro Base)
+			$produtoReal = $i->produto->produto ?? $i->produto;
+
+			// Força a criação das variáveis essenciais na raiz do item para o JS do PDV não falhar
+			$i->produto_id = $produtoReal->id ?? $i->produto->id;
+			$i->nome_produto = $produtoReal->nome ?? 'Produto sem nome';
+			$i->valor_unitario = $i->valor; 
+
+			// Mantém a compatibilidade com o objeto interno
+			if(isset($i->produto->produto)){
+				$i->produto->nome = $produtoReal->nome;
+				$i->produto->imagem = $produtoReal->imagem ?? '';
+			} else {
+				$i->produto->nome = $produtoReal->nome ?? 'Produto sem nome';
+			}
+			
 			array_push($temp, $i);
 		}
-    	// echo json_encode($temp);
 		return $temp;
 	}
 
 	public function irParaFrenteCaixa($id){
 
-		$pedido = PedidoDelivery
-		::where('id', $id)
-		->first();
+		$pedido = PedidoDelivery::with([
+			'itens.produto.produto', 
+			'itens.sabores.produto.produto', 
+			'itens.itensAdicionais.adicional',
+			'cliente',
+			'endereco._bairro'
+		])->where('id', $id)->first();
 
 		$config = ConfigNota::first();
 		$tiposPagamento = VendaCaixa::tiposPagamento();
@@ -624,6 +639,9 @@ class PedidoDeliveryController extends BaseController
 
 		$categorias = Categoria::orderBy('nome')->get();
 		$clientes = Cliente::orderBy('razao_social')->get();
+      
+      	$filial = null;
+      	$contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->get();
 		
 		return view('frontBox/main3')
 		->with('itens', $this->addAtributes($pedido->itens))
@@ -650,6 +668,8 @@ class PedidoDeliveryController extends BaseController
 		->with('tiposPagamentoMulti', $tiposPagamentoMulti)
 		->with('categorias', $categorias)
 		->with('clientes', $clientes)
+        ->with('filial', $filial)
+        ->with('contasEmpresa', $contasEmpresa)
 		->with('title', 'Finalizar Comanda '.$id);
 		
 	}
@@ -677,6 +697,11 @@ class PedidoDeliveryController extends BaseController
 		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
 			->findOrFail($id);
 
+		// Preserva o cupom HTML da PR como alternativa explícita ao PDF.
+		if (request()->query('formato', 'pdf') === 'html') {
+			return view('pedidosDelivery/impressao_cupom', compact('pedido'));
+		}
+
 		$pdf = $printService->render($pedido);
 
 		return response($pdf, 200, [
@@ -684,6 +709,7 @@ class PedidoDeliveryController extends BaseController
 			'Content-Disposition' => 'inline; filename="pedido-delivery-' . $pedido->id . '.pdf"',
 		]);
 	}
+
 	public function sendSms(Request $request){
 
 		$phone = $request['telefone'];
@@ -704,7 +730,6 @@ class PedidoDeliveryController extends BaseController
 
 	public function sendPush(Request $request){
 		$cliente = ClienteDelivery::where('id', $request->cliente)
-		->where('empresa_id', $this->empresa_id)
 		->first();
 		$tkTemp = [];
 		if(count($cliente->tokens) > 0){
@@ -951,13 +976,13 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function frenteComPedido($id){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$pedido = PedidoDelivery::findOrFail($id);
 
 		$clientes = ClienteDelivery::orderBy('nome')
 		->where('empresa_id', $this->empresa_id)
 		->get();
 
-		if(in_array($pedido->estado, ['ap', 'aprovado']) || $pedido->valor_total > 0){
+		if($pedido->estado == 'ap' || $pedido->valor_total > 0){
 			return redirect('/pedidosDelivery/verPedido/' . $pedido->id);
 		}
 		$config = DeliveryConfig::
@@ -997,10 +1022,8 @@ class PedidoDeliveryController extends BaseController
 
 		if($pedido->endereco){
 			if($config->usar_bairros){
-				$bairro = BairroDeliveryLoja::where('id', $pedido->endereco->bairro_id)
-				->where('empresa_id', $this->empresa_id)
-				->first();
-				$valorEntrega = $bairro ? $bairro->valor_entrega : 0;
+				$bairro = BairroDelivery::find($pedido->endereco->bairro_id);
+				$valorEntrega = $bairro->valor_entrega;
 			}else{
 				$valorEntrega = $config->valor_entrega;
 			}
@@ -1040,19 +1063,17 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function setEndereco(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::find($request->pedido_id);
 		$pedido->endereco_id = $request->endereco;
 		if($request->endereco == '') $pedido->endereco_id = NULL;
 		$res = $pedido->save();
 
-		$endereco = EnderecoDelivery::with('_bairro')
-		->where('cliente_id', $pedido->cliente_id)
-		->find($request->endereco);
+		$endereco = EnderecoDelivery::with('_bairro')->find($request->endereco);
 		return response()->json($endereco, 200);
 	}
 
 	public function novoEnderecoClienteCaixa(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::findOrFail($request->pedido_id);
 
 		$config = DeliveryConfig::
 		where('empresa_id', $this->empresa_id)
@@ -1078,7 +1099,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function saveItemCaixa(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::find($request->pedido_id);
 
 		$this->_validateItem($request);
 
@@ -1196,7 +1217,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function produtos(){
-		$products = ProdutoDelivery::where('empresa_id', $this->empresa_id)->get();
+		$products = ProdutoDelivery::all();
 		$arr = array();
 		foreach($products as $p){
 			if($p->status){
@@ -1208,11 +1229,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function deleteItem($id){
-		$item = ItemPedidoDelivery::where('id', $id)
-		->whereHas('pedido', function($query){
-			$query->where('empresa_id', $this->empresa_id);
-		})
-		->firstOrFail();
+		$item = ItemPedidoDelivery::find($id);
 		$item->delete();
 
 		session()->flash('mensagem_sucesso', 'Item Removido!');
@@ -1220,7 +1237,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function getProdutoDelivery($id){
-		$produto = ProdutoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$produto = ProdutoDelivery::find($id);
 		foreach($produto->pizza as $tp){
 			$tp->tamanho;
 		}
@@ -1229,17 +1246,17 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function frenteComPedidoFinalizar(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::find($request->pedido_id);
 		$total = $pedido->somaItens();
 		if($pedido->endereco_id != NULL){
-			$config = DeliveryConfig::where('empresa_id', $this->empresa_id)->first();
+			$config = DeliveryConfig::first();
 			$total -= $config->valor_entrega;
 		}
 
 		$total += str_replace(",", ".", $request->taxa_entrega);
 
 		$pedido->valor_total = $total;
-		$pedido->estado = 'aprovado';
+		$pedido->estado = 'ap';
 		$pedido->telefone = $request->telefone;
 		$pedido->troco_para = str_replace(",", ".", $request->troco_para);
 		$pedido->data_registro = date('Y-m-d H:i:s');
@@ -1253,7 +1270,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function removerCarrinho($id){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$pedido = PedidoDelivery::find($id);
 
 		$pedido->delete();
 		return redirect('/pedidosDelivery/verCarrinhos');
@@ -1262,7 +1279,7 @@ class PedidoDeliveryController extends BaseController
 	public function store(Request $request){
 		$data = $request->data;
 		try{
-			$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($data['pedido_id']);
+			$pedido = PedidoDelivery::findOrFail($data['pedido_id']);
 
 			if(isset($data['sabores'])){
 				$prodId = $data['sabores'][0];
@@ -1309,7 +1326,6 @@ class PedidoDeliveryController extends BaseController
 			$item = PedidoDelivery::with('itens')
 			->with('cliente')
 			->with('endereco')
-			->where('empresa_id', $this->empresa_id)
 			->findOrFail($id);
 			return response()->json($item, 200);
 		}catch(\Exception $e){
@@ -1318,7 +1334,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function finalizarFrente(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::findOrFail($request->pedido_id);
 
 		$pedido->troco_para = $request->troco_para ? __replace($request->troco_para) : 0;
 		$pedido->observacao = $request->observacao_pedido ?? '';
@@ -1370,7 +1386,7 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function lerPedido(Request $request){
-		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($request->pedido_id);
+		$pedido = PedidoDelivery::findOrFail($request->pedido_id);
 
 		$pedido->estado = $request->estado;
 
@@ -1406,140 +1422,129 @@ class PedidoDeliveryController extends BaseController
 	}
 
 	public function delete($id){
-		$item = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
+		$item = PedidoDelivery::find($id);
 		$item->delete();
 
 		session()->flash('mensagem_sucesso', 'Pedido Removido!');
 		return redirect('/pedidosDelivery');
 	}
 
+  public function marcarComoEntregue($id) {
+    $pedido = \App\Models\PedidoDelivery::find($id);
+    if($pedido) {
+        $pedido->entregue = 1; 
 
-    public function verificarNovosPedidos()
-    {
-        $dataInicial = date('Y-m-d');
-        $dataFinal = date('Y-m-d', strtotime('+1 day'));
-        $pedidosNovo = $this->filtroPedidos($dataInicial, $dataFinal, 'novo');
-
-        return response()->json(['novos' => count($pedidosNovo)]);
-    }
-
-    public function ultimoPedidoNovo()
-    {
-        $pedido = PedidoDelivery::with('cliente')
-            ->where('empresa_id', $this->empresa_id)
-            ->where('estado', 'novo')
-            ->orderByDesc('id')
-            ->first();
-
-        if (!$pedido) {
-            return response()->json(['nenhum' => true]);
+        // NOVA LÓGICA: Disparo de WhatsApp de Pedido Entregue
+        if(!empty($pedido->telefone)){
+            try {
+                $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+                $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
+                
+                // Mensagem que o cliente vai receber
+                $msgWhatsApp = "*✅ PEDIDO ENTREGUE!* \n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso! Muito obrigado pela preferência e bom apetite! 🍕🥳";
+                
+                $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $pedido->empresa_id);
+            } catch (\Exception $e) {
+                \Log::error("Erro ao enviar WhatsApp de entrega: " . $e->getMessage());
+            }
         }
 
-        $dataPedido = $pedido->data_registro ?? $pedido->created_at;
-
-        return response()->json([
-            'id' => $pedido->id,
-            'cliente' => $pedido->cliente->nome ?? 'Cliente Delivery',
-            'valor' => number_format((float) $pedido->valor_total, 2, ',', '.'),
-            'hora' => $dataPedido ? \Carbon\Carbon::parse($dataPedido)->format('H:i') : '',
-        ]);
+        $pedido->save();
+        return redirect()->back()->with('mensagem', 'Pedido marcado como entregue e cliente notificado!');
     }
+}
+  
+  public function ultimoPedidoNovo() {
+		try {
+			// Removemos a trava de empresa temporariamente para garantir que ele ache o pedido
+			$pedido = \App\Models\PedidoDelivery::with(['cliente'])
+				->where('estado', 'novo')
+				->orderBy('id', 'desc')
+				->first();
 
-    public function kanban(Request $request)
-    {
-        $dataInicial = $request->data_inicial ?: date('Y-m-d');
-        $dataFinal = $request->data_final ?: date('Y-m-d', strtotime('+1 day'));
+			if ($pedido) {
+				return response()->json([
+					'id' => $pedido->id,
+					'cliente' => $pedido->nome ?? ($pedido->cliente->nome ?? 'Cliente Delivery'),
+					'valor' => number_format((float)$pedido->valor_total, 2, ',', '.'),
+					'hora' => \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i')
+				]);
+			}
+			
+			return response()->json(['nenhum' => true]);
 
-        $pedidosNovo = $this->filtroPedidos($dataInicial, $dataFinal, 'novo');
-        $pedidosAprovado = $this->filtroPedidos($dataInicial, $dataFinal, 'aprovado');
-        $pedidosFinalizado = $this->filtroPedidos($dataInicial, $dataFinal, 'finalizado');
-        $pedidosCancelado = $this->filtroPedidos($dataInicial, $dataFinal, 'cancelado');
+		} catch (\Exception $e) {
+			// Se der erro, ele devolve o erro em texto para não quebrar o painel
+			return response()->json(['erro' => $e->getMessage()]);
+		}
+	}
+  
+public function kanban(Request $request)
+{
+    $dataInicial = $request->data_inicial ?? date("Y-m-d");
+    $dataFinal = $request->data_final ?? date('Y-m-d', strtotime('+1 day'));
 
-        $pedidosEntregue = PedidoDelivery::where('empresa_id', $this->empresa_id)
-            ->where('entregue', 1)
-            ->whereBetween('data_registro', [$dataInicial, $dataFinal])
-            ->with(['cliente', 'itens.produto.produto', 'endereco'])
-            ->orderByDesc('id')
-            ->get();
+    $pedidosNovo = $this->filtroPedidos($dataInicial, $dataFinal, 'novo');
+    $pedidosAprovado = $this->filtroPedidos($dataInicial, $dataFinal, 'aprovado');
+    $pedidosFinalizado = $this->filtroPedidos($dataInicial, $dataFinal, 'finalizado');
+    $pedidosEntregue = PedidoDelivery::where('entregue', 1)
+    ->whereBetween('data_registro', [$dataInicial, $dataFinal])
+    ->where('empresa_id', $this->empresa_id)
+    ->get();
+    $pedidosCancelado = $this->filtroPedidos($dataInicial, $dataFinal, 'cancelado');
 
-        return view('pedidosDelivery.kanban')
-            ->with('pedidosNovo', $pedidosNovo)
-            ->with('pedidosAprovado', $pedidosAprovado)
-            ->with('pedidosFinalizado', $pedidosFinalizado)
-            ->with('pedidosEntregue', $pedidosEntregue)
-            ->with('pedidosCancelado', $pedidosCancelado)
-            ->with('title', 'Painel Kanban Delivery');
-    }
+    return view('pedidosDelivery/kanban')
+        ->with('pedidosNovo', $pedidosNovo)
+        ->with('pedidosAprovado', $pedidosAprovado)
+        ->with('pedidosFinalizado', $pedidosFinalizado)
+        ->with('pedidosEntregue', $pedidosEntregue) // Adicione esta linha
+        ->with('pedidosCancelado', $pedidosCancelado)
+        ->with('title', 'Painel Kanban Delivery');
+}
 
-    public function actualizarStatusKanban(Request $request)
-    {
-        $request->validate([
-            'id' => 'required|integer',
-            'estado' => 'required|string|in:novo,aprovado,finalizado,entregue,cancelado,finalizar_caixa',
-            'motivo' => 'nullable|string|max:250',
-        ]);
+public function actualizarStatusKanban(Request $request)
+{
+    try {
+        $pedido = PedidoDelivery::findOrFail($request->id);
+        $novoEstado = $request->estado; 
 
-        $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
-            ->findOrFail($request->id);
-
-        $novoEstado = $request->estado;
-        if ($novoEstado === 'finalizar_caixa') {
+        // Se for uma ação que não altera o estado (como enviar para o caixa), apenas retorne sucesso
+        if ($novoEstado == 'finalizar_caixa') {
             return response()->json(['sucesso' => true]);
         }
 
-        $mensagem = null;
+        $pedido->estado = $novoEstado;
 
-        if ($novoEstado === 'entregue') {
+        if ($novoEstado == 'entregue') {
             $pedido->entregue = 1;
             $pedido->estado = 'finalizado';
-            $pedido->horario_entrega = date('H:i');
-            $mensagem = "*✅ PEDIDO ENTREGUE!*\n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso. Obrigado pela preferência!";
-        } else {
-            $pedido->estado = $novoEstado;
-            $pedido->entregue = 0;
-
-            if ($novoEstado === 'cancelado') {
-                $pedido->motivoEstado = $request->motivo ?: 'Não especificado';
-                $mensagem = "*❌ PEDIDO CANCELADO*\n\nSeu pedido *#{$pedido->id}* foi cancelado. Motivo: {$pedido->motivoEstado}.";
-            } elseif ($novoEstado === 'aprovado') {
-                $mensagem = "*✅ PEDIDO CONFIRMADO!*\n\nSeu pedido *#{$pedido->id}* foi aceito e já entrou em preparação.";
-            } elseif ($novoEstado === 'finalizado') {
-                $mensagem = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!*\n\nSeu pedido *#{$pedido->id}* está a caminho.";
-            }
         }
 
         $pedido->save();
 
-        if ($mensagem && !empty($pedido->telefone)) {
-            $numero = preg_replace('/[^0-9]/', '', $pedido->telefone);
-            if (!str_starts_with($numero, '55')) {
-                $numero = '55' . $numero;
-            }
+        $msgWhatsApp = '';
+        if($novoEstado == 'cancelado'){
+            $motivo = $request->motivo ?? 'Não especificado';
+            $msgWhatsApp = "*❌ PEDIDO CANCELADO* \n\nOlá, seu pedido *#{$pedido->id}* foi cancelado. Motivo: {$motivo}.";
+        } elseif($novoEstado == 'aprovado'){
+            $msgWhatsApp = "*✅ PEDIDO CONFIRMADO!* \n\nOlá, seu pedido *#{$pedido->id}* foi aceito e já entrou em preparação! 🍳🍟";
+        } elseif($novoEstado == 'finalizado'){
+            $msgWhatsApp = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!* \n\nOba! O motoboy já recolheu o seu pedido *#{$pedido->id}* e está a caminho. 🍕";
+        }
 
-            $this->whatsapputil->sendMessage($numero, $mensagem, (int) $this->empresa_id);
+      		elseif($novoEstado == 'entregue'){
+            $msgWhatsApp = "*✅ PEDIDO ENTREGUE!* \n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso! Muito obrigado pela preferência e bom apetite! 🍕🥳";
+        }
+      
+        if(!empty($msgWhatsApp) && !empty($pedido->telefone)){
+            $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+            $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
+            $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
         }
 
         return response()->json(['sucesso' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['sucesso' => false, 'mensagem' => $e->getMessage()], 500);
     }
-
-    public function marcarComoEntregue($id)
-    {
-        $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)->findOrFail($id);
-        $pedido->entregue = 1;
-        $pedido->estado = 'finalizado';
-        $pedido->horario_entrega = date('H:i');
-        $pedido->save();
-
-        if (!empty($pedido->telefone)) {
-            $numero = preg_replace('/[^0-9]/', '', $pedido->telefone);
-            if (!str_starts_with($numero, '55')) {
-                $numero = '55' . $numero;
-            }
-
-            $mensagem = "*✅ PEDIDO ENTREGUE!*\n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso. Obrigado pela preferência!";
-            $this->whatsapputil->sendMessage($numero, $mensagem, (int) $this->empresa_id);
-        }
-
-        return redirect()->back()->with('mensagem_sucesso', 'Pedido marcado como entregue.');
-    }
+}
 }

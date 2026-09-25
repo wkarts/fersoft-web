@@ -7,20 +7,17 @@
 
 			<div class="card-body">
 				<h2>Pedido Delivery <strong class="text-info">#{{$pedido->id}}</strong></h2>
-				<h4>Cliente: <strong class="text-success">{{$pedido->cliente->nome}}</strong></h4>
+				<h4>Cliente: <strong class="text-success">{{ $pedido->nome ?? ($pedido->cliente ? $pedido->cliente->nome : 'Cliente não identificado') }} {{ $pedido->sobre_nome ?? '' }}</strong></h4>
+				
 				<h4>Telefone: <strong class="text-success">{{$pedido->telefone}}</strong></h4>
-				<!-- @if($pedido->app == 0)
-				<h4><strong class="text-success">Pedido realizado através do WebDelivery</strong></h4>
-				@else
-				<h4><strong class="text-success">Pedido realizado através do App</strong></h4>
-				@endif -->
+				
 				<h4>Horario: <strong class="text-success">{{ \Carbon\Carbon::parse($pedido->data_registro)->format('H:i:s')}}</strong></h4>
 				<h4>Estado Atual:
 					@if($pedido->estado == 'novo')
 					<span class="label label-xl label-inline label-light-primary">NOVO</span>
 					@elseif($pedido->estado == 'cancelado')
 					<span class="label label-xl label-inline label-light-danger">CANCELADO</span>
-					<a onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/pedidosDelivery/delete/{{ $pedido->id }}" }else{return false} })' class="btn btn-danger">
+					<a onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/pedidosDelivery/delete/{{ $pedido->id }}" }else{return false} })' class="btn btn-danger btn-sm ml-2">
 						<i class="la la-trash"></i> Apagar pedido
 					</a>
 					@elseif($pedido->estado == 'aprovado')
@@ -29,8 +26,8 @@
 					<span class="label label-xl label-inline label-light-info">FINALIZADO</span>
 					@endif 
 
-					<span>
-						<a href="#!" onclick='swal("", "{{$pedido->motivoEstado}}", "info")' class="btn btn-light-info
+					<span class="ml-2">
+						<a href="#!" onclick='swal("", "{{$pedido->motivoEstado}}", "info")' class="btn btn-sm btn-light-info
 							@if(empty($pedido->motivoEstado))
 							disabled
 							@endif">
@@ -42,45 +39,60 @@
 				<h4>Troco para: <strong class="tent-danger">R$ {{number_format($pedido->troco_para, 2)}}</strong></h4>
 				@endif
 
-				@if($pedido->endereco_id != null)
-				<a class="btn btn-info" data-toggle="modal" data-target="#modal-endereco">
-					<i class="la la-map"></i> Ver Endereço
-				</a>
+				<hr class="mt-6 mb-6"> <div class="d-flex flex-wrap align-items-center">
+					
+					<a href="/pedidosDelivery" class="btn btn-light-dark font-weight-bold mr-2 mb-2">
+						<i class="la la-arrow-left"></i> Voltar
+					</a>
 
-				@if($pedido->endereco->longitude != "")
-				<a class="btn btn-success" target="_blank" href="/clientesDelivery/enderecosMap/{{$pedido->endereco_id }}">
-					<i class="la la-map-marked"></i> Ver Mapa
-				</a>
-				@endif
-				@endif
+					@if($pedido->endereco_id != null)
+					<a class="btn btn-info mr-2 mb-2" data-toggle="modal" data-target="#modal-endereco">
+						<i class="la la-map"></i> Ver Endereço
+					</a>
 
-				<a target="_blank" class="btn btn-danger" href="/pedidosDelivery/print/{{$pedido->id}}">
-					<i class="la la-print"></i> Imprimir Pedido
-				</a>
-				@if($pedido->app == 1)
-				<a class="btn btn-warning" data-toggle="modal" data-target="#modal-push">
-					<i class="la la-bell"></i> Enviar Push
-				</a>
-				@else
+					@if($pedido->endereco->longitude != "")
+					<a class="btn btn-success mr-2 mb-2" target="_blank" href="/clientesDelivery/enderecosMap/{{$pedido->endereco_id }}">
+						<i class="la la-map-marked"></i> Ver Mapa
+					</a>
+					@endif
+					@endif
 
-				@if(sizeof($pedido->cliente->tokensWeb) > 0)
-				<a class="btn cyan waves-light blue modal-trigger" href="#modal-push-web">
-					<i class="material-icons left">notifications</i> Enviar Push Web
-				</a>
+					<a target="_blank" class="btn btn-danger mr-2 mb-2" href="/pedidosDelivery/print/{{$pedido->id}}">
+						<i class="la la-print"></i> Imprimir Pedido
+					</a>
 
-				@endif
-				@endif
+					@if($pedido->app == 1)
+					<a class="btn btn-warning mr-2 mb-2" data-toggle="modal" data-target="#modal-push">
+						<i class="la la-bell"></i> Enviar Push
+					</a>
+					@else
+						@if($pedido->cliente && sizeof($pedido->cliente->tokensWeb) > 0)
+						<a class="btn cyan waves-light blue modal-trigger mr-2 mb-2" href="#modal-push-web">
+							<i class="material-icons left">notifications</i> Enviar Push Web
+						</a>
+						@endif
+					@endif
 
-				@if($pedido->estado == 'cancelado' || $pedido->estado == 'finalizado')
-				<a onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/pedidosDelivery/delete/{{ $pedido->id }}" }else{return false} })' class="btn btn-danger">
-					<i class="la la-trash"></i> Apagar pedido
-				</a>
-				@endif
+					@if($pedido->estado == 'cancelado' || $pedido->estado == 'finalizado')
+					<a onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/pedidosDelivery/delete/{{ $pedido->id }}" }else{return false} })' class="btn btn-danger mr-2 mb-2">
+						<i class="la la-trash"></i> Apagar
+					</a>
+					@endif
 
-				<!-- <a onclick="setaTelefone('{{$pedido->telefone}}')" class="btn btn-dark" href="#modal-sms">
-					<i class="la la-send"></i> Enviar SMS
-				</a> -->
-			</div>
+					@if($pedido->estado == 'finalizado')
+						@if($pedido->entregue)
+							<span class="btn btn-success disabled mr-2 mb-2 font-weight-bold" style="cursor: default;">
+								<i class="fa fa-check-circle"></i> Pedido ENTREGUE
+							</span>
+						@else
+							<a href="/pedidosDelivery/marcarComoEntregue/{{$pedido->id}}" class="btn btn-primary mr-2 mb-2 font-weight-bold">
+								<i class="fa fa-truck"></i> Marcar como Entregue
+							</a>
+						@endif
+					@endif
+
+				</div>
+				</div>
 		</div>
 
 		<div class="card card-custom gutter-b">
@@ -206,11 +218,11 @@
 													@if(count($i->itensAdicionais) > 0)
 
 													@foreach($i->itensAdicionais as $key => $ad)
-													{{$ad->adicional->nome()}} 
-													@if($key < count($i->itensAdicionais)-1)
-													|
-													@endif
-													@endforeach
+                                                        {{ (int)$i->quantidade }}x {{ $ad->adicional->nome() }} (R$ {{ number_format($ad->adicional->valor * $i->quantidade, 2, ',', '.') }}) 
+                                                        @if($key < count($i->itensAdicionais)-1)
+                                                            |
+                                                        @endif
+                                                    @endforeach
 
 													@else
 													Nenhum 
@@ -254,7 +266,7 @@
 							</div>
 						</div>
 						<input type="hidden" id="token" value="{{csrf_token()}}">
-						<input type="hidden" id="cliente" value="{{$pedido->cliente->id}}">
+						<input type="hidden" id="cliente" value="{{ $pedido->cliente ? $pedido->cliente->id : '' }}">
 					</div>
 				</div>
 			</div>
@@ -265,7 +277,7 @@
 			<div class="card-body">
 				<div class="row"> 
 					@if($pedido->estado == 'novo' || $pedido->estado == 'aprovado')
-					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
+					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
 						<form action="/pedidosDelivery/alterarPedido" method="get">
 							<input type="hidden" name="id" value="{{$pedido->id}}">
 							<input type="hidden" name="tipo" value="cancelado">
@@ -275,7 +287,7 @@
 					@endif
 					
 					@if($pedido->estado == 'novo')
-					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
+					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
 						<form action="/pedidosDelivery/alterarPedido" method="get">
 							<input type="hidden" name="id" value="{{$pedido->id}}">
 							<input type="hidden" name="tipo" value="aprovado">
@@ -284,7 +296,7 @@
 					</div>
 					@endif
 					@if($pedido->estado == 'aprovado')
-					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
+					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
 						<form action="/pedidosDelivery/alterarPedido" method="get">
 							<input type="hidden" name="id" value="{{$pedido->id}}">
 							<input type="hidden" name="tipo" value="finalizado">
@@ -294,19 +306,8 @@
 					@endif
 
 					@if($pedido->estado == 'finalizado')
-					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
-						<a class="btn btn-success" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}">Ir para frente de caixa</a>
-					</div>
-					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3">
-						@if($pedido->entregue)
-							<span class="btn btn-light-success disabled" style="width: 100%;">
-								<i class="la la-check-circle"></i> Pedido entregue
-							</span>
-						@else
-							<a class="btn btn-light-primary" style="width: 100%;" href="/pedidosDelivery/marcarComoEntregue/{{$pedido->id}}">
-								<i class="la la-truck"></i> Marcar como entregue
-							</a>
-						@endif
+					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
+						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}">Ir para frente de caixa</a>
 					</div>
 					@endif
 				</div>
@@ -518,5 +519,4 @@
 	</div>
 </div>
 
-
-@endsection	
+@endsection

@@ -75,4 +75,58 @@ class IbptService
 
         return $dados;
     }
+
+    /**
+     * Realiza a consulta de tributos compatível com a chamada antiga.
+     *
+     * @param array $data
+     * @return object|null
+     */
+    public function consulta($data)
+    {
+        $uf = $data['uf'] ?? null;
+        $ncmBuscado = $data['ncm'] ?? null;
+
+        if (!$uf || !$ncmBuscado) {
+            return null;
+        }
+
+        // Baixa o CSV correspondente à UF
+        $filePath = $this->baixarCsvPorUf($uf);
+        if (!$filePath) {
+            return null;
+        }
+
+        // Lê os dados do CSV
+        $registros = $this->lerCsv($filePath);
+
+        // Remove o arquivo temporário após a leitura
+        if (file_exists($filePath)) {
+            @unlink($filePath);
+        }
+
+        // Procura o NCM correspondente nos dados do CSV
+        foreach ($registros as $row) {
+            // Limpa pontos ou formatações do NCM se necessário
+            $codigoLimpo = preg_replace('/[^0-9]/', '', $row['codigo']);
+            if ($codigoLimpo === $ncmBuscado) {
+                return (object) [
+                    'Codigo' => $row['codigo'],
+                    'UF' => strtoupper($uf),
+                    'Descricao' => $row['descricao'],
+                    'Nacional' => $row['nacional_federal'],
+                    'Estadual' => $row['estadual'],
+                    'Importado' => $row['importado_federal'],
+                    'Municipal' => $row['municipal'],
+                    'VigenciaInicio' => $row['vigencia_inicio'],
+                    'VigenciaFim' => $row['vigencia_fim'],
+                    'Chave' => $row['chave'],
+                    'Versao' => $row['versao'],
+                    'Fonte' => $row['fonte']
+                ];
+            }
+        }
+
+        return null;
+    }
 }

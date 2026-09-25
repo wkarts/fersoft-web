@@ -1,175 +1,73 @@
-@extends('delivery_pedido.default')
-@section('content')
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Pedido</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased pb-40">
 
-@if(session()->has('message_sucesso'))
-<div class="p-3 mb-2 bg-success text-white">{{ session()->get('message_sucesso') }}</div>
+    <header class="bg-red-600 text-white px-4 pt-6 pb-6 shadow-md sticky top-0 z-50 rounded-b-3xl">
+        <h1 class="text-xl font-bold">Meu Pedido</h1>
+        <p class="text-xs text-red-100">Mesa {{ session('mesa_open')['mesa_id'] ?? '-' }}</p>
+    </header>
+
+    <main class="max-w-md mx-auto mt-6 px-4 space-y-4">
+        @php $totalGeral = 0; @endphp
+        
+        @if(isset($pedido) && $pedido->itens->count() > 0)
+            @foreach($pedido->itens as $item)
+                @php 
+                    $subtotal = $item->valor * $item->quantidade; 
+                    $totalGeral += $subtotal;
+                @endphp
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-sm">{{ $item->quantidade }}x {{ $item->produto->nome ?? 'Item' }}</h3>
+                        <p class="text-xs text-gray-400">{{ $item->observacao }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-red-600">R$ {{ number_format($subtotal, 2, ',', '.') }}</p>
+                        <a href="{{ url('/cardapio-web/removerItem/' . $item->id) }}" class="text-[10px] text-gray-400 underline">Remover</a>
+                    </div>
+                </div>
+            @endforeach
+        @else
+            <p class="text-center text-gray-400 mt-10">Carrinho vazio.</p>
+        @endif
+    </main>
+
+  @if(isset($pedido) && $pedido->status == 0)
+    <div class="bg-blue-100 text-blue-800 p-4 rounded-xl text-center font-bold mb-4">
+        <i class="fa-solid fa-clock"></i> Pedido enviado, aguardando confirmação.
+    </div>
+@elseif(isset($pedido) && $pedido->status == 1)
+    <div class="bg-yellow-100 text-yellow-800 p-4 rounded-xl text-center font-bold mb-4">
+        <i class="fa-solid fa-fire"></i> Cozinha iniciou o preparo!
+    </div>
 @endif
-<div class="clearfix"></div>
-
-<br><br>
-
-<div class="col-lg-12 col-md-12">
-	<div class="card border-0 med-blog">
-		<div class="card-header p-0">
-			<div class="container">
-				<h2 class="">ITENS DA MESA</h2>
-			</div>
-		</div>
-		<div class="card-body border border-top-0">
-			<?php $geral = 0; ?>
-
-
-			<div class="row">
-				<table id="cart" class="table table-hover table-condensed">
-					<thead>
-						<tr>
-							<th style="width:50%">Produto</th>
-							<th style="width:10%">Valor</th>
-							<th style="width:8%">Quantidade</th>
-							<th style="width:22%" class="text-center">Subtotal</th>
-							<th style="width:10%"></th>
-						</tr>
-					</thead>
-					<tbody>
-						@if($pedido)
-						@foreach($pedido->itens as $i)
-
-						<tr>
-							<td data-th="Produto">
-								<div class="row">
-									<div class="col-sm-3 hidden-xs">
-										@if(isset($i->produto->galeria[0]))
-										<img src="/imagens_produtos/{{$i->produto->galeria[0]->path}}" alt="..." class="img-responsive mini"/>
-										@else
-										<img src="/imgs/no_image.png" alt="..." class="img-responsive mini"/>
-										@endif
-									</div>
-									<div class="col-sm-9">
-										<h4 class="nomargin">{{$i->produto->nome}}</h4>
-										<p>
-											<?php $total = $i->valor * $i->quantidade; ?>
-
-
-											<span>Adicionais: 
-												@if(count($i->itensAdicionais)>0)
-												@foreach($i->itensAdicionais as $a)
-												<strong>{{$a->adicional->nome()}}</strong>
-												<?php  $total += $i->quantidade * $a->adicional->valor ?>
-												@endforeach
-												@else
-												<label>Nenhum adicional</label>
-												@endif
-											</span>
-
-											@if($i->observacao != '')
-											<br>
-											<span>Observação: {{$i->observacao}}
-											</span>
-											@endif
-
-											@if(count($i->sabores) > 0)
-											<br>
-											<span>Sabores: 
-												@foreach($i->sabores as $key => $s)
-												<strong>{{$s->produto->produto->nome}}</strong>
-												{{($key+1 >= count($i->sabores) ? '' : '|')}}
-
-												@endforeach
-											</span><br>
-											<span>Total de sabores: <strong>{{count($i->sabores)}}</strong></span>
-											<span>| Tamanho <strong>{{$i->tamanho->nome}}</strong></span>
-											@endif
-											<br>
-
-											
-
-										</p>
-									</div>
-								</div>
-							</td>
-							@if(count($i->sabores) > 0)
-							<?php 
-								$maiorValor = 0; 
-								$somaValores = 0;
-								foreach($i->sabores as $it){
-									$v = $it->maiorValor($it->produto->id, $i->tamanho_id);
-									$somaValores += $v;
-									if($v > $maiorValor) $maiorValor = $v;
-								}
-
-
-								if(env("DIVISAO_VALOR_PIZZA") == 1){
-									$maiorValor = $somaValores/sizeof($i->sabores);
-								}
-
-								foreach($i->itensAdicionais as $a){
-									$maiorValor += $a->adicional->valor;
-								}
-								$total = number_format($maiorValor * $i->quantidade, 2);
-							?>
-								<td data-th="Preço">R${{number_format($maiorValor, 2)}}</td>
-
-							@else
-							<td data-th="Preço">R${{number_format($total, 2)}}</td>
-							@endif
-							<td data-th="Quantidade">
-								<input readonly id="qtd_item_{{$i->id}}" type="number" class="qtd form-control text-center" value="{{(int)$i->quantidade}}">
-							</td>
-
-
-							<td data-th="Subtotal" class="text-center">R${{number_format($total, 2, ',', '.')}}</td>
-							<!-- <td class="actions" >
-								<button onclick="refresh({{$i->id}})" class="btn btn-info btn-sm"><i class="fa fa-refresh"></i></button>
-								<button onclick="removeItem({{$i->id}})" class="btn btn-danger btn-sm"><i class="fa fa-trash-o"></i></button>								
-							</td> -->
-						</tr>
-						<?php $geral += $total; ?>
-						@endforeach
-						@else
-						<div class="container">
-							<p class="text-center">Nenhum item no seu carrinho
-								<a href="/cardapio" class="btn btn-primary">
-									<span class="fa fa-bars"></span> Cardápio
-								</a></p>
-								<br>
-							</div>
-							@endif
-						</tbody>
-						<tfoot>
-							<tr class="visible-xs">
-								<td class="text-center"><strong>Total {{number_format($geral, 2, ',', '.')}}</strong></td>
-							</tr>
-
-						</tfoot>
-					</table>
-				</div>
-
-				@if(sizeof($pedido->itens) == 0)
-				<a href="/pedido" type="button" class="btn btn-primary btn-lg btn-block">
-					<span class="fa fa-bars mr-2"></span>CARDÁPIO</strong>
-				</a>
-				@endif
-
-				@if($pedido)
-				
-				<button id="btn-enviar" onclick="enviarParaCozinha()" type="button" class="btn btn-info btn-lg btn-block @if(sizeof($pedido->itens) == 0) disabled @endif" style="margin-bottom: 10px;">
-					<span class="fa fa-fire mr-2"></span> ENVIAR PARA COZINHA
-				</button>
-
-				<a onclick='swal("Atenção!", "Deseja finalizar esta mesa? não irá pedir mais nada?", "warning").then((sim) => {if(sim){ location.href="/pedido/finalizar" }else{return false} })' type="button" href="#!" class="btn btn-success btn-lg btn-block @if(sizeof($pedido->itens) == 0) disabled @endif">
-					<span class="fa fa-check mr-2"></span> FINALIZAR
-					<strong>R$ {{number_format($geral, 2, ',', '.')}}</strong>
-				</a>
-				
-				@else
-				<a href="/pedido" type="button" class="btn btn-primary btn-lg btn-block">
-					<span class="fa fa-bars mr-2"></span>CARDÁPIO</strong>
-				</a>
-				@endif
-			</div>
-		</div>
-	</div>
-	<br>
+  
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex flex-col gap-3 max-w-md mx-auto">
+        <div class="flex justify-between font-bold text-lg">
+            <span>Total:</span>
+            <span>R$ {{ number_format($totalGeral, 2, ',', '.') }}</span>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url('/open/' . session('mesa_open')['mesa_id']) }}" class="w-1/3 bg-gray-200 text-gray-700 py-3 rounded-lg text-center font-bold text-sm">
+                + Comprar
+            </a>
+            <button type="button" 
+                  onclick="if(confirm('Confirmar pedido e pedir a conta?')) { window.location.href='{{ url('/cardapio-web/finalizar') }}'; }" 
+                  class="w-2/3 bg-green-600 text-white py-3 rounded-lg font-bold">
+              Pedir a Conta
+          </button>
+        </div>
+    </div>
+  <button id="btn-enviar" onclick="enviarParaCozinha()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg">
+    Enviar Pedido para a Cozinha
+</button>
 
 <script>
 function enviarParaCozinha() {
@@ -202,5 +100,5 @@ function enviarParaCozinha() {
     });
 }
 </script>
-
-@endsection
+</body>
+</html>
