@@ -106,6 +106,9 @@ window.addEventListener('load', function () {
     function alterarStatusPedido(estado, motivo) {
         if (!pedidoPendenteAtualId) return;
 
+        const $botoes = $('#btnAceitarPedidoModal, #btnRecusarPedidoModal');
+        $botoes.prop('disabled', true);
+
         $.ajax({
             url: '/pedidosDelivery/actualizarStatusKanban',
             type: 'POST',
@@ -140,6 +143,7 @@ window.addEventListener('load', function () {
                     }, 800);
                 } else {
                     pedidoPendenteAtualId = null;
+                    $botoes.prop('disabled', false);
                 }
             },
             error: function(xhr) {
@@ -148,6 +152,7 @@ window.addEventListener('load', function () {
                     mensagem = xhr.responseJSON.mensagem;
                 }
                 exibirErroPedido(mensagem);
+                $botoes.prop('disabled', false);
             }
         });
     }
@@ -189,10 +194,12 @@ window.addEventListener('load', function () {
                         </div>
                         <div class="col-md-6">
                             <p><strong>Valor Total:</strong> <span class="text-success font-weight-bold">R$ ${response.valor_total || response.valor || '0,00'}</span></p>
-                            <p><strong>Pagamento:</strong> ${response.forma_pagamento || '--'}</p>
+                            <p><strong>Pagamento:</strong> ${response.forma_pagamento_label || response.forma_pagamento || '--'}</p>
                             <p><strong>Tipo de Entrega:</strong> ${response.tipo_entrega || '--'}</p>
                         </div>
                     </div>
+                    ${response.endereco ? '<p class="mb-2"><strong>Endereço:</strong> ' + response.endereco + '</p>' : ''}
+                    ${response.observacao ? '<p class="mb-2"><strong>Observação:</strong> ' + response.observacao + '</p>' : ''}
                     <hr>
                     <p><strong>Itens do Pedido:</strong></p>
                     ${itensHtml}
