@@ -1459,6 +1459,7 @@ class PedidoDeliveryController extends Controller
 			// Só notifica pedido realmente finalizado pelo cliente, nunca carrinho em montagem.
 			$pedido = \App\Models\PedidoDelivery::with([
 				'cliente',
+				'endereco',
 				'itens.produto.produto'
 			])
 				->where('empresa_id', $this->empresa_id)
@@ -1469,10 +1470,28 @@ class PedidoDeliveryController extends Controller
 				->first();
 
 			if ($pedido) {
-				$clienteNome = trim(($pedido->cliente->nome ?? 'Cliente Delivery') . ' ' . ($pedido->cliente->sobre_nome ?? ''));
-				$telefone = $pedido->telefone ?: ($pedido->cliente->celular ?? '');
+				$cliente = $pedido->cliente;
+				$clienteNome = trim(($cliente->nome ?? 'Cliente Delivery') . ' ' . ($cliente->sobre_nome ?? ''));
+				$telefone = $pedido->telefone ?: ($cliente->celular ?? '');
 				$valorFormatado = number_format((float)$pedido->valor_total, 2, ',', '.');
 				$hora = \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i');
+
+				$formasPagamento = [
+					'maquineta' => 'Máquina de Cartão',
+					'dinheiro' => 'Dinheiro',
+					'pix' => 'Pix',
+					'pagseguro' => 'Pagamento Online',
+				];
+				$formaPagamentoLabel = $formasPagamento[$pedido->forma_pagamento] ?? $pedido->forma_pagamento;
+
+				$enderecoEntrega = null;
+				if ($pedido->endereco_id && $pedido->endereco) {
+					$enderecoEntrega = trim(
+						($pedido->endereco->rua ?? '') . ', ' .
+						($pedido->endereco->numero ?? '') . ' - ' .
+						($pedido->endereco->bairro ?? '')
+					);
+				}
 
 				return response()->json([
 					'id' => $pedido->id,
@@ -1482,13 +1501,20 @@ class PedidoDeliveryController extends Controller
 					],
 					'valor_total' => $valorFormatado,
 					'forma_pagamento' => $pedido->forma_pagamento,
+					'forma_pagamento_label' => $formaPagamentoLabel,
 					'tipo_entrega' => $pedido->endereco_id ? 'Entrega' : 'Retirada no balcão',
+					'endereco' => $enderecoEntrega,
+					'observacao' => $pedido->observacao ?? '',
 					'itens' => $pedido->itens->map(function ($item) {
+						$produtoDelivery = $item->produto;
+						$produtoBase = $produtoDelivery ? $produtoDelivery->produto : null;
+						$nomeProduto = $produtoBase->nome ?? ($produtoDelivery->nome ?? 'Item');
+
 						return [
 							'quantidade' => $item->quantidade,
 							'valor' => number_format((float)$item->valor, 2, ',', '.'),
 							'produto' => [
-								'nome' => $item->produto->produto->nome ?? ($item->produto->nome ?? 'Item'),
+								'nome' => $nomeProduto,
 							],
 						];
 					})->values(),
