@@ -81,4 +81,82 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             $view
         );
     }
+
+    public function test_tracking_menu_does_not_use_cart_order_variable(): void
+    {
+        $layout = file_get_contents(resource_path('views/delivery/default.blade.php'));
+
+        $this->assertStringContainsString(
+            "\$pedidoAtivoId = session('ultimo_pedido_id') ?? null;",
+            $layout
+        );
+        $this->assertStringNotContainsString(
+            "\$pedido->id ?? session('ultimo_pedido_id')",
+            $layout
+        );
+    }
+
+    public function test_my_orders_and_tracking_exclude_carts_still_being_built(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/CarrinhoController.php'));
+
+        $this->assertStringContainsString("->where('valor_total', '>', 0)", $controller);
+        $this->assertStringContainsString("->where('forma_pagamento', '<>', '')", $controller);
+        $this->assertStringContainsString(
+            "Pedido não encontrado ou ainda não foi finalizado.",
+            $controller
+        );
+    }
+
+    public function test_tracking_has_all_terminal_states_without_full_page_auto_reload(): void
+    {
+        $view = file_get_contents(resource_path('views/delivery/pedido_finalizado.blade.php'));
+        $routes = file_get_contents(base_path('routes/web.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/CarrinhoController.php'));
+
+        $this->assertStringContainsString('id="status-passo-1"', $view);
+        $this->assertStringContainsString('id="status-passo-2"', $view);
+        $this->assertStringContainsString('id="status-passo-3"', $view);
+        $this->assertStringContainsString('id="status-passo-4"', $view);
+        $this->assertStringContainsString('id="pedido-cancelado"', $view);
+        $this->assertStringContainsString("estado === 'cancelado'", $view);
+        $this->assertStringContainsString("estado === 'aprovado'", $view);
+        $this->assertStringContainsString("estado === 'finalizado'", $view);
+        $this->assertStringContainsString("setInterval(function()", $view);
+        $this->assertStringNotContainsString("window.location.reload();", $view);
+
+        $this->assertStringContainsString(
+            "Route::get('/status/{id}', 'CarrinhoController@statusPedido');",
+            $routes
+        );
+        $this->assertStringContainsString('public function statusPedido($id)', $controller);
+    }
+
+    public function test_tracking_displays_pix_and_pagseguro_orders_use_real_novo_state(): void
+    {
+        $view = file_get_contents(resource_path('views/delivery/pedido_finalizado.blade.php'));
+        $pagSeguro = file_get_contents(app_path('Http/Controllers/PagSeguroController.php'));
+
+        $this->assertStringContainsString(
+            "\$pedido->forma_pagamento == 'pix'",
+            $view
+        );
+        $this->assertStringContainsString(
+            "\$nome_pagamento = \"Pix\";",
+            $view
+        );
+
+        $this->assertStringNotContainsString(
+            "->where('estado', 'nv')",
+            $pagSeguro
+        );
+        $this->assertStringContainsString(
+            "->where('estado', 'novo')",
+            $pagSeguro
+        );
+        $this->assertStringContainsString(
+            "session(['ultimo_pedido_id' => \$pedido->id]);",
+            $pagSeguro
+        );
+    }
 }
