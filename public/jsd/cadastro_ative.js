@@ -53,9 +53,9 @@ function validaCodigo(){
 		codToken: codToken
 	})
 	.done((res) => {
-		location.href=path;
+		location.href="/cardapio";
 	})
 	.fail((err) => {
-		location.href=path;
+		location.href="/cardapio";
 	})
 }

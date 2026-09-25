@@ -201,7 +201,7 @@
                                         <span class="fa fa-sign-out mr-2"></span>Sair
                                     </a>
 								@else
-									<a href="/" class="btn btn-primary text-uppercase">
+									<a href="/autenticar" class="btn btn-primary text-uppercase">
 										<span class="fa fa-sign-in mr-2"></span>Entrar
                                     </a>
 								@endif
@@ -328,7 +328,7 @@
 	</a>
 	<?php $path = env('PATH_URL')."/";?>
 	<script type="text/javascript">
-		const path = "{{$path}}";
+		const path = "/";
 	</script>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 	
@@ -355,11 +355,11 @@
 	@endif
 
 	@if(isset($acompanhamento))
-	<script src="/jsd/acompanhamento.js" type="text/javascript"></script>
+	<script src="/jsd/acompanhamento.js?v=delivery-20260925-2" type="text/javascript"></script>
 	@endif
 
 	@if(isset($acompanhamentoPizza))
-	<script src="/jsd/acompanhamentoPizza.js" type="text/javascript"></script>
+	<script src="/jsd/acompanhamentoPizza.js?v=delivery-20260925-2" type="text/javascript"></script>
 	@endif
 
 	@if(isset($carrinho))
@@ -395,7 +395,7 @@
 
 	<script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 	@if(isset($cadastro_ative))
-	<script src="/jsd/cadastro_ative.js" type="text/javascript"></script>
+	<script src="/jsd/cadastro_ative.js?v=delivery-20260925-2" type="text/javascript"></script>
 	@endif
 
 	@if(isset($pizzaJs))
@@ -403,7 +403,7 @@
 	@endif
 
 	@if(isset($login_ative))
-	<script src="/jsd/login_ative.js" type="text/javascript"></script>
+	<script src="/jsd/login_ative.js?v=delivery-20260925-2" type="text/javascript"></script>
 	@endif
 
 	@if(isset($pass))
@@ -418,7 +418,7 @@
 	<script src="https://www.gstatic.com/firebasejs/7.9.1/firebase-app.js"></script>
 	@endif
 
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js`" integrity="sha512-AA1Bzp5Q0K1KanKKmvN/4d3IRKVlv9PYgwFPvm32nPO6QS8yH1HO7LbgB1pgiOxPtfeg5zEn2ba64MUcqJx6CA==" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js" integrity="sha512-AA1Bzp5Q0K1KanKKmvN/4d3IRKVlv9PYgwFPvm32nPO6QS8yH1HO7LbgB1pgiOxPtfeg5zEn2ba64MUcqJx6CA==" crossorigin="anonymous"></script>
 </body>
 
 </html>

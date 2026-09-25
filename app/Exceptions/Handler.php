@@ -156,6 +156,11 @@ class Handler extends ExceptionHandler
         $this->logContext($level, $message, $e, $request, $code >= 500);
         session()->flash('mensagem_erro', $message);
 
+        if ($request->is('pedir/*', 'cardapio', 'cardapio/*', 'carrinho', 'carrinho/*',
+            'autenticar', 'autenticar/*', 'pizza/*', 'info', 'info/*', 'enderecoDelivery', 'enderecoDelivery/*')) {
+            return response($labels[$code] ?? 'Não foi possível concluir a solicitação do delivery.', $code);
+        }
+
         return redirect()->back()->withInput();
     }
 
