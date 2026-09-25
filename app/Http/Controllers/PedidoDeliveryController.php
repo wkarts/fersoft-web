@@ -1464,6 +1464,7 @@ class PedidoDeliveryController extends Controller
 			])
 				->where('empresa_id', $this->empresa_id)
 				->where('estado', 'novo')
+				->where('pedido_lido', false)
 				->where('forma_pagamento', '<>', '')
 				->where('valor_total', '>', 0)
 				->orderBy('id', 'desc')
