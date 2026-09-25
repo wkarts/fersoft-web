@@ -370,7 +370,7 @@
 	@if(isset($forma_pagamento))
 	<script type="text/javascript" src="https://stc.pagseguro.uol.com.br/pagseguro/api/v2/checkout/pagseguro.directpayment.js"></script>
 	<script src="/jsd/card.js" type="text/javascript"></script>
-	<script src="/jsd/forma_pagamento.js" type="text/javascript"></script>
+	<script src="/jsd/forma_pagamento.js?v={{ filemtime(public_path('jsd/forma_pagamento.js')) }}" type="text/javascript"></script>
 
 	<script type="text/javascript">
 		new Card({
