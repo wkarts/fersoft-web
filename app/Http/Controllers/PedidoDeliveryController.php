@@ -7,7 +7,7 @@ use App\Models\PedidoDelivery;
 use App\Models\ItemPedidoDelivery;
 use App\Models\DeliveryConfig;
 use App\Models\ClienteDelivery;
-use NFePHP\DA\NFe\PedidoPrint;
+use App\Services\Delivery\PedidoDeliveryPrintService;
 use App\Models\VendaCaixa;
 use App\Models\ConfigNota;
 use Comtele\Services\CreditService;
@@ -692,16 +692,22 @@ class PedidoDeliveryController extends Controller
 		return $pedidos;
 	}
 
-	public function print($id){
-		$pedido = PedidoDelivery::where('id', $id)->first();
+	public function print($id, PedidoDeliveryPrintService $printService)
+	{
+		$pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
+			->findOrFail($id);
 
-		if(valida_objeto($pedido)){
-            // Em vez de chamar a biblioteca NFePHP que está com erro, 
-            // vamos renderizar uma tela Blade limpa e leve para impressão
+		// Preserva o cupom HTML da PR como alternativa explícita ao PDF.
+		if (request()->query('formato', 'pdf') === 'html') {
 			return view('pedidosDelivery/impressao_cupom', compact('pedido'));
-		}else{
-			return redirect('/403');
 		}
+
+		$pdf = $printService->render($pedido);
+
+		return response($pdf, 200, [
+			'Content-Type' => 'application/pdf',
+			'Content-Disposition' => 'inline; filename="pedido-delivery-' . $pedido->id . '.pdf"',
+		]);
 	}
 
 	public function sendSms(Request $request){
