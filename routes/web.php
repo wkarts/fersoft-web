@@ -3917,7 +3917,7 @@ Route::group(['prefix' => '/pizza'], function(){
 
 Route::get('/delivery-logoff', function () {
     $empresa_id = session('empresa_id'); // Guardamos o ID para voltar para a empresa certa
-    session()->forget(['telefone_cliente', 'cliente_log', 'empresa_id']);
+    session()->forget(['telefone_cliente', 'cliente_log', 'empresa_id', 'ultimo_pedido_id']);
 
     // Volta para a tela inicial da empresa específica
     return redirect('/pedir/' . $empresa_id);
