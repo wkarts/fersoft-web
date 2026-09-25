@@ -85,6 +85,7 @@
     <input type="hidden" id="usar_bairros" value="{{$usar_bairros}}">
     <input type="hidden" id="pedido_id" value="{{$pedido->id}}">
 	<input type="hidden" id="total-init" value="{{$total}}">
+    <input type="hidden" id="endereco_selecionado" value="">
 
     <div class="container">
         
