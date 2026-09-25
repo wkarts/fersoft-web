@@ -449,7 +449,14 @@ class CarrinhoController extends Controller
 	}
 
 	public function finalizarPedido(Request $request){
-        $request->validate(['data' => 'required|array', 'data.pedido_id' => 'required|integer', 'data.endereco_id' => 'required']);
+        $request->validate([
+            'data' => 'required|array',
+            'data.pedido_id' => 'required|integer',
+            'data.endereco_id' => 'required',
+            'data.forma_pagamento' => 'required|in:maquineta,pix,dinheiro,pagseguro',
+            'data.telefone' => 'required|string',
+            'data.nome' => 'required|string|max:60',
+        ]);
         if ($request->input('data.endereco_id') !== 'balcao') {
             EnderecoDelivery::where('cliente_id', session('cliente_log.id'))->findOrFail($request->input('data.endereco_id'));
         }
