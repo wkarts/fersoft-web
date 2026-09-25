@@ -109,6 +109,7 @@ class ConfigDeliveryController extends BaseController
 		return view('configDelivery/index')
 		->with('config', $config)
 		->with('cidades', $cidades)
+		->with('linkPublico', url('/pedir/' . $this->empresa_id))
 		->with('title', 'Configurar Parametros de Delivery');
 	}
 

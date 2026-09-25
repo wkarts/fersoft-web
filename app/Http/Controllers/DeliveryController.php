@@ -36,7 +36,7 @@ class DeliveryController extends Controller
 
             $this->empresa_id = session('empresa_id');
             $this->config = $this->empresa_id
-                ? DeliveryConfig::where('empresa_id', $this->empresa_id)->where('status', 1)
+                ? DeliveryConfig::where('empresa_id', $this->empresa_id)
                     ->whereHas('empresa', function ($query) { $query->where('status', 1); })->first()
                 : null;
 
