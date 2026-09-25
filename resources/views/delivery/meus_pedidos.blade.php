@@ -15,6 +15,7 @@
                         <th>Data e Hora</th>
                         <th>Valor Total</th>
                         <th>Status Atual</th>
+                        <th class="text-center">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,6 +38,12 @@
                             @elseif($p->estado == 'cancelado')
                                 <span class="badge badge-danger" style="padding: 10px; font-size: 14px;">Cancelado</span>
                             @endif
+                        </td>
+                        <td class="text-center">
+                            <a href="/carrinho/finalizado/{{ $p->id }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-motorcycle"></i>
+                                {{ $p->estado == 'cancelado' || ($p->estado == 'finalizado' && $p->entregue == 1) ? 'Ver pedido' : 'Acompanhar' }}
+                            </a>
                         </td>
                     </tr>
                     @endforeach
