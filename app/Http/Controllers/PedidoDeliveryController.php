@@ -1562,45 +1562,89 @@ public function actualizarStatusKanban(Request $request)
     try {
         $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
             ->findOrFail($request->id);
-        $novoEstado = $request->estado; 
 
-        // Se for uma ação que não altera o estado (como enviar para o caixa), apenas retorne sucesso
-        if ($novoEstado == 'finalizar_caixa') {
+        $novoEstado = $request->estado;
+        $estadosPermitidos = ['aprovado', 'cancelado', 'finalizado', 'entregue', 'finalizar_caixa'];
+
+        if (!in_array($novoEstado, $estadosPermitidos, true)) {
+            return response()->json([
+                'sucesso' => false,
+                'mensagem' => 'Status de delivery inválido.'
+            ], 422);
+        }
+
+        // Ação de navegação: não altera o pedido.
+        if ($novoEstado === 'finalizar_caixa') {
             return response()->json(['sucesso' => true]);
         }
 
-        $pedido->estado = $novoEstado;
-
-        if ($novoEstado == 'entregue') {
+        if ($novoEstado === 'entregue') {
             $pedido->entregue = 1;
             $pedido->estado = 'finalizado';
+        } else {
+            $pedido->estado = $novoEstado;
+        }
+
+        if ($novoEstado === 'cancelado') {
+            $pedido->motivoEstado = trim((string) ($request->motivo ?? ''));
+        }
+
+        // Aceitar ou recusar pelo alerta equivale à leitura do pedido pela loja.
+        if (in_array($novoEstado, ['aprovado', 'cancelado'], true)) {
+            $pedido->pedido_lido = true;
+            $pedido->horario_leitura = date('H:i');
+        }
+
+        if ($novoEstado === 'finalizado') {
+            $pedido->horario_entrega = date('H:i');
         }
 
         $pedido->save();
 
         $msgWhatsApp = '';
-        if($novoEstado == 'cancelado'){
-            $motivo = $request->motivo ?? 'Não especificado';
+        if($novoEstado === 'cancelado'){
+            $motivo = $pedido->motivoEstado !== '' ? $pedido->motivoEstado : 'Não especificado';
             $msgWhatsApp = "*❌ PEDIDO CANCELADO* \n\nOlá, seu pedido *#{$pedido->id}* foi cancelado. Motivo: {$motivo}.";
-        } elseif($novoEstado == 'aprovado'){
+        } elseif($novoEstado === 'aprovado'){
             $msgWhatsApp = "*✅ PEDIDO CONFIRMADO!* \n\nOlá, seu pedido *#{$pedido->id}* foi aceito e já entrou em preparação! 🍳🍟";
-        } elseif($novoEstado == 'finalizado'){
+        } elseif($novoEstado === 'finalizado'){
             $msgWhatsApp = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!* \n\nOba! O motoboy já recolheu o seu pedido *#{$pedido->id}* e está a caminho. 🍕";
-        }
-
-      		elseif($novoEstado == 'entregue'){
+        } elseif($novoEstado === 'entregue'){
             $msgWhatsApp = "*✅ PEDIDO ENTREGUE!* \n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso! Muito obrigado pela preferência e bom apetite! 🍕🥳";
         }
-      
+
+        // A notificação não pode transformar uma alteração de status já salva em erro 500.
         if(!empty($msgWhatsApp) && !empty($pedido->telefone)){
-            $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
-            $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
-            $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
+            try {
+                $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+                $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
+                $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
+            } catch (\Throwable $e) {
+                \Log::warning('Status do delivery salvo, mas o WhatsApp não foi enviado.', [
+                    'pedido_id' => $pedido->id,
+                    'empresa_id' => $this->empresa_id,
+                    'estado' => $novoEstado,
+                    'erro' => $e->getMessage(),
+                ]);
+            }
         }
 
-        return response()->json(['sucesso' => true]);
+        return response()->json([
+            'sucesso' => true,
+            'id' => $pedido->id,
+            'estado' => $pedido->estado,
+            'entregue' => (bool) $pedido->entregue,
+        ]);
     } catch (\Exception $e) {
-        return response()->json(['sucesso' => false, 'mensagem' => $e->getMessage()], 500);
+        \Log::error('Erro ao atualizar status do delivery: ' . $e->getMessage(), [
+            'empresa_id' => $this->empresa_id,
+            'pedido_id' => $request->id,
+        ]);
+
+        return response()->json([
+            'sucesso' => false,
+            'mensagem' => 'Não foi possível atualizar o pedido.'
+        ], 500);
     }
 }
 }
