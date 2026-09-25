@@ -11,11 +11,17 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $js = file_get_contents(public_path('jsd/forma_pagamento.js'));
 
         $this->assertStringContainsString(
-            "return $('input[name="gridRadios"]:checked').val() || '';",
+            'return $(\'input[name="gridRadios"]:checked\').val() || \'\';',
             $js
         );
-        $this->assertStringContainsString("'#maquineta, #pix'", str_replace('"', "'", $js));
-        $this->assertStringContainsString("let formaPagamento = formaPagamentoSelecionada();", $js);
+        $this->assertStringContainsString(
+            "$('#maquineta, #pix').click",
+            $js
+        );
+        $this->assertStringContainsString(
+            'let formaPagamento = formaPagamentoSelecionada();',
+            $js
+        );
     }
 
     public function test_checkout_persists_delivery_selection_and_does_not_lose_it_on_finalize(): void
@@ -25,7 +31,10 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
 
         $this->assertStringContainsString('id="endereco_selecionado"', $view);
         $this->assertStringContainsString("$('#endereco_selecionado').val(id);", $js);
-        $this->assertStringContainsString('enderecoSelecionado = enderecoSelecionadoAtual();', $js);
+        $this->assertStringContainsString(
+            'enderecoSelecionado = enderecoSelecionadoAtual();',
+            $js
+        );
     }
 
     public function test_pagseguro_is_not_initialized_when_online_payment_is_not_available(): void
@@ -39,7 +48,10 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         );
         $this->assertStringContainsString("if(!env('PAGSEGURO_ATIVO'))", $controller);
         $this->assertStringContainsString('simplexml_load_string($body)', $controller);
-        $this->assertStringContainsString("PagSeguro retornou uma resposta inválida.", $controller);
+        $this->assertStringContainsString(
+            'PagSeguro retornou uma resposta inválida.',
+            $controller
+        );
     }
 
     public function test_new_order_popup_waits_for_jquery_and_uses_existing_status_endpoint(): void
@@ -47,25 +59,100 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $layout = file_get_contents(resource_path('views/default/layout.blade.php'));
 
         $this->assertStringContainsString("window.addEventListener('load'", $layout);
-        $this->assertStringContainsString("typeof window.jQuery === 'undefined'", $layout);
+        $this->assertStringContainsString(
+            "typeof window.jQuery === 'undefined'",
+            $layout
+        );
         $this->assertStringContainsString(
             "url: '/pedidosDelivery/actualizarStatusKanban'",
             $layout
         );
-        $this->assertStringContainsString("alterarStatusPedido('aprovado'", $layout);
-        $this->assertStringContainsString("alterarStatusPedido('cancelado'", $layout);
+        $this->assertStringContainsString(
+            "alterarStatusPedido('aprovado'",
+            $layout
+        );
+        $this->assertStringContainsString(
+            "alterarStatusPedido('cancelado'",
+            $layout
+        );
     }
 
     public function test_new_order_payload_is_company_scoped_and_has_the_fields_used_by_popup(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
 
-        $this->assertStringContainsString("->where('empresa_id', \$this->empresa_id)", $controller);
-        $this->assertStringContainsString("->where('forma_pagamento', '<>', '')", $controller);
-        $this->assertStringContainsString("'valor_total' => \$valorFormatado", $controller);
-        $this->assertStringContainsString("'forma_pagamento' => \$pedido->forma_pagamento", $controller);
-        $this->assertStringContainsString("'tipo_entrega' => \$pedido->endereco_id ? 'Entrega' : 'Retirada no balcão'", $controller);
-        $this->assertStringContainsString("'itens' => \$pedido->itens->map", $controller);
+        $this->assertStringContainsString(
+            "->where('empresa_id', $this->empresa_id)",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "->where('forma_pagamento', '<>', '')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'valor_total' => $valorFormatado",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'forma_pagamento' => $pedido->forma_pagamento",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'forma_pagamento_label' => $formaPagamentoLabel",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'tipo_entrega' => $pedido->endereco_id ? 'Entrega' : 'Retirada no balcão'",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'endereco' => $enderecoEntrega",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'observacao' => $pedido->observacao ?? ''",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'itens' => $pedido->itens->map",
+            $controller
+        );
+    }
+
+    public function test_accept_and_reject_save_status_even_if_whatsapp_fails(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
+
+        $this->assertStringContainsString(
+            "$estadosPermitidos = ['aprovado', 'cancelado', 'finalizado', 'entregue', 'finalizar_caixa'];",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "$pedido->pedido_lido = true;",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "$pedido->motivoEstado = trim((string) ($request->motivo ?? ''));",
+            $controller
+        );
+        $this->assertStringContainsString(
+            'Status do delivery salvo, mas o WhatsApp não foi enviado.',
+            $controller
+        );
+        $this->assertStringContainsString(
+            "'sucesso' => true",
+            $controller
+        );
+    }
+
+    public function test_legacy_order_list_monitor_does_not_duplicate_global_popup(): void
+    {
+        $view = file_get_contents(resource_path('views/pedidosDelivery/list.blade.php'));
+
+        $this->assertStringContainsString(
+            "if (document.getElementById('modalNovoPedidoAlerta'))",
+            $view
+        );
     }
 
     public function test_google_maps_is_loaded_before_config_delivery_inline_initializer(): void
@@ -87,11 +174,11 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $layout = file_get_contents(resource_path('views/delivery/default.blade.php'));
 
         $this->assertStringContainsString(
-            "\$pedidoAtivoId = session('ultimo_pedido_id') ?? null;",
+            "$pedidoAtivoId = session('ultimo_pedido_id') ?? null;",
             $layout
         );
         $this->assertStringNotContainsString(
-            "\$pedido->id ?? session('ultimo_pedido_id')",
+            "$pedido->id ?? session('ultimo_pedido_id')",
             $layout
         );
     }
@@ -100,10 +187,16 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
     {
         $controller = file_get_contents(app_path('Http/Controllers/CarrinhoController.php'));
 
-        $this->assertStringContainsString("->where('valor_total', '>', 0)", $controller);
-        $this->assertStringContainsString("->where('forma_pagamento', '<>', '')", $controller);
         $this->assertStringContainsString(
-            "Pedido não encontrado ou ainda não foi finalizado.",
+            "->where('valor_total', '>', 0)",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "->where('forma_pagamento', '<>', '')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            'Pedido não encontrado ou ainda não foi finalizado.',
             $controller
         );
     }
@@ -122,14 +215,17 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $this->assertStringContainsString("estado === 'cancelado'", $view);
         $this->assertStringContainsString("estado === 'aprovado'", $view);
         $this->assertStringContainsString("estado === 'finalizado'", $view);
-        $this->assertStringContainsString("setInterval(function()", $view);
-        $this->assertStringNotContainsString("window.location.reload();", $view);
+        $this->assertStringContainsString('setInterval(function()', $view);
+        $this->assertStringNotContainsString('window.location.reload();', $view);
 
         $this->assertStringContainsString(
             "Route::get('/status/{id}', 'CarrinhoController@statusPedido');",
             $routes
         );
-        $this->assertStringContainsString('public function statusPedido($id)', $controller);
+        $this->assertStringContainsString(
+            'public function statusPedido($id)',
+            $controller
+        );
     }
 
     public function test_tracking_displays_pix_and_pagseguro_orders_use_real_novo_state(): void
@@ -138,14 +234,13 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         $pagSeguro = file_get_contents(app_path('Http/Controllers/PagSeguroController.php'));
 
         $this->assertStringContainsString(
-            "\$pedido->forma_pagamento == 'pix'",
+            "$pedido->forma_pagamento == 'pix'",
             $view
         );
         $this->assertStringContainsString(
-            "\$nome_pagamento = \"Pix\";",
+            "$nome_pagamento = \"Pix\";",
             $view
         );
-
         $this->assertStringNotContainsString(
             "->where('estado', 'nv')",
             $pagSeguro
@@ -155,8 +250,18 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
             $pagSeguro
         );
         $this->assertStringContainsString(
-            "session(['ultimo_pedido_id' => \$pedido->id]);",
+            "session(['ultimo_pedido_id' => $pedido->id]);",
             $pagSeguro
+        );
+    }
+
+    public function test_delivery_logout_clears_the_last_tracked_order(): void
+    {
+        $routes = file_get_contents(base_path('routes/web.php'));
+
+        $this->assertStringContainsString(
+            "session()->forget(['telefone_cliente', 'cliente_log', 'empresa_id', 'ultimo_pedido_id']);",
+            $routes
         );
     }
 }
