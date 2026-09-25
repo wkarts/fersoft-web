@@ -128,39 +128,47 @@
 
     <?php
         $estadoAtual = isset($pedido->estado) ? strtolower(trim($pedido->estado)) : 'novo';
-        // Verifica se a coluna entregue é igual a 1 (Sim)
         $isEntregue = (isset($pedido->entregue) && $pedido->entregue == 1);
-        
-        // Passo 1: Aguardando (Sempre ativo)
-        $passo1 = true; 
-        
-        // Passo 2: Preparando (Ativa se a loja aprovou, finalizou ou se já entregou)
-        $passo2 = (in_array($estadoAtual, ['aprovado', 'finalizado']) || $isEntregue); 
-        
-        // Passo 3: A Caminho (Ativa quando o caixa finaliza o pedido para o motoboy levar)
-        $passo3 = ($estadoAtual == 'finalizado' || $isEntregue);
+        $isCancelado = ($estadoAtual === 'cancelado');
 
-        // Passo 4: Entregue (Ativa SOMENTE quando a coluna entregue for 1)
-        $passo4 = $isEntregue;
+        // O cancelamento é um estado terminal próprio e não deve parecer uma etapa normal concluída.
+        $passo1 = !$isCancelado;
+        $passo2 = !$isCancelado && (in_array($estadoAtual, ['aprovado', 'finalizado']) || $isEntregue);
+        $passo3 = !$isCancelado && ($estadoAtual == 'finalizado' || $isEntregue);
+        $passo4 = !$isCancelado && $isEntregue;
     ?>
 
+    <div id="pedido-cancelado" class="alert alert-danger text-center font-weight-bold" style="{{ $isCancelado ? '' : 'display:none;' }}">
+        <i class="fa fa-times-circle"></i>
+        Pedido cancelado.
+        <span id="pedido-cancelado-motivo">
+            @if($isCancelado && !empty($pedido->motivoEstado))
+                Motivo: {{ $pedido->motivoEstado }}
+            @endif
+        </span>
+    </div>
+
     <div class="status-tracker d-none d-md-flex">
-        <div class="status-step {{ $passo1 ? 'active' : '' }}">
+        <div id="status-passo-1" class="status-step {{ $passo1 ? 'active' : '' }}">
             <div class="status-icon"><i class="fa fa-clock-o"></i></div>
             <p class="m-0">Aguardando</p>
         </div>
-        <div class="status-step {{ $passo2 ? 'active' : '' }}">
+        <div id="status-passo-2" class="status-step {{ $passo2 ? 'active' : '' }}">
             <div class="status-icon"><i class="fa fa-fire"></i></div>
             <p class="m-0">Preparando</p>
         </div>
-        <div class="status-step {{ $passo3 ? 'active' : '' }}">
+        <div id="status-passo-3" class="status-step {{ $passo3 ? 'active' : '' }}">
             <div class="status-icon"><i class="fa fa-motorcycle"></i></div>
             <p class="m-0">A Caminho</p>
         </div>
-        <div class="status-step {{ $passo4 ? 'active' : '' }}">
+        <div id="status-passo-4" class="status-step {{ $passo4 ? 'active' : '' }}">
             <div class="status-icon"><i class="fa fa-check-circle"></i></div>
             <p class="m-0">Entregue</p>
         </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <small class="text-muted">Status atualizado automaticamente sem recarregar a página.</small>
     </div>
 
     <div class="row">
@@ -288,8 +296,12 @@
                     $nome_pagamento = "Dinheiro";
                     if($pedido->forma_pagamento == 'maquineta' || $pedido->forma_pagamento == 'credito' || $pedido->forma_pagamento == 'debito'){
                         $nome_pagamento = "Máquina de Cartão (Crédito/Débito)";
+                    } elseif ($pedido->forma_pagamento == 'pix') {
+                        $nome_pagamento = "Pix";
                     } elseif ($pedido->forma_pagamento == 'pagseguro') {
-                        $nome_pagamento = "Pagamento On-line (".$pedido->pagseguro->parcelas."x)";
+                        $nome_pagamento = $pedido->pagseguro
+                            ? "Pagamento On-line (".$pedido->pagseguro->parcelas."x)"
+                            : "Pagamento On-line";
                     }
                 ?>
 
@@ -317,7 +329,7 @@
                 @endif
             </div>
 
-            <button onclick="window.location.reload();" class="btn btn-outline-success btn-block mt-4" style="border-radius: 8px; padding: 12px; font-weight: bold; border-width: 2px;">
+            <button type="button" id="btn-atualizar-status-pedido" class="btn btn-outline-success btn-block mt-4" style="border-radius: 8px; padding: 12px; font-weight: bold; border-width: 2px;">
                 <i class="fa fa-refresh"></i> Atualizar Status do Pedido
             </button>
 
@@ -331,11 +343,73 @@
 
 <script type="text/javascript">
     document.addEventListener("DOMContentLoaded", function() {
-        // Recarrega a página automaticamente a cada 30 segundos (30000 milissegundos)
-        // Isso fará a barra de status andar sozinha quando a loja mudar no painel
-        setTimeout(function(){
-            window.location.reload();
-        }, 30000);
+        const pedidoId = {{ (int) $pedido->id }};
+        const endpointStatus = '/carrinho/status/' + pedidoId;
+
+        function marcarPasso(id, ativo) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('active', !!ativo);
+        }
+
+        function aplicarStatus(data) {
+            const estado = String(data.estado || '').toLowerCase();
+            const entregue = !!data.entregue;
+            const cancelado = estado === 'cancelado';
+
+            marcarPasso('status-passo-1', !cancelado);
+            marcarPasso('status-passo-2', !cancelado && (estado === 'aprovado' || estado === 'finalizado' || entregue));
+            marcarPasso('status-passo-3', !cancelado && (estado === 'finalizado' || entregue));
+            marcarPasso('status-passo-4', !cancelado && entregue);
+
+            const alertaCancelado = document.getElementById('pedido-cancelado');
+            const motivoCancelado = document.getElementById('pedido-cancelado-motivo');
+
+            if (alertaCancelado) {
+                alertaCancelado.style.display = cancelado ? 'block' : 'none';
+            }
+
+            if (motivoCancelado) {
+                motivoCancelado.textContent = cancelado && data.motivo
+                    ? ' Motivo: ' + data.motivo
+                    : '';
+            }
+        }
+
+        function consultarStatusPedido(mostrarFalha) {
+            fetch(endpointStatus, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            })
+            .then(aplicarStatus)
+            .catch(function(error) {
+                console.error('Erro ao atualizar status do pedido:', error);
+                if (mostrarFalha && typeof swal === 'function') {
+                    swal('Atenção!', 'Não foi possível atualizar o status agora.', 'warning');
+                }
+            });
+        }
+
+        const botao = document.getElementById('btn-atualizar-status-pedido');
+        if (botao) {
+            botao.addEventListener('click', function() {
+                consultarStatusPedido(true);
+            });
+        }
+
+        consultarStatusPedido(false);
+        setInterval(function() {
+            consultarStatusPedido(false);
+        }, 10000);
     });
 </script>
 @endsection
