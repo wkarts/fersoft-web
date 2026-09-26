@@ -969,7 +969,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/mudarStatus/{id}/{status}', 'PedidoDeliveryController@mudarStatus');
         Route::get('/marcarEntregue/{id}', 'PedidoDeliveryController@marcarEntregue');
         Route::get('/pedidos-pendentes', 'Api\PedidoController@pedidosPendentes');
-        Route::get('/verificar-novos-pedidos', 'PedidoDeliveryController@verificarNovos');
+        Route::get('/csrf-token', function () {
+            return response()->json(['token' => csrf_token()]);
+        });
         Route::get('/marcarComoEntregue/{id}', 'PedidoDeliveryController@marcarComoEntregue');
         Route::get('/emAberto', 'PedidoDeliveryController@emAberto');
         Route::get('/ultimoPedidoNovo', 'PedidoDeliveryController@ultimoPedidoNovo');
