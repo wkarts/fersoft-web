@@ -3055,7 +3055,7 @@ function emitirNFCe(vendaId){
 			}
 			else if(e == 'Apro'){
 				swal("Cuidado", "Esta NFCe já esta aprovada, não é possível enviar novamente!", "warning").then(() => {
-					location.reload()
+					redirecionarPosVenda();
 				})
 			}
 			else if(e == 'OFFL'){
