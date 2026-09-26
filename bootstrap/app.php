@@ -1,6 +1,26 @@
 <?php
 
 /*
+|-------------------------------------------------------------------------- 
+| Compatibilidade SPED-DA / tc-lib-barcode 1.x
+|--------------------------------------------------------------------------
+|
+| O nfephp-org/sped-da v1.x ainda depende oficialmente de
+| tecnickcom/tc-lib-barcode ^1. A partir da tc-lib-barcode 1.18.5 a própria
+| biblioteca passou a emitir E_USER_DEPRECATED no construtor, oferecendo
+| este sinalizador oficial para aplicações que ainda dependem da série 1.x.
+|
+| Sem esse sinalizador, o handler de erros do SPED-DA transforma o aviso em
+| exception e interrompe a geração de DANFE/DACTE/DAMDFE.
+|
+| Remover quando o nfephp-org/sped-da adotar oficialmente tc-lib-barcode ^2.
+|
+*/
+if (!defined('TCLIB_BARCODE_SILENCE_DEPRECATION')) {
+    define('TCLIB_BARCODE_SILENCE_DEPRECATION', true);
+}
+
+/*
 |--------------------------------------------------------------------------
 | Create The Application
 |--------------------------------------------------------------------------
