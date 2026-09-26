@@ -211,11 +211,17 @@ class VendaCaixaController extends Controller
         $venda = $request->venda;
 
         $deliveryId = isset($venda['delivery_id']) ? (int) $venda['delivery_id'] : 0;
+        $pedidoDeliveryVenda = null;
+
         if ($deliveryId > 0) {
           $pedidoDeliveryVenda = PedidoDelivery::where('empresa_id', $this->empresa_id)
           ->where('id', $deliveryId)
           ->lockForUpdate()
           ->firstOrFail();
+
+          if ($pedidoDeliveryVenda->status_pagamento === 'pago_pdv') {
+            throw new \RuntimeException('Este pedido do Delivery já foi finalizado no PDV.');
+          }
 
           $vendaDeliveryExistente = VendaCaixa::where('empresa_id', $this->empresa_id)
           ->where('pedido_delivery_id', $deliveryId)
@@ -718,6 +724,11 @@ class VendaCaixaController extends Controller
         }
 
         $result->comissao_acessor = $valorComissaoAssesor > 0 ? true : false;
+
+        if ($pedidoDeliveryVenda && (int) ($venda['rascunho'] ?? 0) === 0) {
+          $pedidoDeliveryVenda->status_pagamento = 'pago_pdv';
+          $pedidoDeliveryVenda->save();
+        }
 
         return $result;
       });
