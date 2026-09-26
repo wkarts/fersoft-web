@@ -316,6 +316,7 @@
 	<input type="hidden" id="itens_pedido" value="{{json_encode($itens)}}">
 	<input type="hidden" id="valor_total" @if(isset($valor_total)) value="{{$valor_total}}" @else value='0' @endif>
 	<input type="hidden" id="delivery_id" @if(isset($delivery_id)) value="{{$delivery_id}}" @else value='0' @endif>
+	<input type="hidden" id="retorno_pos_venda" value="{{ $retornoPosVenda ?? '/frenteCaixa' }}">
 	<input type="hidden" id="bairro" @if(isset($bairro)) value="{{$bairro}}" @else value='0' @endif>
 
 	<input type="hidden" id="codigo_comanda_hidden" @if(isset($cod_comanda)) value="{{$cod_comanda}}" @else value='0' @endif name="">
