@@ -422,6 +422,7 @@ class PedidoDeliveryController extends Controller
 			->with('clientes', $clientes)
             ->with('filial', $filial)
             ->with('contasEmpresa', $contasEmpresa)
+			->with('retornoPosVenda', '/pedidosDelivery/verPedido/' . $pedido->id)
 			->with('title', 'Finalizar Comanda '.$id);
 		}else{
 
