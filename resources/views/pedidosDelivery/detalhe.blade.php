@@ -307,7 +307,7 @@
 
 					@if($pedido->estado == 'finalizado')
 					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
-						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedido">Ir para frente de caixa</a>
+						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedidos">Ir para frente de caixa</a>
 					</div>
 					@endif
 				</div>
