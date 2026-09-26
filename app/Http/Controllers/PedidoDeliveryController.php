@@ -422,7 +422,7 @@ class PedidoDeliveryController extends Controller
 			->with('clientes', $clientes)
             ->with('filial', $filial)
             ->with('contasEmpresa', $contasEmpresa)
-			->with('retornoPosVenda', '/pedidosDelivery/verPedido/' . $pedido->id)
+			->with('retornoPosVenda', '/pedidosDelivery')
 			->with('title', 'Finalizar Comanda '.$id);
 		}else{
 
@@ -598,8 +598,8 @@ class PedidoDeliveryController extends Controller
 		->where('id', $id)
 		->firstOrFail();
 
-		$retornoPosVenda = $request->query('retorno') === 'pedido'
-			? '/pedidosDelivery/verPedido/' . $pedido->id
+		$retornoPosVenda = $request->query('retorno') === 'pedidos'
+			? '/pedidosDelivery'
 			: '/frenteCaixa';
 
 		$config = ConfigNota::first();
