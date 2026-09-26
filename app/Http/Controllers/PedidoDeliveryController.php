@@ -1430,7 +1430,7 @@ class PedidoDeliveryController extends Controller
 	}
 
   public function marcarComoEntregue($id) {
-    $pedido = \App\Models\PedidoDelivery::find($id);
+    $pedido = \App\Models\PedidoDelivery::where('empresa_id', $this->empresa_id)->find($id);
     if($pedido) {
         $pedido->entregue = 1; 
 
@@ -1456,29 +1456,111 @@ class PedidoDeliveryController extends Controller
   
   public function ultimoPedidoNovo() {
 		try {
-			// Removemos a trava de empresa temporariamente para garantir que ele ache o pedido
-			$pedido = \App\Models\PedidoDelivery::with(['cliente'])
+			// Só notifica pedido realmente finalizado pelo cliente, nunca carrinho em montagem.
+			$pedido = \App\Models\PedidoDelivery::with([
+				'cliente',
+				'endereco',
+				'itens.produto.produto'
+			])
+				->where('empresa_id', $this->empresa_id)
 				->where('estado', 'novo')
+				->where('pedido_lido', false)
+				->where('forma_pagamento', '<>', '')
+				->where('valor_total', '>', 0)
 				->orderBy('id', 'desc')
 				->first();
 
 			if ($pedido) {
+				$cliente = $pedido->cliente;
+				$clienteNome = trim(($cliente->nome ?? 'Cliente Delivery') . ' ' . ($cliente->sobre_nome ?? ''));
+				$telefone = $pedido->telefone ?: ($cliente->celular ?? '');
+				$valorFormatado = number_format((float)$pedido->valor_total, 2, ',', '.');
+				$hora = \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i');
+
+				$formasPagamento = [
+					'maquineta' => 'Máquina de Cartão',
+					'dinheiro' => 'Dinheiro',
+					'pix' => 'Pix',
+					'pagseguro' => 'Pagamento Online',
+				];
+				$formaPagamentoLabel = $formasPagamento[$pedido->forma_pagamento] ?? $pedido->forma_pagamento;
+
+				$enderecoEntrega = null;
+				if ($pedido->endereco_id && $pedido->endereco) {
+					$enderecoEntrega = trim(
+						($pedido->endereco->rua ?? '') . ', ' .
+						($pedido->endereco->numero ?? '') . ' - ' .
+						($pedido->endereco->bairro ?? '')
+					);
+				}
+
 				return response()->json([
 					'id' => $pedido->id,
-					'cliente' => $pedido->nome ?? ($pedido->cliente->nome ?? 'Cliente Delivery'),
-					'valor' => number_format((float)$pedido->valor_total, 2, ',', '.'),
-					'hora' => \Carbon\Carbon::parse($pedido->data_registro ?? $pedido->created_at)->format('H:i')
+					'cliente' => [
+						'nome' => $clienteNome ?: 'Cliente Delivery',
+						'telefone' => $telefone,
+					],
+					'valor_total' => $valorFormatado,
+					'forma_pagamento' => $pedido->forma_pagamento,
+					'forma_pagamento_label' => $formaPagamentoLabel,
+					'tipo_entrega' => $pedido->endereco_id ? 'Entrega' : 'Retirada no balcão',
+					'endereco' => $enderecoEntrega,
+					'observacao' => $pedido->observacao ?? '',
+					'itens' => $pedido->itens->map(function ($item) {
+						$produtoDelivery = $item->produto;
+						$produtoBase = $produtoDelivery ? $produtoDelivery->produto : null;
+						$nomeProduto = $produtoBase->nome ?? ($produtoDelivery->nome ?? 'Item');
+
+						return [
+							'quantidade' => $item->quantidade,
+							'valor' => number_format((float)$item->valor, 2, ',', '.'),
+							'produto' => [
+								'nome' => $nomeProduto,
+							],
+						];
+					})->values(),
+					// Compatibilidade com o alerta histórico da lista de pedidos.
+					'valor' => $valorFormatado,
+					'hora' => $hora,
 				]);
 			}
 			
 			return response()->json(['nenhum' => true]);
 
 		} catch (\Exception $e) {
-			// Se der erro, ele devolve o erro em texto para não quebrar o painel
-			return response()->json(['erro' => $e->getMessage()]);
+			\Log::error('Erro ao consultar último pedido novo do delivery: ' . $e->getMessage());
+			return response()->json(['erro' => 'Não foi possível consultar o pedido.'], 500);
 		}
 	}
   
+public function mudarStatus(Request $request, $id, $status)
+{
+    $mapaStatus = [
+        'pendente' => 'aprovado',
+        'aprovado' => 'aprovado',
+        'cancelado' => 'cancelado',
+        'finalizado' => 'finalizado',
+        'entregue' => 'entregue',
+    ];
+
+    if (!isset($mapaStatus[$status])) {
+        abort(422, 'Status de delivery inválido.');
+    }
+
+    $request->merge([
+        'id' => $id,
+        'estado' => $mapaStatus[$status],
+        'motivo' => $request->motivo,
+    ]);
+
+    return $this->actualizarStatusKanban($request);
+}
+
+public function marcarEntregue($id)
+{
+    return $this->marcarComoEntregue($id);
+}
+
 public function kanban(Request $request)
 {
     $dataInicial = $request->data_inicial ?? date("Y-m-d");
@@ -1505,46 +1587,91 @@ public function kanban(Request $request)
 public function actualizarStatusKanban(Request $request)
 {
     try {
-        $pedido = PedidoDelivery::findOrFail($request->id);
-        $novoEstado = $request->estado; 
+        $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
+            ->findOrFail($request->id);
 
-        // Se for uma ação que não altera o estado (como enviar para o caixa), apenas retorne sucesso
-        if ($novoEstado == 'finalizar_caixa') {
+        $novoEstado = $request->estado;
+        $estadosPermitidos = ['aprovado', 'cancelado', 'finalizado', 'entregue', 'finalizar_caixa'];
+
+        if (!in_array($novoEstado, $estadosPermitidos, true)) {
+            return response()->json([
+                'sucesso' => false,
+                'mensagem' => 'Status de delivery inválido.'
+            ], 422);
+        }
+
+        // Ação de navegação: não altera o pedido.
+        if ($novoEstado === 'finalizar_caixa') {
             return response()->json(['sucesso' => true]);
         }
 
-        $pedido->estado = $novoEstado;
-
-        if ($novoEstado == 'entregue') {
+        if ($novoEstado === 'entregue') {
             $pedido->entregue = 1;
             $pedido->estado = 'finalizado';
+        } else {
+            $pedido->estado = $novoEstado;
+        }
+
+        if ($novoEstado === 'cancelado') {
+            $pedido->motivoEstado = trim((string) ($request->motivo ?? ''));
+        }
+
+        // Aceitar ou recusar pelo alerta equivale à leitura do pedido pela loja.
+        if (in_array($novoEstado, ['aprovado', 'cancelado'], true)) {
+            $pedido->pedido_lido = true;
+            $pedido->horario_leitura = date('H:i');
+        }
+
+        if ($novoEstado === 'finalizado') {
+            $pedido->horario_entrega = date('H:i');
         }
 
         $pedido->save();
 
         $msgWhatsApp = '';
-        if($novoEstado == 'cancelado'){
-            $motivo = $request->motivo ?? 'Não especificado';
+        if($novoEstado === 'cancelado'){
+            $motivo = $pedido->motivoEstado !== '' ? $pedido->motivoEstado : 'Não especificado';
             $msgWhatsApp = "*❌ PEDIDO CANCELADO* \n\nOlá, seu pedido *#{$pedido->id}* foi cancelado. Motivo: {$motivo}.";
-        } elseif($novoEstado == 'aprovado'){
+        } elseif($novoEstado === 'aprovado'){
             $msgWhatsApp = "*✅ PEDIDO CONFIRMADO!* \n\nOlá, seu pedido *#{$pedido->id}* foi aceito e já entrou em preparação! 🍳🍟";
-        } elseif($novoEstado == 'finalizado'){
+        } elseif($novoEstado === 'finalizado'){
             $msgWhatsApp = "*🛵 SEU PEDIDO SAIU PARA ENTREGA!* \n\nOba! O motoboy já recolheu o seu pedido *#{$pedido->id}* e está a caminho. 🍕";
-        }
-
-      		elseif($novoEstado == 'entregue'){
+        } elseif($novoEstado === 'entregue'){
             $msgWhatsApp = "*✅ PEDIDO ENTREGUE!* \n\nSeu pedido *#{$pedido->id}* foi entregue com sucesso! Muito obrigado pela preferência e bom apetite! 🍕🥳";
         }
-      
+
+        // A notificação não pode transformar uma alteração de status já salva em erro 500.
         if(!empty($msgWhatsApp) && !empty($pedido->telefone)){
-            $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
-            $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
-            $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
+            try {
+                $whatsappUtil = app(\App\Utils\WhatsAppUtil::class);
+                $numeroCliente = "55" . preg_replace('/[^0-9]/', '', $pedido->telefone);
+                $whatsappUtil->sendMessage($numeroCliente, $msgWhatsApp, $this->empresa_id);
+            } catch (\Throwable $e) {
+                \Log::warning('Status do delivery salvo, mas o WhatsApp não foi enviado.', [
+                    'pedido_id' => $pedido->id,
+                    'empresa_id' => $this->empresa_id,
+                    'estado' => $novoEstado,
+                    'erro' => $e->getMessage(),
+                ]);
+            }
         }
 
-        return response()->json(['sucesso' => true]);
+        return response()->json([
+            'sucesso' => true,
+            'id' => $pedido->id,
+            'estado' => $pedido->estado,
+            'entregue' => (bool) $pedido->entregue,
+        ]);
     } catch (\Exception $e) {
-        return response()->json(['sucesso' => false, 'mensagem' => $e->getMessage()], 500);
+        \Log::error('Erro ao atualizar status do delivery: ' . $e->getMessage(), [
+            'empresa_id' => $this->empresa_id,
+            'pedido_id' => $request->id,
+        ]);
+
+        return response()->json([
+            'sucesso' => false,
+            'mensagem' => 'Não foi possível atualizar o pedido.'
+        ], 500);
     }
 }
 }

@@ -83,41 +83,123 @@
 </div>
 
 <script>
-let pedidoPendenteAtualId = null;
-let modalAberto = false;
+window.addEventListener('load', function () {
+    if (typeof window.jQuery === 'undefined') {
+        console.error('jQuery não carregado: monitor de pedidos do delivery não iniciado.');
+        return;
+    }
 
-setInterval(function() {
-    if (modalAberto) return;
+    const $ = window.jQuery;
+    let pedidoPendenteAtualId = null;
+    let modalAberto = false;
 
-    $.ajax({
-        url: '/pedidosDelivery/ultimoPedidoNovo',
-        type: 'GET',
-        success: function(response) {
-            if (response && response.id && response.id !== pedidoPendenteAtualId) {
+    function exibirErroPedido(mensagem) {
+        if (typeof swal === 'function') {
+            swal("Atenção!", mensagem, "error");
+        } else if (typeof toastr !== 'undefined') {
+            toastr.error(mensagem);
+        } else {
+            alert(mensagem);
+        }
+    }
+
+    function alterarStatusPedido(estado, motivo) {
+        if (!pedidoPendenteAtualId) return;
+
+        const $botoes = $('#btnAceitarPedidoModal, #btnRecusarPedidoModal');
+        $botoes.prop('disabled', true);
+
+        $.ajax({
+            url: '/pedidosDelivery/actualizarStatusKanban',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                id: pedidoPendenteAtualId,
+                estado: estado,
+                motivo: motivo || ''
+            },
+            success: function(response) {
+                if (!response || response.sucesso !== true) {
+                    exibirErroPedido(response && response.mensagem
+                        ? response.mensagem
+                        : 'Não foi possível atualizar o pedido.');
+                    return;
+                }
+
+                $('#modalNovoPedidoAlerta').modal('hide');
+                modalAberto = false;
+
+                if (typeof toastr !== 'undefined') {
+                    if (estado === 'cancelado') {
+                        toastr.info('O pedido foi recusado.');
+                    } else {
+                        toastr.success('Pedido aceito com sucesso!');
+                    }
+                }
+
+                if (estado === 'aprovado') {
+                    setTimeout(function() {
+                        window.location.href = '/pedidosDelivery/kanban';
+                    }, 800);
+                } else {
+                    pedidoPendenteAtualId = null;
+                    $botoes.prop('disabled', false);
+                }
+            },
+            error: function(xhr) {
+                let mensagem = 'Erro ao atualizar o pedido.';
+                if (xhr.responseJSON && xhr.responseJSON.mensagem) {
+                    mensagem = xhr.responseJSON.mensagem;
+                }
+                exibirErroPedido(mensagem);
+                $botoes.prop('disabled', false);
+            }
+        });
+    }
+
+    setInterval(function() {
+        if (modalAberto) return;
+
+        $.ajax({
+            url: '/pedidosDelivery/ultimoPedidoNovo',
+            type: 'GET',
+            success: function(response) {
+                if (!response || !response.id || response.id === pedidoPendenteAtualId) {
+                    return;
+                }
+
                 pedidoPendenteAtualId = response.id;
                 modalAberto = true;
 
                 let itensHtml = '<ul>';
-                if(response.itens) {
-                    response.itens.forEach(item => {
-                        itensHtml += `<li>${item.quantidade}x ${item.produto ? item.produto.nome : 'Item'} - R$ ${item.valor}</li>`;
-                    });
-                }
+                (response.itens || []).forEach(function(item) {
+                    const produto = item.produto && item.produto.nome
+                        ? item.produto.nome
+                        : 'Item';
+
+                    itensHtml += '<li>' +
+                        item.quantidade + 'x ' + produto +
+                        ' - R$ ' + (item.valor || '0,00') +
+                    '</li>';
+                });
                 itensHtml += '</ul>';
 
-                let htmlInfo = `
+                const cliente = response.cliente || {};
+                const htmlInfo = `
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong># Pedido:</strong> #${response.id}</p>
-                            <p><strong>Cliente:</strong> ${response.cliente ? response.cliente.nome : 'Cliente Web'}</p>
-                            <p><strong>Telefone:</strong> ${response.cliente ? response.cliente.telefone : '--'}</p>
+                            <p><strong>Cliente:</strong> ${cliente.nome || 'Cliente Web'}</p>
+                            <p><strong>Telefone:</strong> ${cliente.telefone || '--'}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Valor Total:</strong> <span class="text-success font-weight-bold">R$ ${response.valor_total}</span></p>
-                            <p><strong>Pagamento:</strong> ${response.forma_pagamento}</p>
-                            <p><strong>Tipo de Entrega:</strong> ${response.tipo_entrega}</p>
+                            <p><strong>Valor Total:</strong> <span class="text-success font-weight-bold">R$ ${response.valor_total || response.valor || '0,00'}</span></p>
+                            <p><strong>Pagamento:</strong> ${response.forma_pagamento_label || response.forma_pagamento || '--'}</p>
+                            <p><strong>Tipo de Entrega:</strong> ${response.tipo_entrega || '--'}</p>
                         </div>
                     </div>
+                    ${response.endereco ? '<p class="mb-2"><strong>Endereço:</strong> ' + response.endereco + '</p>' : ''}
+                    ${response.observacao ? '<p class="mb-2"><strong>Observação:</strong> ' + response.observacao + '</p>' : ''}
                     <hr>
                     <p><strong>Itens do Pedido:</strong></p>
                     ${itensHtml}
@@ -133,56 +215,30 @@ setInterval(function() {
                 if (typeof audioSuccess === 'function') {
                     audioSuccess();
                 }
+            },
+            error: function(xhr) {
+                console.error('Erro ao consultar novo pedido do delivery:', xhr);
             }
-        }
+        });
+    }, 10000);
+
+    $('#btnAceitarPedidoModal').on('click', function() {
+        alterarStatusPedido('aprovado', '');
     });
-}, 10000);
 
-$('#btnAceitarPedidoModal').on('click', function() {
-    if (!pedidoPendenteAtualId) return;
-
-    $.ajax({
-        url: '/pedidosDelivery/mudarStatus/' + pedidoPendenteAtualId + '/pendente',
-        type: 'GET',
-        success: function() {
-            $('#modalNovoPedidoAlerta').modal('hide');
-            modalAberto = false;
-            toastr.success('Pedido aceito com sucesso!');
-            
-            setTimeout(function() {
-                window.location.href = '/pedidosDelivery/kanban';
-            }, 800);
-        }
-    });
-});
-
-$('#btnRecusarPedidoModal').on('click', function() {
-    if (!pedidoPendenteAtualId) return;
-
-    swal({
-        title: "Deseja realmente recusar este pedido?",
-        text: "Informe o motivo da recusa:",
-        content: "input",
-        icon: "warning",
-        buttons: ["Cancelar", "Confirmar Recusa"],
-        dangerMode: true,
-    }).then((motivo) => {
-        if (motivo) {
-            $.ajax({
-                url: '/pedidosDelivery/mudarStatus/' + pedidoPendenteAtualId + '/cancelado',
-                type: 'GET',
-                data: { motivo: motivo },
-                success: function() {
-                    $('#modalNovoPedidoAlerta').modal('hide');
-                    modalAberto = false;
-                    toastr.info('O pedido foi recusado.');
-                    
-                    setTimeout(() => {
-                        pedidoPendenteAtualId = null;
-                    }, 5000);
-                }
-            });
-        }
+    $('#btnRecusarPedidoModal').on('click', function() {
+        swal({
+            title: "Deseja realmente recusar este pedido?",
+            text: "Informe o motivo da recusa:",
+            content: "input",
+            icon: "warning",
+            buttons: ["Cancelar", "Confirmar Recusa"],
+            dangerMode: true,
+        }).then(function(motivo) {
+            if (motivo) {
+                alterarStatusPedido('cancelado', motivo);
+            }
+        });
     });
 });
 </script>

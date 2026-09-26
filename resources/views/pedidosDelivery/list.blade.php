@@ -254,6 +254,12 @@
 </div>
 <script>
 $(document).ready(function() {
+    // O layout padrão já possui o monitor global corrigido. Evita dois popups
+    // concorrentes consultando o mesmo pedido nesta tela.
+    if (document.getElementById('modalNovoPedidoAlerta')) {
+        return;
+    }
+
     const somAlerta = new Audio('/audio/delivery_1.mp3'); 
     somAlerta.loop = true; 
     
@@ -271,8 +277,12 @@ $(document).ready(function() {
                     ultimoPedidoNotificado = pedido.id;
                     
                     $('#modal-alerta-id').text(pedido.id);
-                    $('#modal-alerta-cliente').text(pedido.cliente);
-                    $('#modal-alerta-valor').text(pedido.valor);
+                    $('#modal-alerta-cliente').text(
+                        pedido.cliente && pedido.cliente.nome
+                            ? pedido.cliente.nome
+                            : (pedido.cliente || 'Cliente')
+                    );
+                    $('#modal-alerta-valor').text(pedido.valor_total || pedido.valor || '0,00');
                     $('#modal-alerta-hora').text(pedido.hora);
 
                     $('#btn-ver-detalhes').attr('href', '/pedidosDelivery/verPedido/' + pedido.id);

@@ -85,6 +85,7 @@
     <input type="hidden" id="usar_bairros" value="{{$usar_bairros}}">
     <input type="hidden" id="pedido_id" value="{{$pedido->id}}">
 	<input type="hidden" id="total-init" value="{{$total}}">
+    <input type="hidden" id="endereco_selecionado" value="">
 
     <div class="container">
         
@@ -399,42 +400,6 @@
                 });
             }
         });
-
-        // --- LÓGICA DE FINALIZAÇÃO DO PEDIDO ---
-        const btnFinalizarNovo = document.getElementById('finalizar-venda');
-        
-        if (btnFinalizarNovo) {
-            btnFinalizarNovo.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const pagamentoSelecionado = document.querySelector('input[name="gridRadios"]:checked');
-                if (!pagamentoSelecionado) {
-                    swal("Atenção", "Por favor, selecione uma forma de pagamento antes de finalizar!", "warning");
-                    return;
-                }
-
-                if (pagamentoSelecionado.value === 'dinheiro') {
-                    const trocoPara = document.getElementById('troco_para').value;
-                    const totalInit = parseFloat(document.getElementById('total-init').value);
-                    if (trocoPara && parseFloat(trocoPara.replace(',', '.')) < totalInit) {
-                        swal("Atenção", "O valor do troco não pode ser menor que o total do pedido!", "warning");
-                        return;
-                    }
-                }
-
-                if (pagamentoSelecionado.value === 'pagseguro') {
-                    window.location.hash = 'modal-pagseguro';
-                } else {
-                    // Pix, Dinheiro ou Maquineta
-                    if (typeof salvarPedido === 'function') {
-                        salvarPedido();
-                    } else {
-                        const btnAntigo = document.getElementById('finalizar-venda-cartao');
-                        if (btnAntigo) btnAntigo.click();
-                    }
-                }
-            });
-        }
 
         // --- LÓGICA VISUAL DE PAGAMENTO ---
         document.querySelectorAll('.opcao-pagamento').forEach(function(el) {

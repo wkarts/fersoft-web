@@ -260,8 +260,9 @@
                             
                             <li>
                                   @php
-                                      // Tenta pegar o ID do pedido da variável atual ou da sessão recente do cliente
-                                      $pedidoAtivoId = $pedido->id ?? session('ultimo_pedido_id') ?? null;
+                                      // O acompanhamento usa somente um pedido realmente finalizado e gravado na sessão.
+                                      // Não usa $pedido da tela atual, pois no carrinho/checkout ele ainda é um pedido em montagem.
+                                      $pedidoAtivoId = session('ultimo_pedido_id') ?? null;
                                   @endphp
 
                                   @if($pedidoAtivoId)
@@ -369,7 +370,7 @@
 	@if(isset($forma_pagamento))
 	<script type="text/javascript" src="https://stc.pagseguro.uol.com.br/pagseguro/api/v2/checkout/pagseguro.directpayment.js"></script>
 	<script src="/jsd/card.js" type="text/javascript"></script>
-	<script src="/jsd/forma_pagamento.js" type="text/javascript"></script>
+	<script src="/jsd/forma_pagamento.js?v={{ filemtime(public_path('jsd/forma_pagamento.js')) }}" type="text/javascript"></script>
 
 	<script type="text/javascript">
 		new Card({

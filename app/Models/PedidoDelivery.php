@@ -72,7 +72,7 @@ class PedidoDelivery extends BaseModel
 	}
 
 	public function pagseguro(){
-		return $this->hasOne('App\Moddels\PedidoPagSeguro', 'pedido_delivery_id', 'id');
+		return $this->hasOne('App\Models\PedidoPagSeguro', 'pedido_delivery_id', 'id');
 	}
 
 	public function avaliacao(){

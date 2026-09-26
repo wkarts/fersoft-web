@@ -609,8 +609,7 @@
 @endsection
 
 @section('javascript')
-<script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"
-async defer></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"></script>
 <script type="text/javascript">
 
 	function atualizarCamposLinkPublico(){
