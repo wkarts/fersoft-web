@@ -222,6 +222,7 @@ class PedidoDeliveryController extends Controller
 
       $vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
           ->where('pedido_delivery_id', $pedido->id)
+          ->where('rascunho', 0)
           ->orderBy('id', 'desc')
           ->first();
 
@@ -362,6 +363,7 @@ class PedidoDeliveryController extends Controller
 		if($tipo == 'finalizado'){
 			$vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
 				->where('pedido_delivery_id', $pedido->id)
+          ->where('rascunho', 0)
 				->orderBy('id', 'desc')
 				->first();
 
@@ -623,6 +625,7 @@ class PedidoDeliveryController extends Controller
 
 		$vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
 			->where('pedido_delivery_id', $pedido->id)
+          ->where('rascunho', 0)
 			->orderBy('id', 'desc')
 			->first();
 
@@ -1609,6 +1612,7 @@ public function statusVendaPdv($id)
 
     $venda = VendaCaixa::where('empresa_id', $this->empresa_id)
         ->where('pedido_delivery_id', $pedido->id)
+          ->where('rascunho', 0)
         ->orderBy('id', 'desc')
         ->first();
 
