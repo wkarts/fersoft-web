@@ -169,11 +169,11 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $vendaController
         );
         $this->assertStringContainsString(
-            "$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
+            "\$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
             $vendaController
         );
         $this->assertStringContainsString(
-            "$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
+            "\$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
             $vendaController
         );
 
@@ -193,11 +193,11 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $controller
         );
         $this->assertStringContainsString(
-            "$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
+            "\$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
             $controller
         );
         $this->assertStringContainsString(
-            "$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
+            "\$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
             $controller
         );
         $this->assertStringContainsString(
@@ -225,7 +225,7 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $controller
         );
         $this->assertStringContainsString(
-            "$pedido->status_pagamento === 'pago_pdv'",
+            "\$pedido->status_pagamento === 'pago_pdv'",
             $controller
         );
 
