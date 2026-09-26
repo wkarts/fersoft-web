@@ -81,6 +81,9 @@ class DeliveryPublicEntryRegressionTest extends TestCase
         $migration = file_get_contents(
             database_path('migrations/2026_09_25_162500_add_public_link_fields_to_delivery_configs_table.php')
         );
+        $defaultMigration = file_get_contents(
+            database_path('migrations/2026_09_25_214700_set_delivery_public_link_mode_default_hash.php')
+        );
 
         $this->assertStringContainsString("'public_link_mode', 'public_link_value'", $model);
         $this->assertStringContainsString("'public_link_mode' => 'nullable|in:auto,slug,hash,token'", $controller);
@@ -88,8 +91,8 @@ class DeliveryPublicEntryRegressionTest extends TestCase
         $this->assertStringContainsString("strtolower(Str::random(8))", $controller);
         $this->assertStringContainsString("bin2hex(random_bytes(16))", $controller);
 
-        $this->assertStringContainsString("->default('auto')", $migration);
         $this->assertStringContainsString("->nullable()", $migration);
+        $this->assertStringContainsString("DEFAULT 'hash'", $defaultMigration);
         $this->assertStringContainsString("delivery_configs_public_link_value_unique", $migration);
     }
 
