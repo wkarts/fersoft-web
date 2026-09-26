@@ -307,7 +307,13 @@
 
 					@if($pedido->estado == 'finalizado')
 					<div class="col-sm-6 col-lg-4 col-md-6 col-xl-3 mb-2">
+						@if(isset($vendaPdv) && $vendaPdv)
+						<button type="button" class="btn btn-light-success btn-block" disabled>
+							Venda PDV #{{$vendaPdv->id}} concluída
+						</button>
+						@else
 						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedidos">Ir para frente de caixa</a>
+						@endif
 					</div>
 					@endif
 				</div>
