@@ -2665,9 +2665,45 @@ function destinoPosVenda(){
 	return path + 'frenteCaixa';
 }
 
-function redirecionarPosVenda(){
-	location.href = destinoPosVenda();
+function retornoDeliveryAtivo(){
+	let deliveryId = parseInt($('#delivery_id').val() || 0);
+	return deliveryId > 0 && destinoPosVenda() === '/pedidosDelivery';
 }
+
+function redirecionarPosVenda(){
+	let destino = destinoPosVenda();
+
+	// No fluxo do Delivery remove o PDV do histórico para evitar que o botão
+	// "Voltar" restaure um pedido que já gerou venda.
+	if(retornoDeliveryAtivo()){
+		window.location.replace(destino);
+		return;
+	}
+
+	location.href = destino;
+}
+
+function verificarPedidoDeliveryJaFinalizado(){
+	if(!retornoDeliveryAtivo()){
+		return;
+	}
+
+	let deliveryId = parseInt($('#delivery_id').val() || 0);
+	$.get(path + 'pedidosDelivery/statusVendaPdv/' + deliveryId)
+	.done((res) => {
+		if(res && res.finalizado){
+			window.location.replace('/pedidosDelivery');
+		}
+	})
+	.fail((err) => {
+		console.log('Não foi possível verificar o status do pedido Delivery.', err);
+	});
+}
+
+// pageshow também dispara quando o navegador restaura a página pelo histórico/BFCache.
+window.addEventListener('pageshow', function(){
+	verificarPedidoDeliveryJaFinalizado();
+});
 
 var ENVIANDO = false
 function finalizarVenda(acao, rascunho = 0, consignado = 0) {
@@ -2906,6 +2942,18 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 						$('#preloader2').css('display', 'none');
 						$('#preloader9').css('display', 'none');
 						$('#modal-venda').modal('hide')
+
+						let mensagemErro = typeof e.responseJSON === 'string'
+							? e.responseJSON
+							: (e.responseJSON && e.responseJSON.message ? e.responseJSON.message : '');
+
+						if(retornoDeliveryAtivo() && mensagemErro.indexOf('já foi finalizado no PDV') >= 0){
+							swal("Atenção!", mensagemErro, "warning").then(() => {
+								window.location.replace('/pedidosDelivery');
+							});
+							return;
+						}
+
 						swal("Ops!!", "Erro ao salvar venda!!", "error")
 
 					}
