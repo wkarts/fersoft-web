@@ -53,7 +53,7 @@
                         <div class="kanban-actions">
                             <a href="/pedidosDelivery/verPedido/{{ $p->id }}" class="btn btn-sm btn-info">👁️</a>
                             <a href="/pedidosDelivery/print/{{ $p->id }}" target="_blank" class="btn btn-sm btn-secondary">🖨️</a>
-                            <a href="/pedidosDelivery/irParaFrenteCaixa/{{ $p->id }}" class="btn btn-sm btn-success">💲</a>
+                            <a href="/pedidosDelivery/irParaFrenteCaixa/{{ $p->id }}?retorno={{ urlencode(request()->getRequestUri()) }}" class="btn btn-sm btn-success">💲</a>
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,11 @@
 
                 // Fluxo: Abrir PDV em nova aba
                 if (newStatus === 'finalizar_caixa') {
-                    let win = window.open('/pedidosDelivery/irParaFrenteCaixa/' + pedidoId, '_blank');
+                    const retornoAtual = window.location.pathname + window.location.search + window.location.hash;
+                    let win = window.open(
+                        '/pedidosDelivery/irParaFrenteCaixa/' + pedidoId + '?retorno=' + encodeURIComponent(retornoAtual),
+                        '_blank'
+                    );
                     if (!win) alert("Pop-up bloqueado! Libere as permissões do navegador.");
                     location.reload();
                     return;

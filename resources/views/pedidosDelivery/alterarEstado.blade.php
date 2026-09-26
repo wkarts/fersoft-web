@@ -40,6 +40,7 @@
 		<form action="/pedidosDelivery/confirmarAlteracao" method="get">
 			<input type="hidden" name="tipo" value="{{$tipo}}">
 			<input type="hidden" name="id" value="{{$pedido->id}}">
+			<input type="hidden" name="retorno" value="{{ $retornoPdv ?? '/pedidosDelivery' }}">
 
 			<div class="row">
 				<div class="col-lg-3">
