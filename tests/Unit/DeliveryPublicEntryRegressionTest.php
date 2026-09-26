@@ -67,11 +67,11 @@ class DeliveryPublicEntryRegressionTest extends TestCase
         $this->assertStringContainsString('name="public_link_value"', $view);
         $this->assertStringContainsString('id="delivery_public_link"', $view);
         $this->assertStringContainsString('readonly', $view);
-        $this->assertStringContainsString('Padrão automático (empresa)', $view);
+        $this->assertStringContainsString('Hash curto automático (padrão)', $view);
+        $this->assertStringContainsString('ID da empresa (compatibilidade)', $view);
         $this->assertStringContainsString('Slug personalizado', $view);
-        $this->assertStringContainsString('Hash curto automático', $view);
         $this->assertStringContainsString('Token automático', $view);
-        $this->assertStringContainsString('Link padrão permanente:', $view);
+        $this->assertStringContainsString('Link por ID (compatibilidade):', $view);
     }
 
     public function test_public_link_modes_are_persisted_with_safe_defaults(): void
