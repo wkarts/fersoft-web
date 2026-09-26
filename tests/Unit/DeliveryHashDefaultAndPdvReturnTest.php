@@ -13,6 +13,9 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         $migration = file_get_contents(
             database_path('migrations/2026_09_25_162500_add_public_link_fields_to_delivery_configs_table.php')
         );
+        $defaultMigration = file_get_contents(
+            database_path('migrations/2026_09_25_214700_set_delivery_public_link_mode_default_hash.php')
+        );
 
         $this->assertStringContainsString(
             "\$config->public_link_mode ?? 'hash'",
@@ -48,6 +51,10 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         $this->assertStringContainsString(
             'delivery_configs_public_link_value_unique',
             $migration
+        );
+        $this->assertStringContainsString(
+            "DEFAULT 'hash'",
+            $defaultMigration
         );
     }
 
