@@ -58,7 +58,7 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         $pdv = file_get_contents(resource_path('views/frontBox/main3.blade.php'));
 
         $this->assertStringContainsString(
-            '/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedido',
+            '/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedidos',
             $detail
         );
         $this->assertStringContainsString(
