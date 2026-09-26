@@ -2657,6 +2657,18 @@ function salvarRascuho(){
 	});
 }
 
+function destinoPosVenda(){
+	let destino = $('#retorno_pos_venda').val();
+	if(destino && destino.charAt(0) === '/'){
+		return destino;
+	}
+	return path + 'frenteCaixa';
+}
+
+function redirecionarPosVenda(){
+	location.href = destinoPosVenda();
+}
+
 var ENVIANDO = false
 function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 
@@ -2814,18 +2826,18 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 										if (v) {
 											window.open(path + 'nfce/ticket-troca/'+e.id, '_blank');
 											if(e.comissao_acessor == false && PAGMULTI.length == 0){
-												location.href=path+'frenteCaixa';
+												redirecionarPosVenda();
 											}
 										}else{
 											if(e.comissao_acessor == false && PAGMULTI.length == 0){
-												location.href=path+'frenteCaixa';
+												redirecionarPosVenda();
 											}
 										}
 										imprimeTroca = 1
 									});
 								}else{
 									if(e.comissao_acessor == false && PAGMULTI.length == 0){
-										location.href=path+'frenteCaixa';
+										redirecionarPosVenda();
 									}
 								}
 
@@ -2833,11 +2845,11 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 								if (v) {
 									window.open(path + 'nfce/imprimirNaoFiscal/'+e.id, '_blank');
 									if(e.comissao_acessor == false && PAGMULTI.length == 0 && imprimeTroca != 0){
-										location.href=path+'frenteCaixa';
+										redirecionarPosVenda();
 									}
 								} else {
 									if(e.comissao_acessor == false && PAGMULTI.length == 0 && imprimeTroca != 0){
-										location.href=path+'frenteCaixa';
+										redirecionarPosVenda();
 									}
 								}
 
@@ -2852,9 +2864,9 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 									.then((v) => {
 										if (v) {
 											window.open(path + 'vendas/carne?id='+e.id+'&tipo_venda=venda_caixas', '_blank');
-											location.href=path+'frenteCaixa';
+											redirecionarPosVenda();
 										} else {
-											location.href=path+'frenteCaixa';
+											redirecionarPosVenda();
 										}
 									});
 								}
@@ -2870,14 +2882,14 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 									.then((v) => {
 										if (v) {
 											window.open(path + 'nfce/imprimirComprovanteAssessor/'+e.id, '_blank');
-											location.href=path+'frenteCaixa';
+											redirecionarPosVenda();
 										} else {
-											location.href=path+'frenteCaixa';
+											redirecionarPosVenda();
 										}
 									});
 								}else{
 									if(PAGMULTI.length == 0 && imprimeTroca != 0){
-										location.href=path+'frenteCaixa';
+										redirecionarPosVenda();
 									}
 								}
 							});
@@ -2954,7 +2966,7 @@ function salvarCredito(js, token){
 			// 	CLIENTE.razao_social)
 			swal("Sucesso", "Venda salva na conta crédito do cliente " + CLIENTE.razao_social, "success")
 			.then(() => {
-				location.href = path + 'frenteCaixa'
+				redirecionarPosVenda()
 			})
 
 		}, error: function(e){
@@ -3049,7 +3061,7 @@ function emitirNFCe(vendaId){
 			else if(e == 'OFFL'){
 				swal("Alerta", "NFCe gerada em contigência!", "success").then(() => {
 					window.open(path + 'nfce/imprimir/'+vendaId, '_blank');
-					location.reload()
+					redirecionarPosVenda();
 				})
 			}
 			else{
@@ -3067,10 +3079,8 @@ function emitirNFCe(vendaId){
 					}).then((v) => {
 						if (v) {
 							window.open(path + 'nfce/ticket-troca/'+vendaId, '_blank');
-							location.href=path+'frenteCaixa';
-						}else{
-							location.href=path+'frenteCaixa';
 						}
+						redirecionarPosVenda();
 					});
 					// if(is_troca){
 					// 	location.href="/frenteCaixa";
