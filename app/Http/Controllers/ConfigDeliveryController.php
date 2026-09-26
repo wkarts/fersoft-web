@@ -109,7 +109,7 @@ class ConfigDeliveryController extends BaseController
 
 		$cidades = CidadeDelivery::all();
 
-		$modoLinkPublico = $config->public_link_mode ?? 'auto';
+		$modoLinkPublico = $config->public_link_mode ?? 'hash';
 		$valorLinkPublico = $config->public_link_value ?? null;
 		$identificadorLinkPublico = $modoLinkPublico === 'auto' || !$valorLinkPublico
 			? $this->empresa_id
@@ -131,7 +131,7 @@ class ConfigDeliveryController extends BaseController
 			? DeliveryConfig::where('empresa_id', $this->empresa_id)->where('id', $request->id)->first()
 			: null;
 
-		$modoLinkPublico = $request->input('public_link_mode', $configAtual->public_link_mode ?? 'auto');
+		$modoLinkPublico = $request->input('public_link_mode', $configAtual->public_link_mode ?? 'hash');
 		if(!in_array($modoLinkPublico, ['auto', 'slug', 'hash', 'token'], true)){
 			$modoLinkPublico = 'auto';
 		}
