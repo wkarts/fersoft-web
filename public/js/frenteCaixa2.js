@@ -3022,6 +3022,18 @@ function salvarCredito(js, token){
 			$('#preloader2').css('display', 'none');
 			$('#preloader9').css('display', 'none');
 			$('#modal-venda').modal('hide')
+
+			let mensagemErro = e.responseJSON && e.responseJSON.message
+				? e.responseJSON.message
+				: '';
+
+			if(retornoDeliveryAtivo() && mensagemErro.indexOf('já foi finalizado no PDV') >= 0){
+				swal("Atenção!", mensagemErro, "warning").then(() => {
+					window.location.replace('/pedidosDelivery');
+				});
+				return;
+			}
+
 			swal("Ops!!", "Erro ao salvar venda!!", "error")
 		}
 
