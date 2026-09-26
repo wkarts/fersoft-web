@@ -168,10 +168,45 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             'Este pedido do Delivery já foi finalizado no PDV pela venda #',
             $vendaController
         );
+        $this->assertStringContainsString(
+            "$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
+            $vendaController
+        );
+        $this->assertStringContainsString(
+            "$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
+            $vendaController
+        );
 
         $this->assertStringContainsString(
-            'Venda PDV #{{$vendaPdv->id}} concluída',
+            'Venda PDV @if(isset($vendaPdv) && $vendaPdv) #{{$vendaPdv->id}} @endif concluída',
             $detail
+        );
+    }
+
+    public function test_crediario_also_marks_delivery_as_paid_and_returns_to_orders(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/VendaController.php'));
+        $js = file_get_contents(public_path('js/frenteCaixa2.js'));
+
+        $this->assertStringContainsString(
+            "use App\\Models\\PedidoDelivery;",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "$pedidoDeliveryVenda->status_pagamento = 'pago_pdv';",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "url: path + 'vendas/salvarCrediario'",
+            $js
+        );
+        $this->assertStringContainsString(
+            'redirecionarPosVenda()',
+            $js
         );
     }
 
@@ -187,6 +222,10 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         );
         $this->assertStringContainsString(
             'public function statusVendaPdv($id)',
+            $controller
+        );
+        $this->assertStringContainsString(
+            "$pedido->status_pagamento === 'pago_pdv'",
             $controller
         );
 
