@@ -62,15 +62,15 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $detail
         );
         $this->assertStringContainsString(
-            "\$request->query('retorno') === 'pedido'",
+            "\$request->query('retorno') === 'pedidos'",
             $controller
         );
         $this->assertStringContainsString(
-            "'/pedidosDelivery/verPedido/' . \$pedido->id",
+            "'/pedidosDelivery'",
             $controller
         );
         $this->assertStringContainsString(
-            "->with('retornoPosVenda', '/pedidosDelivery/verPedido/' . \$pedido->id)",
+            "->with('retornoPosVenda', '/pedidosDelivery')",
             $controller
         );
         $this->assertStringContainsString(
