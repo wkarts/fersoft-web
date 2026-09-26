@@ -584,7 +584,7 @@ class PedidoDeliveryController extends Controller
 		return $temp;
 	}
 
-	public function irParaFrenteCaixa($id){
+	public function irParaFrenteCaixa(Request $request, $id){
 
 		$pedido = PedidoDelivery::with([
 			'itens.produto.produto', 
@@ -592,7 +592,14 @@ class PedidoDeliveryController extends Controller
 			'itens.itensAdicionais.adicional',
 			'cliente',
 			'endereco._bairro'
-		])->where('id', $id)->first();
+		])
+		->where('empresa_id', $this->empresa_id)
+		->where('id', $id)
+		->firstOrFail();
+
+		$retornoPosVenda = $request->query('retorno') === 'pedido'
+			? '/pedidosDelivery/verPedido/' . $pedido->id
+			: '/frenteCaixa';
 
 		$config = ConfigNota::first();
 		$tiposPagamento = VendaCaixa::tiposPagamento();
@@ -670,6 +677,7 @@ class PedidoDeliveryController extends Controller
 		->with('clientes', $clientes)
         ->with('filial', $filial)
         ->with('contasEmpresa', $contasEmpresa)
+		->with('retornoPosVenda', $retornoPosVenda)
 		->with('title', 'Finalizar Comanda '.$id);
 		
 	}
