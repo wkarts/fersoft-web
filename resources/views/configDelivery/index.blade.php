@@ -49,9 +49,9 @@
 								<div class="form-group col-lg-4 col-md-6">
 									<label class="font-weight-bold">Tipo de link</label>
 									<select name="public_link_mode" id="public_link_mode" class="form-control">
-										<option value="auto" @if(($modoLinkPublico ?? 'auto') === 'auto') selected @endif>Padrão automático (empresa)</option>
+										<option value="hash" @if(($modoLinkPublico ?? 'hash') === 'hash') selected @endif>Hash curto automático (padrão)</option>
+										<option value="auto" @if(($modoLinkPublico ?? '') === 'auto') selected @endif>ID da empresa (compatibilidade)</option>
 										<option value="slug" @if(($modoLinkPublico ?? '') === 'slug') selected @endif>Slug personalizado</option>
-										<option value="hash" @if(($modoLinkPublico ?? '') === 'hash') selected @endif>Hash curto automático</option>
 										<option value="token" @if(($modoLinkPublico ?? '') === 'token') selected @endif>Token automático</option>
 									</select>
 								</div>
@@ -102,9 +102,9 @@
 							</div>
 
 							<div class="alert alert-light mb-0 py-2">
-								<strong>Link padrão permanente:</strong>
+								<strong>Link por ID (compatibilidade):</strong>
 								<code>{{ $linkPublicoPadrao }}</code>
-								<span class="text-muted"> — continua válido mesmo usando slug, hash ou token.</span>
+								<span class="text-muted"> — permanece disponível, mas não é mais o padrão para novas configurações.</span>
 							</div>
 						</div>
 					</div>
