@@ -63,6 +63,64 @@ class PesagemPrint80Simples extends Common
         return $value;
     }
 
+    /**
+     * Regra histórica exclusiva do comprovante simples 80mm.
+     *
+     * Não altera o cálculo compartilhado pelos relatórios A4/80mm completos,
+     * não persiste dados e não interfere em estoque ou financeiro.
+     */
+    private static function calcularResumoSimplesHistorico(Pesagem $pesagem): array
+    {
+        $tickets = collect($pesagem->tickets ?? []);
+
+        $entradas = (float) $tickets->where('tipo', 'entrada')
+            ->sum(fn ($ticket) => max(0.0, (float) ($ticket->peso ?? 0)));
+        $saidas = (float) $tickets->where('tipo', 'saida')
+            ->sum(fn ($ticket) => max(0.0, (float) ($ticket->peso ?? 0)));
+        $avulsas = (float) $tickets->where('tipo', 'avulsa')
+            ->sum(fn ($ticket) => max(0.0, (float) ($ticket->peso ?? 0)));
+        $pesoBag = (float) $tickets
+            ->sum(fn ($ticket) => max(0.0, (float) ($ticket->peso_bag ?? 0)));
+
+        $pesoLiquido = abs(($entradas + $avulsas) - $saidas);
+
+        $percentualDesconto = 0.0;
+
+        if (!empty($pesagem->danificado)) {
+            $percentualDesconto += max(0.0, (float) ($pesagem->danificado_desconto ?? 0));
+        }
+        if (!empty($pesagem->quebrado)) {
+            $percentualDesconto += max(0.0, (float) ($pesagem->quebrado_desconto ?? 0));
+        }
+        if (!empty($pesagem->esverdeado)) {
+            $percentualDesconto += max(0.0, (float) ($pesagem->esverdeado_desconto ?? 0));
+        }
+        if (!empty($pesagem->ardido)) {
+            $percentualDesconto += max(0.0, (float) ($pesagem->ardido_desconto ?? 0));
+        }
+        if (!empty($pesagem->secagem)) {
+            $percentualDesconto += max(0.0, (float) ($pesagem->secagem_desconto ?? 0));
+        }
+
+        $percentualDesconto += max(0.0, (float) ($pesagem->umidade_desconto ?? 0));
+        $percentualDesconto += max(0.0, (float) ($pesagem->impureza_desconto ?? 0));
+
+        $descontoPercentual = $pesoLiquido > 0
+            ? ($pesoLiquido * ($percentualDesconto / 100.0))
+            : 0.0;
+
+        $impurezas = min(
+            $pesoLiquido,
+            max(0.0, $pesoBag + $descontoPercentual)
+        );
+
+        return [
+            'peso_liquido' => $pesoLiquido,
+            'impurezas' => $impurezas,
+            'peso_final' => max(0.0, $pesoLiquido - $impurezas),
+        ];
+    }
+
     private function chavePixContraparte(): string
     {
         if (($this->pesagem->tipo ?? '') === 'compra') {
@@ -260,7 +318,7 @@ class PesagemPrint80Simples extends Common
             $altura += count($tickets) * 5;
         }
 
-        $altura += (bool) ($this->config->pesagem_exibir_valores_relatorio ?? true) ? 45 : 40; // cálculos gerais
+        $altura += (bool) ($this->config->pesagem_exibir_valores_relatorio ?? false) ? 45 : 40; // cálculos gerais
         $altura += ($this->contarImagens80mm(1) * 45); // imagens das câmeras no 80mm simples
         $altura += 50; // carimbo/assinatura
 
@@ -445,18 +503,14 @@ class PesagemPrint80Simples extends Common
             $this->quebraTexto($obs, $this->larg - 4, 5, 'L');
         }
 
-        // Consolidação exclusivamente de apresentação. A conciliação persistida permanece intacta.
+        // O agrupamento moderno continua sendo usado somente para apresentar
+        // produtos/tickets. O fechamento do comprovante simples preserva a
+        // regra histórica exclusiva deste relatório.
         $resumo = PesagemReportCalculator::summarize($this->pesagem);
-        $pesoInicial = (float) $resumo['peso_inicial'];
-        $pesoFinalVeiculo = (float) $resumo['peso_final'];
-        $pesoLiquido = (float) $resumo['peso_liquido_total'];
-        $descontos = (float) $resumo['descontos'];
-        $pesoFinal = (float) $resumo['peso_final_liquido'];
-
-        $this->pdf->Ln(2);
-        $this->pdf->SetFont('Arial','B',8);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Inicial: '.number_format($pesoInicial,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final: '.number_format($pesoFinalVeiculo,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $resumoSimples = self::calcularResumoSimplesHistorico($this->pesagem);
+        $pesoLiquido = (float) $resumoSimples['peso_liquido'];
+        $descontos = (float) $resumoSimples['impurezas'];
+        $pesoFinal = (float) $resumoSimples['peso_final'];
 
         // 6) Detalhes por produto com datas por tipo
         $this->pdf->Ln(2);
@@ -471,8 +525,6 @@ class PesagemPrint80Simples extends Common
                 $this->pdf->SetFont('Arial','B',7);
                 $this->pdf->Cell(0,5, mb_convert_encoding("Produto: {$nomeProd}",'ISO-8859-1','UTF-8'), 0,1,'L');
                 $this->pdf->SetFont('Arial','',7);
-                $this->pdf->Cell(0,4, mb_convert_encoding('Peso Líquido do Produto: '.number_format((float) $grupoProduto['peso_liquido'],2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-
                 foreach (['entrada','saida','avulsa'] as $tipoT) {
                     $peso = (float)$tks->where('tipo',$tipoT)->sum('peso');
                     $peso = $this->f($peso);
@@ -499,13 +551,13 @@ class PesagemPrint80Simples extends Common
             }
         }
 
-        // 7) Resumo final
+        // 7) Resumo final - mantém a semântica histórica do comprovante simples
         $this->pdf->Ln(2);
         $this->pdf->SetFont('Arial','B',8);
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido Total: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Descontos: '.number_format($descontos, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final Líquido: '.number_format($pesoFinal, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
-        if ((bool) ($this->config->pesagem_exibir_valores_relatorio ?? true)) {
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Líquido: '.number_format($pesoLiquido,2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Impurezas: '.number_format($descontos, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        $this->pdf->Cell(0,5, mb_convert_encoding('Peso Final: '.number_format($pesoFinal, 2,',','.').' kg','ISO-8859-1','UTF-8'), 0,1,'L');
+        if ((bool) ($this->config->pesagem_exibir_valores_relatorio ?? false)) {
             $this->pdf->Cell(0,5, mb_convert_encoding('Valor Total da Operação: '.'R$ '.number_format((float) $resumo['valor_total_operacao'], 2, ',', '.'),'ISO-8859-1','UTF-8'), 0,1,'L');
         }
 
