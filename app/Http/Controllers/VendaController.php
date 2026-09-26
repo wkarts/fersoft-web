@@ -12,6 +12,7 @@ use App\Models\ItemVenda;
 use App\Models\ItemVendaCaixa;
 use App\Models\Produto;
 use App\Models\Pedido;
+use App\Models\PedidoDelivery;
 use App\Models\Categoria;
 use App\Models\Tributacao;
 use App\Models\ConfigNota;
@@ -2094,6 +2095,26 @@ class VendaController extends Controller
         $venda = $request->venda;
         $valorFrete = 0;
 
+        $deliveryId = isset($venda['delivery_id']) ? (int) $venda['delivery_id'] : 0;
+        $pedidoDeliveryVenda = null;
+
+        if ($deliveryId > 0) {
+            $pedidoDeliveryVenda = PedidoDelivery::where('empresa_id', $this->empresa_id)
+                ->where('id', $deliveryId)
+                ->firstOrFail();
+
+            $vendaPdvExistente = VendaCaixa::where('empresa_id', $this->empresa_id)
+                ->where('pedido_delivery_id', $deliveryId)
+                ->where('rascunho', 0)
+                ->exists();
+
+            if ($pedidoDeliveryVenda->status_pagamento === 'pago_pdv' || $vendaPdvExistente) {
+                return response()->json([
+                    'message' => 'Este pedido do Delivery já foi finalizado no PDV.'
+                ], 409);
+            }
+        }
+
         $totalVenda = str_replace(",", ".", $venda['valor_total']);
 
         $desconto = 0;
@@ -2160,6 +2181,11 @@ class VendaController extends Controller
         }
 
         $this->applyRtToVendaTotals($result);
+
+        if ($pedidoDeliveryVenda) {
+            $pedidoDeliveryVenda->status_pagamento = 'pago_pdv';
+            $pedidoDeliveryVenda->save();
+        }
 
         echo json_encode($result);
     }

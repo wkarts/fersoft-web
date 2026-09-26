@@ -220,9 +220,19 @@ class PedidoDeliveryController extends Controller
           ->where('estado', 'finalizado')
           ->orderBy('id', 'desc')->get();
 
+      $vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
+          ->where('pedido_delivery_id', $pedido->id)
+          ->where('rascunho', 0)
+          ->orderBy('id', 'desc')
+          ->first();
+
+      $pedidoPagoPdv = $pedido->status_pagamento === 'pago_pdv' || $vendaPdv !== null;
+
       return view('pedidosDelivery/detalhe')
           ->with('tipo', 'Detalhes do Pedido')
           ->with('pedido', $pedido)
+          ->with('vendaPdv', $vendaPdv)
+          ->with('pedidoPagoPdv', $pedidoPagoPdv)
           ->with('pedidosFinalizado', $pedidosFinalizado) // <--- ESTA LINHA EVITA O ERRO
           ->with('pedidoDeliveryJs', true)
           ->with('title', 'Pedidos de Delivery');
@@ -354,6 +364,21 @@ class PedidoDeliveryController extends Controller
 			.$pedido->endereco->_bairro->nome : '');
 
 		if($tipo == 'finalizado'){
+			$vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
+				->where('pedido_delivery_id', $pedido->id)
+				->where('rascunho', 0)
+				->orderBy('id', 'desc')
+				->first();
+
+			if ($pedido->status_pagamento === 'pago_pdv' || $vendaPdv) {
+				$mensagem = $vendaPdv
+					? 'Este pedido já foi finalizado no PDV pela venda #' . $vendaPdv->id . '.'
+					: 'Este pedido já foi finalizado no PDV.';
+
+				session()->flash('mensagem_alerta', $mensagem);
+				return redirect('/pedidosDelivery');
+			}
+
 			//Abrir frente de caixa
 
 			$usuario = Usuario::find(get_id_user());
@@ -601,6 +626,21 @@ class PedidoDeliveryController extends Controller
 		$retornoPosVenda = $request->query('retorno') === 'pedidos'
 			? '/pedidosDelivery'
 			: '/frenteCaixa';
+
+		$vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
+			->where('pedido_delivery_id', $pedido->id)
+			->where('rascunho', 0)
+			->orderBy('id', 'desc')
+			->first();
+
+		if ($pedido->status_pagamento === 'pago_pdv' || $vendaPdv) {
+			$mensagem = $vendaPdv
+				? 'Este pedido já foi finalizado no PDV pela venda #' . $vendaPdv->id . '.'
+				: 'Este pedido já foi finalizado no PDV.';
+
+			session()->flash('mensagem_alerta', $mensagem);
+			return redirect('/pedidosDelivery');
+		}
 
 		$config = ConfigNota::first();
 		$tiposPagamento = VendaCaixa::tiposPagamento();
@@ -1568,6 +1608,23 @@ public function mudarStatus(Request $request, $id, $status)
 public function marcarEntregue($id)
 {
     return $this->marcarComoEntregue($id);
+}
+
+public function statusVendaPdv($id)
+{
+    $pedido = PedidoDelivery::where('empresa_id', $this->empresa_id)
+        ->findOrFail($id);
+
+    $venda = VendaCaixa::where('empresa_id', $this->empresa_id)
+        ->where('pedido_delivery_id', $pedido->id)
+        ->where('rascunho', 0)
+        ->orderBy('id', 'desc')
+        ->first();
+
+    return response()->json([
+        'finalizado' => $pedido->status_pagamento === 'pago_pdv' || $venda !== null,
+        'venda_id' => $venda ? $venda->id : null,
+    ]);
 }
 
 public function kanban(Request $request)

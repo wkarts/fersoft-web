@@ -209,6 +209,35 @@ class VendaCaixaController extends Controller
     try{
       $result = DB::transaction(function () use ($request) {
         $venda = $request->venda;
+
+        $deliveryId = isset($venda['delivery_id']) ? (int) $venda['delivery_id'] : 0;
+        $pedidoDeliveryVenda = null;
+
+        if ($deliveryId > 0) {
+          $pedidoDeliveryVenda = PedidoDelivery::where('empresa_id', $this->empresa_id)
+          ->where('id', $deliveryId)
+          ->lockForUpdate()
+          ->firstOrFail();
+
+          if ($pedidoDeliveryVenda->status_pagamento === 'pago_pdv') {
+            throw new \RuntimeException('Este pedido do Delivery já foi finalizado no PDV.');
+          }
+
+          $vendaDeliveryExistente = VendaCaixa::where('empresa_id', $this->empresa_id)
+          ->where('pedido_delivery_id', $deliveryId)
+          ->where('rascunho', 0)
+          ->when(isset($venda['id']) && (int) $venda['id'] > 0, function ($query) use ($venda) {
+            $query->where('id', '<>', (int) $venda['id']);
+          })
+          ->first();
+
+          if ($vendaDeliveryExistente) {
+            throw new \RuntimeException(
+              'Este pedido do Delivery já foi finalizado no PDV pela venda #' . $vendaDeliveryExistente->id . '.'
+            );
+          }
+        }
+
         $agendamento_id = $venda['agendamento_id'];
         $fromPrevenda = isset($venda['isPrevenda']) ?
         ($venda['isPrevenda'] == 'true' ? true : false) : false;
@@ -695,6 +724,11 @@ class VendaCaixaController extends Controller
         }
 
         $result->comissao_acessor = $valorComissaoAssesor > 0 ? true : false;
+
+        if ($pedidoDeliveryVenda && (int) ($venda['rascunho'] ?? 0) === 0) {
+          $pedidoDeliveryVenda->status_pagamento = 'pago_pdv';
+          $pedidoDeliveryVenda->save();
+        }
 
         return $result;
       });

@@ -973,6 +973,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/marcarComoEntregue/{id}', 'PedidoDeliveryController@marcarComoEntregue');
         Route::get('/emAberto', 'PedidoDeliveryController@emAberto');
         Route::get('/ultimoPedidoNovo', 'PedidoDeliveryController@ultimoPedidoNovo');
+        Route::get('/statusVendaPdv/{id}', 'PedidoDeliveryController@statusVendaPdv');
         Route::get('/kanban', 'PedidoDeliveryController@kanban');
         Route::post('/actualizarStatusKanban', 'PedidoDeliveryController@actualizarStatusKanban');
 
