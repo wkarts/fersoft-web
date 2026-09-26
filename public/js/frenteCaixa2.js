@@ -3334,7 +3334,7 @@ function removerVenda(id){
 }
 
 function redireciona(){
-	sairAposErroFiscalDelivery();
+	location.href=path+'frenteCaixa';
 }
 
 function modalCancelar(id){
