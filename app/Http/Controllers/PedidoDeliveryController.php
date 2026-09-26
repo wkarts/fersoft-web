@@ -249,6 +249,55 @@ class PedidoDeliveryController extends Controller
 		return redirect("/pedidosDelivery/verPedido/".$item->pedido->id);
 	}
 
+	private function resolverRetornoPdv(Request $request, string $fallback = '/pedidosDelivery'): string
+	{
+		$retorno = trim((string) $request->input('retorno', ''));
+
+		if ($retorno === '') {
+			$retorno = trim((string) $request->headers->get('referer', ''));
+		}
+
+		if ($retorno === '' || str_starts_with($retorno, '//')) {
+			return $fallback;
+		}
+
+		$partes = parse_url($retorno);
+		if ($partes === false) {
+			return $fallback;
+		}
+
+		if (isset($partes['host'])) {
+			if (strcasecmp((string) $partes['host'], (string) $request->getHost()) !== 0) {
+				return $fallback;
+			}
+		} elseif (!str_starts_with($retorno, '/')) {
+			return $fallback;
+		}
+
+		$caminho = $partes['path'] ?? '/';
+
+		if (
+			str_starts_with($caminho, '/frenteCaixa') ||
+			str_starts_with($caminho, '/pedidosDelivery/irParaFrenteCaixa') ||
+			str_starts_with($caminho, '/pedidosDelivery/alterarPedido') ||
+			str_starts_with($caminho, '/pedidosDelivery/confirmarAlteracao')
+		) {
+			return $fallback;
+		}
+
+		$retornoInterno = $caminho !== '' ? $caminho : '/';
+
+		if (!empty($partes['query'])) {
+			$retornoInterno .= '?' . $partes['query'];
+		}
+
+		if (!empty($partes['fragment'])) {
+			$retornoInterno .= '#' . $partes['fragment'];
+		}
+
+		return $retornoInterno;
+	}
+
 	public function alterarPedido(Request $request){
 		$id = $request->id;
 		$tipo = $request->tipo;
@@ -258,11 +307,14 @@ class PedidoDeliveryController extends Controller
 		->get();
 
 		if(valida_objeto($pedido)){
+			$retornoPdv = $this->resolverRetornoPdv($request);
+
 			return view('pedidosDelivery/alterarEstado')
 			->with('tipo', 'Detalhes do Pedido')
 			->with('pedido', $pedido)
 			->with('tipo', $tipo)
 			->with('motoboys', $motoboys)
+			->with('retornoPdv', $retornoPdv)
 			->with('title', 'Pedidos de Delivery');
 		}else{
 			redirect('/403');
@@ -289,6 +341,7 @@ class PedidoDeliveryController extends Controller
 
 		$id = $request->id;
 		$tipo = $request->tipo;
+		$retornoPosVenda = $this->resolverRetornoPdv($request);
 
 		$pedido = PedidoDelivery::with([
 			'itens.produto.produto', 
@@ -376,7 +429,7 @@ class PedidoDeliveryController extends Controller
 					: 'Este pedido já foi finalizado no PDV.';
 
 				session()->flash('mensagem_alerta', $mensagem);
-				return redirect('/pedidosDelivery');
+				return redirect($retornoPosVenda);
 			}
 
 			//Abrir frente de caixa
@@ -447,12 +500,12 @@ class PedidoDeliveryController extends Controller
 			->with('clientes', $clientes)
             ->with('filial', $filial)
             ->with('contasEmpresa', $contasEmpresa)
-			->with('retornoPosVenda', '/pedidosDelivery')
+			->with('retornoPosVenda', $retornoPosVenda)
 			->with('title', 'Finalizar Comanda '.$id);
 		}else{
 
 			session()->flash('mensagem_sucesso', 'Pedido Alterado!');
-			return redirect('/pedidosDelivery');
+			return redirect($retornoPosVenda);
 		}
 
 	}
@@ -623,9 +676,7 @@ class PedidoDeliveryController extends Controller
 		->where('id', $id)
 		->firstOrFail();
 
-		$retornoPosVenda = $request->query('retorno') === 'pedidos'
-			? '/pedidosDelivery'
-			: '/frenteCaixa';
+		$retornoPosVenda = $this->resolverRetornoPdv($request);
 
 		$vendaPdv = VendaCaixa::where('empresa_id', $this->empresa_id)
 			->where('pedido_delivery_id', $pedido->id)
@@ -639,7 +690,7 @@ class PedidoDeliveryController extends Controller
 				: 'Este pedido já foi finalizado no PDV.';
 
 			session()->flash('mensagem_alerta', $mensagem);
-			return redirect('/pedidosDelivery');
+			return redirect($retornoPosVenda);
 		}
 
 		$config = ConfigNota::first();
