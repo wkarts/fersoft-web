@@ -133,6 +133,54 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         );
     }
 
+    public function test_delivery_non_fiscal_print_flow_always_finishes_back_on_orders(): void
+    {
+        $js = file_get_contents(public_path('js/frenteCaixa2.js'));
+
+        $this->assertStringContainsString(
+            'function finalizarNaoFiscalDelivery(e)',
+            $js
+        );
+        $this->assertStringContainsString(
+            "window.open(path + 'nfce/imprimirNaoFiscal/' + e.id, '_blank');",
+            $js
+        );
+        $this->assertStringContainsString(
+            'setTimeout(redirecionarPosVenda, 250);',
+            $js
+        );
+        $this->assertStringContainsString(
+            'if(retornoDeliveryAtivo()){',
+            $js
+        );
+        $this->assertStringContainsString(
+            'finalizarNaoFiscalDelivery(e);',
+            $js
+        );
+    }
+
+    public function test_delivery_fiscal_error_after_saved_sale_leaves_pdv_for_orders(): void
+    {
+        $js = file_get_contents(public_path('js/frenteCaixa2.js'));
+
+        $this->assertStringContainsString(
+            'function sairAposErroFiscalDelivery()',
+            $js
+        );
+        $this->assertStringContainsString(
+            'sairAposErroFiscalDelivery();',
+            $js
+        );
+        $this->assertStringContainsString(
+            "if(retornoDeliveryAtivo()){",
+            $js
+        );
+        $this->assertStringContainsString(
+            'redirecionarPosVenda();',
+            $js
+        );
+    }
+
     public function test_paid_delivery_order_cannot_be_opened_or_sold_twice(): void
     {
         $pedidoController = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));

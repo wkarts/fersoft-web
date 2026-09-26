@@ -2700,6 +2700,74 @@ function verificarPedidoDeliveryJaFinalizado(){
 	});
 }
 
+function finalizarNaoFiscalDelivery(e){
+	let fluxo = swal({
+		title: "Sucesso",
+		text: "Deseja imprimir comprovante?",
+		icon: "success",
+		buttons: ["Não", 'Imprimir'],
+		dangerMode: true,
+	}).then((imprimir) => {
+		if(imprimir){
+			window.open(path + 'nfce/imprimirNaoFiscal/' + e.id, '_blank');
+		}
+	});
+
+	if(ATALHOS.imprimir_ticket_troca == 1){
+		fluxo = fluxo.then(() => swal({
+			title: "Sucesso",
+			text: "Deseja imprimir o ticket de troca",
+			icon: "success",
+			buttons: ["Não", 'Imprimir'],
+			dangerMode: true,
+		})).then((imprimir) => {
+			if(imprimir){
+				window.open(path + 'nfce/ticket-troca/' + e.id, '_blank');
+			}
+		});
+	}
+
+	if(PAGMULTI.length > 0){
+		fluxo = fluxo.then(() => swal({
+			title: "Sucesso",
+			text: "Deseja imprimir as duplicatas",
+			icon: "success",
+			buttons: ["Não", 'Imprimir'],
+			dangerMode: true,
+		})).then((imprimir) => {
+			if(imprimir){
+				window.open(path + 'vendas/carne?id=' + e.id + '&tipo_venda=venda_caixas', '_blank');
+			}
+		});
+	}
+
+	if(e.comissao_acessor){
+		fluxo = fluxo.then(() => swal({
+			title: "Sucesso",
+			text: "Deseja imprimir comprovante do assessor?",
+			icon: "success",
+			buttons: ["Não", 'Imprimir'],
+			dangerMode: true,
+		})).then((imprimir) => {
+			if(imprimir){
+				window.open(path + 'nfce/imprimirComprovanteAssessor/' + e.id, '_blank');
+			}
+		});
+	}
+
+	fluxo.then(() => {
+		setTimeout(redirecionarPosVenda, 250);
+	});
+}
+
+function sairAposErroFiscalDelivery(){
+	if(retornoDeliveryAtivo()){
+		redirecionarPosVenda();
+		return;
+	}
+	location.href = path + 'frenteCaixa';
+}
+
 // pageshow também dispara quando o navegador restaura a página pelo histórico/BFCache.
 window.addEventListener('pageshow', function(){
 	verificarPedidoDeliveryJaFinalizado();
@@ -2840,6 +2908,11 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 								location.href=path+'frenteCaixa/prevenda';
 							})
 						}else{
+
+							if(retornoDeliveryAtivo()){
+								finalizarNaoFiscalDelivery(e);
+								return;
+							}
 
 							swal({
 								title: "Sucesso",
@@ -3094,12 +3167,12 @@ function emitirNFCe(vendaId){
 					let m = JSON.parse(mensagem);
 					swal("Algo deu errado!", "[" + m.protNFe.infProt.cStat + "] : " + m.protNFe.infProt.xMotivo, "error")
 					.then(() => {
-						location.href=path+'frenteCaixa';
+						sairAposErroFiscalDelivery();
 					})
 				}catch{
 
 					swal("Algo deu errado!", mensagem, "error").then(() => {
-						location.href=path+'frenteCaixa';
+						sairAposErroFiscalDelivery();
 					})
 				}
 			}
@@ -3108,7 +3181,11 @@ function emitirNFCe(vendaId){
 				// $('#modal-alert-erro').modal('show');
 				// $('#evento-erro').html("WebService sefaz em manutenção, falha de comunicação SOAP")
 				swal("Algo deu errado!", "WebService sefaz em manutenção, falha de comunicação SOAP", "error").then(() => {
-					location.reload()
+					if(retornoDeliveryAtivo()){
+						redirecionarPosVenda();
+					}else{
+						location.reload();
+					}
 				})
 
 

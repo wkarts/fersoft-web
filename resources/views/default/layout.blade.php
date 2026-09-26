@@ -103,17 +103,37 @@ window.addEventListener('load', function () {
         }
     }
 
-    function alterarStatusPedido(estado, motivo) {
-        if (!pedidoPendenteAtualId) return;
+    let csrfDeliveryAtual = '{{ csrf_token() }}';
 
+    function obterCsrfDelivery(callback) {
+        $.ajax({
+            url: '/pedidosDelivery/csrf-token',
+            type: 'GET',
+            dataType: 'json',
+            cache: false
+        })
+        .done(function(response) {
+            if (response && response.token) {
+                csrfDeliveryAtual = response.token;
+            }
+            callback(csrfDeliveryAtual);
+        })
+        .fail(function() {
+            callback(csrfDeliveryAtual);
+        });
+    }
+
+    function enviarStatusPedido(estado, motivo, permitirRenovacaoCsrf) {
         const $botoes = $('#btnAceitarPedidoModal, #btnRecusarPedidoModal');
-        $botoes.prop('disabled', true);
 
         $.ajax({
             url: '/pedidosDelivery/actualizarStatusKanban',
             type: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfDeliveryAtual
+            },
             data: {
-                _token: '{{ csrf_token() }}',
+                _token: csrfDeliveryAtual,
                 id: pedidoPendenteAtualId,
                 estado: estado,
                 motivo: motivo || ''
@@ -123,6 +143,7 @@ window.addEventListener('load', function () {
                     exibirErroPedido(response && response.mensagem
                         ? response.mensagem
                         : 'Não foi possível atualizar o pedido.');
+                    $botoes.prop('disabled', false);
                     return;
                 }
 
@@ -140,20 +161,42 @@ window.addEventListener('load', function () {
                 if (estado === 'aprovado') {
                     setTimeout(function() {
                         window.location.href = '/pedidosDelivery/kanban';
-                    }, 800);
+                    }, 500);
                 } else {
                     pedidoPendenteAtualId = null;
                     $botoes.prop('disabled', false);
                 }
             },
             error: function(xhr) {
-                let mensagem = 'Erro ao atualizar o pedido.';
+                if (xhr.status === 419 && permitirRenovacaoCsrf !== false) {
+                    obterCsrfDelivery(function() {
+                        enviarStatusPedido(estado, motivo, false);
+                    });
+                    return;
+                }
+
+                let mensagem = xhr.status === 419
+                    ? 'Sua sessão foi atualizada. Recarregue a página e tente novamente.'
+                    : 'Erro ao atualizar o pedido.';
+
                 if (xhr.responseJSON && xhr.responseJSON.mensagem) {
                     mensagem = xhr.responseJSON.mensagem;
                 }
+
                 exibirErroPedido(mensagem);
                 $botoes.prop('disabled', false);
             }
+        });
+    }
+
+    function alterarStatusPedido(estado, motivo) {
+        if (!pedidoPendenteAtualId) return;
+
+        const $botoes = $('#btnAceitarPedidoModal, #btnRecusarPedidoModal');
+        $botoes.prop('disabled', true);
+
+        obterCsrfDelivery(function() {
+            enviarStatusPedido(estado, motivo, true);
         });
     }
 

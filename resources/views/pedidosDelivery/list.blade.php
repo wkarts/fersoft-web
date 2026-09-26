@@ -253,7 +253,15 @@
     </div>
 </div>
 <script>
-$(document).ready(function() {
+window.addEventListener('load', function () {
+    if (typeof window.jQuery === 'undefined') {
+        console.error('jQuery não carregado: monitor legado de pedidos não iniciado.');
+        return;
+    }
+
+    const $ = window.jQuery;
+
+    $(document).ready(function() {
     // O layout padrão já possui o monitor global corrigido. Evita dois popups
     // concorrentes consultando o mesmo pedido nesta tela.
     if (document.getElementById('modalNovoPedidoAlerta')) {
@@ -304,6 +312,7 @@ $(document).ready(function() {
     
     $('#modal-alerta-novo-pedido .btn').click(function() {
         somAlerta.pause();
+    });
     });
 });
 </script>

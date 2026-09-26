@@ -101,6 +101,53 @@ class DeliveryCheckoutAndPopupRegressionTest extends TestCase
         );
     }
 
+    public function test_new_order_popup_refreshes_csrf_and_no_invalid_duplicate_route_exists(): void
+    {
+        $layout = file_get_contents(resource_path('views/default/layout.blade.php'));
+        $routes = file_get_contents(base_path('routes/web.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
+        $list = file_get_contents(resource_path('views/pedidosDelivery/list.blade.php'));
+
+        $this->assertStringContainsString(
+            "url: '/pedidosDelivery/csrf-token'",
+            $layout
+        );
+        $this->assertStringContainsString(
+            "xhr.status === 419",
+            $layout
+        );
+        $this->assertStringContainsString(
+            "'X-CSRF-TOKEN': csrfDeliveryAtual",
+            $layout
+        );
+        $this->assertStringContainsString(
+            "Route::get('/csrf-token'",
+            $routes
+        );
+
+        $this->assertStringContainsString(
+            "Route::get('/verificar-novos-pedidos', 'PedidoDeliveryController@verificarNovosPedidos');",
+            $routes
+        );
+        $this->assertStringNotContainsString(
+            "PedidoDeliveryController@verificarNovos'",
+            $routes
+        );
+        $this->assertStringContainsString(
+            'public function verificarNovosPedidos()',
+            $controller
+        );
+
+        $this->assertStringContainsString(
+            "window.addEventListener('load'",
+            $list
+        );
+        $this->assertStringContainsString(
+            "typeof window.jQuery === 'undefined'",
+            $list
+        );
+    }
+
     public function test_new_order_payload_is_company_scoped_unread_and_complete(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
