@@ -72,12 +72,6 @@
 		</div>
 		@endif
 
-		<div class="row">
-			@if(!isset($funcionamento) && count($dias) === 0)
-			<h3 class="text-danger d-none">Todos os dias da semana adicionados!</h3>
-			@endif
-		</div>
-
 		<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 			<table class="datatable-table" style="max-width: 100%; overflow: scroll">
