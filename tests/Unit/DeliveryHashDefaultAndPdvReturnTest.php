@@ -34,106 +34,144 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $controller
         );
 
-        $this->assertStringContainsString(
-            'Hash curto automático (padrão)',
-            $view
-        );
-        $this->assertStringContainsString(
-            'ID da empresa (compatibilidade)',
-            $view
-        );
-        $this->assertStringContainsString(
-            'Link por ID (compatibilidade):',
-            $view
-        );
-
-        $this->assertStringContainsString(
-            'delivery_configs_public_link_value_unique',
-            $migration
-        );
-        $this->assertStringContainsString(
-            "DEFAULT 'hash'",
-            $defaultMigration
-        );
+        $this->assertStringContainsString('Hash curto automático (padrão)', $view);
+        $this->assertStringContainsString('ID da empresa (compatibilidade)', $view);
+        $this->assertStringContainsString('Link por ID (compatibilidade):', $view);
+        $this->assertStringContainsString('delivery_configs_public_link_value_unique', $migration);
+        $this->assertStringContainsString("DEFAULT 'hash'", $defaultMigration);
     }
 
-    public function test_pdv_return_is_explicit_only_when_delivery_originates_from_order_screen(): void
+    public function test_pdv_return_uses_the_real_internal_calling_route(): void
     {
         $detail = file_get_contents(resource_path('views/pedidosDelivery/detalhe.blade.php'));
+        $kanban = file_get_contents(resource_path('views/pedidosDelivery/kanban.blade.php'));
+        $alterar = file_get_contents(resource_path('views/pedidosDelivery/alterarEstado.blade.php'));
         $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
         $pdv = file_get_contents(resource_path('views/frontBox/main3.blade.php'));
 
         $this->assertStringContainsString(
-            '/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedidos',
+            '?retorno={{ urlencode(request()->getRequestUri()) }}',
             $detail
         );
         $this->assertStringContainsString(
-            "\$request->query('retorno') === 'pedidos'",
+            '?retorno={{ urlencode(request()->getRequestUri()) }}',
+            $kanban
+        );
+        $this->assertStringContainsString(
+            'encodeURIComponent(retornoAtual)',
+            $kanban
+        );
+
+        $this->assertStringContainsString(
+            'private function resolverRetornoPdv(Request $request',
             $controller
         );
         $this->assertStringContainsString(
-            "->with('retornoPosVenda', '/pedidosDelivery')",
+            "\$request->headers->get('referer', '')",
             $controller
         );
         $this->assertStringContainsString(
-            'id="retorno_pos_venda"',
-            $pdv
+            "strcasecmp((string) \$partes['host'], (string) \$request->getHost())",
+            $controller
         );
+        $this->assertStringContainsString(
+            "->with('retornoPosVenda', \$retornoPosVenda)",
+            $controller
+        );
+        $this->assertStringContainsString(
+            'name="retorno" value="{{ $retornoPdv ?? \'/pedidosDelivery\' }}"',
+            $alterar
+        );
+
+        $this->assertStringContainsString('id="retorno_pos_venda"', $pdv);
         $this->assertStringContainsString(
             "{{ \$retornoPosVenda ?? '/frenteCaixa' }}",
             $pdv
         );
     }
 
-    public function test_completed_delivery_sale_returns_to_orders_with_or_without_nfce(): void
+    public function test_pdv_return_rejects_external_or_intermediate_destinations(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/PedidoDeliveryController.php'));
+
+        $this->assertStringContainsString(
+            "str_starts_with(\$retorno, '//')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "str_starts_with(\$caminho, '/frenteCaixa')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "str_starts_with(\$caminho, '/pedidosDelivery/irParaFrenteCaixa')",
+            $controller
+        );
+        $this->assertStringContainsString(
+            "str_starts_with(\$caminho, '/pedidosDelivery/alterarPedido')",
+            $controller
+        );
+    }
+
+    public function test_completed_delivery_sale_returns_to_origin_with_or_without_nfce(): void
     {
         $js = file_get_contents(public_path('js/frenteCaixa2.js'));
 
+        $this->assertStringContainsString('function destinoPosVenda()', $js);
+        $this->assertStringContainsString("return path + 'frenteCaixa';", $js);
+        $this->assertStringContainsString('function redirecionarPosVenda()', $js);
+        $this->assertStringContainsString('window.location.replace(destino);', $js);
+        $this->assertStringContainsString('window.opener.location.href = destino;', $js);
+        $this->assertStringContainsString('window.opener.focus();', $js);
+        $this->assertStringContainsString('window.close();', $js);
+
         $this->assertStringContainsString(
-            'function destinoPosVenda()',
+            "abrirImpressaoPdv(path + 'nfce/imprimirNaoFiscal/' + e.id);",
             $js
         );
+        $this->assertStringContainsString("else if(e == 'OFFL')", $js);
+        $this->assertStringContainsString("else if(e == 'Apro')", $js);
         $this->assertStringContainsString(
-            "return path + 'frenteCaixa';",
-            $js
-        );
-        $this->assertStringContainsString(
-            'function redirecionarPosVenda()',
-            $js
-        );
-        $this->assertStringContainsString(
-            'window.location.replace(destino);',
+            "abrirImpressaoPdv(path + 'nfce/imprimir/'+vendaId);",
             $js
         );
 
-        // Venda sem cupom fiscal.
-        $this->assertStringContainsString(
-            "window.open(path + 'nfce/imprimirNaoFiscal/'+e.id, '_blank');",
-            $js
-        );
-
-        // NFC-e normal, contingência e documento já aprovado.
-        $this->assertStringContainsString(
-            "else if(e == 'OFFL')",
-            $js
-        );
-        $this->assertStringContainsString(
-            "else if(e == 'Apro')",
-            $js
-        );
-        $this->assertStringContainsString(
-            "window.open(path + 'nfce/imprimir/'+vendaId, '_blank');",
-            $js
-        );
-
-        // Todos esses fluxos usam o destino pós-venda preservado.
         $this->assertGreaterThanOrEqual(
             5,
             substr_count($js, 'redirecionarPosVenda();')
         );
     }
 
-    public function test_delivery_non_fiscal_print_flow_always_finishes_back_on_orders(): void
+    public function test_delivery_reserves_print_tab_before_async_checkout_and_reuses_it(): void
+    {
+        $js = file_get_contents(public_path('js/frenteCaixa2.js'));
+
+        $this->assertStringContainsString(
+            'function reservarJanelaImpressaoDelivery()',
+            $js
+        );
+        $this->assertStringContainsString(
+            "window.open('about:blank', 'fersoft_delivery_impressao')",
+            $js
+        );
+        $this->assertStringContainsString(
+            'function abrirImpressaoPdv(url)',
+            $js
+        );
+        $this->assertStringContainsString(
+            'JANELA_IMPRESSAO_DELIVERY.location.replace(url);',
+            $js
+        );
+        $this->assertStringContainsString(
+            'reservarJanelaImpressaoDelivery();',
+            $js
+        );
+        $this->assertStringContainsString(
+            'fecharJanelaImpressaoDeliverySeVazia();',
+            $js
+        );
+    }
+
+    public function test_delivery_non_fiscal_print_flow_finishes_back_on_origin(): void
     {
         $js = file_get_contents(public_path('js/frenteCaixa2.js'));
 
@@ -142,15 +180,11 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $js
         );
         $this->assertStringContainsString(
-            "window.open(path + 'nfce/imprimirNaoFiscal/' + e.id, '_blank');",
+            "abrirImpressaoPdv(path + 'nfce/imprimirNaoFiscal/' + e.id);",
             $js
         );
         $this->assertStringContainsString(
             'setTimeout(redirecionarPosVenda, 250);',
-            $js
-        );
-        $this->assertStringContainsString(
-            'if(retornoDeliveryAtivo()){',
             $js
         );
         $this->assertStringContainsString(
@@ -159,7 +193,7 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         );
     }
 
-    public function test_delivery_fiscal_error_after_saved_sale_leaves_pdv_for_orders(): void
+    public function test_delivery_fiscal_error_after_saved_sale_leaves_pdv_for_origin(): void
     {
         $js = file_get_contents(public_path('js/frenteCaixa2.js'));
 
@@ -169,10 +203,6 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         );
         $this->assertStringContainsString(
             'sairAposErroFiscalDelivery();',
-            $js
-        );
-        $this->assertStringContainsString(
-            "if(retornoDeliveryAtivo()){",
             $js
         );
         $this->assertStringContainsString(
@@ -199,11 +229,12 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             'Este pedido já foi finalizado no PDV pela venda #',
             $pedidoController
         );
-
         $this->assertStringContainsString(
-            "->lockForUpdate()",
-            $vendaController
+            "return redirect(\$retornoPosVenda);",
+            $pedidoController
         );
+
+        $this->assertStringContainsString("->lockForUpdate()", $vendaController);
         $this->assertStringContainsString(
             "->where('pedido_delivery_id', \$deliveryId)",
             $vendaController
@@ -231,15 +262,12 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
         );
     }
 
-    public function test_crediario_also_marks_delivery_as_paid_and_returns_to_orders(): void
+    public function test_crediario_also_marks_delivery_as_paid_and_returns_to_origin(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/VendaController.php'));
         $js = file_get_contents(public_path('js/frenteCaixa2.js'));
 
-        $this->assertStringContainsString(
-            "use App\\Models\\PedidoDelivery;",
-            $controller
-        );
+        $this->assertStringContainsString("use App\\Models\\PedidoDelivery;", $controller);
         $this->assertStringContainsString(
             "\$pedidoDeliveryVenda->status_pagamento === 'pago_pdv'",
             $controller
@@ -253,9 +281,10 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             $js
         );
         $this->assertStringContainsString(
-            'redirecionarPosVenda()',
+            "abrirImpressaoPdv(path + 'vendas/imprimirPedido/'+e.id);",
             $js
         );
+        $this->assertStringContainsString('redirecionarPosVenda()', $js);
     }
 
     public function test_browser_back_cannot_restore_a_paid_delivery_order_for_new_sale(): void
@@ -276,17 +305,16 @@ class DeliveryHashDefaultAndPdvReturnTest extends TestCase
             "\$pedido->status_pagamento === 'pago_pdv'",
             $controller
         );
-
         $this->assertStringContainsString(
             "window.addEventListener('pageshow'",
             $js
         );
         $this->assertStringContainsString(
-            "pedidosDelivery/statusVendaPdv/",
+            'pedidosDelivery/statusVendaPdv/',
             $js
         );
         $this->assertStringContainsString(
-            "window.location.replace('/pedidosDelivery');",
+            'redirecionarPosVenda();',
             $js
         );
     }

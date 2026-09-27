@@ -312,7 +312,7 @@
 							Venda PDV @if(isset($vendaPdv) && $vendaPdv) #{{$vendaPdv->id}} @endif concluída
 						</button>
 						@else
-						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno=pedidos">Ir para frente de caixa</a>
+						<a class="btn btn-success btn-block" href="/pedidosDelivery/irParaFrenteCaixa/{{$pedido->id}}?retorno={{ urlencode(request()->getRequestUri()) }}">Ir para frente de caixa</a>
 						@endif
 					</div>
 					@endif

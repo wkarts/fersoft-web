@@ -2657,6 +2657,9 @@ function salvarRascuho(){
 	});
 }
 
+let JANELA_IMPRESSAO_DELIVERY = null;
+let JANELA_IMPRESSAO_DELIVERY_USADA = false;
+
 function destinoPosVenda(){
 	let destino = $('#retorno_pos_venda').val();
 	if(destino && destino.charAt(0) === '/'){
@@ -2667,15 +2670,103 @@ function destinoPosVenda(){
 
 function retornoDeliveryAtivo(){
 	let deliveryId = parseInt($('#delivery_id').val() || 0);
-	return deliveryId > 0 && destinoPosVenda() === '/pedidosDelivery';
+	let destino = destinoPosVenda();
+
+	return deliveryId > 0
+		&& destino
+		&& destino !== '/frenteCaixa'
+		&& destino !== path + 'frenteCaixa';
+}
+
+function reservarJanelaImpressaoDelivery(){
+	if(!retornoDeliveryAtivo()){
+		return;
+	}
+
+	if(JANELA_IMPRESSAO_DELIVERY && !JANELA_IMPRESSAO_DELIVERY.closed){
+		return;
+	}
+
+	try{
+		JANELA_IMPRESSAO_DELIVERY = window.open('about:blank', 'fersoft_delivery_impressao');
+
+		if(JANELA_IMPRESSAO_DELIVERY){
+			JANELA_IMPRESSAO_DELIVERY.document.open();
+			JANELA_IMPRESSAO_DELIVERY.document.write(
+				'<!doctype html><html><head><title>Preparando impressão</title></head>' +
+				'<body style="font-family:Arial,sans-serif;padding:24px">Preparando impressão...</body></html>'
+			);
+			JANELA_IMPRESSAO_DELIVERY.document.close();
+
+			try{
+				JANELA_IMPRESSAO_DELIVERY.blur();
+				window.focus();
+			}catch(e){}
+		}
+	}catch(e){
+		JANELA_IMPRESSAO_DELIVERY = null;
+	}
+}
+
+function abrirImpressaoPdv(url){
+	if(retornoDeliveryAtivo() && JANELA_IMPRESSAO_DELIVERY && !JANELA_IMPRESSAO_DELIVERY.closed){
+		JANELA_IMPRESSAO_DELIVERY_USADA = true;
+		JANELA_IMPRESSAO_DELIVERY.location.replace(url);
+		try{ JANELA_IMPRESSAO_DELIVERY.focus(); }catch(e){}
+		return JANELA_IMPRESSAO_DELIVERY;
+	}
+
+	let janela = window.open(
+		url,
+		retornoDeliveryAtivo() ? 'fersoft_delivery_impressao' : '_blank'
+	);
+
+	if(retornoDeliveryAtivo() && janela){
+		JANELA_IMPRESSAO_DELIVERY = janela;
+		JANELA_IMPRESSAO_DELIVERY_USADA = true;
+	}
+
+	return janela;
+}
+
+function fecharJanelaImpressaoDeliverySeVazia(){
+	if(
+		JANELA_IMPRESSAO_DELIVERY
+		&& !JANELA_IMPRESSAO_DELIVERY.closed
+		&& !JANELA_IMPRESSAO_DELIVERY_USADA
+	){
+		try{ JANELA_IMPRESSAO_DELIVERY.close(); }catch(e){}
+	}
 }
 
 function redirecionarPosVenda(){
 	let destino = destinoPosVenda();
+	fecharJanelaImpressaoDeliverySeVazia();
 
-	// No fluxo do Delivery remove o PDV do histórico para evitar que o botão
-	// "Voltar" restaure um pedido que já gerou venda.
 	if(retornoDeliveryAtivo()){
+		// Quando o PDV foi aberto pelo Kanban em outra guia, atualiza a guia
+		// chamadora, volta o foco para ela e fecha o PDV.
+		try{
+			if(
+				window.opener
+				&& !window.opener.closed
+				&& window.opener.location.origin === window.location.origin
+			){
+				window.opener.location.href = destino;
+				window.opener.focus();
+				window.close();
+
+				setTimeout(function(){
+					if(!window.closed){
+						window.location.replace(destino);
+					}
+				}, 100);
+				return;
+			}
+		}catch(e){
+			console.log('Não foi possível retornar pela guia chamadora.', e);
+		}
+
 		window.location.replace(destino);
 		return;
 	}
@@ -2692,7 +2783,7 @@ function verificarPedidoDeliveryJaFinalizado(){
 	$.get(path + 'pedidosDelivery/statusVendaPdv/' + deliveryId)
 	.done((res) => {
 		if(res && res.finalizado){
-			window.location.replace('/pedidosDelivery');
+			redirecionarPosVenda();
 		}
 	})
 	.fail((err) => {
@@ -2709,7 +2800,7 @@ function finalizarNaoFiscalDelivery(e){
 		dangerMode: true,
 	}).then((imprimir) => {
 		if(imprimir){
-			window.open(path + 'nfce/imprimirNaoFiscal/' + e.id, '_blank');
+			abrirImpressaoPdv(path + 'nfce/imprimirNaoFiscal/' + e.id);
 		}
 	});
 
@@ -2787,6 +2878,10 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 		ENVIANDO = true
 		let validCpf = validaCpf();
 		if(validCpf == true || acao != 'fiscal'){
+
+			if(retornoDeliveryAtivo() && rascunho == 0 && !is_preVenda && !is_troca){
+				reservarJanelaImpressaoDelivery();
+			}
 
 			let valorRecebido = parseFloat($('#valor_recebido').val().replace(",", "."));
 			let troco = 0;
@@ -2952,7 +3047,7 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 
 
 								if (v) {
-									window.open(path + 'nfce/imprimirNaoFiscal/'+e.id, '_blank');
+									abrirImpressaoPdv(path + 'nfce/imprimirNaoFiscal/'+e.id);
 									if(e.comissao_acessor == false && PAGMULTI.length == 0 && imprimeTroca != 0){
 										redirecionarPosVenda();
 									}
@@ -3022,7 +3117,7 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 
 						if(retornoDeliveryAtivo() && mensagemErro.indexOf('já foi finalizado no PDV') >= 0){
 							swal("Atenção!", mensagemErro, "warning").then(() => {
-								window.location.replace('/pedidosDelivery');
+								redirecionarPosVenda();
 							});
 							return;
 						}
@@ -3081,7 +3176,7 @@ function salvarCredito(js, token){
 		success: function(e){
 			$('#modal-venda').modal('hide')
 			audioSuccess()
-			window.open(path + 'vendas/imprimirPedido/'+e.id, '_blank');
+			abrirImpressaoPdv(path + 'vendas/imprimirPedido/'+e.id);
 			// $('#modal-credito').modal('open');
 			// $('#evento-conta-credito').html('Venda salva na conta crédito do cliente ' +
 			// 	CLIENTE.razao_social)
@@ -3102,7 +3197,7 @@ function salvarCredito(js, token){
 
 			if(retornoDeliveryAtivo() && mensagemErro.indexOf('já foi finalizado no PDV') >= 0){
 				swal("Atenção!", mensagemErro, "warning").then(() => {
-					window.location.replace('/pedidosDelivery');
+					redirecionarPosVenda();
 				});
 				return;
 			}
@@ -3197,7 +3292,7 @@ function emitirNFCe(vendaId){
 			}
 			else if(e == 'OFFL'){
 				swal("Alerta", "NFCe gerada em contigência!", "success").then(() => {
-					window.open(path + 'nfce/imprimir/'+vendaId, '_blank');
+					abrirImpressaoPdv(path + 'nfce/imprimir/'+vendaId);
 					redirecionarPosVenda();
 				})
 			}
@@ -3205,7 +3300,7 @@ function emitirNFCe(vendaId){
 				$('#modal-venda').modal('hide')
 				swal("Sucesso", "NFCe gerada com sucesso RECIBO: " +recibo, "success")
 				.then(() => {
-					window.open(path + 'nfce/imprimir/'+vendaId, '_blank');
+					abrirImpressaoPdv(path + 'nfce/imprimir/'+vendaId);
 
 					swal({
 						title: "Sucesso",
