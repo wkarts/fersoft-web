@@ -33,7 +33,7 @@ class FuncionamentoDeliveryRegressionTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            "->where('empresa_id', \$this->empresa_id)",
+            "FuncionamentoDelivery::where('empresa_id', \$this->empresa_id)",
             $controller
         );
         $this->assertStringContainsString(
