@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Models\FuncionamentoDelivery;
 
 class FuncionamentoDeliveryController extends BaseController
@@ -76,7 +77,17 @@ class FuncionamentoDeliveryController extends BaseController
 
 	public function save(Request $request){
 		$this->_validate($request);
+
 		if($request->id == 0){
+			$diaJaCadastrado = FuncionamentoDelivery::where('empresa_id', $this->empresa_id)
+				->where('dia', $request->dia)
+				->exists();
+
+			if($diaJaCadastrado){
+				session()->flash('mensagem_erro', 'Este dia da semana já está configurado para o Delivery.');
+				return redirect('/funcionamentoDelivery')->withInput();
+			}
+
 			$result = FuncionamentoDelivery::create([
 				'dia' => $request->dia,
 				'ativo' => true,
@@ -137,7 +148,16 @@ class FuncionamentoDeliveryController extends BaseController
 			'fim' => 'required|min:5',
 		];
 
+		if((int) $request->id === 0){
+			$rules['dia'] = [
+				'required',
+				Rule::in(FuncionamentoDelivery::dias()),
+			];
+		}
+
 		$messages = [
+			'dia.required' => 'Selecione o dia da semana.',
+			'dia.in' => 'Dia da semana inválido.',
 			'inicio.required' => 'Campo obrigatório.',
 			'fim.required' => 'Campo obrigatório.',
 			'inicio.min' => 'Campo inválido.',

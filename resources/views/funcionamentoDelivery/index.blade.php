@@ -16,6 +16,7 @@
 		</div>
 		<br>
 
+		@if(isset($funcionamento) || count($dias) > 0)
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<form method="post" action="/funcionamentoDelivery/save">
@@ -25,11 +26,14 @@
 					<div class="form-group validated col-lg-3 col-md-3 col-sm-10">
 						<label class="col-form-label">Dia da semana *</label>
 						@if(!isset($funcionamento))
-						<select class="custom-select form-control" id="dia" name="dia">
+						<select class="custom-select form-control @if($errors->has('dia')) is-invalid @endif" id="dia" name="dia" required>
 							@foreach($dias as $d)
-							<option value="{{$d}}">{{$d}}</option>
+							<option value="{{$d}}" @if(old('dia') == $d) selected @endif>{{$d}}</option>
 							@endforeach
 						</select>
+						@if($errors->has('dia'))
+						<div class="invalid-feedback d-block">{{ $errors->first('dia') }}</div>
+						@endif
 						@else
 						<input type="text" class="form-control" name="dia" value="{{$funcionamento->dia}}" disabled="">
 						@endif
@@ -61,12 +65,12 @@
 
 			</form>
 		</div>
-
-		<div class="row">
-			@if(count($funcionamentos) == 7)
-			<h3 class="text-danger">Todos os dias da semana adicionados!</h3>
-			@endif
+		@else
+		<div class="alert alert-light-danger mb-4">
+			<strong>Todos os dias da semana já estão configurados.</strong>
+			Para alterar horários ou status, use as ações da lista abaixo.
 		</div>
+		@endif
 
 		<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
