@@ -72,22 +72,22 @@ class ProductController extends Controller
         // $this->validaLocais();
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->groupBy('referencia_grade')
-        ->orderBy('inativo')
-        ->orderBy('nome', 'asc')
-        ->where(function($query) use ($permissaoAcesso){
-            if($permissaoAcesso != null){
-                foreach ($permissaoAcesso as $value) {
-                    // $query->where(function($q) use($value){
+            ->groupBy('referencia_grade')
+            ->orderBy('inativo')
+            ->orderBy('nome', 'asc')
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        // $query->where(function($q) use($value){
 
-                    // });
-                    $query->orWhere('locais', 'like', "%{$value}%");
+                        // });
+                        $query->orWhere('locais', 'like', "%{$value}%");
+                    }
                 }
-            }
-        })
-        ->when($local_padrao != NULL, function ($query) use ($local_padrao) {
-            $query->where('locais', 'like', "%{$local_padrao}%");
-        });
+            })
+            ->when($local_padrao != NULL, function ($query) use ($local_padrao) {
+                $query->where('locais', 'like', "%{$local_padrao}%");
+            });
 
         if(sizeof(__locaisAtivosAll()) > 1){
             $produtos = $produtos->get();
@@ -107,17 +107,17 @@ class ProductController extends Controller
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         // $produtos = $this->setaEstoque($produtos);
 
         $marcas = Marca::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         // --- detectar se há algum 'locais' fora do padrão ou com duplicatas ---
         $hasLocaisErrors = false;
@@ -159,13 +159,13 @@ class ProductController extends Controller
 
         $ibpt = $config == null ? "": $config->token_ibpt != "";
         return view('produtos/list')
-        ->with('produtos', $produtos)
-        ->with('links', true)
-        ->with('ibpt', $ibpt)
-        ->with('marcas', $marcas)
-        ->with('categorias', $categorias)
-        ->with('hasLocaisErrors', $hasLocaisErrors)
-        ->with('title', 'Produtos');
+            ->with('produtos', $produtos)
+            ->with('links', true)
+            ->with('ibpt', $ibpt)
+            ->with('marcas', $marcas)
+            ->with('categorias', $categorias)
+            ->with('hasLocaisErrors', $hasLocaisErrors)
+            ->with('title', 'Produtos');
     }
 
     private function setaEstoque($produtos){
@@ -174,7 +174,7 @@ class ProductController extends Controller
             if($p->grade){
                 $produtosGrade = Produto::
                 where('referencia_grade', $p->referencia_grade)
-                ->get();
+                    ->get();
                 $valores = "";
                 foreach($produtosGrade as $p){
                     $valores .= " ". number_format($p->valor_venda, 2) . " | ";
@@ -211,7 +211,7 @@ class ProductController extends Controller
     public function new(Request $request){
         $categoria = Categoria::
         where('empresa_id', $request->empresa_id)
-        ->first();
+            ->first();
         if($categoria == null){
             //nao tem categoria
             session()->flash('mensagem_alerta', 'Cadastre ao menos uma categoria!');
@@ -230,7 +230,7 @@ class ProductController extends Controller
 
         $categorias = Categoria::
         where('empresa_id', $request->empresa_id)
-        ->get();
+            ->get();
 
         $categoriasDelivery = [];
 
@@ -238,7 +238,7 @@ class ProductController extends Controller
         $listaCST_IPI = Produto::listaCST_IPI();
         $tributacao = Tributacao::
         where('empresa_id', $request->empresa_id)
-        ->first();
+            ->first();
 
         if($tributacao == null){
             session()->flash('mensagem_alerta', 'Informe a tributação padrão!');
@@ -254,7 +254,7 @@ class ProductController extends Controller
         $unidadesDeMedida = Produto::unidadesMedida();
         $config = ConfigNota::
         where('empresa_id', $request->empresa_id)
-        ->first();
+            ->first();
 
         if($config == null){
             session()->flash('mensagem_alerta', 'Informe a configuração do emitente!');
@@ -263,60 +263,60 @@ class ProductController extends Controller
 
         $divisoes = DivisaoGrade::
         where('empresa_id', $request->empresa_id)
-        ->where('sub_divisao', false)
-        ->get();
+            ->where('sub_divisao', false)
+            ->get();
 
         $subDivisoes = DivisaoGrade::
         where('empresa_id', $request->empresa_id)
-        ->where('sub_divisao', true)
-        ->get();
+            ->where('sub_divisao', true)
+            ->get();
 
         $categoriasEcommerce = CategoriaProdutoEcommerce::
         where('empresa_id', $request->empresa_id)
-        ->get();
+            ->get();
 
         $marcas = Marca::
         where('empresa_id', $request->empresa_id)
-        ->get();
+            ->get();
 
         $subs = SubCategoria::
         select('sub_categorias.*')
-        ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
-        ->where('empresa_id', $request->empresa_id)
-        ->get();
+            ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
+            ->where('empresa_id', $request->empresa_id)
+            ->get();
 
         $subsEcommerce = SubCategoriaEcommerce::
         select('sub_categoria_ecommerces.*')
-        ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $telas = TelaPedido::
         where('empresa_id', $request->empresa_id)
-        ->get();
+            ->get();
 
         return view('produtos/register')
-        ->with('categorias', $categorias)
-        ->with('categoriasEcommerce', $categoriasEcommerce)
-        ->with('unidadesDeMedida', $unidadesDeMedida)
-        ->with('listaCSTCSOSN', $listaCSTCSOSN)
-        ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-        ->with('listaCST_IPI', $listaCST_IPI)
-        ->with('marcas', $marcas)
-        ->with('anps', $anps)
-        ->with('subs', $subs)
-        ->with('telas', $telas)
-        ->with('subsEcommerce', $subsEcommerce)
-        ->with('config', $config)
-        ->with('divisoes', $divisoes)
-        ->with('subDivisoes', $subDivisoes)
-        ->with('tributacao', $tributacao)
-        ->with('natureza', $natureza)
-        ->with('categoriasDelivery', $categoriasDelivery)
-        ->with('produtoJs', true)
-        ->with('gradeJs', true)
-        // ->with('contratoJs', true)
-        ->with('title', 'Cadastrar Produto');
+            ->with('categorias', $categorias)
+            ->with('categoriasEcommerce', $categoriasEcommerce)
+            ->with('unidadesDeMedida', $unidadesDeMedida)
+            ->with('listaCSTCSOSN', $listaCSTCSOSN)
+            ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+            ->with('listaCST_IPI', $listaCST_IPI)
+            ->with('marcas', $marcas)
+            ->with('anps', $anps)
+            ->with('subs', $subs)
+            ->with('telas', $telas)
+            ->with('subsEcommerce', $subsEcommerce)
+            ->with('config', $config)
+            ->with('divisoes', $divisoes)
+            ->with('subDivisoes', $subDivisoes)
+            ->with('tributacao', $tributacao)
+            ->with('natureza', $natureza)
+            ->with('categoriasDelivery', $categoriasDelivery)
+            ->with('produtoJs', true)
+            ->with('gradeJs', true)
+            // ->with('contratoJs', true)
+            ->with('title', 'Cadastrar Produto');
     }
 
     public function save(Request $request)
@@ -465,6 +465,22 @@ class ProductController extends Controller
                     $result = $produto->create($request->all());
                     $this->inserePercentualPorEstado($result);
 
+                    if ($request->has('emb_unidade')) {
+                        // No update(), mantenha o delete() aqui: \App\Models\ProdutoEmbalagem::where('produto_id', $resp->id)->delete();
+
+                        foreach ($request->emb_unidade as $key => $unidade) {
+                            if (!empty($unidade) && !empty($request->emb_fator[$key])) {
+                                \App\Models\ProdutoEmbalagem::create([
+                                    'produto_id'      => $result->id, // No update, use $resp->id
+                                    'unidade'         => strtoupper($unidade),
+                                    'fator_conversao' => __replace($request->emb_fator[$key]),
+                                    'preco_venda'     => isset($request->emb_preco_venda[$key]) ? __replace($request->emb_preco_venda[$key]) : 0, // NOVO CAMPO
+                                    'codigo_barras'   => $request->emb_codigo_barras[$key] ?? null
+                                ]);
+                            }
+                        }
+                    }
+
                     $this->criarLog($result);
                     $produto = Produto::find($result->id);
 
@@ -558,23 +574,23 @@ class ProductController extends Controller
     private function inserePercentualPorEstado($produto){
         $tribucoesCadastradas = TributacaoUf::
         select('tributacao_ufs.uf')
-        ->join('produtos', 'produtos.id', '=', 'tributacao_ufs.produto_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->distinct()
-        ->get();
+            ->join('produtos', 'produtos.id', '=', 'tributacao_ufs.produto_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->distinct()
+            ->get();
 
         foreach($tribucoesCadastradas as $t){
             $ex = TributacaoUf::
             where('produto_id', $produto->id)
-            ->where('uf', $t->uf)
-            ->exists();
+                ->where('uf', $t->uf)
+                ->exists();
 
             if(!$ex){
                 $temp = TributacaoUf::
                 where('uf', $t->uf)
-                ->join('produtos', 'produtos.id', '=', 'tributacao_ufs.produto_id')
-                ->where('empresa_id', $this->empresa_id)
-                ->first();
+                    ->join('produtos', 'produtos.id', '=', 'tributacao_ufs.produto_id')
+                    ->where('empresa_id', $this->empresa_id)
+                    ->first();
 
                 $res = TributacaoUf::create([
                     'produto_id' => $produto->id,
@@ -602,7 +618,7 @@ class ProductController extends Controller
     private function saveIbpt($produto){
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($config->token_ibpt != ""){
             $ibptService = new IbptService($config->token_ibpt, preg_replace('/[^0-9]/', '', $config->cnpj));
@@ -653,22 +669,22 @@ class ProductController extends Controller
 
         $produto = new Produto();
 
-            // $listaCSTCSOSN = Produto::listaCSTCSOSN();
+        // $listaCSTCSOSN = Produto::listaCSTCSOSN();
         $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
         $listaCST_IPI = Produto::listaCST_IPI();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $unidadesDeMedida = Produto::unidadesMedida();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($tributacao == null){
             session()->flash('mensagem_erro', 'Informe a tributação padrão!');
@@ -676,7 +692,7 @@ class ProductController extends Controller
         }
 
         $resp = $produto
-        ->where('id', $id)->first();
+            ->where('id', $id)->first();
 
         $categoriasDelivery = [];
 
@@ -694,85 +710,85 @@ class ProductController extends Controller
 
         $divisoes = DivisaoGrade::
         where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', false)
-        ->get();
+            ->where('sub_divisao', false)
+            ->get();
 
         $subDivisoes = DivisaoGrade::
         where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', true)
-        ->get();
+            ->where('sub_divisao', true)
+            ->get();
 
         $marcas = Marca::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $subs = SubCategoria::
         select('sub_categorias.*')
-        ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $subsEcommerce = SubCategoriaEcommerce::
         select('sub_categoria_ecommerces.*')
-        ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $categoriasEcommerce = CategoriaProdutoEcommerce::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $telas = TelaPedido::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         if(valida_objeto($resp)){
             if(!$resp->grade){
                 return view('produtos/register')
-                ->with('produto', $resp)
-                ->with('config', $config)
-                ->with('tributacao', $tributacao)
-                ->with('marcas', $marcas)
-                ->with('subs', $subs)
-                ->with('natureza', $natureza)
-                ->with('categoriasEcommerce', $categoriasEcommerce)
-                ->with('divisoes', $divisoes)
-                ->with('subDivisoes', $subDivisoes)
-                ->with('listaCSTCSOSN', $listaCSTCSOSN)
-                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-                ->with('listaCST_IPI', $listaCST_IPI)
-                ->with('categoriasDelivery', $categoriasDelivery)
-                ->with('anps', $anps)
-                ->with('subsEcommerce', $subsEcommerce)
-                ->with('unidadesDeMedida', $unidadesDeMedida)
-                ->with('categorias', $categorias)
-                ->with('telas', $telas)
-                ->with('produtoJs', true)
-                ->with('gradeJs', true)
-                ->with('title', 'Editar Produto');
+                    ->with('produto', $resp)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('marcas', $marcas)
+                    ->with('subs', $subs)
+                    ->with('natureza', $natureza)
+                    ->with('categoriasEcommerce', $categoriasEcommerce)
+                    ->with('divisoes', $divisoes)
+                    ->with('subDivisoes', $subDivisoes)
+                    ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                    ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                    ->with('listaCST_IPI', $listaCST_IPI)
+                    ->with('categoriasDelivery', $categoriasDelivery)
+                    ->with('anps', $anps)
+                    ->with('subsEcommerce', $subsEcommerce)
+                    ->with('unidadesDeMedida', $unidadesDeMedida)
+                    ->with('categorias', $categorias)
+                    ->with('telas', $telas)
+                    ->with('produtoJs', true)
+                    ->with('gradeJs', true)
+                    ->with('title', 'Editar Produto');
             }else{
                 return view('produtos/register_grade')
-                ->with('produto', $resp)
-                ->with('config', $config)
-                ->with('tributacao', $tributacao)
-                ->with('subsEcommerce', $subsEcommerce)
-                ->with('marcas', $marcas)
-                ->with('categoriasEcommerce', $categoriasEcommerce)
-                ->with('subs', $subs)
-                ->with('natureza', $natureza)
-                ->with('telas', $telas)
-                ->with('divisoes', $divisoes)
-                ->with('subDivisoes', $subDivisoes)
-                ->with('listaCSTCSOSN', $listaCSTCSOSN)
-                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-                ->with('listaCST_IPI', $listaCST_IPI)
-                ->with('categoriasDelivery', $categoriasDelivery)
-                ->with('anps', $anps)
-                ->with('unidadesDeMedida', $unidadesDeMedida)
-                ->with('categorias', $categorias)
-                ->with('produtoJs', true)
-                ->with('gradeJs', true)
-                ->with('title', 'Editar Produto Grade');
+                    ->with('produto', $resp)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('subsEcommerce', $subsEcommerce)
+                    ->with('marcas', $marcas)
+                    ->with('categoriasEcommerce', $categoriasEcommerce)
+                    ->with('subs', $subs)
+                    ->with('natureza', $natureza)
+                    ->with('telas', $telas)
+                    ->with('divisoes', $divisoes)
+                    ->with('subDivisoes', $subDivisoes)
+                    ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                    ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                    ->with('listaCST_IPI', $listaCST_IPI)
+                    ->with('categoriasDelivery', $categoriasDelivery)
+                    ->with('anps', $anps)
+                    ->with('unidadesDeMedida', $unidadesDeMedida)
+                    ->with('categorias', $categorias)
+                    ->with('produtoJs', true)
+                    ->with('gradeJs', true)
+                    ->with('title', 'Editar Produto Grade');
             }
         }else{
             return redirect('/403');
@@ -791,25 +807,25 @@ class ProductController extends Controller
 
         $produto = new Produto();
 
-            // $listaCSTCSOSN = Produto::listaCSTCSOSN();
+        // $listaCSTCSOSN = Produto::listaCSTCSOSN();
         $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
         $listaCST_IPI = Produto::listaCST_IPI();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $unidadesDeMedida = Produto::unidadesMedida();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $resp = $produto
-        ->where('id', $id)->first();
+            ->where('id', $id)->first();
 
         $categoriasDelivery = [];
 
@@ -827,62 +843,62 @@ class ProductController extends Controller
 
         $divisoes = DivisaoGrade::
         where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', false)
-        ->get();
+            ->where('sub_divisao', false)
+            ->get();
 
         $subDivisoes = DivisaoGrade::
         where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', true)
-        ->get();
+            ->where('sub_divisao', true)
+            ->get();
 
         $marcas = Marca::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $subs = SubCategoria::
         select('sub_categorias.*')
-        ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $subsEcommerce = SubCategoriaEcommerce::
         select('sub_categoria_ecommerces.*')
-        ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+            ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
+            ->where('empresa_id', $this->empresa_id)
+            ->get();
 
         $categoriasEcommerce = CategoriaProdutoEcommerce::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $telas = TelaPedido::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         if(valida_objeto($resp)){
 
             return view('produtos/register')
-            ->with('produto', $resp)
-            ->with('config', $config)
-            ->with('subsEcommerce', $subsEcommerce)
-            ->with('marcas', $marcas)
-            ->with('categoriasEcommerce', $categoriasEcommerce)
-            ->with('subs', $subs)
-            ->with('tributacao', $tributacao)
-            ->with('natureza', $natureza)
-            ->with('divisoes', $divisoes)
-            ->with('subDivisoes', $subDivisoes)
-            ->with('listaCSTCSOSN', $listaCSTCSOSN)
-            ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-            ->with('listaCST_IPI', $listaCST_IPI)
-            ->with('categoriasDelivery', $categoriasDelivery)
-            ->with('telas', $telas)
-            ->with('tipo_grade', 1)
-            ->with('anps', $anps)
-            ->with('unidadesDeMedida', $unidadesDeMedida)
-            ->with('categorias', $categorias)
-            ->with('produtoJs', true)
-            ->with('title', 'Editar Produto');
+                ->with('produto', $resp)
+                ->with('config', $config)
+                ->with('subsEcommerce', $subsEcommerce)
+                ->with('marcas', $marcas)
+                ->with('categoriasEcommerce', $categoriasEcommerce)
+                ->with('subs', $subs)
+                ->with('tributacao', $tributacao)
+                ->with('natureza', $natureza)
+                ->with('divisoes', $divisoes)
+                ->with('subDivisoes', $subDivisoes)
+                ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                ->with('listaCST_IPI', $listaCST_IPI)
+                ->with('categoriasDelivery', $categoriasDelivery)
+                ->with('telas', $telas)
+                ->with('tipo_grade', 1)
+                ->with('anps', $anps)
+                ->with('unidadesDeMedida', $unidadesDeMedida)
+                ->with('categorias', $categorias)
+                ->with('produtoJs', true)
+                ->with('title', 'Editar Produto');
         }else{
             return redirect('/403');
         }
@@ -892,7 +908,7 @@ class ProductController extends Controller
         if($request->hasFile('file')){
 
             $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                //unlink anterior
+            //unlink anterior
             if(file_exists(public_path('imgs_produtos/').$produto->imagem) && $produto->imagem != '')
                 unlink(public_path('imgs_produtos/').$produto->imagem);
 
@@ -914,7 +930,7 @@ class ProductController extends Controller
         if($request->hasFile('file')){
 
             $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                //unlink anterior
+            //unlink anterior
 
             $file = $request->file('file');
 
@@ -932,25 +948,25 @@ class ProductController extends Controller
     public function pesquisa(Request $request){
         $pesquisa = $request->input('pesquisa');
 
-            // $produtos = Produto::where('nome', 'LIKE', "%$pesquisa%")
-            // ->where('empresa_id', $request->empresa_id)->get();
+        // $produtos = Produto::where('nome', 'LIKE', "%$pesquisa%")
+        // ->where('empresa_id', $request->empresa_id)->get();
 
         $produtos = Produto::
         where('nome', 'LIKE', "%$pesquisa%")
-        ->where('empresa_id', $this->empresa_id)
-        ->groupBy('referencia_grade')
-        ->orderBy('inativo')
-        ->orderBy('id', 'desc')
-        ->paginate(15);
+            ->where('empresa_id', $this->empresa_id)
+            ->groupBy('referencia_grade')
+            ->orderBy('inativo')
+            ->orderBy('id', 'desc')
+            ->paginate(15);
 
         $categorias = Categoria::all();
         $produtos = $this->setaEstoque($produtos);
 
 
         return view('produtos/list')
-        ->with('categorias', $categorias)
-        ->with('produtos', $produtos)
-        ->with('title', 'Filtro Produto');
+            ->with('categorias', $categorias)
+            ->with('produtos', $produtos)
+            ->with('title', 'Filtro Produto');
     }
 
     public function filtroCategoria(Request $request){
@@ -979,18 +995,18 @@ class ProductController extends Controller
 
         $permissaoAcesso = __getLocaisUsarioLogado();
         $query->where('empresa_id', $request->empresa_id)
-        ->groupBy('referencia_grade')
-        ->orderBy('inativo')
-        ->where(function($query) use ($permissaoAcesso){
-            if($permissaoAcesso != null){
-                foreach ($permissaoAcesso as $value) {
-                    $query->orWhere('locais', 'like', "%{$value}%");
+            ->groupBy('referencia_grade')
+            ->orderBy('inativo')
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        $query->orWhere('locais', 'like', "%{$value}%");
+                    }
                 }
-            }
-        })
+            })
 
-        ->orderBy('id', 'desc')
-        ->limit(100);
+            ->orderBy('id', 'desc')
+            ->limit(100);
         $prods = $query->get();
 
 
@@ -1026,38 +1042,38 @@ class ProductController extends Controller
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $categoria = Categoria::find($categoria);
         $produtos = $this->setaEstoque($produtos);
 
-            // if(sizeof($produtos) == 1 && $porCodigoBarras){
-            //     return redirect('/produtos/edit/'.$produtos[0]->id);
-            // }
+        // if(sizeof($produtos) == 1 && $porCodigoBarras){
+        //     return redirect('/produtos/edit/'.$produtos[0]->id);
+        // }
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $ibpt = $config->token_ibpt != "";
 
         $marcas = Marca::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         return view('produtos/list')
-        ->with('produtos', $produtos)
-        ->with('categorias', $categorias)
-        ->with('marcas', $marcas)
-        ->with('paraImprimir', true)
-        ->with('categoria', $request->categoria)
-        ->with('estoque', $estoque)
-        ->with('tipo', $tipo)
-        ->with('marca', $marca)
-        ->with('filial_id', $filial_id)
-        ->with('ibpt', $ibpt)
-        ->with('pesquisa', $pesquisa)
-        ->with('title', 'Filtro Produto');
+            ->with('produtos', $produtos)
+            ->with('categorias', $categorias)
+            ->with('marcas', $marcas)
+            ->with('paraImprimir', true)
+            ->with('categoria', $request->categoria)
+            ->with('estoque', $estoque)
+            ->with('tipo', $tipo)
+            ->with('marca', $marca)
+            ->with('filial_id', $filial_id)
+            ->with('ibpt', $ibpt)
+            ->with('pesquisa', $pesquisa)
+            ->with('title', 'Filtro Produto');
     }
 
     public function relatorio(Request $request){
@@ -1088,16 +1104,16 @@ class ProductController extends Controller
         }
 
         $query->where('empresa_id', $request->empresa_id)
-        // ->groupBy('referencia_grade')
-        ->orderBy('inativo')
-        ->where(function($query) use ($permissaoAcesso){
-            if($permissaoAcesso != null){
-                foreach ($permissaoAcesso as $value) {
-                    $query->orWhere('locais', 'like', "%{$value}%");
+            // ->groupBy('referencia_grade')
+            ->orderBy('inativo')
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        $query->orWhere('locais', 'like', "%{$value}%");
+                    }
                 }
-            }
-        })
-        ->orderBy('id', 'desc');
+            })
+            ->orderBy('id', 'desc');
 
         $produtos = $query->get();
 
@@ -1133,10 +1149,10 @@ class ProductController extends Controller
         }
 
         $p = view('produtos/relatorio_produtos')
-        ->with('title', 'Relatório de produtos')
-        ->with('produtos', $produtos);
+            ->with('title', 'Relatório de produtos')
+            ->with('produtos', $produtos);
 
-            // return $p;
+        // return $p;
 
         $domPdf = new Dompdf(["enable_remote" => true]);
         $domPdf->loadHtml($p);
@@ -1153,15 +1169,15 @@ class ProductController extends Controller
     public function receita($id){
         $resp = Produto::
         where('id', $id)
-        ->first();
+            ->first();
 
         $produtos = Produto::where('empresa_id', $this->empresa_id)->get();
 
         return view('produtos/receita')
-        ->with('produto', $resp)
-        ->with('produtos', $produtos)
-        ->with('produtoJs', true)
-        ->with('title', 'Receita do Produto');
+            ->with('produto', $resp)
+            ->with('produtos', $produtos)
+            ->with('produtoJs', true)
+            ->with('title', 'Receita do Produto');
 
     }
 
@@ -1335,6 +1351,23 @@ class ProductController extends Controller
 
                 $this->criarLog($resp, 'atualizar');
 
+                if ($request->has('emb_unidade')) {
+                    // Remove as embalagens antigas para evitar duplicados
+                    \App\Models\ProdutoEmbalagem::where('produto_id', $resp->id)->delete();
+
+                    foreach ($request->emb_unidade as $key => $unidade) {
+                        if (!empty($unidade) && !empty($request->emb_fator[$key])) {
+                            \App\Models\ProdutoEmbalagem::create([
+                                'produto_id'      => $resp->id, // <-- CORRIGIDO AQUI PARA $resp->id
+                                'unidade'         => strtoupper($unidade),
+                                'fator_conversao' => __replace($request->emb_fator[$key]),
+                                'preco_venda'     => isset($request->emb_preco_venda[$key]) ? __replace($request->emb_preco_venda[$key]) : 0,
+                                'codigo_barras'   => $request->emb_codigo_barras[$key] ?? null
+                            ]);
+                        }
+                    }
+                }
+
                 if ($request->grade) {
                     $combinacoes = json_decode($request->combinacoes);
 
@@ -1476,7 +1509,7 @@ class ProductController extends Controller
 
                 $id = $request->input('id');
                 $resp = $product
-                ->where('id', $id)->first();
+                    ->where('id', $id)->first();
 
                 $anps = Produto::lista_ANP();
                 $descAnp = '';
@@ -1517,7 +1550,7 @@ class ProductController extends Controller
                 $resp->CST_PIS_entrada = $request->input('CST_PIS_entrada');
                 $resp->CST_COFINS_entrada = $request->input('CST_COFINS_entrada');
                 $resp->CST_IPI_entrada = $request->input('CST_IPI_entrada');
-            // $resp->CFOP = $request->input('CFOP');
+                // $resp->CFOP = $request->input('CFOP');
                 $resp->unidade_venda = $request->input('unidade_venda');
                 $resp->unidade_compra = $request->input('unidade_compra');
                 $resp->conversao_unitaria = $request->input('conversao_unitaria') ? $request->input('conversao_unitaria') : $resp->conversao_unitaria;
@@ -1543,10 +1576,10 @@ class ProductController extends Controller
                 $resp->perc_gni = $request->perc_gni ? __replace($request->perc_gni) : 0;
                 $resp->custo_assessor = $request->custo_assessor ? __replace($request->custo_assessor) : 0;
                 $resp->valor_partida = $request->valor_partida ?
-                __replace($request->valor_partida) : 0;
+                    __replace($request->valor_partida) : 0;
 
                 $resp->quantidade_tributavel = $request->quantidade_tributavel ?
-                __replace($request->quantidade_tributavel) : 0;
+                    __replace($request->quantidade_tributavel) : 0;
 
                 $resp->unidade_tributavel = $request->unidade_tributavel ?? '';
                 $resp->descricao_anp = $request->anp ?? '';
@@ -1593,7 +1626,7 @@ class ProductController extends Controller
                 $resp->ano_modelo = $request->ano_modelo ?? '';
                 $resp->cor_veiculo = $request->cor_veiculo ?? '';
                 $resp->valor_locacao = $request->valor_locacao ?
-                __replace($request->valor_locacao) : 0;
+                    __replace($request->valor_locacao) : 0;
 
                 $resp->perc_comissao = $request->perc_comissao ? __replace($request->perc_comissao) : 0;
                 $resp->valor_comissao = $request->valor_comissao ? __replace($request->valor_comissao) : 0;
@@ -1602,7 +1635,7 @@ class ProductController extends Controller
                 $resp->indImport = $request->indImport;
 
                 $resp->acrescimo_perca = $request->acrescimo_perca ?
-                __replace($request->acrescimo_perca) : 0;
+                    __replace($request->acrescimo_perca) : 0;
                 $resp->tipo_dimensao = $request->tipo_dimensao ?? '';
 
                 $resp->lote = $request->lote ?? '';
@@ -1616,7 +1649,7 @@ class ProductController extends Controller
                 $resp->modBCST = $request->modBCST ?? 0;
                 $resp->modBC = $request->modBC ?? 0;
 
-            // $resp->percentual_lucro = __replace($request->percentual_lucro);
+                // $resp->percentual_lucro = __replace($request->percentual_lucro);
 
                 $result = $resp->save();
 
@@ -1682,7 +1715,7 @@ class ProductController extends Controller
                         }else{
 
                             if($produto->estoque->quantidade > $estoque || $produto->estoque->quantidade < $estoque){
-                        //alterar
+                                //alterar
                                 $tipo = '';
                                 $valorAlterar = 0;
                                 $estoqueAtual = $produto->estoque->quantidade;
@@ -1746,19 +1779,19 @@ class ProductController extends Controller
                     return redirect('/produtos');
                 }
             });
-    return $result;
-    }catch(\Exception $e){
-        __saveError($e, $this->empresa_id);
-        session()->flash("mensagem_erro", "algo deu errado: " . $e->getMessage());
-        return redirect('/produtos');
-    }
+            return $result;
+        }catch(\Exception $e){
+            __saveError($e, $this->empresa_id);
+            session()->flash("mensagem_erro", "algo deu errado: " . $e->getMessage());
+            return redirect('/produtos');
+        }
     }
 
     public function delete($id){
         try{
             $produto = Produto
-            ::where('id', $id)
-            ->first();
+                ::where('id', $id)
+                ->first();
 
             if(valida_objeto($produto)){
 
@@ -1774,7 +1807,7 @@ class ProductController extends Controller
                     if($produto->grade){
                         $produtos = Produto::
                         where('referencia_grade', $produto->referencia_grade)
-                        ->delete();
+                            ->delete();
                     }else{
                         $produto->delete();
                     }
@@ -1793,8 +1826,8 @@ class ProductController extends Controller
             }
         }catch(\Exception $e){
             return view('errors.sql')
-            ->with('title', 'Erro ao deletar produto')
-            ->with('motivo', 'Não é possivel remover produtos, presentes vendas, compras ou pedidos!');
+                ->with('title', 'Erro ao deletar produto')
+                ->with('motivo', 'Não é possivel remover produtos, presentes vendas, compras ou pedidos!');
         }
     }
 
@@ -1815,13 +1848,13 @@ class ProductController extends Controller
             'codBarras' => [],
             'CFOP_saida_estadual' => 'required',
             'CFOP_saida_inter_estadual' => 'required',
-                // 'CFOP_entrada_estadual' => 'required',
-                // 'CFOP_entrada_inter_estadual' => 'required',
+            // 'CFOP_entrada_estadual' => 'required',
+            // 'CFOP_entrada_inter_estadual' => 'required',
             'file' => 'max:700',
             'lote' => 'max:10',
             'vencimento' => 'max:10',
             'cenq_ipi' => 'required',
-                // 'CEST' => 'required'
+            // 'CEST' => 'required'
         ];
 
         $messages = [
@@ -1829,7 +1862,7 @@ class ProductController extends Controller
             'categoria_id.required' => 'O campo categoria é obrigatório.',
             'NCM.required' => 'O campo NCM é obrigatório.',
             'NCM.min' => 'NCM precisa de 8 digitos.',
-                // 'CFOP.required' => 'O campo CFOP é obrigatório.',
+            // 'CFOP.required' => 'O campo CFOP é obrigatório.',
             'CEST.required' => 'O campo CEST é obrigatório.',
             'valor_venda.required' => 'O campo valor de venda é obrigatório.',
             'valor_compra.required' => 'O campo valor de compra é obrigatório.',
@@ -1857,7 +1890,7 @@ class ProductController extends Controller
         $arr = array();
         foreach($products as $p){
             $arr[$p->id. ' - ' .$p->nome . ($p->cor != '--' ? ' | COR: ' . $p->cor : '') . ($p->referencia != '' ? ' | REF: ' . $p->referencia : '')] = null;
-                    //array_push($arr, $temp);
+            //array_push($arr, $temp);
         }
         echo json_encode($arr);
     }
@@ -1870,11 +1903,11 @@ class ProductController extends Controller
     public function composto(){
         $products = Produto::
         where('composto', true)
-        ->get();
+            ->get();
         $arr = array();
         foreach($products as $p){
             $arr[$p->id. ' - ' .$p->nome . ($p->cor != '--' ? ' | Cor: ' . $p->cor : '') . ($p->referencia != '' ? ' | REF: ' . $p->referencia : '')] = null;
-                    //array_push($arr, $temp);
+            //array_push($arr, $temp);
         }
         echo json_encode($arr);
     }
@@ -1882,11 +1915,11 @@ class ProductController extends Controller
     public function naoComposto(){
         $products = Produto::
         where('composto', false)
-        ->get();
+            ->get();
         $arr = array();
         foreach($products as $p){
             $arr[$p->id. ' - ' .$p->nome . ($p->cor != '--' ? ' | Cor: ' . $p->cor : '') . ($p->referencia != '' ? ' | REF: ' . $p->referencia : '')] = null;
-                    //array_push($arr, $temp);
+            //array_push($arr, $temp);
         }
         echo json_encode($arr);
     }
@@ -1895,14 +1928,14 @@ class ProductController extends Controller
         $id = $request->input('id');
         $product = Product::
         where('id', $id)
-        ->first();
+            ->first();
         echo json_encode($product->value_sale);
     }
 
     public function getProduto($id){
         $produto = Produto::
         where('id', $id)
-        ->first();
+            ->first();
         if($produto->delivery){
             foreach($produto->delivery->pizza as $tp){
                 $tp->tamanho;
@@ -1917,8 +1950,8 @@ class ProductController extends Controller
     public function getProdutoCodigoReferencia($codigo){
         $produto = Produto::
         where('referencia_balanca', $codigo)
-        ->where('empresa_id', $this->empresa_id)
-        ->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->first();
 
         if($produto != null){
             return response()->json($produto, 200);
@@ -1931,7 +1964,7 @@ class ProductController extends Controller
     public function getProdutoVenda($id, $listaId){
         $produto = Produto::
         where('id', $id)
-        ->first();
+            ->first();
         if($produto->delivery){
             foreach($produto->delivery->pizza as $tp){
                 $tp->tamanho;
@@ -1941,8 +1974,8 @@ class ProductController extends Controller
         if($listaId > 0){
             $lista = ProdutoListaPreco::
             where('lista_id', $listaId)
-            ->where('produto_id', $produto->id)
-            ->first();
+                ->where('produto_id', $produto->id)
+                ->first();
 
             if($lista->valor > 0){
                 $produto->valor_venda = (string) $lista->valor;
@@ -1955,18 +1988,45 @@ class ProductController extends Controller
     }
 
     public function getProdutoCodBarras($cod){
-        $produto = Produto::
-        where('codBarras', $cod)
-        ->where('empresa_id', $this->empresa_id)
-        ->with('estoque')
-        ->with('listaPreco')
-        ->first();
+        $cod = trim($cod);
 
-        echo json_encode($produto);
+        $produto = Produto::where('codBarras', $cod)
+            ->where('empresa_id', $this->empresa_id)
+            ->with('estoque')
+            ->with('listaPreco')
+            ->first();
+
+        if (!$produto) {
+            $embalagem = \App\Models\ProdutoEmbalagem::where('codigo_barras', $cod)->first();
+
+            if ($embalagem) {
+                $produto = Produto::where('id', $embalagem->produto_id)
+                    ->where('empresa_id', $this->empresa_id)
+                    ->with('estoque')
+                    ->with('listaPreco')
+                    ->first();
+
+                if ($produto) {
+                    $produto->is_embalagem = true;
+                    $produto->codigo_barras_bipado = $cod;
+                    $produto->fator_conversao_bipado = $embalagem->fator_conversao;
+                    $produto->preco_embalagem_bipado = $embalagem->preco_venda;
+                    $produto->unidade_embalagem_bipado = $embalagem->unidade;
+
+                    // IMPORTANTE: Atualiza o nome e o valor de venda para o PDV já reconhecer o preço da caixa:
+                    $produto->nome = $produto->nome . " (" . $embalagem->unidade . ")";
+                    if ((float)$embalagem->preco_venda > 0) {
+                        $produto->valor_venda = (string) $embalagem->preco_venda;
+                    }
+                }
+            }
+        }
+
+        return response()->json($produto);
     }
 
     public function salvarProdutoDaNota(Request $request){
-            //echo json_encode($request->produto);
+        //echo json_encode($request->produto);
         $produto = $request->produto;
         $natureza = Produto::firstNatureza($this->empresa_id);
 
@@ -1994,7 +2054,7 @@ class ProductController extends Controller
         $result = Produto::create([
             'nome' => $produto['nome'],
             'NCM' => $produto['ncm'],
-                // 'CFOP' => $produto['cfop'],
+            // 'CFOP' => $produto['cfop'],
             'valor_venda' => $valorVenda,
             'valor_compra' => $valorCompra,
             'valor_livre' => false,
@@ -2055,7 +2115,7 @@ class ProductController extends Controller
     }
 
     public function salvarProdutoDaNotaComEstoque(Request $request){
-            //echo json_encode($request->produto);
+        //echo json_encode($request->produto);
         $produto = $request->produto;
         $natureza = Produto::firstNatureza($this->empresa_id);
         $valorVenda = str_replace(",", ".", $produto['valorVenda']);
@@ -2155,39 +2215,39 @@ class ProductController extends Controller
             'locais' => $produto['filial_id'] ? '["'.$produto['filial_id'].'"]' : '["-1"]'
 
         ]);
-      
-        // 👇 ADICIONE ESTE BLOCO AQUI 👇
-          // --- INÍCIO DA MEMÓRIA DE PRODUTO DO FORNECEDOR ---
-          if(isset($produto['fornecedor_id']) && isset($produto['codigo_fornecedor'])) {
-              \App\Models\ProdutoFornecedor::updateOrCreate(
-                  [
-                      'fornecedor_id'     => $produto['fornecedor_id'],
-                      'codigo_fornecedor' => $produto['codigo_fornecedor']
-                  ],
-                  [
-                      'empresa_id'               => $this->empresa_id,
-                      'usuario_id'               => session('user_logged')['id'] ?? null,
-                      'produto_id'               => $result->id, // Usa o ID do produto que acabou de ser criado
-                      'descricao_fornecedor'     => $produto['descricao_fornecedor'] ?? '',
-                      'codigo_barras_fornecedor' => $produto['codigo_barras_fornecedor'] ?? ''
-                  ]
-              );
-          }
-          // --- FIM DA MEMÓRIA ---
-          // 👆 FIM DO BLOCO ADICIONADO 👆
 
-    ItemDfe::create(
-        [
-            'numero_nfe' => $produto['numero_nfe'],
-            'produto_id' => $result->id,
-            'empresa_id' => $this->empresa_id
-        ]
-    );
-    if($result->gerenciar_estoque){
-        $stockMove = new StockMove();
-        $stockMove->pluStock($result->id, ($produto['quantidade']*(float)$produto['conversao_unitaria']), $valorCompra);
-    }
-    echo json_encode($result);
+        // 👇 ADICIONE ESTE BLOCO AQUI 👇
+        // --- INÍCIO DA MEMÓRIA DE PRODUTO DO FORNECEDOR ---
+        if(isset($produto['fornecedor_id']) && isset($produto['codigo_fornecedor'])) {
+            \App\Models\ProdutoFornecedor::updateOrCreate(
+                [
+                    'fornecedor_id'     => $produto['fornecedor_id'],
+                    'codigo_fornecedor' => $produto['codigo_fornecedor']
+                ],
+                [
+                    'empresa_id'               => $this->empresa_id,
+                    'usuario_id'               => session('user_logged')['id'] ?? null,
+                    'produto_id'               => $result->id, // Usa o ID do produto que acabou de ser criado
+                    'descricao_fornecedor'     => $produto['descricao_fornecedor'] ?? '',
+                    'codigo_barras_fornecedor' => $produto['codigo_barras_fornecedor'] ?? ''
+                ]
+            );
+        }
+        // --- FIM DA MEMÓRIA ---
+        // 👆 FIM DO BLOCO ADICIONADO 👆
+
+        ItemDfe::create(
+            [
+                'numero_nfe' => $produto['numero_nfe'],
+                'produto_id' => $result->id,
+                'empresa_id' => $this->empresa_id
+            ]
+        );
+        if($result->gerenciar_estoque){
+            $stockMove = new StockMove();
+            $stockMove->pluStock($result->id, ($produto['quantidade']*(float)$produto['conversao_unitaria']), $valorCompra);
+        }
+        echo json_encode($result);
     }
 
     public function updateProdutoDaNotaComEstoque(Request $request){
@@ -2197,7 +2257,7 @@ class ProductController extends Controller
 
             $produto->valor_venda = __replace($arr['valor_venda']);
             $produto->valor_compra = __replace($arr['valor_compra']);
-            
+
             // 🔒 BLINDAGEM DA REFERÊNCIA:
             // Só altera a referência se ela for enviada e não for vazia.
             // Como removemos do JS, ela NUNCA mais vai mudar o seu cadastro antigo!
@@ -2206,10 +2266,10 @@ class ProductController extends Controller
             }
 
             $produto->save();
-          
+
             // 📝 GRAVAÇÃO DO VÍNCULO DIRETO NO BANCO (Sem chance de erro de Model)
             if(isset($arr['fornecedor_id']) && isset($arr['codigo_fornecedor']) && $arr['fornecedor_id'] > 0) {
-                
+
                 // Limpa o código tirando espaços ou pontos para garantir a busca
                 $codigoLimpo = str_replace([" ", ".", "(", ")"], ["", "_", "", ""], $arr['codigo_fornecedor']);
 
@@ -2228,7 +2288,7 @@ class ProductController extends Controller
                     ]
                 );
             }
-          
+
             $qtd = $arr['estoque'];
             $stockMove = new StockMove();
             $stockMove->pluStock($produto->id, ($qtd*(float)$produto->conversao_unitaria), $produto->valor_compra);
@@ -2257,7 +2317,7 @@ class ProductController extends Controller
         $produto->valor_compra = $request->valor;
         if($produto->reajuste_automatico){
             $produto->valor_venda = $request->valor +
-            (($request->valor*$produto->percentual_lucro)/100);
+                (($request->valor*$produto->percentual_lucro)/100);
         }
 
         $produto->save();
@@ -2275,7 +2335,7 @@ class ProductController extends Controller
 
         $categoria = CategoriaProdutoDelivery::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $valor = str_replace(",", ".", $request->valor_venda);
 
@@ -2301,10 +2361,10 @@ class ProductController extends Controller
     }
 
     private function salvarProdutoEcommerce($request, $produto, $nomeImagem){
-            // $this->_validateEcommerce($request);
+        // $this->_validateEcommerce($request);
         $categoriaFirst =  CategoriaProdutoEcommerce::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $produtoEcommerce = [
             'produto_id' => $produto->id,
@@ -2330,13 +2390,13 @@ class ProductController extends Controller
     }
 
     private function updateProdutoNoDelivery($request, $produto){
-            // $this->_validateDelivery($request);
+        // $this->_validateDelivery($request);
         $produtoDelivery = $produto->delivery;
         if($produtoDelivery){
             $catPizza = false;
             $categoria = CategoriaProdutoDelivery::
             where('id', $request->categoria_delivery_id)
-            ->first();
+                ->first();
 
             $valor = 0;
             if($categoria && strpos($categoria->nome, 'izza') !== false){
@@ -2421,7 +2481,7 @@ class ProductController extends Controller
 
         if($nomeImagem != ""){
             copy(public_path('imgs_produtos/').$nomeImagem, public_path('imagens_produtos/').$nomeImagem);
-                // $upload = $file->move(public_path('ecommerce/produtos'), $nomeImagem);
+            // $upload = $file->move(public_path('ecommerce/produtos'), $nomeImagem);
 
             ImagensProdutoDelivery::create(
                 [
@@ -2439,7 +2499,7 @@ class ProductController extends Controller
 
         if($nomeImagem != ""){
             copy(public_path('imgs_produtos/').$nomeImagem, public_path('ecommerce/produtos/').$nomeImagem);
-                // $upload = $file->move(public_path('ecommerce/produtos'), $nomeImagem);
+            // $upload = $file->move(public_path('ecommerce/produtos'), $nomeImagem);
 
             ImagemProdutoEcommerce::create(
                 [
@@ -2461,9 +2521,9 @@ class ProductController extends Controller
         // dd($movimentacoes);
 
         return view('produtos/movimentacoes')
-        ->with('movimentacoes', $movimentacoes)
-        ->with('produto', $produto)
-        ->with('title', 'Movimentações');
+            ->with('movimentacoes', $movimentacoes)
+            ->with('produto', $produto)
+            ->with('title', 'Movimentações');
 
     }
 
@@ -2474,9 +2534,9 @@ class ProductController extends Controller
             $movimentacoes = $produto->movimentacoes();
 
             $p = view('produtos/relatorio_movimentacoes')
-            ->with('produto', $produto)
-            ->with('title', 'Relatório de movimentações')
-            ->with('movimentacoes', $movimentacoes);
+                ->with('produto', $produto)
+                ->with('title', 'Relatório de movimentações')
+                ->with('movimentacoes', $movimentacoes);
 
             // return $p;
 
@@ -2518,7 +2578,7 @@ class ProductController extends Controller
             return redirect('/tributos');
         }
         return view('produtos/importacao')
-        ->with('title', 'Importação de produto');
+            ->with('title', 'Importação de produto');
     }
 
     public function downloadModelo(){
@@ -2554,7 +2614,7 @@ class ProductController extends Controller
             // $retornoErro = "";
 
             if($retornoErro == ""){
-                    //armazenar no bd
+                //armazenar no bd
 
                 $teste = [];
                 $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
@@ -2573,8 +2633,8 @@ class ProductController extends Controller
                                 if($objeto != null){
                                     if($objeto['categoria'] != ''){
                                         $cat = Categoria::where('nome', $objeto['categoria'])
-                                        ->where('empresa_id', $this->empresa_id)
-                                        ->first();
+                                            ->where('empresa_id', $this->empresa_id)
+                                            ->first();
 
                                         if($cat == null){
 
@@ -2671,14 +2731,14 @@ class ProductController extends Controller
         $result = null;
         $result = Produto::
         where('nome', $nome)
-        ->where('empresa_id', $this->empresa_id)
-        ->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->first();
 
         if($result == null && $referencia != ''){
             $result = Produto::
             where('referencia', $referencia)
-            ->where('empresa_id', $this->empresa_id)
-            ->first();
+                ->where('empresa_id', $this->empresa_id)
+                ->first();
         }
 
         return $result;
@@ -2811,26 +2871,15 @@ class ProductController extends Controller
         }
 
         $produto = new Produto();
-            // $listaCSTCSOSN = Produto::listaCSTCSOSN();
+        // $listaCSTCSOSN = Produto::listaCSTCSOSN();
         $listaCST_PIS_COFINS = Produto::listaCST_PIS_COFINS();
         $listaCST_IPI = Produto::listaCST_IPI();
 
-        $categorias = Categoria::
-        where('empresa_id', $this->empresa_id)
-        ->get();
-
+        $categorias = Categoria::where('empresa_id', $this->empresa_id)->get();
         $unidadesDeMedida = Produto::unidadesMedida();
-        $config = ConfigNota::
-        where('empresa_id', $this->empresa_id)
-        ->first();
-
-        $tributacao = Tributacao::
-        where('empresa_id', $this->empresa_id)
-        ->first();
-
-        $resp = $produto
-        ->where('id', $id)->first();
-
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+        $resp = $produto->where('id', $id)->first();
         $categoriasDelivery = [];
 
         if($tributacao->regime == 1){
@@ -2844,57 +2893,49 @@ class ProductController extends Controller
             return redirect('tributos');
         }
 
-        $marcas = Marca::
-        where('empresa_id', $this->empresa_id)
-        ->get();
+        $marcas = Marca::where('empresa_id', $this->empresa_id)->get();
 
-        $subs = SubCategoria::
-        select('sub_categorias.*')
-        ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+        $subs = SubCategoria::select('sub_categorias.*')
+            ->join('categorias', 'categorias.id', '=', 'sub_categorias.categoria_id')
+            ->where('empresa_id', $this->empresa_id)->get();
 
-        $subsEcommerce = SubCategoriaEcommerce::
-        select('sub_categoria_ecommerces.*')
-        ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
-        ->where('empresa_id', $this->empresa_id)
-        ->get();
+        $subsEcommerce = SubCategoriaEcommerce::select('sub_categoria_ecommerces.*')
+            ->join('categoria_produto_ecommerces', 'categoria_produto_ecommerces.id', '=', 'sub_categoria_ecommerces.categoria_id')
+            ->where('empresa_id', $this->empresa_id)->get();
 
-        $divisoes = DivisaoGrade::
-        where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', false)
-        ->get();
+        $divisoes = DivisaoGrade::where('empresa_id', $this->empresa_id)->where('sub_divisao', false)->get();
+        $subDivisoes = DivisaoGrade::where('empresa_id', $this->empresa_id)->where('sub_divisao', true)->get();
 
-        $subDivisoes = DivisaoGrade::
-        where('empresa_id', $this->empresa_id)
-        ->where('sub_divisao', true)
-        ->get();
-
+        $categoriasEcommerce = CategoriaProdutoEcommerce::where('empresa_id', $this->empresa_id)->get();
+        $telas = TelaPedido::where('empresa_id', $this->empresa_id)->get();
 
         if(valida_objeto($resp)){
-            return view('produtos/duplicar')
-            ->with('produto', $resp)
-            ->with('config', $config)
-            ->with('marcas', $marcas)
-            ->with('divisoes', $divisoes)
-            ->with('subDivisoes', $subDivisoes)
-            ->with('subs', $subs)
-            ->with('subsEcommerce', $subsEcommerce)
-            ->with('tributacao', $tributacao)
-            ->with('natureza', $natureza)
-            ->with('listaCSTCSOSN', $listaCSTCSOSN)
-            ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
-            ->with('listaCST_IPI', $listaCST_IPI)
-            ->with('categoriasDelivery', $categoriasDelivery)
-            ->with('anps', $anps)
-            ->with('unidadesDeMedida', $unidadesDeMedida)
-            ->with('categorias', $categorias)
-            ->with('produtoJs', true)
-            ->with('title', 'Duplicar Produto');
+            return view('produtos/register')
+                ->with('duplicando', true)
+                ->with('produto', $resp)
+                ->with('config', $config)
+                ->with('marcas', $marcas)
+                ->with('divisoes', $divisoes)
+                ->with('subDivisoes', $subDivisoes)
+                ->with('subs', $subs)
+                ->with('subsEcommerce', $subsEcommerce)
+                ->with('tributacao', $tributacao)
+                ->with('natureza', $natureza)
+                ->with('listaCSTCSOSN', $listaCSTCSOSN)
+                ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)
+                ->with('listaCST_IPI', $listaCST_IPI)
+                ->with('categoriasDelivery', $categoriasDelivery)
+                ->with('anps', $anps)
+                ->with('unidadesDeMedida', $unidadesDeMedida)
+                ->with('categorias', $categorias)
+                ->with('categoriasEcommerce', $categoriasEcommerce)
+                ->with('telas', $telas)
+                ->with('produtoJs', true)
+                ->with('gradeJs', true)
+                ->with('title', 'Duplicar Produto');
         }else{
             return redirect('/403');
         }
-
     }
 
     public function grade($id){
@@ -2904,8 +2945,8 @@ class ProductController extends Controller
 
             $produtos = $this->setaEstoqueGrade($produtos);
             return view('produtos/grade')
-            ->with('produtos', $produtos)
-            ->with('title', 'Grade');
+                ->with('produtos', $produtos)
+                ->with('title', 'Grade');
         }else{
             return redirect('/403');
         }
@@ -2920,7 +2961,7 @@ class ProductController extends Controller
     }
 
     public function quickSave(Request $request){
-            //echo json_encode($request->produto);
+        //echo json_encode($request->produto);
         $produto = $request->data;
         $natureza = Produto::firstNatureza($this->empresa_id);
 
@@ -2989,10 +3030,10 @@ class ProductController extends Controller
     public function teste(){
         $filial_id = -1;
         $data = Produto::where('empresa_id', $this->empresa_id)
-        ->whereIn('produtos.locais', function($query){
-            $query->select('locais');
-        })
-        ->get();
+            ->whereIn('produtos.locais', function($query){
+                $query->select('locais');
+            })
+            ->get();
 
         echo $data->pluck('nome');
     }
@@ -3002,11 +3043,11 @@ class ProductController extends Controller
 
         $id = $request->input('id');
         $resp = $product
-        ->where('id', $id)->first();
+            ->where('id', $id)->first();
 
         $gradeCompleta = $product->
         where('referencia_grade', $resp->referencia_grade)
-        ->get();
+            ->get();
 
         $this->_validate($request);
 
@@ -3045,7 +3086,7 @@ class ProductController extends Controller
                 $resp->CST_PIS = $request->input('CST_PIS');
                 $resp->CST_COFINS = $request->input('CST_COFINS');
                 $resp->CST_IPI = $request->input('CST_IPI');
-            // $resp->CFOP = $request->input('CFOP');
+                // $resp->CFOP = $request->input('CFOP');
                 $resp->unidade_venda = $request->input('unidade_venda');
                 $resp->unidade_compra = $request->input('unidade_compra');
                 $resp->conversao_unitaria = $request->input('conversao_unitaria') ? $request->input('conversao_unitaria') : $resp->conversao_unitaria;
@@ -3065,10 +3106,10 @@ class ProductController extends Controller
                 $resp->perc_gnn = $request->perc_gnn ? __replace($request->perc_gnn) : 0;
                 $resp->perc_gni = $request->perc_gni ? __replace($request->perc_gni) : 0;
                 $resp->valor_partida = $request->valor_partida ?
-                __replace($request->valor_partida) : 0;
+                    __replace($request->valor_partida) : 0;
 
                 $resp->quantidade_tributavel = $request->quantidade_tributavel ?
-                __replace($request->quantidade_tributavel) : 0;
+                    __replace($request->quantidade_tributavel) : 0;
 
                 $resp->unidade_tributavel = $request->unidade_tributavel ?? '';
 
@@ -3110,7 +3151,7 @@ class ProductController extends Controller
                 $resp->lote = $request->lote ?? '';
                 $resp->vencimento = $request->vencimento ?? '';
 
-                    // $this->salveImagemProduto($request, $resp);
+                // $this->salveImagemProduto($request, $resp);
                 if($request->hasFile('file')){
                     $nomeImagem = $this->salveImagemProdutoTemp($request);
                     $resp->imagem = $nomeImagem;
@@ -3140,7 +3181,7 @@ class ProductController extends Controller
                     }else{
 
                         if($produto->estoque->quantidade > $estoque || $produto->estoque->quantidade < $estoque){
-                        //alterar
+                            //alterar
 
                             $tipo = '';
                             $valorAlterar = 0;
@@ -3189,17 +3230,17 @@ class ProductController extends Controller
 
         $data = Produto::
         where('produtos.empresa_id', $this->empresa_id)
-        ->select('produtos.*')
-        ->when($categoria_id, function ($q) use ($categoria_id) {
-            return $q->where('categoria_id', $categoria_id);
-        })
-        ->when(is_numeric($pesquisa), function ($q) use ($pesquisa) {
-            return $q->where('codBarras', 'like', "%$pesquisa%");
-        })
-        ->when(!is_numeric($pesquisa), function ($q) use ($pesquisa) {
-            return $q->where('nome', 'like', "%$pesquisa%");
-        })
-        ->get();
+            ->select('produtos.*')
+            ->when($categoria_id, function ($q) use ($categoria_id) {
+                return $q->where('categoria_id', $categoria_id);
+            })
+            ->when(is_numeric($pesquisa), function ($q) use ($pesquisa) {
+                return $q->where('codBarras', 'like', "%$pesquisa%");
+            })
+            ->when(!is_numeric($pesquisa), function ($q) use ($pesquisa) {
+                return $q->where('nome', 'like', "%$pesquisa%");
+            })
+            ->get();
 
         return response()->json($data, 200);
 
@@ -3215,31 +3256,31 @@ class ProductController extends Controller
 
             $produtos = Produto::
             where('produtos.empresa_id', $this->empresa_id)
-            ->select('produtos.*')
-            ->where('produtos.inativo', false)
-            //->where('produtos.valor_venda', '>', 0) // Busca de Produtos (sem a trava do valor_venda > 0)
-            ->where('produtos.nome', 'LIKE', "%$request->pesquisa%")
-            ->where('produtos.locais', 'like', "%$filial_id%")
-            ->orderBy('produtos.nome')
-            ->with('listaPreco')
-            ->when($categoria != null && $categoria != 'todos', function ($query) use ($categoria) {
-                return $query->where('produtos.categoria_id', $categoria);
-            })
-            ->get();
+                ->select('produtos.*')
+                ->where('produtos.inativo', false)
+                //->where('produtos.valor_venda', '>', 0) // Busca de Produtos (sem a trava do valor_venda > 0)
+                ->where('produtos.nome', 'LIKE', "%$request->pesquisa%")
+                ->where('produtos.locais', 'like', "%$filial_id%")
+                ->orderBy('produtos.nome')
+                ->with('listaPreco')
+                ->when($categoria != null && $categoria != 'todos', function ($query) use ($categoria) {
+                    return $query->where('produtos.categoria_id', $categoria);
+                })
+                ->get();
 
             $refs = Produto::
             where('empresa_id', $this->empresa_id)
-            ->select('produtos.*')
-            ->where('produtos.referencia', 'LIKE', "%$request->pesquisa%")
-            ->orderBy('produtos.nome')
-            ->with('listaPreco')
-            ->where('produtos.locais', 'like', "%$filial_id%")
-            ->where('produtos.inativo', false)
-            ->where('produtos.valor_venda', '>', 0)
-            ->when($categoria != null && $categoria != 'todos', function ($query) use ($categoria) {
-                return $query->where('produtos.categoria_id', $categoria);
-            })
-            ->get();
+                ->select('produtos.*')
+                ->where('produtos.referencia', 'LIKE', "%$request->pesquisa%")
+                ->orderBy('produtos.nome')
+                ->with('listaPreco')
+                ->where('produtos.locais', 'like', "%$filial_id%")
+                ->where('produtos.inativo', false)
+                ->where('produtos.valor_venda', '>', 0)
+                ->when($categoria != null && $categoria != 'todos', function ($query) use ($categoria) {
+                    return $query->where('produtos.categoria_id', $categoria);
+                })
+                ->get();
 
             $permissaoAcesso = __getLocaisUsarioLogado();
             $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
@@ -3324,15 +3365,15 @@ class ProductController extends Controller
 
             $produto = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('id', $request->id)
-            ->first();
+                ->where('id', $request->id)
+                ->first();
             $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
             $produto->estoqueAtual = $produto->estoqueAtualPdv($filial_id);
 
             if($filial_id){
                 $produto->_estoque = Estoque::where('produto_id', $produto->id)
-                ->where('filial_id', $filial_id)
-                ->first();
+                    ->where('filial_id', $filial_id)
+                    ->first();
             }
         }else{
             // $produtoListaPreco = ProdutoListaPreco::
@@ -3343,18 +3384,18 @@ class ProductController extends Controller
 
             $produto = Produto::
             select('produtos.*')
-            ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
-            ->where('produtos.empresa_id', $this->empresa_id)
-            ->where('produtos.id', $request->id)
-            ->with('listaPreco')
-            ->first();
+                ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
+                ->where('produtos.empresa_id', $this->empresa_id)
+                ->where('produtos.id', $request->id)
+                ->with('listaPreco')
+                ->first();
 
             $produto->estoqueAtual = $produto->estoqueAtual($filial_id);
 
             // $produto = $produtoListaPreco->produto;
             // $produto->estoqueAtual = $produto->estoqueAtual();
             $produto->valor_venda = $produto->listaPreco->where('lista_id', $request->lista_id)
-            ->first()->valor;
+                ->first()->valor;
 
 
 
@@ -3400,10 +3441,10 @@ class ProductController extends Controller
 
             $data = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('categoria_id', $request->categoria_id)
-            ->where('produtos.locais', 'like', "%$filial_id%")
-            ->limit(50)
-            ->get();
+                ->where('categoria_id', $request->categoria_id)
+                ->where('produtos.locais', 'like', "%$filial_id%")
+                ->limit(50)
+                ->get();
             $prods = [];
             foreach($data as $p){
                 $p->estoqueAtual = $p->estoquePorLocalPavaVenda($filial_id);
@@ -3425,14 +3466,14 @@ class ProductController extends Controller
 
             $data = Produto::
             select('produtos.*')
-            ->where('produtos.empresa_id', $this->empresa_id)
-            ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
-            ->where('categoria_id', $request->categoria_id)
-            ->where('produtos.locais', 'like', "%$filial_id%")
-            ->where('produto_lista_precos.id', $request->lista_id)
-            ->with('listaPreco')
-            ->limit(50)
-            ->get();
+                ->where('produtos.empresa_id', $this->empresa_id)
+                ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
+                ->where('categoria_id', $request->categoria_id)
+                ->where('produtos.locais', 'like', "%$filial_id%")
+                ->where('produto_lista_precos.id', $request->lista_id)
+                ->with('listaPreco')
+                ->limit(50)
+                ->get();
 
             foreach($data as $p){
                 $p->estoqueAtual = $p->estoqueAtual();
@@ -3449,9 +3490,9 @@ class ProductController extends Controller
         if($request->lista_id == 0){
             $data = Produto::
             where('empresa_id', $this->empresa_id)
-            ->inRandomOrder()
-            ->limit(50)
-            ->get();
+                ->inRandomOrder()
+                ->limit(50)
+                ->get();
 
             $prods = [];
             foreach($data as $p){
@@ -3469,10 +3510,10 @@ class ProductController extends Controller
 
             $data = Produto::
             select('produtos.*')
-            ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
-            ->where('produto_lista_precos.lista_id', $request->lista_id)
-            ->with('listaPreco')
-            ->get();
+                ->join('produto_lista_precos', 'produto_lista_precos.produto_id', '=', 'produtos.id')
+                ->where('produto_lista_precos.lista_id', $request->lista_id)
+                ->with('listaPreco')
+                ->get();
 
             foreach($data as $p){
                 $p->estoqueAtual = $p->estoqueAtual();
@@ -3487,16 +3528,16 @@ class ProductController extends Controller
         if($request->lista_id == 0){
             $produto = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('id', $request->id)
-            ->first();
+                ->where('id', $request->id)
+                ->first();
 
             $produto->estoqueAtual = $produto->estoqueAtual();
             return response($produto, 200);
         }else{
             $produtoListaPreco = ProdutoListaPreco::
             where('produto_id', $request->id)
-            ->where('lista_id', $request->lista_id)
-            ->first();
+                ->where('lista_id', $request->lista_id)
+                ->first();
 
             $produto = $produtoListaPreco->produto;
             $produto->estoqueAtual = $produto->estoqueAtual();
@@ -3507,52 +3548,52 @@ class ProductController extends Controller
 
     }
 
-        // public function zebra($id){
+    // public function zebra($id){
 
-        //     $nome = "Cerv Original 350ml";
-        //     $codigo = "7891000777794";
-        //     $valor = "4,50";
-        //     $unidade = "Un";
+    //     $nome = "Cerv Original 350ml";
+    //     $codigo = "7891000777794";
+    //     $valor = "4,50";
+    //     $unidade = "Un";
 
-        //     $generatorPNG = new \Picqer\Barcode\BarcodeGeneratorPNG();
+    //     $generatorPNG = new \Picqer\Barcode\BarcodeGeneratorPNG();
 
-        //     $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
-        //     safe_file_put_contents("etiqueta.png", $bar_code);
-        //     $pdf = new TcpdfFpdi('P', 'mm', 'A4');
-        //     $pdf->AddPage('L', [30, 50]);
-        //     $pdf->SetMargins(0,0,0, false);
-
-
-        //     $pdf->SetFont('helvetica', '', 10);
-
-        //     // $pdf->Image("etiqueta.png", 10, 1, 30);
-        //     $pdf->Text(1, 5, $nome);
-        //     $pdf->Text(1, 10, $codigo);
+    //     $bar_code = $generatorPNG->getBarcode($codigo, $generatorPNG::TYPE_EAN_13);
+    //     safe_file_put_contents("etiqueta.png", $bar_code);
+    //     $pdf = new TcpdfFpdi('P', 'mm', 'A4');
+    //     $pdf->AddPage('L', [30, 50]);
+    //     $pdf->SetMargins(0,0,0, false);
 
 
-        //     $pdf->Output();
-        // }
+    //     $pdf->SetFont('helvetica', '', 10);
+
+    //     // $pdf->Image("etiqueta.png", 10, 1, 30);
+    //     $pdf->Text(1, 5, $nome);
+    //     $pdf->Text(1, 10, $codigo);
+
+
+    //     $pdf->Output();
+    // }
 
     public function etiqueta($id){
         try{
             $padrosEtiqueta = Etiqueta::
             where('empresa_id', null)
-            ->orWhere('empresa_id', $this->empresa_id)
-            ->get();
-                // $pTemp = Etiqueta::
-                // where('empresa_id', $this->empresa_id)
-                // ->get();
+                ->orWhere('empresa_id', $this->empresa_id)
+                ->get();
+            // $pTemp = Etiqueta::
+            // where('empresa_id', $this->empresa_id)
+            // ->get();
 
-                // foreach($padrosEtiqueta as $p){
+            // foreach($padrosEtiqueta as $p){
 
-                // }
+            // }
             $produto = Produto::find($id);
             if(valida_objeto($produto)){
 
                 return view('produtos/etiqueta')
-                ->with('title', 'Gerar etiqueta')
-                ->with('padrosEtiqueta', $padrosEtiqueta)
-                ->with('produto', $produto);
+                    ->with('title', 'Gerar etiqueta')
+                    ->with('padrosEtiqueta', $padrosEtiqueta)
+                    ->with('produto', $produto);
             }else{
                 return redirect('/403');
             }
@@ -3609,17 +3650,17 @@ class ProductController extends Controller
             $qtdTotal = $request->qtd_etiquetas;
 
             return view('produtos/print')
-            ->with('altura', $request->altura)
-            ->with('largura', $request->largura)
-            ->with('rand', $rand)
-            ->with('codigo', $codigo)
-            ->with('quantidade', $qtdTotal)
-            ->with('distancia_topo', $request->dist_topo)
-            ->with('distancia_lateral', $request->dist_lateral)
-            ->with('quantidade_por_linhas', $qtdLinhas)
-            ->with('tamanho_fonte', $request->tamanho_fonte)
-            ->with('tamanho_codigo', $request->tamanho_codigo)
-            ->with('data', $data);
+                ->with('altura', $request->altura)
+                ->with('largura', $request->largura)
+                ->with('rand', $rand)
+                ->with('codigo', $codigo)
+                ->with('quantidade', $qtdTotal)
+                ->with('distancia_topo', $request->dist_topo)
+                ->with('distancia_lateral', $request->dist_lateral)
+                ->with('quantidade_por_linhas', $qtdLinhas)
+                ->with('tamanho_fonte', $request->tamanho_fonte)
+                ->with('tamanho_codigo', $request->tamanho_codigo)
+                ->with('data', $data);
         }catch(\Exception $e){
             session()->flash('mensagem_erro', 'Erro: ' . $e->getMessage());
             return redirect()->back();
@@ -3655,22 +3696,22 @@ class ProductController extends Controller
     public function verEtiquetasPadroes(){
         $etiquetas = Etiqueta::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $title = 'Etiquetas por empresa';
         return view('produtos/etiquetas_list', compact('title', 'etiquetas'));
     }
 
     public function newEtiquetaPadrao(){
         return view('produtos/etiquetas_register')
-        ->with('title', 'Nova etiqueta');
+            ->with('title', 'Nova etiqueta');
     }
 
     public function editEtiqueta($id){
         $etiqueta = Etiqueta::find($id);
         if(valida_objeto($etiqueta)){
             return view('produtos/etiquetas_register')
-            ->with('etiqueta', $etiqueta)
-            ->with('title', 'Nova etiqueta');
+                ->with('etiqueta', $etiqueta)
+                ->with('title', 'Nova etiqueta');
         }else{
             return redirect('/403');
         }
@@ -3771,7 +3812,7 @@ class ProductController extends Controller
     public function exportacao(){
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $relatorioEx = new ProdutoExport($produtos);
         return Excel::download($relatorioEx, 'produtos.xlsx');
     }
@@ -3789,23 +3830,23 @@ class ProductController extends Controller
     public function dup($qtd){
         // $produtos = Produto::
         // where('empresa_id', $this->empresa_id)->get();
-            // for($i=0; $i< 2400; $i++){
-            //     foreach($produtos as $p){
+        // for($i=0; $i< 2400; $i++){
+        //     foreach($produtos as $p){
 
-            //         $t = $p->toArray();
-            //         unset($t['id']);
-            //         $t['nome'] = Str::random(10);
-            //         Produto::create($t);
-            //     }
-            // }
+        //         $t = $p->toArray();
+        //         unset($t['id']);
+        //         $t['nome'] = Str::random(10);
+        //         Produto::create($t);
+        //     }
+        // }
     }
 
     public function exportacaoBalanca(){
         $data = Produto::where('referencia_balanca', '!=', '')
-        ->get();
+            ->get();
 
         return view('produtos.balanca', compact('data'))
-        ->with('title', 'Produtos Balança');
+            ->with('title', 'Produtos Balança');
     }
 
     public function exportacaoBalancaFile(Request $request){
@@ -3856,11 +3897,11 @@ class ProductController extends Controller
         return preg_replace(array("/(á|à|ã|â|ä)/","/(Á|À|Ã|Â|Ä)/","/(é|è|ê|ë)/","/(É|È|Ê|Ë)/","/(í|ì|î|ï)/","/(Í|Ì|Î|Ï)/","/(ó|ò|õ|ô|ö)/","/(Ó|Ò|Õ|Ô|Ö)/","/(ú|ù|û|ü)/","/(Ú|Ù|Û|Ü)/","/(ñ)/","/(Ñ)/", "/(ç)/"),explode(" ","a A e E i I o O u U n N c"),$texto);
     }
 
-     /**
+    /**
      * Busca produtos para o Select2 no formulário de ticket de pesagem.
      * Retorna JSON no formato que o Select2 espera em `data.results`.
      */
-     public function searchProduto(Request $request)
+    public function searchProduto(Request $request)
     {
         $term = $request->get('term', '');
 
@@ -4132,7 +4173,7 @@ class ProductController extends Controller
         return response()->json($vals, 200);
     }
 
-    public function salvarProdutoAjaxCompleto(Request $request) 
+    public function salvarProdutoAjaxCompleto(Request $request)
     {
         try {
             $valorVenda = str_replace(['.', ','], ['', '.'], $request->valor_venda);
@@ -4147,8 +4188,8 @@ class ProductController extends Controller
                 'codBarras' => $request->codBarras ?? 'SEM GTIN',
                 'valor_venda' => (float)$valorVenda,
                 'valor_compra' => 0,
-                'cor' => '', 
-                'referencia' => '', 
+                'cor' => '',
+                'referencia' => '',
                 'categoria_id' => 1, // Categoria padrão
                 'sub_categoria_id' => null,
                 'gerenciar_estoque' => 1,
