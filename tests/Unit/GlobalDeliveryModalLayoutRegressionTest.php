@@ -56,7 +56,7 @@ class GlobalDeliveryModalLayoutRegressionTest extends TestCase
                 $layout
             );
             $this->assertStringNotContainsString(
-                "asset('imgs/slym.png')",
+                '<link rel="shortcut icon" href="{{ asset(\'imgs/slym.png\') }}" />',
                 $layout
             );
         }
