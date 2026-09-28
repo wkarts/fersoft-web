@@ -60,7 +60,9 @@
     <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
-    <link rel="shortcut icon" href="{{ asset('imgs/slym.png') }}" />
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
     @if($cor != '')
         <link href="/css/extend.css" rel="stylesheet" type="text/css" />
     @endif
@@ -2587,6 +2589,9 @@
 
     // $('#modal-pesquisa').modal('show')
 </script>
+
+<!-- Modal/monitor global do Delivery renderizado somente dentro do body -->
+@yield('global_delivery_alert')
 
 <!-- tour -->
 
