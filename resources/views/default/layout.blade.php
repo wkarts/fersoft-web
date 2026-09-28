@@ -57,7 +57,8 @@
 @endif
 
 {{-- 3. MODAL E MONITORAMENTO DE NOVOS PEDIDOS DO DELIVERY --}}
-<div class="modal fade" id="modalNovoPedidoAlerta" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 99999;">
+@section('global_delivery_alert')
+<div class="modal fade" id="modalNovoPedidoAlerta" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true" style="display:none; z-index: 99999;">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
             <div class="modal-header bg-danger text-white py-3">
@@ -285,6 +286,7 @@ window.addEventListener('load', function () {
     });
 });
 </script>
+@endsection
 
 <script>
     window.SERVER_OFFSET_MIN = {{ Carbon::now()->getOffset() / 60 }};
