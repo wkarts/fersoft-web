@@ -1048,13 +1048,28 @@
                 }
             });
 
-            // Exibe flash message (sucesso ou erro) no modal de mensagem
+            // Exibe flash message sem modal Bootstrap.
+            // Evita que um backdrop residual bloqueie a grid após o redirect do cadastro/edição.
             @if(session('mensagem_sucesso') || session('mensagem_erro'))
-            const tipo  = "{{ session('mensagem_sucesso') ? 'Sucesso' : 'Erro' }}";
-            const texto = "{{ session('mensagem_sucesso') ?? session('mensagem_erro') }}";
-            $('#modalMensagemLabel').text(tipo);
-            $('#modalMensagemTexto').text(texto);
-            $('#modalMensagem').modal('show');
+            const tipo  = @json(session('mensagem_sucesso') ? 'Sucesso' : 'Erro');
+            const texto = @json(session('mensagem_sucesso') ?? session('mensagem_erro'));
+            const icone = tipo === 'Sucesso' ? 'success' : 'error';
+
+            if (typeof toastr !== 'undefined') {
+                if (tipo === 'Sucesso') {
+                    toastr.success(texto);
+                } else {
+                    toastr.error(texto);
+                }
+            } else if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+                Swal.fire({
+                    icon: icone,
+                    title: tipo,
+                    text: texto
+                });
+            } else if (typeof swal === 'function') {
+                swal(tipo, texto, icone);
+            }
             @endif
         });
     </script>
