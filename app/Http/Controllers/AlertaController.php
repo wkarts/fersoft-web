@@ -14,7 +14,7 @@ class AlertaController extends Controller
                 return redirect("/login");
             }
 
-            // Libera checagem e confirmação de avisos para qualquer usuário logado
+            // Complemento: comunicados consultáveis por usuários autenticados.
             if ($request->is('alertas/pendente') || $request->is('alertas/marcar-lido/*')) {
                 return $next($request);
             }
@@ -22,7 +22,6 @@ class AlertaController extends Controller
             if($request->ajax()){
                 return $next($request);
             }
-
             if(!$value['super']){
                 return redirect('/graficos');
             }
@@ -117,89 +116,83 @@ class AlertaController extends Controller
             ->with('title', 'Visualizaçoes de alerta');
     }
 
+
+    /** Busca o comunicado ativo mais recente ainda não confirmado pelo usuário. */
     public function pendente(Request $request)
     {
-        $user_logged = session('user_logged');
-        if (!$user_logged) {
+        $userLogged = session('user_logged');
+        $usuarioId = $userLogged['id'] ?? $userLogged['usuario_id'] ?? null;
+
+        if (!$usuarioId) {
             return response()->json(['pendente' => false]);
         }
 
-        $usuario_id = $user_logged['id'] ?? $user_logged['usuario_id'] ?? null;
-        if (!$usuario_id) {
-            return response()->json(['pendente' => false]);
-        }
-
-        // Pega os IDs dos avisos que este usuário já confirmou
         $lidosIds = \Illuminate\Support\Facades\DB::table('aviso_acessos')
-            ->where('usuario_id', $usuario_id)
+            ->where('usuario_id', $usuarioId)
             ->pluck('aviso_id')
             ->toArray();
 
-        // Busca o primeiro aviso ativo não lido por ele
         $aviso = Aviso::where('status', 1)
             ->whereNotIn('id', $lidosIds)
             ->orderBy('id', 'desc')
             ->first();
 
-        if ($aviso) {
-            return response()->json([
-                'pendente'   => true,
-                'id'         => $aviso->id,
-                'titulo'     => $aviso->titulo,
-                'prioridade' => strtoupper($aviso->prioridade),
-                'texto'      => $aviso->texto,
-                'data'       => \Carbon\Carbon::parse($aviso->created_at)->format('d/m/Y H:i')
-            ]);
+        if (!$aviso) {
+            return response()->json(['pendente' => false]);
         }
 
-        return response()->json(['pendente' => false]);
+        return response()->json([
+            'pendente' => true,
+            'id' => $aviso->id,
+            'titulo' => $aviso->titulo,
+            'prioridade' => strtoupper((string) $aviso->prioridade),
+            'texto' => $aviso->texto,
+            'data' => \Carbon\Carbon::parse($aviso->created_at)->format('d/m/Y H:i'),
+        ]);
     }
 
+    /** Confirma leitura somente para a empresa do usuário autenticado. */
     public function marcarComoLido(Request $request, $id)
     {
-        $user_logged = session('user_logged');
-        if (!$user_logged) {
+        $userLogged = session('user_logged');
+        $usuarioId = $userLogged['id'] ?? $userLogged['usuario_id'] ?? null;
+
+        if (!$usuarioId) {
             return response()->json(['success' => false, 'message' => 'Usuário não autenticado'], 401);
         }
 
-        $usuario_id = $user_logged['id'] ?? $user_logged['usuario_id'] ?? null;
+        $usuario = \Illuminate\Support\Facades\DB::table('usuarios')
+            ->where('id', $usuarioId)
+            ->first(['id', 'empresa_id']);
 
-        // Busca empresa_id na sessão com fallbacks comuns do ERP
-        $empresa_id = $user_logged['empresa_id']
-            ?? session('empresa_id')
-            ?? session('empresa_selecionada')['empresa_id']
-            ?? null;
-
-        // Se ainda for nulo, busca direto na tabela de usuários
-        if (!$empresa_id && $usuario_id) {
-            $empresa_id = \Illuminate\Support\Facades\DB::table('usuarios')
-                ->where('id', $usuario_id)
-                ->value('empresa_id');
+        if (!$usuario) {
+            return response()->json(['success' => false, 'message' => 'Usuário não encontrado'], 404);
         }
 
-        // Se mesmo assim não achar (ex: super admin geral sem empresa fixa), usa a primeira empresa ativa cadastrada
-        if (!$empresa_id) {
-            $empresa_id = \Illuminate\Support\Facades\DB::table('empresas')->value('id') ?? 1;
+        $empresaId = $usuario->empresa_id ?: ($userLogged['empresa_id'] ?? session('empresa_id'));
+        if (!$empresaId) {
+            return response()->json(['success' => false, 'message' => 'Empresa não identificada'], 422);
         }
 
-        if ($usuario_id && $id) {
-            $jaExiste = \Illuminate\Support\Facades\DB::table('aviso_acessos')
-                ->where('aviso_id', $id)
-                ->where('usuario_id', $usuario_id)
-                ->exists();
+        if (!Aviso::where('id', $id)->where('status', 1)->exists()) {
+            return response()->json(['success' => false, 'message' => 'Comunicado não encontrado'], 404);
+        }
 
-            if (!$jaExiste) {
-                \Illuminate\Support\Facades\DB::table('aviso_acessos')->insert([
-                    'aviso_id'   => $id,
-                    'empresa_id' => $empresa_id,
-                    'usuario_id' => $usuario_id,
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]);
-            }
+        $jaExiste = \Illuminate\Support\Facades\DB::table('aviso_acessos')
+            ->where('aviso_id', $id)
+            ->where('usuario_id', $usuarioId)
+            ->exists();
+
+        if (!$jaExiste) {
+            \Illuminate\Support\Facades\DB::table('aviso_acessos')->insert([
+                'aviso_id' => $id,
+                'empresa_id' => $empresaId,
+                'usuario_id' => $usuarioId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         return response()->json(['success' => true]);
     }
-
 }
