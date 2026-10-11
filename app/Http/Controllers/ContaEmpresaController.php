@@ -592,6 +592,145 @@ class ContaEmpresaController extends BaseController
             return $saldoAcumulado;
         });
     }
+
+    /**
+     * Corrige títulos (Pagar/Receber) sem filial vinculados aos lançamentos desta Conta Empresa.
+     */
+    public function corrigirFiliaisTitulos(Request $request, $id)
+    {
+        // Busca ignorando scopes globais para não dar 404
+        $conta = ContaEmpresa::withoutGlobalScopes()->findOrFail($id);
+
+        if (empty($conta->filial_id)) {
+            session()->flash('mensagem_erro', "A conta '{$conta->nome}' pertence à Matriz (filial_id vazio/null). Não há filial para aplicar.");
+            return redirect()->back();
+        }
+
+        DB::beginTransaction();
+        try {
+            $empresaId = $conta->empresa_id;
+
+            // 1. Contas a Pagar vinculadas a esta conta com filial NULL ou 0
+            $idsPagar = DB::table('item_conta_empresas as ice')
+                ->join('conta_pagars as cp', 'cp.id', '=', 'ice.conta_pagar_id')
+                ->where('ice.conta_id', $conta->id)
+                ->where('ice.empresa_id', $empresaId)
+                ->where(function ($q) {
+                    $q->whereNull('cp.filial_id')->orWhere('cp.filial_id', 0)->orWhere('cp.filial_id', -1);
+                })
+                ->pluck('cp.id')
+                ->unique()
+                ->toArray();
+
+            $totalPagar = count($idsPagar);
+            if ($totalPagar > 0) {
+                DB::table('conta_pagars')
+                    ->whereIn('id', $idsPagar)
+                    ->update([
+                        'filial_id'            => $conta->filial_id,
+                        'filial_ajustada_auto' => 1
+                    ]);
+            }
+
+            // 2. Contas a Receber vinculadas a esta conta com filial NULL ou 0
+            $idsReceber = DB::table('item_conta_empresas as ice')
+                ->join('conta_recebers as cr', 'cr.id', '=', 'ice.conta_receber_id')
+                ->where('ice.conta_id', $conta->id)
+                ->where('ice.empresa_id', $empresaId)
+                ->where(function ($q) {
+                    $q->whereNull('cr.filial_id')->orWhere('cr.filial_id', 0)->orWhere('cr.filial_id', -1);
+                })
+                ->pluck('cr.id')
+                ->unique()
+                ->toArray();
+
+            $totalReceber = count($idsReceber);
+            if ($totalReceber > 0) {
+                DB::table('conta_recebers')
+                    ->whereIn('id', $idsReceber)
+                    ->update([
+                        'filial_id'            => $conta->filial_id,
+                        'filial_ajustada_auto' => 1
+                    ]);
+            }
+
+            DB::commit();
+
+            $total = $totalPagar + $totalReceber;
+            if ($total === 0) {
+                session()->flash('mensagem_sucesso', "Resumo: Nenhum título sem filial foi encontrado para a conta '{$conta->nome}'. Todos já estão com filial vinculada.");
+            } else {
+                // RESUMO COMPLETO NA MENSAGEM FINAL
+                session()->flash('mensagem_sucesso', "Resumo da Correção: Total de {$total} títulos atualizados com sucesso para a Filial ID {$conta->filial_id} (Sendo: {$totalPagar} Contas a Pagar e {$totalReceber} Contas a Receber)!");
+            }
+
+            return redirect()->back();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('mensagem_erro', 'Erro ao corrigir: ' . $e->getMessage());
+            return redirect()->back();
+        }
+    }
+
+    /**
+     * Desfaz exclusivamente as alterações automáticas feitas pela rotina acima.
+     */
+    public function desfazerCorrecaoFiliais(Request $request, $id)
+    {
+        $conta = ContaEmpresa::withoutGlobalScopes()->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $empresaId = $conta->empresa_id;
+
+            $idsPagar = DB::table('item_conta_empresas as ice')
+                ->join('conta_pagars as cp', 'cp.id', '=', 'ice.conta_pagar_id')
+                ->where('ice.conta_id', $conta->id)
+                ->where('ice.empresa_id', $empresaId)
+                ->where('cp.filial_ajustada_auto', 1)
+                ->pluck('cp.id')
+                ->unique()
+                ->toArray();
+
+            $totalPagar = count($idsPagar);
+            if ($totalPagar > 0) {
+                DB::table('conta_pagars')->whereIn('id', $idsPagar)->update([
+                    'filial_id'            => null,
+                    'filial_ajustada_auto' => 0
+                ]);
+            }
+
+            $idsReceber = DB::table('item_conta_empresas as ice')
+                ->join('conta_recebers as cr', 'cr.id', '=', 'ice.conta_receber_id')
+                ->where('ice.conta_id', $conta->id)
+                ->where('ice.empresa_id', $empresaId)
+                ->where('cr.filial_ajustada_auto', 1)
+                ->pluck('cr.id')
+                ->unique()
+                ->toArray();
+
+            $totalReceber = count($idsReceber);
+            if ($totalReceber > 0) {
+                DB::table('conta_recebers')->whereIn('id', $idsReceber)->update([
+                    'filial_id'            => null,
+                    'filial_ajustada_auto' => 0
+                ]);
+            }
+
+            DB::commit();
+
+            $total = $totalPagar + $totalReceber;
+            session()->flash('mensagem_sucesso', "Resumo do Desfazer: {$total} títulos retornaram para a Matriz/null ({$totalPagar} a Pagar e {$totalReceber} a Receber).");
+            return redirect()->back();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            session()->flash('mensagem_erro', 'Erro ao desfazer: ' . $e->getMessage());
+            return redirect()->back();
+        }
+    }
+
     /**
      * Converte datas no formato dd/mm/yyyy para yyyy-mm-dd
      */
@@ -614,4 +753,3 @@ class ContaEmpresaController extends BaseController
         return date('Y-m-d', $timestamp);
     }
 }
-

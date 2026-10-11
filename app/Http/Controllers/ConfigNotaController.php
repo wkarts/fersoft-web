@@ -341,6 +341,7 @@ class ConfigNotaController extends Controller
                 'pesagem_exibir_valores_relatorio' => $request->pesagem_exibir_valores_relatorio,
                 'pesagem_manter_modal_ticket_aberto_apos_salvar' => $request->pesagem_manter_modal_ticket_aberto_apos_salvar,
                 'permitir_estoque_negativo' => $request->permitir_estoque_negativo, // ADICIONE ESTA LINHA
+                'numero_diferimento' => $request->numero_diferimento ?? '',
             ]);
         }else{
             $config = ConfigNota::
@@ -458,6 +459,7 @@ class ConfigNotaController extends Controller
             $config->pesagem_exibir_valores_relatorio = $request->pesagem_exibir_valores_relatorio;
             $config->pesagem_manter_modal_ticket_aberto_apos_salvar = $request->pesagem_manter_modal_ticket_aberto_apos_salvar;
             $config->permitir_estoque_negativo = $request->permitir_estoque_negativo; // ADICIONE ESTA LINHA
+            $config->numero_diferimento = $request->numero_diferimento ?? '';
             $config->inscricao_municipal = $request->inscricao_municipal ?? '';
             $config->aut_xml = $request->aut_xml ?? '';
             if($request->hasFile('file')){

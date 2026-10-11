@@ -1217,26 +1217,35 @@ class ContasPagarController extends Controller
             if ($compra) {
                 $alterou = false;
 
+                // 1. Sincroniza o número da NF
                 if (empty($conta->numero_nota_fiscal) || $conta->numero_nota_fiscal == 0) {
                     $conta->numero_nota_fiscal = $compra->numero_emissao > 0 ? $compra->numero_emissao : $compra->nf;
                     $alterou = true;
                 }
 
-                if (empty($conta->data_emissao) && !empty($compra->data_emissao)) {
-                    $conta->data_emissao = substr($compra->data_emissao, 0, 10);
-                    $alterou = true;
+                // 2. FORÇA a sincronização da Data de Emissão (Removida a trava do empty)
+                if (!empty($compra->data_emissao)) {
+                    $dataEmissaoCompra = substr($compra->data_emissao, 0, 10);
+                    // Se a data do financeiro estiver diferente da data real da NF-e, ele corrige!
+                    if ($conta->data_emissao !== $dataEmissaoCompra) {
+                        $conta->data_emissao = $dataEmissaoCompra;
+                        $alterou = true;
+                    }
                 }
 
+                // 3. Sincroniza o Usuário
                 if (empty($conta->usuario_id) && !empty($compra->usuario_id)) {
                     $conta->usuario_id = $compra->usuario_id;
                     $alterou = true;
                 }
 
-                if ($alterou && $conta->save()) $updatedCount++;
+                if ($alterou && $conta->save()) {
+                    $updatedCount++;
+                }
             }
         }
 
-        session()->flash('mensagem_sucesso', "Sincronização concluída! {$updatedCount} conta(s) atualizada(s).");
+        session()->flash('mensagem_sucesso', "Sincronização concluída! {$updatedCount} conta(s) atualizada(s) com a data da Nota Fiscal.");
         $rota = __getRedirect($this->empresa_id, 'contas_pagar');
         return redirect($rota != "" ? $rota : '/contasPagar');
     }

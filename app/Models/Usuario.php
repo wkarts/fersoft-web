@@ -38,6 +38,7 @@ class Usuario extends Authenticatable
         'local_padrao',
         'balanca_padrao_id',
         'otp_secret',
+        'permissao_nfe_whatsapp',
     ];
 
     /**

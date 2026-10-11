@@ -111,7 +111,7 @@ class AgendamentoController extends Controller
 
         // Identificação de Administrador
         $ehAdmin = false;
-        if ($usuario && ((int)$usuario->adm === 1 || (int)$usuario->is_admin === 1)) {
+        if ($usuario && ((int)$usuario->adm === 1 || (int)($usuario->is_admin ?? 0) === 1)) {
             $ehAdmin = true;
         } elseif (!empty($userLogged['adm']) || !empty($userLogged['is_admin'])) {
             $ehAdmin = true;
@@ -160,30 +160,50 @@ class AgendamentoController extends Controller
         $agora = \Carbon\Carbon::now();
 
         foreach ($tarefas as $t) {
+            /*
+             * Complemento compatível com a versão nova:
+             * interpreta variações de status sem alterar o status persistido.
+             */
+            $statusReal = strtolower(trim((string) $t->status));
+            $isConcluida = in_array($statusReal, ['concluida', 'concluido', 'finalizada'], true);
+            $isAndamento = in_array($statusReal, ['em_andamento', 'andamento', 'executando'], true);
+            $isCancelada = in_array($statusReal, ['cancelada', 'cancelado'], true);
+
             $isAtrasada = false;
 
-            if ($t->status !== 'concluida' && !empty($t->data_limite)) {
-                $dataApenas = \Carbon\Carbon::parse($t->data_limite)->format('Y-m-d');
+            if (!$isConcluida && !$isCancelada && !empty($t->data_limite)) {
+                $dataApenas = \Carbon\Carbon::parse(
+                    str_replace('/', '-', (string) $t->data_limite)
+                )->format('Y-m-d');
                 $horaLim = !empty($t->hora_limite) ? $t->hora_limite : '23:59:59';
                 $limite = \Carbon\Carbon::parse($dataApenas . ' ' . $horaLim);
+
                 if ($agora->greaterThan($limite)) {
                     $isAtrasada = true;
                 }
             }
 
-            // Cor por Status da Tarefa
-            if ($t->status === 'concluida') {
+            // Cor por Status da Tarefa (incluindo os status complementares).
+            if ($isConcluida) {
                 $cor = '#10B981'; // Verde
                 $icon = '✓';
-            } elseif ($t->status === 'em_andamento') {
+                $statusFinalParaFront = 'concluida';
+            } elseif ($isAtrasada) {
+                $cor = '#DC2626'; // Vermelho: inclui em andamento atrasada
+                $icon = '⚠️';
+                $statusFinalParaFront = $isAndamento ? 'em_andamento' : 'pendente';
+            } elseif ($isAndamento) {
                 $cor = '#0EA5E9'; // Azul
                 $icon = '⏱';
-            } elseif ($isAtrasada) {
-                $cor = '#DC2626'; // Vermelho
-                $icon = '⚠️';
+                $statusFinalParaFront = 'em_andamento';
+            } elseif ($isCancelada) {
+                $cor = '#4B5563'; // Cinza
+                $icon = '✕';
+                $statusFinalParaFront = 'cancelada';
             } else {
                 $cor = '#8B5CF6'; // Roxo (Pendente)
                 $icon = '👤';
+                $statusFinalParaFront = 'pendente';
             }
 
             // Nome do responsável (apenas primeiro nome ou nome curto para caber no card)
@@ -191,14 +211,21 @@ class AgendamentoController extends Controller
             $partesNome = explode(' ', trim($nomeCompleto));
             $primeiroNome = $partesNome[0] . (isset($partesNome[1]) ? ' ' . substr($partesNome[1], 0, 1) . '.' : '');
 
-            // Título compacto no card do calendário
-            $tituloCard = "{$icon} {$t->titulo} ({$primeiroNome})";
+            // Preserva o título compacto atual e acrescenta o horário REAL,
+            // quando informado; nunca utiliza uma hora fictícia como fallback.
+            $tituloCardOriginal = "{$icon} {$t->titulo} ({$primeiroNome})";
+            $horaExibicao = !empty($t->hora_estimada) ? substr((string) $t->hora_estimada, 0, 5) : null;
+            $tituloCard = $horaExibicao !== null
+                ? "{$horaExibicao} {$tituloCardOriginal}"
+                : $tituloCardOriginal;
 
             $dataTarefa = \Carbon\Carbon::parse($t->data)->format('Y-m-d');
             $horaIni = !empty($t->hora_estimada) ? substr($t->hora_estimada, 0, 5) : null;
             $horaFim = !empty($t->hora_limite) ? substr($t->hora_limite, 0, 5) : '18:00';
 
-            $dataLimiteFormatada = !empty($t->data_limite) ? \Carbon\Carbon::parse($t->data_limite)->format('d/m/Y') : 'Não definido';
+            $dataLimiteFormatada = !empty($t->data_limite)
+                ? \Carbon\Carbon::parse(str_replace('/', '-', (string) $t->data_limite))->format('d/m/Y')
+                : 'Não definido';
 
             $eventos[] = [
                 'id'              => 'tarefa_' . $t->id,
@@ -214,12 +241,15 @@ class AgendamentoController extends Controller
                     'tipo'                 => 'tarefa',
                     'tarefa_id'            => $t->id,
                     'titulo'               => $t->titulo,
+                    'descricao'            => $t->descricao ?? '',
                     'funcionario'          => $nomeCompleto,
                     'prioridade'           => $t->prioridade ?? 'Normal',
-                    'status'               => $t->status,
+                    'status'               => $statusFinalParaFront,
+                    'status_original'      => $t->status,
                     'is_atrasada'          => $isAtrasada,
                     'data_inicio'          => \Carbon\Carbon::parse($t->data)->format('d/m/Y'),
                     'data_limite'          => $dataLimiteFormatada,
+                    'hora_estimada'        => $horaIni,
                     'hora_limite'          => $horaFim,
                     'tempo_gasto'          => $t->tempo_gasto_minutos ?? 0,
                     'justificativa_atraso' => $t->justificativa_atraso ?? ''

@@ -47,7 +47,7 @@
                         <i class="la la-info-circle text-primary"></i> 1. Dados Básicos do Transporte
                     </div>
                     <div class="row">
-                        <div class="form-group col-lg-4 col-md-6">
+                        <div class="form-group col-lg-2 col-md-6">
                             <label class="col-form-label font-weight-bold">Veículo / Placa</label>
                             <select id="veiculo_id" class="form-control select2" name="veiculo_id" required>
                                 <option value="">Selecione um Veículo</option>
@@ -60,7 +60,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group col-lg-4 col-md-6">
+                        <div class="form-group col-lg-3 col-md-4">
                             <label class="col-form-label font-weight-bold">Tipo de Movimentação</label>
                             <select class="form-control select2" name="tipo_movimentacao_id" required>
                                 <option value="">Selecione o Tipo</option>
@@ -72,7 +72,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group col-lg-4 col-md-6">
+                        <div class="form-group col-lg-3 col-md-4">
                             <label class="col-form-label font-weight-bold">Motorista Responsável</label>
                             <select class="form-control select2" name="motorista_id" required>
                                 <option value="">Selecione um Motorista</option>
@@ -83,11 +83,8 @@
                                 @endforeach
                             </select>
                         </div>
-                    </div>
 
-                    <!-- NOVO: LOCAL DE PARTIDA DA VIAGEM -->
-                    <div class="row">
-                        <div class="form-group col-lg-4 col-md-6">
+                        <div class="form-group col-lg-3 col-md-4">
                             <label class="col-form-label font-weight-bold">Local de Partida (Geolocalização)</label>
                             <select class="form-control" name="tipo_partida">
                                 <option value="empresa" {{ old('tipo_partida', $data->tipo_partida ?? 'empresa') == 'empresa' ? 'selected' : '' }}>
@@ -97,9 +94,12 @@
                                     🏠 Residência do Motorista (Casa)
                                 </option>
                             </select>
-                            <small class="form-text text-muted">Define onde o robô calcula o raio de 100m para o ponto automático.</small>
+                            <small class="form-text text-muted">Define onde o robô calcula o raio de saída.</small>
                         </div>
+
                     </div>
+
+
 
                     <!-- 2. EQUIPE E AJUDANTES -->
                     <div class="card-section-title mt-4">
@@ -116,81 +116,130 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <small class="form-text text-muted">
-                                <i class="la la-info-circle"></i> Selecione 1, 2, 3 ou mais ajudantes para esta viagem.
-                            </small>
                         </div>
                     </div>
 
-                    <!-- BLOCOS DE CONFIGURAÇÃO DE WHATSAPP E CHECKLIST LADO A LADO -->
+                    <!-- BLOCOS DE CONFIGURAÇÃO: PONTO, CHECKLIST E ABASTECIMENTO -->
                     <div class="row mt-4">
-                        <!-- Notificação de Ponto -->
-                        <div class="col-lg-6 col-md-12">
+                        <div class="col-lg-4 col-md-12 mb-3">
                             <div class="p-3 rounded h-100" style="background: #f0f8ff; border: 1px solid #b8daff;">
                                 <label class="col-form-label font-weight-bold text-dark">
-                                    <i class="la la-mobile text-primary"></i> Notificação de Ponto via WhatsApp
+                                    <i class="la la-mobile text-primary"></i> Notificação de Ponto
                                 </label>
                                 <select class="form-control" name="bater_ponto_whatsapp">
-                                    <option value="1" {{ old('bater_ponto_whatsapp', $data->bater_ponto_whatsapp ?? 1) == 1 ? 'selected' : '' }}>
-                                        🟢 SIM (Avisar se sair sem bater o ponto)
-                                    </option>
-                                    <option value="0" {{ old('bater_ponto_whatsapp', $data->bater_ponto_whatsapp ?? 1) == 0 ? 'selected' : '' }}>
-                                        🔴 NÃO (Ponto estritamente presencial)
-                                    </option>
+                                    <option value="1" {{ old('bater_ponto_whatsapp', $data->bater_ponto_whatsapp ?? 1) == 1 ? 'selected' : '' }}>🟢 SIM</option>
+                                    <option value="0" {{ old('bater_ponto_whatsapp', $data->bater_ponto_whatsapp ?? 1) == 0 ? 'selected' : '' }}>🔴 NÃO</option>
                                 </select>
                             </div>
                         </div>
 
-                        <!-- Checklist Obrigatório -->
-                        <div class="col-lg-6 col-md-12">
+                        <div class="col-lg-4 col-md-12 mb-3">
                             <div class="p-3 rounded h-100" style="background: #fffdf0; border: 1px solid #ffeeba;">
                                 <label class="col-form-label font-weight-bold text-dark">
-                                    <i class="la la-clipboard-check text-warning"></i> Exigir Checklist de Pré-Viagem
+                                    <i class="la la-clipboard-check text-warning"></i> Checklist Pré-Viagem
                                 </label>
                                 <select class="form-control" name="checklist_obrigatorio">
-                                    <option value="1" {{ old('checklist_obrigatorio', $data->checklist_obrigatorio ?? 1) == 1 ? 'selected' : '' }}>
-                                        🟢 SIM (Obrigatório - Exige envio das fotos)
-                                    </option>
-                                    <option value="0" {{ old('checklist_obrigatorio', $data->checklist_obrigatorio ?? 1) == 0 ? 'selected' : '' }}>
-                                        🔴 NÃO (Opcional / Sem cobrança estrita)
-                                    </option>
+                                    <option value="1" {{ old('checklist_obrigatorio', $data->checklist_obrigatorio ?? 1) == 1 ? 'selected' : '' }}>🟢 SIM</option>
+                                    <option value="0" {{ old('checklist_obrigatorio', $data->checklist_obrigatorio ?? 1) == 0 ? 'selected' : '' }}>🔴 NÃO</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4 col-md-12 mb-3">
+                            <div class="p-3 rounded h-100" style="background: #f4f6f9; border: 1px solid #d3d3d3;">
+                                <label class="col-form-label font-weight-bold text-dark">
+                                    <i class="la la-gas-pump text-info"></i> Link de Abastecimento
+                                </label>
+                                <select class="form-control" name="solicitar_abastecimento">
+                                    <option value="1" {{ old('solicitar_abastecimento', $data->solicitar_abastecimento ?? 0) == 1 ? 'selected' : '' }}>🟢 ENVIAR (Início Rota)</option>
+                                    <option value="0" {{ old('solicitar_abastecimento', $data->solicitar_abastecimento ?? 0) == 0 ? 'selected' : '' }}>🔴 NÃO ENVIAR</option>
                                 </select>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 3. ROTA E DESTINO -->
+                    <!-- 3. ROTA MULTI-STOP -->
                     <div class="card-section-title mt-4">
-                        <i class="la la-map-marker text-primary"></i> 3. Origem e Destino
+                        <i class="la la-map-marker text-primary"></i> 3. Rota de Coletas / Entregas
                     </div>
-                    <div class="row">
-                        <div class="form-group col-lg-4 col-md-6">
-                            <label class="col-form-label font-weight-bold">Cliente (Opcional)</label>
-                            <select name="cliente_id" id="cliente_id" class="form-control select2">
-                                <option value="">Nenhum Cliente</option>
-                                @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}" data-endereco="{{ $c->rua }}, {{ $c->numero }} - {{ $c->bairro }}" {{ (old('cliente_id', $data->cliente_id ?? '')) == $c->id ? 'selected' : '' }}>
-                                        {{ $c->razao_social }}
-                                    </option>
-                                @endforeach
-                            </select>
+                    <div class="row p-3 rounded" style="background: #f8f9fa; border: 1px solid #ddd;">
+                        <div class="col-12 text-right mb-2">
+                            <button type="button" class="btn btn-primary btn-sm font-weight-bold" onclick="adicionarDestino()">
+                                <i class="la la-plus"></i> Adicionar Parada / Destino
+                            </button>
                         </div>
-
-                        <div class="form-group col-lg-4 col-md-6">
-                            <label class="col-form-label font-weight-bold">Fornecedor (Opcional)</label>
-                            <select name="fornecedor_id" id="fornecedor_id" class="form-control select2">
-                                <option value="">Nenhum Fornecedor</option>
-                                @foreach($fornecedores as $f)
-                                    <option value="{{ $f->id }}" data-endereco="{{ $f->rua }}, {{ $f->numero }} - {{ $f->bairro }}" {{ (old('fornecedor_id', $data->fornecedor_id ?? '')) == $f->id ? 'selected' : '' }}>
-                                        {{ $f->razao_social }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="form-group col-lg-4 col-md-12">
-                            <label class="col-form-label font-weight-bold">Destino / Rota Completa</label>
-                            <input type="text" id="destino_input" class="form-control" name="destino" value="{{ old('destino', $data->destino ?? '') }}" placeholder="Ex: Av. Paulista, 1000, Bela Vista, SP">
+                        <div class="col-12 table-responsive">
+                            <table class="table table-bordered table-striped" id="tabela-destinos">
+                                <thead>
+                                <tr class="bg-secondary text-dark">
+                                    <th style="width: 5%" class="text-center">#</th>
+                                    <th style="width: 40%">Cliente ou Fornecedor</th>
+                                    <th style="width: 45%">Endereço P/ GPS (Automático ou Manual)</th>
+                                    <th style="width: 10%" class="text-center">Ações</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <!-- Exibição de destinos já cadastrados (Edição) -->
+                                @if(isset($data) && $data->destinos && $data->destinos->count() > 0)
+                                    @foreach($data->destinos as $key => $dest)
+                                        <tr id="linha_destino_old_{{ $key }}">
+                                            <td class="align-middle text-center font-weight-bold text-muted n-ordem">{{ $key + 1 }}</td>
+                                            <td>
+                                                <select class="form-control select2-clientes" name="destinos[old_{{ $key }}][entidade_id]">
+                                                    <option value="">Endereço Avulso...</option>
+                                                    <optgroup label="Clientes">
+                                                        @foreach($clientes as $c)
+                                                            <option value="cliente_{{ $c->id }}" {{ $dest->cliente_id == $c->id ? 'selected' : '' }}>{{ $c->razao_social ?? $c->nome }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                    <optgroup label="Fornecedores">
+                                                        @foreach($fornecedores as $f)
+                                                            <option value="fornecedor_{{ $f->id }}" {{ $dest->fornecedor_id == $f->id ? 'selected' : '' }}>[FOR] {{ $f->razao_social ?? $f->nome }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="text" class="form-control endereco-input" name="destinos[old_{{ $key }}][endereco_completo]" value="{{ $dest->endereco_completo }}">
+                                                <input type="hidden" name="destinos[old_{{ $key }}][latitude]" class="lat-input" value="{{ $dest->latitude }}">
+                                                <input type="hidden" name="destinos[old_{{ $key }}][longitude]" class="lon-input" value="{{ $dest->longitude }}">
+                                            </td>
+                                            <td class="text-center align-middle">
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="removerDestino('old_{{ $key }}')"><i class="la la-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    <!-- Retrocompatibilidade -->
+                                @elseif(isset($data) && ($data->cliente_id || $data->fornecedor_id || $data->destino))
+                                    <tr id="linha_destino_old_0">
+                                        <td class="align-middle text-center font-weight-bold text-muted n-ordem">1</td>
+                                        <td>
+                                            <select class="form-control select2-clientes" name="destinos[old_0][entidade_id]">
+                                                <option value="">Endereço Avulso...</option>
+                                                <optgroup label="Clientes">
+                                                    @foreach($clientes as $c)
+                                                        <option value="cliente_{{ $c->id }}" {{ $data->cliente_id == $c->id ? 'selected' : '' }}>{{ $c->razao_social ?? $c->nome }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                                <optgroup label="Fornecedores">
+                                                    @foreach($fornecedores as $f)
+                                                        <option value="fornecedor_{{ $f->id }}" {{ $data->fornecedor_id == $f->id ? 'selected' : '' }}>[FOR] {{ $f->razao_social ?? $f->nome }}</option>
+                                                    @endforeach
+                                                </optgroup>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control endereco-input" name="destinos[old_0][endereco_completo]" value="{{ $data->destino }}">
+                                            <input type="hidden" name="destinos[old_0][latitude]" class="lat-input" value="{{ $data->latitude_destino }}">
+                                            <input type="hidden" name="destinos[old_0][longitude]" class="lon-input" value="{{ $data->longitude_destino }}">
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="removerDestino('old_0')"><i class="la la-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                @endif
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -222,9 +271,9 @@
                         </div>
                     </div>
 
-                    <!-- 5. HORÁRIOS NO CLIENTE -->
+                    <!-- 5. STATUS GERAL -->
                     <div class="card-section-title mt-4">
-                        <i class="la la-clock text-primary"></i> 5. Etapas do Cliente e Status
+                        <i class="la la-clock text-primary"></i> 5. Status da Viagem
                     </div>
                     <div class="row p-3 rounded" style="background: #f4f6f9; border: 1px solid #e4e6ef;">
                         <div class="form-group col-lg-4 col-md-6">
@@ -234,18 +283,6 @@
                                 <option value="iniciado" {{ old('status', $data->status ?? '') == 'iniciado' ? 'selected' : '' }}>Em Percurso</option>
                                 <option value="finalizado" {{ old('status', $data->status ?? '') == 'finalizado' ? 'selected' : '' }}>Finalizado</option>
                             </select>
-                        </div>
-
-                        <div class="form-group col-lg-4 col-md-6">
-                            <label class="col-form-label font-weight-bold">Chegada ao Cliente</label>
-                            <input type="datetime-local" class="form-control" name="data_hora_chegada_cliente"
-                                   value="{{ old('data_hora_chegada_cliente', isset($data->data_hora_chegada_cliente) ? \Carbon\Carbon::parse($data->data_hora_chegada_cliente)->format('Y-m-d\TH:i') : '') }}">
-                        </div>
-
-                        <div class="form-group col-lg-4 col-md-6">
-                            <label class="col-form-label font-weight-bold">Saída do Cliente</label>
-                            <input type="datetime-local" class="form-control" name="data_hora_saida_cliente"
-                                   value="{{ old('data_hora_saida_cliente', isset($data->data_hora_saida_cliente) ? \Carbon\Carbon::parse($data->data_hora_saida_cliente)->format('Y-m-d\TH:i') : '') }}">
                         </div>
                     </div>
 
@@ -370,30 +407,25 @@
     <script>
         var contRow = 1000;
         var contDesp = 2000;
+        var destinoIndex = 5000; // Inicia alto para não conflitar com edições
 
         $(document).ready(function() {
             $('.select2').select2({ width: '100%' });
+
+            // Inicializa o select2 dos clientes que já vieram preenchidos na edição
+            $('.select2-clientes').select2({ width: '100%' });
+            reorganizarOrdem();
+
+            // Se for cadastro novo (não tem tr na tabela de destinos), já adiciona a 1º linha em branco
+            if ($('#tabela-destinos tbody tr').length === 0) {
+                adicionarDestino();
+            }
+
             calcTotalGeral();
 
             $('#veiculo_id').on('change', function() {
                 var km = $(this).find(':selected').data('km');
                 if (km !== undefined) $('#km_inicial').val(km);
-            });
-
-            $('#cliente_id').on('change', function() {
-                let endereco = $(this).find(':selected').data('endereco');
-                if (endereco && endereco.trim() !== '' && endereco !== ' ,  - ') {
-                    $('#destino_input').val(endereco);
-                    $('#fornecedor_id').val('').trigger('change.select2');
-                }
-            });
-
-            $('#fornecedor_id').on('change', function() {
-                let endereco = $(this).find(':selected').data('endereco');
-                if (endereco && endereco.trim() !== '' && endereco !== ' ,  - ') {
-                    $('#destino_input').val(endereco);
-                    $('#cliente_id').val('').trigger('change.select2');
-                }
             });
 
             $('#btn-add-abastecimento').click(function() {
@@ -454,14 +486,98 @@
             });
         });
 
+        // ==========================================
+        // FUNÇÕES DA NOVA ROTA MULTI-STOP
+        // ==========================================
+        function adicionarDestino() {
+            destinoIndex++;
+
+            let html = `
+            <tr id="linha_destino_${destinoIndex}">
+                <td class="align-middle text-center font-weight-bold text-muted n-ordem"></td>
+                <td>
+                    <select class="form-control select2-clientes" name="destinos[${destinoIndex}][entidade_id]">
+                        <option value="">Endereço Avulso...</option>
+
+                        <optgroup label="Clientes">
+                            @foreach($clientes as $c)
+            <option value="cliente_{{ $c->id }}"
+                                        data-lat="{{ $c->latitude }}"
+                                        data-lon="{{ $c->longitude }}"
+                                        data-end="{{ $c->rua }}, {{ $c->numero }} - {{ $c->bairro }}">
+                                    {{ $c->razao_social ?? $c->nome }}
+            </option>
+@endforeach
+            </optgroup>
+
+            <optgroup label="Fornecedores">
+@foreach($fornecedores as $f)
+            <option value="fornecedor_{{ $f->id }}"
+                                        data-lat="{{ $f->latitude }}"
+                                        data-lon="{{ $f->longitude }}"
+                                        data-end="{{ $f->rua }}, {{ $f->numero }} - {{ $f->bairro }}">
+                                    [FOR] {{ $f->razao_social ?? $f->nome }}
+            </option>
+@endforeach
+            </optgroup>
+        </select>
+    </td>
+    <td>
+        <input type="text" class="form-control endereco-input" name="destinos[${destinoIndex}][endereco_completo]" placeholder="Digite o endereço ou escolha ao lado">
+                    <input type="hidden" name="destinos[${destinoIndex}][latitude]" class="lat-input">
+                    <input type="hidden" name="destinos[${destinoIndex}][longitude]" class="lon-input">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removerDestino('${destinoIndex}')" title="Remover Parada">
+                        <i class="la la-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+            $('#tabela-destinos tbody').append(html);
+            $(`#linha_destino_${destinoIndex} .select2-clientes`).select2({ width: '100%' });
+            reorganizarOrdem();
+        }
+
+        function removerDestino(id) {
+            $(`#linha_destino_${id}`).remove();
+            reorganizarOrdem();
+        }
+
+        function reorganizarOrdem() {
+            $('#tabela-destinos tbody tr').each(function(index) {
+                $(this).find('.n-ordem').text(index + 1);
+            });
+        }
+
+        // Gatilho Inteligente: Preenche Endereço e GPS ao escolher Cliente/Fornecedor
+        $(document).on('change', '.select2-clientes', function() {
+            let optionSelecionada = $(this).find('option:selected');
+            let lat = optionSelecionada.data('lat');
+            let lon = optionSelecionada.data('lon');
+            let endereco = optionSelecionada.data('end');
+
+            let linha = $(this).closest('tr');
+
+            // Evita substituir se o campo estiver vazio mas o endereço vindo for "vírgulas soltas"
+            if(endereco && endereco.trim() !== '' && endereco.replace(/[\s,\-]/g, '') !== '') {
+                linha.find('.endereco-input').val(endereco);
+            }
+            if(lat) linha.find('.lat-input').val(lat);
+            if(lon) linha.find('.lon-input').val(lon);
+        });
+
+        // ==========================================
+        // FUNÇÕES DE CÁLCULO E ABASTECIMENTO
+        // ==========================================
         function removeRow(id) {
             $(`#row_${id}`).remove();
             calcTotalGeral();
         }
 
         $(document).on('change', '.select2-prod', function() {
-            let preco = $(this).find(':selected').data('preco');
-            $(this).closest('tr').find('.unit').val(preco);
+            let preco = $(this).find(':selected').data('preco');$(this).closest('tr').find('.unit').val(preco);
             updateRowTotal($(this).closest('tr'));
         });
 

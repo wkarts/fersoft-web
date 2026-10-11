@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
 
-    <title>{{ $title ?? config('app.name', 'FERSOFT WEB') }}</title>
+    <title>{{ $title ?? config('app.name') }}</title>
     <meta name="description" content="Updates and statistics">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="theme-color" content="{{ $cor }}">
@@ -105,7 +105,7 @@
         }
 
         /* Image */
-       .flex-root .page #kt_aside #kt_brand .brand-logo img{
+        .flex-root .page #kt_aside #kt_brand .brand-logo img{
             width:100% !important;
         }
 
@@ -128,25 +128,25 @@
             width:267px;
              */
         }
-/*
-        #kt_aside_menu_wrapper{
-         position:relative;
-         top:65px;
-        }
-*/
-/*
-        #kt_aside_toggle{
-         visibility:hidden;
-        }
-*/
+        /*
+                #kt_aside_menu_wrapper{
+                 position:relative;
+                 top:65px;
+                }
+        */
+        /*
+                #kt_aside_toggle{
+                 visibility:hidden;
+                }
+        */
 
         .flex-root .page #kt_aside #kt_brand .brand-logo img{
-         width:123% !important;
+            width:123% !important;
         }
 
         #kt_brand .brand-logo img{
-         position:relative;
-         left:-6px;
+            position:relative;
+            left:-6px;
         }
 
         .app-version-desktop-wrapper {
@@ -1263,7 +1263,7 @@
                         </div>
                     @endif
 
-                     {!! __view_datahora_clock() !!}
+                    {!! __view_datahora_clock() !!}
 
                 </div>
 
@@ -2597,6 +2597,168 @@
 
 <script type="text/javascript" src="/js/main.js"></script>
 <script type="text/javascript" src="/js/toastr.min.js"></script>
+
+@yield('modal-alerta-sistema')
+
+@php
+    $userLogged = session('user_logged');
+    $usuarioLogadoId = $userLogged['id'] ?? $userLogged['usuario_id'] ?? null;
+    $empresaId = $userLogged['empresa_id'] ?? null;
+    $isAdm = !empty($userLogged['adm']);
+
+    $tarefasCriticasAlerta = collect();
+    $totalVencidasAlerta = 0;
+    $totalPendentesAlerta = 0;
+
+    if ($empresaId && $usuarioLogadoId && !session('alerta_tarefas_visto')) {
+        $q = \App\Models\Tarefa::where('empresa_id', $empresaId)
+            ->whereNotIn('status', ['concluida', 'cancelada']);
+
+        if (!$isAdm) {
+            $func = \App\Models\Funcionario::where('usuario_id', $usuarioLogadoId)->first();
+            $funcId = $func ? $func->id : 0;
+            $q->where(function($sub) use ($usuarioLogadoId, $funcId) {
+                $sub->where('usuario_id', $usuarioLogadoId)->orWhere('funcionario_id', $funcId);
+            });
+        }
+
+        $abertas = $q->with('funcionario')->get();
+        $agora = \Carbon\Carbon::now();
+
+        foreach ($abertas as $t) {
+            $atrasou = false;
+            if (!empty($t->data_limite)) {
+                $dtLimite = \Carbon\Carbon::parse(\Carbon\Carbon::parse($t->data_limite)->format('Y-m-d') . ' ' . ($t->hora_limite ?: '23:59:59'));
+                if ($agora->greaterThan($dtLimite)) {
+                    $atrasou = true;
+                    $totalVencidasAlerta++;
+                }
+            }
+            if (!$atrasou && $t->status === 'pendente') {
+                $totalPendentesAlerta++;
+            }
+            if ($atrasou || $t->status === 'pendente') {
+                $tarefasCriticasAlerta->push([
+                    'id' => $t->id,
+                    'titulo' => $t->titulo,
+                    'funcionario' => $t->funcionario->nome ?? 'Não atribuído',
+                    'limite' => $t->data_limite ? \Carbon\Carbon::parse($t->data_limite)->format('d/m/Y') . ($t->hora_limite ? ' ' . $t->hora_limite : '') : 'Sem prazo',
+                    'prioridade' => $t->prioridade,
+                    'is_atrasada' => $atrasou
+                ]);
+            }
+        }
+    }
+@endphp
+
+@if(($totalVencidasAlerta > 0 || $totalPendentesAlerta > 0) && !session('alerta_tarefas_visto'))
+    <div class="modal fade" id="modalAlertaObrigatorioTarefas" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header {{ $totalVencidasAlerta > 0 ? 'bg-danger' : 'bg-warning' }} text-white py-4 px-5">
+                    <div class="d-flex align-items-center">
+                        <i class="la la-bell fs-1 text-white mr-3"></i>
+                        <div>
+                            <h4 class="modal-title font-weight-bolder text-white mb-0">
+                                {{ $isAdm ? 'Alerta da Equipe: Tarefas Pendentes e Vencidas' : 'Atenção: Você possui tarefas pendentes!' }}
+                            </h4>
+                            <small class="text-white opacity-90">
+                                {{ $isAdm ? 'Acompanhamento geral de produtividade' : 'Regularize suas tarefas para manter o fluxo em dia' }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-body p-5">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6 col-12">
+                            <div class="p-3 rounded border d-flex align-items-center" style="background-color: #fff5f5; border-color: #feb2b2 !important;">
+                                <div class="symbol symbol-40 mr-3" style="background: #e53e3e; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;">
+                                    <b style="font-size: 1.2rem;">{{ $totalVencidasAlerta }}</b>
+                                </div>
+                                <div>
+                                    <h6 class="font-weight-bolder text-danger mb-0">Tarefas Vencidas</h6>
+                                    <small class="text-muted">Prazo limite expirado</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="p-3 rounded border d-flex align-items-center" style="background-color: #fffaf0; border-color: #fbd38d !important;">
+                                <div class="symbol symbol-40 mr-3" style="background: #dd6b20; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;">
+                                    <b style="font-size: 1.2rem;">{{ $totalPendentesAlerta }}</b>
+                                </div>
+                                <div>
+                                    <h6 class="font-weight-bolder text-warning mb-0">Tarefas Pendentes</h6>
+                                    <small class="text-muted">Aguardando início</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="font-weight-bold text-dark mb-2"><i class="la la-list-alt text-primary mr-1"></i> Lista de atividades prioritárias:</h6>
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-bordered table-sm align-middle mb-0">
+                            <thead class="bg-light">
+                            <tr>
+                                <th>Tarefa</th>
+                                @if($isAdm) <th>Responsável</th> @endif
+                                <th>Prazo Limite</th>
+                                <th>Prioridade</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($tarefasCriticasAlerta->take(8) as $tItem)
+                                <tr>
+                                    <td class="font-weight-bold text-dark">{{ $tItem['titulo'] }}</td>
+                                    @if($isAdm)
+                                        <td><span class="badge badge-light-primary">{{ $tItem['funcionario'] }}</span></td>
+                                    @endif
+                                    <td class="{{ $tItem['is_atrasada'] ? 'text-danger font-weight-bold' : 'text-muted' }}">
+                                        {{ $tItem['limite'] }}
+                                    </td>
+                                    <td>
+                                    <span class="badge {{ $tItem['prioridade'] == 'Urgente' ? 'badge-danger' : ($tItem['prioridade'] == 'Alta' ? 'badge-warning text-dark' : 'badge-primary') }}">
+                                        {{ $tItem['prioridade'] }}
+                                    </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-3 px-5 d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary font-weight-bold" id="btnEstouCienteTarefas">
+                        <i class="la la-check"></i> Estou Ciente / Fechar
+                    </button>
+                    <div>
+                        <a href="/tarefas/painel" class="btn btn-primary font-weight-bold shadow-sm">
+                            <i class="la la-columns"></i> Abrir Painel Kanban
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            $('#modalAlertaObrigatorioTarefas').modal('show');
+
+            $('#btnEstouCienteTarefas').on('click', function () {
+                $('#modalAlertaObrigatorioTarefas').modal('hide');
+                $.ajax({
+                    url: '/tarefas/marcar-alerta-lido',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    }
+                });
+            });
+        });
+    </script>
+@endif
 
 </body>
 <!-- end::Body -->

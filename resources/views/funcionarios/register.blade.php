@@ -233,6 +233,20 @@
                                     <input id="pin_ponto" type="text" class="form-control text-center font-weight-bold letter-spacing-2" name="pin_ponto" value="{{{ isset($funcionario) ? $funcionario->pin_ponto : old('pin_ponto') }}}" maxlength="4" placeholder="Ex: 1234">
                                 </div>
 
+                                <!-- Permissão Emissão NF-e WhatsApp -->
+                                <div class="form-group col-lg-3 col-md-4 mb-2">
+                                    <label class="font-weight-bold d-block text-primary">Acesso ao Robô Fiscal</label>
+                                    <div class="d-flex align-items-center mt-2">
+                                    <span class="switch switch-sm switch-outline switch-icon switch-primary mr-3">
+                                        <label class="mb-0">
+                                            <input type="checkbox" name="permissao_nfe_whatsapp" value="1" {{ isset($funcionario) && $funcionario->permissao_nfe_whatsapp ? 'checked' : '' }} />
+                                            <span></span>
+                                        </label>
+                                    </span>
+                                        <span class="font-weight-bold text-dark font-size-sm">Emitir NF-e via WhatsApp</span>
+                                    </div>
+                                </div>
+
                                 <!-- Salário Base -->
                                 <div class="form-group validated col-lg-2 col-md-4">
                                     <label class="font-weight-bold">Salário Base (R$)</label>

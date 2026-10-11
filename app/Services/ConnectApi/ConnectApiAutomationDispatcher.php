@@ -16,7 +16,15 @@ class ConnectApiAutomationDispatcher
         $normalized = $event->normalized_payload ?? [];
 
         if (($normalized['event'] ?? '') === 'messages-upsert') {
-            $this->dispatchPointCompatibility($event);
+            // Módulo fiscal: assume somente comando fiscal explícito ou
+            // uma sessão fiscal já aberta. Os demais eventos seguem inalterados
+            // para o fluxo de ponto. Ações adicionais continuam sendo processadas.
+            $fiscal = app(\App\Http\Controllers\Api\WhatsappNfeController::class);
+            if ($fiscal->deveProcessarEvento($event)) {
+                $fiscal->processarEventoConnectApi($event);
+            } else {
+                $this->dispatchPointCompatibility($event);
+            }
         }
 
         $this->dispatchConfiguredRules($event);

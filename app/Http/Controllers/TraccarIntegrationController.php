@@ -577,6 +577,14 @@ class TraccarIntegrationController extends Controller
                 $temIgnicao = array_key_exists('ignition', $attributes);
                 $ignicao = $attributes['ignition'] ?? false;
 
+                // CAPTURA A BATERIA DO CELULAR
+                $nivelBateria = $pos['attributes']['batteryLevel'] ?? null;
+                $infoBateria = "";
+                if ($nivelBateria !== null) {
+                    $corBateria = $nivelBateria <= 20 ? '#F64E60' : '#1BC5BD'; // Vermelho se <= 20, senão Verde
+                    $infoBateria = "<br><span style='color: {$corBateria}; font-size: 11px;'><i class='la la-battery-half'></i> Bateria Celular: <b>{$nivelBateria}%</b></span>";
+                }
+
                 $placa = $device['name'] ?? 'Dispositivo ' . $device['id'];
                 $motorista = 'Sem viagem vinculada';
 
@@ -611,6 +619,8 @@ class TraccarIntegrationController extends Controller
                         }
                     }
                 }
+
+                $statusTexto .= $infoBateria;
 
                 $frota[] = [
                     'tipo_pino' => 'veiculo',

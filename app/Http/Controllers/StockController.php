@@ -614,18 +614,29 @@ class StockController extends BaseController
         }
     }
 
-    public function alterarGerenciamento(Request $request){
-        $config = ConfigNota::
-        where('empresa_id', $this->empresa_id)
-            ->first();
+    public function alterarGerenciamento(Request $request)
+    {
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
-        if($config->senha_remover == md5($request->senha)){
+        // Validação de senha: testa MD5 e texto puro caso a senha esteja descriptografada
+        $senhaInformada = (string) $request->senha;
+        $senhaAutorizada = false;
+
+        if ($config) {
+            if ($config->senha_remover === md5($senhaInformada) || $config->senha_remover === $senhaInformada) {
+                $senhaAutorizada = true;
+            }
+        }
+
+        if ($senhaAutorizada) {
+            $status = $request->input('status', 1);
+
             Produto::where('empresa_id', $this->empresa_id)
-                ->update(['gerenciar_estoque' => $request->gerenciar_estoque]);
-            session()->flash('mensagem_sucesso', 'Ação de estoque realizada!');
+                ->update(['gerenciar_estoque' => $status]);
 
-        }else{
-            session()->flash('mensagem_erro', 'Algo deu errado!');
+            session()->flash('mensagem_sucesso', 'Gerenciamento de estoque de todos os produtos atualizado com sucesso!');
+        } else {
+            session()->flash('mensagem_erro', 'Senha de autorização incorreta!');
         }
 
         return redirect()->back();

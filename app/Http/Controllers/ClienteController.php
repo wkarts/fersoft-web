@@ -218,6 +218,9 @@ class ClienteController extends Controller
                 $request->merge([ 'bairro' => strtoupper($request->bairro)]);
                 $request->merge([ 'email' => $request->email ?? '']);
                 $request->merge([ 'observacao' => $request->observacao ?? '']);
+
+                $request->merge([ 'informacao_nfe' => $request->informacao_nfe ?? '']);
+
                 $request->merge([ 'complemento' => $request->complemento ?? '']);
                 $request->merge([ 'inativo' => $request->input('inativo') ? true : false ]);
 
@@ -515,6 +518,8 @@ class ClienteController extends Controller
             $resp->data_nascimento = $request->input('data_nascimento');
             $resp->funcionario_id = $request->input('funcionario_id');
             $resp->observacao = $request->input('observacao') ?? '';
+
+            $resp->informacao_nfe = $request->input('informacao_nfe') ?? '';
 
             $fileName = "";
             if($request->hasFile('file')){

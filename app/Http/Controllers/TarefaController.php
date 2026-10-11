@@ -8,7 +8,6 @@ use Carbon\Carbon;
 
 class TarefaController extends BaseController
 {
-
     public function __construct()
     {
         $this->model = Tarefa::class;
@@ -376,7 +375,8 @@ class TarefaController extends BaseController
         $usuario_id = session('user_logged')['id'];
         $usuario = \App\Models\Usuario::find($usuario_id);
 
-        $query = Tarefa::where('empresa_id', $this->empresa_id);
+        $query = Tarefa::where('empresa_id', $this->empresa_id)
+            ->orderByDesc('id'); // Traz as tarefas mais recentes para o topo
 
         if (!$usuario->adm) {
             $funcionario = \App\Models\Funcionario::where('usuario_id', $usuario_id)->first();
@@ -386,12 +386,12 @@ class TarefaController extends BaseController
         $tarefas = $query->get();
 
         $dados = [
-            'pendentes' => $tarefas->where('status', 'pendente'),
-            'andamento' => $tarefas->where('status', 'em_andamento'),
+            'pendentes'  => $tarefas->where('status', 'pendente'),
+            'andamento'  => $tarefas->where('status', 'em_andamento'),
             'concluidas' => $tarefas->where('status', 'concluida'),
-            'atrasadas' => $tarefas->filter(function($t) {
-                if($t->status == 'concluida') return false;
-                if(empty($t->data_limite)) return false;
+            'atrasadas'  => $tarefas->filter(function($t) {
+                if ($t->status == 'concluida' || $t->status == 'cancelada') return false;
+                if (empty($t->data_limite)) return false;
 
                 $dataApenas = Carbon::parse($t->data_limite)->format('Y-m-d');
                 $limite = Carbon::parse($dataApenas . ' ' . ($t->hora_limite ?: '23:59:59'));
@@ -423,4 +423,40 @@ class TarefaController extends BaseController
         return $query;
     }
 
+    public function cancelar(Request $request, $id)
+    {
+        try {
+            $tarefa = $this->getTenantRecords()->findOrFail($id);
+            $tarefa->update(['status' => 'cancelada']);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => true, 'mensagem' => 'Tarefa cancelada com sucesso!']);
+            }
+            session()->flash('mensagem_sucesso', 'Tarefa cancelada com sucesso!');
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'mensagem' => 'Erro ao cancelar tarefa: ' . $e->getMessage()], 400);
+            }
+            session()->flash('mensagem_erro', 'Erro ao cancelar tarefa: ' . $e->getMessage());
+        }
+        return redirect()->back();
+    }
+
+    public function list(Request $request)
+    {
+        // Garante que os registros venham ordenados de forma decrescente (mais novos primeiro)
+        $records = $this->getTenantRecords()
+            ->orderByDesc('id')
+            ->get();
+
+        return view($this->listView, [
+            'records'    => $records,
+            'headers'    => $this->headers(),
+            'title'      => $this->formTitle,
+            'newItemUrl' => '/tarefas/new',
+            'newItemText'=> 'Nova Tarefa',
+            'editUrl'    => '/tarefas/edit',
+            'deleteUrl'  => '/tarefas/delete'
+        ]);
+    }
 }

@@ -24,10 +24,10 @@ class ApuracaoDifalController extends BaseController
     public function __construct(ApuracaoDifal $model)
     {
         parent::__construct(); // 🔥 ATIVA O BASECONTROLLER COM SEGURANÇA
-        
+
         $this->model = $model;
         $this->formTitle = 'Apuração de ICMS Difal (Uso e Consumo)';
-        $this->Prefix_Route = 'compraFiscal.difal'; 
+        $this->Prefix_Route = 'compraFiscal.difal';
         $this->listView = 'compraFiscal.apuracao_difal.index';
         $this->registerView = 'compraFiscal.apuracao_difal.create';
         $this->redirectPage = 'compras/apuracao-difal';
@@ -66,25 +66,25 @@ class ApuracaoDifalController extends BaseController
         $data_final   = $request->data_final;
 
         // 1. Consulta SQL trazendo a chave para abrir o arquivo físico
-        $notas = DB::table('item_compras') 
+        $notas = DB::table('item_compras')
             ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
             ->leftJoin('fornecedors', 'fornecedors.id', '=', 'compras.fornecedor_id')
             ->leftJoin('cidades', 'cidades.id', '=', 'fornecedors.cidade_id')
             ->whereBetween('compras.data_emissao', [$data_inicial, $data_final])
-            ->where('item_compras.cfop_entrada', '2556')
+            ->whereIn('item_compras.cfop_entrada', ['2556', '2551'])
             ->where('item_compras.cst_icms', '090')
             ->where('compras.empresa_id', $this->empresa_id)
             ->where(function($query) {
                 $query->whereRaw("UPPER(TRIM(cidades.uf)) <> 'BA'")
-                      ->orWhereNull('cidades.uf');
+                    ->orWhereNull('cidades.uf');
             })
             ->select(
-                'compras.id as nota_id', 
+                'compras.id as nota_id',
                 'compras.nf as numero_nota',
                 'compras.chave', // Chave pura de 44 dígitos
-                'fornecedors.razao_social as fornecedor', 
+                'fornecedors.razao_social as fornecedor',
                 DB::raw("COALESCE(cidades.uf, 'ND') as uf_origem"),
-                'item_compras.valor_unitario', 
+                'item_compras.valor_unitario',
                 'item_compras.quantidade'
             )
             ->orderBy('item_compras.compra_id') // Garante o agrupamento correto para a contagem
@@ -93,14 +93,14 @@ class ApuracaoDifalController extends BaseController
 
         if ($notas->isEmpty()) {
             return response()->json([
-                'status'  => 'vazio', 
+                'status'  => 'vazio',
                 'message' => 'Nenhum registro interestadual legítimo foi encontrado para o período.'
             ], 200);
         }
 
         $itensCalculados = [];
         $totalGeralDifal = 0;
-        $aliqInternaBA = 0.205; 
+        $aliqInternaBA = 0.205;
 
         // Contador para mapear a posição física exata dos itens da mesma nota (1º item, 2º item...)
         $contadorItemNota = [];
@@ -135,37 +135,37 @@ class ApuracaoDifalController extends BaseController
                 }
 
                 if ($xmlTexto) {
-                try {
-                    $xmlTextoLimpo = str_replace('xmlns=', '_xmlns=', $xmlTexto);
-                    $xml = new \SimpleXMLElement($xmlTextoLimpo);
-                    
-                    if (isset($xml->NFe->infNFe->det)) {
-                        foreach ($xml->NFe->infNFe->det as $det) {
-                            $numeroItemXml = (int)$det->attributes()->nItem;
-                            
-                            // Se a ordem física do XML bater com a ordem do banco
-                            if ($numeroItemXml === $posicaoFiscalItem) {
-                                if (isset($det->imposto->ICMS)) {
-                                    // 🟢 EVOLUÇÃO: Varre qualquer grupo de ICMS (ICMS00, ICMS20, ICMS90, ICMSSN102, etc.)
-                                    foreach ($det->imposto->ICMS->children() as $grupoIcms) {
-                                        if (isset($grupoIcms->pICMS)) {
-                                            $aliqOrigem = (float)$grupoIcms->pICMS / 100;
-                                            break 2; // Achou a alíquota, sai dos dois laços (do ICMS e dos itens)
-                                        }
-                                        // Caso seja Simples Nacional e use a tag pCredSN (Crédito do Simples)
-                                        if (isset($grupoIcms->pCredSN)) {
-                                            $aliqOrigem = (float)$grupoIcms->pCredSN / 100;
-                                            break 2;
+                    try {
+                        $xmlTextoLimpo = str_replace('xmlns=', '_xmlns=', $xmlTexto);
+                        $xml = new \SimpleXMLElement($xmlTextoLimpo);
+
+                        if (isset($xml->NFe->infNFe->det)) {
+                            foreach ($xml->NFe->infNFe->det as $det) {
+                                $numeroItemXml = (int)$det->attributes()->nItem;
+
+                                // Se a ordem física do XML bater com a ordem do banco
+                                if ($numeroItemXml === $posicaoFiscalItem) {
+                                    if (isset($det->imposto->ICMS)) {
+                                        // 🟢 EVOLUÇÃO: Varre qualquer grupo de ICMS (ICMS00, ICMS20, ICMS90, ICMSSN102, etc.)
+                                        foreach ($det->imposto->ICMS->children() as $grupoIcms) {
+                                            if (isset($grupoIcms->pICMS)) {
+                                                $aliqOrigem = (float)$grupoIcms->pICMS / 100;
+                                                break 2; // Achou a alíquota, sai dos dois laços (do ICMS e dos itens)
+                                            }
+                                            // Caso seja Simples Nacional e use a tag pCredSN (Crédito do Simples)
+                                            if (isset($grupoIcms->pCredSN)) {
+                                                $aliqOrigem = (float)$grupoIcms->pCredSN / 100;
+                                                break 2;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                    } catch (\Exception $e) {
+                        $aliqOrigem = 0;
                     }
-                } catch (\Exception $e) {
-                    $aliqOrigem = 0;
                 }
-            }
             }
 
             // 🟢 REFUGE DE SEGURANÇA FISCAL (CONTINGÊNCIA):
@@ -174,7 +174,7 @@ class ApuracaoDifalController extends BaseController
                 $ufOrigem = strtoupper(trim($n->uf_origem));
                 // Estados cujas operações normais de uso/consumo destinadas à BA possuem carga interestadual de 7%
                 $regiaoSulSudeste = ['SP', 'RJ', 'MG', 'PR', 'RS', 'SC'];
-                
+
                 $aliqOrigem = in_array($ufOrigem, $regiaoSulSudeste) ? 0.07 : 0.12;
             }
 
@@ -183,15 +183,15 @@ class ApuracaoDifalController extends BaseController
             $difal = ($baseDupla * $aliqInternaBA) - ($baseDupla * $aliqOrigem);
 
             $itensCalculados[] = [
-                'nota_fiscal_id' => $n->nota_id, 
+                'nota_fiscal_id' => $n->nota_id,
                 'numero_nota' => $n->numero_nota,
-                'emitente_nome' => $n->fornecedor ?? 'Fornecedor Não Identificado', 
+                'emitente_nome' => $n->fornecedor ?? 'Fornecedor Não Identificado',
                 'valor_operacao' => number_format($valorOperacao, 2, ',', '.'),
                 'aliquota_origem' => number_format(($aliqOrigem * 100), 1, ',', '.'),
                 'aliquota_destino' => ($aliqInternaBA * 100),
-                'base_calculo_dupla' => number_format($baseDupla, 2, ',', '.'), 
+                'base_calculo_dupla' => number_format($baseDupla, 2, ',', '.'),
                 'valor_difal' => number_format($difal, 2, ',', '.'),
-                'base_raw' => $baseDupla, 
+                'base_raw' => $baseDupla,
                 'difal_raw' => $difal,
                 'icms_origem' => number_format($baseDupla * $aliqOrigem, 2, ',', '.'),
                 'icms_destino' => number_format($baseDupla * $aliqInternaBA, 2, ',', '.')
@@ -201,7 +201,7 @@ class ApuracaoDifalController extends BaseController
 
         if (empty($itensCalculados)) {
             return response()->json([
-                'status'  => 'vazio', 
+                'status'  => 'vazio',
                 'message' => 'Nenhum registro restou após as filtragens de estado.'
             ], 200);
         }
@@ -211,12 +211,12 @@ class ApuracaoDifalController extends BaseController
         }
 
         return response()->json([
-            'status' => 'success', 
-            'itens' => $itensCalculados, 
+            'status' => 'success',
+            'itens' => $itensCalculados,
             'total_difal' => number_format($totalGeralDifal, 2, ',', '.')
         ]);
     }
-  
+
     private function salvarApuracao($request, $itens, $total)
     {
         return DB::transaction(function () use ($request, $itens, $total) {
@@ -267,7 +267,7 @@ class ApuracaoDifalController extends BaseController
         $items = ApuracaoDifalItem::where('apuracao_difal_id', $id)->get();
         return view('compraFiscal.apuracao_difal.detalhes_modal', compact('items'));
     }
-    
+
     public function imprimir($id)
     {
         $apuracao = $this->model->findOrFail($id);
@@ -277,7 +277,7 @@ class ApuracaoDifalController extends BaseController
             'title' => 'Impressão de Apuração DIFAL - ' . $apuracao->referencia
         ]);
     }
-  // 🟢 CENTRAL DE SANEAMENTO FISCAL GLOBAL (SEM TRAVA DE DATAS PARA REGRAS DE USO/CONSUMO)
+    // 🟢 CENTRAL DE SANEAMENTO FISCAL GLOBAL (SEM TRAVA DE DATAS PARA REGRAS DE USO/CONSUMO)
     public function corrigirCfops(Request $request)
     {
         $empresa_id = $request->empresa_id ?? request()->empresa_id;
@@ -285,7 +285,7 @@ class ApuracaoDifalController extends BaseController
         $data_final   = $request->data_final;
 
         return DB::transaction(function () use ($data_inicial, $data_final, $empresa_id) {
-            
+
             // --- REGRA 1 (GLOBAL): CFOP 2102/2101 -> Uso/Consumo (2556 ou 1556) ---
             // 🟢 EVOLUÇÃO: Removido o filtro de datas para corrigir Junho, Maio ou qualquer período de uma vez só!
             $foraBA_2102 = DB::table('item_compras')
@@ -349,8 +349,8 @@ class ApuracaoDifalController extends BaseController
                 ->where('compras.empresa_id', $empresa_id)
                 ->where(function($query) {
                     $query->whereNull('item_compras.cfop_entrada')
-                          ->orWhere('item_compras.cfop_entrada', '')
-                          ->orWhere('item_compras.cfop_entrada', 0);
+                        ->orWhere('item_compras.cfop_entrada', '')
+                        ->orWhere('item_compras.cfop_entrada', 0);
                 })
                 ->update([
                     'cfop_entrada' => '1102',
@@ -361,16 +361,16 @@ class ApuracaoDifalController extends BaseController
 
             if ($totalAlterado > 0) {
                 return response()->json([
-                    'status' => 'success', 
+                    'status' => 'success',
                     'message' => "Saneamento completo executado com sucesso!\n\n" .
-                                 "• Movidos para Uso/Consumo (2556/1556): " . ($foraBA_2102 + $dentroBA_2102) . " itens.\n" .
-                                 "• Ajustados para Consumo com ST (2407/1407): " . ($interna_1403 + $foraBA_2403 + $dentroBA_2403) . " itens.\n" .
-                                 "• Corrigidos sem CFOP (1102 CST 051): " . $semCfop . " itens."
+                        "• Movidos para Uso/Consumo (2556/1556): " . ($foraBA_2102 + $dentroBA_2102) . " itens.\n" .
+                        "• Ajustados para Consumo com ST (2407/1407): " . ($interna_1403 + $foraBA_2403 + $dentroBA_2403) . " itens.\n" .
+                        "• Corrigidos sem CFOP (1102 CST 051): " . $semCfop . " itens."
                 ]);
             }
 
             return response()->json([
-                'status' => 'warning', 
+                'status' => 'warning',
                 'message' => 'Nenhuma nota inconsistente pendente de correção encontrada no sistema.'
             ]);
         });

@@ -53,6 +53,7 @@ class ConferenciaFiscalController extends Controller
             $vendasMapeadas = $vendas->map(function($v) use ($contasVendas) {
                 $contas = $contasVendas->get($v->id, collect());
                 $valorRecebido = $contas->sum('valor_recebido');
+                $valorDesconto = $contas->sum('desconto');
                 $isTransferencia = stripos($v->natureza->natureza ?? '', 'transfer') !== false;
 
                 // Formatação do status de acordo com o estado do cliente
@@ -78,7 +79,7 @@ class ConferenciaFiscalController extends Controller
                 if ($isRecusadaCliente) {
                     $valorAberto = 0;
                 } else {
-                    $valorAberto = ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $v->valor_total;
+                    $valorAberto = ($contas->count() > 0) ? ($contas->sum('valor_integral') - ($valorRecebido + $valorDesconto)) : $v->valor_total;
                 }
 
                 return [
@@ -89,6 +90,7 @@ class ConferenciaFiscalController extends Controller
                     'tipo' => $isTransferencia ? 'TRANSFERÊNCIA' : 'NFe',
                     'valor' => $v->valor_total,
                     'valor_recebido' => $valorRecebido,
+                    'valor_desconto' => $valorDesconto,
                     'valor_aberto' => $valorAberto, // <-- Atualizado para zerar
                     'situacao' => $situacaoFormatada,
                     'estado_cliente' => $situacaoCliente,
@@ -223,7 +225,7 @@ class ConferenciaFiscalController extends Controller
                     'tipo' => 'CTe',
                     'valor' => $c->valor_receber,
                     'valor_recebido' => $valorRecebido,
-                    'valor_aberto' => ($contas->count() > 0) ? ($contas->sum('valor_integral') - $valorRecebido) : $c->valor_receber,
+                    'valor_aberto' => ($contas->count() > 0) ? ($contas->sum('valor_integral') - ($valorRecebido + $contas->sum('desconto'))) : $c->valor_receber,
                     'situacao' => strtoupper($c->estado),
                     'estado_cliente' => null,
                     'estado_fiscal' => strtoupper($c->estado),

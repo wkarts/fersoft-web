@@ -15,11 +15,19 @@ class AtualizarCoordenadas extends Command
 
     public function handle()
     {
-        // Pega 10 clientes que não têm latitude cadastrada
         $clientes = Cliente::whereNull('latitude')->orWhere('latitude', '')->take(10)->get();
 
         foreach ($clientes as $cliente) {
-            $endereco = "{$cliente->logradouro}, {$cliente->numero}, {$cliente->municipio}, {$cliente->UF}, Brasil";
+            // Verifica se tem o mínimo necessário para buscar no mapa
+            if (empty($cliente->logradouro) || empty($cliente->municipio)) {
+                $this->warn("Cliente {$cliente->id} pulado: Endereço incompleto.");
+                continue;
+            }
+
+            // Monta o endereço de forma limpa, ignorando campos vazios
+            $partes = array_filter([$cliente->logradouro, $cliente->numero, $cliente->municipio, $cliente->UF, 'Brasil']);
+            $endereco = implode(', ', $partes);
+
             $coords = $this->buscarNoMapa($endereco);
 
             if ($coords) {
@@ -28,14 +36,20 @@ class AtualizarCoordenadas extends Command
                 $cliente->save();
                 $this->info("Cliente {$cliente->id} atualizado!");
             }
-            // Pausa obrigatória de 2 segundos para o Nominatim não bloquear o seu IP
             sleep(2);
         }
 
-        // Pega 10 fornecedores (mesma lógica)
         $fornecedores = Fornecedor::whereNull('latitude')->orWhere('latitude', '')->take(10)->get();
+
         foreach ($fornecedores as $fornecedor) {
-            $endereco = "{$fornecedor->logradouro}, {$fornecedor->numero}, {$fornecedor->municipio}, {$fornecedor->UF}, Brasil";
+            if (empty($fornecedor->logradouro) || empty($fornecedor->municipio)) {
+                $this->warn("Fornecedor {$fornecedor->id} pulado: Endereço incompleto.");
+                continue;
+            }
+
+            $partes = array_filter([$fornecedor->logradouro, $fornecedor->numero, $fornecedor->municipio, $fornecedor->UF, 'Brasil']);
+            $endereco = implode(', ', $partes);
+
             $coords = $this->buscarNoMapa($endereco);
 
             if ($coords) {
@@ -52,7 +66,9 @@ class AtualizarCoordenadas extends Command
     {
         try {
             $url = "https://nominatim.openstreetmap.org/search?format=json&q=" . urlencode($endereco) . "&limit=1";
-            $response = Http::withUserAgent('FersoftERP/1.0')->timeout(5)->get($url);
+
+            // Aumentado o timeout para 15 segundos para evitar o cURL error 28
+            $response = Http::withUserAgent('FersoftERP/1.0')->timeout(15)->get($url);
 
             if ($response->successful() && count($response->json()) > 0) {
                 $data = $response->json()[0];

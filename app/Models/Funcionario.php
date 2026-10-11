@@ -51,7 +51,8 @@ class Funcionario extends BaseModel
         'longitude_residencia',
         'pin_ponto',
         'whatsapp_id',
-        'recebe_alerta_coleta'
+        'permissao_nfe_whatsapp',
+        'recebe_alerta_coleta',
     ];
 
     protected $appends = ['imgApp', 'img'];

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use App\Http\Controllers\PontoWhatsAppController;
 
 Route::group(['prefix' => 'appUser'],function(){
 	Route::post('/signup', 'AppUserController@signup');
@@ -509,7 +510,7 @@ Route::group(['prefix' => '/controle_comandas'], function(){
 
 
 
-
+Route::post('/whatsapp/ponto/webhook', [PontoWhatsAppController::class, 'receberMensagem']);
 
 
 

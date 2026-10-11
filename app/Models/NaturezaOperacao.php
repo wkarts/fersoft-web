@@ -7,10 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 class NaturezaOperacao extends BaseModel
 {
     protected $fillable = [
-		'natureza', 'CFOP_entrada_estadual', 'CFOP_entrada_inter_estadual',
-		'CFOP_saida_estadual', 'CFOP_saida_inter_estadual', 'empresa_id', 'sobrescreve_cfop',
-		'finNFe', 'nao_movimenta_estoque', 'CST_CSOSN', 'categoria_conta_id','cst_ibs_cbs', 
-      	'class_trib_ibs_cbs', 'perc_red_ibs','perc_red_cbs'
+		'natureza',
+        'CFOP_entrada_estadual',
+        'CFOP_entrada_inter_estadual',
+		'CFOP_saida_estadual',
+        'CFOP_saida_inter_estadual',
+        'empresa_id',
+        'sobrescreve_cfop',
+		'finNFe',
+        'nao_movimenta_estoque',
+        'CST_CSOSN',
+        'categoria_conta_id',
+        'cst_ibs_cbs',
+      	'class_trib_ibs_cbs',
+        'perc_red_ibs',
+        'perc_red_cbs',
+        'usar_diferimento',
+        'usar_info_cliente'
 	];
 
 	public static function finalidades(){

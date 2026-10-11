@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class NFSeNacionalService {
     protected $cnpj;
@@ -20,71 +21,125 @@ class NFSeNacionalService {
      * Consulta oficial por NSU (Fila Sequencial do ADN)
      */
     public function consultar($nsu = 0) {
-        $tempPem = $this->gerarPem();
+        $arquivos = $this->gerarArquivosCertificado();
         try {
-            // URL OFICIAL ADN - Onde ficam as notas tomadas por NSU
             $url = "https://adn.nfse.gov.br/contribuintes/DFe/" . $nsu;
-            
-            $response = Http::withOptions([
-                'cert' => [$tempPem, $this->senha],
-                'ssl_key' => [$tempPem, $this->senha],
-                'verify' => false,
-                'timeout' => 300
-            ])->get($url, [
-                'cnpjConsulta' => $this->cnpj
-            ]);
+
+            // Requisição com retry para absorver instabilidades transitórias de rede
+            $response = Http::retry(2, 500)
+                ->withOptions([
+                    'cert'            => $arquivos['cert'],
+                    'ssl_key'         => $arquivos['pkey'],
+                    'verify'          => false,
+                    'timeout'         => 60,
+                    'connect_timeout' => 20,
+                    'curl'            => [
+                        CURLOPT_SSLVERSION      => CURL_SSLVERSION_TLSv1_2,
+                        CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_FORBID_REUSE    => true, // Evita reutilizar socket derrubado pelo gateway
+                        CURLOPT_FRESH_CONNECT   => true,
+                    ]
+                ])
+                ->withHeaders([
+                    'X-CNPJ-Interessado' => $this->cnpj,
+                    'Accept'             => 'application/json',
+                    'User-Agent'         => 'Mozilla/5.0 (compatible; ERP-NFSe/1.0)',
+                    'Connection'         => 'close'
+                ])
+                ->get($url, [
+                    'cnpjConsulta' => $this->cnpj
+                ]);
 
             if ($response->status() == 404) {
                 return null;
             }
 
-            if ($response->failed()) {
-                throw new \Exception("Erro na Receita: " . $response->status());
+            if ($response->status() == 429) {
+                throw new \Exception("A Receita Federal bloqueou a consulta por excesso de tentativas (Consumo Indevido). Aguarde alguns minutos.");
             }
-            
+
+            if ($response->failed()) {
+                Log::error("Erro na API ADN NFS-e: Status " . $response->status() . " - Retorno: " . $response->body());
+                throw new \Exception("Erro na Receita Federal (Status " . $response->status() . "). Tente novamente mais tarde.");
+            }
+
             return $response->json();
         } finally {
-            if (File::exists($tempPem)) File::delete($tempPem);
+            $this->removerArquivosTemporarios($arquivos);
         }
     }
 
     /**
-     * Consulta as notas por período de data de emissão (Opcional/Histórico)
+     * Consulta as notas por período de data de emissão
      */
     public function consultarPorPeriodo($dataInicio, $dataFim, $pagina = 1) {
-        $tempPem = $this->gerarPem();
+        $arquivos = $this->gerarArquivosCertificado();
         try {
             $url = "https://adn.nfse.gov.br/contribuintes/DFe";
-            
-            $response = Http::withOptions([
-                'cert' => [$tempPem, $this->senha],
-                'ssl_key' => [$tempPem, $this->senha],
-                'verify' => false,
-                'timeout' => 60
-            ])->get($url, [
-                'cnpjConsulta' => $this->cnpj,
-                'dataInicial'  => $dataInicio,
-                'dataFinal'    => $dataFim,
-                'pagina'       => $pagina
-            ]);
+
+            $response = Http::retry(2, 500)
+                ->withOptions([
+                    'cert'            => $arquivos['cert'],
+                    'ssl_key'         => $arquivos['pkey'],
+                    'verify'          => false,
+                    'timeout'         => 60,
+                    'connect_timeout' => 20,
+                    'curl'            => [
+                        CURLOPT_SSLVERSION      => CURL_SSLVERSION_TLSv1_2,
+                        CURLOPT_HTTP_VERSION    => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_FORBID_REUSE    => true,
+                        CURLOPT_FRESH_CONNECT   => true,
+                    ]
+                ])->withHeaders([
+                    'X-CNPJ-Interessado' => $this->cnpj,
+                    'Accept'             => 'application/json',
+                    'User-Agent'         => 'Mozilla/5.0 (compatible; ERP-NFSe/1.0)',
+                    'Connection'         => 'close'
+                ])->get($url, [
+                    'cnpjConsulta' => $this->cnpj,
+                    'dataInicial'  => $dataInicio,
+                    'dataFinal'    => $dataFim,
+                    'pagina'       => $pagina
+                ]);
 
             if ($response->status() == 404 || $response->failed()) {
                 return null;
             }
-            
+
             return $response->json();
         } finally {
-            if (File::exists($tempPem)) File::delete($tempPem);
+            $this->removerArquivosTemporarios($arquivos);
         }
     }
 
-    private function gerarPem() {
+    /**
+     * Extrai e separa a chave privada e o certificado em arquivos dedicados
+     */
+    private function gerarArquivosCertificado() {
         $certs = [];
         if (!openssl_pkcs12_read($this->certBlob, $certs, $this->senha)) {
-            throw new \Exception("Senha do certificado incorreta no cadastro da empresa.");
+            throw new \Exception("Senha do certificado incorreta ou arquivo corrompido no cadastro da empresa.");
         }
-        $path = storage_path("app/temp_{$this->cnpj}.pem");
-        File::put($path, $certs['cert'] . "\n" . $certs['pkey']);
-        return $path;
+
+        $random = bin2hex(random_bytes(6));
+        $certPath = storage_path("app/cert_{$this->cnpj}_{$random}.pem");
+        $pkeyPath = storage_path("app/key_{$this->cnpj}_{$random}.pem");
+
+        File::put($certPath, $certs['cert']);
+        File::put($pkeyPath, $certs['pkey']);
+
+        return [
+            'cert' => $certPath,
+            'pkey' => $pkeyPath
+        ];
+    }
+
+    private function removerArquivosTemporarios(array $arquivos) {
+        if (!empty($arquivos['cert']) && File::exists($arquivos['cert'])) {
+            File::delete($arquivos['cert']);
+        }
+        if (!empty($arquivos['pkey']) && File::exists($arquivos['pkey'])) {
+            File::delete($arquivos['pkey']);
+        }
     }
 }

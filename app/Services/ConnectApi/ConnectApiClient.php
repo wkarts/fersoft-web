@@ -131,6 +131,23 @@ class ConnectApiClient
         );
     }
 
+    /**
+     * Recupera a mídia de uma mensagem pela instância de origem.
+     * Complemento aditivo para webhooks com base64=false.
+     * Endpoint de mídia exposto por provedores compatíveis.
+     * Se a versão da Connect|API não suportá-lo, retorna success=false.
+     */
+    public function getBase64FromMediaMessage(ConnectApiInstance $instance, array $message): array
+    {
+        return $this->result(
+            $this->request($instance->instance_token)
+                ->post('/chat/getBase64FromMediaMessage/' . rawurlencode($instance->instance_name), [
+                    'message' => $message,
+                    'convertToMp4' => false,
+                ])
+        );
+    }
+
     public function sendText(ConnectApiInstance $instance, string $number, string $message): array
     {
         return $this->result(

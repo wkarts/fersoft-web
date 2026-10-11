@@ -59,6 +59,8 @@ class ConciliacaoController extends BaseController
         $dataLimite = Carbon::now()->subDays(60)->format('Y-m-d');
         $filialId = $this->getFilialId();
 
+        $filiais = DB::table('filials')->where('empresa_id', $empresaId)->get();
+
         $contasPagarSugestao = DB::table('conta_pagars')
             ->leftJoin('fornecedors', 'conta_pagars.fornecedor_id', '=', 'fornecedors.id')
             ->select('conta_pagars.*', 'fornecedors.razao_social as nome_parceiro')
@@ -100,13 +102,11 @@ class ConciliacaoController extends BaseController
                 $query->where('status', $request->status_filtro);
             }
         } else {
-            // Se a requisição veio sem o parâmetro status_filtro, define como pending padrão
             $query->where('status', 'pending');
         }
 
         $records = $query->orderBy('data_transacao', 'desc')->get();
 
-        // Lógica original de marcação de status
         foreach ($records as $extrato) {
             $extrato->achou_pendente = false;
             $extrato->achou_pago = false;
@@ -126,32 +126,25 @@ class ConciliacaoController extends BaseController
             }
         }
 
-        // BLOCO DE CÁLCULO DO CONFRONTO ERP x BANCO
         $resumo = null;
         if ($request->filled('conta_filtro') && $request->filled('data_inicio') && $request->filled('data_fim')) {
-
-            // 1. Somar apenas CRÉDITO do Banco (Entradas)
             $extratoIn = BankStatementTransaction::where('empresa_id', $empresaId)
                 ->where('conta_bancaria_id', $request->conta_filtro)
                 ->whereBetween('data_transacao', [$request->data_inicio, $request->data_fim])
                 ->where('tipo', 'credit')
                 ->sum('valor');
 
-            // 2. Somar apenas DÉBITO do Banco (Saídas)
             $extratoOut = BankStatementTransaction::where('empresa_id', $empresaId)
                 ->where('conta_bancaria_id', $request->conta_filtro)
                 ->whereBetween('data_transacao', [$request->data_inicio, $request->data_fim])
                 ->where('tipo', 'debit')
                 ->sum('valor');
 
-            // 3. Somar ENTRADAS do ERP (Removido o filtro de empresa_id)
             $erpIn = ItemContaEmpresa::where('conta_id', $request->conta_filtro)
                 ->whereRaw("DATE(data_pagamento) = ?", [$request->data_inicio])
-                // Usamos whereIn para aceitar variações caso o seu sistema grave de formas diferentes
                 ->whereIn('tipo', ['entrada', 'ENTRADA', '1', 'c'])
                 ->sum('valor');
 
-            // 4. Somar SAÍDAS do ERP (Removido o filtro de empresa_id)
             $erpOut = ItemContaEmpresa::where('conta_id', $request->conta_filtro)
                 ->whereRaw("DATE(data_pagamento) = ?", [$request->data_inicio])
                 ->where('tipo', 'saida')
@@ -167,7 +160,6 @@ class ConciliacaoController extends BaseController
             ];
         }
 
-
         return view($this->listView, [
             'records'               => $records,
             'contasBancarias'       => $contasBancarias,
@@ -178,6 +170,8 @@ class ConciliacaoController extends BaseController
             'contasReceberSugestao' => $contasReceberSugestao,
             'resumo'                => $resumo,
             'title'                 => $this->formTitle,
+            'filiais'               => $filiais,
+            'filialPadrao'          => $this->getFilialId(),
         ]);
     }
 
@@ -185,36 +179,65 @@ class ConciliacaoController extends BaseController
     {
         $request->validate([
             'conta_bancaria_id' => 'required',
-            'arquivo' => 'required|file'
+            'arquivo'           => 'required|file'
         ]);
 
         try {
-            $arquivo = $request->file('arquivo');
             $empresaId = $this->getEmpresaId();
+            $contaEmpresa = ContaEmpresa::where('empresa_id', $empresaId)->findOrFail($request->conta_bancaria_id);
 
             $conteudo = file_get_contents($request->file('arquivo')->getPathname());
             $conteudo = str_replace('&', '&amp;', $conteudo);
             $conteudo = str_replace('&amp;amp;', '&amp;', $conteudo);
 
             $posicaoOfx = strpos($conteudo, '<OFX>');
-            if ($posicaoOfx !== false) {
-                $conteudo = substr($conteudo, $posicaoOfx);
+            if ($posicaoOfx === false) {
+                throw new \Exception("Estrutura do arquivo inválida: tag <OFX> não localizada.");
             }
 
+            $conteudo = substr($conteudo, $posicaoOfx);
             $conteudo = preg_replace('/<([a-zA-Z0-9_]+)>([^<\r\n]+)/', '<$1>$2</$1>', $conteudo);
 
-            if ($posicaoOfx === false) {
-                throw new \Exception("Tag <OFX> não localizada.");
+            $xml = simplexml_load_string($conteudo);
+            if (!$xml) {
+                throw new \Exception("Não foi possível interpretar a estrutura do arquivo OFX.");
             }
 
-            $ofxData = substr($conteudo, $posicaoOfx);
-            $ofxData = preg_replace('/>\s+</', '><', $ofxData);
-            $ofxData = preg_replace('/<([A-Z0-9_]+)>([^<]+)/', '<$1>$2</$1>', $ofxData);
+            // =====================================================================
+            // TRAVA DE SEGURANÇA: VALIDAÇÃO DE AGÊNCIA E CONTA (OFX vs ERP)
+            // =====================================================================
+            $acctIdOfx = null;
+            $branchIdOfx = null;
 
-            $xml = simplexml_load_string($conteudo);
+            if (isset($xml->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKACCTFROM)) {
+                $bankAcctFrom = $xml->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKACCTFROM;
+                $acctIdOfx = isset($bankAcctFrom->ACCTID) ? trim((string)$bankAcctFrom->ACCTID) : null;
+                $branchIdOfx = isset($bankAcctFrom->BRANCHID) ? trim((string)$bankAcctFrom->BRANCHID) : null;
+            }
 
-            if (!$xml || !isset($xml->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKTRANLIST->STMTTRN)) {
-                throw new \Exception("Nenhuma transação encontrada.");
+            if ($acctIdOfx) {
+                $numerosOfx = preg_replace('/[^0-9]/', '', $acctIdOfx);
+                $contaErpNumeros = preg_replace('/[^0-9]/', '', (string)$contaEmpresa->conta);
+                $agenciaErpNumeros = preg_replace('/[^0-9]/', '', (string)$contaEmpresa->agencia);
+
+                // Valida se a conta bancária do ERP consta no ACCTID do OFX
+                $contaBateu = (!empty($contaErpNumeros) && strpos($numerosOfx, $contaErpNumeros) !== false);
+                $agenciaBateu = true;
+
+                if (!empty($branchIdOfx) && !empty($agenciaErpNumeros)) {
+                    $branchNumeros = preg_replace('/[^0-9]/', '', $branchIdOfx);
+                    $agenciaBateu = (strpos($branchNumeros, $agenciaErpNumeros) !== false);
+                } elseif (!empty($agenciaErpNumeros)) {
+                    $agenciaBateu = (strpos($numerosOfx, $agenciaErpNumeros) !== false);
+                }
+
+                if (!$contaBateu) {
+                    throw new \Exception("Trava de Segurança: O arquivo importado pertence à conta/agência ({$acctIdOfx}), mas você selecionou a conta '{$contaEmpresa->nome}' (Ag: {$contaEmpresa->agencia} / Conta: {$contaEmpresa->conta}). Por favor, escolha a conta bancária correta antes de importar.");
+                }
+            }
+
+            if (!isset($xml->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKTRANLIST->STMTTRN)) {
+                throw new \Exception("Nenhuma movimentação/transação localizada no arquivo OFX.");
             }
 
             $transactions = $xml->BANKMSGSRSV1->STMTTRNRS->STMTRS->BANKTRANLIST->STMTTRN;
@@ -231,19 +254,19 @@ class ConciliacaoController extends BaseController
 
                 $reg = BankStatementTransaction::firstOrCreate(
                     [
-                        'empresa_id' => $empresaId,
+                        'empresa_id'  => $empresaId,
                         'import_hash' => $hash
                     ],
                     [
-                        'filial_id' => $this->getFilialId(),
-                        'usuario_id' => $this->getUsuarioId(),
+                        'filial_id'         => $this->getFilialId(),
+                        'usuario_id'        => $this->getUsuarioId(),
                         'conta_bancaria_id' => $request->conta_bancaria_id,
-                        'data_transacao' => $dataTransacao,
-                        'valor' => abs($valorBruto),
-                        'tipo' => $valorBruto >= 0 ? 'credit' : 'debit',
-                        'descricao' => $descricao,
-                        'numero_documento' => $doc,
-                        'status' => 'pending'
+                        'data_transacao'    => $dataTransacao,
+                        'valor'             => abs($valorBruto),
+                        'tipo'              => $valorBruto >= 0 ? 'credit' : 'debit',
+                        'descricao'         => $descricao,
+                        'numero_documento'  => $doc,
+                        'status'            => 'pending'
                     ]
                 );
 
@@ -252,16 +275,14 @@ class ConciliacaoController extends BaseController
                 }
             }
 
-            // Executa automação respeitando a trava de duplicidade
             $this->aplicarRegrasDePara($request->conta_bancaria_id);
 
-            return redirect($this->redirectPage)->with('mensagem_sucesso', "Arquivo importado! {$inseridos} lançamentos do extrato processados.");
+            return redirect($this->redirectPage)->with('mensagem_sucesso', "Arquivo validado e importado! {$inseridos} lançamentos processados para a conta '{$contaEmpresa->nome}'.");
 
         } catch (\Exception $e) {
-            return redirect()->back()->with('mensagem_erro', 'Erro: ' . $e->getMessage());
+            return redirect()->back()->with('mensagem_erro', $e->getMessage());
         }
     }
-
 
     public function conciliar(Request $request)
     {
@@ -274,7 +295,18 @@ class ConciliacaoController extends BaseController
         DB::beginTransaction();
         try {
             $empresaId = $this->getEmpresaId();
-            $extrato = BankStatementTransaction::withoutGlobalScopes()->where('empresa_id', $empresaId)->findOrFail($request->extrato_id);
+
+            // TRAVA: Evita duplicidade se dois cliques forem dados na mesma transação
+            $extrato = BankStatementTransaction::withoutGlobalScopes()
+                ->where('empresa_id', $empresaId)
+                ->lockForUpdate()
+                ->findOrFail($request->extrato_id);
+
+            if ($extrato->status === 'reconciled') {
+                DB::rollBack();
+                return redirect()->back()->with('mensagem_erro', 'Este lançamento já foi concilado anteriormente.');
+            }
+
             $contaBancaria = ContaEmpresa::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($extrato->conta_bancaria_id);
             $model = $request->tipo_conta === 'pagar' ? ContaPagar::class : ContaReceber::class;
 
@@ -285,17 +317,17 @@ class ConciliacaoController extends BaseController
             $contaPagarId = null;
             $contaReceberId = null;
             $origem = $request->tipo_conta === 'pagar' ? 'ContaPagar' : 'ContaReceber';
+            $titulosBaixados = 0;
 
             foreach ($request->conta_ids as $index => $idTitulo) {
-                $titulo = $model::where('empresa_id', $empresaId)->findOrFail($idTitulo);
+                $titulo = $model::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($idTitulo);
 
+                // TRAVA: Só baixa títulos que estiverem efetivamente em aberto
                 if ($titulo->status == 0) {
-                    // CORREÇÃO: Inicializa com o valor integral do próprio título
                     $valorPago = $titulo->valor_integral;
                     $tituloJuros = 0;
                     $tituloDesconto = 0;
 
-                    // Se for o primeiro título, ele recebe os ajustes de Juros/Desconto do extrato
                     if ($index === 0) {
                         $valorPago = $titulo->valor_integral + $jurosValor - $descontoValor;
                         $tituloJuros = $jurosValor;
@@ -316,19 +348,26 @@ class ConciliacaoController extends BaseController
                     if (is_numeric($tipoDocumento)) {
                         $tipoDocumento = \App\Models\Venda::getTipoPagamentoNFe($tipoDocumento);
                     }
+
                     $titulo->update([
-                        'status' => 1,
-                        $campoValor => $valorPago, // Agora grava o valor correto
-                        'juros' => $tituloJuros,
-                        'desconto' => $tituloDesconto,
-                        'multa' => 0,
-                        $campoDataBaixa => $extrato->data_transacao,
+                        'status'           => 1,
+                        $campoValor        => $valorPago,
+                        'juros'            => $tituloJuros,
+                        'desconto'         => $tituloDesconto,
+                        'multa'            => 0,
+                        $campoDataBaixa    => $extrato->data_transacao,
                         'usuario_baixa_id' => $this->getUsuarioId(),
-                        'tipo_pagamento' => $tipoDocumento
+                        'tipo_pagamento'   => $tipoDocumento
                     ]);
+
+                    $titulosBaixados++;
                 }
             }
 
+            if ($titulosBaixados === 0) {
+                DB::rollBack();
+                return redirect()->back()->with('mensagem_erro', 'Todos os títulos selecionados já estavam baixados no ERP.');
+            }
 
             if ($request->tipo_conta === 'pagar') {
                 $contaBancaria->saldo -= $extrato->valor;
@@ -340,19 +379,19 @@ class ConciliacaoController extends BaseController
             $contaBancaria->save();
 
             ItemContaEmpresa::create([
-                'empresa_id' => $empresaId,
-                'conta_id' => $contaBancaria->id,
-                'categoria_id' => $categoriaId,
-                'conta_pagar_id' => $contaPagarId,
+                'empresa_id'       => $empresaId,
+                'conta_id'         => $contaBancaria->id,
+                'categoria_id'     => $categoriaId,
+                'conta_pagar_id'   => $contaPagarId,
                 'conta_receber_id' => $contaReceberId,
-                'origem' => $origem,
-                'descricao' => 'Conciliação: ' . $extrato->descricao,
-                'tipo_pagamento' => $tipoDocumento,
-                'tipo' => $tipoMovimento,
-                'valor' => $extrato->valor,
-                'data_pagamento' => $extrato->data_transacao,
-                'saldo_atual' => $contaBancaria->saldo,
-                'user_id' => $this->getUsuarioId()
+                'origem'           => $origem,
+                'descricao'        => 'Conciliação: ' . $extrato->descricao,
+                'tipo_pagamento'   => $tipoDocumento,
+                'tipo'             => $tipoMovimento,
+                'valor'            => $extrato->valor,
+                'data_pagamento'   => $extrato->data_transacao,
+                'saldo_atual'      => $contaBancaria->saldo,
+                'user_id'          => $this->getUsuarioId()
             ]);
 
             $extrato->update(['status' => 'reconciled']);
@@ -369,29 +408,82 @@ class ConciliacaoController extends BaseController
     public function criarEConciliar(Request $request)
     {
         $request->validate([
-            'extrato_id' => 'required',
+            'extrato_id'   => 'required',
             'categoria_id' => 'required',
         ]);
 
         DB::beginTransaction();
         try {
-            $extrato = BankStatementTransaction::withoutGlobalScopes()->findOrFail($request->extrato_id);
+            $empresaId = $this->getEmpresaId();
+            $extrato = BankStatementTransaction::withoutGlobalScopes()->lockForUpdate()->findOrFail($request->extrato_id);
+
+            if ($extrato->status === 'reconciled') {
+                DB::rollBack();
+                return redirect()->back()->with('mensagem_erro', 'Este lançamento já se encontra conciliado.');
+            }
+
+            $tipoConta = $extrato->tipo === 'debit' ? 'pagar' : 'receber';
+            $tipoMovimento = $extrato->tipo === 'debit' ? 'saida' : 'entrada';
+
+            $filialIdFinal = $request->filled('filial_id') ? $request->filial_id : $this->getFilialId();
+            if (in_array($filialIdFinal, [0, '0', -1, '-1', 'null', ''], true)) {
+                $filialIdFinal = null;
+            }
+
+            // =========================================================================
+            // SE OPTAR POR APENAS CAIXA/BANCO (ORIGEM "manual" PARA PERMITIR EXCLUSÃO)
+            // =========================================================================
+            if ($request->input('destino_lancamento') === 'apenas_banco') {
+                $contaBancaria = ContaEmpresa::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($extrato->conta_bancaria_id);
+
+                if ($tipoMovimento === 'saida') {
+                    $contaBancaria->saldo -= $extrato->valor;
+                } else {
+                    $contaBancaria->saldo += $extrato->valor;
+                }
+                $contaBancaria->save();
+
+                ItemContaEmpresa::create([
+                    'empresa_id'       => $empresaId,
+                    'conta_id'         => $contaBancaria->id,
+                    'categoria_id'     => $request->categoria_id,
+                    'conta_pagar_id'   => null,
+                    'conta_receber_id' => null,
+                    'origem'           => 'manual', // Permite excluir no extrato da conta se errar
+                    'descricao'        => 'Lançamento Direto Extrato: ' . $extrato->descricao,
+                    'tipo_pagamento'   => $request->forma_pagamento ?? 'PIX',
+                    'tipo'             => $tipoMovimento,
+                    'valor'            => abs($extrato->valor),
+                    'data_pagamento'   => $extrato->data_transacao,
+                    'saldo_atual'      => $contaBancaria->saldo,
+                    'user_id'          => $this->getUsuarioId()
+                ]);
+
+                $extrato->update(['status' => 'reconciled']);
+                DB::commit();
+
+                return redirect()->back()->with('mensagem_sucesso', 'Lançamento realizado como Manual no Caixa/Banco com sucesso (passível de exclusão se necessário)!');
+            }
+
+            // =========================================================================
+            // FLUXO NORMAL (GERA E BAIXA O CONTAS A PAGAR / RECEBER)
+            // =========================================================================
             $tipoClass = $extrato->tipo === 'debit' ? ContaPagar::class : ContaReceber::class;
 
             $dadosNovo = [
-                'empresa_id' => $this->getEmpresaId(),
-                'filial_id' => $this->getFilialId(),
-                'usuario_id' => $this->getUsuarioId(),
-                'categoria_id' => $request->categoria_id,
-                'referencia' => 'Gerado no Extrato: ' . $extrato->descricao,
+                'empresa_id'      => $empresaId,
+                'filial_id'       => $filialIdFinal,
+                'usuario_id'      => $this->getUsuarioId(),
+                'categoria_id'    => $request->categoria_id,
+                'referencia'      => 'Gerado no Extrato: ' . $extrato->descricao,
                 'forma_pagamento' => $request->forma_pagamento ?? 'pix',
-                // Usamos abs() para garantir que o valor seja positivo no financeiro
-                'valor_integral' => abs($extrato->valor),
+                'valor_integral'  => abs($extrato->valor),
+                // AQUI: Pega a data informada no formulário. Se vier vazio, usa a data do banco.
+                'data_emissao'    => $request->filled('data_emissao') ? $request->data_emissao : $extrato->data_transacao,
                 'data_vencimento' => $extrato->data_transacao,
-                'status' => 0
+                'status'          => 0
             ];
 
-            // Define se salva como fornecedor ou cliente no novo título
             if ($extrato->tipo === 'debit') {
                 $dadosNovo['fornecedor_id'] = $request->fornecedor_id;
             } else {
@@ -400,16 +492,12 @@ class ConciliacaoController extends BaseController
 
             $novo = $tipoClass::create($dadosNovo);
 
-            // SALVAMENTO DA REGRA CORRIGIDO
             if ($request->has('salvar_regra') && $request->salvar_regra == 1) {
-
-                // Preparamos os dados da regra dinamicamente
                 $dadosRegra = [
                     'categoria_id' => $request->categoria_id,
-                    'tipo_conta'   => $extrato->tipo === 'debit' ? 'pagar' : 'receber'
+                    'tipo_conta'   => $tipoConta
                 ];
 
-                // Aqui está o segredo: se for débito, preenche fornecedor. Se não, preenche cliente.
                 if ($extrato->tipo === 'debit') {
                     $dadosRegra['fornecedor_id'] = $request->fornecedor_id;
                     $dadosRegra['cliente_id'] = null;
@@ -420,8 +508,8 @@ class ConciliacaoController extends BaseController
 
                 ConciliacaoRegra::updateOrCreate(
                     [
-                        'empresa_id' => $this->getEmpresaId(),
-                        'filial_id'  => $this->getFilialId(),
+                        'empresa_id'    => $empresaId,
+                        'filial_id'     => $filialIdFinal,
                         'palavra_chave' => $extrato->descricao
                     ],
                     $dadosRegra
@@ -431,8 +519,8 @@ class ConciliacaoController extends BaseController
             DB::commit();
 
             $request->merge([
-                'tipo_conta' => $extrato->tipo === 'debit' ? 'pagar' : 'receber',
-                'conta_ids' => [$novo->id]
+                'tipo_conta' => $tipoConta,
+                'conta_ids'  => [$novo->id]
             ]);
 
             return $this->conciliar($request);
@@ -445,57 +533,69 @@ class ConciliacaoController extends BaseController
 
     public function transferir(Request $request)
     {
-        // 1. Validando a categoria obrigatória
         $request->validate([
-            'extrato_id' => 'required',
+            'extrato_id'       => 'required',
             'conta_destino_id' => 'required',
-            'categoria_id' => 'required'
+            'categoria_id'     => 'required'
         ]);
 
         DB::beginTransaction();
         try {
             $empresaId = $this->getEmpresaId();
-            $extrato = BankStatementTransaction::withoutGlobalScopes()->findOrFail($request->extrato_id);
+            $extrato = BankStatementTransaction::withoutGlobalScopes()->lockForUpdate()->findOrFail($request->extrato_id);
+
+            // TRAVA: Bloqueia transferência se a conta de origem for a mesma de destino
+            if ((int)$extrato->conta_bancaria_id === (int)$request->conta_destino_id) {
+                DB::rollBack();
+                return redirect()->back()->with('mensagem_erro', 'A conta de destino não pode ser idêntica à conta de origem.');
+            }
+
+            if ($extrato->status === 'reconciled') {
+                DB::rollBack();
+                return redirect()->back()->with('mensagem_erro', 'Este lançamento já foi conciliado.');
+            }
 
             $cOrigem = ContaEmpresa::lockForUpdate()->findOrFail($extrato->conta_bancaria_id);
             $cDestino = ContaEmpresa::lockForUpdate()->findOrFail($request->conta_destino_id);
 
-            // Tira da Origem
+            // Origem: Saída
             $cOrigem->saldo -= $extrato->valor;
             $cOrigem->save();
 
             ItemContaEmpresa::create([
-                'empresa_id' => $empresaId,
-                'conta_id' => $cOrigem->id,
-                'categoria_id' => $request->categoria_id, // Inserindo a Categoria
-                'tipo' => 'saida',
-                'descricao' => 'Transf. Saída (Conciliação): ' . $extrato->descricao, // Melhor descritivo
-                'valor' => $extrato->valor,
-                'data_pagamento' => $extrato->data_transacao, // CORREÇÃO: Usar a data do extrato e não a de hoje
-                'saldo_atual' => $cOrigem->saldo,
-                'user_id' => $this->getUsuarioId() // Gravando o usuário da ação
+                'empresa_id'     => $empresaId,
+                'conta_id'       => $cOrigem->id,
+                'categoria_id'   => $request->categoria_id,
+                'tipo'           => 'saida',
+                'origem'         => 'manual',
+                'descricao'      => 'Transf. Saída (Conciliação): ' . $extrato->descricao,
+                'valor'          => $extrato->valor,
+                'data_pagamento' => $extrato->data_transacao,
+                'saldo_atual'    => $cOrigem->saldo,
+                'user_id'        => $this->getUsuarioId()
             ]);
 
-            // Coloca no Destino
+            // Destino: Entrada
             $cDestino->saldo += $extrato->valor;
             $cDestino->save();
 
             ItemContaEmpresa::create([
-                'empresa_id' => $empresaId,
-                'conta_id' => $cDestino->id,
-                'categoria_id' => $request->categoria_id, // Inserindo a Categoria
-                'tipo' => 'entrada',
-                'descricao' => 'Transf. Entrada (Conciliação): ' . $extrato->descricao, // Melhor descritivo
-                'valor' => $extrato->valor,
-                'data_pagamento' => $extrato->data_transacao, // CORREÇÃO: Usar a data do extrato
-                'saldo_atual' => $cDestino->saldo,
-                'user_id' => $this->getUsuarioId() // Gravando o usuário da ação
+                'empresa_id'     => $empresaId,
+                'conta_id'       => $cDestino->id,
+                'categoria_id'   => $request->categoria_id,
+                'tipo'           => 'entrada',
+                'origem'         => 'manual',
+                'descricao'      => 'Transf. Entrada (Conciliação): ' . $extrato->descricao,
+                'valor'          => $extrato->valor,
+                'data_pagamento' => $extrato->data_transacao,
+                'saldo_atual'    => $cDestino->saldo,
+                'user_id'        => $this->getUsuarioId()
             ]);
 
             $extrato->update(['status' => 'reconciled']);
 
             DB::commit();
-            return redirect()->back()->with('mensagem_sucesso', 'Transferência efetivada com categoria e datas corretas!');
+            return redirect()->back()->with('mensagem_sucesso', 'Transferência efetivada com sucesso!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -525,7 +625,7 @@ class ConciliacaoController extends BaseController
             ->where('status', 'pending')
             ->delete();
 
-        return redirect($this->redirectPage)->with('mensagem_sucesso', 'Limpo.');
+        return redirect($this->redirectPage)->with('mensagem_sucesso', 'Pendências limpas.');
     }
 
     public function processarAutomaticos()
@@ -535,7 +635,6 @@ class ConciliacaoController extends BaseController
             $empresaId = $this->getEmpresaId();
             $filialId = $this->getFilialId();
 
-            // 1. Busca as regras de automação
             $regras = ConciliacaoRegra::where('empresa_id', $empresaId)
                 ->when($filialId, function($q) use ($filialId) {
                     return $q->where(function($sub) use ($filialId) {
@@ -548,7 +647,6 @@ class ConciliacaoController extends BaseController
                 return redirect()->back()->with('mensagem_erro', 'Nenhuma regra de automação salva.');
             }
 
-            // 2. Busca os extratos pendentes
             $pendentes = BankStatementTransaction::withoutGlobalScopes()
                 ->where('empresa_id', $empresaId)
                 ->when($filialId, function($q) use ($filialId) {
@@ -566,8 +664,6 @@ class ConciliacaoController extends BaseController
 
                         $tipoMovimentoCheck = $regra->tipo_conta === 'pagar' ? 'saida' : 'entrada';
 
-                        // --- VALIDAÇÃO DE DUPLICIDADE ---
-                        // Verifica se já existe movimento no ERP para esta conta bancária na mesma data e com o mesmo valor
                         $jaExiste = ItemContaEmpresa::where('empresa_id', $empresaId)
                             ->where('conta_id', $extrato->conta_bancaria_id)
                             ->whereRaw("DATE(data_pagamento) = ?", [$extrato->data_transacao])
@@ -576,30 +672,32 @@ class ConciliacaoController extends BaseController
                             ->exists();
 
                         if ($jaExiste) {
-                            // Marca o extrato como concilado/processado para não ficar na fila pendente e não duplicar lançamento no ERP
                             $extrato->update(['status' => 'reconciled']);
                             $duplicadosIgnorados++;
                             break;
                         }
-                        // ----------------------------------
 
                         $model = $regra->tipo_conta === 'pagar' ? ContaPagar::class : ContaReceber::class;
                         $campoValor = $regra->tipo_conta === 'pagar' ? 'valor_pago' : 'valor_recebido';
                         $campoDataBaixa = $regra->tipo_conta === 'pagar' ? 'data_pagamento' : 'data_recebimento';
 
+                        $filialTitulo = $regra->filial_id ?: $this->getFilialId();
+
                         $dadosNovo = [
-                            'empresa_id' => $empresaId,
-                            'filial_id' => $this->getFilialId(),
-                            'usuario_id' => $this->getUsuarioId(),
-                            'categoria_id' => $regra->categoria_id,
-                            'referencia' => 'Robô Conciliador: ' . $extrato->descricao,
-                            'forma_pagamento' => 'pix',
-                            'valor_integral' => $extrato->valor,
-                            $campoValor => $extrato->valor,
-                            'data_vencimento' => $extrato->data_transacao,
-                            $campoDataBaixa => $extrato->data_transacao,
+                            'empresa_id'       => $empresaId,
+                            'filial_id'        => $filialTitulo,
+                            'usuario_id'       => $this->getUsuarioId(),
+                            'categoria_id'     => $regra->categoria_id,
+                            'referencia'       => 'Robô Conciliador: ' . $extrato->descricao,
+                            'forma_pagamento'  => 'pix',
+                            'valor_integral'   => $extrato->valor,
+                            $campoValor        => $extrato->valor,
+                            // AQUI: O robô sempre usa a data em que o dinheiro caiu/saiu do banco
+                            'data_emissao'     => $extrato->data_transacao,
+                            'data_vencimento'  => $extrato->data_transacao,
+                            $campoDataBaixa    => $extrato->data_transacao,
                             'usuario_baixa_id' => $this->getUsuarioId(),
-                            'status' => 1
+                            'status'           => 1
                         ];
 
                         if ($regra->tipo_conta === 'pagar') {
@@ -626,18 +724,18 @@ class ConciliacaoController extends BaseController
                             $contaBancaria->save();
 
                             ItemContaEmpresa::create([
-                                'empresa_id' => $empresaId,
-                                'conta_id' => $contaBancaria->id,
-                                'categoria_id' => $regra->categoria_id,
-                                'conta_pagar_id' => $contaPagarId,
+                                'empresa_id'       => $empresaId,
+                                'conta_id'         => $contaBancaria->id,
+                                'categoria_id'     => $regra->categoria_id,
+                                'conta_pagar_id'   => $contaPagarId,
                                 'conta_receber_id' => $contaReceberId,
-                                'origem' => $origem,
-                                'descricao' => 'Automação: ' . $extrato->descricao,
-                                'tipo' => $tipoMovimento,
-                                'valor' => $extrato->valor,
-                                'data_pagamento' => $extrato->data_transacao,
-                                'saldo_atual' => $contaBancaria->saldo,
-                                'user_id' => $this->getUsuarioId()
+                                'origem'           => $origem,
+                                'descricao'        => 'Automação: ' . $extrato->descricao,
+                                'tipo'             => $tipoMovimento,
+                                'valor'            => $extrato->valor,
+                                'data_pagamento'   => $extrato->data_transacao,
+                                'saldo_atual'      => $contaBancaria->saldo,
+                                'user_id'          => $this->getUsuarioId()
                             ]);
                         }
 
@@ -650,9 +748,9 @@ class ConciliacaoController extends BaseController
 
             DB::commit();
 
-            $msg = "Mágica feita! {$processados} lançamentos baixados automaticamente.";
+            $msg = "Automação finalizada! {$processados} lançamentos baixados.";
             if ($duplicadosIgnorados > 0) {
-                $msg .= " ({$duplicadosIgnorados} lançamentos já existiam na mesma data/valor e foram marcados como concilidados para evitar duplicidade).";
+                $msg .= " ({$duplicadosIgnorados} lançamentos já existiam na mesma data/valor e foram arquivados para evitar duplicidade).";
             }
 
             return redirect()->back()->with('mensagem_sucesso', $msg);
@@ -679,8 +777,6 @@ class ConciliacaoController extends BaseController
 
                     $tipoMovimentoCheck = $regra->tipo_conta === 'pagar' ? 'saida' : 'entrada';
 
-                    // VALIDAÇÃO ANTI-DUPLICIDADE:
-                    // Verifica se já existe caixa/movimentação no ERP com a mesma data, conta e valor
                     $jaExisteNoCaixa = ItemContaEmpresa::where('empresa_id', $empresaId)
                         ->where('conta_id', $extrato->conta_bancaria_id)
                         ->whereRaw("DATE(data_pagamento) = ?", [$extrato->data_transacao])
@@ -689,16 +785,16 @@ class ConciliacaoController extends BaseController
                         ->exists();
 
                     if ($jaExisteNoCaixa) {
-                        // Apenas marca o extrato importado como concilado sem gerar duplicidade no financeiro
                         $extrato->update(['status' => 'reconciled']);
                         break;
                     }
 
                     $req = new Request([
-                        'extrato_id' => $extrato->id,
-                        'categoria_id' => $regra->categoria_id,
+                        'extrato_id'    => $extrato->id,
+                        'filial_id'     => $regra->filial_id,
+                        'categoria_id'  => $regra->categoria_id,
                         'fornecedor_id' => $regra->fornecedor_id,
-                        'cliente_id' => $regra->cliente_id
+                        'cliente_id'    => $regra->cliente_id
                     ]);
                     $this->criarEConciliar($req);
                     break;
@@ -709,21 +805,17 @@ class ConciliacaoController extends BaseController
 
     public function processarLote(Request $request)
     {
-        // Verifica se veio alguma caixinha marcada da tela
         if (!$request->has('extrato_ids') || empty($request->extrato_ids)) {
             return redirect()->back()->with('mensagem_erro', 'Nenhum lançamento foi selecionado.');
         }
 
         try {
-            // Pega todos os IDs que você marcou
             $ids = $request->extrato_ids;
 
-            // Vai no banco de dados e muda o status de todos de uma vez só
-            \App\Models\BankStatementTransaction::whereIn('id', $ids)->update([
+            BankStatementTransaction::whereIn('id', $ids)->update([
                 'status' => 'reconciled'
             ]);
 
-            // Retorna para a tela mantendo os filtros e avisando quantos foram processados
             return redirect()->back()->with('mensagem_sucesso', count($ids) . ' lançamentos confirmados com sucesso!');
 
         } catch (\Exception $e) {
@@ -733,17 +825,16 @@ class ConciliacaoController extends BaseController
 
     public function getSugestoes(Request $request)
     {
-        $extrato = \App\Models\BankStatementTransaction::withoutGlobalScopes()->findOrFail($request->extrato_id);
+        $extrato = BankStatementTransaction::withoutGlobalScopes()->findOrFail($request->extrato_id);
         $empresaId = $this->getEmpresaId();
         $filialId = $this->getFilialId();
-        $dataExtrato = \Carbon\Carbon::parse($extrato->data_transacao);
+        $dataExtrato = Carbon::parse($extrato->data_transacao);
 
         $valorBusca = abs($extrato->valor);
-        $model = ($extrato->tipo === 'debit') ? \App\Models\ContaPagar::class : \App\Models\ContaReceber::class;
+        $model = ($extrato->tipo === 'debit') ? ContaPagar::class : ContaReceber::class;
         $tipoConta = ($extrato->tipo === 'debit') ? 'pagar' : 'receber';
         $relacao = ($extrato->tipo === 'debit') ? 'fornecedor' : 'cliente';
 
-        // 1. Busca Títulos ABERTOS (Exatos)
         $sugestoesAbertas = $model::with([$relacao])
             ->where('empresa_id', $empresaId)->where('status', 0)
             ->when($filialId, fn($q) => $q->where('filial_id', $filialId))
@@ -751,7 +842,6 @@ class ConciliacaoController extends BaseController
             ->orderByRaw("ABS(valor_integral - {$valorBusca}) ASC")
             ->limit(10)->get();
 
-        // 2. Busca Títulos JÁ PAGOS (Resolve a Elizabete)
         $sugestoesPagas = $model::with([$relacao])
             ->where('empresa_id', $empresaId)->where('status', 1)
             ->when($filialId, fn($q) => $q->where('filial_id', $filialId))
@@ -764,7 +854,6 @@ class ConciliacaoController extends BaseController
         $combosEncontrados = [];
         $outrasOpcoes = [];
 
-        // 3. Se não achou NENHUM exato, procura combos ou títulos com o MESMO NOME
         if ($sugestoesAbertas->isEmpty() && $sugestoesPagas->isEmpty()) {
             $titulosNoPeriodo = clone $model::with([$relacao])
                 ->where('empresa_id', $empresaId)->where('status', 0)
@@ -788,14 +877,12 @@ class ConciliacaoController extends BaseController
                 }
             }
 
-            // CORREÇÃO: Traz apenas opções que tenham o mesmo nome (Resolve Supergasbras)
             if (!$achouCombo) {
                 $descBanco = strtoupper($extrato->descricao);
                 $outrasOpcoes = $titulosNoPeriodo->filter(function($t) use ($descBanco) {
                     $nome = strtoupper($t->fornecedor->razao_social ?? ($t->cliente->razao_social ?? ''));
                     if (!$nome) return false;
 
-                    // Pega a primeira palavra do fornecedor (ex: SUPERGASBRAS) e vê se tem no extrato do banco
                     $primeiraPalavra = explode(' ', $nome)[0];
                     return (strlen($primeiraPalavra) > 2 && strpos($descBanco, $primeiraPalavra) !== false);
                 })->take(10)->values();
@@ -803,13 +890,12 @@ class ConciliacaoController extends BaseController
         }
 
         return response()->json([
-            'valor_banco'    => $valorBusca,
-            'tipo_conta'     => $tipoConta,
-            'sugestoes'      => $sugestoesAbertas,
-            'sugestoes_pagas'=> $sugestoesPagas,
-            'combos'         => $combosEncontrados,
-            'outras_opcoes'  => $outrasOpcoes
+            'valor_banco'     => $valorBusca,
+            'tipo_conta'      => $tipoConta,
+            'sugestoes'       => $sugestoesAbertas,
+            'sugestoes_pagas' => $sugestoesPagas,
+            'combos'          => $combosEncontrados,
+            'outras_opcoes'   => $outrasOpcoes
         ]);
     }
-
 }
