@@ -64,6 +64,8 @@ class ConnectApiAutomationDispatcher
                 ]
             );
 
+            // Contexto autenticado pelo webhook; não confiar no empresa_id do payload público.
+            $request->attributes->set('connect_api_empresa_id', (int) $event->empresa_id);
             app(PontoWhatsAppController::class)->receberMensagem($request);
         } catch (\Throwable $e) {
             Log::error('Falha na automação Connect|API -> Ponto.', [

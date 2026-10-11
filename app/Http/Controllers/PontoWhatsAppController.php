@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Funcionario;
 use App\Models\PontoMarcacao;
+use App\Services\ConnectApi\ConnectApiMessageService;
 use App\Models\TraccarConfig;
 use App\Models\MovimentacaoVeiculo;
 use Carbon\Carbon;
@@ -201,10 +202,12 @@ class PontoWhatsAppController extends Controller
             Log::warning("Número não reconhecido no ERP: {$numLimpoOrigem} ({$pushName})");
 
             $numFallbackLog = $numeroOrigem ?? $numLimpoOrigem;
-            $evoFallback = DB::table('evo_api_instances')->first();
-            if ($evoFallback && !empty($numFallbackLog)) {
+            // A origem da empresa é verificada pelo dispatcher Connect|API.
+            // Nunca usar a primeira instância cadastrada, para evitar mistura entre tenants.
+            $empresaOrigemId = (int) $request->attributes->get('connect_api_empresa_id', 0);
+            if ($empresaOrigemId > 0 && !empty($numFallbackLog)) {
                 $this->enviarRespostaWhatsApp(
-                    $evoFallback->empresa_id,
+                    $empresaOrigemId,
                     $numFallbackLog,
                     "⚠️ *ACESSO NÃO AUTORIZADO*\n\nOlá, *{$pushName}*!\nSeu número (*{$numFallbackLog}*) não foi localizado no cadastro de colaboradores do ERP.\n\nFavor solicitar a atualização do seu telefone junto ao RH."
                 );
@@ -352,33 +355,32 @@ class PontoWhatsAppController extends Controller
 
                 \Illuminate\Support\Facades\Storage::disk('public')->put($caminhoRelativo, $pdf->output());
 
-                $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $funcionario->empresa_id)->first()
-                    ?: DB::table('evo_api_instances')->first();
+                $urlPdf = "https://grupometal.fersofterp.com.br/storage/{$caminhoRelativo}";
+                $legenda = "✅ *Contracheque Assinado!*\n"
+                    . "Competência: {$holerite->competencia}\n\n"
+                    . "Caso o anexo não abra no seu celular, acesse diretamente por este link:\n{$urlPdf}";
 
-                if ($evoInstance) {
-                    $urlPdf = "https://grupometal.fersofterp.com.br/storage/{$caminhoRelativo}";
-                    $legenda = "✅ *Contracheque Assinado!*\n"
-                        . "Competência: {$holerite->competencia}\n\n"
-                        . "Caso o anexo não abra no seu celular, acesse diretamente por este link:\n{$urlPdf}";
+                // O PDF local já foi gerado. A Connect|API envia pela instância
+                // vinculada exclusivamente à empresa do funcionário.
+                $arquivoPdf = Storage::disk('public')->path($caminhoRelativo);
+                $retorno = app(ConnectApiMessageService::class)->sendMedia(
+                    (int) $funcionario->empresa_id,
+                    $numeroDestinoEnvio,
+                    $arquivoPdf,
+                    $legenda
+                );
 
-                    $response = Http::withHeaders([
-                        'apikey' => $evoInstance->api_key,
-                        'Content-Type' => 'application/json'
-                    ])
-                        ->timeout(30)
-                        ->post(rtrim($evoInstance->base_url, '/') . "/message/sendMedia/{$evoInstance->name}", [
-                            'number' => $numeroDestinoEnvio,
-                            'mediaMessage' => [
-                                'mediatype' => 'document',
-                                'caption'   => $legenda,
-                                'media'     => $urlPdf,
-                                'fileName'  => $nomeArquivo,
-                                'mimetype'  => 'application/pdf'
-                            ]
-                        ]);
-
-                    Log::info("Resposta EvoAPI Envio PDF: " . $response->body());
+                if (empty($retorno['success'])) {
+                    throw new \RuntimeException(
+                        'Connect|API não conseguiu enviar o contracheque: '
+                        . ($retorno['error'] ?? 'Resposta sem sucesso.')
+                    );
                 }
+
+                Log::info('Ponto WhatsApp: PDF do contracheque enviado pela Connect|API.', [
+                    'empresa_id' => (int) $funcionario->empresa_id,
+                    'status' => $retorno['status'] ?? null,
+                ]);
 
                 return response()->json(['status' => 'holerite_assinado_enviado']);
             } catch (\Exception $e) {
@@ -884,40 +886,44 @@ class PontoWhatsAppController extends Controller
     public function enviarRespostaWhatsApp($empresaId, $telefone, $mensagem)
     {
         try {
-            $destino = explode('@', (string)$telefone)[0];
-            $numLimpo = preg_replace('/[^0-9]/', '', $destino);
-
-            if (strlen($numLimpo) >= 10 && strlen($numLimpo) <= 11 && !str_starts_with($numLimpo, '55')) {
-                $numLimpo = '55' . $numLimpo;
-            }
-
-            $evoInstance = $empresaId
-                ? DB::table('evo_api_instances')->where('empresa_id', $empresaId)->first()
-                : DB::table('evo_api_instances')->first();
-
-            if (!$evoInstance) {
-                Log::error("Evo API: Nenhuma instancia encontrada para empresa {$empresaId}");
+            $empresaId = (int) $empresaId;
+            if ($empresaId <= 0) {
+                Log::warning('Ponto WhatsApp: envio ignorado sem empresa identificada.');
                 return;
             }
 
-            $url = rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}";
+            // Resolução da instância e normalização centralizadas na Connect|API.
+            $mensagens = app(ConnectApiMessageService::class);
+            $destino = explode('@', (string) $telefone)[0];
+            $numero = $mensagens->normalizeNumber($destino);
 
-            $response = Http::withHeaders([
-                'apikey' => $evoInstance->api_key,
-                'Content-Type' => 'application/json'
-            ])
-                ->timeout(15)
-                ->post($url, [
-                    'number' => $numLimpo,
-                    'textMessage' => ['text' => $mensagem]
+            if ($numero === '') {
+                Log::warning('Ponto WhatsApp: número de destino vazio.', [
+                    'empresa_id' => $empresaId,
                 ]);
+                return;
+            }
 
-            Log::info("Evo API Envio para [{$numLimpo}]: Status " . $response->status(), [
-                'resposta' => $response->json()
+            $retorno = $mensagens->sendText($empresaId, $numero, (string) $mensagem);
+
+            if (empty($retorno['success'])) {
+                Log::error('Ponto WhatsApp: Connect|API recusou a mensagem.', [
+                    'empresa_id' => $empresaId,
+                    'status' => $retorno['status'] ?? null,
+                    'erro' => $retorno['error'] ?? 'Erro não especificado.',
+                ]);
+                return;
+            }
+
+            Log::info('Ponto WhatsApp: mensagem enviada pela Connect|API.', [
+                'empresa_id' => $empresaId,
+                'status' => $retorno['status'] ?? null,
             ]);
-
-        } catch (\Exception $e) {
-            Log::error("Erro envio WhatsApp: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('Ponto WhatsApp: falha no envio via Connect|API.', [
+                'empresa_id' => (int) $empresaId,
+                'erro' => $e->getMessage(),
+            ]);
         }
     }
 
