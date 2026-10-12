@@ -17,8 +17,6 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
-    // Instalação opcional, reutilizando nome e favicon da aplicação.
-    'pwa_enabled' => filter_var(env('PWA_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
     'site_suporte' => env('SITE_SUPORTE', ''),
     'email_suporte' => env('EMAIL_SUPORTE', ''),
 

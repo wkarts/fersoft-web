@@ -609,7 +609,7 @@ class MtrController extends BaseController
                 'manNumero' => (string) $mtr->numero_mtr,
                 'justificativa' => (string) $request->input(
                     'justificativa',
-                    'Cancelamento solicitado pelo gerador no FERSOFT WEB.'
+                    'Cancelamento solicitado pelo gerador em ' . config('app.name') . '.'
                 ),
             ]);
 

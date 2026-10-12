@@ -12,17 +12,6 @@
 
     <!-- Scripts -->
     <script src="{{ asset('js/app.js') }}" defer></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('js/serviceworker.js')
-                .then(function (registration) {
-                    console.log('Service Worker registrado com sucesso:', registration);
-                })
-                .catch(function (error) {
-                    console.log('Erro ao registrar Service Worker:', error);
-                });
-        }
-    </script>
 
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">

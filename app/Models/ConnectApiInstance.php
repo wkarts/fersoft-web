@@ -104,7 +104,7 @@ class ConnectApiInstance extends BaseModel
             'module' => 'Integrações',
             'name' => 'Instância Connect|API',
             'plural_name' => 'Instâncias Connect|API',
-            'description' => 'Conexões WhatsApp administradas pelo FERSOFT WEB por empresa.',
+            'description' => 'Conexões WhatsApp administradas por empresa.',
             'route_prefix' => 'connect-api',
             'icon' => 'whatsapp',
             'sensitive' => true,

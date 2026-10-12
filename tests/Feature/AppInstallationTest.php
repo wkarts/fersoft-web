@@ -6,27 +6,17 @@ use Tests\TestCase;
 
 class AppInstallationTest extends TestCase
 {
-    public function test_installation_endpoints_are_unavailable_when_disabled(): void
+    public function test_manifest_is_always_available_even_if_old_feature_flag_was_false(): void
     {
+        // Instalações antigas ainda podem ter PWA_ENABLED=false no .env.
+        // O código não deve consultar mais essa chave.
         config()->set('app.pwa_enabled', false);
-
-        $this->get('/app-install/manifest.webmanifest')->assertNotFound();
-        $this->get('/app-install/icon/180.png')->assertNotFound();
-        $this->get('/app-install/icon/192.png')->assertNotFound();
-        $this->get('/app-install/icon/512.png')->assertNotFound();
-    }
-
-    public function test_manifest_reuses_the_configured_application_name_and_favicon(): void
-    {
-        if (!function_exists('imagecreatefrompng')) {
-            $this->markTestSkipped('O dimensionamento do favicon requer PHP GD.');
-        }
-
-        config()->set('app.pwa_enabled', true);
         config()->set('app.name', 'Aplicação do Cliente');
 
-        $response = $this->get('/app-install/manifest.webmanifest');
-        $response->assertOk()->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+        $response = $this->get('/app-install/manifest');
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8');
 
         $manifest = $response->json();
         $this->assertSame(config('app.name'), $manifest['name']);
@@ -41,23 +31,26 @@ class AppInstallationTest extends TestCase
         $this->assertCount(2, $manifest['icons']);
         $this->assertSame('192x192', $manifest['icons'][0]['sizes']);
         $this->assertSame('512x512', $manifest['icons'][1]['sizes']);
-        foreach ($manifest['icons'] as $icon) {
+        foreach ([192, 512] as $index => $size) {
+            $icon = $manifest['icons'][$index];
             $this->assertSame('image/png', $icon['type']);
-            $this->assertStringStartsWith('/app-install/icon/', $icon['src']);
+            $this->assertSame('any', $icon['purpose']);
+            $this->assertSame("/app-install/icon/{$size}", parse_url($icon['src'], PHP_URL_PATH));
+            $this->assertStringNotContainsString('.png', parse_url($icon['src'], PHP_URL_PATH));
         }
     }
 
-    public function test_native_installation_icons_are_valid_square_png_files(): void
+    public function test_icons_are_generated_from_current_favicon_even_with_old_flag_disabled(): void
     {
         if (!function_exists('imagecreatefrompng')) {
-            $this->markTestSkipped('O dimensionamento do favicon requer PHP GD.');
+            $this->markTestSkipped('Extensão GD necessária para redimensionar o favicon.');
         }
 
-        config()->set('app.pwa_enabled', true);
+        config()->set('app.pwa_enabled', false);
         $this->assertFileExists(public_path('imgs/favicon.png'));
 
         foreach ([180, 192, 512] as $size) {
-            $response = $this->get("/app-install/icon/{$size}.png");
+            $response = $this->get("/app-install/icon/{$size}");
             $response->assertOk()->assertHeader('Content-Type', 'image/png');
             $image = getimagesizefromstring($response->getContent());
             $this->assertIsArray($image);
@@ -66,16 +59,46 @@ class AppInstallationTest extends TestCase
             $this->assertSame('image/png', $image['mime']);
         }
 
-        $this->get('/app-install/icon/1024.png')->assertNotFound();
+        $this->get('/app-install/icon/1024')->assertNotFound();
     }
 
-    public function test_login_and_erp_layouts_reuse_the_same_conditional_metadata(): void
+    public function test_service_worker_is_available_from_root_scope_without_offline_data_cache(): void
+    {
+        $response = $this->get('/app-install/worker');
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/javascript; charset=utf-8')
+            ->assertHeader('Service-Worker-Allowed', '/');
+
+        $source = $response->getContent();
+        $this->assertStringContainsString("addEventListener('install'", $source);
+        $this->assertStringContainsString("addEventListener('fetch'", $source);
+        $this->assertStringNotContainsString('caches.open', $source);
+        $this->assertStringNotContainsString('cache.add', $source);
+        $this->assertStringNotContainsString('respondWith', $source);
+    }
+
+    public function test_old_manifest_and_icon_urls_are_redirected_when_handled_by_laravel(): void
+    {
+        $this->get('/app-install/manifest.webmanifest')
+            ->assertStatus(307)
+            ->assertRedirect(route('app-install.manifest'));
+
+        $this->get('/app-install/icon/192.png')
+            ->assertStatus(307)
+            ->assertRedirect(route('app-install.icon', ['size' => 192]));
+    }
+
+    public function test_all_login_and_erp_layouts_reuse_one_unconditional_installation_partial(): void
     {
         $partial = file_get_contents(resource_path('views/layouts/installable.blade.php'));
-        $this->assertStringContainsString("config('app.pwa_enabled', false)", $partial);
         $this->assertStringContainsString("config('app.name')", $partial);
         $this->assertStringContainsString("route('app-install.manifest'", $partial);
         $this->assertStringContainsString("route('app-install.icon'", $partial);
+        $this->assertStringContainsString("route('app-install.worker'", $partial);
+        $this->assertStringContainsString('navigator.serviceWorker.register', $partial);
+        $this->assertStringNotContainsString("config('app.pwa_enabled'", $partial);
+        $this->assertStringNotContainsString('PWA_ENABLED', $partial);
+        $this->assertStringNotContainsString('@if', $partial);
 
         foreach ([
             'default/menu_lateral.blade.php',
@@ -92,5 +115,17 @@ class AppInstallationTest extends TestCase
             $source = file_get_contents(resource_path('views/' . $path));
             $this->assertStringContainsString("@include('layouts.installable')", $source, $path);
         }
+
+        $appConfig = file_get_contents(config_path('app.php'));
+        $sampleEnv = file_get_contents(base_path('.env.example'));
+        $routes = file_get_contents(base_path('routes/web.php'));
+
+        $this->assertStringNotContainsString('PWA_ENABLED', $appConfig);
+        $this->assertStringNotContainsString('pwa_enabled', $appConfig);
+        $this->assertStringNotContainsString('PWA_ENABLED', $sampleEnv);
+        $this->assertStringNotContainsString("config('app.pwa_enabled'", $routes);
+
+        $appLayout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $this->assertSame(0, substr_count($appLayout, "navigator.serviceWorker.register('js/serviceworker.js')"));
     }
 }
