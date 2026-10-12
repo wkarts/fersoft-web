@@ -7,7 +7,7 @@
 <script>
     if ('serviceWorker' in navigator && window.isSecureContext) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register(@json(route('app-install.worker', [], false)), {scope: '/'})
+            navigator.serviceWorker.register("{{ route('app-install.worker', [], false) }}", {scope: '/'})
                 .catch(function () {
                     // O navegador decide a elegibilidade; não exibir mensagens técnicas.
                 });
