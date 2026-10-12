@@ -61,9 +61,9 @@
     <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
+    {{-- O favicon publicado também é a fonte dos ícones da instalação. --}}
+    <link rel="icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
+    <link rel="shortcut icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
     @if($cor != '')
         <link href="/css/extend.css" rel="stylesheet" type="text/css" />
     @endif
@@ -321,11 +321,11 @@
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
     <a href="/graficos">
-        <!-- <img width="100" alt="Logo" src="{{ asset('imgs/slym.png') }}" /> -->
+        <!-- <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" /> -->
         @if($logo != "" && env("LOGOCLIENTE") == 1)
             <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
         @else
-            <img width="100" alt="Logo" src="{{ asset('imgs/slym.png') }}" />
+            <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" />
         @endif
     </a>
 
@@ -365,7 +365,7 @@
                     @if($logo != "" && env("LOGOCLIENTE") == 1)
                         <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
                     @else
-                        <img width="100" alt="Logo" src="{{ asset('imgs/slym.png') }}" />
+                        <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" />
                     @endif
                 </a>
 

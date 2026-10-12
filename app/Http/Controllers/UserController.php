@@ -56,7 +56,14 @@ class UserController extends Controller
             return redirect('/graficos'); // Redireciona para a rota desejada
         }
 
-        return view('login/'.(env("PAG_LOGIN") != null ? env("PAG_LOGIN") : 'access'))
+        $loginPage = env("PAG_LOGIN") != null ? env("PAG_LOGIN") : 'access';
+        $view = view('login/' . $loginPage);
+
+        if ($loginPage === 'access_4') {
+            $view->with('presentation', app(\App\Services\LoginPresentationService::class)->configuration());
+        }
+
+        return $view
             ->with('loginCookie', $loginCookie)
             ->with('senhaCookie', $senhaCookie)
             ->with('lembrarCookie', $lembrarCookie)

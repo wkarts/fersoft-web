@@ -60,9 +60,9 @@
     <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
+    {{-- O favicon publicado também é a fonte dos ícones da instalação. --}}
+    <link rel="icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
+    <link rel="shortcut icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
     @if($cor != '')
         <link href="/css/extend.css" rel="stylesheet" type="text/css" />
     @endif
@@ -649,7 +649,7 @@
         <div id="box_whatsapp" class="wcard">
             <div class="wcard-header">
                 <div class="wcard-logo">
-                    <img src="{{ asset('imgs/slym.png') }}" alt="Nome da empresa">
+                    <img src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" alt="{{ config('app.name') }}">
                 </div>
                 <div class="wcard-title">
                     <h6>{{env("APP_NAME")}}</h6>

@@ -7,7 +7,7 @@ Route::group(['prefix' => 'app-install'], function () {
         $name = trim((string) config('app.name'));
         abort_unless($name !== '', 503);
 
-        $favicon = public_path('imgs/favicon.png');
+        $favicon = app(\App\Services\LoginPresentationService::class)->faviconPath();
         abort_unless(is_readable($favicon), 503);
         $version = (string) (filemtime($favicon) ?: 0);
 
@@ -53,7 +53,7 @@ Route::group(['prefix' => 'app-install'], function () {
         $size = (int) $size;
         abort_unless(in_array($size, [180, 192, 512], true), 404);
 
-        $favicon = public_path('imgs/favicon.png');
+        $favicon = app(\App\Services\LoginPresentationService::class)->faviconPath();
         abort_unless(is_readable($favicon) && function_exists('imagecreatefrompng'), 503);
         $source = @imagecreatefrompng($favicon);
         abort_unless($source !== false, 503);
@@ -298,6 +298,22 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
     Route::get('/', 'ConfigController@index');
     Route::get('/remove-cor', 'ConfigController@removeCor');
     Route::post('/save', 'ConfigController@save');
+
+    // Administração de aparência: proteção SUPER também dentro do controller.
+    // Nunca substituir os fluxos históricos ou permitir publicação sem autorização.
+    Route::group(['prefix' => 'aparencia'], function () {
+        Route::get('/', 'LoginAppearanceController@index')->name('config.aparencia.index');
+        Route::get('/preview/{model}', 'LoginAppearanceController@preview')->name('config.aparencia.preview');
+        Route::post('/modelos', 'LoginAppearanceController@storeModel')->name('config.aparencia.models.store');
+        Route::post('/modelos/{model}', 'LoginAppearanceController@updateModel')->name('config.aparencia.models.update');
+        Route::post('/modelos/{model}/duplicar', 'LoginAppearanceController@duplicateModel')->name('config.aparencia.models.duplicate');
+        Route::post('/modelos/{model}/publicar', 'LoginAppearanceController@publishModel')->name('config.aparencia.models.publish');
+        Route::post('/conteudos', 'LoginAppearanceController@storeContent')->name('config.aparencia.contents.store');
+        Route::post('/conteudos/{content}', 'LoginAppearanceController@updateContent')->name('config.aparencia.contents.update');
+        Route::post('/conteudos/{content}/arquivar', 'LoginAppearanceController@archiveContent')->name('config.aparencia.contents.archive');
+        Route::post('/arquivos/{key}', 'LoginAppearanceController@storeAsset')->name('config.aparencia.assets.store');
+        Route::post('/arquivos/{asset}/publicar', 'LoginAppearanceController@publishAsset')->name('config.aparencia.assets.publish');
+    });
 });
 
 Route::group(['prefix' => 'videos', 'middleware' => 'verificaEmpresa'], function(){
