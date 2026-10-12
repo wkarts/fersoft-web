@@ -1,16 +1,14 @@
 <?php
 
-// Instalação nativa opcional: o manifesto e os ícones usam apenas
-// APP_NAME e o favicon existente, sem cópias nem cache de dados do ERP.
+// Instalação pelo próprio navegador. Reutiliza APP_NAME e o favicon atual.
+// URLs sem extensão: o servidor de arquivos estáticos pode interceptar .png/.js.
 Route::group(['prefix' => 'app-install'], function () {
-    Route::get('/manifest.webmanifest', function () {
-        abort_unless(config('app.pwa_enabled', false), 404);
+    Route::get('/manifest', function () {
+        $name = trim((string) config('app.name'));
+        abort_unless($name !== '', 503);
 
         $favicon = public_path('imgs/favicon.png');
-        abort_unless(is_readable($favicon) && function_exists('imagecreatefrompng'), 503);
-
-        $name = trim((string) config('app.name', 'FERSOFT WEB'));
-        $name = $name !== '' ? $name : 'FERSOFT WEB';
+        abort_unless(is_readable($favicon), 503);
         $version = (string) (filemtime($favicon) ?: 0);
 
         return response()->json([
@@ -40,15 +38,18 @@ Route::group(['prefix' => 'app-install'], function () {
             'prefer_related_applications' => false,
         ], 200, [
             'Content-Type' => 'application/manifest+json; charset=utf-8',
-            'Cache-Control' => 'private, no-store',
+            'Cache-Control' => 'no-store, max-age=0',
             'X-Content-Type-Options' => 'nosniff',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     })->name('app-install.manifest');
 
-    // Ícones quadrados produzidos sob demanda do mesmo PNG usado pelo ERP.
-    Route::get('/icon/{size}.png', function ($size) {
-        abort_unless(config('app.pwa_enabled', false), 404);
+    // Compatibilidade com o link antigo, se a requisição chegar ao Laravel.
+    Route::get('/manifest.webmanifest', function () {
+        return redirect()->route('app-install.manifest', [], 307);
+    });
 
+    // Mesmo PNG usado como favicon: sem manter ícones de marca independentes.
+    Route::get('/icon/{size}', function ($size) {
         $size = (int) $size;
         abort_unless(in_array($size, [180, 192, 512], true), 404);
 
@@ -70,7 +71,6 @@ Route::group(['prefix' => 'app-install'], function () {
             abort(503);
         }
 
-        // Preserva a proporção, centralizando o favicon sobre fundo claro.
         $white = imagecolorallocate($canvas, 255, 255, 255);
         imagefill($canvas, 0, 0, $white);
         $scale = min(($size * 0.84) / $width, ($size * 0.84) / $height);
@@ -101,7 +101,29 @@ Route::group(['prefix' => 'app-install'], function () {
             'X-Content-Type-Options' => 'nosniff',
         ]);
     })->where('size', '180|192|512')->name('app-install.icon');
+
+    Route::get('/icon/{size}.png', function ($size) {
+        return redirect()->route('app-install.icon', ['size' => $size], 307);
+    })->where('size', '180|192|512');
+
+    // Apenas ciclo de vida e elegibilidade de instalação. Nenhum cache offline
+    // ou interceptação de dados pessoais, fiscais, financeiros ou de sessão.
+    Route::get('/worker', function () {
+        return response(
+            "self.addEventListener('install', function () { self.skipWaiting(); });\n"
+            . "self.addEventListener('activate', function (event) { event.waitUntil(self.clients.claim()); });\n"
+            . "self.addEventListener('fetch', function () {});\n",
+            200,
+            [
+                'Content-Type' => 'application/javascript; charset=utf-8',
+                'Cache-Control' => 'no-cache, must-revalidate',
+                'Service-Worker-Allowed' => '/',
+                'X-Content-Type-Options' => 'nosniff',
+            ]
+        );
+    })->name('app-install.worker');
 });
+
 
 Route::get('/cadastro', 'UserController@cadastro');
 Route::post('/cadastro', 'UserController@salvarEmpresa');

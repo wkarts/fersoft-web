@@ -414,7 +414,7 @@ class ConnectApiInstanceService
             }
         }
 
-        throw new \RuntimeException('Não foi possível detectar automaticamente a URL pública desta instalação FERSOFT WEB.');
+        throw new \RuntimeException('Não foi possível detectar automaticamente a URL pública desta instalação.');
     }
 
     public function buildWebhookUrl(string $token): string

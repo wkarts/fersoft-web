@@ -108,7 +108,7 @@
         <div class="mb-2">
             <h3 class="mb-1">Connect|API</h3>
             <div class="text-muted">
-                Gerenciamento das instâncias WhatsApp desta instalação FERSOFT WEB
+                Gerenciamento das instâncias WhatsApp desta instalação
                 @if($isSuper)
                     <span class="badge badge-primary ml-2">Master</span>
                 @endif
@@ -747,7 +747,7 @@
                 '<label for="' + inputId + '">Destino</label>' +
                 '<input id="' + inputId + '" class="form-control" value="' + escapeHtml(button.dataset.phone || '') + '" placeholder="5575999999999">' +
                 '<label class="mt-3" for="' + messageId + '">Mensagem</label>' +
-                '<textarea id="' + messageId + '" class="form-control">Teste de integração Connect|API - FERSOFT WEB.</textarea>',
+                '<textarea id="' + messageId + '" class="form-control">' + escapeHtml('Teste de integração Connect|API - ' + @json(config('app.name')) + '.') + '</textarea>',
                 {
                     showCancel: true,
                     confirmText: 'Enviar',
