@@ -34,36 +34,50 @@ class GlobalDeliveryModalLayoutRegressionTest extends TestCase
         );
     }
 
-    public function test_primary_layouts_use_the_published_favicon_with_the_existing_canonical_default(): void
+    public function test_primary_layouts_keep_original_favicons_when_optional_branding_is_disabled(): void
     {
         $lateral = file_get_contents(resource_path('views/default/menu_lateral.blade.php'));
         $superior = file_get_contents(resource_path('views/default/menu_superior.blade.php'));
-        $service = file_get_contents(app_path('Services/LoginPresentationService.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
 
-        // O favicon institucional existente continua sendo a origem inicial,
-        // sem obrigar a aplicação a exibir duas referências concorrentes.
+        $this->assertFileExists(public_path('favicon.ico'));
         $this->assertFileExists(public_path('imgs/favicon.png'));
-        $this->assertStringContainsString("'favicon' => 'imgs/favicon.png'", $service);
-        $this->assertStringContainsString('->faviconPath()', $routes);
-
-        $source = "app(\\App\\Services\\LoginPresentationService::class)->assetUrls()['favicon']";
 
         foreach ([$lateral, $superior] as $layout) {
-            // O mesmo favicon publicado é utilizado nos dois layouts e no PWA.
-            $this->assertStringContainsString($source, $layout);
-            $this->assertSame(2, substr_count($layout, $source));
-            $this->assertSame(1, substr_count($layout, '<link rel="icon" type="image/png"'));
-            $this->assertSame(1, substr_count($layout, '<link rel="shortcut icon" type="image/png"'));
-
-            // Não carregar o favicon antigo antes do ativo, nem restaurar
-            // referências rígidas que impedem a troca pelo superusuário.
-            $this->assertStringNotContainsString("asset('favicon.ico')", $layout);
-            $this->assertStringNotContainsString("filemtime(public_path('favicon.ico'))", $layout);
+            // A regra histórica está preservada, sem depender da nova classe.
+            $this->assertStringContainsString("asset('favicon.ico')", $layout);
+            $this->assertStringContainsString("asset('imgs/favicon.png')", $layout);
+            $this->assertStringContainsString("filemtime(public_path('favicon.ico'))", $layout);
+            $this->assertStringContainsString("config('login_presentation.enabled', false)", $layout);
+            $this->assertStringContainsString("config('login_presentation.global_branding_enabled', false)", $layout);
+            $this->assertStringContainsString("class_exists(", $layout);
+            $this->assertStringContainsString("asset('imgs/slym.png')", $layout);
             $this->assertStringNotContainsString(
                 '<link rel="shortcut icon" href="{{ asset(\'imgs/slym.png\') }}" />',
                 $layout
             );
+        }
+
+        // PWA sempre disponível; com o novo recurso desativado, ele continua
+        // apontando para o PNG original sem chamar o serviço opcional.
+        $this->assertStringContainsString("\$favicon = public_path('imgs/favicon.png')", $routes);
+        $this->assertStringContainsString("class_exists(\\App\\Services\\LoginPresentationService::class)", $routes);
+    }
+
+    public function test_dynamic_favicon_is_single_and_server_resolved_only_if_explicitly_enabled(): void
+    {
+        foreach ([
+            'views/default/menu_lateral.blade.php',
+            'views/default/menu_superior.blade.php',
+        ] as $path) {
+            $layout = file_get_contents(resource_path($path));
+
+            $this->assertStringContainsString("@if(!empty(\$appearanceAssets['favicon']))", $layout);
+            $this->assertStringContainsString('<link rel="icon" type="image/png" href="{{ $appearanceAssets[\'favicon\'] }}">', $layout);
+            $this->assertStringContainsString('->assetUrls()', $layout);
+
+            // Sem alteração do HTML por script após a renderização.
+            $this->assertStringNotContainsString('document.querySelector(\'link[rel="icon"]\')', $layout);
         }
     }
 }

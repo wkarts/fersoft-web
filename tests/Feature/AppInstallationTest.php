@@ -8,6 +8,8 @@ class AppInstallationTest extends TestCase
 {
     public function test_manifest_is_always_available_even_if_old_feature_flag_was_false(): void
     {
+        config()->set('login_presentation.enabled', false);
+        config()->set('login_presentation.global_branding_enabled', false);
         // Instalações antigas ainda podem ter PWA_ENABLED=false no .env.
         // O código não deve consultar mais essa chave.
         config()->set('app.pwa_enabled', false);
@@ -42,6 +44,8 @@ class AppInstallationTest extends TestCase
 
     public function test_icons_are_generated_from_current_favicon_even_with_old_flag_disabled(): void
     {
+        config()->set('login_presentation.enabled', false);
+        config()->set('login_presentation.global_branding_enabled', false);
         if (!function_exists('imagecreatefrompng')) {
             $this->markTestSkipped('Extensão GD necessária para redimensionar o favicon.');
         }

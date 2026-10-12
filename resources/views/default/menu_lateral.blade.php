@@ -2,6 +2,23 @@
 <html lang="br">
 <head>
     @include('layouts.installable')
+    {{-- O módulo de apresentação é opcional: com ele desativado não há consulta,
+         dependência de classes novas ou alteração na identidade histórica. --}}
+    @php
+        $appearanceAssets = [];
+        if (config('login_presentation.enabled', false)
+            && config('login_presentation.global_branding_enabled', false)
+            && class_exists(\App\Services\LoginPresentationService::class)) {
+            try {
+                $appearanceAssets = app(\App\Services\LoginPresentationService::class)->assetUrls();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Identidade opcional indisponível no layout histórico.', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+    @endphp
     <meta charset="utf-8" />
 
     <title>{{ $title ?? config('app.name') }}</title>
@@ -61,9 +78,15 @@
     <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
-    {{-- O favicon publicado também é a fonte dos ícones da instalação. --}}
-    <link rel="icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
-    <link rel="shortcut icon" type="image/png" href="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['favicon'] }}">
+    @if(!empty($appearanceAssets['favicon']))
+        <link rel="icon" type="image/png" href="{{ $appearanceAssets['favicon'] }}">
+        <link rel="shortcut icon" type="image/png" href="{{ $appearanceAssets['favicon'] }}">
+    @else
+        {{-- Identidade original, sem consulta ao módulo de aparência. --}}
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+        <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
+    @endif
     @if($cor != '')
         <link href="/css/extend.css" rel="stylesheet" type="text/css" />
     @endif
@@ -321,11 +344,11 @@
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
     <a href="/graficos">
-        <!-- <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" /> -->
+        <!-- <img width="100" alt="Logo" src="{{ asset('imgs/slym.png') }}" /> -->
         @if($logo != "" && env("LOGOCLIENTE") == 1)
             <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
         @else
-            <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" />
+            <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
         @endif
     </a>
 
@@ -365,7 +388,7 @@
                     @if($logo != "" && env("LOGOCLIENTE") == 1)
                         <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
                     @else
-                        <img width="100" alt="Logo" src="{{ app(\App\Services\LoginPresentationService::class)->assetUrls()['menu_logo'] }}" />
+                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
                     @endif
                 </a>
 

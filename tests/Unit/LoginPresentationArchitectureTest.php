@@ -60,8 +60,11 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString('name="senha"', $form);
         $this->assertStringContainsString('name="lembrar"', $form);
         $this->assertStringContainsString('name="uri"', $form);
-        $this->assertStringContainsString("config('login_presentation.page', 'access')", $controller);
-        $this->assertStringContainsString("if (\$loginPage === 'access_4')", $controller);
+        $this->assertStringContainsString("config('login_presentation.page'", $controller);
+        $this->assertStringContainsString("config('login_presentation.enabled', false)", $controller);
+        $this->assertStringContainsString("view()->exists('login.access_4')", $controller);
+        $this->assertStringContainsString("class_exists(\\App\\Services\\LoginPresentationService::class)", $controller);
+        $this->assertStringContainsString("if (\$page === 'access_4' && \$newAvailable)", $controller);
         $this->assertStringContainsString("Route::post('/request', 'UserController@request')->middleware('acessoUsuario')", $routes);
     }
 
@@ -95,7 +98,15 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString("'is_active' => false", $controller);
         $this->assertStringContainsString("lockForUpdate()", $controller);
         $this->assertStringContainsString("'prefix' => 'aparencia'", $routes);
+        $this->assertStringContainsString("config('login_presentation.enabled', false)", $routes);
+        $this->assertStringContainsString("class_exists(\\App\\Http\\Controllers\\LoginAppearanceController::class)", $routes);
         $this->assertStringNotContainsString('Schema::drop', $migration);
         $this->assertStringContainsString("->nullable()", $migration);
+
+        // Não precisa de novas migrations nem de nova tela quando desligado.
+        $settings = file_get_contents($base . '/config/login_presentation.php');
+        $this->assertStringContainsString("LOGIN_PRESENTATION_ENABLED', false", $settings);
+        $this->assertStringContainsString("LOGIN_PRESENTATION_GLOBAL_BRANDING', false", $settings);
+        $this->assertStringNotContainsString('Schema::drop', $migration);
     }
 }

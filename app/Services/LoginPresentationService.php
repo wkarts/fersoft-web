@@ -176,7 +176,13 @@ class LoginPresentationService
                 continue;
             }
 
-            // Nunca carrega primeiro o arquivo histórico e depois troca via JavaScript.
+            // Resolver uma única imagem no servidor, sem requisitar primeiro a antiga.
+            // Quando o arquivo publicado foi perdido, manter a identidade anterior
+            // até o superusuário republicar uma versão válida.
+            if (!Storage::disk('public')->exists($asset->path)) {
+                continue;
+            }
+
             $urls[$asset->asset_key] = Storage::disk('public')->url($asset->path)
                 . '?v=' . substr((string) $asset->sha256, 0, 12);
         }
@@ -196,9 +202,11 @@ class LoginPresentationService
             ->orderByDesc('id')
             ->first();
 
-        return $active
-            ? Storage::disk('public')->path($active->path)
-            : public_path(self::DEFAULT_ASSETS['favicon']);
+        if ($active && Storage::disk('public')->exists($active->path)) {
+            return Storage::disk('public')->path($active->path);
+        }
+
+        return public_path(self::DEFAULT_ASSETS['favicon']);
     }
 
     public function visibleContents(?int $modelId = null): array

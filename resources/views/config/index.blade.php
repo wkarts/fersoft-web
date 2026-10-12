@@ -21,6 +21,7 @@
 </style>
 @endsection
 @section('content')
+@if(config('login_presentation.enabled', false) && class_exists(\App\Http\Controllers\LoginAppearanceController::class))
 <div class="container-fluid mb-4">
     <div class="card card-custom p-4">
         <div class="d-flex align-items-center justify-content-between flex-wrap">
@@ -32,6 +33,7 @@
         </div>
     </div>
 </div>
+@endif
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
