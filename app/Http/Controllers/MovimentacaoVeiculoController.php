@@ -6,6 +6,7 @@ use App\Models\MovimentacaoVeiculo;
 use App\Models\Veiculo;
 use App\Models\Funcionario;
 use App\Models\TipoMovimentacao;
+use App\Services\ConnectApi\ConnectApiMessageService;
 use App\Models\Produto;
 use App\Models\Cliente;
 use App\Models\Fornecedor;
@@ -14,6 +15,7 @@ use App\Models\DespesaMovimentacao;
 use App\Helpers\StockMove;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class MovimentacaoVeiculoController extends BaseController
@@ -895,26 +897,43 @@ class MovimentacaoVeiculoController extends BaseController
     {
         $mov = MovimentacaoVeiculo::with(['motorista', 'veiculo'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
 
-        if (!$mov->motorista || empty($mov->motorista->celular && $mov->motorista->telefone)) {
+        if (!$mov->motorista || (empty($mov->motorista->celular) && empty($mov->motorista->telefone))) {
             session()->flash('mensagem_erro', 'Motorista sem telefone cadastrado.');
             return redirect()->back();
         }
 
-        $telefone = $mov->motorista->celular ?? $mov->motorista->telefone;
+        $telefone = $mov->motorista->celular ?: $mov->motorista->telefone;
         $linkChecklist = url('/checklist/veiculo/' . $mov->id);
 
         $msg = "📋 *CHECKLIST DE PRÉ-VIAGEM*\n\nOlá, *{$mov->motorista->nome}*! Por favor, preencha o checklist do veículo *{$mov->veiculo->placa}* clicando no link abaixo antes ou logo no início da sua rota:\n\n👉 {$linkChecklist}";
 
-        $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $this->empresa_id)->first();
-        if ($evoInstance) {
-            $numLimpo = preg_replace('/[^0-9]/', '', $telefone);
-            if (!str_starts_with($numLimpo, '55')) $numLimpo = '55' . $numLimpo;
+        try {
+            // Instância e número são resolvidos pelo serviço da Connect|API
+            // para a empresa autenticada, sem consultar transportes legados.
+            $resultado = app(ConnectApiMessageService::class)->sendText(
+                (int) $this->empresa_id,
+                (string) $telefone,
+                $msg
+            );
 
-            \Illuminate\Support\Facades\Http::withHeaders(['apikey' => $evoInstance->api_key])
-                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
-                    'number' => $numLimpo,
-                    'textMessage' => ['text' => $msg]
+            if (empty($resultado['success'])) {
+                Log::warning('Frota: falha ao enviar checklist de pré-viagem pelo WhatsApp.', [
+                    'empresa_id' => $this->empresa_id,
+                    'movimentacao_id' => $mov->id,
+                    'status' => $resultado['status'] ?? null,
+                    'erro' => $resultado['error'] ?? null,
                 ]);
+                session()->flash('mensagem_erro', 'Não foi possível enviar o checklist pelo WhatsApp. Verifique a conexão da instância.');
+                return redirect()->back();
+            }
+        } catch (\Throwable $e) {
+            Log::error('Frota: erro ao enviar checklist de pré-viagem pelo WhatsApp.', [
+                'empresa_id' => $this->empresa_id,
+                'movimentacao_id' => $mov->id,
+                'erro' => $e->getMessage(),
+            ]);
+            session()->flash('mensagem_erro', 'Não foi possível enviar o checklist pelo WhatsApp. Verifique a conexão da instância.');
+            return redirect()->back();
         }
 
         session()->flash('mensagem_sucesso', 'Link do checklist enviado com sucesso para o WhatsApp do motorista!');
@@ -944,26 +963,43 @@ class MovimentacaoVeiculoController extends BaseController
     {
         $mov = MovimentacaoVeiculo::with(['motorista', 'veiculo'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
 
-        if (!$mov->motorista || empty($mov->motorista->celular && $mov->motorista->telefone)) {
+        if (!$mov->motorista || (empty($mov->motorista->celular) && empty($mov->motorista->telefone))) {
             session()->flash('mensagem_erro', 'Motorista sem telefone cadastrado.');
             return redirect()->back();
         }
 
-        $telefone = $mov->motorista->celular ?? $mov->motorista->telefone;
+        $telefone = $mov->motorista->celular ?: $mov->motorista->telefone;
         $linkAbastecimento = url('/abastecimento-motorista/' . $mov->id);
 
         $msg = "⛽ *REGISTRO DE ABASTECIMENTO*\n\nOlá, *{$mov->motorista->nome}*! Registre o abastecimento do veículo *{$mov->veiculo->placa}* clicando no link abaixo.\n\n📸 *Dica:* Tire a foto do cupom fiscal e da bomba direto pelo link!\n\n👉 {$linkAbastecimento}";
 
-        $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $this->empresa_id)->first();
-        if ($evoInstance) {
-            $numLimpo = preg_replace('/[^0-9]/', '', $telefone);
-            if (!str_starts_with($numLimpo, '55')) $numLimpo = '55' . $numLimpo;
+        try {
+            // Instância e número são resolvidos pelo serviço da Connect|API
+            // para a empresa autenticada, sem consultar transportes legados.
+            $resultado = app(ConnectApiMessageService::class)->sendText(
+                (int) $this->empresa_id,
+                (string) $telefone,
+                $msg
+            );
 
-            \Illuminate\Support\Facades\Http::withHeaders(['apikey' => $evoInstance->api_key])
-                ->post(rtrim($evoInstance->base_url, '/') . "/message/sendText/{$evoInstance->name}", [
-                    'number' => $numLimpo,
-                    'textMessage' => ['text' => $msg]
+            if (empty($resultado['success'])) {
+                Log::warning('Frota: falha ao enviar link de abastecimento pelo WhatsApp.', [
+                    'empresa_id' => $this->empresa_id,
+                    'movimentacao_id' => $mov->id,
+                    'status' => $resultado['status'] ?? null,
+                    'erro' => $resultado['error'] ?? null,
                 ]);
+                session()->flash('mensagem_erro', 'Não foi possível enviar o link de abastecimento pelo WhatsApp. Verifique a conexão da instância.');
+                return redirect()->back();
+            }
+        } catch (\Throwable $e) {
+            Log::error('Frota: erro ao enviar link de abastecimento pelo WhatsApp.', [
+                'empresa_id' => $this->empresa_id,
+                'movimentacao_id' => $mov->id,
+                'erro' => $e->getMessage(),
+            ]);
+            session()->flash('mensagem_erro', 'Não foi possível enviar o link de abastecimento pelo WhatsApp. Verifique a conexão da instância.');
+            return redirect()->back();
         }
 
         session()->flash('mensagem_sucesso', 'Link de abastecimento enviado com sucesso para o WhatsApp do motorista!');
