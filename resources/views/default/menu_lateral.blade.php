@@ -16,7 +16,7 @@
     <!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
     <link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
 
-    <link href="/css/style.css" rel="stylesheet" type="text/css" />
+    <link href="/css/style.css?v={{ filemtime(public_path('css/style.css')) }}" rel="stylesheet" type="text/css" />
 
     <!--end::Page Vendors Styles -->
 
