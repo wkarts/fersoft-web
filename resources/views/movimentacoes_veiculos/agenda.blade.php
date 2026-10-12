@@ -58,7 +58,6 @@
         .event-finalizado { background-color: #1BC5BD; }
         .event-cancelado { background-color: #F64E60; }
 
-        /* Animação do Alerta de Atraso */
         .badge-atrasado {
             background-color: #dc3545;
             color: white;
@@ -75,7 +74,6 @@
     <div class="card card-custom gutter-b">
         <div class="card-body">
 
-            <!-- CARDS DE MÉTRICAS OPERACIONAIS -->
             <div class="row mb-5">
                 <div class="col-xl-3 col-sm-6">
                     <div class="card card-custom bg-success card-stretch gutter-b text-white p-4">
@@ -103,7 +101,6 @@
                 </div>
             </div>
 
-            <!-- BARRA DE AÇÕES -->
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
                 <div>
                     <a href="/movimentacaoVeiculo/new" class="btn btn-success font-weight-bold mr-2">
@@ -122,20 +119,27 @@
                 </div>
             </div>
 
-            <!-- NAVEGAÇÃO ENTRE MESES -->
             <div class="d-flex justify-content-between align-items-center mb-4 bg-light p-3 rounded">
                 <a href="/movimentacaoVeiculo/agenda?mes={{ $mesAnterior }}" class="btn btn-outline-primary btn-sm font-weight-bold">
                     <i class="la la-angle-left"></i> Mês Anterior
                 </a>
                 <h4 class="font-weight-bolder text-dark mb-0">
-                    {{ ucfirst($dt->translatedFormat('F / Y')) }}
+                    @php
+                        $mesesPt = [
+                            'January' => 'Janeiro', 'February' => 'Fevereiro', 'March' => 'Março',
+                            'April' => 'Abril', 'May' => 'Maio', 'June' => 'Junho',
+                            'July' => 'Julho', 'August' => 'Agosto', 'September' => 'Setembro',
+                            'October' => 'Outubro', 'November' => 'Novembro', 'December' => 'Dezembro'
+                        ];
+                        $nomeMes = $mesesPt[$dt->format('F')] ?? $dt->format('F');
+                    @endphp
+                    {{ $nomeMes }} / {{ $dt->format('Y') }}
                 </h4>
                 <a href="/movimentacaoVeiculo/agenda?mes={{ $mesProximo }}" class="btn btn-outline-primary btn-sm font-weight-bold">
                     Próximo Mês <i class="la la-angle-right"></i>
                 </a>
             </div>
 
-            <!-- CABEÇALHO DO CALENDÁRIO -->
             <div class="cal-grid mb-2">
                 <div class="cal-header">Dom</div>
                 <div class="cal-header">Seg</div>
@@ -146,7 +150,6 @@
                 <div class="cal-header">Sáb</div>
             </div>
 
-            <!-- GRADE DO CALENDÁRIO -->
             <div class="cal-grid">
                 @for ($i = 0; $i < $primeiroDiaSemana; $i++)
                     <div class="cal-day-empty"></div>
@@ -172,22 +175,60 @@
                                 };
 
                                 $placa = $coleta->veiculo->placa ?? 'S/ Placa';
-                                $cliente = $coleta->cliente->razao_social ?? $coleta->destino ?? '';
 
-                                // Formatação de Datas
+                                // =========================================================================
+                                // HTML MULTI-STOP COM BOTÕES INDIVIDUAIS INJETADOS
+                                // =========================================================================
+                                $htmlMultiStop = '';
+                                $isMultiStop = 'false';
+
+                                if (isset($coleta->destinos) && $coleta->destinos->count() > 0) {
+                                    $isMultiStop = 'true';
+                                    foreach($coleta->destinos as $dest) {
+                                        $htmlMultiStop .= '<div class="mb-4 border-bottom pb-3"><div class="d-flex align-items-center mb-1"><span class="badge badge-secondary mr-2">'.$dest->ordem.'º</span>';
+
+                                        if ($dest->cliente) {
+                                            $htmlMultiStop .= '<b class="text-dark">'.htmlspecialchars($dest->cliente->razao_social ?? $dest->cliente->nome).'</b>';
+                                        } elseif ($dest->fornecedor) {
+                                            $htmlMultiStop .= '<b class="text-dark">[FOR] '.htmlspecialchars($dest->fornecedor->razao_social ?? $dest->fornecedor->nome).'</b>';
+                                        } else {
+                                            $htmlMultiStop .= '<b class="text-dark">Endereço Avulso</b>';
+                                        }
+                                        $htmlMultiStop .= '</div>';
+
+                                        if ($dest->endereco_completo) {
+                                            $htmlMultiStop .= '<small class="text-muted d-block ml-8 mb-2">'.htmlspecialchars($dest->endereco_completo).'</small>';
+                                        }
+
+                                        // Lógica de tempo e botões de Check-in para esta parada
+                                        $cheg = $dest->data_hora_chegada ? \Carbon\Carbon::parse($dest->data_hora_chegada)->format('d/m/Y H:i') : null;
+                                        $sai = $dest->data_hora_saida ? \Carbon\Carbon::parse($dest->data_hora_saida)->format('d/m/Y H:i') : null;
+
+                                        $htmlMultiStop .= '<div class="ml-8 mt-2 d-flex align-items-center" style="font-size: 0.9rem;">';
+                                        if ($cheg && $sai) {
+                                            $htmlMultiStop .= '<span class="text-success font-weight-bold"><i class="la la-check-circle text-success mr-1"></i> Visitado ('.$cheg.' às '.$sai.')</span>';
+                                        } elseif ($cheg) {
+                                            $htmlMultiStop .= '<span class="text-primary font-weight-bold mr-3"><i class="la la-map-marker text-primary mr-1"></i> Chegou: '.$cheg.'</span>';
+                                            $htmlMultiStop .= '<button class="btn btn-xs btn-outline-info font-weight-bold py-1 px-2" onclick="marcarHorarioDestino(\'saida_destino\', '.$dest->id.')">Registrar Saída</button>';
+                                        } else {
+                                            $htmlMultiStop .= '<span class="text-muted font-weight-bold mr-3"><i class="la la-clock text-muted mr-1"></i> Pendente</span>';
+                                            $htmlMultiStop .= '<button class="btn btn-xs btn-outline-success font-weight-bold py-1 px-2" onclick="marcarHorarioDestino(\'chegada_destino\', '.$dest->id.')">Registrar Chegada</button>';
+                                        }
+                                        $htmlMultiStop .= '</div></div>';
+                                    }
+                                } else {
+                                    $htmlMultiStop = '<b>'.htmlspecialchars($coleta->cliente->razao_social ?? $coleta->destino ?? 'Não informado').'</b>';
+                                }
+
                                 $saidaPrevista = \Carbon\Carbon::parse($coleta->data_hora_saida)->format('d/m/Y H:i');
                                 $saidaReal = $coleta->data_hora_saida_real ? \Carbon\Carbon::parse($coleta->data_hora_saida_real)->format('d/m/Y H:i') : '---';
                                 $chegadaBase = $coleta->data_hora_chegada ? \Carbon\Carbon::parse($coleta->data_hora_chegada)->format('d/m/Y H:i') : '---';
 
                                 $textoAtraso = $coleta->status_pontualidade_saida ?? '';
-                                $textoAtraso = preg_replace_callback('/(\d+\.\d+)/', function($m) {
-                                    return round($m[1]);
-                                }, $textoAtraso);
-                                $pontualidadeHtml = addslashes($textoAtraso);
+                                $textoAtraso = preg_replace_callback('/(\d+\.\d+)/', function($m) { return round($m[1]); }, $textoAtraso);
 
                                 $isAtrasado = ($coleta->status == 'agendado' && \Carbon\Carbon::parse($coleta->data_hora_saida)->isPast());
 
-                                // CÁLCULO DO RESUMO DA VIAGEM
                                 $tempoTotal = '';
                                 $tempoCliente = '';
 
@@ -198,13 +239,16 @@
                                 if ($coleta->data_hora_chegada_cliente && $coleta->data_hora_saida_cliente) {
                                     $tempoCliente = \Carbon\Carbon::parse($coleta->data_hora_chegada_cliente)->diffForHumans(\Carbon\Carbon::parse($coleta->data_hora_saida_cliente), true);
                                 }
+
+                                $htmlMultiStopB64 = base64_encode($htmlMultiStop);
+                                $pontualidadeB64 = base64_encode($textoAtraso);
                             @endphp
 
                             <div class="cal-event-btn {{ $classeStatus }}"
                                  onclick="exibirResumo(
                                 '{{ $coleta->id }}',
                                 '{{ $placa }}',
-                                '{{ addslashes($cliente) }}',
+                                '{{ $htmlMultiStopB64 }}',
                                 '{{ addslashes($coleta->motorista->nome ?? 'Não informado') }}',
                                 '{{ $coleta->motorista_id }}',
                                 '{{ ucfirst($coleta->status) }}',
@@ -212,10 +256,11 @@
                                 '{{ $coleta->data_saida_cliente_formatada ?? '---' }}',
                                 '{{ $saidaPrevista }}',
                                 '{{ $saidaReal }}',
-                                '{{ $pontualidadeHtml }}',
+                                '{{ $pontualidadeB64 }}',
                                 '{{ $chegadaBase }}',
                                 '{{ $tempoTotal }}',
-                                '{{ $tempoCliente }}'
+                                '{{ $tempoCliente }}',
+                                '{{ $isMultiStop }}'
                              )">
                                 <div>
                                     <i class="la la-truck"></i>
@@ -239,7 +284,7 @@
             <div class="modal-content">
                 <div class="modal-header bg-light">
                     <h5 class="modal-title font-weight-bold text-primary">
-                        <i class="la la-truck text-primary mr-1"></i> Detalhes da Coleta
+                        <i class="la la-truck text-primary mr-1"></i> Detalhes da Viagem
                     </h5>
                     <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
@@ -248,11 +293,13 @@
                         <label class="text-muted mb-0 font-weight-bold">Veículo / Placa:</label>
                         <p class="font-weight-bolder text-dark font-size-h6 mb-0" id="mPlaca">-</p>
                     </div>
+
                     <div class="form-group mb-2">
-                        <label class="text-muted mb-0 font-weight-bold">Cliente / Local:</label>
-                        <p class="font-weight-bold text-dark mb-0" id="mCliente">-</p>
+                        <label class="text-muted mb-0 font-weight-bold">Destinos / Rota:</label>
+                        <div class="p-3 bg-light rounded mt-1 shadow-sm" id="mCliente">-</div>
                     </div>
-                    <div class="form-group mb-2">
+
+                    <div class="form-group mb-2 mt-3">
                         <label class="text-muted mb-0 font-weight-bold">Motorista:</label>
                         <p class="font-weight-bold text-dark mb-0" id="mMotorista">-</p>
                     </div>
@@ -280,8 +327,8 @@
                         </div>
                     </div>
 
-                    <!-- 2. CHEGADA NO CLIENTE -->
-                    <div class="row align-items-center mb-3 bg-light p-2 rounded">
+                    <!-- 2. CHEGADA NO CLIENTE (SÓ MOSTRA SE FOR VIAGEM ANTIGA/SIMPLES) -->
+                    <div class="row align-items-center mb-3 bg-light p-2 rounded" id="blocoLegadoChegada">
                         <div class="col-7">
                             <label class="text-muted mb-0 font-weight-bold">Chegada Cliente:</label>
                             <p class="font-weight-bold text-dark mb-0" id="mChegada">-</p>
@@ -293,8 +340,8 @@
                         </div>
                     </div>
 
-                    <!-- 3. SAÍDA DO CLIENTE -->
-                    <div class="row align-items-center mb-3 bg-light p-2 rounded">
+                    <!-- 3. SAÍDA DO CLIENTE (SÓ MOSTRA SE FOR VIAGEM ANTIGA/SIMPLES) -->
+                    <div class="row align-items-center mb-3 bg-light p-2 rounded" id="blocoLegadoSaida">
                         <div class="col-7">
                             <label class="text-muted mb-0 font-weight-bold">Saída Cliente:</label>
                             <p class="font-weight-bold text-dark mb-0" id="mSaida">-</p>
@@ -319,14 +366,11 @@
                         </div>
                     </div>
 
-                    <!-- CAIXA DE RESUMO DA VIAGEM -->
                     <div class="row mt-3" id="mResumoViagemContainer" style="display: none;">
                         <div class="col-12">
                             <div class="alert alert-custom alert-light-primary fade show mb-0 p-3" role="alert">
                                 <div class="alert-icon"><i class="flaticon-information text-primary"></i></div>
-                                <div class="alert-text font-weight-bold" id="mResumoViagemTexto">
-                                    <!-- Resumo injetado via JS -->
-                                </div>
+                                <div class="alert-text font-weight-bold" id="mResumoViagemTexto"></div>
                             </div>
                         </div>
                     </div>
@@ -337,6 +381,9 @@
                         <i class="la la-times-circle"></i> Cancelar Coleta
                     </button>
                     <div>
+                        <button type="button" class="btn btn-info mr-2" id="btnModalAbastecimento" onclick="pedirAbastecimento()">
+                            <i class="la la-gas-pump"></i> Link Abastecimento
+                        </button>
                         <a id="btnModalEditar" href="#" class="btn btn-warning">
                             <i class="la la-edit"></i> Editar
                         </a>
@@ -347,7 +394,6 @@
         </div>
     </div>
 
-    <!-- MODAL CANCELAMENTO -->
     <div class="modal fade" id="modal_cancelar" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
             <form id="form_cancelar" method="post" action="">
@@ -376,20 +422,26 @@
     <script>
         var idColetaAtual = null;
 
-        function exibirResumo(id, placa, cliente, motorista, motoristaId, status, chegada, saida, prevista, real, pontualidadeHtml) {
+        function exibirResumo(id, placa, clienteHtmlB64, motorista, motoristaId, status, chegada, saida, prevista, real, pontualidadeB64, chegadaBase, tempoTotal, tempoCliente, isMultiStop) {
             idColetaAtual = id;
 
             $('#mPlaca').text(placa);
-            $('#mCliente').text(cliente || 'Nenhum cliente informado');
+
+            let htmlClienteDecodificado = clienteHtmlB64 ? decodeURIComponent(escape(window.atob(clienteHtmlB64))) : 'Nenhum cliente informado';
+            $('#mCliente').html(htmlClienteDecodificado);
+
             $('#mMotorista').text(motorista);
             $('#mStatus').text(status);
             $('#mChegada').text(chegada);
             $('#mSaida').text(saida);
 
-            // Horários de Saída da Garagem
             $('#mSaidaPrevista').text(prevista);
             $('#mSaidaReal').text(real);
-            $('#mBadgePontualidade').html(pontualidadeHtml);
+
+            let htmlPontualidadeDecodificada = pontualidadeB64 ? decodeURIComponent(escape(window.atob(pontualidadeB64))) : '---';
+            $('#mBadgePontualidade').html(htmlPontualidadeDecodificada);
+
+            $('#mChegadaBase').text(chegadaBase || '---');
 
             $('#btnModalEditar').attr('href', '/movimentacaoVeiculo/edit/' + id);
 
@@ -399,15 +451,53 @@
                 $('#btnModalCancelar').show();
             }
 
+            // ESCONDE OS BOTÕES ANTIGOS DE CLIENTE SE FOR MULTI-STOP
+            if (isMultiStop === 'true') {
+                $('#blocoLegadoChegada').hide();
+                $('#blocoLegadoSaida').hide();
+            } else {
+                $('#blocoLegadoChegada').show();
+                $('#blocoLegadoSaida').show();
+            }
+
+            if (status === 'Finalizado' && tempoTotal) {
+                let textoResumo = `Tempo Total da Viagem: ${tempoTotal}`;
+                $('#mResumoViagemTexto').html(textoResumo);
+                $('#mResumoViagemContainer').show();
+            } else {
+                $('#mResumoViagemContainer').hide();
+            }
+
             $('#modalResumoColeta').modal('show');
         }
 
+        // Função Original para os Botões Genéricos e Retorno
         function marcarHorario(tipo) {
             if (!idColetaAtual) return;
 
             $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
                 _token: '{{ csrf_token() }}',
                 tipo: tipo
+            }, function(res) {
+                if (res.success) {
+                    window.location.reload();
+                } else {
+                    alert('Erro: ' + res.mensagem);
+                }
+            }).fail(function(xhr) {
+                var msg = xhr.responseJSON ? xhr.responseJSON.mensagem : 'Erro ao processar a solicitação.';
+                alert('Aviso: ' + msg);
+            });
+        }
+
+        // NOVA Função para Marcar Parada a Parada na Lista de Destinos
+        function marcarHorarioDestino(tipo, destinoId) {
+            if (!idColetaAtual) return;
+
+            $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
+                _token: '{{ csrf_token() }}',
+                tipo: tipo,
+                destino_id: destinoId
             }, function(res) {
                 if (res.success) {
                     window.location.reload();
@@ -427,42 +517,11 @@
             $('#modal_cancelar').modal('show');
         }
 
-        function exibirResumo(id, placa, cliente, motorista, motoristaId, status, chegada, saida, prevista, real, pontualidadeHtml, chegadaBase, tempoTotal, tempoCliente, paradas) {
-            idColetaAtual = id;
-
-            $('#mPlaca').text(placa);
-            $('#mCliente').text(cliente || 'Nenhum cliente informado');
-            $('#mMotorista').text(motorista);
-            $('#mStatus').text(status);
-            $('#mChegada').text(chegada);
-            $('#mSaida').text(saida);
-
-            // Horários
-            $('#mSaidaPrevista').text(prevista);
-            $('#mSaidaReal').text(real);
-            $('#mBadgePontualidade').html(pontualidadeHtml);
-            $('#mChegadaBase').text(chegadaBase || '---');
-
-            $('#btnModalEditar').attr('href', '/movimentacaoVeiculo/edit/' + id);
-
-            if (status === 'Cancelado' || status === 'Finalizado') {
-                $('#btnModalCancelar').hide();
-            } else {
-                $('#btnModalCancelar').show();
+        function pedirAbastecimento() {
+            if (!idColetaAtual) return;
+            if (confirm('Deseja enviar o link de abastecimento para o WhatsApp do motorista?')) {
+                window.location.href = '/movimentacaoVeiculo/enviarLinkAbastecimento/' + idColetaAtual;
             }
-
-            // Resumo
-            if (status === 'Finalizado' && tempoTotal) {
-                let textoResumo = `Tempo Total: ${tempoTotal} <br>
-                                Tempo no Cliente: ${tempoCliente || 'N/A'} <br>
-                                Paradas Extras: ${paradas || 0}`;
-                $('#mResumoViagemTexto').html(textoResumo);
-                $('#mResumoViagemContainer').show();
-            } else {
-                $('#mResumoViagemContainer').hide();
-            }
-
-            $('#modalResumoColeta').modal('show');
         }
     </script>
 @endsection

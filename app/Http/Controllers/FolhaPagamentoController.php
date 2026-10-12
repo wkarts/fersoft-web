@@ -22,7 +22,6 @@ class FolhaPagamentoController extends Controller
                 return redirect('/login');
             }
 
-            // Garante compatibilidade caso a sessão seja array ou objeto StdClass/Model
             if (is_array($user_logged)) {
                 $this->empresa_id = $user_logged['empresa_id']
                     ?? $user_logged['empresa']
@@ -35,7 +34,6 @@ class FolhaPagamentoController extends Controller
                     ?? null;
             }
 
-            // Fallback para usuário autenticado via Auth nativo, se existir
             if (!$this->empresa_id && auth()->check()) {
                 $this->empresa_id = auth()->user()->empresa_id ?? null;
             }
@@ -45,7 +43,7 @@ class FolhaPagamentoController extends Controller
             }
 
             return $next($request);
-        });
+        })->except(['telaAssinatura', 'salvarAssinaturaTouch']);
     }
 
     public function index(Request $request)
@@ -252,6 +250,7 @@ class FolhaPagamentoController extends Controller
             'total_vencimentos' => $totVenc,
             'total_descontos'   => $totDesc,
             'valor_liquido'     => $vlrLiq,
+            'token_assinatura'  => $holeriteExistente->token_assinatura ?? bin2hex(random_bytes(20)),
             'dados_json'        => json_encode(['nome_txt' => $funcionario->nome]),
             'updated_at'        => now()
         ];
@@ -409,5 +408,105 @@ class FolhaPagamentoController extends Controller
             'cnpj'          => '00.000.000/0001-00',
             'endereco'      => 'Endereço não cadastrado'
         ];
+    }
+
+    public function telaAssinatura($token)
+    {
+        $holerite = DB::table('folha_holerites')->where('token_assinatura', $token)->first();
+        if (!$holerite) {
+            abort(404, 'Contracheque não encontrado ou link expirado.');
+        }
+
+        $funcionario = Funcionario::find($holerite->funcionario_id);
+        return view('folha_pagamento.assinar', compact('holerite', 'funcionario'));
+    }
+
+    public function salvarAssinaturaTouch(Request $request, $token)
+    {
+        $holerite = DB::table('folha_holerites')->where('token_assinatura', $token)->first();
+        if (!$holerite) {
+            abort(404);
+        }
+
+        $assinaturaBase64 = $request->assinatura_base64;
+        if (empty($assinaturaBase64)) {
+            return redirect()->back()->with('error', 'Assinatura inválida.');
+        }
+
+        // 1. Atualiza os dados da assinatura no banco
+        DB::table('folha_holerites')->where('id', $holerite->id)->update([
+            'assinado'           => 1,
+            'data_assinatura'    => now(),
+            'tipo_assinatura'    => 'touch_tela',
+            'assinatura_imagem'  => $assinaturaBase64,
+            'ip_assinatura'      => $request->ip()
+        ]);
+
+        $holerite = DB::table('folha_holerites')->where('id', $holerite->id)->first();
+        $funcionario = Funcionario::find($holerite->funcionario_id);
+
+        // 2. Dispara automaticamente o PDF assinado para o WhatsApp do funcionário
+        if ($funcionario && !empty($funcionario->telefone)) {
+            try {
+                $itens = DB::table('folha_holerite_itens')
+                    ->where('folha_holerite_id', $holerite->id)
+                    ->orderBy('tipo', 'desc')
+                    ->orderBy('codigo_evento', 'asc')
+                    ->get();
+
+                $dadosEmpresa = $this->getEmpresaConfig($holerite->empresa_id);
+
+                $pdf = Pdf::loadView('folha_pagamento.holerite_pdf', compact('holerite', 'itens', 'funcionario', 'dadosEmpresa'))
+                    ->setPaper('a4', 'portrait');
+
+                $compLimpa = str_replace('/', '-', $holerite->competencia);
+                $nomeArquivo = "Contracheque_{$compLimpa}_{$funcionario->id}.pdf";
+
+                // Gera o conteúdo binário e converte diretamente para Base64 com MIME type
+                $pdfRaw = $pdf->output();
+                $base64Pdf = base64_encode($pdfRaw);
+
+                $evoInstance = DB::table('evo_api_instances')->where('empresa_id', $holerite->empresa_id)->first()
+                    ?: DB::table('evo_api_instances')->first();
+
+                if ($evoInstance) {
+                    $numDestino = preg_replace('/[^0-9]/', '', $funcionario->telefone);
+                    if (!str_starts_with($numDestino, '55')) {
+                        $numDestino = '55' . $numDestino;
+                    }
+
+                    $msgTexto = "✅ *Contracheque Assinado com Sucesso!*\n\n"
+                        . "Olá, *{$funcionario->nome}*! Confirmamos sua assinatura digital referente à competência *{$holerite->competencia}*.\n"
+                        . "Segue o seu comprovante em anexo.";
+
+                    // Payload compatível com Evolution API v1 e v2 usando Base64
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'apikey' => $evoInstance->api_key,
+                        'Content-Type' => 'application/json'
+                    ])
+                        ->timeout(30)
+                        ->post(rtrim($evoInstance->base_url, '/') . "/message/sendMedia/{$evoInstance->name}", [
+                            'number' => $numDestino,
+                            'mediaMessage' => [
+                                'mediatype' => 'document',
+                                'caption'   => $msgTexto,
+                                'media'     => base64_encode($pdfRaw),
+                                'fileName'  => $nomeArquivo,
+                                'mimetype'  => 'application/pdf'
+                            ]
+                        ]);
+
+                    \Illuminate\Support\Facades\Log::info("Envio PDF WhatsApp: " . $response->body());
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Erro envio automatico PDF pos-assinatura: " . $e->getMessage());
+            }
+        }
+
+        return "<div style='text-align:center; padding:50px 20px; font-family:Arial, sans-serif;'>
+                    <h2 style='color:#28a745; margin-bottom:10px;'>✅ Assinatura Registrada!</h2>
+                    <p style='font-size:16px; color:#333;'>O seu contracheque oficial foi carimbado e já foi enviado diretamente para o seu WhatsApp.</p>
+                    <p style='font-size:14px; color:#777;'>Você já pode fechar esta janela.</p>
+                </div>";
     }
 }

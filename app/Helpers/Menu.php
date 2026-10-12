@@ -475,28 +475,28 @@ class Menu {
                     // ]
                 ]
             ],
-          	[
-				'titulo' => 'Contratos',
-				'icone' => $this->getIcone('Serviços'),
-				'subs' => [
-					[
-						'nome' => 'Contratos',
-						'rota' => '/contratos'
-					],
-					[
-						'nome' => 'Medições',
-						'rota' => '/contratos/medicoes'
-					],
-					[
-						'nome' => 'Incluir Lançamentos',
-						'rota' => '/contratos/medicoes/create/novo'
-					],
-					[
-						'nome' => 'Dashboard DRE',
-						'rota' => '/contratos/dashboard-dre'
-					]
-				]
-			],
+            [
+                'titulo' => 'Contratos',
+                'icone' => $this->getIcone('Serviços'),
+                'subs' => [
+                    [
+                        'nome' => 'Contratos',
+                        'rota' => '/contratos'
+                    ],
+                    [
+                        'nome' => 'Medições',
+                        'rota' => '/contratos/medicoes'
+                    ],
+                    [
+                        'nome' => 'Incluir Lançamentos',
+                        'rota' => '/contratos/medicoes/create/novo'
+                    ],
+                    [
+                        'nome' => 'Dashboard DRE',
+                        'rota' => '/contratos/dashboard-dre'
+                    ]
+                ]
+            ],
             [
                 'titulo' => 'MTR 3.0',
                 'icone'  => $this->getIcone('MTR'),
@@ -728,6 +728,11 @@ class Menu {
                         'nome' => 'Funcionários',
                         'rota' => '/movimentacaoVeiculo/funcionarios'
                     ],
+                    // Atalho da frota para o cadastro já disponível em Cadastros.
+                    [
+                        'nome' => 'Veículos da Frota',
+                        'rota' => '/veiculos'
+                    ],
                     [
                         'nome' => 'Tipos de Movimentação',
                         'rota' => '/tiposMovimentacao'
@@ -740,9 +745,18 @@ class Menu {
                         'nome' => 'Monitoramento',
                         'rota' => '/traccar/mapa'
                     ],
+                    // Nova alternativa de mapa de movimentações; não substitui o Traccar.
+                    [
+                        'nome' => 'Monitoramento em Tempo Real (Frota)',
+                        'rota' => '/movimentacaoVeiculo/mapa'
+                    ],
                     [
                         'nome' => 'Manutenções',
                         'rota' => '/manutencoes'
+                    ],
+                    [
+                        'nome' => 'Alertas e Quebras (Torre de Controle)',
+                        'rota' => '/manutencoes/painel-alertas'
                     ],
                     [
                         'nome' => 'Apuração',
@@ -759,6 +773,14 @@ class Menu {
                     [
                         'nome' => 'Dashboard',
                         'rota' => '/movimentacaoVeiculo/dashboard'
+                    ],
+                    [
+                        'nome' => 'Relatório: Veículos Bloqueados',
+                        'rota' => '/manutencoes/painel-alertas/relatorio-necessidades'
+                    ],
+                    [
+                        'nome' => 'Relatório: Aprovações de Oficina',
+                        'rota' => '/manutencoes/painel-alertas/relatorio-aprovacoes'
                     ],
                 ],
             ],
@@ -905,6 +927,10 @@ class Menu {
                     [
                         'nome' => 'Faturamento',
                         'rota' => '/faturamento'
+                    ],
+                    [
+                        'nome' => 'Apuração PIS/COFINS',
+                        'rota' => '/relatorios-financeiros/prosoft/apuracao-pis-cofins'
                     ],
 
 
@@ -1389,7 +1415,7 @@ class Menu {
           </span>';
         }
 
-      	if ($titulo == 'MTR') {
+        if ($titulo == 'MTR') {
             return '<span class="svg-icon menu-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
                     <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -1401,7 +1427,7 @@ class Menu {
                 </svg>
             </span>';
         }
-    
+
         if($titulo == 'VendaBalcao'){
             return '<span class="svg-icon menu-icon">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -1486,8 +1512,8 @@ class Menu {
           </span>';
         }
 
-      if ($titulo == 'Serviços' || $titulo == 'Servicos') {
-			return '<span class="svg-icon menu-icon">
+        if ($titulo == 'Serviços' || $titulo == 'Servicos') {
+            return '<span class="svg-icon menu-icon">
 				<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
 					<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 						<rect x="0" y="0" width="24" height="24"/>
@@ -1497,8 +1523,8 @@ class Menu {
 					</g>
 				</svg>
 			</span>';
-		}
-	
+        }
+
         if($titulo == 'MDF-e'){
             return '<span class="svg-icon menu-icon">
           <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">

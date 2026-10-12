@@ -102,6 +102,34 @@
             padding: 12px 14px;
             height: 100%;
         }
+
+        .fc-event {
+            border-radius: 6px !important;
+            padding: 3px 8px !important;
+            font-weight: 600 !important;
+            font-size: 0.74rem !important;
+            border: none !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+            cursor: pointer !important;
+            margin-bottom: 3px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+        }
+
+        .fc-event:hover {
+            transform: translateY(-1px) scale(1.01) !important;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.18) !important;
+            filter: brightness(0.95) !important;
+        }
+
+        .badge-pill {
+            border-radius: 50rem !important;
+            display: inline-flex;
+            align-items: center;
+            letter-spacing: 0.3px;
+        }
     </style>
 
     <div class="container-fluid p-0">
@@ -151,41 +179,60 @@
             </div>
         </div>
 
-        <!-- BARRA DE AÇÕES -->
-        <div class="card card-custom gutter-b p-5 border-0 shadow-sm rounded-lg">
+        <!-- BARRA DE AÇÕES E LEGENDA DE STATUS -->
+        <div class="card card-custom gutter-b p-5 border-0 shadow-sm rounded-xl mb-4 bg-white">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <div>
-                    <button type="button" class="btn btn-primary font-weight-bold" data-toggle="modal" data-target="#modal1">
-                        <i class="la la-plus"></i> Novo Agendamento OS
+
+                <!-- BOTÕES DE AÇÃO (LADO ESQUERDO) -->
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <button type="button" class="btn btn-primary font-weight-bolder shadow-sm px-4 py-2" data-toggle="modal" data-target="#modal1">
+                        <i class="la la-plus-circle fs-5 mr-1"></i> Novo Agendamento OS
                     </button>
 
-                    <button type="button" class="btn btn-dark font-weight-bold ms-2" data-toggle="modal" data-target="#modal-nova-tarefa">
-                        <i class="la la-check-square"></i> Nova Tarefa
+                    <button type="button" class="btn btn-dark font-weight-bolder shadow-sm px-4 py-2 ms-2" data-toggle="modal" data-target="#modal-nova-tarefa">
+                        <i class="la la-check-circle fs-5 mr-1"></i> Nova Tarefa
                     </button>
 
-                    <a target="_blank" href="/agendamentos/comissao" class="btn btn-light-info font-weight-bold ms-2">
-                        <i class="las la-percent"></i> Comissões
+                    <a target="_blank" href="/agendamentos/comissao" class="btn btn-light-info font-weight-bold shadow-none px-3 py-2 ms-2">
+                        <i class="las la-percentage fs-5 mr-1"></i> Comissões
                     </a>
-                    <a target="_blank" href="/agendamentos/servicos" class="btn btn-light-primary font-weight-bold ms-2">
-                        <i class="la la-list"></i> Relatório
+
+                    <a target="_blank" href="/agendamentos/servicos" class="btn btn-light-primary font-weight-bold shadow-none px-3 py-2 ms-2">
+                        <i class="la la-file-alt fs-5 mr-1"></i> Relatório
                     </a>
                 </div>
 
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="font-weight-bold me-2 text-muted">Status:</span>
-                    <span class="badge-status-legend bg-warning text-white">🚗 OS Agendada</span>
-                    <span class="badge-status-legend bg-primary text-white">🚗 OS Execução</span>
-                    <span class="badge-status-legend text-white" style="background: #8b5cf6;">👤 Tarefa Pendente</span>
-                    <span class="badge-status-legend bg-info text-white">⏱ Tarefa Em Andamento</span>
-                    <span class="badge-status-legend bg-danger text-white">⚠️ Tarefa Atrasada</span>
-                    <span class="badge-status-legend bg-success text-white">✓ Concluída</span>
+                <!-- LEGENDA DE STATUS (LADO DIREITO) -->
+                <div class="d-flex align-items-center flex-wrap gap-2 justify-content-end">
+                    <span class="text-uppercase text-muted font-weight-bolder mr-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Status:</span>
+
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #f59e0b; font-size: 0.76rem;">
+                🚗 OS Agendada
+            </span>
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #3b82f6; font-size: 0.76rem;">
+                🚗 OS Execução
+            </span>
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #8b5cf6; font-size: 0.76rem;">
+                👤 Tarefa Pendente
+            </span>
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #0ea5e9; font-size: 0.76rem;">
+                ⏱ Em Andamento
+            </span>
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #dc2626; font-size: 0.76rem;">
+                ⚠️ Atrasada
+            </span>
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #10b981; font-size: 0.76rem;">
+                ✓ Concluída
+            </span>
                 </div>
             </div>
 
-            <!-- FILTROS -->
-            <div class="row align-items-center mt-5 bg-light p-4 rounded">
+            <!-- FILTROS COM DESIGN CLEAN -->
+            <div class="row align-items-end mt-4 p-4 rounded-lg" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
                 <div class="form-group col-lg-4 col-md-6 mb-2 mb-lg-0">
-                    <label class="form-label font-weight-bold">Atendente / Mecânico / Responsável</label>
+                    <label class="form-label font-weight-bolder text-dark small text-uppercase mb-1">
+                        <i class="la la-user text-primary mr-1"></i> Atendente / Mecânico / Responsável
+                    </label>
                     <select class="form-control select2" style="width: 100%" id="kt_select2_1">
                         <option value="null">Todos os Atendentes</option>
                         @foreach($funcionarios as $f)
@@ -195,7 +242,9 @@
                 </div>
 
                 <div class="form-group col-lg-4 col-md-6 mb-2 mb-lg-0">
-                    <label class="form-label font-weight-bold">Cliente</label>
+                    <label class="form-label font-weight-bolder text-dark small text-uppercase mb-1">
+                        <i class="la la-building text-primary mr-1"></i> Cliente
+                    </label>
                     <select class="form-control select2" style="width: 100%" id="kt_select2_7">
                         <option value="null">Todos os Clientes</option>
                         @foreach($clientes as $c)
@@ -205,14 +254,14 @@
                 </div>
 
                 <div class="col-lg-4 col-md-12">
-                    <button id="filtrar" style="width: 100%; margin-top: 24px;" class="btn btn-primary font-weight-bold">
-                        <i class="la la-search"></i> Filtrar Agenda
+                    <button id="filtrar" style="width: 100%; height: 38px;" class="btn btn-primary font-weight-bolder shadow-sm">
+                        <i class="la la-search mr-1"></i> Filtrar Agenda
                     </button>
                 </div>
             </div>
 
             <!-- CALENDÁRIO -->
-            <div id='calendar'></div>
+            <div id='calendar' class="mt-4"></div>
         </div>
     </div>
 
@@ -316,7 +365,8 @@
                         <div class="row">
                             <div class="form-group col-md-6 mb-3">
                                 <label class="form-label font-weight-bold">Responsável *</label>
-                                <select required class="form-control select2" style="width: 100%" name="funcionario_id">
+                                <select required class="form-control select2" id="select_responsavel_tarefa" style="width: 100%" name="funcionario_id">
+                                    <option value="">Selecione o responsável...</option>
                                     @foreach($funcionarios as $f)
                                         <option value="{{$f->id}}">{{$f->nome}}</option>
                                     @endforeach
@@ -495,6 +545,14 @@
         var calendar = null;
 
         $(document).ready(function() {
+
+            $('#modal-nova-tarefa').on('shown.bs.modal', function () {
+                $('#select_responsavel_tarefa').select2({
+                    dropdownParent: $('#modal-nova-tarefa'),
+                    placeholder: "Selecione o responsável..."
+                });
+            });
+
             var calendarEl = document.getElementById('calendar');
 
             if (calendarEl) {
@@ -529,9 +587,9 @@
                             if (Array.isArray(events)) {
                                 events.forEach(function(item) {
                                     let props = item.extendedProps || item;
-                                    if (props.tarefa_id || (item.id && item.id.toString().indexOf('tarefa_') !== -1)) {
-                                        let id = props.tarefa_id || item.id.toString().replace('tarefa_', '');
-                                        window.mapaTarefasCache[id] = props;
+                                    let rawId = props.tarefa_id || (item.id ? item.id.toString().replace('tarefa_', '') : null);
+                                    if (rawId) {
+                                        window.mapaTarefasCache[rawId] = props;
                                     }
                                 });
                             }
@@ -545,18 +603,6 @@
 
                 calendar.render();
             }
-
-            // 🚀 GARANTIA DUPLA: Se o evento não disparar via FullCalendar, dispara via clique jQuery no DOM
-            $(document).on('click', '.fc-event', function(e) {
-                let titleText = $(this).text().trim();
-                for (let id in window.mapaTarefasCache) {
-                    let t = window.mapaTarefasCache[id];
-                    if (t.titulo && titleText.indexOf(t.titulo) !== -1) {
-                        abrirModalResumoTarefa(t);
-                        break;
-                    }
-                }
-            });
 
             $('#filtrar').click(function(e) {
                 e.preventDefault();
@@ -593,7 +639,8 @@
 
         function processarCliqueEvento(event) {
             let props = event.extendedProps || {};
-            let taskId = props.tarefa_id || (event.id ? event.id.toString().replace('tarefa_', '') : null);
+            let eventIdStr = event.id ? event.id.toString() : '';
+            let taskId = props.tarefa_id || (eventIdStr.indexOf('tarefa_') !== -1 ? eventIdStr.replace('tarefa_', '') : null);
 
             if (props.tipo === 'tarefa' || taskId) {
                 let dadosCompletos = window.mapaTarefasCache[taskId] || props;
@@ -616,18 +663,40 @@
             $('#task_modal_prioridade').text(props.prioridade || 'Normal');
             $('#task_modal_inicio').text(props.data_inicio || '-');
             $('#task_modal_limite').text(props.data_limite || 'Sem prazo definido');
-            $('#task_modal_tempo').text(props.tempo_gasto || '0 Minutos');
+            $('#task_modal_tempo').text((props.tempo_gasto || 0) + ' Minutos');
             $('#btn_editar_tarefa').attr('href', '/tarefas/edit/' + taskId);
 
-            // Status Badge
-            let badgeClass = 'bg-secondary text-white';
-            let statusNome = 'Pendente';
-            if (props.status === 'pendente') { badgeClass = 'bg-warning text-white'; statusNome = 'Pendente'; }
-            if (props.status === 'em_andamento') { badgeClass = 'bg-info text-white'; statusNome = 'Em Andamento'; }
-            if (props.status === 'concluida') { badgeClass = 'bg-success text-white'; statusNome = 'Concluída'; }
-            if (props.is_atrasada) { badgeClass = 'bg-danger text-white'; statusNome = 'ATRASADA / VENCIDA'; }
+            // Normalização segura do status
+            let statusRaw = (props.status || '').toString().toLowerCase().trim();
 
-            $('#task_modal_status_badge').attr('class', 'badge px-3 py-1 ' + badgeClass).text(statusNome);
+            let isPendente = (statusRaw === 'pendente' || statusRaw === 'aberta' || statusRaw === 'agendada' || statusRaw === '');
+            let isAndamento = (statusRaw === 'em_andamento' || statusRaw === 'andamento' || statusRaw === 'executando');
+            let isConcluida = (statusRaw === 'concluida' || statusRaw === 'concluido' || statusRaw === 'finalizada');
+            let isCancelada = (statusRaw === 'cancelada' || statusRaw === 'cancelado');
+
+            let badgeClass = 'badge-secondary text-white';
+            let statusNome = 'Pendente';
+
+            if (isPendente) {
+                badgeClass = 'badge-warning text-dark';
+                statusNome = 'Pendente';
+            } else if (isAndamento) {
+                badgeClass = 'badge-info text-white';
+                statusNome = 'Em Andamento';
+            } else if (isConcluida) {
+                badgeClass = 'badge-success text-white';
+                statusNome = 'Concluída';
+            } else if (isCancelada) {
+                badgeClass = 'badge-dark text-white';
+                statusNome = 'Cancelada';
+            }
+
+            if (props.is_atrasada && !isConcluida && !isCancelada) {
+                badgeClass = 'badge-danger text-white';
+                statusNome = 'ATRASADA / VENCIDA';
+            }
+
+            $('#task_modal_status_badge').attr('class', 'badge px-3 py-1 font-weight-bold ' + badgeClass).text(statusNome);
 
             if (props.justificativa_atraso) {
                 $('#div_justificativa_exibir').removeClass('d-none');
@@ -636,20 +705,38 @@
                 $('#div_justificativa_exibir').addClass('d-none');
             }
 
-            // Ações Diretas na Agenda
+            // Geração dos botões de ação
             let actionHtml = '';
-            if (props.status === 'pendente') {
-                actionHtml += `<button onclick="executarAcaoTarefa(${taskId}, 'iniciar')" class="btn btn-primary font-weight-bold shadow-sm me-2"><i class="la la-play"></i> Iniciar Tarefa</button>`;
+
+            if (isPendente) {
+                actionHtml += `<button type="button" onclick="executarAcaoTarefa(${taskId}, 'iniciar')" class="btn btn-primary font-weight-bold shadow-sm mr-2"><i class="la la-play"></i> Iniciar Tarefa</button>`;
             }
-            if (props.status === 'em_andamento') {
-                actionHtml += `<button onclick="executarAcaoTarefa(${taskId}, 'pausar')" class="btn btn-warning font-weight-bold shadow-sm me-2"><i class="la la-pause"></i> Pausar</button>`;
+
+            if (isAndamento) {
+                actionHtml += `<button type="button" onclick="executarAcaoTarefa(${taskId}, 'pausar')" class="btn btn-warning font-weight-bold shadow-sm mr-2"><i class="la la-pause"></i> Pausar</button>`;
             }
-            if (props.status !== 'concluida') {
-                actionHtml += `<button onclick="finalizarTarefaComJustificativa(${taskId}, ${props.is_atrasada ? 'true' : 'false'})" class="btn btn-success font-weight-bold shadow-sm"><i class="la la-check"></i> Concluir Tarefa</button>`;
+
+            if (!isConcluida && !isCancelada) {
+                actionHtml += `<button type="button" onclick="finalizarTarefaComJustificativa(${taskId}, ${props.is_atrasada ? 'true' : 'false'})" class="btn btn-success font-weight-bold shadow-sm mr-2"><i class="la la-check"></i> Finalizar</button>`;
+                actionHtml += `<button type="button" onclick="confirmarCancelamentoTarefa(${taskId})" class="btn btn-outline-danger font-weight-bold shadow-sm"><i class="la la-times-circle"></i> Cancelar</button>`;
             }
 
             $('#task_modal_actions').html(actionHtml);
             $('#modal-ver-tarefa').modal('show');
+        }
+
+        function confirmarCancelamentoTarefa(id) {
+            swal({
+                title: "Cancelar Tarefa?",
+                text: "Deseja realmente cancelar esta atividade?",
+                icon: "warning",
+                buttons: ["Voltar", "Sim, Cancelar"],
+                dangerMode: true,
+            }).then((confirmado) => {
+                if (confirmado) {
+                    executarAcaoTarefa(id, 'cancelar');
+                }
+            });
         }
 
         function executarAcaoTarefa(taskId, acao) {

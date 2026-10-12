@@ -1,140 +1,140 @@
 <!DOCTYPE html>
 <html lang="br">
 <head>
-	<meta charset="utf-8" />
+    <meta charset="utf-8" />
 
-	<title>{{$title}}</title>
-	<meta name="description" content="Updates and statistics">
-	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{{$title}}</title>
+    <meta name="description" content="Updates and statistics">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-	<!--begin::Fonts -->
-	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
+    <!--begin::Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
 
-	<link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
-	<!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
-	<link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
+    <link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
+    <!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
+    <link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
 
-	<link href="/css/style.css" rel="stylesheet" type="text/css" />
+    <link href="/css/style.css" rel="stylesheet" type="text/css" />
 
-	<!--end::Page Vendors Styles -->
+    <!--end::Page Vendors Styles -->
 
-	@if(isset($fullcalendar))
-	<link href='/fullcalendar/main.css' rel='stylesheet' />
-	@endif
-	<!--begin::Global Theme Styles(used by all pages) -->
-	<link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
+    @if(isset($fullcalendar))
+        <link href='/fullcalendar/main.css' rel='stylesheet' />
+    @endif
+    <!--begin::Global Theme Styles(used by all pages) -->
+    <link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
+    <link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
 
-	<link href="/metronic/css/pricing.css" rel="stylesheet" type="text/css" />
-	<!--end::Global Theme Styles -->
+    <link href="/metronic/css/pricing.css" rel="stylesheet" type="text/css" />
+    <!--end::Global Theme Styles -->
 
-	<!--begin::Layout Skins(used by all pages) -->
-	<link rel="stylesheet" href="/css/whatsapp.css">
-	<link href="/metronic/css/light.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/light-menu.css" rel="stylesheet" type="text/css" />
+    <!--begin::Layout Skins(used by all pages) -->
+    <link rel="stylesheet" href="/css/whatsapp.css">
+    <link href="/metronic/css/light.css" rel="stylesheet" type="text/css" />
+    <link href="/metronic/css/light-menu.css" rel="stylesheet" type="text/css" />
 
-	<!-- Tema variaveis -->
+    <!-- Tema variaveis -->
 
-	<!-- Fim tema variaveis -->
-	@if($tema_menu == 1)
-	<link href="/metronic/css/dark-aside.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/dark-brand.css" rel="stylesheet" type="text/css" />
-	@elseif($tema_menu == 2)
-	<link href="/metronic/css/dark-aside2.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/style2.bundle.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/dark-brand2.css" rel="stylesheet" type="text/css" />
-	@elseif($tema_menu == 3)
-	<link href="/metronic/css/dark-aside3.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/style31.bundle.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/dark-brand3.css" rel="stylesheet" type="text/css" />
-	@elseif($tema_menu == 4)
-	<link href="/metronic/css/dark-aside4.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/style4.bundle.css" rel="stylesheet" type="text/css" />
-	<link href="/metronic/css/dark-brand4.css" rel="stylesheet" type="text/css" />
-	@endif
+    <!-- Fim tema variaveis -->
+    @if($tema_menu == 1)
+        <link href="/metronic/css/dark-aside.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/dark-brand.css" rel="stylesheet" type="text/css" />
+    @elseif($tema_menu == 2)
+        <link href="/metronic/css/dark-aside2.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/style2.bundle.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/dark-brand2.css" rel="stylesheet" type="text/css" />
+    @elseif($tema_menu == 3)
+        <link href="/metronic/css/dark-aside3.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/style31.bundle.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/dark-brand3.css" rel="stylesheet" type="text/css" />
+    @elseif($tema_menu == 4)
+        <link href="/metronic/css/dark-aside4.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/style4.bundle.css" rel="stylesheet" type="text/css" />
+        <link href="/metronic/css/dark-brand4.css" rel="stylesheet" type="text/css" />
+    @endif
 
-	<link rel="stylesheet" href="https://maxst.icons8.com/vue-static/landings/line-awesome/line-awesome/1.3.0/css/line-awesome.min.css">
+    <link rel="stylesheet" href="https://maxst.icons8.com/vue-static/landings/line-awesome/line-awesome/1.3.0/css/line-awesome.min.css">
 
-	<link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
-	<link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
+    <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
+    <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
-	@if($cor != '')
-	<link href="/css/extend.css" rel="stylesheet" type="text/css" />
-	@endif
+    @if($cor != '')
+        <link href="/css/extend.css" rel="stylesheet" type="text/css" />
+    @endif
 
-	<style type="text/css">
-		/*.header-menu-wrapper {
-			overflow-x: auto;
-			overflow-y: none;
-			white-space: nowrap;
-		}
+    <style type="text/css">
+        /*.header-menu-wrapper {
+            overflow-x: auto;
+            overflow-y: none;
+            white-space: nowrap;
+        }
         */
-	</style>
+    </style>
 
     <!-- Inclusão Centralizada dos Scripts de Monitoramento -->
     @include('layouts.tracking')
 
-	<style type="text/css">
-		.select2-selection__arroww:before {
-			content: "";
-			position: absolute;
-			right: 7px;
-			top: 42%;
-			border-top: 5px solid #888;
-			border-left: 4px solid transparent;
-			border-right: 4px solid transparent;
-		}
+    <style type="text/css">
+        .select2-selection__arroww:before {
+            content: "";
+            position: absolute;
+            right: 7px;
+            top: 42%;
+            border-top: 5px solid #888;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+        }
 
-		.accordion.accordion-toggle-arrow .card .card-header .card-title::after{
-			display: none
-		}
+        .accordion.accordion-toggle-arrow .card .card-header .card-title::after{
+            display: none
+        }
 
-		@if($cor != '')
+        @if($cor != '')
 		:root {
-			--main-color: {{ $cor }};
-		}
-		@endif
-	</style>
+            --main-color: {{ $cor }};
+        }
+        @endif
+    </style>
 
 
-	@if($tema == 2)
-	<link href="/css/escuro.css" rel="stylesheet" type="text/css" />
-	@endif
+    @if($tema == 2)
+        <link href="/css/escuro.css" rel="stylesheet" type="text/css" />
+    @endif
 
-	<link rel="stylesheet" href="/css/animate.min.css"/>
-	<style type="text/css">
-		/*.scroller {
-			width: 99%;
-			overflow-y: scroll;
-			display: flex;
-			overflow: auto;
-		}*/
+    <link rel="stylesheet" href="/css/animate.min.css"/>
+    <style type="text/css">
+        /*.scroller {
+            width: 99%;
+            overflow-y: scroll;
+            display: flex;
+            overflow: auto;
+        }*/
 
-	</style>
+    </style>
 </head>
 <!-- end::Head -->
 <!-- begin::Body -->
 
 <body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed">
-	<div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
+<div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
-		<div class="d-flex align-items-center">
+    <div class="d-flex align-items-center">
 
-			<!--begin::Aside Mobile Toggle-->
-			<button style="color: #fff" class="btn p-0 burger-icon burger-icon-left" id="kt_aside_mobile_toggle">
-				<span></span>
-			</button>
+        <!--begin::Aside Mobile Toggle-->
+        <button style="color: #fff" class="btn p-0 burger-icon burger-icon-left" id="kt_aside_mobile_toggle">
+            <span></span>
+        </button>
 
-			<button class="btn p-0 burger-icon ml-4" id="kt_header_mobile_toggle">
-				<span></span>
-			</button>
+        <button class="btn p-0 burger-icon ml-4" id="kt_header_mobile_toggle">
+            <span></span>
+        </button>
 
-			<button class="btn btn-hover-text-primary p-0 ml-2" id="kt_header_mobile_topbar_toggle">
+        <button class="btn btn-hover-text-primary p-0 ml-2" id="kt_header_mobile_topbar_toggle">
 				<span class="svg-icon svg-icon-xl">
 					<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
 						<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -144,29 +144,29 @@
 						</g>
 					</svg>
 				</span>
-			</button>
-		</div>
-	</div>
+        </button>
+    </div>
+</div>
 
 
-	<div class="d-flex flex-column flex-root" >
-		<div class="d-flex flex-row flex-column-fluid page">
+<div class="d-flex flex-column flex-root" >
+    <div class="d-flex flex-row flex-column-fluid page">
 
-			<div class="d-flex flex-column flex-row-fluid wrapper" id="kt_wrapper">
+        <div class="d-flex flex-column flex-row-fluid wrapper" id="kt_wrapper">
 
-				<div id="kt_header" class="header header-fixed">
+            <div id="kt_header" class="header header-fixed">
 
-					<div id="kt_header_menu_wrapper" class="header-menu-wrapper header-menu-wrapper-left top-tour">
-						<div id="kt_header_menu" class="header-menu header-menu-mobile header-menu-layout-default scroller">
-							@php
-							$menu = new App\Helpers\Menu();
-							$menu = $menu->preparaMenu();
-							@endphp
+                <div id="kt_header_menu_wrapper" class="header-menu-wrapper header-menu-wrapper-left top-tour">
+                    <div id="kt_header_menu" class="header-menu header-menu-mobile header-menu-layout-default scroller">
+                        @php
+                            $menu = new App\Helpers\Menu();
+                            $menu = $menu->preparaMenu();
+                        @endphp
 
-							<ul class="menu-nav ml-2">
-								@if(session('user_logged')['super'] == 1)
-								<li class="menu-item menu-item-open menu-item-here menu-item-submenu menu-item-rel menu-item-active menu-item-open-dropdown" data-menu-toggle="click" aria-haspopup="true">
-									<a style="background: #000;" href="javascript:;" class="menu-link menu-toggle super-bg">
+                        <ul class="menu-nav ml-2">
+                            @if(session('user_logged')['super'] == 1)
+                                <li class="menu-item menu-item-open menu-item-here menu-item-submenu menu-item-rel menu-item-active menu-item-open-dropdown" data-menu-toggle="click" aria-haspopup="true">
+                                    <a style="background: #000;" href="javascript:;" class="menu-link menu-toggle super-bg">
 										<span class="svg-icon menu-icon svg-icon-white">
 
 											<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -176,96 +176,96 @@
 												</g>
 											</svg>
 										</span>
-										<span class="menu-text text-white">SUPER</span>
-										<i class="menu-arrow"></i>
-									</a>
-									<div class="menu-submenu menu-submenu-classic menu-submenu-left" data-hor-direction="menu-submenu-left">
-										<ul class="menu-subnav">
+                                        <span class="menu-text text-white">SUPER</span>
+                                        <i class="menu-arrow"></i>
+                                    </a>
+                                    <div class="menu-submenu menu-submenu-classic menu-submenu-left" data-hor-direction="menu-submenu-left">
+                                        <ul class="menu-subnav">
 
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/empresas" class="menu-link">
-													<span class="menu-text">Empresas</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/planos" class="menu-link">
-													<span class="menu-text">Planos</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/ibpt" class="menu-link">
-													<span class="menu-text">IBPT</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/contrato" class="menu-link">
-													<span class="menu-text">Contrato</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/financeiro" class="menu-link">
-													<span class="menu-text">Financeiro</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/cidades" class="menu-link">
-													<span class="menu-text">Cidades</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/representantes" class="menu-link">
-													<span class="menu-text">Representantes</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/online" class="menu-link">
-													<span class="menu-text">Empresas Online</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/etiquetas" class="menu-link">
-													<span class="menu-text">Etiquetas</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/relatorioSuper" class="menu-link">
-													<span class="menu-text">Relatórios</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/ticketsSuper" class="menu-link">
-													<span class="menu-text">Tickets</span>
-												</a>
-											</li>
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/contadores" class="menu-link">
-													<span class="menu-text">Contadores</span>
-												</a>
-											</li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/empresas" class="menu-link">
+                                                    <span class="menu-text">Empresas</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/planos" class="menu-link">
+                                                    <span class="menu-text">Planos</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/ibpt" class="menu-link">
+                                                    <span class="menu-text">IBPT</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/contrato" class="menu-link">
+                                                    <span class="menu-text">Contrato</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/financeiro" class="menu-link">
+                                                    <span class="menu-text">Financeiro</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/cidades" class="menu-link">
+                                                    <span class="menu-text">Cidades</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/representantes" class="menu-link">
+                                                    <span class="menu-text">Representantes</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/online" class="menu-link">
+                                                    <span class="menu-text">Empresas Online</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/etiquetas" class="menu-link">
+                                                    <span class="menu-text">Etiquetas</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/relatorioSuper" class="menu-link">
+                                                    <span class="menu-text">Relatórios</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/ticketsSuper" class="menu-link">
+                                                    <span class="menu-text">Tickets</span>
+                                                </a>
+                                            </li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/contadores" class="menu-link">
+                                                    <span class="menu-text">Contadores</span>
+                                                </a>
+                                            </li>
 
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/planosPendentes" class="menu-link">
-													<span class="menu-text">Planos pendentes</span>
-												</a>
-											</li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/planosPendentes" class="menu-link">
+                                                    <span class="menu-text">Planos pendentes</span>
+                                                </a>
+                                            </li>
 
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/pesquisa" class="menu-link">
-													<span class="menu-text">Pesquisa de satisfação</span>
-												</a>
-											</li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/pesquisa" class="menu-link">
+                                                    <span class="menu-text">Pesquisa de satisfação</span>
+                                                </a>
+                                            </li>
 
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/alertas" class="menu-link">
-													<span class="menu-text">Alertas para empresas</span>
-												</a>
-											</li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/alertas" class="menu-link">
+                                                    <span class="menu-text">Alertas para empresas</span>
+                                                </a>
+                                            </li>
 
-											<li class="menu-item" aria-haspopup="true">
-												<a href="/errosLog" class="menu-link">
-													<span class="menu-text">Erros do sistema</span>
-												</a>
-											</li>
+                                            <li class="menu-item" aria-haspopup="true">
+                                                <a href="/errosLog" class="menu-link">
+                                                    <span class="menu-text">Erros do sistema</span>
+                                                </a>
+                                            </li>
 
                                             <li class="menu-item" aria-haspopup="true">
                                                 <a href="/connect-api" class="menu-link">
@@ -281,43 +281,43 @@
                                                 </li>
                                             @endif
 
-                                             </ul>
-                                            </div>
-                                        <>
-                                        </>
+                                        </ul>
+                                    </div>
+                                    <>
+                                </>
+                                </li>
+                            @endif
+                            @foreach($menu as $m)
+                                @if(!isset($m['ativo']) || $m['ativo'])
+                                    <li class="menu-item menu-item-open menu-item-here menu-item-submenu menu-item-rel menu-item-active menu-item-open-dropdown" data-menu-toggle="click" aria-haspopup="true">
+                                        <a href="javascript:;" class="menu-link menu-toggle menu-link2">
+                                            {!! $m['icone'] !!}
+                                            <span class="menu-text">{{$m['titulo']}}</span>
+                                            <i class="menu-arrow"></i>
+                                        </a>
+                                        <div class="menu-submenu menu-submenu-classic menu-submenu-left" data-hor-direction="menu-submenu-left">
+                                            <ul class="menu-subnav" style="overflow: scroll !important; max-height: 500px;">
+                                                @foreach($m['subs'] as $i)
+
+                                                    @if(!isset($i['rota_ativa']) && $i['rota'] != '')
+                                                        <li class="menu-item @if($uri == $i['rota']) menu-item-active @endif" aria-haspopup="true">
+                                                            <a @isset($i['target']) target="_blank" @endisset href="{{$i['rota']}}" class="menu-link">
+                                                                <span class="menu-text">{{$i['nome']}}</span>
+                                                            </a>
+                                                        </li>
+                                                    @endif
+                                                @endforeach
+                                            </ul>
+
+                                        </div>
                                     </li>
-								@endif
-								@foreach($menu as $m)
-								@if(!isset($m['ativo']) || $m['ativo'])
-								<li class="menu-item menu-item-open menu-item-here menu-item-submenu menu-item-rel menu-item-active menu-item-open-dropdown" data-menu-toggle="click" aria-haspopup="true">
-									<a href="javascript:;" class="menu-link menu-toggle menu-link2">
-										{!! $m['icone'] !!}
-										<span class="menu-text">{{$m['titulo']}}</span>
-										<i class="menu-arrow"></i>
-									</a>
-									<div class="menu-submenu menu-submenu-classic menu-submenu-left" data-hor-direction="menu-submenu-left">
-										<ul class="menu-subnav" style="overflow: scroll !important; max-height: 500px;">
-											@foreach($m['subs'] as $i)
+                                @endif
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
 
-											@if(!isset($i['rota_ativa']) && $i['rota'] != '')
-											<li class="menu-item @if($uri == $i['rota']) menu-item-active @endif" aria-haspopup="true">
-												<a @isset($i['target']) target="_blank" @endisset href="{{$i['rota']}}" class="menu-link">
-													<span class="menu-text">{{$i['nome']}}</span>
-												</a>
-											</li>
-											@endif
-											@endforeach
-										</ul>
-
-									</div>
-								</li>
-								@endif
-								@endforeach
-							</ul>
-						</div>
-					</div>
-
-					<div id="kt_scrolltop" class="scrolltop">
+                <div id="kt_scrolltop" class="scrolltop">
 						<span class="svg-icon">
 							<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
 								<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -327,52 +327,52 @@
 								</g>
 							</svg>
 						</span>
-					</div>
-				</div>
+                </div>
+            </div>
 
-				<div id="kt_content" class="content d-flex flex-column flex-column-fluid">
-					<div style="list-style-type: none;" id="kt_subheader" class="subheader py-2 py-lg-4 subheader-solid w-100">
+            <div id="kt_content" class="content d-flex flex-column flex-column-fluid">
+                <div style="list-style-type: none;" id="kt_subheader" class="subheader py-2 py-lg-4 subheader-solid w-100">
 
-						<div class="row w-75 ml-2">
-							@if($ultimoAcesso != null)
-							<div class="topbar-item">
-								<div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-									<span style="font-size: 12px;" class="kt-header__topbar-welcome kt-hidden-mobile">Ultimo acesso: </span>
-									<span style="font-size: 12px;" class="kt-header__topbar-username kt-hidden-mobile ml-1"> <span style="font-weight: bold;" class="text-success text-left">{{ \Carbon\Carbon::parse($ultimoAcesso->created_at)->format('d/m/Y H:i:s') }}</span></span>
-								</div>
+                    <div class="row w-75 ml-2">
+                        @if($ultimoAcesso != null)
+                            <div class="topbar-item">
+                                <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                                    <span style="font-size: 12px;" class="kt-header__topbar-welcome kt-hidden-mobile">Ultimo acesso: </span>
+                                    <span style="font-size: 12px;" class="kt-header__topbar-username kt-hidden-mobile ml-1"> <span style="font-weight: bold;" class="text-success text-left">{{ \Carbon\Carbon::parse($ultimoAcesso->created_at)->format('d/m/Y H:i:s') }}</span></span>
+                                </div>
 
-							</div>
+                            </div>
 
-							<div class="topbar-item not-mobile" style="display: none">
-								<div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-									<span style="font-size: 12px;" class="kt-header__topbar-welcome kt-hidden-mobile">IP: </span>
-									<span style="font-size: 12px;" class="kt-header__topbar-username kt-hidden-mobile ml-1"> <span style="font-weight: bold;" class="text-success text-left">{{ $ultimoAcesso != null ? $ultimoAcesso->ip_address : '--' }}</span></span>
-								</div>
-							</div>
+                            <div class="topbar-item not-mobile" style="display: none">
+                                <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                                    <span style="font-size: 12px;" class="kt-header__topbar-welcome kt-hidden-mobile">IP: </span>
+                                    <span style="font-size: 12px;" class="kt-header__topbar-username kt-hidden-mobile ml-1"> <span style="font-weight: bold;" class="text-success text-left">{{ $ultimoAcesso != null ? $ultimoAcesso->ip_address : '--' }}</span></span>
+                                </div>
+                            </div>
 
-							@if($totalParaArmazenar > 0)
-							<div class="topbar-item not-mobile" style="display: none">
-								<div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-									<span class="kt-header__topbar-welcome kt-hidden-mobile mr-2">Armazenamento: </span>
-									<div class="progress progress-xs mt-2 mb-2 flex-shrink-0 w-150px w-xl-250px">
-										<div class="progress-bar {{App\Models\Plano::backgroundArmazenamento($percentualArmazenamento)}}" role="progressbar" style="width: {{$percentualArmazenamento}}%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
-									</div>
-									<span class="font-weight-bolder text-dark ml-4">{{number_format($percentualArmazenamento,2)}}%</span>
+                            @if($totalParaArmazenar > 0)
+                                <div class="topbar-item not-mobile" style="display: none">
+                                    <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                                        <span class="kt-header__topbar-welcome kt-hidden-mobile mr-2">Armazenamento: </span>
+                                        <div class="progress progress-xs mt-2 mb-2 flex-shrink-0 w-150px w-xl-250px">
+                                            <div class="progress-bar {{App\Models\Plano::backgroundArmazenamento($percentualArmazenamento)}}" role="progressbar" style="width: {{$percentualArmazenamento}}%;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="font-weight-bolder text-dark ml-4">{{number_format($percentualArmazenamento,2)}}%</span>
 
-									<span class="font-weight-bolder text-dark ml-4">{{$armazenamento}}/{{$totalParaArmazenar}} MB</span>
-								</div>
-							</div>
-							@endif
-							@endif
+                                        <span class="font-weight-bolder text-dark ml-4">{{$armazenamento}}/{{$totalParaArmazenar}} MB</span>
+                                    </div>
+                                </div>
+                            @endif
+                        @endif
 
 
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-								<a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-light-success @else label-success @endif">
-									Empresa: {{session('user_logged')['empresa_nome']}}
-								</a>
-							</li>
+                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                            <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-light-success @else label-success @endif">
+                                Empresa: {{session('user_logged')['empresa_nome']}}
+                            </a>
+                        </li>
 
-                            @if(empresaComFilial() && sizeof(getLocaisUsarioLogado()) > 1)
+                        @if(empresaComFilial() && sizeof(getLocaisUsarioLogado()) > 1)
                             <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
                                 <div class="d-flex align-items-center">
                                     <div class="label label-xl label-inline @if($tema == 1) label-light-primary @else label-primary @endif" style="width: 100%;">
@@ -380,83 +380,83 @@
                                     </div>
                                 </div>
                             </li>
-                            @endif
+                        @endif
 
-                            <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-								<a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-light-info @else label-info @endif">
-									Ambiente: {{session('user_logged')['ambiente']}}
-								</a>
-							</li>
+                        <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                            <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-light-info @else label-info @endif">
+                                Ambiente: {{session('user_logged')['ambiente']}}
+                            </a>
+                        </li>
 
-								<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-									<a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
-										Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
-									</a>
-								</li>
+                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                            <a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
+                                Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                            </a>
+                        </li>
 
-							@if(!$upgrade)
-							<li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                        @if(!$upgrade)
+                            <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
 								<span class="label label-xl label-inline @if($tema == 1) label-light-primary @else label-primary @endif">
 									<i style="color: #111; font-size: 20px;" class="fa fa-clock"></i>
 									<strong id="timer" style="margin-left: 5px;">00:00:00</strong>
 								</span>
-							</li>
-							@endif
+                            </li>
+                        @endif
 
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-								<a data-toggle="modal" href="#!" data-target="#modal-tema" class="label label-xl label-inline @if($tema == 1) label-light-warning @else label-warning @endif">
-									Tema
-								</a>
-							</li>
+                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                            <a data-toggle="modal" href="#!" data-target="#modal-tema" class="label label-xl label-inline @if($tema == 1) label-light-warning @else label-warning @endif">
+                                Tema
+                            </a>
+                        </li>
 
-							@if($contrato == 0)
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-								<a href="/assinarContrato" class="label label-xl label-inline @if($tema == 1) label-light-danger @else label-danger @endif">
-									<i class="la la-file-contract text-danger"></i>
-									Assinar contrato
-								</a>
-							</li>
-							@endif
+                        @if($contrato == 0)
+                            <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                                <a href="/assinarContrato" class="label label-xl label-inline @if($tema == 1) label-light-danger @else label-danger @endif">
+                                    <i class="la la-file-contract text-danger"></i>
+                                    Assinar contrato
+                                </a>
+                            </li>
+                        @endif
 
-							@if($upgrade)
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
-								<a href="/payment" class="label label-xl label-inline @if($tema == 1) label-light-success @else label-success @endif">
-									<i class="la la-money text-success"></i>
-									Upgrade
-								</a>
-							</li>
-							@endif
-
-
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active y-mobile ml-1" data-menu-toggle="click" aria-haspopup="true" style="display: none">
-								<span class="kt-header__topbar-welcome kt-hidden-mobile" style="margin-left: 3px; font-size: 14px;">Endereço do IP: <span style="font-weight: bold;" class="text-success text-left">{{ $ultimoAcesso != null ? $ultimoAcesso->ip_address : '--' }}</span></span>
-							</li>
+                        @if($upgrade)
+                            <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
+                                <a href="/payment" class="label label-xl label-inline @if($tema == 1) label-light-success @else label-success @endif">
+                                    <i class="la la-money text-success"></i>
+                                    Upgrade
+                                </a>
+                            </li>
+                        @endif
 
 
-							@if($video_url != null)
-							<li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1" data-menu-toggle="click" aria-haspopup="true">
-								<a target="_blank" href="{{$video_url}}" class="btn btn-light-info btn-sm">
-									<i class="la la-video"></i>
-									Video Ajuda
-								</a>
-							</li>
-							@endif
-						</div>
-						<div class="row w-25">
+                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active y-mobile ml-1" data-menu-toggle="click" aria-haspopup="true" style="display: none">
+                            <span class="kt-header__topbar-welcome kt-hidden-mobile" style="margin-left: 3px; font-size: 14px;">Endereço do IP: <span style="font-weight: bold;" class="text-success text-left">{{ $ultimoAcesso != null ? $ultimoAcesso->ip_address : '--' }}</span></span>
+                        </li>
 
-							<div class="topbar">
-								<div class="topbar-item">
-									<a class="btn btn-light-success pdv-tour" href="/frenteCaixa">
-										<i class="la la-barcode"></i>
-										PDV
-									</a>
-								</div>
-                                {!! __view_connect_api_whatsapp_modal_button() !!}
 
-                                <div class="dropdown">
-									@if(sizeof($alertas) > 0)
-									<div class="topbar-item notifica-tour" data-toggle="dropdown" data-offset="10px,0px">
-										<div class="btn btn-icon btn-clean btn-dropdown btn-lg mr-1 pulse-dark">
+                        @if($video_url != null)
+                            <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1" data-menu-toggle="click" aria-haspopup="true">
+                                <a target="_blank" href="{{$video_url}}" class="btn btn-light-info btn-sm">
+                                    <i class="la la-video"></i>
+                                    Video Ajuda
+                                </a>
+                            </li>
+                        @endif
+                    </div>
+                    <div class="row w-25">
+
+                        <div class="topbar">
+                            <div class="topbar-item">
+                                <a class="btn btn-light-success pdv-tour" href="/frenteCaixa">
+                                    <i class="la la-barcode"></i>
+                                    PDV
+                                </a>
+                            </div>
+                            {!! __view_connect_api_whatsapp_modal_button() !!}
+
+                            <div class="dropdown">
+                                @if(sizeof($alertas) > 0)
+                                    <div class="topbar-item notifica-tour" data-toggle="dropdown" data-offset="10px,0px">
+                                        <div class="btn btn-icon btn-clean btn-dropdown btn-lg mr-1 pulse-dark">
 											<span class="svg-icon svg-icon-xl svg-icon-danger">
 												<!--begin::Svg Icon | path:/metronic/theme/html/demo1/dist/assets/media/svg/icons/Code/Compiling.svg-->
 												<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -467,30 +467,30 @@
 													</g>
 												</svg>
 											</span>
-											<span class="pulse-ring"></span>
-										</div>
-									</div>
-									@endif
-									<div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg">
-										<form>
-											<div class="d-flex flex-column pt-12 bgi-size-cover bgi-no-repeat rounded-top">
-												@if(sizeof($alertas) > 0)
-												<h4 class="d-flex flex-center rounded-top">
-													<span class="text-white">Notificações</span>
-													<span class="btn btn-text btn-success btn-sm font-weight-bold btn-font-md ml-2">{{sizeof($alertas)}} novas</span>
-												</h4>
-												@endif
-											</div>
-											<div class="tab-content">
-												<div class="tab-pane active show p-8" id="topbar_notifications_notifications" role="tabpanel">
-													<!--begin::Scroll-->
-													<div class="scroll pr-7 mr-n7 ps" data-scroll="true" data-height="300" data-mobile-height="200" style="height: 300px; overflow: hidden;">
-														@if(sizeof($alertas) > 0)
-														@foreach($alertas as $a)
-														<div class="d-flex align-items-center mb-6">
-															<a href="{{$a['link']}}">
-																@if($a['titulo'] == 'Alerta validade')
-																<div class="symbol symbol-40 symbol-light-warning mr-5">
+                                            <span class="pulse-ring"></span>
+                                        </div>
+                                    </div>
+                                @endif
+                                <div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg">
+                                    <form>
+                                        <div class="d-flex flex-column pt-12 bgi-size-cover bgi-no-repeat rounded-top">
+                                            @if(sizeof($alertas) > 0)
+                                                <h4 class="d-flex flex-center rounded-top">
+                                                    <span class="text-white">Notificações</span>
+                                                    <span class="btn btn-text btn-success btn-sm font-weight-bold btn-font-md ml-2">{{sizeof($alertas)}} novas</span>
+                                                </h4>
+                                            @endif
+                                        </div>
+                                        <div class="tab-content">
+                                            <div class="tab-pane active show p-8" id="topbar_notifications_notifications" role="tabpanel">
+                                                <!--begin::Scroll-->
+                                                <div class="scroll pr-7 mr-n7 ps" data-scroll="true" data-height="300" data-mobile-height="200" style="height: 300px; overflow: hidden;">
+                                                    @if(sizeof($alertas) > 0)
+                                                        @foreach($alertas as $a)
+                                                            <div class="d-flex align-items-center mb-6">
+                                                                <a href="{{$a['link']}}">
+                                                                    @if($a['titulo'] == 'Alerta validade')
+                                                                        <div class="symbol symbol-40 symbol-light-warning mr-5">
 																	<span class="symbol-label">
 																		<span class="svg-icon svg-icon-lg svg-icon-warning">
 																			<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -500,12 +500,12 @@
 																					<path d="M19.5954729,5.83476152 L4.60883918,4.07162814 C4.23525261,4.02767678 3.86860536,4.19709197 3.65994764,4.51007855 L2,7 C15.3333333,7 22,7 22,7 C22,7 22,7 22,7 L22,7 C21.352294,6.35229396 20.5051936,5.94178748 19.5954729,5.83476152 Z" fill="#000000" opacity="0.3"/>
 																				</g>
 																			</svg>
-																			<!--end::Svg Icon-->
+                                                                            <!--end::Svg Icon-->
 																		</span>
 																	</span>
-																</div>
-																@elseif($a['titulo'] == 'Validade próxima')
-																<div class="symbol symbol-40 symbol-light-danger mr-5">
+                                                                        </div>
+                                                                    @elseif($a['titulo'] == 'Validade próxima')
+                                                                        <div class="symbol symbol-40 symbol-light-danger mr-5">
 																	<span class="symbol-label">
 																		<span class="svg-icon svg-icon-lg svg-icon-danger">
 																			<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -519,9 +519,9 @@
 																			</svg>
 																		</span>
 																	</span>
-																</div>
-																@elseif($a['titulo'] == 'Alerta contas')
-																<div class="symbol symbol-40 symbol-light-info mr-5">
+                                                                        </div>
+                                                                    @elseif($a['titulo'] == 'Alerta contas')
+                                                                        <div class="symbol symbol-40 symbol-light-info mr-5">
 																	<span class="symbol-label">
 																		<span class="svg-icon svg-icon-lg svg-icon-info">
 																			<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
@@ -533,9 +533,9 @@
 																			</svg>
 																		</span>
 																	</span>
-																</div>
-																@elseif($a['titulo'] == 'Receber')
-																<div class="symbol symbol-40 symbol-light-success mr-5">
+                                                                        </div>
+                                                                    @elseif($a['titulo'] == 'Receber')
+                                                                        <div class="symbol symbol-40 symbol-light-success mr-5">
 																	<span class="symbol-label">
 																		<span class="svg-icon svg-icon-lg svg-icon-success">
 
@@ -546,12 +546,12 @@
 																					<path d="M2,6 L21,6 C21.5522847,6 22,6.44771525 22,7 L22,17 C22,17.5522847 21.5522847,18 21,18 L2,18 C1.44771525,18 1,17.5522847 1,17 L1,7 C1,6.44771525 1.44771525,6 2,6 Z M11.5,16 C13.709139,16 15.5,14.209139 15.5,12 C15.5,9.790861 13.709139,8 11.5,8 C9.290861,8 7.5,9.790861 7.5,12 C7.5,14.209139 9.290861,16 11.5,16 Z M11.5,14 C12.6045695,14 13.5,13.1045695 13.5,12 C13.5,10.8954305 12.6045695,10 11.5,10 C10.3954305,10 9.5,10.8954305 9.5,12 C9.5,13.1045695 10.3954305,14 11.5,14 Z" fill="#000000"/>
 																				</g>
 																			</svg>
-																			<!--end::Svg Icon-->
+                                                                            <!--end::Svg Icon-->
 																		</span>
 																	</span>
-																</div>
-																@elseif($a['titulo'] == 'Alerta estoque')
-																<div class="symbol symbol-40 symbol-light-dark mr-5">
+                                                                        </div>
+                                                                    @elseif($a['titulo'] == 'Alerta estoque')
+                                                                        <div class="symbol symbol-40 symbol-light-dark mr-5">
 																	<span class="symbol-label">
 																		<span class="svg-icon svg-icon-lg svg-icon-dark">
 																			<!--begin::Svg Icon | path:/metronic/theme/html/demo1/dist/assets/media/svg/icons/Communication/Write.svg-->
@@ -565,55 +565,55 @@
 																			</svg>
 																		</span>
 																	</span>
-																</div>
-																@endif
-															</a>
-															<div class="d-flex flex-column font-weight-bold">
-																<a href="{{$a['link']}}" class="text-dark-75 text-hover-primary mb-1 font-size-lg">{{$a['titulo']}}</a>
-																<span class="text-muted">{{$a['msg']}}</span>
-															</div>
-														</div>
-														@endforeach
-														@endif
+                                                                        </div>
+                                                                    @endif
+                                                                </a>
+                                                                <div class="d-flex flex-column font-weight-bold">
+                                                                    <a href="{{$a['link']}}" class="text-dark-75 text-hover-primary mb-1 font-size-lg">{{$a['titulo']}}</a>
+                                                                    <span class="text-muted">{{$a['msg']}}</span>
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    @endif
 
-														<div class="ps__rail-x" style="left: 0px; bottom: 0px;">
-															<div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;">
-															</div>
-														</div>
-														<div class="ps__rail-y" style="top: 0px; right: 0px;">
-															<div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 0px;">
-															</div>
-														</div>
-													</div>
-												</div>
-												<div class="tab-pane" id="topbar_notifications_logs" role="tabpanel">
-												</div>
-											</div>
-										</form>
-									</div>
-								</div>
+                                                    <div class="ps__rail-x" style="left: 0px; bottom: 0px;">
+                                                        <div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;">
+                                                        </div>
+                                                    </div>
+                                                    <div class="ps__rail-y" style="top: 0px; right: 0px;">
+                                                        <div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 0px;">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="tab-pane" id="topbar_notifications_logs" role="tabpanel">
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
 
-								<div class="topbar-item user-tour">
-									<div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-										<span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
-										<span style="margin-left: 3px; " class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
+                            <div class="topbar-item user-tour">
+                                <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                                    <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
+                                    <span style="margin-left: 3px; " class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
 
-										<a style="margin-left: 10px;" href="/login/logoff" class="btn btn-danger">
-											<i class="la la-user"></i>
-											Logoff
-										</a>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+                                    <a style="margin-left: 10px;" href="/login/logoff" class="btn btn-danger">
+                                        <i class="la la-user"></i>
+                                        Logoff
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-					<!-- @if(session()->has('mensagem_sucesso'))
-					<div class="row escfff" style="background: #fff; height: 120px; margin-top: -25px">
-						<div class="container">
-							<div class="alert alert-custom alert-success fade show" role="alert" style="margin-top: 10px;">
-								<div class="alert-icon"><i class="la la-check"></i></div>
-								<div class="alert-text">{{ session()->get('mensagem_sucesso') }}</div>
+                <!-- @if(session()->has('mensagem_sucesso'))
+                    <div class="row escfff" style="background: #fff; height: 120px; margin-top: -25px">
+                        <div class="container">
+                            <div class="alert alert-custom alert-success fade show" role="alert" style="margin-top: 10px;">
+                                <div class="alert-icon"><i class="la la-check"></i></div>
+                                <div class="alert-text">{{ session()->get('mensagem_sucesso') }}</div>
 								<div class="alert-close">
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 										<span aria-hidden="true"><i class="la la-close"></i></span>
@@ -623,12 +623,12 @@
 						</div>
 					</div>
 					@endif
-					@if(session()->has('mensagem_erro'))
-					<div class="row" style="background: #fff; height: 120px; margin-top: -25px">
-						<div class="container">
-							<div class="alert alert-custom alert-danger fade show" role="alert" style="margin-top: 10px;">
-								<div class="alert-icon"><i class="la la-check"></i></div>
-								<div class="alert-text">{{ session()->get('mensagem_erro') }}</div>
+                @if(session()->has('mensagem_erro'))
+                    <div class="row" style="background: #fff; height: 120px; margin-top: -25px">
+                        <div class="container">
+                            <div class="alert alert-custom alert-danger fade show" role="alert" style="margin-top: 10px;">
+                                <div class="alert-icon"><i class="la la-check"></i></div>
+                                <div class="alert-text">{{ session()->get('mensagem_erro') }}</div>
 								<div class="alert-close">
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 										<span aria-hidden="true"><i class="la la-close"></i></span>
@@ -638,1312 +638,1474 @@
 						</div>
 					</div>
 					@endif -->
-					<div style="margin-top: -20px;">
-						@yield('content')
-					</div>
+                <div style="margin-top: -20px;">
+                    @yield('content')
+                </div>
 
-				</div>
-			</div>
+            </div>
+        </div>
 
-			<div id="box_whatsapp" class="wcard">
-				<div class="wcard-header">
-					<div class="wcard-logo">
-                                            <img src="{{ asset('imgs/slym.png') }}" alt="Nome da empresa">
-					</div>
-					<div class="wcard-title">
-						<h6>{{env("APP_NAME")}}</h6>
-						<p><small>{{env("APP_DESC")}}</small></p>
-						<p><small class="text-success">Online</small></p>
-					</div>
-				</div>
-				<div class="wcard-body">
-					<div id="form_whatsapp">
-						<div class="wcard-campo">
-							<label for="w_nome">Diga-nos seu nome:</label>
-							<input type="text" name="w_nome" id="w_nome">
-						</div>
-						<div class="wcard-footer">
-							<div class="wcard-mensagem">
-								<textarea name="w_mensagem" id="w_mensagem" rows="1" placeholder="Digite sua mensagem"></textarea>
-							</div>
-							<div class="wcard-send">
-								<button id="send-whats"><i class="la la-paper-plane"></i></button>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<!--
+        <div id="box_whatsapp" class="wcard">
+            <div class="wcard-header">
+                <div class="wcard-logo">
+                    <img src="{{ asset('imgs/slym.png') }}" alt="Nome da empresa">
+                </div>
+                <div class="wcard-title">
+                    <h6>{{env("APP_NAME")}}</h6>
+                    <p><small>{{env("APP_DESC")}}</small></p>
+                    <p><small class="text-success">Online</small></p>
+                </div>
+            </div>
+            <div class="wcard-body">
+                <div id="form_whatsapp">
+                    <div class="wcard-campo">
+                        <label for="w_nome">Diga-nos seu nome:</label>
+                        <input type="text" name="w_nome" id="w_nome">
+                    </div>
+                    <div class="wcard-footer">
+                        <div class="wcard-mensagem">
+                            <textarea name="w_mensagem" id="w_mensagem" rows="1" placeholder="Digite sua mensagem"></textarea>
+                        </div>
+                        <div class="wcard-send">
+                            <button id="send-whats"><i class="la la-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--
 			@if(env("CONTATO_SUPORTE") != "")
-			<button id="btn_whatsapp" class="btn-whatsapp">
-				<i class="icone-whatsapp lab la-whatsapp"></i>
-			</button>
-			@endif
-			-->
-		</div>
-
-		<div class="modal fade" id="modal-loading" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-			<div class="modal-dialog modal-lg" role="document">
-				<form method="get" action="/usuarios/setTema">
-					<div class="modal-content">
-						<div class="modal-header">
-							<h5 class="modal-title">Aguarde ...</h5>
-							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-								x
-							</button>
-						</div>
-						<div class="modal-body">
-							<lottie-player src="/anime/loader-doc.json" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay loop>
-							</lottie-player>
-
-							<h4>Atualizando tabela IBPT de seus produtos</h4>
-						</div>
-
-					</div>
-				</form>
-			</div>
-		</div>
-
-		<div class="modal fade" id="modal-pesquisa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-			<div class="modal-dialog modal-lg" role="document">
-				<form method="get" action="/usuarios/setTema">
-					<div class="modal-content">
-						<div class="modal-header">
-							<h5 class="modal-title p-titulo"></h5>
-							<button onclick="fecharPesquisa()" type="button" class="close" data-dismiss="modal" aria-label="Close">
-								x
-							</button>
-						</div>
-						<div class="modal-body">
-
-							<div class="p-texto"></div>
-
-							<div class="row mt-4">
-								<div class="col-12">
-									@for($i=1; $i<=10; $i++)
-									<i class="la la-star ico-pesquisa ico-{{$i}}" id="{{$i}}"></i>
-									@endfor
-								</div>
-
-								<div class="form-group col-lg-12">
-									<label class="col-form-label">Escreva algo se desejar</label>
-									<div class="">
-										<div class="input-group">
-											<input type="text" name="resposta" class="form-control" value="" id="resposta"/>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<div class="modal-footer">
-							<button type="button" id="btn-frete" class="btn btn-light-danger font-weight-bold spinner-white spinner-right" data-dismiss="modal" aria-label="Close" onclick="fecharPesquisa()">Não responder agora</button>
-							<button id="btn-salvar-pesquisa" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
-						</div>
-
-					</div>
-				</form>
-			</div>
-		</div>
-
-		<div class="modal fade" id="modal-alerta-super" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-			<div class="modal-dialog modal-xl" role="document">
-
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Alertas</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							x
-						</button>
-					</div>
-					<div class="modal-body">
-
-					</div>
-
-					<div class="modal-footer">
-						<a href="/super-admin/altera-todos" type="button" class="btn btn-light-dark font-weight-bold">Visualizar todos</a>
-						<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-					</div>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	<div class="modal fade" id="modal-cancelar-pedido-ifood" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-lg" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Cancelando Pedido</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-						x
-					</button>
-				</div>
-				<div class="modal-body">
-					<div class="form-group col-lg-6 col-12">
-						<label>Código cancelamento</label>
-						<select required id="codigo-ifood" class="custom-select form-control">
-							@foreach(\App\Models\IfoodConfig::getStatusErros() as $key => $c)
-							<option value="{{ $key }}">{{ $key }} - {{ $c }}</option>
-							@endforeach
-						</select>
-					</div>
-					<div class="form-group col-lg-12 col-12">
-						<label>Descrição de cancelamento</label>
-						<input type="text" id="motivo-ifood" class="form-control">
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-					<button type="button" onclick="cancelarPedidoIfood()" class="btn btn-light-success font-weight-bold spinner-white spinner-right">Cancelar</button>
-				</div>
-
-			</div>
-		</div>
-	</div>
-
-	<div class="modal fade" id="modal-pedido-ifood" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-xl" role="document">
-			<form method="post" action="/ifood/readOrder" id="form-pedido-ifood">
-				@csrf
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Novo Pedido iFood <img width="50" src="/icones/ifood.png"></h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							x
-						</button>
-					</div>
-					<div class="modal-body">
-
-					</div>
-
-					<div class="modal-footer">
-						<button id="btn-cancelar-pedido-ifood" type="button" class="btn btn-danger font-weight-bold spinner-white spinner-right">Recusar pedido</button>
-						<button id="btn-confirmar-pedido-ifood" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Confirmar</button>
-					</div>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	<div class="modal fade" id="modal-pedido-mesa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-lg" role="document">
-			<form method="post" action="/pedidosMesa/alterarStatusPedido" id="form-pedido-mesa">
-				@csrf
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Novo Atendimento</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							x
-						</button>
-					</div>
-					<div class="modal-body">
-
-					</div>
-
-					<div class="modal-footer">
-						<button id="btn-cancelar-pedido-mesa" type="button" class="btn btn-danger font-weight-bold spinner-white spinner-right">Recusar</button>
-						<button id="btn-confirmar-pedido-mesa" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Confirmar</button>
-					</div>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	<div class="modal fade" id="modal-tema" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-sm" role="document">
-			<form method="get" action="/usuarios/setTema">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">TEMA</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							x
-						</button>
-					</div>
-					<div class="modal-body">
-						<div class="row">
-							<div class="form-group validated col-sm-12 col-lg-12 col-12">
-								<label class="col-form-label" id="">Tema</label>
-								<select class="form-control custom-select" name="tema">
-									<option @if($tema == 1) selected @endif value="1">Claro</option>
-									<option @if($tema == 2) selected @endif value="2">Escuro</option>
-								</select>
-							</div>
-						</div>
-
-						<div class="row">
-							<div class="form-group validated col-sm-12 col-lg-12 col-12">
-								<label class="col-form-label" id="">Menu lateral</label>
-								<select class="form-control custom-select" name="tema_menu">
-									<option @if($tema_menu == 1) selected @endif value="1">Indigo</option>
-									<option @if($tema_menu == 2) selected @endif value="2">Teal</option>
-									<option @if($tema_menu == 3) selected @endif value="3">Amber</option>
-									<option @if($tema_menu == 4) selected @endif value="4">Light</option>
-								</select>
-							</div>
-						</div>
-
-						<div class="row">
-							<div class="form-group validated col-sm-12 col-lg-12 col-12">
-								<label class="col-form-label" id="">Tipo menu</label>
-								<select class="form-control custom-select" name="tipo_menu">
-									<option @if($tipoMenu == 'lateral') selected @endif value="lateral">Lateral</option>
-									<option @if($tipoMenu == 'superior') selected @endif value="superior">Superior</option>
-								</select>
-							</div>
-						</div>
-
-					</div>
-					<div class="modal-footer">
-						<button style="width: 100%" id="btn-cpf" type="submit" class="btn btn-success font-weight-bold spinner-white spinner-right">SALVAR</button>
-					</div>
-				</div>
-			</form>
-		</div>
-	</div>
-
-	@if(session()->has('mensagem_indeterminado'))
-	<div class="modal fade" id="modal-mensagem-pagamento" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-lg" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Alerta de pagamento</h5>
-				</div>
-				<div class="modal-body">
-					{{session()->get('mensagem_indeterminado')}}
-				</div>
-
-				<div class="modal-footer">
-					<button type="button" class="btn btn-success font-weight-bold spinner-white spinner-right btn-ciente" data-dismiss="modal" aria-label="Close">Estou ciente</button>
-				</div>
-			</div>
-		</div>
-	</div>
-	@endif
-
-	<div class="modal fade" id="modal-alerta-validade" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-xl" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Alerta de validade</h5>
-					<button type="button" onclick="closeModalValidade()" class="close" data-dismiss="modal" aria-label="Close">
-						x
-					</button>
-				</div>
-				<div class="modal-body">
-				</div>
-
-				<div class="modal-footer">
-					<button type="button" onclick="closeModalValidade()" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="modal fade" id="modal-alerta-estoque" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-		<div class="modal-dialog modal-xl" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title">Alerta de estoque</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-						x
-					</button>
-				</div>
-				<div class="modal-body">
-				</div>
-
-				<div class="modal-footer">
-
-					<a target="_blank" class="btn btn-light-info font-weight-bold">Imprimir</a>
-					<button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<script>var HOST_URL = "/metronic/theme/html/tools/preview";</script>
-	<script>
-
-		var KTAppSettings = {
-			"breakpoints": {
-				"sm": 576,
-				"md": 768,
-				"lg": 992,
-				"xl": 1200,
-				"xxl": 1400
-			},
-			"colors": {
-				"theme": {
-					"base": {
-						"white": "#ffffff",
-						"primary": "#3699FF",
-						"secondary": "#E5EAEE",
-						"success": "#1BC5BD",
-						"info": "#8950FC",
-						"warning": "#FFA800",
-						"danger": "#F64E60",
-						"light": "#E4E6EF",
-						"dark": "#181C32"
-					},
-					"light": {
-						"white": "#ffffff",
-						"primary": "#E1F0FF",
-						"secondary": "#EBEDF3",
-						"success": "#C9F7F5",
-						"info": "#EEE5FF",
-						"warning": "#FFF4DE",
-						"danger": "#FFE2E5",
-						"light": "#F3F6F9",
-						"dark": "#D6D6E0"
-					},
-					"inverse": {
-						"white": "#ffffff",
-						"primary": "#ffffff",
-						"secondary": "#3F4254",
-						"success": "#ffffff",
-						"info": "#ffffff",
-						"warning": "#ffffff",
-						"danger": "#ffffff",
-						"light": "#464E5F",
-						"dark": "#ffffff"
-					}
-				},
-				"gray": {
-					"gray-100": "#F3F6F9",
-					"gray-200": "#EBEDF3",
-					"gray-300": "#E4E6EF",
-					"gray-400": "#D1D3E0",
-					"gray-500": "#B5B5C3",
-					"gray-600": "#7E8299",
-					"gray-700": "#5E6278",
-					"gray-800": "#3F4254",
-					"gray-900": "#181C32"
-				}
-			},
-			"font-family": "Poppins"
-		};
-	</script>
-
-
-
-	<!-- end::Global Config -->
-	<!--begin::Global Theme Bundle(used by all pages) -->
-
-	<script src="/metronic/js/plugins.bundle.js" type="text/javascript"></script>
-	<script src="/metronic/js/prismjs.bundle.js" type="text/javascript"></script>
-	<script src="/metronic/js/scripts.bundle.js" type="text/javascript"></script>
-	<script src="/metronic/js/fullcalendar.bundle.js" type="text/javascript"></script>
-	<script src="/metronic/js/file.js" type="text/javascript"></script>
-
-	<script src="/metronic/js/wizard.js" type="text/javascript"></script>
-	<script src="/metronic/js/user.js" type="text/javascript"></script>
-
-	<script type="text/javascript" src="/js/jquery.mask.min.js"></script>
-	<script type="text/javascript" src="/js/mascaras.js"></script>
-	<script src="/metronic/js/select2.js" type="text/javascript"></script>
-	<script src="/metronic/js/timepicker.js" type="text/javascript"></script>
-
-	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.2.0/sweetalert2.all.min.js"></script> -->
-	<script src="/js/sweetalert.min.js"></script>
-
-	<script type="text/javascript">
-		function audioSuccess(){
-			console.clear()
-			@if($alerta_sonoro != "")
-			var audio = new Audio('/audio/{{$alerta_sonoro}}');
-			audio.addEventListener('canplaythrough', function() {
-				audio.play();
-			});
-			@endif
-		}
-
-		function audioError(){
-			@if($alerta_sonoro != "")
-			var audio = new Audio('/audio/error.mp3');
-			audio.addEventListener('canplaythrough', function() {
-				audio.play();
-			});
-			@endif
-		}
-
-		function audioWarning(){
-			@if($alerta_sonoro != "")
-			var audio = new Audio('/audio/warning.mp3');
-			audio.addEventListener('canplaythrough', function() {
-				audio.play();
-			});
-			@endif
-		}
-	</script>
-
-	<?php $path = env('PATH_URL') . "/"; ?>
-	<script type="text/javascript">
-
-		var casas_decimais = 2;
-		var casas_decimais_qtd = 2;
-
-		casas_decimais = {{$casasDecimais}}
-		casas_decimais_qtd = {{$casasDecimaisQtd}}
-
-		let prot = window.location.protocol;
-		let host = window.location.host;
-		const path = prot + "//" + host + "/";
-	</script>
-
-	@if(isset($pessoaFisicaOuJuridica))
-	<script type="text/javascript" src="/js/pessoaFisicaOuJuridica.js"></script>
-	@endif
-
-	@if(isset($service))
-	<script type="text/javascript" src="/js/service.js"></script>
-	@endif
-
-	@if(isset($client))
-	<script type="text/javascript" src="/js/client.js"></script>
-	@endif
-
-	@if(isset($nf))
-	<script type="text/javascript" src="/js/nf.js"></script>
-	@endif
-
-	@if(isset($fornecedor))
-	<script type="text/javascript" src="/js/fornecedor.js"></script>
-	@endif
-
-	@if(isset($budget))
-	<script type="text/javascript" src="/js/budget.js"></script>
-	@endif
-
-	@if(isset($order))
-	<script type="text/javascript" src="/js/order.js"></script>
-	@endif
-
-	@if(isset($usuarioJs))
-	<script type="text/javascript" src="/js/usuario.js"></script>
-	@endif
-
-	<script type="text/javascript" src="/js/google-api.js"></script>
-
-
-	@if(isset($purchase))
-	<script type="text/javascript" src="/js/purchase.js"></script>
-	@endif
-
-	@if(isset($funcionario))
-	<script type="text/javascript" src="/js/funcionario.js"></script>
-	@endif
-
-	@if(isset($produtoJs))
-	<script type="text/javascript" src="/js/produto.js"></script>
-	@endif
-
-	@if(isset($gradeJs))
-	<script type="text/javascript" src="/js/grade.js"></script>
-	@endif
-
-	@if(isset($pedidoJs))
-	<script type="text/javascript" src="/js/pedido.js"></script>
-	@endif
-
-	@if(isset($servicoJs))
-	<script type="text/javascript" src="/js/servicos.js"></script>
-	@endif
-
-	@if(isset($relatorioJs))
-	<script type="text/javascript" src="/js/relatorio.js"></script>
-	@endif
-
-	@if(isset($compraFiscalJs))
-	<script type="text/javascript" src="/js/compraFiscal.js"></script>
-	@endif
-
-	@if(isset($pedidoDeliveryJs))
-	<script type="text/javascript" src="/js/pedidoDelivery.js"></script>
-	@endif
-
-	@if(isset($cidadeJs))
-	<script type="text/javascript" src="/js/cidades.js"></script>
-	@endif
-
-	@if(isset($vendaJs))
-	<script type="text/javascript" src="/js/venda.js"></script>
-	@endif
-
-	@if(isset($vendaJsAssincrono))
-	<script type="text/javascript" src="/js/vendaJsAssincrono.js"></script>
-	@endif
-
-	@if(isset($creditoVenda))
-	<script type="text/javascript" src="/js/creditoVenda.js"></script>
-	@endif
-
-	@if(isset($compraManual))
-	<script type="text/javascript" src="/js/compraManual.js"></script>
-	@endif
-
-	@if(isset($compraManualAssincrono))
-	<script type="text/javascript" src="/js/compraManualAssincrono.js"></script>
-	@endif
-
-	@if(isset($cotacaoJs))
-	<script type="text/javascript" src="/js/cotacao.js"></script>
-	@endif
-
-	@if(isset($categoriaJs))
-	<script type="text/javascript" src="/js/categoria.js"></script>
-	@endif
-
-	@if(isset($pushJs))
-	<script type="text/javascript" src="/js/push.js"></script>
-	@endif
-
-	@if(isset($frenteCaixa))
-	<script type="text/javascript" src="/js/frenteCaixa.js"></script>
-	@endif
-
-	@if(isset($adicional))
-	<script type="text/javascript" src="/js/adicional.js"></script>
-	@endif
-
-	@if(isset($cloneJs))
-	<script type="text/javascript" src="/js/clone.js"></script>
-	@endif
-
-	@if(isset($cteJs))
-	<script type="text/javascript" src="/js/cte.js"></script>
-	@endif
-
-	@if(isset($cteEnvioJs))
-	<script type="text/javascript" src="/js/cte_envio.js"></script>
-	@endif
-
-	@if(isset($cozinhaJs))
-	<script type="text/javascript" src="/js/cozinha.js"></script>
-	@endif
-
-	@if(isset($codigoJs))
-	<script type="text/javascript" src="/js/codigo.js"></script>
-	@endif
-
-	@if(isset($devolucaoJs))
-	<script type="text/javascript" src="/js/devolucao.js"></script>
-	@endif
-
-	@if(isset($devolucaoJsEdit))
-	<script type="text/javascript" src="/js/devolucaoEdit.js"></script>
-	@endif
-
-	@if(isset($devolucaoNF))
-	<script type="text/javascript" src="/js/devolucaoNF.js"></script>
-	@endif
-
-	@if(isset($mdfeJs))
-	<script type="text/javascript" src="/js/mdfe.js"></script>
-	@endif
-
-	@if(isset($mdfeEnvioJs))
-	<script type="text/javascript" src="{{ asset('js/fiscal_error.js') }}?v={{ filemtime(public_path('js/fiscal_error.js')) }}"></script>
-	<script type="text/javascript" src="{{ asset('js/mdfe_envio.js') }}?v={{ filemtime(public_path('js/mdfe_envio.js')) }}"></script>
-	@endif
-
-	@if(isset($print))
-	<script type="text/javascript" src="/js/jQuery.print/jQuery.print.js"></script>
-	<script type="text/javascript" src="/js/print.js"></script>
-	@endif
-
-	@if(isset($mapJs))
-	<script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"
-	async defer></script>
-	<script type="text/javascript" src="/js/map.js"></script>
-	@endif
-
-	@if(isset($graficoHomeJs))
-	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js"></script>
-
-	<script type="text/javascript" src="/js/grafico_home.js"></script>
-	@endif
-
-	@if(session()->has('login_ibpt'))
-	<script type="text/javascript" src="/js/atualizaIbpt.js"></script>
-	@endif
-
-	@if(session()->has('pesquisa_satisfacao'))
-	@if(session()->has('forcar_pesquisa'))
-	<input type="hidden" value="1" id="forcar_pesquisa">
-	@endif
-	<input type="hidden" value="{{session()->get('pesquisa_satisfacao')}}" id="pesquisa_id">
-	<script type="text/javascript" src="/js/pesquisa_satisfacao.js"></script>
-	@endif
-
-	@if(isset($relatorioJS))
-	<script type="text/javascript" src="/js/relatorios.js"></script>
-	@endif
-
-	@if(isset($dfeJS))
-	<script type="text/javascript" src="/js/dfe.js"></script>
-	@endif
-
-	@if(isset($naoEncerradosMDFeJS))
-	<script type="text/javascript" src="/js/naoEncerradosMDFe.js"></script>
-	@endif
-
-	@if(isset($NFeEntradaJS))
-	<script type="text/javascript" src="/js/nfeEntrada.js"></script>
-	@endif
-
-	@if(isset($controleHorarioJs))
-	<script type="text/javascript" src="/js/controleHorario.js"></script>
-	@endif
-
-	@if(isset($frentePedidoDeliveryJs))
-	<script type="text/javascript" src="/js/frentePedidoDelivery.js"></script>
-	@endif
-
-	@if(isset($frentePedidoDeliveryPedidoJs))
-	<script type="text/javascript" src="/js/frentePedidoDeliveryPedido.js"></script>
-	@endif
-
-	@if(isset($testeJs))
-	<script type="text/javascript" src="/js/teste.js"></script>
-	@endif
-
-	@if(isset($bannerJs))
-	<script type="text/javascript" src="/js/banner.js"></script>
-	@endif
-
-	<script src="/js/lottie-player.js"></script>
-
-
-	@if(isset($graficoJs))
-
-	<script type="text/javascript" src="/js/grafico.js"></script>
-	@endif
-
-	@if(isset($orcamentoJs))
-	<script type="text/javascript" src="/js/orcamento.js"></script>
-	@endif
-
-	@if(isset($atribuirComandaJs))
-	<script type="text/javascript" src="/js/atribuirComandaJs.js"></script>
-	@endif
-
-	@if(isset($motoboyEntrega))
-	<script type="text/javascript" src="/js/motoboyEntrega.js"></script>
-	@endif
-
-	@if(isset($comissaoJs))
-	<script type="text/javascript" src="/js/comissao.js"></script>
-	@endif
-
-	@if(isset($empresaJs))
-	<script type="text/javascript" src="/js/empresa.js"></script>
-	@endif
-
-	@if(isset($fullcalendar))
-	<script src='/fullcalendar/main.js'></script>
-	<script src='/fullcalendar/locales/pt-br.js'></script>
-	<script src='/js/calendario.js'></script>
-	@endif
-
-	@if(isset($configJs))
-	<script type="text/javascript" src="/js/config.js"></script>
-	@endif
-
-	@if(isset($eventoJs))
-	<script type="text/javascript" src="/js/evento.js"></script>
-	@endif
-
-	@if(isset($veiculoJs))
-	<script type="text/javascript" src="/js/veiculo.js"></script>
-	@endif
-
-	@if(isset($caixaJs))
-	<script type="text/javascript" src="/js/caixa.js"></script>
-	@endif
-
-	@if(isset($dreJs))
-	<script type="text/javascript" src="/js/dre.js"></script>
-	@endif
-
-	@if(session('user_logged')['super'] == 1)
-	<script type="text/javascript" src="/js/super.js"></script>
-	@endif
-
-	@if(isset($contratoJs))
-
-	<script type="text/javascript" src="/js/nicEdit-latest.js"></script>
-
-	<script type="text/javascript">
-
-		bkLib.onDomLoaded(function() { nicEditors.allTextAreas() });
-
-		bkLib.onDomLoaded(function() {
-			new nicEditor().panelInstance('area1');
-		});
-
-		bkLib.onDomLoaded(function() {
-			new nicEditor({fullPanel : true}).panelInstance('area2');
-		});
-	</script>
-
-	@endif
-
-	@if(isset($textAreaEditor))
-
-	<script type="text/javascript" src="/js/nicEdit-latest.js"></script>
-
-	<script type="text/javascript">
-		new nicEditor({fullPanel : true}).panelInstance('mensagem_agradecimento',{hasPanel : true});
-	</script>
-
-	@endif
-
-	@yield('javascript')
-
-	@if(session()->has('nova_aba'))
-	<script type="text/javascript">
-		let rota = "<?php echo session()->get('nova_aba') ?>"
-		window.open(rota);
-	</script>
-	@endif
-
-	@if(session()->has('mensagem_indeterminado'))
-	<script type="text/javascript">
-		setTimeout(() => {
-			$('#modal-mensagem-pagamento').modal('show')
-		}, 500)
-	</script>
-	@endif
-
-	@if(session()->has('mensagem_pagamento'))
-	<script type="text/javascript">
-		swal("Atenção", '{{session()->get('mensagem_pagamento')}}', "warning")
-
-		swal({
-			title: "Atenção",
-			text: '{{session()->get('mensagem_pagamento')}}',
-			icon: "warning",
-			buttons: [
-			'Ver depois',
-			'ir para pagamento'
-			],
-		}).then((acao) => {
-			if(acao){
-				location.href = path + 'payment';
-			}else{
-
-			}
-		})
-	</script>
-	@endif
-
-	@if(session()->has('mensagem_certificado'))
-	<script type="text/javascript">
-		swal({
-			title: "Atenção",
-			text: '{{session()->get('mensagem_certificado')}}',
-			icon: "warning",
-
-			buttons: {
-				cancel: "Ver depois",
-				confirm: "Emitente",
-				hello: "Compre agora",
-			},
-		}).then((acao) => {
-			if(acao == 'hello'){
-				window.open('https://wa.me/+55'+{{env("RESP_FONE")}})
-			}else{
-				if(acao != null){
-					location.href = path + 'configNF';
-				}
-			}
-		})
-	</script>
-	@endif
-
-	@if(session()->has('alert_vencimento'))
-	<script type="text/javascript" src="/js/check_validade.js"></script>
-	@endif
-
-	<script src="/js/bootstrap-datepicker.pt-BR.min.js"></script>
-	<script src="/js/bootstrap-tour-standalone.js"></script>
-	@if($rotaAtiva == 'Financeiro')
-	<script src="/js/tour.js"></script>
-	@endif
-	<script>
-
-		jQuery(document).ready(function() {
-			KTSelect2.init();
-			$('.select2-selection__arrow').addClass('select2-selection__arroww')
-
-			$('.select2-selection__arrow').removeClass('select2-selection__arrow')
-			$('.delivery-arrow').removeClass('select2-selection__arrow')
-
-			$('.menu-arrow').removeClass('menu-arrow');
-
-			var KTBootstrapDatepicker = function() {
-
-				var arrows;
-				if (KTUtil.isRTL()) {
-					arrows = {
-						leftArrow: '<i class="la la-angle-right"></i>',
-						rightArrow: '<i class="la la-angle-left"></i>'
-					}
-				} else {
-					arrows = {
-						leftArrow: '<i class="la la-angle-left"></i>',
-						rightArrow: '<i class="la la-angle-right"></i>'
-					}
-				}
-
-
-
-					// Private functions
-					var demos = function() {
-
-						// minimum setup
-						$('#kt_datepicker_1').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayHighlight: true,
-							orientation: "bottom left",
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						// minimum setup for modal demo
-						$('#kt_datepicker_1_modal').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayHighlight: true,
-							orientation: "bottom left",
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						// input group layout
-						$('#kt_datepicker_2').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayHighlight: true,
-							orientation: "bottom left",
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						// input group layout for modal demo
-						$('#kt_datepicker_2_modal').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayHighlight: true,
-							orientation: "bottom left",
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						// enable clear button
-						$('#kt_datepicker_3, #kt_datepicker_3_validate').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayBtn: "linked",
-							clearBtn: false,
-							format: 'dd/mm/yyyy',
-							todayHighlight: false,
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						$('#kt_daterangepicker').daterangepicker();
-
-						// enable clear button for modal demo
-						$('#kt_datepicker_3_modal').datepicker({
-							rtl: KTUtil.isRTL(),
-							todayBtn: "linked",
-							clearBtn: false,
-							format: 'dd/mm/yyyy',
-							todayHighlight: false,
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						// orientation
-						$('#kt_datepicker_4_1').datepicker({
-							rtl: KTUtil.isRTL(),
-							orientation: "top left",
-							todayHighlight: true,
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						$('#kt_datepicker_4_2').datepicker({
-							rtl: KTUtil.isRTL(),
-							orientation: "top right",
-							todayHighlight: true,
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-						$('#kt_datepicker_4_3').datepicker({
-							rtl: KTUtil.isRTL(),
-							orientation: "bottom left",
-							todayHighlight: true,
-							templates: arrows,
-							language: "pt-BR"
-						});
-
-
-					}
-
-					return {
-						// public functions
-						init: function() {
-							demos();
-						}
-					};
-
-				}();
-
-				KTBootstrapDatepicker.init(
-				{
-					format: 'dd/mm/yyyy'
-				}
-				);
-
-			});
-
-
-		</script>
-		<script type="text/javascript" src="/js/toastr.min.js"></script>
-
-		<script type="text/javascript">
-			var audio = new Audio('/notificacao/s2.mp3');
-			var tAnt = 0;
-			let s = 0;
-			let firstPedidos = true;
-			// setInterval(() => {
-			// 	s = <?php echo session('user_logged') ? session('user_logged')['id'] : 0 ?>;
-
-			// 	if(s > 0){
-
-			// 		$.get(path+'pedidos/emAberto')
-			// 		.done((data) => {
-			// 			$('#pedidos-aberto').html('x'+data)
-			// 			if(tAnt != data && !firstPedidos){
-			// 				if(data > 0 && tAnt <= data) audio.play();
-
-			// 			}
-
-			// 			tAnt = data;
-			// 			firstPedidos = false;
-
-
-			// 		})
-			// 		.fail((err) => {
-			// 			console.log("erro ao buscar pedidos em aberto")
-			// 			console.log(err)
-			// 		})
-			// 	}
-			// }, 3000)
-
-
-			const formatar = (data) => {
-				const hora = data.getHours() < 10 ? '0'+data.getHours() : data.getHours();
-				const min = data.getMinutes() < 10 ? '0'+data.getMinutes() : data.getMinutes();
-				const seg = data.getSeconds() < 10 ? '0'+data.getSeconds() : data.getSeconds();
-
-				return `${hora}:${min}:${seg}`;
-			};
-
-
-			setInterval(() => {
-				let hora = formatar(new Date())
-				$('#timer').html(hora)
-			}, 1000)
-		</script>
-
-		<script type="text/javascript">
-			var audio2 = new Audio('/notificacao/s1.mp3');
-			var pAnt = 0;
-			let v = 0;
-			let firstDelivery = true;
-			// setInterval(() => {
-
-			// 	v = <?php echo session('user_logged') ? session('user_logged')['id'] : 0 ?>;
-
-			// 	if(v > 0){
-			// 		$.get(path+'pedidosDelivery/emAberto')
-			// 		.done((data) => {
-
-			// 			$('#pedidos-aberto-delivery').html('x'+data)
-			// 			if(pAnt != data && !firstDelivery){
-			// 				if(data > 0 && pAnt <= data) audio2.play();
-			// 			}
-
-			// 			pAnt = data;
-			// 			firstDelivery = false;
-
-			// 		})
-			// 		.fail((err) => {
-			// 			console.log("erro ao buscar pedidos em aberto delivery")
-			// 			console.log(err)
-			// 		})
-			// 	}
-
-			// }, 5000)
-
-			var w = window.innerWidth
-			setTimeout(() => {
-				if(w < 900){
-					$('#grade').trigger('click')
-				}
-			}, 500)
-
-		</script>
-
-		<script type="text/javascript">
-			$('input[type=file]').change(() => {
-				var filename = $('input[type=file]').val().replace(/.*(\/|\\)/, '');
-				$('#filename').html(filename)
-			})
-
-			$('#send-csv').click(() => {
-				$('#send-csv').attr('disabled')
-				$('#send-csv').addClass('disabled')
-				$('#send-csv').addClass('spinner')
-			})
-
-			$('.btn-hide').click(() => {
-				let toggle = window.localStorage.getItem('menu-toogle');
-
-				if(!toggle){
-					window.localStorage.setItem('menu-toogle', 'aside-minimize');
-				}else{
-					if(toggle == 'aside-minimize'){
-						$('#kt_body').addClass('page-loading');
-						$('#kt_body').removeClass('aside-minimize');
-						window.localStorage.setItem('menu-toogle', 'page-loading');
-					}else{
-						$('#kt_body').removeClass('page-loading');
-						$('#kt_body').addClass('aside-minimize');
-						window.localStorage.setItem('menu-toogle', 'aside-minimize');
-					}
-				}
-			})
-
-			$(function () {
-				let toggle = window.localStorage.getItem('menu-toogle');
-				console.log(toggle)
-				if(toggle == 'aside-minimize'){
-					$('#kt_body').addClass('aside-minimize');
-					$('#kt_body').removeClass('page-loading');
-				}
-			})
-		</script>
-
-		@if(session()->has('link'))
-		<script type="text/javascript">
-			window.open("{{session()->get('link')}}")
-		</script>
-		@endif
-
-		@if($deliveryConfig && env("DELIVERY") == 1)
-		<script type="text/javascript" src="/js/pedido_delivery.js"></script>
-		<script type="text/javascript" src="/js/pedido_mesa.js"></script>
-		@endif
-
-		@if($ifoodConfig && env("IFOOD") == 1)
-		<script type="text/javascript" src="/js/pedido_ifood.js"></script>
-		@endif
-
-
-		<script type="text/javascript">
-
-			/*
-			$('#btn_whatsapp, .btn-abre-whatsapp').on('click', function(e){
-				e.preventDefault();
-
-				var btn = $('#btn_whatsapp');
-				var box = $('#box_whatsapp');
-
-				if(box.is(":visible")){
-					btn.children('.icone-whatsapp').removeClass('la la-times').addClass('lab la-whatsapp');
-					box.fadeOut(250);
-				} else {
-					btn.children('.icone-whatsapp').removeClass('lab la-whatsapp').addClass('la la-times');
-					box.fadeIn(250);
-				}
-			})
-			*/
-			/*
-			$('#send-whats').click(() => {
-				let mensagem = $('#w_mensagem').val()
-				let nome = $('#w_nome').val()
-
-				let msg = ""
-				if(nome){
-					msg += "Olá meu nome é "+nome+ ", ";
-				}
-
-				msg += mensagem
-
-				let num = {{env("CONTATO_SUPORTE")}}
-
-				let uri = "https://wa.me/55"+num+"?text="+msg
-				window.open(uri)
-
-				var btn = $('#btn_whatsapp');
-				var box = $('#box_whatsapp');
-				btn.children('.icone-whatsapp').removeClass('la la-times').addClass('lab la-whatsapp');
-				box.fadeOut(250);
-			})
-			*/
-
-			detectar_mobile()
-			function detectar_mobile() {
-				if( navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) || navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) || navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) || navigator.userAgent.match(/Windows Phone/i)){
-					$('.not-mobile').css('display', 'none')
-					$('.y-mobile').css('display', 'block')
-				}
-				else {
-					$('.not-mobile').css('display', 'block')
-					$('.y-mobile').css('display', 'none')
-
-				}
-			}
-
-			toastr.options = {
-				"progressBar": true,
-				"onclick": null,
-				"showDuration": "300",
-				"hideDuration": "1000",
-				"timeOut": "10000",
-				"extendedTimeOut": "1000",
-				"showEasing": "swing",
-				"hideEasing": "linear",
-				"showMethod": "fadeIn",
-				"hideMethod": "fadeOut"
-			}
-
-			@if(session()->has('mensagem_sucesso'))
-			toastr.success('{{ session()->get('mensagem_sucesso') }}');
-			audioSuccess()
-			@endif
-
-			@if(session()->has('mensagem_erro'))
-			toastr.error('{{ session()->get('mensagem_erro') }}');
-			audioError()
-			@endif
-
-			@if(session()->has('mensagem_alerta'))
-			toastr.warning('{{ session()->get('mensagem_alerta') }}');
-			audioWarning()
-			@endif
-
-		</script>
-
-        <!-- Atendimento e Suporte Online -->
-        @include('layouts.support')
-
-		<!-- tour -->
-
-		<script type="text/javascript">
-
-		</script>
-
-	<div class="modal fade" id="modal-release-notes" tabindex="-1" role="dialog" aria-labelledby="releaseNotesLabel" aria-hidden="true">
-		<div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title" id="releaseNotesLabel">Release Notes da Aplicação</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-				</div>
-				<div class="modal-body">
-					@if($appVersionCurrent)
-					<div class="alert alert-light-info mb-4">
-						<div><strong>Versão instalada:</strong> {{ $appVersionCurrent->version }}</div>
-						<div><strong>SemVer:</strong> {{ $appVersionCurrent->version_major }}.{{ $appVersionCurrent->version_minor }}.{{ $appVersionCurrent->version_patch }}</div>
-						<div><strong>Release:</strong> {{ optional($appVersionCurrent->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
-						<div><strong>Instalada em:</strong> {{ optional($appVersionCurrent->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
-					</div>
-					@endif
-
-					<div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-						@forelse($appVersionHistoryGrouped as $major => $items)
-						@php($majorId = 'top-major-'.$major)
-						<div class="card">
-							<div class="card-header" id="head-{{ $majorId }}">
-								<div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
-									Versão {{ $major }}
-									<span class="label label-light-info label-inline ml-2">{{ $items->count() }}</span>
-								</div>
-							</div>
-							<div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
-								<div class="card-body p-2">
-									<ul class="list-group">
-										@foreach($items as $item)
-										<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
-											<div>
-												<strong>{{ $item->version }}</strong>
-												@if($item->is_current)<span class="badge badge-success ml-1">Atual</span>@endif
-												<div class="text-muted small">{{ $item->title ?: '-' }} | {{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
-											</div>
-											<div class="d-flex flex-wrap" style="gap:.4rem;">
-												@if($item->release_notes_current_html)
-												<button class="btn btn-xs btn-light-primary" data-toggle="modal" data-target="#release-current-{{ $item->id }}">Atual</button>
-												@endif
-												@if($item->release_notes_cumulative_html)
-												<button class="btn btn-xs btn-light-warning" data-toggle="modal" data-target="#release-cumulative-{{ $item->id }}">Cumulativa</button>
-												@endif
-											</div>
-										</li>
-										@endforeach
-									</ul>
-								</div>
-							</div>
-						</div>
-						@empty
-						<div class="text-center text-muted">Nenhuma versão interna registrada.</div>
-						@endforelse
-					</div>
-				</div>
-				<div class="modal-footer">
-					<a href="/app-versions" class="btn btn-light-primary">Abrir histórico completo</a>
-					<button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	@foreach($appVersionHistory as $item)
-		@if($item->release_notes_current_html)
-		<div class="modal fade" id="release-current-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
-			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Release atual - {{ $item->version }}</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-					</div>
-					<div class="modal-body">{!! $item->release_notes_current_html !!}</div>
-				</div>
-			</div>
-		</div>
-		@endif
-		@if($item->release_notes_cumulative_html)
-		<div class="modal fade" id="release-cumulative-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
-			<div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title">Release cumulativa - {{ $item->version }}</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
-					</div>
-					<div class="modal-body">{!! $item->release_notes_cumulative_html !!}</div>
-				</div>
-			</div>
-		</div>
-		@endif
-	@endforeach
-
-	{{-- Modal/monitor global do Delivery renderizado somente dentro do body --}}
-	@yield('global_delivery_alert')
-
-	<script type="text/javascript" src="/js/main.js"></script>
+            <button id="btn_whatsapp" class="btn-whatsapp">
+                <i class="icone-whatsapp lab la-whatsapp"></i>
+            </button>
+@endif
+        -->
+    </div>
+
+    <div class="modal fade" id="modal-loading" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <form method="get" action="/usuarios/setTema">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Aguarde ...</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <lottie-player src="/anime/loader-doc.json" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay loop>
+                        </lottie-player>
+
+                        <h4>Atualizando tabela IBPT de seus produtos</h4>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-pesquisa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <form method="get" action="/usuarios/setTema">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title p-titulo"></h5>
+                        <button onclick="fecharPesquisa()" type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                        <div class="p-texto"></div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                @for($i=1; $i<=10; $i++)
+                                    <i class="la la-star ico-pesquisa ico-{{$i}}" id="{{$i}}"></i>
+                                @endfor
+                            </div>
+
+                            <div class="form-group col-lg-12">
+                                <label class="col-form-label">Escreva algo se desejar</label>
+                                <div class="">
+                                    <div class="input-group">
+                                        <input type="text" name="resposta" class="form-control" value="" id="resposta"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" id="btn-frete" class="btn btn-light-danger font-weight-bold spinner-white spinner-right" data-dismiss="modal" aria-label="Close" onclick="fecharPesquisa()">Não responder agora</button>
+                        <button id="btn-salvar-pesquisa" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Salvar</button>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-alerta-super" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alertas</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        x
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                </div>
+
+                <div class="modal-footer">
+                    <a href="/super-admin/altera-todos" type="button" class="btn btn-light-dark font-weight-bold">Visualizar todos</a>
+                    <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-cancelar-pedido-ifood" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancelando Pedido</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        x
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group col-lg-6 col-12">
+                        <label>Código cancelamento</label>
+                        <select required id="codigo-ifood" class="custom-select form-control">
+                            @foreach(\App\Models\IfoodConfig::getStatusErros() as $key => $c)
+                                <option value="{{ $key }}">{{ $key }} - {{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-lg-12 col-12">
+                        <label>Descrição de cancelamento</label>
+                        <input type="text" id="motivo-ifood" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                    <button type="button" onclick="cancelarPedidoIfood()" class="btn btn-light-success font-weight-bold spinner-white spinner-right">Cancelar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-pedido-ifood" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <form method="post" action="/ifood/readOrder" id="form-pedido-ifood">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Novo Pedido iFood <img width="50" src="/icones/ifood.png"></h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button id="btn-cancelar-pedido-ifood" type="button" class="btn btn-danger font-weight-bold spinner-white spinner-right">Recusar pedido</button>
+                        <button id="btn-confirmar-pedido-ifood" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Confirmar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-pedido-mesa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <form method="post" action="/pedidosMesa/alterarStatusPedido" id="form-pedido-mesa">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Novo Atendimento</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button id="btn-cancelar-pedido-mesa" type="button" class="btn btn-danger font-weight-bold spinner-white spinner-right">Recusar</button>
+                        <button id="btn-confirmar-pedido-mesa" type="button" class="btn btn-success font-weight-bold spinner-white spinner-right">Confirmar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-tema" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-sm" role="document">
+            <form method="get" action="/usuarios/setTema">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">TEMA</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            x
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="form-group validated col-sm-12 col-lg-12 col-12">
+                                <label class="col-form-label" id="">Tema</label>
+                                <select class="form-control custom-select" name="tema">
+                                    <option @if($tema == 1) selected @endif value="1">Claro</option>
+                                    <option @if($tema == 2) selected @endif value="2">Escuro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group validated col-sm-12 col-lg-12 col-12">
+                                <label class="col-form-label" id="">Menu lateral</label>
+                                <select class="form-control custom-select" name="tema_menu">
+                                    <option @if($tema_menu == 1) selected @endif value="1">Indigo</option>
+                                    <option @if($tema_menu == 2) selected @endif value="2">Teal</option>
+                                    <option @if($tema_menu == 3) selected @endif value="3">Amber</option>
+                                    <option @if($tema_menu == 4) selected @endif value="4">Light</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="form-group validated col-sm-12 col-lg-12 col-12">
+                                <label class="col-form-label" id="">Tipo menu</label>
+                                <select class="form-control custom-select" name="tipo_menu">
+                                    <option @if($tipoMenu == 'lateral') selected @endif value="lateral">Lateral</option>
+                                    <option @if($tipoMenu == 'superior') selected @endif value="superior">Superior</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button style="width: 100%" id="btn-cpf" type="submit" class="btn btn-success font-weight-bold spinner-white spinner-right">SALVAR</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if(session()->has('mensagem_indeterminado'))
+        <div class="modal fade" id="modal-mensagem-pagamento" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Alerta de pagamento</h5>
+                    </div>
+                    <div class="modal-body">
+                        {{session()->get('mensagem_indeterminado')}}
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-success font-weight-bold spinner-white spinner-right btn-ciente" data-dismiss="modal" aria-label="Close">Estou ciente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div class="modal fade" id="modal-alerta-validade" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alerta de validade</h5>
+                    <button type="button" onclick="closeModalValidade()" class="close" data-dismiss="modal" aria-label="Close">
+                        x
+                    </button>
+                </div>
+                <div class="modal-body">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" onclick="closeModalValidade()" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-alerta-estoque" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Alerta de estoque</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        x
+                    </button>
+                </div>
+                <div class="modal-body">
+                </div>
+
+                <div class="modal-footer">
+
+                    <a target="_blank" class="btn btn-light-info font-weight-bold">Imprimir</a>
+                    <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>var HOST_URL = "/metronic/theme/html/tools/preview";</script>
+    <script>
+
+        var KTAppSettings = {
+            "breakpoints": {
+                "sm": 576,
+                "md": 768,
+                "lg": 992,
+                "xl": 1200,
+                "xxl": 1400
+            },
+            "colors": {
+                "theme": {
+                    "base": {
+                        "white": "#ffffff",
+                        "primary": "#3699FF",
+                        "secondary": "#E5EAEE",
+                        "success": "#1BC5BD",
+                        "info": "#8950FC",
+                        "warning": "#FFA800",
+                        "danger": "#F64E60",
+                        "light": "#E4E6EF",
+                        "dark": "#181C32"
+                    },
+                    "light": {
+                        "white": "#ffffff",
+                        "primary": "#E1F0FF",
+                        "secondary": "#EBEDF3",
+                        "success": "#C9F7F5",
+                        "info": "#EEE5FF",
+                        "warning": "#FFF4DE",
+                        "danger": "#FFE2E5",
+                        "light": "#F3F6F9",
+                        "dark": "#D6D6E0"
+                    },
+                    "inverse": {
+                        "white": "#ffffff",
+                        "primary": "#ffffff",
+                        "secondary": "#3F4254",
+                        "success": "#ffffff",
+                        "info": "#ffffff",
+                        "warning": "#ffffff",
+                        "danger": "#ffffff",
+                        "light": "#464E5F",
+                        "dark": "#ffffff"
+                    }
+                },
+                "gray": {
+                    "gray-100": "#F3F6F9",
+                    "gray-200": "#EBEDF3",
+                    "gray-300": "#E4E6EF",
+                    "gray-400": "#D1D3E0",
+                    "gray-500": "#B5B5C3",
+                    "gray-600": "#7E8299",
+                    "gray-700": "#5E6278",
+                    "gray-800": "#3F4254",
+                    "gray-900": "#181C32"
+                }
+            },
+            "font-family": "Poppins"
+        };
+    </script>
+
+
+
+    <!-- end::Global Config -->
+    <!--begin::Global Theme Bundle(used by all pages) -->
+
+    <script src="/metronic/js/plugins.bundle.js" type="text/javascript"></script>
+    <script src="/metronic/js/prismjs.bundle.js" type="text/javascript"></script>
+    <script src="/metronic/js/scripts.bundle.js" type="text/javascript"></script>
+    <script src="/metronic/js/fullcalendar.bundle.js" type="text/javascript"></script>
+    <script src="/metronic/js/file.js" type="text/javascript"></script>
+
+    <script src="/metronic/js/wizard.js" type="text/javascript"></script>
+    <script src="/metronic/js/user.js" type="text/javascript"></script>
+
+    <script type="text/javascript" src="/js/jquery.mask.min.js"></script>
+    <script type="text/javascript" src="/js/mascaras.js"></script>
+    <script src="/metronic/js/select2.js" type="text/javascript"></script>
+    <script src="/metronic/js/timepicker.js" type="text/javascript"></script>
+
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.2.0/sweetalert2.all.min.js"></script> -->
+    <script src="/js/sweetalert.min.js"></script>
+
+    <script type="text/javascript">
+        function audioSuccess(){
+            console.clear()
+            @if($alerta_sonoro != "")
+            var audio = new Audio('/audio/{{$alerta_sonoro}}');
+            audio.addEventListener('canplaythrough', function() {
+                audio.play();
+            });
+            @endif
+        }
+
+        function audioError(){
+            @if($alerta_sonoro != "")
+            var audio = new Audio('/audio/error.mp3');
+            audio.addEventListener('canplaythrough', function() {
+                audio.play();
+            });
+            @endif
+        }
+
+        function audioWarning(){
+            @if($alerta_sonoro != "")
+            var audio = new Audio('/audio/warning.mp3');
+            audio.addEventListener('canplaythrough', function() {
+                audio.play();
+            });
+            @endif
+        }
+    </script>
+
+    <?php $path = env('PATH_URL') . "/"; ?>
+    <script type="text/javascript">
+
+        var casas_decimais = 2;
+        var casas_decimais_qtd = 2;
+
+        casas_decimais = {{$casasDecimais}}
+            casas_decimais_qtd = {{$casasDecimaisQtd}}
+
+            let prot = window.location.protocol;
+        let host = window.location.host;
+        const path = prot + "//" + host + "/";
+    </script>
+
+    @if(isset($pessoaFisicaOuJuridica))
+        <script type="text/javascript" src="/js/pessoaFisicaOuJuridica.js"></script>
+    @endif
+
+    @if(isset($service))
+        <script type="text/javascript" src="/js/service.js"></script>
+    @endif
+
+    @if(isset($client))
+        <script type="text/javascript" src="/js/client.js"></script>
+    @endif
+
+    @if(isset($nf))
+        <script type="text/javascript" src="/js/nf.js"></script>
+    @endif
+
+    @if(isset($fornecedor))
+        <script type="text/javascript" src="/js/fornecedor.js"></script>
+    @endif
+
+    @if(isset($budget))
+        <script type="text/javascript" src="/js/budget.js"></script>
+    @endif
+
+    @if(isset($order))
+        <script type="text/javascript" src="/js/order.js"></script>
+    @endif
+
+    @if(isset($usuarioJs))
+        <script type="text/javascript" src="/js/usuario.js"></script>
+    @endif
+
+    <script type="text/javascript" src="/js/google-api.js"></script>
+
+
+    @if(isset($purchase))
+        <script type="text/javascript" src="/js/purchase.js"></script>
+    @endif
+
+    @if(isset($funcionario))
+        <script type="text/javascript" src="/js/funcionario.js"></script>
+    @endif
+
+    @if(isset($produtoJs))
+        <script type="text/javascript" src="/js/produto.js"></script>
+    @endif
+
+    @if(isset($gradeJs))
+        <script type="text/javascript" src="/js/grade.js"></script>
+    @endif
+
+    @if(isset($pedidoJs))
+        <script type="text/javascript" src="/js/pedido.js"></script>
+    @endif
+
+    @if(isset($servicoJs))
+        <script type="text/javascript" src="/js/servicos.js"></script>
+    @endif
+
+    @if(isset($relatorioJs))
+        <script type="text/javascript" src="/js/relatorio.js"></script>
+    @endif
+
+    @if(isset($compraFiscalJs))
+        <script type="text/javascript" src="/js/compraFiscal.js"></script>
+    @endif
+
+    @if(isset($pedidoDeliveryJs))
+        <script type="text/javascript" src="/js/pedidoDelivery.js"></script>
+    @endif
+
+    @if(isset($cidadeJs))
+        <script type="text/javascript" src="/js/cidades.js"></script>
+    @endif
+
+    @if(isset($vendaJs))
+        <script type="text/javascript" src="/js/venda.js"></script>
+    @endif
+
+    @if(isset($vendaJsAssincrono))
+        <script type="text/javascript" src="/js/vendaJsAssincrono.js"></script>
+    @endif
+
+    @if(isset($creditoVenda))
+        <script type="text/javascript" src="/js/creditoVenda.js"></script>
+    @endif
+
+    @if(isset($compraManual))
+        <script type="text/javascript" src="/js/compraManual.js"></script>
+    @endif
+
+    @if(isset($compraManualAssincrono))
+        <script type="text/javascript" src="/js/compraManualAssincrono.js"></script>
+    @endif
+
+    @if(isset($cotacaoJs))
+        <script type="text/javascript" src="/js/cotacao.js"></script>
+    @endif
+
+    @if(isset($categoriaJs))
+        <script type="text/javascript" src="/js/categoria.js"></script>
+    @endif
+
+    @if(isset($pushJs))
+        <script type="text/javascript" src="/js/push.js"></script>
+    @endif
+
+    @if(isset($frenteCaixa))
+        <script type="text/javascript" src="/js/frenteCaixa.js"></script>
+    @endif
+
+    @if(isset($adicional))
+        <script type="text/javascript" src="/js/adicional.js"></script>
+    @endif
+
+    @if(isset($cloneJs))
+        <script type="text/javascript" src="/js/clone.js"></script>
+    @endif
+
+    @if(isset($cteJs))
+        <script type="text/javascript" src="/js/cte.js"></script>
+    @endif
+
+    @if(isset($cteEnvioJs))
+        <script type="text/javascript" src="/js/cte_envio.js"></script>
+    @endif
+
+    @if(isset($cozinhaJs))
+        <script type="text/javascript" src="/js/cozinha.js"></script>
+    @endif
+
+    @if(isset($codigoJs))
+        <script type="text/javascript" src="/js/codigo.js"></script>
+    @endif
+
+    @if(isset($devolucaoJs))
+        <script type="text/javascript" src="/js/devolucao.js"></script>
+    @endif
+
+    @if(isset($devolucaoJsEdit))
+        <script type="text/javascript" src="/js/devolucaoEdit.js"></script>
+    @endif
+
+    @if(isset($devolucaoNF))
+        <script type="text/javascript" src="/js/devolucaoNF.js"></script>
+    @endif
+
+    @if(isset($mdfeJs))
+        <script type="text/javascript" src="/js/mdfe.js"></script>
+    @endif
+
+    @if(isset($mdfeEnvioJs))
+        <script type="text/javascript" src="{{ asset('js/fiscal_error.js') }}?v={{ filemtime(public_path('js/fiscal_error.js')) }}"></script>
+        <script type="text/javascript" src="{{ asset('js/mdfe_envio.js') }}?v={{ filemtime(public_path('js/mdfe_envio.js')) }}"></script>
+    @endif
+
+    @if(isset($print))
+        <script type="text/javascript" src="/js/jQuery.print/jQuery.print.js"></script>
+        <script type="text/javascript" src="/js/print.js"></script>
+    @endif
+
+    @if(isset($mapJs))
+        <script src="https://maps.googleapis.com/maps/api/js?key={{env('API_KEY_MAPS')}}"
+                async defer></script>
+        <script type="text/javascript" src="/js/map.js"></script>
+    @endif
+
+    @if(isset($graficoHomeJs))
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.js"></script>
+
+        <script type="text/javascript" src="/js/grafico_home.js"></script>
+    @endif
+
+    @if(session()->has('login_ibpt'))
+        <script type="text/javascript" src="/js/atualizaIbpt.js"></script>
+    @endif
+
+    @if(session()->has('pesquisa_satisfacao'))
+        @if(session()->has('forcar_pesquisa'))
+            <input type="hidden" value="1" id="forcar_pesquisa">
+        @endif
+        <input type="hidden" value="{{session()->get('pesquisa_satisfacao')}}" id="pesquisa_id">
+        <script type="text/javascript" src="/js/pesquisa_satisfacao.js"></script>
+    @endif
+
+    @if(isset($relatorioJS))
+        <script type="text/javascript" src="/js/relatorios.js"></script>
+    @endif
+
+    @if(isset($dfeJS))
+        <script type="text/javascript" src="/js/dfe.js"></script>
+    @endif
+
+    @if(isset($naoEncerradosMDFeJS))
+        <script type="text/javascript" src="/js/naoEncerradosMDFe.js"></script>
+    @endif
+
+    @if(isset($NFeEntradaJS))
+        <script type="text/javascript" src="/js/nfeEntrada.js"></script>
+    @endif
+
+    @if(isset($controleHorarioJs))
+        <script type="text/javascript" src="/js/controleHorario.js"></script>
+    @endif
+
+    @if(isset($frentePedidoDeliveryJs))
+        <script type="text/javascript" src="/js/frentePedidoDelivery.js"></script>
+    @endif
+
+    @if(isset($frentePedidoDeliveryPedidoJs))
+        <script type="text/javascript" src="/js/frentePedidoDeliveryPedido.js"></script>
+    @endif
+
+    @if(isset($testeJs))
+        <script type="text/javascript" src="/js/teste.js"></script>
+    @endif
+
+    @if(isset($bannerJs))
+        <script type="text/javascript" src="/js/banner.js"></script>
+    @endif
+
+    <script src="/js/lottie-player.js"></script>
+
+
+    @if(isset($graficoJs))
+
+        <script type="text/javascript" src="/js/grafico.js"></script>
+    @endif
+
+    @if(isset($orcamentoJs))
+        <script type="text/javascript" src="/js/orcamento.js"></script>
+    @endif
+
+    @if(isset($atribuirComandaJs))
+        <script type="text/javascript" src="/js/atribuirComandaJs.js"></script>
+    @endif
+
+    @if(isset($motoboyEntrega))
+        <script type="text/javascript" src="/js/motoboyEntrega.js"></script>
+    @endif
+
+    @if(isset($comissaoJs))
+        <script type="text/javascript" src="/js/comissao.js"></script>
+    @endif
+
+    @if(isset($empresaJs))
+        <script type="text/javascript" src="/js/empresa.js"></script>
+    @endif
+
+    @if(isset($fullcalendar))
+        <script src='/fullcalendar/main.js'></script>
+        <script src='/fullcalendar/locales/pt-br.js'></script>
+        <script src='/js/calendario.js'></script>
+    @endif
+
+    @if(isset($configJs))
+        <script type="text/javascript" src="/js/config.js"></script>
+    @endif
+
+    @if(isset($eventoJs))
+        <script type="text/javascript" src="/js/evento.js"></script>
+    @endif
+
+    @if(isset($veiculoJs))
+        <script type="text/javascript" src="/js/veiculo.js"></script>
+    @endif
+
+    @if(isset($caixaJs))
+        <script type="text/javascript" src="/js/caixa.js"></script>
+    @endif
+
+    @if(isset($dreJs))
+        <script type="text/javascript" src="/js/dre.js"></script>
+    @endif
+
+    @if(session('user_logged')['super'] == 1)
+        <script type="text/javascript" src="/js/super.js"></script>
+    @endif
+
+    @if(isset($contratoJs))
+
+        <script type="text/javascript" src="/js/nicEdit-latest.js"></script>
+
+        <script type="text/javascript">
+
+            bkLib.onDomLoaded(function() { nicEditors.allTextAreas() });
+
+            bkLib.onDomLoaded(function() {
+                new nicEditor().panelInstance('area1');
+            });
+
+            bkLib.onDomLoaded(function() {
+                new nicEditor({fullPanel : true}).panelInstance('area2');
+            });
+        </script>
+
+    @endif
+
+    @if(isset($textAreaEditor))
+
+        <script type="text/javascript" src="/js/nicEdit-latest.js"></script>
+
+        <script type="text/javascript">
+            new nicEditor({fullPanel : true}).panelInstance('mensagem_agradecimento',{hasPanel : true});
+        </script>
+
+    @endif
+
+    @yield('javascript')
+
+    @if(session()->has('nova_aba'))
+        <script type="text/javascript">
+            let rota = "<?php echo session()->get('nova_aba') ?>"
+            window.open(rota);
+        </script>
+    @endif
+
+    @if(session()->has('mensagem_indeterminado'))
+        <script type="text/javascript">
+            setTimeout(() => {
+                $('#modal-mensagem-pagamento').modal('show')
+            }, 500)
+        </script>
+    @endif
+
+    @if(session()->has('mensagem_pagamento'))
+        <script type="text/javascript">
+            swal("Atenção", '{{session()->get('mensagem_pagamento')}}', "warning")
+
+            swal({
+                title: "Atenção",
+                text: '{{session()->get('mensagem_pagamento')}}',
+                icon: "warning",
+                buttons: [
+                    'Ver depois',
+                    'ir para pagamento'
+                ],
+            }).then((acao) => {
+                if(acao){
+                    location.href = path + 'payment';
+                }else{
+
+                }
+            })
+        </script>
+    @endif
+
+    @if(session()->has('mensagem_certificado'))
+        <script type="text/javascript">
+            swal({
+                title: "Atenção",
+                text: '{{session()->get('mensagem_certificado')}}',
+                icon: "warning",
+
+                buttons: {
+                    cancel: "Ver depois",
+                    confirm: "Emitente",
+                    hello: "Compre agora",
+                },
+            }).then((acao) => {
+                if(acao == 'hello'){
+                    window.open('https://wa.me/+55'+{{env("RESP_FONE")}})
+                }else{
+                    if(acao != null){
+                        location.href = path + 'configNF';
+                    }
+                }
+            })
+        </script>
+    @endif
+
+    @if(session()->has('alert_vencimento'))
+        <script type="text/javascript" src="/js/check_validade.js"></script>
+    @endif
+
+    <script src="/js/bootstrap-datepicker.pt-BR.min.js"></script>
+    <script src="/js/bootstrap-tour-standalone.js"></script>
+    @if($rotaAtiva == 'Financeiro')
+        <script src="/js/tour.js"></script>
+    @endif
+    <script>
+
+        jQuery(document).ready(function() {
+            KTSelect2.init();
+            $('.select2-selection__arrow').addClass('select2-selection__arroww')
+
+            $('.select2-selection__arrow').removeClass('select2-selection__arrow')
+            $('.delivery-arrow').removeClass('select2-selection__arrow')
+
+            $('.menu-arrow').removeClass('menu-arrow');
+
+            var KTBootstrapDatepicker = function() {
+
+                var arrows;
+                if (KTUtil.isRTL()) {
+                    arrows = {
+                        leftArrow: '<i class="la la-angle-right"></i>',
+                        rightArrow: '<i class="la la-angle-left"></i>'
+                    }
+                } else {
+                    arrows = {
+                        leftArrow: '<i class="la la-angle-left"></i>',
+                        rightArrow: '<i class="la la-angle-right"></i>'
+                    }
+                }
+
+
+
+                // Private functions
+                var demos = function() {
+
+                    // minimum setup
+                    $('#kt_datepicker_1').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayHighlight: true,
+                        orientation: "bottom left",
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    // minimum setup for modal demo
+                    $('#kt_datepicker_1_modal').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayHighlight: true,
+                        orientation: "bottom left",
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    // input group layout
+                    $('#kt_datepicker_2').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayHighlight: true,
+                        orientation: "bottom left",
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    // input group layout for modal demo
+                    $('#kt_datepicker_2_modal').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayHighlight: true,
+                        orientation: "bottom left",
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    // enable clear button
+                    $('#kt_datepicker_3, #kt_datepicker_3_validate').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayBtn: "linked",
+                        clearBtn: false,
+                        format: 'dd/mm/yyyy',
+                        todayHighlight: false,
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    $('#kt_daterangepicker').daterangepicker();
+
+                    // enable clear button for modal demo
+                    $('#kt_datepicker_3_modal').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        todayBtn: "linked",
+                        clearBtn: false,
+                        format: 'dd/mm/yyyy',
+                        todayHighlight: false,
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    // orientation
+                    $('#kt_datepicker_4_1').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        orientation: "top left",
+                        todayHighlight: true,
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    $('#kt_datepicker_4_2').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        orientation: "top right",
+                        todayHighlight: true,
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+                    $('#kt_datepicker_4_3').datepicker({
+                        rtl: KTUtil.isRTL(),
+                        orientation: "bottom left",
+                        todayHighlight: true,
+                        templates: arrows,
+                        language: "pt-BR"
+                    });
+
+
+                }
+
+                return {
+                    // public functions
+                    init: function() {
+                        demos();
+                    }
+                };
+
+            }();
+
+            KTBootstrapDatepicker.init(
+                {
+                    format: 'dd/mm/yyyy'
+                }
+            );
+
+        });
+
+
+    </script>
     <script type="text/javascript" src="/js/toastr.min.js"></script>
 
-	</body>
-	<!-- end::Body -->
+    <script type="text/javascript">
+        var audio = new Audio('/notificacao/s2.mp3');
+        var tAnt = 0;
+        let s = 0;
+        let firstPedidos = true;
+        // setInterval(() => {
+        // 	s = <?php echo session('user_logged') ? session('user_logged')['id'] : 0 ?>;
 
-	</html>
+        // 	if(s > 0){
+
+        // 		$.get(path+'pedidos/emAberto')
+        // 		.done((data) => {
+        // 			$('#pedidos-aberto').html('x'+data)
+        // 			if(tAnt != data && !firstPedidos){
+        // 				if(data > 0 && tAnt <= data) audio.play();
+
+        // 			}
+
+        // 			tAnt = data;
+        // 			firstPedidos = false;
+
+
+        // 		})
+        // 		.fail((err) => {
+        // 			console.log("erro ao buscar pedidos em aberto")
+        // 			console.log(err)
+        // 		})
+        // 	}
+        // }, 3000)
+
+
+        const formatar = (data) => {
+            const hora = data.getHours() < 10 ? '0'+data.getHours() : data.getHours();
+            const min = data.getMinutes() < 10 ? '0'+data.getMinutes() : data.getMinutes();
+            const seg = data.getSeconds() < 10 ? '0'+data.getSeconds() : data.getSeconds();
+
+            return `${hora}:${min}:${seg}`;
+        };
+
+
+        setInterval(() => {
+            let hora = formatar(new Date())
+            $('#timer').html(hora)
+        }, 1000)
+    </script>
+
+    <script type="text/javascript">
+        var audio2 = new Audio('/notificacao/s1.mp3');
+        var pAnt = 0;
+        let v = 0;
+        let firstDelivery = true;
+        // setInterval(() => {
+
+        // 	v = <?php echo session('user_logged') ? session('user_logged')['id'] : 0 ?>;
+
+        // 	if(v > 0){
+        // 		$.get(path+'pedidosDelivery/emAberto')
+        // 		.done((data) => {
+
+        // 			$('#pedidos-aberto-delivery').html('x'+data)
+        // 			if(pAnt != data && !firstDelivery){
+        // 				if(data > 0 && pAnt <= data) audio2.play();
+        // 			}
+
+        // 			pAnt = data;
+        // 			firstDelivery = false;
+
+        // 		})
+        // 		.fail((err) => {
+        // 			console.log("erro ao buscar pedidos em aberto delivery")
+        // 			console.log(err)
+        // 		})
+        // 	}
+
+        // }, 5000)
+
+        var w = window.innerWidth
+        setTimeout(() => {
+            if(w < 900){
+                $('#grade').trigger('click')
+            }
+        }, 500)
+
+    </script>
+
+    <script type="text/javascript">
+        $('input[type=file]').change(() => {
+            var filename = $('input[type=file]').val().replace(/.*(\/|\\)/, '');
+            $('#filename').html(filename)
+        })
+
+        $('#send-csv').click(() => {
+            $('#send-csv').attr('disabled')
+            $('#send-csv').addClass('disabled')
+            $('#send-csv').addClass('spinner')
+        })
+
+        $('.btn-hide').click(() => {
+            let toggle = window.localStorage.getItem('menu-toogle');
+
+            if(!toggle){
+                window.localStorage.setItem('menu-toogle', 'aside-minimize');
+            }else{
+                if(toggle == 'aside-minimize'){
+                    $('#kt_body').addClass('page-loading');
+                    $('#kt_body').removeClass('aside-minimize');
+                    window.localStorage.setItem('menu-toogle', 'page-loading');
+                }else{
+                    $('#kt_body').removeClass('page-loading');
+                    $('#kt_body').addClass('aside-minimize');
+                    window.localStorage.setItem('menu-toogle', 'aside-minimize');
+                }
+            }
+        })
+
+        $(function () {
+            let toggle = window.localStorage.getItem('menu-toogle');
+            console.log(toggle)
+            if(toggle == 'aside-minimize'){
+                $('#kt_body').addClass('aside-minimize');
+                $('#kt_body').removeClass('page-loading');
+            }
+        })
+    </script>
+
+    @if(session()->has('link'))
+        <script type="text/javascript">
+            window.open("{{session()->get('link')}}")
+        </script>
+    @endif
+
+    @if($deliveryConfig && env("DELIVERY") == 1)
+        <script type="text/javascript" src="/js/pedido_delivery.js"></script>
+        <script type="text/javascript" src="/js/pedido_mesa.js"></script>
+    @endif
+
+    @if($ifoodConfig && env("IFOOD") == 1)
+        <script type="text/javascript" src="/js/pedido_ifood.js"></script>
+    @endif
+
+
+    <script type="text/javascript">
+
+        /*
+        $('#btn_whatsapp, .btn-abre-whatsapp').on('click', function(e){
+            e.preventDefault();
+
+            var btn = $('#btn_whatsapp');
+            var box = $('#box_whatsapp');
+
+            if(box.is(":visible")){
+                btn.children('.icone-whatsapp').removeClass('la la-times').addClass('lab la-whatsapp');
+                box.fadeOut(250);
+            } else {
+                btn.children('.icone-whatsapp').removeClass('lab la-whatsapp').addClass('la la-times');
+                box.fadeIn(250);
+            }
+        })
+        */
+        /*
+        $('#send-whats').click(() => {
+            let mensagem = $('#w_mensagem').val()
+            let nome = $('#w_nome').val()
+
+            let msg = ""
+            if(nome){
+                msg += "Olá meu nome é "+nome+ ", ";
+            }
+
+            msg += mensagem
+
+            let num = {{env("CONTATO_SUPORTE")}}
+
+        let uri = "https://wa.me/55"+num+"?text="+msg
+        window.open(uri)
+
+        var btn = $('#btn_whatsapp');
+        var box = $('#box_whatsapp');
+        btn.children('.icone-whatsapp').removeClass('la la-times').addClass('lab la-whatsapp');
+        box.fadeOut(250);
+    })
+    */
+
+        detectar_mobile()
+        function detectar_mobile() {
+            if( navigator.userAgent.match(/Android/i) || navigator.userAgent.match(/webOS/i) || navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i) || navigator.userAgent.match(/iPod/i) || navigator.userAgent.match(/BlackBerry/i) || navigator.userAgent.match(/Windows Phone/i)){
+                $('.not-mobile').css('display', 'none')
+                $('.y-mobile').css('display', 'block')
+            }
+            else {
+                $('.not-mobile').css('display', 'block')
+                $('.y-mobile').css('display', 'none')
+
+            }
+        }
+
+        toastr.options = {
+            "progressBar": true,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "10000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+
+        @if(session()->has('mensagem_sucesso'))
+        toastr.success('{{ session()->get('mensagem_sucesso') }}');
+        audioSuccess()
+        @endif
+
+        @if(session()->has('mensagem_erro'))
+        toastr.error('{{ session()->get('mensagem_erro') }}');
+        audioError()
+        @endif
+
+        @if(session()->has('mensagem_alerta'))
+        toastr.warning('{{ session()->get('mensagem_alerta') }}');
+        audioWarning()
+        @endif
+
+    </script>
+
+    <!-- Atendimento e Suporte Online -->
+    @include('layouts.support')
+
+    <!-- tour -->
+
+    <script type="text/javascript">
+
+    </script>
+
+    <div class="modal fade" id="modal-release-notes" tabindex="-1" role="dialog" aria-labelledby="releaseNotesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="releaseNotesLabel">Release Notes da Aplicação</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    @if($appVersionCurrent)
+                        <div class="alert alert-light-info mb-4">
+                            <div><strong>Versão instalada:</strong> {{ $appVersionCurrent->version }}</div>
+                            <div><strong>SemVer:</strong> {{ $appVersionCurrent->version_major }}.{{ $appVersionCurrent->version_minor }}.{{ $appVersionCurrent->version_patch }}</div>
+                            <div><strong>Release:</strong> {{ optional($appVersionCurrent->released_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                            <div><strong>Instalada em:</strong> {{ optional($appVersionCurrent->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                        </div>
+                    @endif
+
+                    <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
+                        @forelse($appVersionHistoryGrouped as $major => $items)
+                            @php($majorId = 'top-major-'.$major)
+                            <div class="card">
+                                <div class="card-header" id="head-{{ $majorId }}">
+                                    <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
+                                        Versão {{ $major }}
+                                        <span class="label label-light-info label-inline ml-2">{{ $items->count() }}</span>
+                                    </div>
+                                </div>
+                                <div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
+                                    <div class="card-body p-2">
+                                        <ul class="list-group">
+                                            @foreach($items as $item)
+                                                <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
+                                                    <div>
+                                                        <strong>{{ $item->version }}</strong>
+                                                        @if($item->is_current)<span class="badge badge-success ml-1">Atual</span>@endif
+                                                        <div class="text-muted small">{{ $item->title ?: '-' }} | {{ optional($item->installed_at)->format('d/m/Y H:i') ?: '-' }}</div>
+                                                    </div>
+                                                    <div class="d-flex flex-wrap" style="gap:.4rem;">
+                                                        @if($item->release_notes_current_html)
+                                                            <button class="btn btn-xs btn-light-primary" data-toggle="modal" data-target="#release-current-{{ $item->id }}">Atual</button>
+                                                        @endif
+                                                        @if($item->release_notes_cumulative_html)
+                                                            <button class="btn btn-xs btn-light-warning" data-toggle="modal" data-target="#release-cumulative-{{ $item->id }}">Cumulativa</button>
+                                                        @endif
+                                                    </div>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted">Nenhuma versão interna registrada.</div>
+                        @endforelse
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="/app-versions" class="btn btn-light-primary">Abrir histórico completo</a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @foreach($appVersionHistory as $item)
+        @if($item->release_notes_current_html)
+            <div class="modal fade" id="release-current-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Release atual - {{ $item->version }}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">{!! $item->release_notes_current_html !!}</div>
+                    </div>
+                </div>
+            </div>
+        @endif
+        @if($item->release_notes_cumulative_html)
+            <div class="modal fade" id="release-cumulative-{{ $item->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Release cumulativa - {{ $item->version }}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">{!! $item->release_notes_cumulative_html !!}</div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endforeach
+
+    {{-- Modal/monitor global do Delivery renderizado somente dentro do body --}}
+    @yield('global_delivery_alert')
+
+    <script type="text/javascript" src="/js/main.js"></script>
+    <script type="text/javascript" src="/js/toastr.min.js"></script>
+
+    @yield('modal-alerta-sistema')
+
+    @php
+        $userLogged = session('user_logged');
+        $usuarioLogadoId = $userLogged['id'] ?? $userLogged['usuario_id'] ?? null;
+        $empresaId = $userLogged['empresa_id'] ?? null;
+        $isAdm = !empty($userLogged['adm']);
+
+        $tarefasCriticasAlerta = collect();
+        $totalVencidasAlerta = 0;
+        $totalPendentesAlerta = 0;
+
+        if ($empresaId && $usuarioLogadoId && !session('alerta_tarefas_visto')) {
+            $q = \App\Models\Tarefa::where('empresa_id', $empresaId)
+                ->whereNotIn('status', ['concluida', 'cancelada']);
+
+            if (!$isAdm) {
+                $func = \App\Models\Funcionario::where('usuario_id', $usuarioLogadoId)->first();
+                $funcId = $func ? $func->id : 0;
+                $q->where(function($sub) use ($usuarioLogadoId, $funcId) {
+                    $sub->where('usuario_id', $usuarioLogadoId)->orWhere('funcionario_id', $funcId);
+                });
+            }
+
+            $abertas = $q->with('funcionario')->get();
+            $agora = \Carbon\Carbon::now();
+
+            foreach ($abertas as $t) {
+                $atrasou = false;
+                if (!empty($t->data_limite)) {
+                    $dtLimite = \Carbon\Carbon::parse(\Carbon\Carbon::parse($t->data_limite)->format('Y-m-d') . ' ' . ($t->hora_limite ?: '23:59:59'));
+                    if ($agora->greaterThan($dtLimite)) {
+                        $atrasou = true;
+                        $totalVencidasAlerta++;
+                    }
+                }
+                if (!$atrasou && $t->status === 'pendente') {
+                    $totalPendentesAlerta++;
+                }
+                if ($atrasou || $t->status === 'pendente') {
+                    $tarefasCriticasAlerta->push([
+                        'id' => $t->id,
+                        'titulo' => $t->titulo,
+                        'funcionario' => $t->funcionario->nome ?? 'Não atribuído',
+                        'limite' => $t->data_limite ? \Carbon\Carbon::parse($t->data_limite)->format('d/m/Y') . ($t->hora_limite ? ' ' . $t->hora_limite : '') : 'Sem prazo',
+                        'prioridade' => $t->prioridade,
+                        'is_atrasada' => $atrasou
+                    ]);
+                }
+            }
+        }
+    @endphp
+
+    @if(($totalVencidasAlerta > 0 || $totalPendentesAlerta > 0) && !session('alerta_tarefas_visto'))
+        <div class="modal fade" id="modalAlertaObrigatorioTarefas" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content shadow-lg border-0" style="border-radius: 14px; overflow: hidden;">
+                    <div class="modal-header {{ $totalVencidasAlerta > 0 ? 'bg-danger' : 'bg-warning' }} text-white py-4 px-5">
+                        <div class="d-flex align-items-center">
+                            <i class="la la-bell fs-1 text-white mr-3"></i>
+                            <div>
+                                <h4 class="modal-title font-weight-bolder text-white mb-0">
+                                    {{ $isAdm ? 'Alerta da Equipe: Tarefas Pendentes e Vencidas' : 'Atenção: Você possui tarefas pendentes!' }}
+                                </h4>
+                                <small class="text-white opacity-90">
+                                    {{ $isAdm ? 'Acompanhamento geral de produtividade' : 'Regularize suas tarefas para manter o fluxo em dia' }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-body p-5">
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6 col-12">
+                                <div class="p-3 rounded border d-flex align-items-center" style="background-color: #fff5f5; border-color: #feb2b2 !important;">
+                                    <div class="symbol symbol-40 mr-3" style="background: #e53e3e; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;">
+                                        <b style="font-size: 1.2rem;">{{ $totalVencidasAlerta }}</b>
+                                    </div>
+                                    <div>
+                                        <h6 class="font-weight-bolder text-danger mb-0">Tarefas Vencidas</h6>
+                                        <small class="text-muted">Prazo limite expirado</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-12">
+                                <div class="p-3 rounded border d-flex align-items-center" style="background-color: #fffaf0; border-color: #fbd38d !important;">
+                                    <div class="symbol symbol-40 mr-3" style="background: #dd6b20; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;">
+                                        <b style="font-size: 1.2rem;">{{ $totalPendentesAlerta }}</b>
+                                    </div>
+                                    <div>
+                                        <h6 class="font-weight-bolder text-warning mb-0">Tarefas Pendentes</h6>
+                                        <small class="text-muted">Aguardando início</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="font-weight-bold text-dark mb-2"><i class="la la-list-alt text-primary mr-1"></i> Lista de atividades prioritárias:</h6>
+                        <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                            <table class="table table-bordered table-sm align-middle mb-0">
+                                <thead class="bg-light">
+                                <tr>
+                                    <th>Tarefa</th>
+                                    @if($isAdm) <th>Responsável</th> @endif
+                                    <th>Prazo Limite</th>
+                                    <th>Prioridade</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach($tarefasCriticasAlerta->take(8) as $tItem)
+                                    <tr>
+                                        <td class="font-weight-bold text-dark">{{ $tItem['titulo'] }}</td>
+                                        @if($isAdm)
+                                            <td><span class="badge badge-light-primary">{{ $tItem['funcionario'] }}</span></td>
+                                        @endif
+                                        <td class="{{ $tItem['is_atrasada'] ? 'text-danger font-weight-bold' : 'text-muted' }}">
+                                            {{ $tItem['limite'] }}
+                                        </td>
+                                        <td>
+                                    <span class="badge {{ $tItem['prioridade'] == 'Urgente' ? 'badge-danger' : ($tItem['prioridade'] == 'Alta' ? 'badge-warning text-dark' : 'badge-primary') }}">
+                                        {{ $tItem['prioridade'] }}
+                                    </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer bg-light py-3 px-5 d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary font-weight-bold" id="btnEstouCienteTarefas">
+                            <i class="la la-check"></i> Estou Ciente / Fechar
+                        </button>
+                        <div>
+                            <a href="/tarefas/painel" class="btn btn-primary font-weight-bold shadow-sm">
+                                <i class="la la-columns"></i> Abrir Painel Kanban
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                $('#modalAlertaObrigatorioTarefas').modal('show');
+
+                $('#btnEstouCienteTarefas').on('click', function () {
+                    $('#modalAlertaObrigatorioTarefas').modal('hide');
+                    $.ajax({
+                        url: '/tarefas/marcar-alerta-lido',
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        }
+                    });
+                });
+            });
+        </script>
+@endif
+
+</body>
+<!-- end::Body -->
+
+</html>

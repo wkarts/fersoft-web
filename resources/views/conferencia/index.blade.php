@@ -179,7 +179,20 @@
                                 <td class="align-middle">{{ $n['cliente'] }}</td>
                                 <td class="text-center align-middle">{{ $n['qtd_itens'] > 0 ? number_format($n['qtd_itens'], 0, ',', '.') : '--' }}</td>
                                 <td class="text-right font-weight-bold align-middle">R$ {{ number_format($n['valor'], 2, ',', '.') }}</td>
-                                <td class="text-right text-success align-middle">R$ {{ number_format($n['valor_recebido'], 2, ',', '.') }}</td>
+                                <td class="text-right align-middle">
+                                <span class="text-success font-weight-bold">
+                                    R$ {{ number_format($n['valor_recebido'], 2, ',', '.') }}
+                                </span>
+
+                                    <!-- AVISO DE DESCONTO -->
+                                    @if(isset($n['valor_desconto']) && $n['valor_desconto'] > 0)
+                                        <div class="mt-1" title="Houve um desconto no recebimento">
+                                        <span class="badge badge-info" style="font-size: 11px;">
+                                            <i class="fa fa-tags"></i> Desc. R$ {{ number_format($n['valor_desconto'], 2, ',', '.') }}
+                                        </span>
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="text-right text-danger align-middle">R$ {{ number_format($n['valor_aberto'], 2, ',', '.') }}</td>
 
                                 <td class="text-center align-middle">

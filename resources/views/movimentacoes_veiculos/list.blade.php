@@ -144,6 +144,11 @@
                                     @endforeach
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center">
+                                            <!-- Botão de Enviar Link de Abastecimento Manualmente -->
+                                            <a href="/movimentacaoVeiculo/enviarLinkAbastecimento/{{ $record->id }}" class="btn btn-icon btn-light-info btn-sm mr-1" title="Enviar Link de Abastecimento via WhatsApp">
+                                                <i class="la la-gas-pump"></i>
+                                            </a>
+
                                             <!-- Botão de Enviar Link do Checklist Manualmente -->
                                             <a href="/movimentacaoVeiculo/enviar-checklist/{{ $record->id }}" class="btn btn-icon btn-light-success btn-sm mr-1" title="Enviar Link do Checklist via WhatsApp">
                                                 <i class="la la-whatsapp"></i>
@@ -154,7 +159,11 @@
                                                 <i class="la la-clipboard-check"></i>
                                             </a>
 
-                                            <a href="/movimentacaoVeiculo/imprimir/{{ $record->id }}" target="_blank" class="btn btn-icon btn-light-info btn-sm mr-1" title="Imprimir">
+                                            <a href="{{ url('/movimentacaoVeiculo/historico/' . $record->id) }}" class="btn btn-sm btn-light-info btn-icon" title="Ver Histórico">
+                                                <i class="la la-history"></i>
+                                            </a>
+
+                                            <a href="/movimentacaoVeiculo/imprimir/{{ $record->id }}" target="_blank" class="btn btn-icon btn-light-dark btn-sm mr-1" title="Imprimir">
                                                 <i class="la la-print"></i>
                                             </a>
                                             <a href="{{ $editUrl }}/{{ $record->id }}" class="btn btn-icon btn-light-warning btn-sm mr-1" title="Editar">

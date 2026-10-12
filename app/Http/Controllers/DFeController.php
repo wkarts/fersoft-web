@@ -399,10 +399,17 @@ class DFeController extends Controller
                 return redirect()->back();
             }else{
                 if(!$file_exists){
-                    $zip = $std->loteDistDFeInt->docZip;
-                    $xml = gzdecode(base64_decode($zip));
-
-                    safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
+                    // NOVA VALIDAÇÃO: Verifica se o lote existe antes de acessar o docZip
+                    if (isset($std->loteDistDFeInt) && isset($std->loteDistDFeInt->docZip)) {
+                        $zip = $std->loteDistDFeInt->docZip;
+                        $xml = gzdecode(base64_decode($zip));
+                        safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
+                    } else {
+                        // Se não veio o lote, avisa o usuário (Pode ser Consumo Indevido ou Sefaz fora do ar)
+                        $motivo = $std->xMotivo ?? 'Lote não retornado pela Sefaz.';
+                        session()->flash("mensagem_erro", "Falha ao baixar XML da Sefaz: " . $motivo);
+                        return redirect()->back();
+                    }
                 }else{
                     $xml = safe_file_get_contents(public_path('xml_dfe/').$chave.'.xml');
                 }
@@ -543,19 +550,27 @@ class DFeController extends Controller
         }
         // print_r($response);
         try {
-            if(!$file_exists){
-                $zip = $std->loteDistDFeInt->docZip;
-                $xml = gzdecode(base64_decode($zip));
-
-                safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
-            }else{
-                $xml = safe_file_get_contents(public_path('xml_dfe/').$chave.'.xml');
-            }
-
+            // Verifica o cStat antes de tentar ler o XML (Padrão mais seguro)
             if ($std != null && $std->cStat != 138) {
                 echo "Documento não retornado. [$std->cStat] $std->xMotivo" . ", aguarde alguns instantes e atualize a pagina!";
                 die;
             }
+
+            if(!$file_exists){
+                // NOVA VALIDAÇÃO: Verifica se o lote existe antes de acessar o docZip
+                if (isset($std->loteDistDFeInt) && isset($std->loteDistDFeInt->docZip)) {
+                    $zip = $std->loteDistDFeInt->docZip;
+                    $xml = gzdecode(base64_decode($zip));
+                    safe_file_put_contents(public_path('xml_dfe/').$chave.'.xml', $xml);
+                } else {
+                    $motivo = $std->xMotivo ?? 'Lote não retornado pela Sefaz.';
+                    echo "Erro ao baixar XML: O documento não foi retornado com o conteúdo (docZip). Motivo: " . $motivo;
+                    die;
+                }
+            }else{
+                $xml = safe_file_get_contents(public_path('xml_dfe/').$chave.'.xml');
+            }
+
             $dfe = ManifestaDfe::where('chave', $chave)->first();
             $nfe = simplexml_load_string($xml);
             $nNF = $nfe->NFe->infNFe->ide->nNF;

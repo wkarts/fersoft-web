@@ -42,16 +42,33 @@ class ExportacaoContabilController extends BaseController
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
 
+        // 1. Identificação do Código Prosoft da Empresa e da Filial
+        if ($filialId === 'matriz' || empty($filialId) || $filialId === '-1') {
+            // Código Prosoft da Matriz
+            $codigoEmpresaProsoft = '0160'; // Código de empresa cadastrado no Prosoft para a Matriz
+            $codigoFilialProsoft  = '001';  // Indicador de filial/matriz no registro
+        } else {
+            $filial = \App\Models\Filial::findOrFail($filialId);
+
+            // Pega o código próprio da filial cadastrado no sistema (ou o ID com 4 dígitos como fallback)
+            $codigoProprio = $filial->codigo_empresa_emissao
+                ?? $filial->codigo_filial
+                ?? $filial->codigo_prosoft
+                ?? $filial->id;
+
+            $codigoEmpresaProsoft = str_pad($codigoProprio, 4, '0', STR_PAD_LEFT);
+            $codigoFilialProsoft  = str_pad($filial->id, 3, '0', STR_PAD_LEFT);
+        }
+
+        // 2. Processa os dados filtrados pela unidade selecionada
         $dados = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
 
         // Agrupa as provisões para o arquivo TXT
-        $dados['pagar_prov'] = $this->agruparProvisoes($dados['pagar_prov']);
+        $dados['pagar_prov']   = $this->agruparProvisoes($dados['pagar_prov']);
         $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov']);
 
         $linhasTxt = [];
         $ordem = 1;
-
-        $codigoFilialProsoft = '002';
 
         $processarAba = function($linhas) use (&$linhasTxt, &$ordem, $codigoFilialProsoft) {
             foreach ($linhas as $item) {
@@ -64,12 +81,13 @@ class ExportacaoContabilController extends BaseController
                 $debito = str_pad(substr(preg_replace('/[^0-9]/', '', $item['debito']), 0, 5), 5, '0', STR_PAD_LEFT);
                 $credito = str_pad(substr(preg_replace('/[^0-9]/', '', $item['credito']), 0, 5), 5, '0', STR_PAD_LEFT);
 
+                // CORREÇÃO: Preenchimento com espaços em branco à esquerda para evitar erro de CNPJ inválido
                 $terc_D = !empty($item['terceiro_debito'])
-                    ? str_pad($item['terceiro_debito'], 14, '0', STR_PAD_LEFT)
+                    ? str_pad($item['terceiro_debito'], 14, ' ', STR_PAD_LEFT)
                     : str_pad('', 14, ' ');
 
                 $terc_C = !empty($item['terceiro_credito'])
-                    ? str_pad($item['terceiro_credito'], 14, '0', STR_PAD_LEFT)
+                    ? str_pad($item['terceiro_credito'], 14, ' ', STR_PAD_LEFT)
                     : str_pad('', 14, ' ');
 
                 $valorLimpo = str_replace(['R$', ' ', '.'], '', $item['valor']);
@@ -116,8 +134,8 @@ class ExportacaoContabilController extends BaseController
             $conteudo .= "\r\n";
         }
 
-        $codigoEmpresa = '0160';
-        $nomeArquivo = "ctblctos{$codigoEmpresa}.txt";
+        // Nome dinâmico por unidade: ctblctos0160.txt (Matriz) ou ctblctos0161.txt (Filial)
+        $nomeArquivo = "ctblctos{$codigoEmpresaProsoft}.txt";
 
         return response($conteudo)
             ->header('Content-Type', 'text/plain')
@@ -137,7 +155,8 @@ class ExportacaoContabilController extends BaseController
         $dados['receber_prov'] = $this->agruparProvisoes($dados['receber_prov']);
 
         $linhasCsv = [];
-        $linhasCsv[] = implode(';', ['DATA', 'HISTORICO', 'TERCEIROS', 'CREDITO', 'DEBITO', 'N DOCUMENTO', 'CATEGORIA', 'VALOR']);
+        // CORREÇÃO: Cabeçalho com colunas Terceiro Débito e Crédito separadas
+        $linhasCsv[] = implode(';', ['DATA', 'HISTORICO', 'TERCEIRO DEBITO', 'TERCEIRO CREDITO', 'CREDITO', 'DEBITO', 'N DOCUMENTO', 'CATEGORIA', 'VALOR']);
 
         $processarAba = function($linhas) use (&$linhasCsv) {
             foreach ($linhas as $item) {
@@ -149,20 +168,18 @@ class ExportacaoContabilController extends BaseController
                 $historico = str_replace(';', ',', $item['historico']);
                 $categoria = str_replace(';', ',', $item['categoria']);
 
-                $terceiro = !empty($item['terceiro_debito']) ? $item['terceiro_debito'] : $item['terceiro_credito'];
-
-                // SOLUÇÃO DO EXCEL: Força o valor a ser interpretado como Texto para não sumir os Zeros
-                if (!empty($terceiro)) {
-                    $terceiro = '="' . $terceiro . '"';
-                }
+                // CORREÇÃO: Formatação dos terceiros individualmente
+                $terc_D = !empty($item['terceiro_debito']) ? '="' . $item['terceiro_debito'] . '"' : '';
+                $terc_C = !empty($item['terceiro_credito']) ? '="' . $item['terceiro_credito'] . '"' : '';
 
                 $credito = $item['credito'] === '---' ? '' : $item['credito'];
                 $debito = $item['debito'] === '---' ? '' : $item['debito'];
                 $documento = $item['documento'] ?? '';
                 $valor = $item['valor'];
 
+                // Adiciona a linha respeitando as novas colunas
                 $linhasCsv[] = implode(';', [
-                    $data, $historico, $terceiro, $credito, $debito, $documento, $categoria, $valor
+                    $data, $historico, $terc_D, $terc_C, $credito, $debito, $documento, $categoria, $valor
                 ]);
             }
         };
@@ -176,7 +193,8 @@ class ExportacaoContabilController extends BaseController
         $conteudo = implode("\r\n", $linhasCsv);
         $conteudo = mb_convert_encoding($conteudo, 'ISO-8859-1', 'UTF-8');
 
-        $nomeArquivo = "exportacao_universal_" . date('Ymd_His') . ".csv";
+        $sufixoUnidade = ($filialId === 'matriz' || empty($filialId)) ? 'matriz' : 'filial_' . $filialId;
+        $nomeArquivo = "exportacao_universal_{$sufixoUnidade}_" . date('Ymd_His') . ".csv";
 
         return response($conteudo)
             ->header('Content-Type', 'text/csv; charset=iso-8859-1')

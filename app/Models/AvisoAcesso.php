@@ -9,11 +9,15 @@ class AvisoAcesso extends BaseModel
     use HasFactory;
 
     protected $fillable = [
-        'empresa_id', 'aviso_id'
+        'aviso_id',
+        'empresa_id',
+        'usuario_id',
+        'created_at',
+        'updated_at'
     ];
 
     public function empresa(){
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
-    
+
 }

@@ -1,294 +1,293 @@
 @extends('default.layout')
 @section('content')
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
-		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-			<div class="col-lg-12">
-				<br>
-				<form method="post" action="{{{ isset($natureza) ? '/naturezaOperacao/update': '/naturezaOperacao/save' }}}">
-					<input type="hidden" name="id" value="{{{ isset($natureza->id) ? $natureza->id : 0 }}}">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
-							<h3 class="card-title">{{{ isset($natureza) ? "Editar": "Cadastrar" }}} Natureza de Operação</h3>
-						</div>
-					</div>
-					@csrf
-					<div class="row">
-						<div class="col-xl-12">
-							<div class="kt-section kt-section--first">
-								<div class="kt-section__body">
-									<div class="row">
-										<div class="form-group validated col-sm-10 col-lg-6">
-											<label class="col-form-label">Nome</label>
-											<div class="">
-												<input id="natureza" type="text" class="form-control @if($errors->has('natureza')) is-invalid @endif" name="natureza" value="{{{ isset($natureza) ? $natureza->natureza : old('natureza') }}}">
-												@if($errors->has('natureza'))
-												<div class="invalid-feedback">
-													{{ $errors->first('natureza') }}
-												</div>
-												@endif
-											</div>
-										</div>
-									</div>
-									<hr>
 
-									<div class="row">
-										<div class="col-lg-6 col-12">
-											<div class="row">
-												<h4 class="col-12">CFOP ESTADUAL</h4>
+    <style type="text/css">
+        .section-title {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            color: #3F4254;
+            margin-bottom: 1.5rem;
+        }
+        .section-title i {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        .switch-box {
+            background-color: #F3F6F9;
+            border: 1px solid #E4E6EF;
+            border-radius: 0.85rem;
+            padding: 1.25rem;
+            height: 100%;
+        }
+    </style>
 
-												<div class="form-group validated col-6">
-													<label class="col-form-label">Saída</label>
-													<div class="">
-														<input id="CFOP_saida_estadual" type="text" class="form-control @if($errors->has('CFOP_saida_estadual')) is-invalid @endif" name="CFOP_saida_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_saida_estadual : old('CFOP_saida_estadual') }}}">
-														@if($errors->has('CFOP_saida_estadual'))
-														<div class="invalid-feedback">
-															Venda
-														</div>
-														@endif
-													</div>
-												</div>
+    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="card card-custom gutter-b example example-compact">
+            <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+                <div class="col-lg-12">
+                    <br>
+                    <form method="post" action="{{{ isset($natureza) ? '/naturezaOperacao/update': '/naturezaOperacao/save' }}}">
+                        <input type="hidden" name="id" value="{{{ isset($natureza->id) ? $natureza->id : 0 }}}">
 
-												<div class="form-group validated col-6">
-													<label class="col-form-label">Entrada</label>
-													<div class="">
-														<input id="CFOP_entrada_estadual" type="text" class="form-control @if($errors->has('CFOP_entrada_estadual')) is-invalid @endif" name="CFOP_entrada_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_entrada_estadual : old('CFOP_entrada_estadual') }}}">
-														@if($errors->has('CFOP_entrada_estadual'))
-														<div class="invalid-feedback">
-															Venda
-														</div>
-														@endif
-													</div>
-												</div>
-											</div>
-										</div>
-										
-										<div class="col-lg-6 col-12">
+                        <div class="card card-custom shadow-sm mb-8">
+                            <div class="card-header py-3">
+                                <div class="card-title">
+								<span class="card-icon">
+									<i class="flaticon2-paper text-primary"></i>
+								</span>
+                                    <h3 class="card-label">
+                                        {{{ isset($natureza) ? "Editar": "Cadastrar" }}} Natureza de Operação
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
 
-											<div class="row">
-												<h4 class="col-12">CFOP INTERESTADUAL</h4>
-												<div class="form-group validated col-6">
-													<label class="col-form-label">Saída</label>
-													<div class="">
-														<input id="CFOP_saida_inter_estadual" type="text" class="form-control @if($errors->has('CFOP_saida_inter_estadual')) is-invalid @endif" name="CFOP_saida_inter_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_saida_inter_estadual : old('CFOP_saida_inter_estadual') }}}">
-														@if($errors->has('CFOP_saida_inter_estadual'))
-														<div class="invalid-feedback">
-															Venda
-														</div>
-														@endif
-													</div>
-												</div>
+                        @csrf
 
-												<div class="form-group validated col-6">
-													<label class="col-form-label">Entrada</label>
-													<div class="">
-														<input id="CFOP_entrada_inter_estadual" type="text" class="form-control @if($errors->has('CFOP_entrada_inter_estadual')) is-invalid @endif" name="CFOP_entrada_inter_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_entrada_inter_estadual : old('CFOP_entrada_inter_estadual') }}}">
-														@if($errors->has('CFOP_entrada_inter_estadual'))
-														<div class="invalid-feedback">
-															Venda
-														</div>
-														@endif
-													</div>
-												</div>
-											</div>
-										</div>
-									</div>
+                        <div class="card card-custom shadow-sm mb-8">
+                            <div class="card-body">
+                                <h4 class="section-title"><i class="flaticon2-pen text-primary"></i> Dados Principais</h4>
+                                <div class="row mb-4">
+                                    <div class="form-group validated col-sm-12 col-lg-8">
+                                        <label class="font-weight-bold">Descrição da Natureza de Operação <span class="text-danger">*</span></label>
+                                        <input id="natureza" type="text" class="form-control @if($errors->has('natureza')) is-invalid @endif" name="natureza" value="{{{ isset($natureza) ? $natureza->natureza : old('natureza') }}}" placeholder="Ex: VENDA DE MERCADORIAS">
+                                        @if($errors->has('natureza'))
+                                            <div class="invalid-feedback">{{ $errors->first('natureza') }}</div>
+                                        @endif
+                                    </div>
+                                    <div class="form-group validated col-sm-12 col-lg-4">
+                                        <label class="font-weight-bold">Finalidade <span class="text-danger">*</span></label>
+                                        <select name="finNFe" class="custom-select form-control">
+                                            @foreach(App\Models\NaturezaOperacao::finalidades() as $key => $f)
+                                                <option value="{{$key}}" @isset($natureza) @if($natureza->finNFe == $key) selected @endif @endisset>{{$f}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
 
-									<div class="row">
-										<div class="col-sm-4 col-lg-3">
-											<label>Sobrescrever CFOP do produto</label>
+                                <div class="separator separator-dashed my-8"></div>
 
-											<div class="switch switch-outline switch-success">
-												<label class="">
-													<input @if(isset($natureza->sobrescreve_cfop) && $natureza->sobrescreve_cfop) checked @endisset value="true" name="sobrescreve_cfop" class="red-text" type="checkbox">
-													<span class="lever"></span>
-												</label>
-											</div>
-										</div>
-
-										<div class="col-sm-4 col-lg-3">
-											<label>Não movimentar estoque</label>
-
-											<button type="button" class="btn btn-light-info btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Se marcado a ação de venda com esta natureza de operação, será sem movimentação de estoque"><i class="la la-info"></i></button>
-											<div class="switch switch-outline switch-info">
-												<label class="">
-													<input @if(isset($natureza->nao_movimenta_estoque) && $natureza->nao_movimenta_estoque) checked @endisset value="true" name="nao_movimenta_estoque" class="red-text" type="checkbox">
-													<span class="lever"></span>
-												</label>
-											</div>
-										</div>
-
-										<div class="form-group validated col-sm-4 col-lg-3">
-											<label class="col-form-label">Finalidade</label>
-											<div class="">
-												<select name="finNFe" class="custom-select">
-													@foreach(App\Models\NaturezaOperacao::finalidades() as $key => $f)
-													<option 
-													@isset($natureza)
-													@if($natureza->finNFe == $key)
-													selected
-													@endif
-													@endisset
-													value="{{$key}}">{{$f}}</option>
-													@endforeach
-												</select>
-											</div>
-										</div>
-
-										<div class="form-group validated col-sm-4 col-lg-3">
-											<label class="col-form-label">Categoria de conta</label>
-											<button type="button" class="btn btn-light-info btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Se definido ao salvar uma venda a categoria de conta selecionada será includa na fatura da venda (conta à receber)"><i class="la la-info"></i></button>
-											<div class="">
-												<select name="categoria_conta_id" class="custom-select">
-													<option value="">Selecione</option>
-													@foreach($categoriasDeConta as $c)
-													<option @if(isset($natureza) && $natureza->categoria_conta_id == $c->id) selected @endif value="{{$c->id}}">
-														{{$c->nome}}
-													</option>
-													@endforeach
-												</select>
-											</div>
-										</div>
-										
-									</div>
-
-									<div class="row">
-										<div class="form-group validated col-lg-12 col-md-12 col-sm-12">
-											<label class="col-form-label">CST/CSOSN</label>
-											<button type="button" class="btn btn-light-info btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Se definido o CST/CSOSN será utilizado na criação do XML sobrescrevendo o definido no produto"><i class="la la-info"></i></button>
-											<select class="custom-select form-control" name="CST_CSOSN">
-												<option value="">--</option>
-												@foreach(App\Models\ConfigNota::listaCST() as $key => $l)
-												<option value="{{$key}}"
-												@if(isset($natureza))
-												@if($key == $natureza->CST_CSOSN)
-												selected
-												@endif
-												@else
-												@if(old('CST_CSOSN') == $key)
-												selected
-												@endif
-												@endif>{{$key}} - {{$l}}</option>
-												@endforeach
-											</select>
-
-										</div>
-									</div>
-
-                                    <hr>
-                                    <div class="row">
-                                        <h4 class="col-12 mt-4">Tributação IBS/CBS (Sobrescrita)</h4>
-                                        
-                                        <!-- CST IBS/CBS -->
-                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
-                                            <label class="col-form-label">CST IBS/CBS</label>
-                                            <select class="custom-select form-control" name="cst_ibs_cbs">
-                                                <option value="">-- Do Produto --</option>
-                                                @foreach($listaCstIbsCbs as $cst)
-                                                    <option value="{{ $cst->cst_ibs_cbs }}" 
-                                                        @if((isset($natureza) && $natureza->cst_ibs_cbs == $cst->cst_ibs_cbs) || old('cst_ibs_cbs') == $cst->cst_ibs_cbs) selected @endif>
-                                                        {{ $cst->cst_ibs_cbs }} - {{ $cst->descricao_cst_ibs_cbs }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-
-                                        <!-- Classificação Tributária IBS/CBS -->
-                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
-                                            <label class="col-form-label">Class. Trib. IBS/CBS</label>
-                                            <select class="custom-select form-control" name="class_trib_ibs_cbs">
-                                                <option value="">-- Do Produto --</option>
-                                                @foreach($listaClassTrib as $class)
-                                                    <option value="{{ $class->cclasstrib }}" 
-                                                        @if((isset($natureza) && $natureza->class_trib_ibs_cbs == $class->cclasstrib) || old('class_trib_ibs_cbs') == $class->cclasstrib) selected @endif>
-                                                        {{ $class->cclasstrib }} - {{ $class->nome_cclasstrib }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-
-                                        <!-- Redução IBS -->
-                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
-                                            <label class="col-form-label">Redução IBS (%)</label>
-                                            <input type="text" class="form-control" name="perc_red_ibs" value="{{ isset($natureza) && $natureza->perc_red_ibs > 0 ? number_format($natureza->perc_red_ibs, 2, ',', '.') : old('perc_red_ibs', '0,00') }}">
-                                        </div>
-
-                                        <!-- Redução CBS -->
-                                        <div class="form-group validated col-lg-3 col-md-3 col-sm-6">
-                                            <label class="col-form-label">Redução CBS (%)</label>
-                                            <input type="text" class="form-control" name="perc_red_cbs" value="{{ isset($natureza) && $natureza->perc_red_cbs > 0 ? number_format($natureza->perc_red_cbs, 2, ',', '.') : old('perc_red_cbs', '0,00') }}">
+                                <h4 class="section-title"><i class="flaticon2-list-2 text-primary"></i> Códigos Fiscais (CFOP)</h4>
+                                <div class="row">
+                                    <div class="col-lg-6 col-12 mb-4">
+                                        <div class="bg-light-primary rounded p-5">
+                                            <h5 class="text-primary mb-4">CFOP Operações Estaduais (Dentro do Estado)</h5>
+                                            <div class="row">
+                                                <div class="form-group validated col-6 mb-0">
+                                                    <label class="font-weight-bold">Saída <span class="text-danger">*</span></label>
+                                                    <input id="CFOP_saida_estadual" type="text" class="form-control @if($errors->has('CFOP_saida_estadual')) is-invalid @endif" name="CFOP_saida_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_saida_estadual : old('CFOP_saida_estadual') }}}" placeholder="Ex: 5102">
+                                                    @if($errors->has('CFOP_saida_estadual')) <div class="invalid-feedback">Campo Obrigatório</div> @endif
+                                                </div>
+                                                <div class="form-group validated col-6 mb-0">
+                                                    <label class="font-weight-bold">Entrada <span class="text-danger">*</span></label>
+                                                    <input id="CFOP_entrada_estadual" type="text" class="form-control @if($errors->has('CFOP_entrada_estadual')) is-invalid @endif" name="CFOP_entrada_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_entrada_estadual : old('CFOP_entrada_estadual') }}}" placeholder="Ex: 1102">
+                                                    @if($errors->has('CFOP_entrada_estadual')) <div class="invalid-feedback">Campo Obrigatório</div> @endif
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-								<!-- AS TAGS DE FECHAMENTO RESTAURADAS -->
-								</div>
-							</div>
-						</div>
-					</div>
+                                    <div class="col-lg-6 col-12 mb-4">
+                                        <div class="bg-light-success rounded p-5">
+                                            <h5 class="text-success mb-4">CFOP Operações Interestaduais (Fora do Estado)</h5>
+                                            <div class="row">
+                                                <div class="form-group validated col-6 mb-0">
+                                                    <label class="font-weight-bold">Saída <span class="text-danger">*</span></label>
+                                                    <input id="CFOP_saida_inter_estadual" type="text" class="form-control @if($errors->has('CFOP_saida_inter_estadual')) is-invalid @endif" name="CFOP_saida_inter_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_saida_inter_estadual : old('CFOP_saida_inter_estadual') }}}" placeholder="Ex: 6102">
+                                                    @if($errors->has('CFOP_saida_inter_estadual')) <div class="invalid-feedback">Campo Obrigatório</div> @endif
+                                                </div>
+                                                <div class="form-group validated col-6 mb-0">
+                                                    <label class="font-weight-bold">Entrada <span class="text-danger">*</span></label>
+                                                    <input id="CFOP_entrada_inter_estadual" type="text" class="form-control @if($errors->has('CFOP_entrada_inter_estadual')) is-invalid @endif" name="CFOP_entrada_inter_estadual" value="{{{ isset($natureza) ? $natureza->CFOP_entrada_inter_estadual : old('CFOP_entrada_inter_estadual') }}}" placeholder="Ex: 2102">
+                                                    @if($errors->has('CFOP_entrada_inter_estadual')) <div class="invalid-feedback">Campo Obrigatório</div> @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-					<div class="card-footer">
+                                <div class="separator separator-dashed my-8"></div>
 
-						<div class="row">
-							<div class="col-xl-2">
+                                <h4 class="section-title"><i class="flaticon2-gear text-primary"></i> Regras de Comportamento e ERP</h4>
 
-							</div>
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<a style="width: 100%" class="btn btn-danger" href="/naturezaOperacao">
-									<i class="la la-close"></i>
-									<span class="">Cancelar</span>
-								</a>
-							</div>
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<button style="width: 100%" type="submit" class="btn btn-success">
-									<i class="la la-check"></i>
-									<span class="">Salvar</span>
-								</button>
-							</div>
+                                <div class="row">
+                                    <div class="col-lg-3 col-md-6 mb-4">
+                                        <div class="switch-box">
+                                            <label class="font-weight-bold d-block mb-3">Sobrescrever CFOP do produto</label>
+                                            <span class="switch switch-outline switch-icon switch-primary">
+											<label>
+												<input type="checkbox" name="sobrescreve_cfop" value="true" @if(isset($natureza) && $natureza->sobrescreve_cfop) checked @endif>
+												<span></span>
+											</label>
+										</span>
+                                            <small class="text-muted d-block mt-2">Usa o CFOP desta tela em vez do CFOP do produto.</small>
+                                        </div>
+                                    </div>
 
-						</div>
-					</div>
-				</form>
-			</div>
-		</div>
-	</div>
-</div>
-@section('javascript')
-<script type="text/javascript">
-	$('[data-toggle="popover"]').popover()
+                                    <div class="col-lg-3 col-md-6 mb-4">
+                                        <div class="switch-box">
+                                            <label class="font-weight-bold d-block mb-3">Não Movimentar Estoque</label>
+                                            <span class="switch switch-outline switch-icon switch-danger">
+											<label>
+												<input type="checkbox" name="nao_movimenta_estoque" value="true" @if(isset($natureza) && $natureza->nao_movimenta_estoque) checked @endif>
+												<span></span>
+											</label>
+										</span>
+                                            <small class="text-muted d-block mt-2">Vendas com esta natureza não afetam saldo.</small>
+                                        </div>
+                                    </div>
 
-	$('#CFOP_saida_estadual').blur(() => {
-		let cfop = $('#CFOP_saida_estadual').val()
-		let temp = cfop.substring(1,4)
-		if(cfop.length == 4){
-			$('#CFOP_saida_inter_estadual').val('6'+temp)
-			$('#CFOP_entrada_inter_estadual').val('2'+temp)
-			$('#CFOP_entrada_estadual').val('1'+temp)
-		}
-	})
+                                    <!-- NOVOS CAMPOS AQUI (INFORMAÇÃO CLIENTE E DIFERIMENTO) -->
+                                    <div class="col-lg-3 col-md-6 mb-4">
+                                        <div class="switch-box">
+                                            <label class="font-weight-bold d-block mb-3">Puxar Observação do Cliente</label>
+                                            <span class="switch switch-outline switch-icon switch-success">
+											<label>
+												<input type="checkbox" name="usar_info_cliente" value="true" @if(isset($natureza) && $natureza->usar_info_cliente) checked @endif>
+												<span></span>
+											</label>
+										</span>
+                                            <small class="text-muted d-block mt-2">Garante que a "Info NF-e" do cliente apareça.</small>
+                                        </div>
+                                    </div>
 
-    // SCRIPT DE MELHORIA: Trava de segurança para CST x Classificação
-    $(document).ready(function() {
-        $('select[name="cst_ibs_cbs"]').change(function() {
-            let cstSelecionado = $(this).val();
-            let selectClasse = $('select[name="class_trib_ibs_cbs"]');
-            
-            if(!cstSelecionado) {
-                selectClasse.find('option').show();
-                return;
-            }
+                                    <div class="col-lg-3 col-md-6 mb-4">
+                                        <div class="switch-box border-warning">
+                                            <label class="font-weight-bold d-block mb-3 text-warning">Aplicar Frase de Diferimento</label>
+                                            <span class="switch switch-outline switch-icon switch-warning">
+											<label>
+												<input type="checkbox" name="usar_diferimento" value="true" @if(isset($natureza) && $natureza->usar_diferimento) checked @endif>
+												<span></span>
+											</label>
+										</span>
+                                            <small class="text-muted d-block mt-2">Adiciona a regra e o nº de Diferimento na nota.</small>
+                                        </div>
+                                    </div>
+                                </div>
 
-            selectClasse.find('option:not(:first)').hide();
+                                <div class="row mt-4">
+                                    <div class="form-group validated col-sm-12 col-lg-6">
+                                        <label class="font-weight-bold">Categoria de Conta (Financeiro)</label>
+                                        <button type="button" class="btn btn-light-info btn-sm btn-icon ml-2" data-toggle="tooltip" title="Ao salvar a venda, esta categoria é incluída no Contas a Receber."><i class="la la-info"></i></button>
+                                        <select name="categoria_conta_id" class="custom-select form-control">
+                                            <option value="">-- Não Gerar Título Específico --</option>
+                                            @foreach($categoriasDeConta as $c)
+                                                <option value="{{$c->id}}" @if(isset($natureza) && $natureza->categoria_conta_id == $c->id) selected @endif>{{$c->nome}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-            selectClasse.find('option').each(function() {
-                let valorClasse = $(this).val();
-                if (valorClasse && valorClasse.substring(0, 3) === cstSelecionado) {
-                    $(this).show();
-                }
+                                    <div class="form-group validated col-lg-6 col-sm-12">
+                                        <label class="font-weight-bold">Sobrescrever CST/CSOSN do Produto</label>
+                                        <button type="button" class="btn btn-light-info btn-sm btn-icon ml-2" data-toggle="tooltip" title="Se preenchido, irá ignorar o CST do produto e aplicar este."><i class="la la-info"></i></button>
+                                        <select class="custom-select form-control" name="CST_CSOSN">
+                                            <option value="">-- Usar a do Cadastro do Produto --</option>
+                                            @foreach(App\Models\ConfigNota::listaCST() as $key => $l)
+                                                <option value="{{$key}}" @if(isset($natureza) && $key == $natureza->CST_CSOSN) selected @elseif(old('CST_CSOSN') == $key) selected @endif>{{$key}} - {{$l}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="separator separator-dashed my-8"></div>
+
+                                <h4 class="section-title"><i class="flaticon2-percentage text-primary"></i> Tributação IBS/CBS (Sobrescrita)</h4>
+                                <div class="row bg-light rounded p-5">
+                                    <div class="form-group validated col-lg-3 col-md-6 col-sm-12">
+                                        <label class="font-weight-bold">CST IBS/CBS</label>
+                                        <select class="custom-select form-control" name="cst_ibs_cbs">
+                                            <option value="">-- Do Produto --</option>
+                                            @foreach($listaCstIbsCbs as $cst)
+                                                <option value="{{ $cst->cst_ibs_cbs }}" @if((isset($natureza) && $natureza->cst_ibs_cbs == $cst->cst_ibs_cbs) || old('cst_ibs_cbs') == $cst->cst_ibs_cbs) selected @endif>
+                                                    {{ $cst->cst_ibs_cbs }} - {{ $cst->descricao_cst_ibs_cbs }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group validated col-lg-3 col-md-6 col-sm-12">
+                                        <label class="font-weight-bold">Class. Trib. IBS/CBS</label>
+                                        <select class="custom-select form-control" name="class_trib_ibs_cbs">
+                                            <option value="">-- Do Produto --</option>
+                                            @foreach($listaClassTrib as $class)
+                                                <option value="{{ $class->cclasstrib }}" @if((isset($natureza) && $natureza->class_trib_ibs_cbs == $class->cclasstrib) || old('class_trib_ibs_cbs') == $class->cclasstrib) selected @endif>
+                                                    {{ $class->cclasstrib }} - {{ $class->nome_cclasstrib }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group validated col-lg-3 col-md-6 col-sm-12">
+                                        <label class="font-weight-bold">Redução IBS (%)</label>
+                                        <input type="text" class="form-control" name="perc_red_ibs" value="{{ isset($natureza) && $natureza->perc_red_ibs > 0 ? number_format($natureza->perc_red_ibs, 2, ',', '.') : old('perc_red_ibs', '0,00') }}">
+                                    </div>
+
+                                    <div class="form-group validated col-lg-3 col-md-6 col-sm-12">
+                                        <label class="font-weight-bold">Redução CBS (%)</label>
+                                        <input type="text" class="form-control" name="perc_red_cbs" value="{{ isset($natureza) && $natureza->perc_red_cbs > 0 ? number_format($natureza->perc_red_cbs, 2, ',', '.') : old('perc_red_cbs', '0,00') }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer px-0 mt-4">
+                            <div class="row">
+                                <div class="col-lg-6"></div>
+                                <div class="col-lg-3 col-sm-6 mb-2">
+                                    <a class="btn btn-light-danger btn-block font-weight-bolder" href="/naturezaOperacao">
+                                        <i class="la la-close"></i> Cancelar
+                                    </a>
+                                </div>
+                                <div class="col-lg-3 col-sm-6">
+                                    <button type="submit" class="btn btn-success btn-block font-weight-bolder">
+                                        <i class="la la-check"></i> Salvar Cadastro
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @section('javascript')
+        <script type="text/javascript">
+            $(document).ready(function() {
+                $('[data-toggle="tooltip"]').tooltip();
+                $('[data-toggle="popover"]').popover();
+
+                // Auto Preenchimento CFOP
+                $('#CFOP_saida_estadual').blur(() => {
+                    let cfop = $('#CFOP_saida_estadual').val()
+                    let temp = cfop.substring(1,4)
+                    if(cfop.length == 4){
+                        $('#CFOP_saida_inter_estadual').val('6'+temp)
+                        $('#CFOP_entrada_inter_estadual').val('2'+temp)
+                        $('#CFOP_entrada_estadual').val('1'+temp)
+                    }
+                });
+
+                // Trava de segurança para CST x Classificação (IBS/CBS)
+                $('select[name="cst_ibs_cbs"]').change(function() {
+                    let cstSelecionado = $(this).val();
+                    let selectClasse = $('select[name="class_trib_ibs_cbs"]');
+
+                    if(!cstSelecionado) {
+                        selectClasse.find('option').show();
+                        return;
+                    }
+                    selectClasse.find('option:not(:first)').hide();
+                    selectClasse.find('option').each(function() {
+                        let valorClasse = $(this).val();
+                        if (valorClasse && valorClasse.substring(0, 3) === cstSelecionado) {
+                            $(this).show();
+                        }
+                    });
+                    selectClasse.val('');
+                });
             });
-
-            selectClasse.val('');
-        });
-    });
-</script>
-@endsection
+        </script>
+    @endsection
 @endsection

@@ -43,6 +43,7 @@ class MovimentacaoVeiculo extends BaseModel
         'motivo_cancelamento',
         'bater_ponto_whatsapp',
         'data_cancelamento',
+        'solicitar_abastecimento',
     ];
 
     /* Relacionamentos */
@@ -108,6 +109,19 @@ class MovimentacaoVeiculo extends BaseModel
             DespesaMovimentacao::class,
             'movimentacao_id'
         );
+    }
+
+    // NOVOS RELACIONAMENTOS (Multi-Stop e Linha do Tempo)
+    public function destinos()
+    {
+        return $this->hasMany(MovimentacaoDestino::class, 'movimentacao_veiculo_id')
+            ->orderBy('ordem', 'asc');
+    }
+
+    public function historicoParadas()
+    {
+        return $this->hasMany(MovimentacaoHistoricoParada::class, 'movimentacao_veiculo_id')
+            ->orderBy('data_hora_inicio', 'asc');
     }
 
     /* --- Accessors (Formatadores para a Lista e Agenda) --- */
@@ -179,6 +193,12 @@ class MovimentacaoVeiculo extends BaseModel
     // 4. Nome do Cliente/Fornecedor ou Destino
     public function getEntidadeNomeAttribute()
     {
+        // Se a viagem tiver destinos cadastrados na nova tabela, exibe a contagem
+        if ($this->destinos && $this->destinos->count() > 0) {
+            $qtd = $this->destinos->count();
+            return "Múltiplos Destinos ({$qtd})";
+        }
+
         $nome = '---';
 
         if ($this->cliente) {

@@ -13,6 +13,33 @@ Route::group(['prefix' => 'cadastro-parceiro'], function(){
     Route::post('/salvar', 'PessoaPreCadastroController@storePublico');
 });
 
+// Rota Pública do Abastecimento do Motorista
+Route::group(['prefix' => 'abastecimento-motorista'], function(){
+    Route::get('/{id}', 'AbastecimentoExternoController@create');
+    Route::post('/salvar', 'AbastecimentoExternoController@store');
+});
+
+// Assinatura Digital de Holerite com o Dedo
+Route::group(['prefix' => 'holerite'], function(){
+    Route::get('/assinar/{token}', 'FolhaPagamentoController@telaAssinatura')->name('holerite.assinar.tela');
+    Route::post('/assinar/{token}/salvar', 'FolhaPagamentoController@salvarAssinaturaTouch')->name('holerite.assinar.salvar');
+});
+
+// Alertas
+Route::group(['prefix' => 'alertas'], function(){
+    Route::get('/pendente', 'AlertaController@pendente')->name('alertas.pendente');
+    Route::post('/marcar-lido/{id}', 'AlertaController@marcarComoLido')->name('alertas.marcarLido');
+});
+
+// ==========================================
+// INTEGRACÃO DE NF-E VIA WHATSAPP (WEBHOOK)
+// ==========================================
+Route::match(['get', 'post'], '/whatsapp/nfe/webhook/messages-upsert', 'App\Http\Controllers\Api\WhatsappNfeController@webhook')
+    ->withoutMiddleware([
+        \App\Http\Middleware\VerifyCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class
+    ]);
+
 // PORTAL DO CLIENTE
 // O NOVO não fornece middleware próprio do portal; não utilizar a sessão interna do ERP como substituta.
 Route::group(['prefix' => 'portal-cliente'], function(){
@@ -2517,14 +2544,25 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'manutencoes'], function () {
-        Route::get('/', 'ManutencaoController@list');
-        Route::get('/list', 'ManutencaoController@list');
+        Route::get('/', 'ManutencaoController@index');
+        Route::get('/list', 'ManutencaoController@index');
         Route::get('/new', 'ManutencaoController@register');
         Route::post('/save', 'ManutencaoController@save');
-        Route::get('/edit/{id}', 'ManutencaoController@edit');
-        Route::post('/update/{id}', 'ManutencaoController@update');
-        Route::get('/delete/{id}', 'ManutencaoController@delete');
-        Route::get('/filtro', 'ManutencaoController@filtro');
+        Route::get('/edit/{id}', 'ManutencaoController@register');
+        Route::get('/delete/{id}', 'ManutencaoController@destroy');
+        Route::get('/filtro', 'ManutencaoController@index');
+        Route::get('/buscar-produtos', 'ManutencaoController@buscarProdutos');
+        Route::get('/finalizar/{id}', 'ManutencaoController@finalizarOS');
+        Route::get('/imprimir/{id}', 'ManutencaoController@imprimir');
+
+        Route::group(['prefix' => 'painel-alertas'], function () {
+            Route::get('/', 'VeiculoAlertaManutencaoController@painel')->name('manutencao.alertas.index');
+            Route::post('/salvar', 'VeiculoAlertaManutencaoController@salvarAlerta')->name('manutencao.alertas.salvar');
+            Route::post('/aprovar/{id}', 'VeiculoAlertaManutencaoController@aprovar')->name('manutencao.alertas.aprovar');
+            Route::get('/relatorio-necessidades', 'VeiculoAlertaManutencaoController@relatorioNecessidades')->name('manutencao.relatorio.necessidades');
+            Route::get('/relatorio-aprovacoes', 'VeiculoAlertaManutencaoController@relatorioAprovacoes')->name('manutencao.relatorio.aprovacoes');
+        });
+
     });
 
     Route::group(['prefix' => 'devolucao'],function(){
@@ -3040,8 +3078,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/eventosCalendario', 'MovimentacaoVeiculoController@eventosCalendario')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::get('/relatorioColetas', 'MovimentacaoVeiculoController@relatorioColetas')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::post('/registrarHorarioCliente/{id}', 'MovimentacaoVeiculoController@registrarHorarioCliente')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::get('/historico/{id}', 'MovimentacaoVeiculoController@historico')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::get('/enviar-checklist/{id}', 'MovimentacaoVeiculoController@enviarChecklistWhatsApp');
         Route::get('/ver-checklist/{id}', 'MovimentacaoVeiculoController@verChecklist');
+
+        Route::get('/mapa', function() {
+            return view('movimentacoes_veiculos.mapa')->with('title', 'Mapa em Tempo Real');
+        })->middleware(['verificaEmpresa', 'validaAcesso']);
+
+        Route::get('/enviarLinkAbastecimento/{id}', 'MovimentacaoVeiculoController@enviarLinkAbastecimentoWhatsApp');
     });
 
     Route::group(['prefix' => 'atendimentoWeb'], function () {
@@ -3066,9 +3111,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/rastreamentoVeiculo', 'SiteViewController@rastreamento');
 
         Route::get('/posicoes-tempo-real', 'TraccarIntegrationController@posicoesTempoReal');
-        Route::get('/mapa', function() {
-            return view('movimentacoes_veiculos.mapa')->with('title', 'Mapa em Tempo Real');
-        })->name('traccar.mapa');
+        // Route::get('/mapa', function() {
+        //     return view('movimentacoes_veiculos.mapa')->with('title', 'Mapa em Tempo Real');
+        // })->name('traccar.mapa');
     });
 
     Route::group(['prefix' => 'pesagens'], function () {
@@ -3117,6 +3162,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'TabelaPrecoNfeController@index')->name('tabela-preco-nfe.index');
         Route::post('/save', 'TabelaPrecoNfeController@save')->name('tabela-preco-nfe.save');
         Route::delete('/delete/{id}', 'TabelaPrecoNfeController@delete')->name('tabela-preco-nfe.delete');
+        Route::get('/getPreco/{produto_id}', 'TabelaPrecoNfeController@getPrecoJson');
     });
 
     Route::group(['prefix' => 'monitor'], function () {
@@ -3295,8 +3341,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         // Rotas do Prosoft padronizadas
         Route::get('/exportar-prosoft', 'ProsoftExportController@index');
         Route::post('/exportar-prosoft', 'ProsoftExportController@exportar');
-        Route::get('/prosoft/ajuste-fiscal', 'ProsoftExportController@ajusteFiscal');
-        Route::post('/prosoft/aplicar-ajuste', 'ProsoftExportController@aplicarAjusteLote');
+
+        Route::group(['prefix' => 'prosoft'],function () {
+            Route::get('/ajuste-fiscal', 'ProsoftExportController@ajusteFiscal');
+            Route::post('/aplicar-ajuste', 'ProsoftExportController@aplicarAjusteLote');
+            Route::post('/auditar-pis-cofins', 'ProsoftExportController@auditarPisCofinsPeriodo');
+            Route::get('/apuracao-pis-cofins', 'ProsoftExportController@apuracaoPisCofins');
+
+        });
+
     });
 
     Route::group(['prefix' => 'portaria'], function(){
@@ -3376,6 +3429,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         });
     });
 
+    // --- MÓDULO DE VISITANTES ---
+    Route::group(['prefix' => 'visitantes'], function(){
+        Route::get('/', 'VisitanteController@index');
+        Route::post('/atualizar', 'VisitanteController@atualizar');
+    });
+
     // Manutenção: criar-atalho-foto
     Route::group(['prefix' => 'criar-atalho-foto'], function(){
         Route::get('/', function () {
@@ -3407,6 +3466,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/iniciar/{id}', 'TarefaController@iniciar')->name('tarefas.iniciar');
         Route::get('/finalizar/{id}', 'TarefaController@finalizar')->name('tarefas.finalizar');
         Route::get('/pausar/{id}', 'TarefaController@pausar')->name('tarefas.pausar');
+        Route::get('/cancelar/{id}', 'TarefaController@cancelar');
         Route::get('/painel', 'TarefaController@painel')->name('tarefas.painel');
     });
 
@@ -3449,6 +3509,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/delete-lancamento/{id}', 'ContaEmpresaController@deleteLancamento')->name('contas-empresa.delete-lancamento');
         Route::get('/imprimir-extrato/{id}', 'ContaEmpresaController@imprimirExtrato')->name('contas-empresa.imprimir-extrato');
         Route::get('/imprimir-transacao/{id}', 'ContaEmpresaController@imprimirTransacao')->name('contas-empresa.imprimir-transacao');
+
+        Route::post('/{id}/corrigir-filiais', 'ContaEmpresaController@corrigirFiliaisTitulos')->name('contas-empresa.corrigir-filiais');
+        Route::post('/{id}/desfazer-filiais', 'ContaEmpresaController@desfazerCorrecaoFiliais')->name('contas-empresa.desfazer-filiais');
     });
 
     Route::group(['prefix' => 'item-conta'],function(){
@@ -3494,8 +3557,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/', 'ApuracaoController@index');
         Route::post('/filtrar', 'ApuracaoController@index');
         Route::post('/finalizar', 'ApuracaoController@finalizar');
-        Route::get('/apuracao', 'ApuracaoController@index');
-        Route::post('/apuracao/finalizar', 'ApuracaoController@finalizar');
+        Route::post('/reabrir', 'ApuracaoController@reabrir');
     });
 
     Route::group(['prefix' => 'compras-lote'],function () {
@@ -4003,6 +4065,11 @@ Route::get('lojainexistente', function(){
 
 Route::get('/habilitadoApi', function(){
     return view('habilitadoApi');
+});
+
+Route::post('/tarefas/marcar-alerta-lido', function () {
+    session(['alerta_tarefas_visto' => true]);
+    return response()->json(['success' => true]);
 });
 
 /*

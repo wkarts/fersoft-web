@@ -7,6 +7,7 @@ use App\Models\Funcionario;
 use App\Models\PontoMarcacao;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Http\Controllers\PontoWhatsAppController;
 
 class PontoVerificarPendenciasCommand extends Command
@@ -39,14 +40,12 @@ class PontoVerificarPendenciasCommand extends Command
             $func = Funcionario::find($funcId);
             if (!$func) continue;
 
-            // Extrai o celular formatado com 55
             $celular = preg_replace('/\D/', '', $func->celular ?: $func->telefone);
             if (empty($celular)) continue;
             if (!str_starts_with($celular, '55')) {
                 $celular = '55' . $celular;
             }
 
-            // Batidas do colaborador hoje
             $etapas = PontoMarcacao::where('funcionario_id', $funcId)
                 ->whereDate('data_hora_marcacao', $hoje)
                 ->where('status', 'processada')
@@ -56,13 +55,18 @@ class PontoVerificarPendenciasCommand extends Command
             $primeiroNome = explode(' ', trim($func->nome))[0];
 
             // -------------------------------------------------------------
-            // CENÁRIO 1: Alerta de Almoço (Janela das 12:45 até 14:00)
+            // CENÁRIO 1: Alerta de Almoço (Das 12:00 até às 14:00)
             // -------------------------------------------------------------
-            if ($horaAtual >= '12:45' && $horaAtual <= '14:00') {
-                if (!in_array('inicio_almoco', $etapas)) {
+            if ($horaAtual >= '12:00' && $horaAtual <= '14:00') {
+                $chaveCacheAlmoco = "alerta_ponto_almoco_{$func->id}_{$hoje}";
+
+                if (!in_array('inicio_almoco', $etapas) && !Cache::has($chaveCacheAlmoco)) {
+                    Cache::put($chaveCacheAlmoco, true, 43200);
+
                     $msgAlmoco  = "⏰ *LEMBRETE DE PONTO*\n\n";
-                    $msgAlmoco .= "Olá, *{$primeiroNome}*! Verificamos que você registrou a entrada mas ainda não registrou sua *Saída para o Almoço*.\n\n";
-                    $msgAlmoco .= "Envie *2* para registrar agora.";
+                    $msgAlmoco .= "Olá, *{$primeiroNome}*! Verificamos que você registrou a entrada mas ainda não registrou sua *Saída para o Almoço* no WhatsApp.\n\n";
+                    $msgAlmoco .= "Envie *2* para registrar agora.\n\n";
+                    $msgAlmoco .= "ℹ️ _Caso já tenha batido o ponto no relógio físico da empresa, favor desconsiderar este aviso._";
 
                     $whatsAppController->enviarRespostaWhatsApp($func->empresa_id, $celular, $msgAlmoco);
                     $this->info("Alerta de almoço enviado para {$func->nome}");
@@ -70,14 +74,19 @@ class PontoVerificarPendenciasCommand extends Command
             }
 
             // -------------------------------------------------------------
-            // CENÁRIO 2: Alerta de Saída / Fim de Expediente (Após as 18:00)
+            // CENÁRIO 2: Alerta de Saída / Fim de Expediente (A partir das 18:00)
             // -------------------------------------------------------------
             if ($horaAtual >= '18:00') {
-                if (!in_array('saida', $etapas)) {
+                $chaveCacheSaida = "alerta_ponto_saida_{$func->id}_{$hoje}";
+
+                if (!in_array('saida', $etapas) && !Cache::has($chaveCacheSaida)) {
+                    Cache::put($chaveCacheSaida, true, 43200);
+
                     $msgSaida  = "🚨 *LEMBRETE DE ENCERRAMENTO*\n\n";
-                    $msgSaida .= "Olá, *{$primeiroNome}*! Seu expediente de hoje ainda está em aberto.\n\n";
+                    $msgSaida .= "Olá, *{$primeiroNome}*! Seu expediente de hoje ainda está em aberto no WhatsApp.\n\n";
                     $msgSaida .= "Não se esqueça de registrar a sua *Saída* para manter seu banco de horas regularizado.\n\n";
-                    $msgSaida .= "Envie *4* para encerrar o expediente ou *5* se for iniciar Hora Extra.";
+                    $msgSaida .= "Envie *4* para encerrar o expediente ou *5* se for iniciar Hora Extra.\n\n";
+                    $msgSaida .= "ℹ️ _Caso já tenha registrado a sua saída no relógio de ponto físico, desconsidere esta mensagem._";
 
                     $whatsAppController->enviarRespostaWhatsApp($func->empresa_id, $celular, $msgSaida);
                     $this->info("Alerta de saída enviado para {$func->nome}");

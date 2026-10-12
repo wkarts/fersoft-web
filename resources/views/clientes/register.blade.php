@@ -4,6 +4,31 @@
         .camera{
             height: 200px;
             width: 200px;
+            border-radius: 8px;
+        }
+
+        /* Melhorias visuais pontuais, mantendo a estrutura original. */
+        .section-title {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            color: #3F4254;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title i {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        .optional-section-box {
+            background-color: #F3F6F9;
+            border-radius: 0.85rem;
+            padding: 2rem;
+            margin-top: 1rem;
+            margin-left: 0;
+            margin-right: 0;
+            border: 1px dashed #E4E6EF;
         }
     </style>
     <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
@@ -16,22 +41,37 @@
                             <input type="hidden" name="_save_token" value="{{ session('cliente_save_token') }}">
                         @endif
                         <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact">
-                            <div class="card-header">
-                                <h3 class="card-title">{{isset($cliente) ? 'Editar' : 'Novo'}} Cliente</h3>
+                        <div class="card card-custom gutter-b example example-compact shadow-sm">
+                            <div class="card-header py-3">
+                                <div class="card-title">
+                                    <span class="card-icon">
+                                        <i class="flaticon2-user text-primary"></i>
+                                    </span>
+                                    <h3 class="card-label">
+                                        {{isset($cliente) ? 'Editar' : 'Novo'}} Cliente
+                                        <span class="d-block text-muted pt-2 font-size-sm">Preencha os dados do cliente para o cadastro no sistema</span>
+                                    </h3>
+                                </div>
                             </div>
                         </div>
                         @csrf
 
                         @isset($cliente)
                             @if($cliente->valorCredito() > 0)
-                                <h4>Valor de crédito: <strong class="text-info">R$ {{ number_format($cliente->valorCredito(), 2, ',', '.')}}</strong></h4>
+                                <div class="alert alert-custom alert-light-info fade show mb-8" role="alert">
+                                    <div class="alert-icon"><i class="flaticon-piggy-bank"></i></div>
+                                    <div class="alert-text font-size-h5">
+                                        Valor de crédito disponível: <strong class="text-info font-weight-bolder">R$ {{ number_format($cliente->valorCredito(), 2, ',', '.')}}</strong>
+                                    </div>
+                                </div>
                             @endif
                         @endif
                         <div class="row">
                             <div class="col-xl-12">
                                 <div class="kt-section kt-section--first">
                                     <div class="kt-section__body">
+
+                                        <h4 class="section-title"><i class="flaticon2-identification text-primary"></i> Dados Principais</h4>
 
                                         <div class="row">
                                             <div class="form-group col-sm-12 col-lg-12">
@@ -231,7 +271,7 @@
 
                                         </div>
                                         <hr>
-                                        <h5>Endereço de Faturamento</h5>
+                                        <h4 class="section-title"><i class="flaticon2-pin text-primary"></i> Endereço de Faturamento</h4>
                                         <div class="row">
                                             <div class="form-group validated col-sm-8 col-lg-8">
                                                 <label class="col-form-label">Rua</label>
@@ -528,6 +568,17 @@
                                                 </div>
                                             </div>
 
+                                            <div class="form-group validated col-12">
+                                                <label class="col-form-label font-weight-bolder text-primary" for="informacao_nfe">Informação Padrão para NF-e (Opcional)</label>
+                                                <button type="button" class="btn btn-light-info btn-sm btn-icon ml-2" data-toggle="popover" data-trigger="hover" data-content="Este texto poderá ser incluído nas informações complementares (infCpl) de notas fiscais deste cliente, conforme as regras de emissão configuradas.">
+                                                    <i class="la la-info"></i>
+                                                </button>
+                                                <textarea class="form-control border-primary @if($errors->has('informacao_nfe')) is-invalid @endif" name="informacao_nfe" id="informacao_nfe" rows="2" placeholder="Informações complementares padrão para as notas deste cliente">{{ old('informacao_nfe', isset($cliente) ? $cliente->informacao_nfe : '') }}</textarea>
+                                                @if($errors->has('informacao_nfe'))
+                                                    <div class="invalid-feedback d-block">{{ $errors->first('informacao_nfe') }}</div>
+                                                @endif
+                                            </div>
+
                                             <div class="form-group validated col-sm-4 col-lg-3 col-12">
                                                 <label class="col-form-label">Vendedor/Funcionário</label>
                                                 <div class="">
@@ -567,14 +618,14 @@
                                         </div>
 
                                         <hr>
-                                        <h5>Endereço de Cobrança (Opcional)</h5>
+                                        <h4 class="section-title"><i class="flaticon2-list-2 text-primary"></i> Endereço de Cobrança (Opcional)</h4>
                                         <span class="switch switch-outline switch-dark">
 										<label>
 											<input value="true" @if(isset($cliente) && $cliente->rua_cobranca != "") checked @endif @if(old('rua_cobranca')) checked @endif type="checkbox" id="info_endereco_cobranca">
 											<span></span>
 										</label>
 									</span>
-                                        <div class="row d-none endereco-cobranca">
+                                        <div class="row d-none endereco-cobranca optional-section-box">
                                             <div class="form-group validated col-sm-8 col-lg-6">
                                                 <label class="col-form-label">Rua</label>
                                                 <div class="">
@@ -645,14 +696,14 @@
                                         </div>
 
                                         <hr>
-                                        <h5>Endereço de entrega (Opcional)</h5>
+                                        <h4 class="section-title"><i class="flaticon2-delivery-package text-primary"></i> Endereço de Entrega (Opcional)</h4>
                                         <span class="switch switch-outline switch-warning">
 										<label>
 											<input value="true" @if(isset($cliente) && $cliente->rua_entrega != "") checked @endif @if(old('rua_entrega')) checked @endif type="checkbox" id="info_endereco_entrega">
 											<span></span>
 										</label>
 									</span>
-                                        <div class="row d-none endereco-entrega">
+                                        <div class="row d-none endereco-entrega optional-section-box">
 
                                             <div class="form-group validated col-sm-8 col-lg-4">
                                                 <label class="col-form-label">Nome</label>
@@ -748,14 +799,14 @@
                                         </div>
 
                                         <hr>
-                                        <h5>Redes Sociais (Opcional)</h5>
+                                        <h4 class="section-title"><i class="flaticon2-chat-1 text-primary"></i> Redes Sociais (Opcional)</h4>
                                         <span class="switch switch-outline switch-success">
 										<label>
 											<input value="true" @if(isset($cliente) && ($cliente->instagram != "" || $cliente->facebook != "")) checked @endif type="checkbox" id="inp-rede">
 											<span></span>
 										</label>
 									</span>
-                                        <div class="row d-none redes_sociais">
+                                        <div class="row d-none redes_sociais optional-section-box">
 
 
                                             <div class="form-group validated col-sm-2 col-lg-4">
@@ -1065,7 +1116,7 @@
 
                                 <div class="form-group validated col-12">
                                     <label class="col-form-label" id="">Observação</label>
-                                    <input type="text" value="" id="observacao" class="form-control">
+                                    <input type="text" value="" id="observacao_otica" class="form-control">
                                 </div>
                             </div>
                         </div>
@@ -1075,7 +1126,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light-danger font-weight-bold" data-dismiss="modal">Fechar</button>
-                    <button type="submit" id="salvarReceita" class="btn btn-light-info font-weight-bold">Salvar</button>
+                    <button type="button" id="salvarReceita" class="btn btn-light-info font-weight-bold">Salvar</button>
                 </div>
             </div>
         </div>
@@ -1170,7 +1221,7 @@
                     $('#previsao_retorno_dias').val(receita.previsao_retorno_dias)
                     $('#data').val(receita.data)
                     $('#referencia').val(receita.referencia)
-                    $('#observacao').val(receita.observacao)
+                    $('#observacao_otica').val(receita.observacao)
                 }
             }
 
@@ -1302,7 +1353,7 @@
                 let data = $('#data').val()
 
                 let referencia = $('#referencia').val()
-                let observacao = $('#observacao').val()
+                let observacao = $('#observacao_otica').val()
 
                 let js = {
                     esf_od_longe: esf_od_longe,
@@ -1344,6 +1395,7 @@
 
                 $('#receita').val(JSON.stringify(js))
                 $('#modal-otica').modal('hide')
+                swal("Sucesso", "Receita Ótica armazenada temporariamente. Salve o cadastro do cliente para finalizar.", "success")
             })
 
             function buscarCoordenadaManual() {
@@ -1361,7 +1413,7 @@
                 let enderecoCompleto = `${rua}, ${numero}, ${bairro}, ${cidadeNome}, Brasil`;
                 let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCompleto)}&limit=1`;
 
-                fetch(url, { headers: { 'User-Agent': 'FersoftERP/1.0' } })
+                fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         if(data.length > 0) {

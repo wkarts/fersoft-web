@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PlanoContasContabil;
-use App\Models\Usuario; // <-- Adicionamos o modelo do utilizador!
+use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 use App\Services\ContabilidadeService;
 
@@ -59,18 +59,18 @@ class ContabilidadeController extends BaseController
             ->when($request->get('pesquisa'), function($query, $pesquisa) {
                 return $query->where(function($q) use ($pesquisa) {
                     $q->where('nome', 'LIKE', "%{$pesquisa}%")
-                      ->orWhere('codigo_acesso', 'LIKE', "%{$pesquisa}%")
-                      ->orWhere('classificador', 'LIKE', "%{$pesquisa}%");
+                        ->orWhere('codigo_acesso', 'LIKE', "%{$pesquisa}%")
+                        ->orWhere('classificador', 'LIKE', "%{$pesquisa}%");
                 });
             })
             ->orderBy('classificador', 'asc')
-            ->paginate(50); 
+            ->paginate(50);
 
         $data = [
             'title'   => 'Plano de Contas Contábil',
             'titulo'  => 'Arquivos Contábil',
             'contas'  => $contas,
-            'filters' => $request->all() 
+            'filters' => $request->all()
         ];
 
         return view('contabilidade.importar', $data);
@@ -138,8 +138,8 @@ class ContabilidadeController extends BaseController
             return back()->with('erro', 'Erro ao importar: ' . $e->getMessage());
         }
     }
-  
-  public function gerarTerceiros(\Illuminate\Http\Request $request)
+
+    public function gerarTerceiros(\Illuminate\Http\Request $request)
     {
         // 1. Obtém o ID da Empresa da sessão ou do usuário logado
         $empresaId = auth()->check() ? auth()->user()->empresa_id : session('empresa_id');
@@ -170,5 +170,100 @@ class ContabilidadeController extends BaseController
         return response($conteudoArquivo)
             ->header('Content-Type', 'text/plain')
             ->header('Content-Disposition', 'attachment; filename="Terceiros.txt"');
+    }
+
+    public function gerarExcel(\Illuminate\Http\Request $request)
+    {
+        // 1. Identificação da Empresa
+        $empresaId = auth()->check() ? auth()->user()->empresa_id : session('empresa_id');
+        $userLogged = session('user_logged');
+
+        if (!$empresaId && is_array($userLogged)) {
+            $empresaId = $userLogged['empresa_id'] ?? null;
+            if (!$empresaId && isset($userLogged['empresa'])) {
+                $empresa = $userLogged['empresa'];
+                $empresaId = is_numeric($empresa) ? $empresa : (is_array($empresa) ? ($empresa['id'] ?? null) : ($empresa->id ?? null));
+            }
+        } elseif (!$empresaId && is_object($userLogged)) {
+            $empresaId = $userLogged->empresa_id ?? null;
+        }
+
+        if (!$empresaId) {
+            return redirect()->back()->with('error', 'Sessão expirada ou empresa não identificada.');
+        }
+
+        // 2. Filtros
+        $dataInicio = $request->data_inicio;
+        $dataFim = $request->data_fim;
+        $filialId = $request->filial_id;
+
+        // 3. Processa a Auditoria (Que já separa os Terceiros em Débito e Crédito)
+        $service = new \App\Services\ContabilidadeService();
+        $auditoria = $service->processarAuditoria($dataInicio, $dataFim, $filialId);
+
+        // 4. Configuração do CSV
+        $fileName = "exportacao_contabil_" . date('Ymd_His') . ".csv";
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        // 5. Montagem da Planilha
+        $callback = function() use ($auditoria) {
+            $file = fopen('php://output', 'w');
+
+            // Corrige acentuação no Excel
+            fputs($file, $bom =(chr(0xEF) . chr(0xBB) . chr(0xBF)));
+
+            // CABEÇALHO FORÇANDO AS DUAS COLUNAS DE TERCEIROS
+            fputcsv($file, [
+                'Origem',
+                'Data',
+                'Histórico',
+                'Débito',
+                'Crédito',
+                'Terceiro Débito',
+                'Terceiro Crédito',
+                'Documento',
+                'Categoria',
+                'Valor',
+                'Status'
+            ], ';');
+
+            $abas = [
+                'pagar_prov'    => 'Pagar (Prov)',
+                'pagar_baixa'   => 'Pagar (Baixa)',
+                'receber_prov'  => 'Receber (Prov)',
+                'receber_baixa' => 'Receber (Baixa)',
+                'manual'        => 'Banco / Caixa',
+                'adiantamentos' => 'Adiantamentos'
+            ];
+
+            foreach ($abas as $chave => $nomeAba) {
+                if (!empty($auditoria[$chave])) {
+                    foreach ($auditoria[$chave] as $linha) {
+                        fputcsv($file, [
+                            $nomeAba,
+                            $linha['data'],
+                            $linha['historico'],
+                            $linha['debito'],
+                            $linha['credito'],
+                            $linha['terceiro_debito'],
+                            $linha['terceiro_credito'],
+                            $linha['documento'],
+                            $linha['categoria'],
+                            $linha['valor'],
+                            $linha['status']
+                        ], ';');
+                    }
+                }
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

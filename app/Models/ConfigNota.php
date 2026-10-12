@@ -115,6 +115,7 @@ class ConfigNota extends BaseModel
         'pesagem_exibir_chave_pix_relatorio',
         'pesagem_exibir_valores_relatorio',
         'pesagem_manter_modal_ticket_aberto_apos_salvar',
+        'numero_diferimento',
     ];
 
     protected $casts = [

@@ -24,8 +24,22 @@
     .avatar-circle { color: #fff; }
 </style>
 
-<div class="card kb-card mb-3 shadow-sm border-0 border-start border-4
+@php
+    $estaAtrasadaCard = false;
+    if($tarefa->data_limite) {
+        $dataApenasCard = \Carbon\Carbon::parse($tarefa->data_limite)->format('Y-m-d');
+        $limiteCard = \Carbon\Carbon::parse($dataApenasCard . ' ' . ($tarefa->hora_limite ?: '23:59:59'));
+        $estaAtrasadaCard = \Carbon\Carbon::now()->greaterThan($limiteCard) && $tarefa->status != 'concluida';
+    }
+@endphp
+
+    <!-- Adicionamos o id="..." , data-id="..." e data-atrasada="..." nesta div -->
+<div id="tarefa-{{ $tarefa->id }}"
+     data-id="{{ $tarefa->id }}"
+     data-atrasada="{{ $estaAtrasadaCard ? 'true' : 'false' }}"
+     class="card kb-card mb-3 shadow-sm border-0 border-start border-4
     {{ $tarefa->prioridade == 'Urgente' ? 'border-danger' : ($tarefa->prioridade == 'Alta' ? 'border-warning' : 'border-primary') }}">
+
 
     <div class="card-body p-3">
         <h6 class="card-title fw-bold mb-1 text-dark text-truncate" title="{{ $tarefa->titulo }}">

@@ -159,6 +159,7 @@ class FuncionarioController extends Controller
 
         $request->merge([
             'pin_ponto' => $request->pin_ponto ?? null,
+            'permissao_nfe_whatsapp' => $request->has('permissao_nfe_whatsapp') ? 1 : 0,
         ]);
 
         $result = $funcionario->create($request->all());
@@ -305,6 +306,8 @@ class FuncionarioController extends Controller
         $resp->observacoes = $request->input('observacoes');
         $resp->recebe_alerta_coleta = $request->has('recebe_alerta_coleta') ? 1 : 0;
         $resp->pin_ponto = $request->input('pin_ponto');
+
+        $resp->permissao_nfe_whatsapp = $request->has('permissao_nfe_whatsapp') ? 1 : 0;
 
         $result = $resp->save();
         if($result){

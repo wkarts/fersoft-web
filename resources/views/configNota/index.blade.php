@@ -234,10 +234,10 @@
                                                                     <h6 class="mb-2">Cadastros rápidos na pesagem</h6>
                                                                     <small class="text-muted d-block mb-2">Controle por empresa. Quando desabilitado, o atalho correspondente não é exibido na listagem, nem no modal de lançamento, e o endpoint também recusa a criação.</small>
                                                                     @foreach([
-                                                                        'pesagem_permitir_cadastro_rapido_cliente' => 'Permitir cadastro rápido de cliente',
-                                                                        'pesagem_permitir_cadastro_rapido_fornecedor' => 'Permitir cadastro rápido de fornecedor',
-                                                                        'pesagem_permitir_cadastro_rapido_veiculo' => 'Permitir cadastro rápido de veículo',
-                                                                        'pesagem_permitir_cadastro_rapido_motorista' => 'Permitir cadastro rápido de motorista',
+                                                                    'pesagem_permitir_cadastro_rapido_cliente' => 'Permitir cadastro rápido de cliente',
+                                                                    'pesagem_permitir_cadastro_rapido_fornecedor' => 'Permitir cadastro rápido de fornecedor',
+                                                                    'pesagem_permitir_cadastro_rapido_veiculo' => 'Permitir cadastro rápido de veículo',
+                                                                    'pesagem_permitir_cadastro_rapido_motorista' => 'Permitir cadastro rápido de motorista',
                                                                     ] as $campoCadastroRapido => $labelCadastroRapido)
                                                                         <div class="form-group mb-1">
                                                                             <div class="checkbox-inline">
@@ -314,15 +314,15 @@
                                                                     <hr>
                                                                     <h6 class="mb-3">ADP Pesagem com câmeras, ticket e notificações</h6>
                                                                     @foreach([
-                                                                        'pesagem_habilitar_preview_cameras' => 'Habilitar preview de câmeras no ticket de pesagem',
-                                                                        'pesagem_exigir_imagem_quando_balanca_tem_camera' => 'Exigir imagem quando a balança possuir câmeras vinculadas',
-                                                                        'pesagem_auto_concluir_ticket' => 'Salvar ticket automaticamente como concluído',
-                                                                        'pesagem_bloquear_edicao_ticket_concluido' => 'Bloquear edição de ticket concluído',
-                                                                        'pesagem_imprimir_imagens_a4' => 'Exibir imagens nos relatórios A4',
-                                                                        'pesagem_imprimir_imagens_80mm' => 'Exibir imagens no ticket 80mm quando disponível',
-                                                                        'pesagem_enviar_email_ao_concluir' => 'Enviar e-mail ao concluir ticket de pesagem',
-                                                                        'pesagem_enviar_whatsapp_ao_concluir' => 'Enviar WhatsApp ao concluir ticket de pesagem',
-                                                                        'pesagem_enviar_imagens_notificacao' => 'Anexar/enviar imagens nas notificações de pesagem',
+                                                                    'pesagem_habilitar_preview_cameras' => 'Habilitar preview de câmeras no ticket de pesagem',
+                                                                    'pesagem_exigir_imagem_quando_balanca_tem_camera' => 'Exigir imagem quando a balança possuir câmeras vinculadas',
+                                                                    'pesagem_auto_concluir_ticket' => 'Salvar ticket automaticamente como concluído',
+                                                                    'pesagem_bloquear_edicao_ticket_concluido' => 'Bloquear edição de ticket concluído',
+                                                                    'pesagem_imprimir_imagens_a4' => 'Exibir imagens nos relatórios A4',
+                                                                    'pesagem_imprimir_imagens_80mm' => 'Exibir imagens no ticket 80mm quando disponível',
+                                                                    'pesagem_enviar_email_ao_concluir' => 'Enviar e-mail ao concluir ticket de pesagem',
+                                                                    'pesagem_enviar_whatsapp_ao_concluir' => 'Enviar WhatsApp ao concluir ticket de pesagem',
+                                                                    'pesagem_enviar_imagens_notificacao' => 'Anexar/enviar imagens nas notificações de pesagem',
                                                                     ] as $campoPesagemAdp => $labelPesagemAdp)
                                                                         <div class="form-group mb-1">
                                                                             <div class="checkbox-inline">
@@ -337,25 +337,25 @@
                                                                     @php
                                                                         $emailsPesagemAdp = old('pesagem_email_destinos');
                                                                         if ($emailsPesagemAdp === null) {
-                                                                            $emailsPesagemAdp = isset($config) && method_exists($config, 'pesagemEmailsDestino')
-                                                                                ? implode("
-        ", $config->pesagemEmailsDestino())
-                                                                                : ($config->pesagem_email_destino ?? '');
+                                                                        $emailsPesagemAdp = isset($config) && method_exists($config, 'pesagemEmailsDestino')
+                                                                        ? implode("
+                                                                        ", $config->pesagemEmailsDestino())
+                                                                        : ($config->pesagem_email_destino ?? '');
                                                                         }
 
                                                                         $whatsPesagemAdp = old('pesagem_whatsapp_destinos');
                                                                         if ($whatsPesagemAdp === null) {
-                                                                            $whatsPesagemAdp = isset($config) && method_exists($config, 'pesagemWhatsappsDestino')
-                                                                                ? implode("
-        ", $config->pesagemWhatsappsDestino())
-                                                                                : ($config->pesagem_whatsapp_destino ?? '');
+                                                                        $whatsPesagemAdp = isset($config) && method_exists($config, 'pesagemWhatsappsDestino')
+                                                                        ? implode("
+                                                                        ", $config->pesagemWhatsappsDestino())
+                                                                        : ($config->pesagem_whatsapp_destino ?? '');
                                                                         }
 
                                                                         $storageProviderPesagem = old('pesagem_storage_provider', $config->pesagem_storage_provider ?? 'system');
                                                                         $storageConfigPesagem = $config->pesagem_storage_config_json ?? [];
                                                                         if (is_string($storageConfigPesagem)) {
-                                                                            $decodedStoragePesagem = json_decode($storageConfigPesagem, true);
-                                                                            $storageConfigPesagem = json_last_error() === JSON_ERROR_NONE ? $decodedStoragePesagem : [];
+                                                                        $decodedStoragePesagem = json_decode($storageConfigPesagem, true);
+                                                                        $storageConfigPesagem = json_last_error() === JSON_ERROR_NONE ? $decodedStoragePesagem : [];
                                                                         }
                                                                         $storageConfigPesagem = is_array($storageConfigPesagem) ? $storageConfigPesagem : [];
                                                                     @endphp
@@ -883,6 +883,20 @@
                                                             @endif
                                                         </div>
                                                     </div>
+
+                                                    <div class="form-group validated col-lg-3 col-md-4 col-sm-10">
+                                                        <label class="col-form-label">Nº do Diferimento</label>
+                                                        <button type="button" class="btn btn-light-info btn-sm btn-icon" data-toggle="popover" data-trigger="click" data-content="Será exibido nas informações complementares das notas com natureza de operação configurada para diferimento."><i class="la la-info"></i></button>
+                                                        <div class="">
+                                                            <input id="numero_diferimento" type="text" class="form-control @if($errors->has('numero_diferimento')) is-invalid @endif" name="numero_diferimento" value="{{{ isset($config) ? $config->numero_diferimento : old('numero_diferimento') }}}">
+                                                            @if($errors->has('numero_diferimento'))
+                                                                <div class="invalid-feedback">
+                                                                    {{ $errors->first('numero_diferimento') }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+
                                                     <div class="form-group validated col-lg-4 col-md-12 col-sm-12">
                                                         <label class="col-form-label">
                                                             Natureza de Operação Padrão Frente de Caixa

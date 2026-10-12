@@ -18,7 +18,7 @@ use Carbon\Carbon;
 
 class CompraLoteController extends Controller
 {
-   public function index()
+    public function index()
     {
         $sessionData = session('user_logged');
         $empresa_id = $sessionData['empresa'];
@@ -49,13 +49,59 @@ class CompraLoteController extends Controller
         $sessionData = session('user_logged');
         $empresa_id = $sessionData['empresa'];
         $usuario_id = $sessionData['id'];
-        
+
+        // Pega o valor que veio do select da tela ou da sessão ativa global do topo
+        $filialInput = $request->filial_id ?? session('filial_id');
+
+        // Define se é Matriz (se for 'matriz', vazio, 0 ou nulo)
+        $ehMatriz = ($filialInput === 'matriz' || empty($filialInput) || $filialInput == 0);
+
+        $nomeIdentificacaoSistema = '';
+
+        if ($ehMatriz) {
+            // Busca os dados da Matriz na tabela config_notas ou na empresa principal
+            $configNota = \DB::table('config_notas')->where('empresa_id', $empresa_id)->first();
+            $empresaAtiva = \App\Models\Empresa::find($empresa_id);
+
+            $nomeIdentificacaoSistema = $configNota->razao_social ?? $configNota->nome_fantasia ?? $empresaAtiva->nome ?? 'Matriz';
+        } else {
+            // Se não for matriz, busca o nome da filial específica pelo ID selecionado
+            $filialObj = \App\Models\Filial::where('id', $filialInput)->where('empresa_id', $empresa_id)->first();
+            $nomeIdentificacaoSistema = $filialObj->nome ?? $filialObj->descricao ?? 'Filial';
+        }
+
+        // Dados do arquivo enviado
+        $arquivoExcel = $request->file('file');
+        if (!$arquivoExcel) {
+            return redirect()->back()->with('error', 'Nenhum arquivo foi enviado.');
+        }
+
+        $nomeOriginalArquivo = strtolower($arquivoExcel->getClientOriginalName());
+        $slugNomeSistema = \Illuminate\Support\Str::slug($nomeIdentificacaoSistema);
+        $slugArquivo = \Illuminate\Support\Str::slug(pathinfo($nomeOriginalArquivo, PATHINFO_FILENAME));
+
+        // Validação: O nome do arquivo deve conter o identificador da Matriz ou da Filial ativa lá em cima
+        $contemNomeSistema = !empty($slugNomeSistema) && str_contains($slugArquivo, $slugNomeSistema);
+        $contemPalavraMatriz = $ehMatriz && (str_contains($slugArquivo, 'matriz') || str_contains($slugArquivo, 'mrs'));
+
+        if (!$contemNomeSistema && !$contemPalavraMatriz) {
+            $tipoLocalStr = $ehMatriz ? "Matriz" : "Filial ({$nomeIdentificacaoSistema})";
+
+            $mensagemAviso = "<strong>Trava de Segurança:</strong> O sistema está configurado na <strong>{$tipoLocalStr}</strong>, mas o arquivo enviado ('<strong>" . $arquivoExcel->getClientOriginalName() . "</strong>') não corresponde a este local. Selecione a empresa correta ou utilize o arquivo correspondente.";
+
+            return redirect()->back()
+                ->with('error', $mensagemAviso)
+                ->withInput();
+        }
+
+
+
         // 1. AQUI ESTÁ A CORREÇÃO: Pegamos a filial do request que veio do formulário
         $local = $request->filial_id;
-        
+
         // 2. Aplicamos a trava matemática
         $filial_id = (is_numeric($local) && $local > 0) ? $local : null;
-      
+
         $meiosPagamento = [
             '01' => 'Dinheiro', '17' => 'Pix', '15' => 'Boleto Bancário', '03' => 'Cartão de Crédito', '99' => 'Outros'
         ];
@@ -105,6 +151,7 @@ class CompraLoteController extends Controller
                         'natureza_id' => $request->natureza_id,
                         'tipo_pagamento' => $request->tipo_pagamento_nfe, // Código numérico para NFe
                         'filial_id' => $filial_id,
+                        'categoria_conta_id' => $request->categoria_id,
                         'estoque_atualizado' => 1
                     ]);
 
@@ -118,7 +165,8 @@ class CompraLoteController extends Controller
                         'data_saida' => $dataEmissaoCompleta,
                         'data_retroativa' => $dataRetroativaForm,
                         'peso_liquido' => $quantidade,
-                        'peso_bruto' => $quantidade
+                        'peso_bruto' => $quantidade,
+                        'categoria_conta_id' => $request->categoria_id
                     ]);
 
                     ItemCompra::create([
@@ -199,7 +247,7 @@ class CompraLoteController extends Controller
                         'usuario_id' => $usuario_id,
                         'user_id' => $usuario_id, // Gravando coluna user_id
                         'categoria_id' => $request->categoria_id,
-                      	'saldo_atual' => $contaEmp->saldo,
+                        'saldo_atual' => $contaEmp->saldo,
                         'created_at' => $dataEmissaoCompleta
                     ])->id;
 

@@ -1,19 +1,34 @@
 @extends('default.layout')
 @section('content')
-<div class="card card-custom gutter-b">
-    <div class="card-header">
-        <h3 class="card-title">Estoque</h3>
-        <div class="card-toolbar">
-            
-            <a href="/estoque/listApontamentos" class="btn btn-warning btn-sm mr-2">
-                <i class="la la-clipboard-list"></i> Lista de Alterações
-            </a>
+    <div class="card card-custom gutter-b">
+        <div class="card-header">
+            <h3 class="card-title">Estoque</h3>
+            <div class="card-toolbar">
 
-            <a href="/estoque/apontamentoManual" class="btn btn-info btn-sm mr-2">
-                <i class="la la-plus"></i> Apontamento Manual
-            </a>
-            
-            <a onclick='swal({
+                <!-- NOVO BOTÃO: Gerenciar Todos -->
+                <div class="btn-group mr-2">
+                    <button type="button" class="btn btn-dark btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="la la-cogs"></i> Gerenciar Todos
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right">
+                        <a class="dropdown-item text-success" href="javascript:;" onclick="alterarGerenciamentoTodos(1)">
+                            <i class="la la-check text-success"></i> Marcar Todos (Ativar)
+                        </a>
+                        <a class="dropdown-item text-danger" href="javascript:;" onclick="alterarGerenciamentoTodos(0)">
+                            <i class="la la-times text-danger"></i> Desmarcar Todos (Desativar)
+                        </a>
+                    </div>
+                </div>
+
+                <a href="/estoque/listApontamentos" class="btn btn-warning btn-sm mr-2">
+                    <i class="la la-clipboard-list"></i> Lista de Alterações
+                </a>
+
+                <a href="/estoque/apontamentoManual" class="btn btn-info btn-sm mr-2">
+                    <i class="la la-plus"></i> Apontamento Manual
+                </a>
+
+                <a onclick='swal({
                 title: "Atenção!",
                 text: "Deseja zerar o estoque e TODO o histórico? Digite a senha:",
                 content: "input",
@@ -21,27 +36,27 @@
                 buttons: ["Cancelar", "Confirmar"],
                 dangerMode: true,
             }).then((value) => {
-                if (value === "1234") { 
+                if (value === "1234") {
                     location.href="/stock/zerarEstoqueCompleto";
                 } else if(value !== null) {
                     swal("Erro", "Senha incorreta!", "error");
                 }
             })' class="btn btn-danger btn-sm mr-2">
-                <i class="la la-trash"></i> Zerar estoque completo
-            </a>
+                    <i class="la la-trash"></i> Zerar estoque completo
+                </a>
 
-            <a href="/estoque/relatorioPdf?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-danger btn-sm">
-                  <i class="la la-file-pdf"></i> Gerar PDF
-            </a>
-          
-            <a href="/estoque/relatorioFiscal?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-success btn-sm ml-2">
-                 <i class="la la-file-invoice"></i> Relatório Fiscal
-            </a>
-          
+                <a href="/estoque/relatorioPdf?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-danger btn-sm">
+                    <i class="la la-file-pdf"></i> Gerar PDF
+                </a>
+
+                <a href="/estoque/relatorioFiscal?{{ http_build_query(request()->all()) }}" target="_blank" class="btn btn-light-success btn-sm ml-2">
+                    <i class="la la-file-invoice"></i> Relatório Fiscal
+                </a>
+
+            </div>
         </div>
-    </div>
 
-    <div class="row mb-5">
+        <div class="row mb-5">
             <div class="col-md-3">
                 <div class="card card-custom bg-light-danger gutter-b">
                     <div class="card-body py-4">
@@ -98,24 +113,24 @@
         <div class="table-responsive">
             <table class="table table-head-custom table-vertical-center">
                 <thead>
-                    <tr>
-                        <th style="width: 50px">
-                            <label class="checkbox checkbox-single">
-                                <input type="checkbox" id="check-all-gerenciar">
-                                <span></span>
-                            </label>
-                        </th>
-                        <th>Produto</th>
-                        <th>Categoria</th>
-                        <th>Local</th>
-                        <th class="text-right">Saldo Atual</th>
-                        <th class="text-right">Vl. Venda</th>
-                        <th class="text-right">Vl. Custo</th> 
-                        <th class="text-right">Ações</th>
-                    </tr>
+                <tr>
+                    <th style="width: 50px">
+                        <label class="checkbox checkbox-single">
+                            <input type="checkbox" id="check-all-gerenciar">
+                            <span></span>
+                        </label>
+                    </th>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th>Local</th>
+                    <th class="text-right">Saldo Atual</th>
+                    <th class="text-right">Vl. Venda</th>
+                    <th class="text-right">Vl. Custo</th>
+                    <th class="text-right">Ações</th>
+                </tr>
                 </thead>
                 <tbody>
-                    @foreach($estoque as $e)
+                @foreach($estoque as $e)
                     <tr>
                         <td>
                             <label class="checkbox checkbox-single">
@@ -138,16 +153,16 @@
                                   </span>
                               @endif
                           </span>
-                      </td>
-                      
-                      <td class="text-right font-weight-boldest">
+                        </td>
+
+                        <td class="text-right font-weight-boldest">
                           <span class="{{ $e->quantidade < 0 ? 'text-danger' : 'text-primary' }}" title="Saldo Físico Atual">
                               {{ number_format($e->quantidade, 2, ',', '.') }}
                           </span>
-                      </td>
+                        </td>
                         <td class="text-right">R$ {{ number_format($e->preco_venda, 2, ',', '.') }}</td>
-                        <td class="text-right">R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td> 
-                        
+                        <td class="text-right">R$ {{ number_format($e->preco_custo, 2, ',', '.') }}</td>
+
                         <td class="text-right d-flex justify-content-end">
                             <a href="/estoque/apontamentoManual" class="btn btn-icon btn-light-warning btn-sm mr-1" title="Ajuste / Apontamento Manual">
                                 <i class="la la-edit"></i>
@@ -158,7 +173,7 @@
                             </a>
                         </td>
                     </tr>
-                    @endforeach
+                @endforeach
                 </tbody>
             </table>
         </div>
@@ -168,27 +183,62 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
 
-<script>
-    // Lógica do botão Gerenciar (AJAX)
-    $('.check-gerenciar').change(function() {
-        let id = $(this).data('id');
-        let status = $(this).is(':checked') ? 1 : 0;
-        
-        $.get('/produtos/alterarGerenciarEstoque', { id: id, status: status })
-        .done(() => {
-            toastr.success('Status de gerenciamento atualizado!');
-        })
-        .fail(() => {
-            toastr.error('Erro ao atualizar.');
+    <!-- Form Oculto para submissão segura via POST -->
+    <form id="form-alterar-gerenciamento" action="/estoque/alterarGerenciamento" method="POST" style="display: none;">
+        @csrf
+        <input type="hidden" name="status" id="gerenciar_status">
+        <input type="hidden" name="senha" id="gerenciar_senha">
+    </form>
+
+    <script>
+        // Função disparada pelo botão do cabeçalho (Ação em Massa)
+        function alterarGerenciamentoTodos(status) {
+            let acao = status === 1 ? 'ATIVAR' : 'DESATIVAR';
+
+            swal({
+                title: "Atenção!",
+                text: "Deseja " + acao + " o gerenciamento de estoque de TODOS os produtos? Digite sua senha de autorização:",
+                content: {
+                    element: "input",
+                    attributes: {
+                        type: "password",
+                        placeholder: "Digite a senha"
+                    }
+                },
+                icon: "warning",
+                buttons: ["Cancelar", "Confirmar"],
+                dangerMode: true,
+            }).then((senha) => {
+                if (senha) {
+                    $('#gerenciar_status').val(status);
+                    $('#gerenciar_senha').val(senha);
+                    $('#form-alterar-gerenciamento').submit();
+                } else if (senha !== null && senha === "") {
+                    swal("Erro", "A senha é obrigatória!", "error");
+                }
+            });
+        }
+
+        // Lógica do checkbox individual (AJAX)
+        $('.check-gerenciar').change(function() {
+            let id = $(this).data('id');
+            let status = $(this).is(':checked') ? 1 : 0;
+
+            $.get('/produtos/alterarGerenciarEstoque', { id: id, status: status })
+                .done(() => {
+                    toastr.success('Status de gerenciamento atualizado!');
+                })
+                .fail(() => {
+                    toastr.error('Erro ao atualizar.');
+                });
         });
-    });
 
-    // Marcar todos
-    $('#check-all-gerenciar').click(function() {
-        let status = $(this).is(':checked');
-        $('.check-gerenciar').prop('checked', status).change();
-    });
-</script>
+        // Marcar / Desmarcar todos da listagem visível na tela
+        $('#check-all-gerenciar').click(function() {
+            let status = $(this).is(':checked');
+            $('.check-gerenciar').prop('checked', status).change();
+        });
+    </script>
 @endsection

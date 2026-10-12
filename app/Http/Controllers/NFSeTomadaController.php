@@ -168,6 +168,9 @@ class NFSeTomadaController extends BaseController
             while ($consultasRealizadas < $limiteDeConsultasPorClique) {
                 $consultasRealizadas++;
 
+                // Pausa técnica para respeitar o rate-limit do gateway do ADN
+                usleep(300000); // 300ms
+
                 $resultado = $servico->consultar($nsuAtual);
 
                 if (!$resultado) {

@@ -63,7 +63,7 @@
                                                         <option value="">--</option>
                                                         @foreach($balancasAtivas ?? [] as $balanca)
                                                             <option value="{{ $balanca->id }}"
-                                                                @if((string) old('balanca_padrao_id', $usuario->balanca_padrao_id ?? '') === (string) $balanca->id) selected @endif>
+                                                                    @if((string) old('balanca_padrao_id', $usuario->balanca_padrao_id ?? '') === (string) $balanca->id) selected @endif>
                                                                 {{ $balanca->descricao }}
                                                             </option>
                                                         @endforeach
@@ -162,6 +162,21 @@
 
                                                 </div>
                                             </div>
+
+                                            <!-- NOVO SWITCH: PERMISSÃO DO WHATSAPP -->
+                                            <div class="form-group validated col-sm-6 col-lg-3">
+                                                <label class="col-form-label">Permissão Emissão WhatsApp</label>
+                                                <button type="button" class="btn btn-light-success btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para permitir que este usuário possa emitir e cancelar notas remotamente usando IA pelo WhatsApp"><i class="la la-info"></i></button>
+                                                <div class="col-6">
+                                                <span class="switch switch-outline switch-success">
+                                                    <label>
+                                                        <input id="permissao_nfe_whatsapp" name="permissao_nfe_whatsapp" value="1" @if(isset($usuario->permissao_nfe_whatsapp) && $usuario->permissao_nfe_whatsapp) checked @endisset type="checkbox">
+                                                        <span></span>
+                                                    </label>
+                                                </span>
+                                                </div>
+                                            </div>
+
                                             <div class="form-group validated col-sm-6 col-lg-3">
                                                 <label class="col-form-label">Caixa livre</label>
                                                 <button type="button" class="btn btn-light-warning btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para selcionar o vendedor/fúncionário no PDV para comissão"><i class="la la-info"></i></button>
@@ -228,11 +243,11 @@
                                         <div class="row">
                                             <div class="form-group validated col-sm-12">
 
-                                                <label class="col-3 col-form-label">Permissão de Acesso:</label>
+                                                <label class="col-3 col-form-label mt-4">Permissão de Acesso:</label>
                                                 <input type="hidden" id="menus" value="{{json_encode($menu)}}" name="">
                                                 @foreach($menuAux as $m)
                                                     @if($m['ativo'] == 1)
-                                                        <div class="col-12 col-form-label">
+                                                        <div class="col-12 col-form-label border-bottom pb-4 pt-4">
 												<span>
 													<label class="checkbox checkbox-info">
 														<input id="todos_{{str_replace(' ', '_', $m['titulo'])}}" onclick="marcarTudo('{{$m['titulo']}}')" type="checkbox" >

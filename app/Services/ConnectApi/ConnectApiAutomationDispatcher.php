@@ -16,7 +16,15 @@ class ConnectApiAutomationDispatcher
         $normalized = $event->normalized_payload ?? [];
 
         if (($normalized['event'] ?? '') === 'messages-upsert') {
-            $this->dispatchPointCompatibility($event);
+            // Módulo fiscal: assume somente comando fiscal explícito ou
+            // uma sessão fiscal já aberta. Os demais eventos seguem inalterados
+            // para o fluxo de ponto. Ações adicionais continuam sendo processadas.
+            $fiscal = app(\App\Http\Controllers\Api\WhatsappNfeController::class);
+            if ($fiscal->deveProcessarEvento($event)) {
+                $fiscal->processarEventoConnectApi($event);
+            } else {
+                $this->dispatchPointCompatibility($event);
+            }
         }
 
         $this->dispatchConfiguredRules($event);
@@ -56,6 +64,8 @@ class ConnectApiAutomationDispatcher
                 ]
             );
 
+            // Contexto autenticado pelo webhook; não confiar no empresa_id do payload público.
+            $request->attributes->set('connect_api_empresa_id', (int) $event->empresa_id);
             app(PontoWhatsAppController::class)->receberMensagem($request);
         } catch (\Throwable $e) {
             Log::error('Falha na automação Connect|API -> Ponto.', [
