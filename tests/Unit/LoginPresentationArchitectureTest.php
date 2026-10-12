@@ -57,6 +57,7 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString('name="senha"', $form);
         $this->assertStringContainsString('name="lembrar"', $form);
         $this->assertStringContainsString('name="uri"', $form);
+        $this->assertStringContainsString("config('login_presentation.page', 'access')", $controller);
         $this->assertStringContainsString("if (\$loginPage === 'access_4')", $controller);
         $this->assertStringContainsString("Route::post('/request', 'UserController@request')->middleware('acessoUsuario')", $routes);
     }

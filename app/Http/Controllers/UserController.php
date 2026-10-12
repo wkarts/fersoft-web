@@ -56,7 +56,7 @@ class UserController extends Controller
             return redirect('/graficos'); // Redireciona para a rota desejada
         }
 
-        $loginPage = env("PAG_LOGIN") != null ? env("PAG_LOGIN") : 'access';
+        $loginPage = (string) config('login_presentation.page', 'access');
         $view = view('login/' . $loginPage);
 
         if ($loginPage === 'access_4') {
