@@ -14,6 +14,7 @@ License: You must have a valid license purchased only from themeforest(the above
 <html lang="pt">
 <!--begin::Head-->
 <head>
+    @include('layouts.installable')
 	<meta charset="utf-8" />
 	<title>ACESSO - {{ env("APP_NAME") }}</title>
 

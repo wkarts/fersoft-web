@@ -4,6 +4,7 @@
 <!-- begin::Head -->
 
 <head>
+    @include('layouts.installable')
 	<meta charset="utf-8" />
 
 	<title>Selecione o plano</title>

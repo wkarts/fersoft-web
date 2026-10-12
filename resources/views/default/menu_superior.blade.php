@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="br">
 <head>
+    @include('layouts.installable')
     <meta charset="utf-8" />
 
     <title>{{$title}}</title>
