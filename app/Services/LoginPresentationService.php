@@ -58,7 +58,8 @@ class LoginPresentationService
     public function fontFiles(string $font): array
     {
         // Somente IDs homologados pelo sistema; nunca URLs ou CSS arbitrários.
-        return self::FONTS[$font] ?? self::FONTS['poppins'];
+        return self::FONTS[$font]
+            ?? throw new \InvalidArgumentException('A tipografia selecionada não está homologada.');
     }
 
     public function validLayout(string $layout): bool
@@ -97,15 +98,20 @@ class LoginPresentationService
 
         if ($model) {
             // Depois da publicação, o modelo publicado é a única fonte da aparência.
-            $layout = $this->validLayout((string) $model->layout) ? $model->layout : 'split';
-            $font = $this->validFont((string) $model->font) ? $model->font : 'poppins';
+            if (!$this->validLayout((string) $model->layout) || !$this->validFont((string) $model->font)) {
+                throw new \RuntimeException('O modelo publicado contém composição ou tipografia inválida.');
+            }
+
+            $layout = $model->layout;
+            $font = $model->font;
             $settings = is_array($model->settings) ? $model->settings : [];
         } else {
             // Estado inicial apenas antes da primeira publicação.
             $layout = (string) config('login_presentation.initial_layout', 'split');
             $font = (string) config('login_presentation.initial_font', 'poppins');
-            $layout = $this->validLayout($layout) ? $layout : 'split';
-            $font = $this->validFont($font) ? $font : 'poppins';
+            if (!$this->validLayout($layout) || !$this->validFont($font)) {
+                throw new \RuntimeException('Modelo ou fonte inicial inválidos no ambiente.');
+            }
             $settings = [
                 'headline' => '',
                 'tagline' => (string) config('login_presentation.initial_tagline', ''),

@@ -38,6 +38,9 @@ class LoginPresentationArchitectureTest extends TestCase
         }
 
         $this->assertFalse($service->validFont('https://external-fonts.invalid'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->fontFiles('https://external-fonts.invalid');
     }
 
     public function test_login_uses_same_authentication_recovery_and_otp_without_new_providers(): void

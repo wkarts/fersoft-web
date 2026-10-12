@@ -44,7 +44,9 @@
         <script src="{{ asset('metronic/js/plugins.bundle.js') }}"></script>
         <script src="{{ asset('metronic/js/scripts.bundle.js') }}"></script>
         {!! __view_otp_modal() !!}
-        @include('layouts.support')
+        @if($presentation['show_support'])
+            @include('layouts.support')
+        @endif
     @endif
     <script>
         (function () {
