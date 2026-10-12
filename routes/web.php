@@ -10,7 +10,6 @@ Route::group(['prefix' => 'app-install'], function () {
         abort_unless(is_readable($favicon) && function_exists('imagecreatefrompng'), 503);
 
         $name = trim((string) config('app.name'));
-        abort_unless($name !== '', 503);
         $version = (string) (filemtime($favicon) ?: 0);
 
         return response()->json([

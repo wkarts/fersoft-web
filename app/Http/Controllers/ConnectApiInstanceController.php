@@ -429,7 +429,7 @@ class ConnectApiInstanceController extends BaseController
     {
         $instance = $this->owned($id);
         $number = (string) $request->input('number', '');
-        $message = (string) $request->input('message', 'Teste de integração Connect|API - FERSOFT WEB.');
+        $message = (string) $request->input('message', 'Teste de integração Connect|API - ' . config('app.name') . '.');
 
         if ($number === '') {
             return response()->json(['success' => false, 'error' => 'Informe o número de destino.'], 422);
