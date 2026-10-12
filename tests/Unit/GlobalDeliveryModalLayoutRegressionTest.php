@@ -34,27 +34,32 @@ class GlobalDeliveryModalLayoutRegressionTest extends TestCase
         );
     }
 
-    public function test_primary_layouts_use_existing_canonical_favicon_assets(): void
+    public function test_primary_layouts_use_the_published_favicon_with_the_existing_canonical_default(): void
     {
         $lateral = file_get_contents(resource_path('views/default/menu_lateral.blade.php'));
         $superior = file_get_contents(resource_path('views/default/menu_superior.blade.php'));
+        $service = file_get_contents(app_path('Services/LoginPresentationService.php'));
+        $routes = file_get_contents(base_path('routes/web.php'));
 
-        $this->assertFileExists(public_path('favicon.ico'));
+        // O favicon institucional existente continua sendo a origem inicial,
+        // sem obrigar a aplicação a exibir duas referências concorrentes.
         $this->assertFileExists(public_path('imgs/favicon.png'));
+        $this->assertStringContainsString("'favicon' => 'imgs/favicon.png'", $service);
+        $this->assertStringContainsString('->faviconPath()', $routes);
+
+        $source = "app(\\App\\Services\\LoginPresentationService::class)->assetUrls()['favicon']";
 
         foreach ([$lateral, $superior] as $layout) {
-            $this->assertStringContainsString(
-                "asset('favicon.ico')",
-                $layout
-            );
-            $this->assertStringContainsString(
-                "asset('imgs/favicon.png')",
-                $layout
-            );
-            $this->assertStringContainsString(
-                "filemtime(public_path('favicon.ico'))",
-                $layout
-            );
+            // O mesmo favicon publicado é utilizado nos dois layouts e no PWA.
+            $this->assertStringContainsString($source, $layout);
+            $this->assertSame(2, substr_count($layout, $source));
+            $this->assertSame(1, substr_count($layout, '<link rel="icon" type="image/png"'));
+            $this->assertSame(1, substr_count($layout, '<link rel="shortcut icon" type="image/png"'));
+
+            // Não carregar o favicon antigo antes do ativo, nem restaurar
+            // referências rígidas que impedem a troca pelo superusuário.
+            $this->assertStringNotContainsString("asset('favicon.ico')", $layout);
+            $this->assertStringNotContainsString("filemtime(public_path('favicon.ico'))", $layout);
             $this->assertStringNotContainsString(
                 '<link rel="shortcut icon" href="{{ asset(\'imgs/slym.png\') }}" />',
                 $layout
