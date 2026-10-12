@@ -23,6 +23,7 @@ class DiscreetScrollbarsTest extends TestCase
         $this->assertStringContainsString('width: 4px;', $contentRules);
         $this->assertStringContainsString('height: 4px;', $contentRules);
         $this->assertStringContainsString('scrollbar-width: thin;', $contentRules);
+        $this->assertStringContainsString('@supports (-moz-appearance: none)', $contentRules);
         $this->assertStringContainsString('background: transparent;', $contentRules);
         $this->assertStringContainsString('#kt_wrapper .ps__thumb-y', $contentRules);
         $this->assertStringContainsString('#kt_wrapper .ps__thumb-x', $contentRules);

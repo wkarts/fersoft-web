@@ -151,19 +151,25 @@
  * Não selecionar a sidebar (#kt_aside), seus menus ou sua rolagem.
  * Não alteramos overflow, scroll-behavior nem a navegação por teclado.
  */
-html {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
-}
+/*
+ * Firefox usa as propriedades padronizadas. No Chromium, deixamos a largura
+ * sob controle dos seletores ::-webkit-scrollbar para manter 4 px reais.
+ */
+@supports (-moz-appearance: none) {
+    html {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
+    }
 
-#kt_wrapper,
-#kt_wrapper *,
-body > .modal,
-body > .modal *,
-body > .swal2-container,
-body > .swal2-container * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
+    #kt_wrapper,
+    #kt_wrapper *,
+    body > .modal,
+    body > .modal *,
+    body > .swal2-container,
+    body > .swal2-container * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
+    }
 }
 
 html::-webkit-scrollbar,
