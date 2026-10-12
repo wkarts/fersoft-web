@@ -1,5 +1,108 @@
 <?php
 
+// Instalação nativa opcional: o manifesto e os ícones usam apenas
+// APP_NAME e o favicon existente, sem cópias nem cache de dados do ERP.
+Route::group(['prefix' => 'app-install'], function () {
+    Route::get('/manifest.webmanifest', function () {
+        abort_unless(config('app.pwa_enabled', false), 404);
+
+        $favicon = public_path('imgs/favicon.png');
+        abort_unless(is_readable($favicon) && function_exists('imagecreatefrompng'), 503);
+
+        $name = trim((string) config('app.name', 'FERSOFT WEB'));
+        $name = $name !== '' ? $name : 'FERSOFT WEB';
+        $version = (string) (filemtime($favicon) ?: 0);
+
+        return response()->json([
+            'id' => '/',
+            'name' => $name,
+            'short_name' => $name,
+            'lang' => 'pt-BR',
+            'start_url' => '/',
+            'scope' => '/',
+            'display' => 'standalone',
+            'background_color' => '#ffffff',
+            'theme_color' => '#ffffff',
+            'icons' => [
+                [
+                    'src' => route('app-install.icon', ['size' => 192], false) . '?v=' . $version,
+                    'sizes' => '192x192',
+                    'type' => 'image/png',
+                    'purpose' => 'any',
+                ],
+                [
+                    'src' => route('app-install.icon', ['size' => 512], false) . '?v=' . $version,
+                    'sizes' => '512x512',
+                    'type' => 'image/png',
+                    'purpose' => 'any',
+                ],
+            ],
+            'prefer_related_applications' => false,
+        ], 200, [
+            'Content-Type' => 'application/manifest+json; charset=utf-8',
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    })->name('app-install.manifest');
+
+    // Ícones quadrados produzidos sob demanda do mesmo PNG usado pelo ERP.
+    Route::get('/icon/{size}.png', function ($size) {
+        abort_unless(config('app.pwa_enabled', false), 404);
+
+        $size = (int) $size;
+        abort_unless(in_array($size, [180, 192, 512], true), 404);
+
+        $favicon = public_path('imgs/favicon.png');
+        abort_unless(is_readable($favicon) && function_exists('imagecreatefrompng'), 503);
+        $source = @imagecreatefrompng($favicon);
+        abort_unless($source !== false, 503);
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        if ($width < 1 || $height < 1) {
+            imagedestroy($source);
+            abort(503);
+        }
+
+        $canvas = imagecreatetruecolor($size, $size);
+        if ($canvas === false) {
+            imagedestroy($source);
+            abort(503);
+        }
+
+        // Preserva a proporção, centralizando o favicon sobre fundo claro.
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
+        $scale = min(($size * 0.84) / $width, ($size * 0.84) / $height);
+        $targetWidth = max(1, (int) round($width * $scale));
+        $targetHeight = max(1, (int) round($height * $scale));
+        $left = (int) floor(($size - $targetWidth) / 2);
+        $top = (int) floor(($size - $targetHeight) / 2);
+
+        $copied = imagecopyresampled(
+            $canvas, $source, $left, $top, 0, 0,
+            $targetWidth, $targetHeight, $width, $height
+        );
+        imagedestroy($source);
+        if (!$copied) {
+            imagedestroy($canvas);
+            abort(503);
+        }
+
+        ob_start();
+        $encoded = imagepng($canvas, null, 6);
+        $content = ob_get_clean();
+        imagedestroy($canvas);
+        abort_unless($encoded && is_string($content) && $content !== '', 503);
+
+        return response($content, 200, [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    })->where('size', '180|192|512')->name('app-install.icon');
+});
+
 Route::get('/cadastro', 'UserController@cadastro');
 Route::post('/cadastro', 'UserController@salvarEmpresa');
 Route::get('/plano', 'UserController@plano');

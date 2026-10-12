@@ -140,6 +140,15 @@ class Handler extends ExceptionHandler
      */
     public function handleHttpException(HttpException $e, Request $request)
     {
+        // Os metadados de instalação são recursos públicos consumidos pelo navegador.
+        // Um 404/503 deve manter seu status, sem o redirect HTML histórico do ERP.
+        if ($request->is('app-install/*')) {
+            return response('', $e->getStatusCode(), [
+                'Cache-Control' => 'no-store',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
         if ($request->expectsJson()) {
             return null;
         }
