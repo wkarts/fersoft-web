@@ -139,7 +139,10 @@ def main() -> None:
                         # Nenhum campo/botão é cortado: todos podem ser alcançados pelo documento.
                         for selector in ['#login', '#senha', '#kt_login_signin_submit', 'a[href$="/cadastro"]']:
                             node = page.locator(selector)
-                            node.scroll_into_view_if_needed()
+                            # Centralizar explicitamente evita a tolerância fracionária
+                            # de scrollIntoViewIfNeeded (até 0,4 px no Chromium).
+                            # A exigência de 100% de visibilidade é mantida.
+                            node.evaluate("e => e.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})")
                             expect(node).to_be_in_viewport(ratio=1)
                         if width == 500 and height == 500:
                             page.evaluate('window.scrollTo(0,0)')
