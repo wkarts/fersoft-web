@@ -42,11 +42,40 @@ class LoginAppearanceController extends Controller
         );
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $this->requireTables();
 
+        $readyTemplates = $this->presentation->readyTemplates();
+        $defaultTemplate = $this->presentation->defaultTemplate();
+        $editorTemplate = $defaultTemplate;
+        $editorModel = null;
+        $editorOrigin = 'default';
+
+        if ($request->filled('edit')) {
+            $editorModel = LoginPresentation::query()->findOrFail(
+                (int) $request->query('edit')
+            );
+            $editorTemplate = [
+                'name' => $editorModel->name,
+                'layout' => $editorModel->layout,
+                'font' => $editorModel->font,
+                'settings' => is_array($editorModel->settings) ? $editorModel->settings : [],
+            ];
+            $editorOrigin = 'model';
+        } elseif ($request->filled('preset')) {
+            $presetId = (string) $request->query('preset');
+            abort_unless(array_key_exists($presetId, $readyTemplates), 404);
+            $editorTemplate = $readyTemplates[$presetId];
+            $editorOrigin = 'preset';
+        }
+
         return view('config.login_appearance.index', [
+            'readyTemplates' => $readyTemplates,
+            'defaultTemplate' => $defaultTemplate,
+            'editorTemplate' => $editorTemplate,
+            'editorModel' => $editorModel,
+            'editorOrigin' => $editorOrigin,
             'title' => 'Aparência & Comunicação',
             'models' => LoginPresentation::query()->orderByDesc('is_active')->orderByDesc('id')->get(),
             'presets' => $this->presentation->presets(),
@@ -54,6 +83,8 @@ class LoginAppearanceController extends Controller
             'contents' => LoginPresentationContent::query()->orderByDesc('id')->limit(150)->get(),
             'assets' => LoginPresentationAsset::query()->orderBy('asset_key')->orderByDesc('id')->limit(100)->get(),
             'active' => $this->presentation->currentModel(),
+            'draftCount' => LoginPresentation::query()->where('is_active', false)->count(),
+            'publishedContentsCount' => LoginPresentationContent::query()->where('status', 'published')->count(),
         ]);
     }
 
@@ -100,14 +131,20 @@ class LoginAppearanceController extends Controller
         $this->requireTables();
         $data = $this->validatedModelData($request);
 
-        LoginPresentation::query()->create([
+        $model = LoginPresentation::query()->create([
             ...$data,
             'slug' => $this->uniqueSlug($data['name']),
             'is_active' => false,
             'published_at' => null,
         ]);
 
-        return redirect('/config/aparencia')->with('mensagem_sucesso', 'Rascunho criado. Revise antes de publicar.');
+        // Editar o padrão é criar uma versão automática. O original nunca é sobrescrito.
+        if ($request->boolean('publish_now')) {
+            return $this->publishModel($model);
+        }
+
+        return redirect('/config/aparencia?tab=editor&edit=' . $model->id)
+            ->with('mensagem_sucesso', 'Rascunho salvo. O padrão original permanece disponível.');
     }
 
     public function updateModel(Request $request, LoginPresentation $model)
@@ -116,23 +153,32 @@ class LoginAppearanceController extends Controller
         $data = $this->validatedModelData($request);
 
         if ($model->is_active) {
-            // Nunca atualizar a versão publicada durante edição ou prévia.
-            LoginPresentation::query()->create([
+            // Publicações não são editadas: salvamos uma nova versão independente.
+            $version = LoginPresentation::query()->create([
                 ...$data,
                 'slug' => $this->uniqueSlug($data['name']),
                 'is_active' => false,
                 'published_at' => null,
             ]);
 
-            return redirect('/config/aparencia')->with(
+            if ($request->boolean('publish_now')) {
+                return $this->publishModel($version);
+            }
+
+            return redirect('/config/aparencia?tab=editor&edit=' . $version->id)->with(
                 'mensagem_sucesso',
-                'Alterações salvas em novo rascunho. O modelo publicado continua intacto.'
+                'Nova versão criada. A publicação anterior permanece intacta.'
             );
         }
 
         $model->update($data);
 
-        return redirect('/config/aparencia')->with('mensagem_sucesso', 'Rascunho atualizado.');
+        if ($request->boolean('publish_now')) {
+            return $this->publishModel($model);
+        }
+
+        return redirect('/config/aparencia?tab=editor&edit=' . $model->id)
+            ->with('mensagem_sucesso', 'Rascunho atualizado.');
     }
 
     public function duplicateModel(LoginPresentation $model)
@@ -174,6 +220,82 @@ class LoginAppearanceController extends Controller
         $this->presentation->clearCache((int) $model->id);
 
         return redirect('/config/aparencia')->with('mensagem_sucesso', 'Novo modelo de acesso publicado.');
+    }
+
+
+    /**
+     * Oito modelos disponíveis sem seed ou inserção automática.
+     * A publicação cria um registro versionado com os parâmetros completos.
+     */
+    public function applyReadyTemplate(string $layout)
+    {
+        $this->requireTables();
+        $template = $this->presentation->readyTemplates()[$layout] ?? null;
+        abort_unless($template !== null, 404);
+
+        $model = LoginPresentation::query()->create([
+            'name' => $template['name'],
+            'slug' => $this->uniqueSlug($template['name']),
+            'layout' => $template['layout'],
+            'font' => $template['font'],
+            'settings' => $template['settings'],
+            'is_active' => false,
+            'published_at' => null,
+        ]);
+
+        return $this->publishModel($model);
+    }
+
+    /**
+     * Restaurar o padrão não apaga nem altera qualquer modelo ou conteúdo.
+     */
+    public function restoreDefault()
+    {
+        $this->requireTables();
+
+        DB::transaction(function () {
+            LoginPresentation::query()->lockForUpdate()->get(['id']);
+            LoginPresentation::query()->where('is_active', true)->update(['is_active' => false]);
+        });
+
+        $this->presentation->clearCache();
+
+        return redirect('/config/aparencia?tab=modelos')
+            ->with('mensagem_sucesso', 'Padrão original restaurado. Todos os modelos foram preservados.');
+    }
+
+    private function previewTemplateData(array $template)
+    {
+        $temporary = new LoginPresentation([
+            'name' => $template['name'],
+            'layout' => $template['layout'],
+            'font' => $template['font'],
+            'settings' => $template['settings'],
+        ]);
+
+        return view('login.access_4', [
+            'presentation' => $this->presentation->configuration($temporary),
+            'sessaoAtiva' => false,
+            'previewMode' => true,
+            'loginCookie' => '',
+            'senhaCookie' => '',
+            'lembrarCookie' => '',
+        ]);
+    }
+
+    public function previewDefault()
+    {
+        $this->requireTables();
+        return $this->previewTemplateData($this->presentation->defaultTemplate());
+    }
+
+    public function previewReadyTemplate(string $layout)
+    {
+        $this->requireTables();
+        $template = $this->presentation->readyTemplates()[$layout] ?? null;
+        abort_unless($template !== null, 404);
+
+        return $this->previewTemplateData($template);
     }
 
     public function preview(LoginPresentation $model)

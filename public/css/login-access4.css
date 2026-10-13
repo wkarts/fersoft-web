@@ -6,37 +6,45 @@ body.login-access4 {
     --login-ink: #18302f;
     --login-muted: #637874;
     --login-line: #dce5e1;
+    box-sizing: border-box;
     margin: 0;
-    padding: clamp(0px, 2.1vw, 30px);
+    padding: 0;
     min-height: 100vh;
     min-height: 100dvh;
-    display: grid;
-    place-items: center;
+    display: block;
+    overflow-x: hidden;
     color: var(--login-ink);
-    background: #edf2ef;
+    background: #fff;
     font-family: 'LoginTypeface', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     font-synthesis: none;
 }
 .login-access4 *, .login-access4 *::before, .login-access4 *::after { box-sizing: border-box; }
 .login-access4 [hidden] { display: none !important; }
+/* A classe sr-only era fornecida pelo Bootstrap nos layouts antigos. */
+.login-access4 .sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .login-access4 button, .login-access4 input, .login-access4 textarea { font: inherit; }
 .login-access4 button, .login-access4 a { -webkit-tap-highlight-color: transparent; }
 .login-access4 :focus-visible { outline: 3px solid var(--login-accent); outline-offset: 3px; }
 
 .login-shell {
-    width: min(1320px, 100%);
-    min-height: min(780px, calc(100dvh - 60px));
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(400px, .95fr);
-    margin: auto;
-    border: 1px solid #e1e9e5;
-    border-radius: 20px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
     overflow: hidden;
     background: #fff;
-    box-shadow: 0 24px 65px rgba(16, 51, 39, .08);
+    box-shadow: none;
 }
 .login-public {
+    min-height: 0;
+    overflow-y: auto;
     position: relative;
     isolation: isolate;
     display: flex;
@@ -79,7 +87,7 @@ body.login-access4 {
 .login-publication img { max-width: 100%; max-height: 150px; object-fit: contain; border-radius: 7px; margin: 8px 0; }
 .login-publication a { display: inline-block; margin-top: 9px; color: var(--login-accent); font-size: 12px; font-weight: 700; }
 
-.login-auth { display: flex; align-items: center; justify-content: center; min-width: 0; padding: clamp(36px, 5vw, 80px); background: #fff; }
+.login-auth { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; overflow-y: auto; padding: clamp(30px, 5vw, 72px); background: #fff; }
 .login-form-container { width: 100%; max-width: 410px; margin-inline: auto; }
 .login-form-mobile-brand { display: none; }
 .login-form-container__eyebrow { color: var(--login-accent); font-size: 11px; line-height: 1.4; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
@@ -195,9 +203,9 @@ body.login-access4 {
 .login-layout-institutional .login-public { background: linear-gradient(160deg, #fbfcfa, #e9f1ee); }
 .login-layout-highlights .login-public { background: linear-gradient(130deg, #eaf7ee, #f5faf5); }
 .login-layout-highlights .login-publication { box-shadow: 0 12px 30px #143e2416; }
-.login-layout-wide .login-shell { width: min(1500px, 100%); grid-template-columns: minmax(0, 1.4fr) minmax(400px, .6fr); }
+.login-layout-wide .login-shell { width: 100%; grid-template-columns: minmax(0, 1.4fr) minmax(400px, .6fr); }
 .login-layout-wide .login-public { padding-left: clamp(40px, 7vw, 118px); }
-.login-layout-centered .login-shell { max-width: 690px; grid-template-columns: minmax(0, 1fr); }
+.login-layout-centered .login-shell { max-width: none; grid-template-columns: minmax(0, 1fr); }
 .login-layout-centered .login-public { align-items: center; text-align: center; gap: 8px; padding: 30px 35px 10px; }
 .login-layout-centered .login-identity img { object-position: center; max-height: 56px; }
 .login-layout-centered .login-hero-content { padding: 8px 0; margin: 0; }
@@ -205,7 +213,7 @@ body.login-access4 {
 .login-layout-centered .login-hero-photo { max-height: 115px; margin: 8px auto; }
 .login-layout-centered .login-content-blocks { display: none; }
 .login-layout-centered .login-auth { padding: 22px 40px 38px; }
-.login-layout-minimal .login-shell { max-width: 590px; grid-template-columns: minmax(0, 1fr); }
+.login-layout-minimal .login-shell { max-width: none; grid-template-columns: minmax(0, 1fr); }
 .login-layout-minimal .login-public { align-items: center; padding: 38px 28px 0; }
 .login-layout-minimal .login-identity img { max-height: 72px; object-position: center; }
 .login-layout-minimal .login-hero-content, .login-layout-minimal .login-content-blocks { display: none; }
@@ -221,16 +229,18 @@ body.login-access4 {
     .login-layout-minimal .login-shell {
         display: flex;
         flex-direction: column;
+        height: auto;
         min-height: 100dvh;
         max-width: none;
         width: 100%;
+        overflow: visible;
         margin: 0;
         border: 0;
         border-radius: 0;
         box-shadow: none;
     }
-    .login-auth, .login-layout-centered .login-auth, .login-layout-minimal .login-auth { order: 1; flex: 1; padding: clamp(35px, 6vw, 65px) 25px; }
-    .login-public, .login-layout-centered .login-public, .login-layout-minimal .login-public { order: 2; padding: 28px 25px 35px; gap: 15px; }
+    .login-auth, .login-layout-centered .login-auth, .login-layout-minimal .login-auth { order: 1; flex: 1; overflow: visible; padding: clamp(35px, 6vw, 65px) 25px; }
+    .login-public, .login-layout-centered .login-public, .login-layout-minimal .login-public { order: 2; overflow: visible; padding: 28px 25px 35px; gap: 15px; }
     .login-identity { display: none; }
     .login-form-mobile-brand { display: block; margin: 0 0 34px; }
     .login-form-mobile-brand img { display: block; width: auto; max-width: 165px; max-height: 65px; object-fit: contain; object-position: left center; }

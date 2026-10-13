@@ -45,6 +45,150 @@ class LoginPresentationService
         'hero' => 'imgs/login2.png',
     ];
 
+
+    /**
+     * A definição original nunca é salva nem alterada no banco.
+     * Editá-la na administração gera uma nova versão persistida.
+     */
+    public function defaultTemplate(): array
+    {
+        return [
+            'name' => 'Padrão original',
+            'description' => 'A composição original da access_4, sempre disponível para restauração.',
+            'layout' => 'split',
+            'font' => 'poppins',
+            'settings' => [
+                'headline' => '',
+                'tagline' => (string) config('login_presentation.initial_tagline', ''),
+                'accent_color' => '#1f9866',
+                'background_color' => '#f5f7f7',
+                'rotation_seconds' => 8,
+                'show_signup' => true,
+                'show_support' => true,
+                'show_phrases' => true,
+                'show_posts' => true,
+                'show_hero' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Biblioteca permanente: modelos completos, prontos para prévia, aplicação
+     * ou personalização, mesmo quando não há registros no banco de dados.
+     * Nenhuma consulta ou inserção automática acontece ao abrir a administração.
+     */
+    public function readyTemplates(): array
+    {
+        $defaults = $this->defaultTemplate()['settings'];
+
+        $items = [
+            'split' => [
+                'name' => 'Clássico dividido',
+                'description' => 'Apresentação institucional e formulário lado a lado.',
+                'font' => 'poppins',
+                'settings' => [
+                    'headline' => 'Seu trabalho em um só lugar.',
+                    'tagline' => 'Acesse seus recursos com praticidade e segurança.',
+                    'accent_color' => '#16885d',
+                    'background_color' => '#f3f8f5',
+                ],
+            ],
+            'centered' => [
+                'name' => 'Centralizado',
+                'description' => 'Experiência direta, com foco absoluto nas credenciais.',
+                'font' => 'montserrat',
+                'settings' => [
+                    'headline' => 'Tudo pronto para começar.',
+                    'tagline' => 'Entre na sua conta para continuar.',
+                    'accent_color' => '#2563a6',
+                    'background_color' => '#f0f5fb',
+                ],
+            ],
+            'corporate' => [
+                'name' => 'Corporativo',
+                'description' => 'Apresentação sóbria para operações empresariais.',
+                'font' => 'montserrat',
+                'settings' => [
+                    'headline' => 'Sua operação, conectada.',
+                    'tagline' => 'Gestão integrada com um acesso simples e seguro.',
+                    'accent_color' => '#188d76',
+                    'background_color' => '#18362f',
+                ],
+            ],
+            'editorial' => [
+                'name' => 'Editorial',
+                'description' => 'Tipografia em destaque e composição com personalidade.',
+                'font' => 'poppins',
+                'settings' => [
+                    'headline' => 'Boas ideias começam aqui.',
+                    'tagline' => 'Entre para acompanhar e organizar suas atividades.',
+                    'accent_color' => '#946a3d',
+                    'background_color' => '#f5f1eb',
+                ],
+            ],
+            'minimal' => [
+                'name' => 'Minimalista',
+                'description' => 'Poucos elementos e atenção total ao formulário.',
+                'font' => 'poppins',
+                'settings' => [
+                    'headline' => '',
+                    'tagline' => '',
+                    'accent_color' => '#202e38',
+                    'background_color' => '#f7f9f8',
+                    'show_posts' => false,
+                    'show_phrases' => false,
+                    'show_hero' => false,
+                ],
+            ],
+            'institutional' => [
+                'name' => 'Institucional',
+                'description' => 'Equilíbrio entre identidade, informações e credenciais.',
+                'font' => 'montserrat',
+                'settings' => [
+                    'headline' => 'Bem-vindo ao seu ambiente.',
+                    'tagline' => 'Uma experiência organizada para o seu dia a dia.',
+                    'accent_color' => '#336e79',
+                    'background_color' => '#edf5f5',
+                ],
+            ],
+            'highlights' => [
+                'name' => 'Destaques',
+                'description' => 'Valoriza notícias, avisos e comunicados publicados.',
+                'font' => 'poppins',
+                'settings' => [
+                    'headline' => 'Fique por dentro.',
+                    'tagline' => 'Acompanhe atualizações e acesse o seu ambiente.',
+                    'accent_color' => '#2a8650',
+                    'background_color' => '#edf8f0',
+                ],
+            ],
+            'wide' => [
+                'name' => 'Panorâmico',
+                'description' => 'Amplo espaço institucional com acesso em destaque.',
+                'font' => 'montserrat',
+                'settings' => [
+                    'headline' => 'Mais espaço para suas ideias.',
+                    'tagline' => 'Tudo o que você precisa para seguir em frente.',
+                    'accent_color' => '#316d94',
+                    'background_color' => '#eaf3f8',
+                ],
+            ],
+        ];
+
+        $templates = [];
+        foreach ($items as $layout => $item) {
+            $templates[$layout] = [
+                'name' => $item['name'],
+                'description' => $item['description'],
+                'layout' => $layout,
+                'font' => $item['font'],
+                'settings' => array_replace($defaults, $item['settings']),
+            ];
+        }
+
+        return $templates;
+    }
+
     public function presets(): array
     {
         return self::PRESETS;
@@ -106,24 +250,11 @@ class LoginPresentationService
             $font = $model->font;
             $settings = is_array($model->settings) ? $model->settings : [];
         } else {
-            // Estado inicial apenas antes da primeira publicação.
-            $layout = (string) config('login_presentation.initial_layout', 'split');
-            $font = (string) config('login_presentation.initial_font', 'poppins');
-            if (!$this->validLayout($layout) || !$this->validFont($font)) {
-                throw new \RuntimeException('Modelo ou fonte inicial inválidos no ambiente.');
-            }
-            $settings = [
-                'headline' => '',
-                'tagline' => (string) config('login_presentation.initial_tagline', ''),
-                'show_signup' => true,
-                'show_support' => true,
-                'show_phrases' => true,
-                'show_posts' => true,
-                'show_hero' => true,
-                'accent_color' => '#1f9866',
-                'background_color' => '#f5f7f7',
-                'rotation_seconds' => 8,
-            ];
+            // O padrão de fábrica permanece imutável e pode ser restaurado.
+            $default = $this->defaultTemplate();
+            $layout = $default['layout'];
+            $font = $default['font'];
+            $settings = $default['settings'];
         }
 
         $assets = $this->assetUrls();
