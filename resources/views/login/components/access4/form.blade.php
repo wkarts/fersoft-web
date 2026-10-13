@@ -1,5 +1,5 @@
-<div class="login-form-mobile-brand" aria-hidden="true">
-    <img src="{{ $presentation['assets']['login_logo'] }}" alt="" decoding="async">
+<div class="login-form-mobile-brand">
+    <img src="{{ $presentation['assets']['login_logo'] }}" alt="{{ config('app.name') }}" decoding="async">
 </div>
 
 <div class="login-form-container__eyebrow">Área de acesso</div>
@@ -7,7 +7,8 @@
 <p class="login-form-container__subtitle">Informe suas credenciais para continuar.</p>
 
 @if(session()->has('mensagem_login'))
-    <div class="login-flash" role="alert">{{ session('mensagem_login') }}</div>
+    <div class="login-flash {{ session('mensagem_login') === 'Logoff realizado!' ? 'login-flash--info' : '' }}"
+         role="{{ session('mensagem_login') === 'Logoff realizado!' ? 'status' : 'alert' }}">{{ session('mensagem_login') }}</div>
 @endif
 @if(session()->has('mensagem_sucesso'))
     <div class="login-flash login-flash--ok" role="status">{{ session('mensagem_sucesso') }}</div>
@@ -88,3 +89,13 @@
         <a href="mailto:{{ config('app.email_suporte') }}">Precisa de ajuda? Entre em contato</a>
     @endif
 </footer>
+
+{{-- No compacto, conteúdo publicado não é apagado nem empurrado para uma
+     segunda tela decorativa. Fica acessível em uma seção expansível. --}}
+@if(($presentation['show_phrases'] && count($presentation['contents']['phrases']) > 0)
+    || ($presentation['show_posts'] && (count($presentation['contents']['posts']) > 0 || count($presentation['contents']['notices']) > 0)))
+    <details class="login-mobile-updates">
+        <summary>Comunicados e novidades</summary>
+        @include('login.components.access4.contents', ['phraseId' => 'login-mobile-phrases'])
+    </details>
+@endif

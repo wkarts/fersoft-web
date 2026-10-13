@@ -1,6 +1,8 @@
+@if(($presentation['show_phrases'] && count($presentation['contents']['phrases']) > 0)
+    || ($presentation['show_posts'] && (count($presentation['contents']['posts']) > 0 || count($presentation['contents']['notices']) > 0)))
 <div class="login-content-blocks">
     @if($presentation['show_phrases'] && count($presentation['contents']['phrases']) > 0)
-        <div class="login-phrases" id="login-access4-phrases" data-rotation-seconds="{{ (int) $presentation['rotation_seconds'] }}" aria-label="Mensagens institucionais">
+        <div class="login-phrases" id="{{ $phraseId ?? 'login-access4-phrases' }}" data-login-carousel data-rotation-seconds="{{ (int) $presentation['rotation_seconds'] }}" aria-label="Mensagens institucionais">
             @foreach($presentation['contents']['phrases'] as $phrase)
                 <div data-login-phrase class="{{ $loop->first ? 'is-visible' : '' }}">
                     {{ $phrase['body'] }}
@@ -41,3 +43,4 @@
         @endforeach
     @endif
 </div>
+@endif

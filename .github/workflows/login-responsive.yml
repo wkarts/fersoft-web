@@ -1,0 +1,101 @@
+name: Login - Navegador e responsividade
+
+on:
+  pull_request:
+    paths:
+      - 'resources/views/login/**'
+      - 'public/css/login-access4.css'
+      - 'public/js/login-access4.js'
+      - 'public/js/login-appearance-admin.js'
+      - 'app/Services/LoginPresentationService.php'
+      - 'tests/Browser/**'
+      - 'tests/Feature/LoginResponsiveBrowserFixturesTest.php'
+      - '.github/workflows/login-responsive.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'resources/views/login/**'
+      - 'public/css/login-access4.css'
+      - 'public/js/login-access4.js'
+      - 'public/js/login-appearance-admin.js'
+      - 'app/Services/LoginPresentationService.php'
+      - 'tests/Browser/**'
+      - 'tests/Feature/LoginResponsiveBrowserFixturesTest.php'
+      - '.github/workflows/login-responsive.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: login-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  responsive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fersoft_test
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: testing
+      APP_DEBUG: true
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: fersoft_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      TEST_DB_CONNECTION: mysql
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_DATABASE: fersoft_test
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          coverage: none
+      - name: Ambiente isolado de teste
+        run: bash scripts/ci/bootstrap-env.sh
+      - name: Instalar dependências PHP
+        run: composer install --prefer-dist --no-interaction --no-progress
+        env:
+          COMPOSER_PROCESS_TIMEOUT: 0
+          COMPOSER_NO_AUDIT: 1
+      - name: Renderizar as Blades reais em HTML de teste
+        run: |
+          php artisan config:clear
+          ./vendor/bin/phpunit --filter LoginResponsiveBrowserFixturesTest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar navegadores exclusivamente no CI
+        run: |
+          python -m pip install -r tests/Browser/requirements.txt
+          python -m playwright install --with-deps chromium firefox webkit
+      - name: Validar modelos, dimensões, fontes e interações
+        run: python tests/Browser/access4_responsive.py --browsers chromium firefox webkit
+      - name: Relatório e capturas de tela
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-browser-${{ github.run_id }}
+          path: storage/framework/testing/access4-browser-results
+          if-no-files-found: ignore
+          retention-days: 14
