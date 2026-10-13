@@ -74,6 +74,7 @@ class LoginAppearanceController extends Controller
             'readyTemplates' => $readyTemplates,
             'defaultTemplate' => $defaultTemplate,
             'editorTemplate' => $editorTemplate,
+            'editorTexts' => $this->presentation->presentationTexts($editorTemplate['settings']),
             'editorModel' => $editorModel,
             'editorOrigin' => $editorOrigin,
             'title' => 'Aparência & Comunicação',
@@ -88,7 +89,7 @@ class LoginAppearanceController extends Controller
         ]);
     }
 
-    private function validatedModelData(Request $request): array
+    private function validatedModelData(Request $request, ?LoginPresentation $model = null): array
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
@@ -96,16 +97,30 @@ class LoginAppearanceController extends Controller
             'font' => ['required', Rule::in(array_keys($this->presentation->fonts()))],
             'headline' => ['nullable', 'string', 'max:180'],
             'tagline' => ['nullable', 'string', 'max:1500'],
+            'hero_kicker' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'form_kicker' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'form_title' => ['sometimes', 'nullable', 'string', 'max:180'],
+            'form_subtitle' => ['sometimes', 'nullable', 'string', 'max:1500'],
             'accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'background_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'rotation_seconds' => ['required', 'integer', 'between:4,30'],
         ]);
+
+        // Clientes/formulários anteriores podem não enviar os campos novos.
+        // Ausência preserva a personalização; envio vazio oculta o texto.
+        $settings = is_array($model?->settings) ? $model->settings : [];
+        foreach (['hero_kicker', 'form_kicker', 'form_title', 'form_subtitle'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $settings[$key] = (string) ($data[$key] ?? '');
+            }
+        }
 
         return [
             'name' => $data['name'],
             'layout' => $data['layout'],
             'font' => $data['font'],
             'settings' => [
+                ...$settings,
                 'headline' => $data['headline'] ?? '',
                 'tagline' => $data['tagline'] ?? '',
                 'accent_color' => $data['accent_color'],
@@ -150,7 +165,7 @@ class LoginAppearanceController extends Controller
     public function updateModel(Request $request, LoginPresentation $model)
     {
         $this->requireTables();
-        $data = $this->validatedModelData($request);
+        $data = $this->validatedModelData($request, $model);
 
         if ($model->is_active) {
             // Publicações não são editadas: salvamos uma nova versão independente.

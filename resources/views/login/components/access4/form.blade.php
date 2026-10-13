@@ -2,9 +2,12 @@
     <img src="{{ $presentation['assets']['login_logo'] }}" alt="{{ config('app.name') }}" decoding="async">
 </div>
 
-<div class="login-form-container__eyebrow">Área de acesso</div>
-<h2>Acesse sua conta</h2>
-<p class="login-form-container__subtitle">Informe suas credenciais para continuar.</p>
+<div class="login-form-container__eyebrow" data-login-text="form_kicker"
+     @if($presentation['texts']['form_kicker'] === '') hidden @endif>{{ $presentation['texts']['form_kicker'] }}</div>
+<h2 data-login-text="form_title"
+    @if($presentation['texts']['form_title'] === '') hidden @endif>{{ $presentation['texts']['form_title'] }}</h2>
+<p class="login-form-container__subtitle" data-login-text="form_subtitle"
+   @if($presentation['texts']['form_subtitle'] === '') hidden @endif>{{ $presentation['texts']['form_subtitle'] }}</p>
 
 @if(session()->has('mensagem_login'))
     <div class="login-flash {{ session('mensagem_login') === 'Logoff realizado!' ? 'login-flash--info' : '' }}"

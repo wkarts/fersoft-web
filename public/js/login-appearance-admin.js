@@ -130,11 +130,17 @@
             const hero = doc.querySelector('.login-hero-content');
             if (hero) {
                 hero.hidden = !checked('show_hero');
-                const title = hero.querySelector('h1');
-                const tagline = hero.querySelector('p');
-                if (title) title.textContent = value('headline').trim() || 'Tudo pronto para continuar.';
-                if (tagline) tagline.textContent = value('tagline').trim() || 'Acesse seu ambiente de trabalho com segurança e praticidade.';
             }
+
+            ['hero_kicker', 'headline', 'tagline', 'form_kicker', 'form_title', 'form_subtitle'].forEach(function (field) {
+                // Um editor antigo não deve apagar os textos que não conhece.
+                if (!form.elements.namedItem(field)) return;
+                const text = value(field).trim();
+                doc.querySelectorAll('[data-login-text="' + field + '"]').forEach(function (element) {
+                    element.textContent = text;
+                    element.hidden = text === '';
+                });
+            });
 
             doc.querySelectorAll('.login-publication').forEach(function (item) { item.hidden = !checked('show_posts'); });
             doc.querySelectorAll('.login-phrases').forEach(function (item) { item.hidden = !checked('show_phrases'); });

@@ -15,6 +15,9 @@
     $editorAction = $editorModel
         ? url('/config/aparencia/modelos/' . $editorModel->id)
         : url('/config/aparencia/modelos');
+    $currentEditorUrl = $active
+        ? url('/config/aparencia?tab=editor&edit=' . $active->id)
+        : url('/config/aparencia?tab=editor');
     $currentPreviewUrl = $active
         ? url('/config/aparencia/preview/' . $active->id)
         : url('/config/aparencia/preview/padrao');
@@ -31,8 +34,8 @@
             <a href="{{ $currentPreviewUrl }}" class="appearance-btn appearance-btn--outline" target="_blank" rel="noopener">
                 <i class="la la-eye" aria-hidden="true"></i> Ver página atual
             </a>
-            <a href="{{ url('/config/aparencia?tab=editor') }}" class="appearance-btn appearance-btn--primary" data-appearance-editor-link>
-                <i class="la la-pen" aria-hidden="true"></i> Editar padrão
+            <a href="{{ $currentEditorUrl }}" class="appearance-btn appearance-btn--primary" data-appearance-editor-link>
+                <i class="la la-pen" aria-hidden="true"></i> Editar aparência atual
             </a>
         </div>
     </header>
@@ -97,7 +100,7 @@
                 @endunless
                 <a class="appearance-btn appearance-btn--outline" href="{{ url('/config/aparencia/preview/padrao') }}"
                    target="_blank" rel="noopener">Pré-visualizar</a>
-                <a class="appearance-btn appearance-btn--primary" href="{{ url('/config/aparencia?tab=editor') }}">Editar padrão</a>
+                <a class="appearance-btn appearance-btn--primary" href="{{ url('/config/aparencia?tab=editor') }}">Editar padrão original</a>
                 @if($active)
                     <form method="POST" action="{{ url('/config/aparencia/padrao/restaurar') }}">
                         @csrf
@@ -233,16 +236,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="appearance-admin__field appearance-form-grid__full">
-                        <label for="appearance-edit-headline">Título de apresentação</label>
-                        <input id="appearance-edit-headline" name="headline" maxlength="180"
-                               placeholder="Ex.: Bem-vindo ao seu ambiente"
-                               value="{{ old('headline', $editorSettings['headline'] ?? '') }}">
-                    </div>
-                    <div class="appearance-admin__field appearance-form-grid__full">
-                        <label for="appearance-edit-tagline">Descrição de apresentação</label>
-                        <textarea id="appearance-edit-tagline" name="tagline" rows="3" maxlength="1500">{{ old('tagline', $editorSettings['tagline'] ?? '') }}</textarea>
-                    </div>
+                    @include('config.login_appearance.partials.texts')
                     <div class="appearance-admin__field">
                         <label for="appearance-edit-accent">Cor principal</label>
                         <div class="appearance-color-input">

@@ -1,18 +1,11 @@
-@if($presentation['show_hero'])
-    <div class="login-hero-content">
-        @if($presentation['headline'] !== '' || $presentation['tagline'] !== '')
-            <div class="login-kicker">Seu espaço de trabalho</div>
-            @if($presentation['headline'] !== '')
-                <h1>{{ $presentation['headline'] }}</h1>
-            @endif
-            @if($presentation['tagline'] !== '')
-                <p>{{ $presentation['tagline'] }}</p>
-            @endif
-        @else
-            <div class="login-kicker">Seu ambiente</div>
-            <h1>Tudo pronto para continuar.</h1>
-            <p>Acesse seu ambiente de trabalho com segurança e praticidade.</p>
-        @endif
+@if($presentation['show_hero'] || !empty($previewMode))
+    <div class="login-hero-content" @if(!$presentation['show_hero']) hidden @endif>
+        <div class="login-kicker" data-login-text="hero_kicker"
+             @if($presentation['texts']['hero_kicker'] === '') hidden @endif>{{ $presentation['texts']['hero_kicker'] }}</div>
+        <h1 data-login-text="headline"
+            @if($presentation['texts']['headline'] === '') hidden @endif>{{ $presentation['texts']['headline'] }}</h1>
+        <p data-login-text="tagline"
+           @if($presentation['texts']['tagline'] === '') hidden @endif>{{ $presentation['texts']['tagline'] }}</p>
 
         {{-- O arquivo institucional histórico é outra versão da própria logo.
              Para não exibir duas marcas, só mostrar a imagem quando personalizada. --}}
