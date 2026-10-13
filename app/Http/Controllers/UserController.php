@@ -56,7 +56,76 @@ class UserController extends Controller
             return redirect('/graficos'); // Redireciona para a rota desejada
         }
 
-        return view('login/'.(env("PAG_LOGIN") != null ? env("PAG_LOGIN") : 'access'))
+        // PAG_LOGIN é o único seletor; as telas históricas continuam independentes.
+        // A composição, fonte e identidade da access_4 vêm da publicação do superusuário.
+        $page = (string) config('login_presentation.page', 'access');
+        $page = preg_match('/^[A-Za-z0-9_-]+$/D', $page) ? $page : 'access';
+
+        $newAvailable = class_exists(\App\Services\LoginPresentationService::class)
+            && view()->exists('login.access_4')
+            && is_file(public_path('css/login-access4.css'));
+
+        $presentation = null;
+
+        if ($page === 'access_4' && !$newAvailable) {
+            // Uma configuração antiga ou um deploy parcial nunca pode tornar
+            // o login indisponível por exigir arquivos do módulo opcional.
+            $page = 'access';
+        }
+
+        if (!view()->exists('login.' . $page)) {
+            // Permite remover uma variante histórica desde que outra tela
+            // funcional permaneça instalada no mesmo ambiente.
+            foreach (['access', 'access_2', 'access_3', 'login'] as $candidate) {
+                if (view()->exists('login.' . $candidate)) {
+                    $page = $candidate;
+                    break;
+                }
+            }
+            if (!view()->exists('login.' . $page) && $newAvailable) {
+                $page = 'access_4';
+            }
+        }
+
+        if ($page === 'access_4' && $newAvailable) {
+            try {
+                $presentation = app(\App\Services\LoginPresentationService::class)->configuration();
+
+                // Preparar todos os recursos antes de entregar a view.
+                foreach ($presentation['font_files'] as $weight => $path) {
+                    if (is_int($weight) && !is_readable(public_path($path))) {
+                        throw new \RuntimeException('Arquivo de fonte publicado indisponível.');
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Tela de acesso opcional indisponível; mantendo login histórico.', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+                $presentation = null;
+                foreach (['access', 'access_2', 'access_3', 'login'] as $candidate) {
+                    if (view()->exists('login.' . $candidate)) {
+                        $page = $candidate;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Retorna exatamente uma view: nunca renderiza um modelo para depois
+        // substituir outro, nem solicita a fonte antiga antes da nova.
+        if ($page === 'access_4' && $presentation === null) {
+            abort(503, 'Nenhuma tela de acesso funcional está disponível.');
+        }
+
+        abort_unless(view()->exists('login.' . $page), 503, 'Nenhuma tela de acesso está instalada.');
+
+        $view = view('login.' . $page);
+        if ($page === 'access_4') {
+            $view->with('presentation', $presentation);
+        }
+
+        return $view
             ->with('loginCookie', $loginCookie)
             ->with('senhaCookie', $senhaCookie)
             ->with('lembrarCookie', $lembrarCookie)

@@ -2,6 +2,22 @@
 <html lang="br">
 <head>
     @include('layouts.installable')
+    {{-- Somente PAG_LOGIN=access_4 habilita identidade publicada nos menus.
+         Qualquer login histórico mantém integralmente seus recursos visuais. --}}
+    @php
+        $appearanceAssets = [];
+        if (config('login_presentation.page', 'access') === 'access_4'
+            && class_exists(\App\Services\LoginPresentationService::class)) {
+            try {
+                $appearanceAssets = app(\App\Services\LoginPresentationService::class)->assetUrls();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Identidade opcional indisponível no layout histórico.', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+    @endphp
     <meta charset="utf-8" />
 
     <title>{{$title}}</title>
@@ -60,9 +76,15 @@
     <link rel="stylesheet" type="text/css" href="/css/font-awesome.min.css">
     <link rel="stylesheet" type="text/css" href="/css/toastr.min.css">
 
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
+    @if(!empty($appearanceAssets['favicon']))
+        <link rel="icon" type="image/png" href="{{ $appearanceAssets['favicon'] }}">
+        <link rel="shortcut icon" type="image/png" href="{{ $appearanceAssets['favicon'] }}">
+    @else
+        {{-- Identidade original, sem consulta ao módulo de aparência. --}}
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+        <link rel="shortcut icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v={{ filemtime(public_path('favicon.ico')) }}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imgs/favicon.png') }}?v={{ filemtime(public_path('imgs/favicon.png')) }}">
+    @endif
     @if($cor != '')
         <link href="/css/extend.css" rel="stylesheet" type="text/css" />
     @endif
@@ -649,7 +671,7 @@
         <div id="box_whatsapp" class="wcard">
             <div class="wcard-header">
                 <div class="wcard-logo">
-                    <img src="{{ asset('imgs/slym.png') }}" alt="Nome da empresa">
+                    <img src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" alt="Nome da empresa">
                 </div>
                 <div class="wcard-title">
                     <h6>{{env("APP_NAME")}}</h6>

@@ -21,6 +21,21 @@
 </style>
 @endsection
 @section('content')
+@if((bool) data_get(session('user_logged'), 'super', false)
+    && class_exists(\App\Http\Controllers\LoginAppearanceController::class)
+    && class_exists(\App\Services\LoginPresentationService::class))
+<div class="container-fluid mb-4">
+    <div class="card card-custom p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap">
+            <div>
+                <strong>Aparência & Comunicação</strong>
+                <p class="text-muted mb-0">Modelos do login, fontes, frases, posts, logos e favicon.</p>
+            </div>
+            <a href="{{ url('/config/aparencia') }}" class="btn btn-primary">Administrar a apresentação</a>
+        </div>
+    </div>
+</div>
+@endif
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
