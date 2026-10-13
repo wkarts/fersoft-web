@@ -6,6 +6,31 @@ use Tests\TestCase;
 
 class OptionalLoginPresentationCoexistenceTest extends TestCase
 {
+    private ?string $originalRequestUri = null;
+    private bool $requestUriWasSet = false;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // O view composer histórico lê o superglobal diretamente. Em HTTP
+        // real ele existe, mas o cliente de testes não o preenche.
+        $this->requestUriWasSet = array_key_exists('REQUEST_URI', $_SERVER);
+        $this->originalRequestUri = $_SERVER['REQUEST_URI'] ?? null;
+        $_SERVER['REQUEST_URI'] = '/login';
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->requestUriWasSet) {
+            $_SERVER['REQUEST_URI'] = $this->originalRequestUri;
+        } else {
+            unset($_SERVER['REQUEST_URI']);
+        }
+
+        parent::tearDown();
+    }
+
     public function test_existing_access_is_unchanged_when_optional_module_is_disabled(): void
     {
         config()->set('login_presentation.enabled', false);
