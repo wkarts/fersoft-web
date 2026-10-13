@@ -944,7 +944,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         // 3. Impressão, PDF e Comunicação
         Route::get('/imprimir/{id}', 'ContratoEngMedicaoController@imprimir')->name('contratos.medicoes.imprimir');
         Route::get('/pdf/{id}', 'ContratoEngMedicaoController@gerarPdf')->name('contratos.medicoes.pdf');
-        Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsapp')->name('contratos.medicoes.whatsapp');
+        Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsAppMedicao')->name('contratos.medicoes.whatsapp');
         Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
 
         // Rotas adicionais do NOVO: NFS-e da medição, XML, DANFSe e cancelamento fiscal.
