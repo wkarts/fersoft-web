@@ -5,6 +5,10 @@ on:
     paths:
       - 'resources/views/login/**'
       - 'public/css/login-access4.css'
+      - 'public/css/login-access4-logo.css'
+      - 'public/js/login-logo-editor.js'
+      - 'app/Services/LoginLogoSettings.php'
+      - 'resources/views/config/login_appearance/partials/logo.blade.php'
       - 'public/js/login-access4.js'
       - 'public/js/login-appearance-admin.js'
       - 'app/Services/LoginPresentationService.php'
@@ -16,6 +20,10 @@ on:
     paths:
       - 'resources/views/login/**'
       - 'public/css/login-access4.css'
+      - 'public/css/login-access4-logo.css'
+      - 'public/js/login-logo-editor.js'
+      - 'app/Services/LoginLogoSettings.php'
+      - 'resources/views/config/login_appearance/partials/logo.blade.php'
       - 'public/js/login-access4.js'
       - 'public/js/login-appearance-admin.js'
       - 'app/Services/LoginPresentationService.php'
@@ -91,6 +99,8 @@ jobs:
           python -m playwright install --with-deps chromium firefox webkit
       - name: Validar modelos, dimensões, fontes e interações
         run: python tests/Browser/access4_responsive.py --browsers chromium firefox webkit
+      - name: Validar logo independente para desktop e mobile
+        run: python tests/Browser/access4_logo.py --browsers chromium firefox webkit
       - name: Relatório e capturas de tela
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,0 +1,59 @@
+/* Extensão opcional: nenhuma regra alcança modelos sem configuração da logo.
+   Posição relativa ao conteúdo, em fluxo normal; sem transform/offset negativo. */
+@media (min-width: 961px) {
+    body.login-access4[data-logo-desktop] .login-identity { max-width: 100%; min-width: 0; flex-shrink: 0; }
+    body.login-access4[data-logo-desktop-size] :is(.login-identity, .login-form-mobile-brand) img {
+        display: block;
+        width: var(--login-logo-desktop-width, auto);
+        height: var(--login-logo-desktop-height, auto);
+        max-width: 100%;
+        max-height: 320px;
+        object-fit: contain;
+    }
+    body.login-access4[data-logo-desktop-align="left"] .login-identity { align-self: flex-start; justify-self: start; }
+    body.login-access4[data-logo-desktop-align="center"] .login-identity { align-self: center; justify-self: center; }
+    body.login-access4[data-logo-desktop-align="right"] .login-identity { align-self: flex-end; justify-self: end; }
+    body.login-access4:is(.login-layout-centered, .login-layout-minimal)[data-logo-desktop] .login-form-mobile-brand { display: flex; }
+    body.login-access4[data-logo-desktop-align="left"] .login-form-mobile-brand { justify-content: flex-start; }
+    body.login-access4[data-logo-desktop-align="center"] .login-form-mobile-brand { justify-content: center; }
+    body.login-access4[data-logo-desktop-align="right"] .login-form-mobile-brand { justify-content: flex-end; }
+    body.login-access4[data-logo-desktop-position="before"] .login-identity { order: -1; }
+    body.login-access4[data-logo-desktop-position="after"] .login-identity { order: 1; }
+    body.login-access4:is(.login-layout-centered, .login-layout-minimal)[data-logo-desktop-position="after"] .login-form-container { display: flex; flex-direction: column; }
+    body.login-access4:is(.login-layout-centered, .login-layout-minimal)[data-logo-desktop-position="after"] .login-form-mobile-brand { order: 1; margin-top: 20px; margin-bottom: 0; }
+    /* As duas composições com grid conservam suas áreas de conteúdo. */
+    body.login-access4.login-layout-institutional[data-logo-desktop-align] .login-identity { justify-self: stretch; align-self: stretch; }
+    body.login-access4.login-layout-institutional[data-logo-desktop-align="left"] .login-identity { justify-content: flex-start; }
+    body.login-access4.login-layout-institutional[data-logo-desktop-align="center"] .login-identity { justify-content: center; }
+    body.login-access4.login-layout-institutional[data-logo-desktop-align="right"] .login-identity { justify-content: flex-end; }
+    body.login-access4.login-layout-institutional[data-logo-desktop-position="after"] .login-identity { grid-row: 4; }
+    body.login-access4.login-layout-wide[data-logo-desktop-position="after"] .login-identity { grid-row: 2; grid-column: 1 / -1; }
+    body.login-access4.login-layout-wide[data-logo-desktop-position="after"] .login-hero-content { grid-row: 1; grid-column: 1 / -1; }
+    body.login-access4[data-logo-desktop-inset] :is(.login-identity, .login-form-mobile-brand) { padding-inline: var(--login-logo-desktop-inset); }
+    body.login-access4[data-logo-desktop-space-before] :is(.login-identity, .login-form-mobile-brand) { margin-top: var(--login-logo-desktop-space-before); }
+    body.login-access4[data-logo-desktop-space-after] :is(.login-identity, .login-form-mobile-brand) { margin-bottom: var(--login-logo-desktop-space-after); }
+}
+@media (max-width: 960px) {
+    /* Uma logo ampliada deixa de ser absoluta em janelas baixas: não cobre o título. */
+    body.login-access4[data-logo-mobile] .login-form-mobile-brand {
+        position: static; inset: auto; display: flex; min-width: 0; max-width: 100%;
+        margin: 0 0 18px; flex-shrink: 0;
+    }
+    body.login-access4[data-logo-mobile] .login-form-container h2 { padding-right: 0; }
+    body.login-access4[data-logo-mobile-size] .login-form-mobile-brand img {
+        display: block;
+        width: var(--login-logo-mobile-width, auto);
+        height: var(--login-logo-mobile-height, auto);
+        max-width: 100%;
+        max-height: 180px;
+        object-fit: contain;
+    }
+    body.login-access4[data-logo-mobile-align="left"] .login-form-mobile-brand { justify-content: flex-start; }
+    body.login-access4[data-logo-mobile-align="center"] .login-form-mobile-brand { justify-content: center; }
+    body.login-access4[data-logo-mobile-align="right"] .login-form-mobile-brand { justify-content: flex-end; }
+    body.login-access4[data-logo-mobile-position="after"] .login-form-container { display: flex; flex-direction: column; }
+    body.login-access4[data-logo-mobile-position="after"] .login-form-mobile-brand { order: 1; margin-top: 18px; margin-bottom: 0; }
+    body.login-access4[data-logo-mobile-inset] .login-form-mobile-brand { padding-inline: var(--login-logo-mobile-inset); }
+    body.login-access4[data-logo-mobile-space-before] .login-form-mobile-brand { margin-top: var(--login-logo-mobile-space-before); }
+    body.login-access4[data-logo-mobile-space-after] .login-form-mobile-brand { margin-bottom: var(--login-logo-mobile-space-after); }
+}

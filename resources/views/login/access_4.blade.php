@@ -21,9 +21,13 @@
         @endforeach
     </style>
     <link rel="stylesheet" href="{{ asset('css/login-access4.css') }}?v={{ filemtime(public_path('css/login-access4.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/login-access4-logo.css') }}?v={{ filemtime(public_path('css/login-access4-logo.css')) }}">
 </head>
 <body class="login-access4 login-layout-{{ $presentation['layout'] }}"
-      style="--login-accent: {{ $presentation['accent'] }}; --login-background: {{ $presentation['background'] }};">
+      @foreach(($presentation['logo']['attributes'] ?? []) as $logoAttribute => $logoValue)
+      {{ $logoAttribute }}="{{ $logoValue }}"
+      @endforeach
+      style="--login-accent: {{ $presentation['accent'] }}; --login-background: {{ $presentation['background'] }}; {{ $presentation['logo']['style'] ?? '' }}">
     @if(!empty($previewMode))
         <div class="login-preview-banner" role="status">Pré-visualização — autenticação desabilitada</div>
     @endif
