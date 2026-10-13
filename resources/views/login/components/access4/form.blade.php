@@ -1,6 +1,10 @@
-<div class="login-form-container__eyebrow">Acesso seguro</div>
-<h2>{{ config('app.name') }}</h2>
-<p class="login-form-container__subtitle">Informe suas credenciais para acessar a plataforma.</p>
+<div class="login-form-mobile-brand" aria-hidden="true">
+    <img src="{{ $presentation['assets']['login_logo'] }}" alt="" decoding="async">
+</div>
+
+<div class="login-form-container__eyebrow">Área de acesso</div>
+<h2>Acesse sua conta</h2>
+<p class="login-form-container__subtitle">Informe suas credenciais para continuar.</p>
 
 @if(session()->has('mensagem_login'))
     <div class="login-flash" role="alert">{{ session('mensagem_login') }}</div>
@@ -8,7 +12,7 @@
 @if(session()->has('mensagem_sucesso'))
     <div class="login-flash login-flash--ok" role="status">{{ session('mensagem_sucesso') }}</div>
 @endif
-@if($errors->any())
+@if($errors->any() && !session('show_otp_modal'))
     <div class="login-flash" role="alert">{{ $errors->first() }}</div>
 @endif
 
@@ -39,12 +43,12 @@
             </label>
             <button id="login-access4-recovery-toggle" type="button" class="login-links"
                     @if(!empty($previewMode)) disabled @endif>
-                Esqueci minha senha
+                Esqueceu sua senha?
             </button>
         </div>
         <button id="kt_login_signin_submit" class="login-button" type="submit"
                 @if(!empty($previewMode)) disabled @endif>Entrar</button>
-        @if($presentation['show_signup'])
+        @if($presentation['show_signup'] && empty($previewMode))
             <a class="login-secondary" href="{{ url('/cadastro') }}">Cadastrar minha empresa</a>
         @endif
         @if(config('app.env') === 'demo' && empty($previewMode))
@@ -60,6 +64,7 @@
             </button>
         @endif
     </form>
+
     <form id="login-access4-recovery" method="post" action="{{ url('/recuperarSenha') }}" hidden>
         @csrf
         <div class="login-group">
@@ -79,7 +84,7 @@
 @endif
 
 <footer class="login-footer">
-    @if($presentation['show_support'] && config('app.email_suporte'))
-        <a href="mailto:{{ config('app.email_suporte') }}">Suporte</a>
+    @if($presentation['show_support'] && config('app.email_suporte') && empty($previewMode))
+        <a href="mailto:{{ config('app.email_suporte') }}">Precisa de ajuda? Entre em contato</a>
     @endif
 </footer>

@@ -63,7 +63,13 @@ class UserController extends Controller
 
         $newAvailable = class_exists(\App\Services\LoginPresentationService::class)
             && view()->exists('login.access_4')
-            && is_file(public_path('css/login-access4.css'));
+            && view()->exists('login.components.access4.form')
+            && view()->exists('login.components.access4.hero')
+            && view()->exists('login.components.access4.identity')
+            && view()->exists('login.components.access4.contents')
+            && view()->exists('login.components.access4.otp')
+            && is_file(public_path('css/login-access4.css'))
+            && is_file(public_path('js/login-access4.js'));
 
         $presentation = null;
 
@@ -187,6 +193,14 @@ class UserController extends Controller
                     return redirect('/login');
                 }
             }
+        }
+
+        // Não acessar $usr->id antes de verificar as credenciais.
+        // O erro antigo causava HTTP 500 quando o usuário não era encontrado.
+        if ($usr === null) {
+            session()->forget(['usr_otp', 'usr_otp_id']);
+            session()->flash('mensagem_login', 'Credencial(s) incorreta(s)!');
+            return redirect('/login')->with('login', $login);
         }
 
         $lembrar = $request->lembrar;

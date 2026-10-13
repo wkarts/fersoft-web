@@ -454,6 +454,16 @@
 											</span>
                                         </li>
 
+                                        {{-- Administração da página única de acesso: visível somente no grupo SUPER. --}}
+                                        @if(class_exists(\App\Http\Controllers\LoginAppearanceController::class))
+                                            <li class="menu-item @if(request()->is('config/aparencia*')) menu-item-active @endif" aria-haspopup="true">
+                                                <a href="{{ url('/config/aparencia') }}" class="menu-link">
+                                                    <i class="menu-bullet menu-bullet-line"><span></span></i>
+                                                    <span class="menu-text">Aparência do Login</span>
+                                                </a>
+                                            </li>
+                                        @endif
+
                                         <li class="menu-item menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
                                             <a href="/empresas" class="menu-link menu-">
                                                 <i class="menu-bullet menu-bullet-line">

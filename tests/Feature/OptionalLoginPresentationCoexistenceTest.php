@@ -94,4 +94,37 @@ class OptionalLoginPresentationCoexistenceTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'application/manifest+json; charset=utf-8');
     }
+
+    public function test_access4_otp_is_hidden_by_default_and_uses_native_dialog(): void
+    {
+        config()->set('login_presentation.page', 'access_4');
+
+        $this->get('/login')->assertOk()
+            ->assertSee('<dialog id="otpModal"', false)
+            ->assertSee('data-show-otp="false"', false)
+            ->assertSee('js/login-access4.js', false)
+            ->assertDontSee('metronic/js/plugins.bundle.js', false);
+    }
+
+    public function test_access4_otp_dialog_is_requested_after_first_authentication_step(): void
+    {
+        config()->set('login_presentation.page', 'access_4');
+
+        $this->withSession(['show_otp_modal' => true])
+            ->get('/login')
+            ->assertOk()
+            ->assertSee('data-show-otp="true"', false)
+            ->assertSee('/otp/verify-login', false);
+    }
+
+    public function test_invalid_credentials_redirect_instead_of_accessing_null_user_id(): void
+    {
+        config()->set('login_presentation.page', 'access_4');
+
+        $this->post('/login/request', [
+            'login' => 'test-usuario-inexistente-access4-20261012',
+            'senha' => 'invalida-access4-regressao',
+        ])->assertRedirect('/login')
+          ->assertSessionHas('mensagem_login', 'Credencial(s) incorreta(s)!');
+    }
 }

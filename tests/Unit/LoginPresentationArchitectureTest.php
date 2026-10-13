@@ -52,8 +52,16 @@ class LoginPresentationArchitectureTest extends TestCase
         $routes = file_get_contents($base . '/routes/web.php');
 
         $this->assertStringContainsString("login.components.access4.form", $entry);
-        $this->assertStringContainsString("__view_otp_modal()", $entry);
-        $this->assertStringContainsString("show_otp_modal", $entry);
+        $this->assertStringContainsString("login.components.access4.otp", $entry);
+        $this->assertStringNotContainsString("__view_otp_modal()", $entry);
+        $this->assertStringNotContainsString('metronic/js/plugins.bundle.js', $entry);
+        $otp = file_get_contents($base . '/resources/views/login/components/access4/otp.blade.php');
+        $otpScript = file_get_contents($base . '/public/js/login-access4.js');
+        $this->assertStringContainsString("show_otp_modal", $otp);
+        $this->assertStringContainsString("url('/otp/verify-login')", $otp);
+        $this->assertStringContainsString('dialog.showModal()', $otpScript);
+        $this->assertStringContainsString('otp_code', $otpScript);
+        $this->assertStringContainsString('loginForm.requestSubmit()', $otpScript);
         $this->assertStringContainsString("url('/login/request')", $form);
         $this->assertStringContainsString("url('/recuperarSenha')", $form);
         $this->assertStringContainsString('name="login"', $form);
@@ -80,7 +88,7 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString("config('app.name')", $identity);
         $this->assertStringContainsString("config('app.name')", $service);
         $this->assertStringContainsString('font-display: block;', $login);
-        $this->assertStringContainsString("font-family:'LoginTypeface'", $styles);
+        $this->assertMatchesRegularExpression("/font-family:\\s*'LoginTypeface'/", $styles);
         $this->assertStringNotContainsString('font-display: swap', $login);
         $this->assertStringNotContainsString('fonts.googleapis', $login);
         $this->assertStringNotContainsString('APP_NAME=', $login);
