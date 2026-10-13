@@ -91,7 +91,6 @@ class LoginPresentationArchitectureTest extends TestCase
         $base = dirname(__DIR__, 2);
         $controller = file_get_contents($base . '/app/Http/Controllers/LoginAppearanceController.php');
         $routes = file_get_contents($base . '/routes/web.php');
-        $migration = file_get_contents($base . '/database/migrations/2026_10_12_180500_create_login_presentation_tables.php');
 
         $this->assertStringContainsString("['super']", $controller);
         $this->assertStringContainsString("DB::transaction(", $controller);
@@ -101,10 +100,8 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString("config('login_presentation.page', 'access') === 'access_4'", $routes);
         $this->assertStringNotContainsString('login_presentation.enabled', $routes);
         $this->assertStringContainsString("class_exists(\\App\\Http\\Controllers\\LoginAppearanceController::class)", $routes);
-        $this->assertStringNotContainsString('Schema::drop', $migration);
-        $this->assertStringContainsString("->nullable()", $migration);
 
-        // Não precisa de novas migrations nem de nova tela quando desligado.
+        // A seleção de login depende apenas de PAG_LOGIN.
         $settings = file_get_contents($base . '/config/login_presentation.php');
         $this->assertStringContainsString("env('PAG_LOGIN', 'access')", $settings);
         $this->assertStringContainsString("'initial_layout' => 'split'", $settings);
@@ -120,6 +117,42 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringNotContainsString('LOGIN_PRESENTATION_GLOBAL_BRANDING', $sampleEnv);
         $this->assertStringNotContainsString('APP_LOGIN_LAYOUT', $sampleEnv);
         $this->assertStringNotContainsString('APP_LOGIN_FONT', $sampleEnv);
-        $this->assertStringNotContainsString('Schema::drop', $migration);
+    }
+
+    public function test_each_login_presentation_table_has_its_own_standard_migration(): void
+    {
+        $directory = dirname(__DIR__, 2) . '/database/migrations/';
+        $expected = [
+            '2026_10_12_180500_create_login_presentations_table.php' => 'login_presentations',
+            '2026_10_12_180501_create_login_presentation_contents_table.php' => 'login_presentation_contents',
+            '2026_10_12_180502_create_login_presentation_assets_table.php' => 'login_presentation_assets',
+        ];
+
+        $this->assertFileDoesNotExist(
+            $directory . '2026_10_12_180500_create_login_presentation_tables.php'
+        );
+
+        foreach ($expected as $filename => $table) {
+            $file = $directory . $filename;
+            $this->assertFileExists($file);
+            $migration = file_get_contents($file);
+
+            // Cada arquivo cria e desfaz somente sua própria tabela.
+            $this->assertStringContainsString('public function up(): void', $migration);
+            $this->assertStringContainsString('public function down(): void', $migration);
+            $this->assertStringContainsString("Schema::create('{$table}'", $migration);
+            $this->assertStringContainsString("Schema::dropIfExists('{$table}')", $migration);
+            $this->assertSame(1, substr_count($migration, 'Schema::create('));
+            $this->assertSame(1, substr_count($migration, 'Schema::dropIfExists('));
+            $this->assertStringContainsString("Schema::hasTable('{$table}')", $migration);
+
+            // Um rollback nunca deve apagar dados de uma instalação já
+            // provisionada pela migration agrupada anterior.
+            $this->assertStringContainsString(
+                "'2026_10_12_180500_create_login_presentation_tables'",
+                $migration
+            );
+            $this->assertStringContainsString("->nullable()", $migration);
+        }
     }
 }
