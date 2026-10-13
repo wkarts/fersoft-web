@@ -758,7 +758,7 @@ class MtrController extends BaseController
                 if ($cnpjEmpresa !== '') {
                     $q->where('transportador_cnpj', 'like', "%{$cnpjEmpresa}%");
                 }
-                $q->orWhere('tipo_origem', 'transporte');
+                $q->orWhere('tipo_origem', 'avulso');
             })
             ->whereBetween('data_expedicao', [$dtInicioTransp . ' 00:00:00', $dtFimTransp . ' 23:59:59']);
 
@@ -784,7 +784,10 @@ class MtrController extends BaseController
                 if ($cnpjEmpresa !== '') {
                     $q->where('destinador_cnpj', 'like', "%{$cnpjEmpresa}%");
                 }
-                $q->orWhere('status', 'recebido')
+                $q->orWhere(function ($received) {
+                    $received->where('status', 'transmitido')
+                        ->where('mensagem_retorno', 'like', '%recebido%');
+                })
                     ->orWhere('mensagem_retorno', 'like', '%recebid%');
             })
             ->whereBetween('data_expedicao', [$dtInicioDest . ' 00:00:00', $dtFimDest . ' 23:59:59']);
@@ -944,7 +947,7 @@ class MtrController extends BaseController
                     'empresa_id' => $this->empresa_id,
                     'usuario_id' => $this->usuario_id,
                     'orgao' => $credencial->orgao ?: 'SINIR',
-                    'tipo_origem' => 'recebimento_externo', // Indica que veio da tela de recepção
+                    'tipo_origem' => 'avulso', // Enum histórico; recepção é identificada pela mensagem de retorno
                     'seu_codigo' => 'REC-' . time(),
                     'numero_mtr' => $numeroMtr,
                     'data_expedicao' => date('Y-m-d H:i:s', $dataRecebimento / 1000), // Converte timestamp para Data
@@ -954,13 +957,12 @@ class MtrController extends BaseController
                     'destinador_nome' => strtoupper($credencial->descricao ?: 'EMPRESA DESTINATÁRIA'),
                     'veiculo_placa' => strtoupper($request->input('placa', 'N/INF')),
                     'motorista_nome' => strtoupper($request->input('motorista', 'N/INF')),
-                    'status' => 'recebido', // Define o status oficial de recebimento
+                    'status' => 'transmitido', // Enum histórico; o recebimento fica na mensagem de retorno
                     'mensagem_retorno' => $jaRecebidoNoGoverno ? 'Sincronizado: Já constava como recebido no SINIR.' : 'Manifesto recebido e baixado com sucesso no SINIR.',
                 ]);
             } else {
                 // Se já existir, atualiza os dados para não duplicar
-                $mtr->status = 'recebido'; // Força o status correto
-                $mtr->tipo_origem = 'recebimento_externo'; // Garante o tipo da origem
+                $mtr->status = 'transmitido'; // Não gravar status inexistente no enum histórico
                 $mtr->mensagem_retorno = $jaRecebidoNoGoverno ? 'Sincronizado: Já constava como recebido no SINIR.' : 'Manifesto recebido e baixado com sucesso no SINIR.';
                 $mtr->gerador_nome = strtoupper($geradorNomeForm);
                 $mtr->transportador_nome = strtoupper($transportadorNomeForm);

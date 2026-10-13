@@ -75,6 +75,11 @@ class PortedContratosEngenhariaTest extends TestCase
         $this->assertStringContainsString("app(\\App\\Utils\\WhatsAppUtil::class)", $controller);
         $this->assertStringContainsString('Mail::send', $controller);
         $this->assertStringContainsString('renderPdf', $controller);
+        $this->assertStringContainsString('public function emitirNfse(', $controller);
+        $this->assertStringContainsString('public function consultarNfse(', $controller);
+        $this->assertStringContainsString('public function cancelarNfse(', $controller);
+        $this->assertStringNotContainsString("'sub_total'", $controller);
+        $this->assertStringNotContainsString("['sub_total']", $controller);
     }
 
     public function testNewContractControllersAndModelsFollowProjectBaseClasses(): void
@@ -181,9 +186,15 @@ class PortedContratosEngenhariaTest extends TestCase
             "Route::get('/imprimir/{id}', 'NfseController@imprimir')",
             $routes
         );
+        // A view usa o nome da nova rota da medição, sem redirecionar
+        // para o namespace da NFS-e de serviços.
         $this->assertStringContainsString(
-            "url('nfse/imprimir-medicao')",
+            "route('contratos.medicoes.danfse'",
             $view
+        );
+        $this->assertStringContainsString(
+            "Route::get('/danfse/{id}', 'ContratoEngMedicaoController@imprimirDanfeNfse')",
+            $routes
         );
         $this->assertStringNotContainsString(
             "Route::get('/nfse/imprimir/{id}', 'NfseNacionalController@imprimir')",

@@ -462,8 +462,9 @@ class NfseController extends Controller
             switch ((string) $codigoIbgeEmitente) {
                 case '2910057': // Dias d'Ávila - BA
                     $provedor = 'diasdavila';
-                    $configArray['usuario_saatri'] = '05950998669';
-                    $configArray['senha_saatri'] = 'Ciclos24';
+                    if (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri'])) {
+                        throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
+                    }
                     break;
 
                 case '2927408': // Salvador - BA
@@ -857,8 +858,9 @@ class NfseController extends Controller
             switch ((string) $codigoIbgeEmitente) {
                 case '2910057': // Dias d'Ávila - BA
                     $provedor = 'diasdavila';
-                    $configArray['usuario_saatri'] = '05950998669';
-                    $configArray['senha_saatri'] = 'Ciclos24';
+                    if (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri'])) {
+                        throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
+                    }
                     break;
                 case '2927408': // Salvador
                     $provedor = 'salvador';
