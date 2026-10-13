@@ -88,7 +88,7 @@ class LoginPresentationArchitectureTest extends TestCase
         $this->assertStringContainsString("config('app.name')", $identity);
         $this->assertStringContainsString("config('app.name')", $service);
         $this->assertStringContainsString('font-display: block;', $login);
-        $this->assertStringContainsString("font-family:'LoginTypeface'", $styles);
+        $this->assertMatchesRegularExpression("/font-family:\\s*'LoginTypeface'/", $styles);
         $this->assertStringNotContainsString('font-display: swap', $login);
         $this->assertStringNotContainsString('fonts.googleapis', $login);
         $this->assertStringNotContainsString('APP_NAME=', $login);

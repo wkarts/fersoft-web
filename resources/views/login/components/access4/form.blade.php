@@ -3,7 +3,7 @@
 </div>
 
 <div class="login-form-container__eyebrow">Área de acesso</div>
-<h2>Bem-vindo de volta</h2>
+<h2>Acesse sua conta</h2>
 <p class="login-form-container__subtitle">Informe suas credenciais para continuar.</p>
 
 @if(session()->has('mensagem_login'))

@@ -7,7 +7,14 @@
         data-verify-url="{{ url('/otp/verify-login') }}">
     <div class="login-otp-card">
         <div class="login-otp-top">
-            <div class="login-otp-symbol" aria-hidden="true">✓</div>
+            <div class="login-otp-symbol" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="10" width="14" height="11" rx="2"></rect>
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                    <path d="M12 14v3"></path>
+                </svg>
+            </div>
             <button type="button" class="login-otp-close" id="otpModalClose" aria-label="Fechar verificação">&times;</button>
         </div>
         <h2 id="otpModalLabel">Verificação em duas etapas</h2>
@@ -26,6 +33,5 @@
             <button type="button" class="login-button" id="btn-otp-validate">Validar e entrar</button>
             <button type="button" class="login-secondary" id="btn-otp-cancel">Voltar ao login</button>
         </div>
-        <p class="login-otp-note">O código é verificado pelo mecanismo de autenticação já existente.</p>
     </div>
 </dialog>

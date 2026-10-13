@@ -9,7 +9,7 @@
                 <p>{{ $presentation['tagline'] }}</p>
             @endif
         @else
-            <div class="login-kicker">Bem-vindo</div>
+            <div class="login-kicker">Seu ambiente</div>
             <h1>Tudo pronto para continuar.</h1>
             <p>Acesse seu ambiente de trabalho com segurança e praticidade.</p>
         @endif
