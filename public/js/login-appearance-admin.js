@@ -41,6 +41,62 @@
         const frame = document.getElementById('appearance-preview-frame');
         if (!form || !frame) return;
 
+        // Uma prévia de desktop precisa de viewport de desktop, mesmo quando
+        // o editor está em uma coluna estreita. Escalar não muda o breakpoint.
+        const screen = frame.parentElement;
+        let previewDevice = 'desktop';
+        const devices = {
+            desktop: {width: 1200, height: 800, label: 'Computador'},
+            mobile: {width: 390, height: 780, label: 'Celular'}
+        };
+        const toolbar = document.createElement('div');
+        toolbar.setAttribute('role', 'group');
+        toolbar.setAttribute('aria-label', 'Dispositivo da pré-visualização');
+        toolbar.style.cssText = 'display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap';
+        const deviceButtons = [];
+
+        function resizePreview() {
+            if (!screen || !screen.clientWidth) return;
+            const size = devices[previewDevice];
+            const available = Math.max(1, screen.clientWidth - 2);
+            const scale = Math.min(available / size.width, 560 / size.height, 1);
+            frame.style.width = size.width + 'px';
+            frame.style.height = size.height + 'px';
+            frame.style.transform = 'scale(' + scale + ')';
+            frame.style.transformOrigin = 'left top';
+            frame.style.marginLeft = Math.max(0, (available - size.width * scale) / 2) + 'px';
+            frame.style.pointerEvents = 'auto';
+            screen.style.height = Math.ceil(size.height * scale) + 2 + 'px';
+            deviceButtons.forEach(function (button) {
+                const selected = button.dataset.previewDevice === previewDevice;
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                button.classList.toggle('appearance-btn--primary', selected);
+            });
+        }
+
+        Object.keys(devices).forEach(function (key) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'appearance-btn appearance-btn--outline';
+            button.dataset.previewDevice = key;
+            button.textContent = devices[key].label;
+            button.addEventListener('click', function () {
+                previewDevice = key;
+                resizePreview();
+            });
+            toolbar.appendChild(button);
+            deviceButtons.push(button);
+        });
+        if (screen && screen.parentElement) {
+            screen.parentElement.insertBefore(toolbar, screen);
+            if (typeof ResizeObserver === 'function') {
+                new ResizeObserver(resizePreview).observe(screen);
+            } else {
+                window.addEventListener('resize', resizePreview);
+            }
+            resizePreview();
+        }
+
         function value(name) {
             const element = form.elements.namedItem(name);
             return element && typeof element.value === 'string' ? element.value : '';
@@ -80,17 +136,15 @@
                 if (tagline) tagline.textContent = value('tagline').trim() || 'Acesse seu ambiente de trabalho com segurança e praticidade.';
             }
 
-            const news = doc.querySelectorAll('.login-publication');
-            news.forEach(function (item) { item.hidden = !checked('show_posts'); });
-            const phrases = doc.querySelector('.login-phrases');
-            if (phrases) phrases.hidden = !checked('show_phrases');
+            doc.querySelectorAll('.login-publication').forEach(function (item) { item.hidden = !checked('show_posts'); });
+            doc.querySelectorAll('.login-phrases').forEach(function (item) { item.hidden = !checked('show_phrases'); });
             const register = doc.querySelector('a[href$="/cadastro"]');
             if (register) register.hidden = !checked('show_signup');
             const footer = doc.querySelector('.login-footer');
             if (footer) footer.hidden = !checked('show_support');
         }
 
-        frame.addEventListener('load', refreshPreview);
+        frame.addEventListener('load', function () { resizePreview(); refreshPreview(); });
         form.addEventListener('input', refreshPreview);
         form.addEventListener('change', refreshPreview);
     }

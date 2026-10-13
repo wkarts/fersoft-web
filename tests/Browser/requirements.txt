@@ -1,0 +1,2 @@
+# Dependência exclusiva de testes, nunca dos containers/runtime do ERP.
+playwright==1.57.0

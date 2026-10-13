@@ -38,30 +38,32 @@
             });
         });
 
-        var phrases = Array.from(document.querySelectorAll('[data-login-phrase]'));
-        var dots = Array.from(document.querySelectorAll('[data-login-dot]'));
-        var phraseContainer = document.getElementById('login-access4-phrases');
-        var active = 0;
-        var paused = false;
-
-        if (phraseContainer) {
+        // Desktop e seção compacta têm IDs e rotações independentes.
+        // Um painel oculto/fechado não avança nem interfere no painel visível.
+        document.querySelectorAll('[data-login-carousel]').forEach(function (phraseContainer) {
+            var phrases = Array.from(phraseContainer.querySelectorAll('[data-login-phrase]'));
+            var dots = Array.from(phraseContainer.querySelectorAll('[data-login-dot]'));
+            var active = 0;
+            var paused = false;
             phraseContainer.addEventListener('mouseenter', function () { paused = true; });
             phraseContainer.addEventListener('mouseleave', function () { paused = false; });
             phraseContainer.addEventListener('focusin', function () { paused = true; });
             phraseContainer.addEventListener('focusout', function () { paused = false; });
-        }
 
-        if (phrases.length > 1 && phraseContainer && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            var seconds = Math.max(4, Math.min(30, Number(phraseContainer.dataset.rotationSeconds || 8)));
-            window.setInterval(function () {
-                if (paused || document.hidden) return;
-                phrases[active].classList.remove('is-visible');
-                if (dots[active]) dots[active].classList.remove('is-visible');
-                active = (active + 1) % phrases.length;
-                phrases[active].classList.add('is-visible');
-                if (dots[active]) dots[active].classList.add('is-visible');
-            }, seconds * 1000);
-        }
+            if (phrases.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                var seconds = Math.max(4, Math.min(30, Number(phraseContainer.dataset.rotationSeconds || 8)));
+                window.setInterval(function () {
+                    var disclosure = phraseContainer.closest('details');
+                    if (paused || document.hidden || !phraseContainer.getClientRects().length
+                        || (disclosure && !disclosure.open)) return;
+                    phrases[active].classList.remove('is-visible');
+                    if (dots[active]) dots[active].classList.remove('is-visible');
+                    active = (active + 1) % phrases.length;
+                    phrases[active].classList.add('is-visible');
+                    if (dots[active]) dots[active].classList.add('is-visible');
+                }, seconds * 1000);
+            }
+        });
 
         // Dialog nativo: escondido por padrao, centralizado pelo navegador e
         // exibido APENAS quando a etapa de senha solicitou OTP na sessao.
