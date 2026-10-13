@@ -115,11 +115,16 @@ def main() -> None:
             page.set_default_timeout(5000)
             page.on('pageerror', lambda error: page_errors.append(str(error)))
             for fixture in fixtures:
+                # Carregar as fontes/Blades uma vez e medir cada viewport após resize.
+                # Evita repetir ~1 GB de fontes pelo transporte de automação.
+                page.set_viewport_size({'width': SIZES[0][0], 'height': SIZES[0][1]})
+                load(page, fixture)
                 for width, height in SIZES:
                     label = f"{engine}-{fixture['name']}-{width}x{height}"
                     try:
                         page.set_viewport_size({'width': width, 'height': height})
-                        load(page, fixture)
+                        page.evaluate('window.scrollTo(0,0)')
+                        page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
                         metrics = check(page)
                         if width <= 960:
                             expect(page.locator('.login-public')).to_be_hidden()
@@ -148,8 +153,14 @@ def main() -> None:
                         report['cases'].append({'case':label,'status':'passed','rootHeight':metrics['height']})
                     except Exception as error:
                         report['failures'].append({'case':label,'error':str(error)})
+                        print('FAIL ' + label + ': ' + str(error), flush=True)
                         if len(report['failures']) <= 8:
                             page.screenshot(path=str(output / f'failure-{len(report["failures"])}.png'), full_page=True)
+                        (output / 'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+                        if len(report['failures']) >= 40:
+                            raise RuntimeError('40 regressões detectadas. Relatório preservado; corrija antes de continuar.')
+                (output / 'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+                print(f"{engine}: {fixture['name']} — {len(report['cases'])} aprovações, {len(report['failures'])} falhas", flush=True)
 
             fixture = next(f for f in fixtures if f['layout']=='split' and f['font']=='poppins' and f['scenario']=='content')
             try:
