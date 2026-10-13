@@ -77,7 +77,14 @@ class LoginLogoPersistenceTest extends TestCase
         $this->post('/config/aparencia/modelos/' . $model->id, $this->payload([
             'logo' => ['desktop' => LoginLogoSettings::defaults()],
         ]))->assertSessionHasNoErrors();
-        $this->assertSame(LoginLogoSettings::defaults(), $model->fresh()->settings['logo']['desktop']);
+        // Objetos JSON não têm ordem de chaves. Verifica a estrutura e cada
+        // valor/tipo estritamente, sem depender da ordenação interna do MySQL.
+        $restored = $model->fresh()->settings['logo']['desktop'];
+        $this->assertCount(count(LoginLogoSettings::defaults()), $restored);
+        foreach (LoginLogoSettings::defaults() as $field => $expected) {
+            $this->assertArrayHasKey($field, $restored);
+            $this->assertSame($expected, $restored[$field]);
+        }
         $this->assertSame(96, $model->fresh()->settings['logo']['mobile']['width']);
         $this->post('/config/aparencia/modelos/' . $model->id . '/duplicar')->assertRedirect();
         $copy = LoginPresentation::query()->orderByDesc('id')->first();
