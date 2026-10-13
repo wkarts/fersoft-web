@@ -268,6 +268,7 @@ class LoginPresentationService
             'font_files' => $this->fontFiles($font),
             'headline' => (string) ($settings['headline'] ?? ''),
             'tagline' => (string) ($settings['tagline'] ?? ''),
+            'texts' => $this->presentationTexts($settings),
             'accent' => $this->safeColor($settings['accent_color'] ?? null, '#1f9866'),
             'background' => $this->safeColor($settings['background_color'] ?? null, '#f5f7f7'),
             'show_signup' => (bool) ($settings['show_signup'] ?? false),
@@ -282,6 +283,40 @@ class LoginPresentationService
             'assets' => $assets,
             'contents' => $this->visibleContents($model?->id),
         ];
+    }
+
+    /**
+     * Resolve os seis textos visíveis sem modificar modelos salvos ou o padrão.
+     * Modelos anteriores mantêm exatamente o fallback que existia nas Blades.
+     * Ao editar pelo novo formulário, uma string vazia oculta somente esse texto.
+     */
+    public function presentationTexts(array $settings): array
+    {
+        $headline = is_string($settings['headline'] ?? null) ? $settings['headline'] : '';
+        $tagline = is_string($settings['tagline'] ?? null) ? $settings['tagline'] : '';
+        $hasHeroText = $headline !== '' || $tagline !== '';
+        $legacyFallback = !array_key_exists('hero_kicker', $settings) && !$hasHeroText;
+
+        $texts = [
+            'hero_kicker' => $hasHeroText ? 'Seu espaço de trabalho' : 'Seu ambiente',
+            'headline' => $legacyFallback ? 'Tudo pronto para continuar.' : $headline,
+            'tagline' => $legacyFallback
+                ? 'Acesse seu ambiente de trabalho com segurança e praticidade.'
+                : $tagline,
+            'form_kicker' => 'Área de acesso',
+            'form_title' => 'Acesse sua conta',
+            'form_subtitle' => 'Informe suas credenciais para continuar.',
+        ];
+
+        foreach (['hero_kicker', 'form_kicker', 'form_title', 'form_subtitle'] as $key) {
+            if (array_key_exists($key, $settings)
+                && (is_string($settings[$key]) || $settings[$key] === null)) {
+                // Laravel converte entradas vazias em null durante a validação.
+                $texts[$key] = (string) ($settings[$key] ?? '');
+            }
+        }
+
+        return $texts;
     }
 
     public function safeColor($value, string $default): string
