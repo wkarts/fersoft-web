@@ -126,6 +126,8 @@ class LoginPresentationService
             ];
         }
 
+        $assets = $this->assetUrls();
+
         return [
             'model_id' => $model?->id,
             'model_name' => $model?->name,
@@ -143,7 +145,10 @@ class LoginPresentationService
             'show_posts' => (bool) ($settings['show_posts'] ?? false),
             'show_hero' => (bool) ($settings['show_hero'] ?? false),
             'rotation_seconds' => max(4, min(30, (int) ($settings['rotation_seconds'] ?? 8))),
-            'assets' => $this->assetUrls(),
+            // A imagem histórica de apresentação repete a marca da logo.
+            // Evita a duplicação até que uma imagem específica seja publicada.
+            'hero_is_custom' => $assets['hero'] !== asset(self::DEFAULT_ASSETS['hero']),
+            'assets' => $assets,
             'contents' => $this->visibleContents($model?->id),
         ];
     }
