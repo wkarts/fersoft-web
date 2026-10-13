@@ -269,6 +269,7 @@ class LoginPresentationService
             'headline' => (string) ($settings['headline'] ?? ''),
             'tagline' => (string) ($settings['tagline'] ?? ''),
             'texts' => $this->presentationTexts($settings),
+            'logo' => LoginLogoSettings::presentation($settings['logo'] ?? []),
             'accent' => $this->safeColor($settings['accent_color'] ?? null, '#1f9866'),
             'background' => $this->safeColor($settings['background_color'] ?? null, '#f5f7f7'),
             'show_signup' => (bool) ($settings['show_signup'] ?? false),

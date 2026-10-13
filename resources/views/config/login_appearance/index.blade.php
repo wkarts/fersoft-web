@@ -273,6 +273,8 @@
                     </div>
                 </fieldset>
 
+                @include('config.login_appearance.partials.logo')
+
                 <div class="appearance-savebar">
                     <button type="submit" class="appearance-btn appearance-btn--outline">Salvar rascunho</button>
                     <button type="submit" name="publish_now" value="1" class="appearance-btn appearance-btn--primary">

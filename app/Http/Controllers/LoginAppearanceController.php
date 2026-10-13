@@ -92,6 +92,7 @@ class LoginAppearanceController extends Controller
     private function validatedModelData(Request $request, ?LoginPresentation $model = null): array
     {
         $data = $request->validate([
+            ...\App\Services\LoginLogoSettings::rules(),
             'name' => ['required', 'string', 'max:100'],
             'layout' => ['required', Rule::in(array_keys($this->presentation->presets()))],
             'font' => ['required', Rule::in(array_keys($this->presentation->fonts()))],
@@ -109,6 +110,12 @@ class LoginAppearanceController extends Controller
         // Clientes/formulários anteriores podem não enviar os campos novos.
         // Ausência preserva a personalização; envio vazio oculta o texto.
         $settings = is_array($model?->settings) ? $model->settings : [];
+        if (array_key_exists('logo', $data)) {
+            $currentLogo = \App\Services\LoginLogoSettings::normalize($settings['logo'] ?? []);
+            $settings['logo'] = \App\Services\LoginLogoSettings::normalize(
+                array_replace_recursive($currentLogo, $data['logo'])
+            );
+        }
         foreach (['hero_kicker', 'form_kicker', 'form_title', 'form_subtitle'] as $key) {
             if (array_key_exists($key, $data)) {
                 $settings[$key] = (string) ($data[$key] ?? '');
