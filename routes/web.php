@@ -336,7 +336,11 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
         && class_exists(\App\Services\LoginPresentationService::class)) {
         Route::group(['prefix' => 'aparencia'], function () {
         Route::get('/', 'LoginAppearanceController@index')->name('config.aparencia.index');
+        Route::get('/preview/padrao', 'LoginAppearanceController@previewDefault')->name('config.aparencia.preview.default');
+        Route::get('/preview/predefinido/{layout}', 'LoginAppearanceController@previewReadyTemplate')->name('config.aparencia.preview.preset');
         Route::get('/preview/{model}', 'LoginAppearanceController@preview')->name('config.aparencia.preview');
+        Route::post('/padrao/restaurar', 'LoginAppearanceController@restoreDefault')->name('config.aparencia.default.restore');
+        Route::post('/modelos/predefinido/{layout}', 'LoginAppearanceController@applyReadyTemplate')->name('config.aparencia.preset.apply');
         Route::post('/modelos', 'LoginAppearanceController@storeModel')->name('config.aparencia.models.store');
         Route::post('/modelos/{model}', 'LoginAppearanceController@updateModel')->name('config.aparencia.models.update');
         Route::post('/modelos/{model}/duplicar', 'LoginAppearanceController@duplicateModel')->name('config.aparencia.models.duplicate');
