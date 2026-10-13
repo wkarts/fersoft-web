@@ -1,6 +1,6 @@
 <div class="login-content-blocks">
     @if($presentation['show_phrases'] && count($presentation['contents']['phrases']) > 0)
-        <div class="login-phrases" id="login-access4-phrases" aria-label="Mensagens institucionais">
+        <div class="login-phrases" id="login-access4-phrases" data-rotation-seconds="{{ (int) $presentation['rotation_seconds'] }}" aria-label="Mensagens institucionais">
             @foreach($presentation['contents']['phrases'] as $phrase)
                 <div data-login-phrase class="{{ $loop->first ? 'is-visible' : '' }}">
                     {{ $phrase['body'] }}
