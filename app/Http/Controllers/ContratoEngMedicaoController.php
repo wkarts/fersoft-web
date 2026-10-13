@@ -366,7 +366,7 @@ class ContratoEngMedicaoController extends BaseController
         }
     }
 
-    public function enviarWhatsapp(Request $request, $id)
+    public function enviarWhatsAppMedicao(Request $request, $id)
     {
         try {
             $data = $this->printData($id);
