@@ -76,23 +76,29 @@
             <form method="POST" action="{{ route('otica.list') }}" class="mb-7">
                 @csrf
                 <div class="row align-items-center bg-light p-4 rounded">
+                    <!-- ADICIONADO: Pesquisa pelo Nº da OS -->
+                    <div class="col-md-3 form-group mb-0">
+                        <label class="font-weight-bold">Nº da OS</label>
+                        <input type="text" name="numero_os" class="form-control" placeholder="001, OS-123..." value="{{ request('numero_os') }}">
+                    </div>
+                    <!-- CORRIGIDO: Mantém a pesquisa de cliente preenchida -->
                     <div class="col-md-4 form-group mb-0">
                         <label class="font-weight-bold">Pesquisar Cliente</label>
-                        <input type="text" name="cliente" class="form-control" placeholder="Nome ou CPF..." value="{{ $cliente ?? '' }}">
+                        <input type="text" name="cliente" class="form-control" placeholder="Nome ou CPF..." value="{{ request('cliente') }}">
                     </div>
-                    <div class="col-md-4 form-group mb-0">
+                    <div class="col-md-3 form-group mb-0">
                         <label class="font-weight-bold">Filtrar por Status</label>
                         <select name="status" class="form-control">
                             <option value="">Todos</option>
-                            <option value="orcamento">Orçamento / Aguardando</option>
-                            <option value="pendente">Aguardando Laboratório</option>
-                            <option value="laboratorio">Em Production no Lab.</option>
-                            <option value="conferencia">Conferência / Qualidade</option>
-                            <option value="pronto">Pronto para Retirada</option>
-                            <option value="entregue">Entregue / Faturado</option>
+                            <option value="orcamento" {{ request('status') == 'orcamento' ? 'selected' : '' }}>Orçamento / Aguardando</option>
+                            <option value="pendente" {{ request('status') == 'pendente' ? 'selected' : '' }}>Aguardando Laboratório</option>
+                            <option value="laboratorio" {{ request('status') == 'laboratorio' ? 'selected' : '' }}>Em Produção no Lab.</option>
+                            <option value="conferencia" {{ request('status') == 'conferencia' ? 'selected' : '' }}>Conferência / Qualidade</option>
+                            <option value="pronto" {{ request('status') == 'pronto' ? 'selected' : '' }}>Pronto para Retirada</option>
+                            <option value="entregue" {{ request('status') == 'entregue' ? 'selected' : '' }}>Entregue / Faturado</option>
                         </select>
                     </div>
-                    <div class="col-md-4 form-group mb-0 text-right">
+                    <div class="col-md-2 form-group mb-0 text-right">
                         <button type="submit" class="btn btn-primary font-weight-bold mt-7 px-8">
                             <i class="fa fa-search"></i> Filtrar
                         </button>
@@ -115,7 +121,7 @@
                     <tbody>
                     @foreach($data as $item)
                         <tr>
-                            <td class="text-center font-weight-bold text-muted">#{{ $item->id }}</td>
+                            <td class="text-center font-weight-bold text-muted">{{ $item->numero_os ?? '#'.$item->id }}</td>
                             <td>
                                 <span class="text-dark-75 font-weight-bolder d-block font-size-lg">{{ $item->cliente->razao_social ?? 'Não Identificado' }}</span>
                             </td>

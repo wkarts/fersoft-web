@@ -22,6 +22,7 @@ class OticaController extends BaseController
         $this->Prefix_Route = 'otica';
         $this->listView     = 'otica.list';
         $this->registerView = 'otica.register';
+        $this->redirectPage = '/otica';
     }
 
     public function rules(): array {
@@ -37,22 +38,65 @@ class OticaController extends BaseController
     {
         $empresa_id = session('user_logged')['empresa'] ?? 1;
 
-        $data = ReceitaOtica::where('empresa_id', $empresa_id)
-            ->orderBy('id', 'desc')
-            ->paginate(20);
+        $query = ReceitaOtica::with('cliente')->where('empresa_id', $empresa_id);
+
+        // Filtro por Número da OS
+        if ($request->filled('numero_os')) {
+            $query->where('numero_os', 'like', "%{$request->numero_os}%")
+                ->orWhere('id', $request->numero_os); // Se buscar pelo ID real também acha
+        }
+
+        // Filtro por Status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filtro Corrigido por Cliente (Busca na tabela relacionada)
+        if ($request->filled('cliente')) {
+            $termo = $request->cliente;
+            $query->whereHas('cliente', function($q) use ($termo) {
+                $q->where('razao_social', 'like', "%{$termo}%")
+                    ->orWhere('cpf_cnpj', 'like', "%{$termo}%")
+                    ->orWhere('nome_fantasia', 'like', "%{$termo}%");
+            });
+        }
+
+        $data = $query->orderBy('id', 'desc')->paginate(20);
 
         $title = $this->formTitle;
         return view($this->listView, compact('data', 'title'));
     }
 
     // --- TELA DE CADASTRO/EDIÇÃO ---
+    // --- TELA DE CADASTRO/EDIÇÃO ---
     public function register($id = null)
     {
-        $item = $id ? ReceitaOtica::findOrFail($id) : null;
+        $item = $id ? \App\Models\ReceitaOtica::findOrFail($id) : null;
         $title = ($id ? "Editar " : "Nova ") . $this->formTitle;
         $formTitle = $this->formTitle;
         $data = collect([]);
-        return view($this->registerView, compact('item', 'title', 'formTitle', 'data'));
+
+        $empresa_id = session('user_logged')['empresa'] ?? 1;
+
+        // --- LÓGICA DO PRÓXIMO NÚMERO DA OS ---
+        $proximoNumero = '';
+        if (!$id) {
+            // Tenta pegar a última OS cadastrada desta empresa
+            $ultimaOS = \App\Models\ReceitaOtica::where('empresa_id', $empresa_id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($ultimaOS && is_numeric($ultimaOS->numero_os)) {
+                // Se a última foi 5, a próxima será 006
+                $proximoNumero = str_pad($ultimaOS->numero_os + 1, 3, '0', STR_PAD_LEFT);
+            } else {
+                // Se for a primeira da empresa
+                $total = \App\Models\ReceitaOtica::where('empresa_id', $empresa_id)->count();
+                $proximoNumero = str_pad($total + 1, 3, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return view($this->registerView, compact('item', 'title', 'formTitle', 'data', 'proximoNumero'));
     }
 
     // --- SALVAMENTO E ATUALIZAÇÃO ---
@@ -71,6 +115,39 @@ class OticaController extends BaseController
         return $this->salvarOrdemDeServico($request, $id);
     }
 
+    // Intercepta e converte chamadas HTTP DELETE ou links que apontam para o destroy
+    public function destroy($id)
+    {
+        return $this->delete($id);
+    }
+
+    public function delete($id)
+    {
+        try {
+            $os = \App\Models\ReceitaOtica::find($id);
+
+            if (!$os) {
+                dd("O sistema não encontrou a OS de ID: " . $id);
+            }
+
+            // Exclui o arquivo do receituário físico salvo no servidor, se existir
+            if (!empty($os->anexo_receita)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($os->anexo_receita);
+            }
+
+            // FORÇA A EXCLUSÃO DIRETA ignorando eventos de bloqueio do Laravel
+            \App\Models\ReceitaOtica::where('id', $id)->delete();
+
+            // Mensagem de sucesso usando o padrão nativo do seu BaseController
+            session()->flash('mensagem_sucesso', 'Ordem de Serviço excluída com sucesso!');
+            return redirect($this->redirectPage ?? '/otica');
+
+        } catch (\Exception $e) {
+            // SE O BANCO DE DADOS RECUSAR A EXCLUSÃO, A TELA VAI PARAR E MOSTRAR O MOTIVO!
+            dd("ERRO FATAL NO BANCO AO DELETAR (Talvez esteja vinculada a alguma venda): ", $e->getMessage());
+        }
+    }
+
     private function salvarOrdemDeServico(Request $request, $id = null)
     {
         try {
@@ -85,16 +162,37 @@ class OticaController extends BaseController
             $dados = $request->except(['_token', '_method', 'total_os', 'anexo_receita']);
             $dados['empresa_id'] = session('user_logged')['empresa'] ?? 1;
 
+            // ==============================================================
+            // 🛠️ TRATAMENTO DOS CAMPOS DA RECEITA (TROCA VAZIO POR ZERO)
+            // ==============================================================
+            $camposReceita = [
+                'esf_od_longe', 'cil_od_longe', 'eixo_od_longe', 'dnp_od_longe', 'dp_od_longe',
+                'esf_oe_longe', 'cil_oe_longe', 'eixo_oe_longe', 'dnp_oe_longe', 'dp_oe_longe',
+                'esf_od_perto', 'cil_od_perto', 'eixo_od_perto', 'adicao_od_perto', 'altura_od_perto', 'dnp_od_perto', 'dp_od_perto',
+                'esf_oe_perto', 'cil_oe_perto', 'eixo_oe_perto', 'adicao_oe_perto', 'altura_oe_perto', 'dnp_oe_perto'
+            ];
+
+            foreach ($camposReceita as $campo) {
+                // Se o campo não foi enviado, ou está completamente vazio
+                if (!isset($dados[$campo]) || trim($dados[$campo]) === '') {
+                    $dados[$campo] = 0; // Transforma vazio em zero
+                } else {
+                    // Troca vírgula por ponto para não quebrar o banco de dados MySQL
+                    $dados[$campo] = str_replace(',', '.', trim($dados[$campo]));
+                }
+            }
+            // ==============================================================
+
             // Upload do PDF/Foto da Receita no disco público do Laravel
             if ($request->hasFile('anexo_receita') && $request->file('anexo_receita')->isValid()) {
                 if ($os && $os->anexo_receita) {
-                    Storage::disk('public')->delete($os->anexo_receita);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($os->anexo_receita);
                 }
                 $path = $request->file('anexo_receita')->store('receitas_otica', 'public');
                 $dados['anexo_receita'] = $path;
             }
 
-            // Corrige o formato do dinheiro
+            // Corrige o formato do dinheiro dos produtos
             if (!empty($dados['valor_armacao'])) $dados['valor_armacao'] = str_replace(['.', ','], ['', '.'], $dados['valor_armacao']);
             if (!empty($dados['valor_lente'])) $dados['valor_lente'] = str_replace(['.', ','], ['', '.'], $dados['valor_lente']);
 
