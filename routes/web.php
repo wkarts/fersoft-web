@@ -335,21 +335,21 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
     if (class_exists(\App\Http\Controllers\LoginAppearanceController::class)
         && class_exists(\App\Services\LoginPresentationService::class)) {
         Route::group(['prefix' => 'aparencia'], function () {
-        Route::get('/', 'LoginAppearanceController@index')->name('config.aparencia.index');
-        Route::get('/preview/padrao', 'LoginAppearanceController@previewDefault')->name('config.aparencia.preview.default');
-        Route::get('/preview/predefinido/{layout}', 'LoginAppearanceController@previewReadyTemplate')->name('config.aparencia.preview.preset');
-        Route::get('/preview/{model}', 'LoginAppearanceController@preview')->name('config.aparencia.preview');
-        Route::post('/padrao/restaurar', 'LoginAppearanceController@restoreDefault')->name('config.aparencia.default.restore');
-        Route::post('/modelos/predefinido/{layout}', 'LoginAppearanceController@applyReadyTemplate')->name('config.aparencia.preset.apply');
-        Route::post('/modelos', 'LoginAppearanceController@storeModel')->name('config.aparencia.models.store');
-        Route::post('/modelos/{model}', 'LoginAppearanceController@updateModel')->name('config.aparencia.models.update');
-        Route::post('/modelos/{model}/duplicar', 'LoginAppearanceController@duplicateModel')->name('config.aparencia.models.duplicate');
-        Route::post('/modelos/{model}/publicar', 'LoginAppearanceController@publishModel')->name('config.aparencia.models.publish');
-        Route::post('/conteudos', 'LoginAppearanceController@storeContent')->name('config.aparencia.contents.store');
-        Route::post('/conteudos/{content}', 'LoginAppearanceController@updateContent')->name('config.aparencia.contents.update');
-        Route::post('/conteudos/{content}/arquivar', 'LoginAppearanceController@archiveContent')->name('config.aparencia.contents.archive');
-        Route::post('/arquivos/{key}', 'LoginAppearanceController@storeAsset')->name('config.aparencia.assets.store');
-        Route::post('/arquivos/{asset}/publicar', 'LoginAppearanceController@publishAsset')->name('config.aparencia.assets.publish');
+            Route::get('/', 'LoginAppearanceController@index')->name('config.aparencia.index');
+            Route::get('/preview/padrao', 'LoginAppearanceController@previewDefault')->name('config.aparencia.preview.default');
+            Route::get('/preview/predefinido/{layout}', 'LoginAppearanceController@previewReadyTemplate')->name('config.aparencia.preview.preset');
+            Route::get('/preview/{model}', 'LoginAppearanceController@preview')->name('config.aparencia.preview');
+            Route::post('/padrao/restaurar', 'LoginAppearanceController@restoreDefault')->name('config.aparencia.default.restore');
+            Route::post('/modelos/predefinido/{layout}', 'LoginAppearanceController@applyReadyTemplate')->name('config.aparencia.preset.apply');
+            Route::post('/modelos', 'LoginAppearanceController@storeModel')->name('config.aparencia.models.store');
+            Route::post('/modelos/{model}', 'LoginAppearanceController@updateModel')->name('config.aparencia.models.update');
+            Route::post('/modelos/{model}/duplicar', 'LoginAppearanceController@duplicateModel')->name('config.aparencia.models.duplicate');
+            Route::post('/modelos/{model}/publicar', 'LoginAppearanceController@publishModel')->name('config.aparencia.models.publish');
+            Route::post('/conteudos', 'LoginAppearanceController@storeContent')->name('config.aparencia.contents.store');
+            Route::post('/conteudos/{content}', 'LoginAppearanceController@updateContent')->name('config.aparencia.contents.update');
+            Route::post('/conteudos/{content}/arquivar', 'LoginAppearanceController@archiveContent')->name('config.aparencia.contents.archive');
+            Route::post('/arquivos/{key}', 'LoginAppearanceController@storeAsset')->name('config.aparencia.assets.store');
+            Route::post('/arquivos/{asset}/publicar', 'LoginAppearanceController@publishAsset')->name('config.aparencia.assets.publish');
         });
     }
 });
@@ -428,7 +428,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/delete/{id}', 'NfseController@delete');
         Route::get('/teste', 'NfseController@teste');
         Route::get('/baixarXml/{id}', 'NfseController@baixarXml');
-        Route::get('/imprimir/{id}', 'NfseController@imprimir');
+        Route::get('/imprimir/{id}', 'NfseController@imprimir')->name('nfse.imprimir');
         Route::post('/store', 'NfseController@store');
         Route::post('/storeAjax', 'NfseController@storeAjax');
         Route::put('/update/{id}', 'NfseController@update');
@@ -441,8 +441,11 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/enviar-integra-notas', 'NfseIntegraNotasController@enviar');
         Route::post('/consultar-integra-notas', 'NfseIntegraNotasController@consultar');
         Route::post('/cancelar-integra-notas', 'NfseIntegraNotasController@cancelar');
-        Route::get('/preview-xml/{id}', 'NfseIntegraNotasController@previewXml');
+        //Route::get('/preview-xml/{id}', 'NfseIntegraNotasController@previewXml');
+        Route::get('/preview-xml/{id}', 'NfseController@previewXml');
+        Route::get('/preview-rps/{id}', 'NfseController@previewRps');
 
+        Route::get('/enviar-whatsapp/{id}', 'NfseController@enviarWhatsapp')->name('nfse.enviarWhatsapp');
     });
 
     Route::group(['prefix' => '/boleto'], function(){
@@ -902,17 +905,19 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
 
     });
 
-    // Contratos de engenharia, locação e serviços
+    // ==============================================================================
+    // ROTAS DE CONTRATOS  - LOCAÇÃO - MÃO-DE-OBRA
+    // ==============================================================================
     Route::group(['prefix' => 'contratos'], function(){
         Route::get('/', 'ContratoEngenhariaController@list')->name('contratos.index');
         Route::get('/list', 'ContratoEngenhariaController@list');
         Route::post('/list', 'ContratoEngenhariaController@filtro');
-        Route::get('/new', 'ContratoEngenhariaController@register')->name('contratos.create');
+        Route::get('/new', 'ContratoEngenhariaController@register');
         Route::get('/detalhes/{id}', 'ContratoEngenhariaController@detalhes')->name('contratos.detalhes');
-        Route::get('/edit/{id}', 'ContratoEngenhariaController@edit')->name('contratos.edit');
-        Route::post('/save', 'ContratoEngenhariaController@save')->name('contratos.store');
-        Route::post('/update/{id}', 'ContratoEngenhariaController@update')->name('contratos.update');
-        Route::get('/delete/{id}', 'ContratoEngenhariaController@delete')->name('contratos.destroy');
+        Route::get('/edit/{id}', 'ContratoEngenhariaController@edit');
+        Route::post('/save', 'ContratoEngenhariaController@save');
+        Route::post('/update/{id}', 'ContratoEngenhariaController@update');
+        Route::get('/delete/{id}', 'ContratoEngenhariaController@delete');
 
         Route::post('/alocar-funcionario/{id}', 'ContratoEngenhariaController@alocarFuncionario')->name('contratos.alocar-funcionario');
         Route::get('/desalocar-funcionario/{alocacao_id}', 'ContratoEngenhariaController@desalocarFuncionario')->name('contratos.desalocar-funcionario');
@@ -920,17 +925,35 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/dashboard-dre/excel', 'ContratoEngenhariaController@exportarExcelDashboard')->name('contratos.dashboard-dre.excel');
     });
 
+    // ==============================================================================
+    // ROTAS DE MEDIÇÕES / LOCAÇÃO - MÃO-DE-OBRA
+    // ==============================================================================
     Route::group(['prefix' => 'contratos/medicoes', 'middleware' => 'verificaEmpresa'], function(){
+
+        // 1. Criação e Salvamento
         Route::get('/create/novo', 'ContratoEngMedicaoController@create')->name('contratos.medicoes.create.avulso');
         Route::get('/create/{contrato_id?}', 'ContratoEngMedicaoController@create')->name('contratos.medicoes.create');
+
         Route::post('/store', 'ContratoEngMedicaoController@store')->name('contratos.medicoes.store.avulso');
         Route::post('/store/{contrato_id?}', 'ContratoEngMedicaoController@store')->name('contratos.medicoes.store');
+
+        // 2. Edição e Atualização
         Route::get('/edit/{id}', 'ContratoEngMedicaoController@edit')->name('contratos.medicoes.edit');
         Route::post('/update/{id}', 'ContratoEngMedicaoController@update')->name('contratos.medicoes.update');
+
+        // 3. Impressão, PDF e Comunicação
         Route::get('/imprimir/{id}', 'ContratoEngMedicaoController@imprimir')->name('contratos.medicoes.imprimir');
         Route::get('/pdf/{id}', 'ContratoEngMedicaoController@gerarPdf')->name('contratos.medicoes.pdf');
         Route::get('/enviar-whatsapp/{id}', 'ContratoEngMedicaoController@enviarWhatsapp')->name('contratos.medicoes.whatsapp');
         Route::get('/enviar-email/{id}', 'ContratoEngMedicaoController@enviarEmail')->name('contratos.medicoes.email');
+
+        // Rotas adicionais do NOVO: NFS-e da medição, XML, DANFSe e cancelamento fiscal.
+        Route::get('/emitir-nfse/{id}', 'ContratoEngMedicaoController@emitirNfse')->name('contratos.medicoes.emitir');
+        Route::get('/consultar-nfse/{id}', 'ContratoEngMedicaoController@consultarNfse')->name('contratos.medicoes.consultar');
+        Route::get('/baixar-xml/{id}', 'ContratoEngMedicaoController@baixarXml')->name('contratos.medicoes.xml');
+        Route::get('/danfse/{id}', 'ContratoEngMedicaoController@imprimirDanfeNfse')->name('contratos.medicoes.danfse');
+        Route::post('/cancelar-nfse/{id}', 'ContratoEngMedicaoController@cancelarNfse')->name('contratos.medicoes.cancelar_nfse');
+
         Route::post('/mudar-status/{id}', 'ContratoEngMedicaoController@mudarStatus')->name('contratos.medicoes.status');
         Route::get('/cancelar/{id}', 'ContratoEngMedicaoController@cancelar')->name('contratos.medicoes.cancelar');
 
@@ -947,6 +970,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/nfse/xml/{id}', 'NfseNacionalController@downloadXml')->name('nfse.xml');
         Route::get('/nfse/imprimir-medicao/{id}', 'NfseNacionalController@imprimir')->name('nfse.medicao.imprimir');
         Route::get('/nfse/consultar/{id}', 'NfseNacionalController@consultar')->name('nfse.consultar');
+    });
+
+    // ==============================================================================
+    // ROTAS DE NFS-E ESPECÍFICAS DE MEDIÇÕES/FATURAS DE CONTRATO (PREFIXO ISOLADO)
+    // ==============================================================================
+    Route::group(['prefix' => 'contratos-nfse', 'middleware' => 'verificaEmpresa'], function(){
+        Route::get('/emitir/{id}', 'NfseNacionalController@emitir')->name('contratos.nfse.emitir');
+        Route::get('/xml/{id}', 'NfseNacionalController@downloadXml')->name('contratos.nfse.xml');
+        Route::get('/imprimir/{id}', 'NfseNacionalController@imprimir')->name('contratos.nfse.imprimir');
     });
 
     // MTR 3.0 - SINIR / IEMA

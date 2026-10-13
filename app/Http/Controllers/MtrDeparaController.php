@@ -55,11 +55,11 @@ class MtrDeparaController extends BaseController
         ]);
     }
 
-    public function create(Request $request)
+    public function create()
     {
         return view('mtr.depara.create', $this->formData() + [
-            'title' => 'Novo Vínculo De-Para Resíduo',
-        ]);
+                'title' => 'Novo Vínculo De-Para Resíduo',
+            ]);
     }
 
     public function store(Request $request)
@@ -81,15 +81,15 @@ class MtrDeparaController extends BaseController
         }
     }
 
-    public function edit(Request $request, $id)
+    public function edit($id)
     {
         $depara = MtrDeparaResiduo::where('empresa_id', $this->empresa_id)
             ->findOrFail($id);
 
         return view('mtr.depara.edit', $this->formData() + [
-            'depara' => $depara,
-            'title' => 'Editar De-Para de Resíduo',
-        ]);
+                'depara' => $depara,
+                'title' => 'Editar De-Para de Resíduo',
+            ]);
     }
 
     public function update(Request $request, $id)
@@ -109,7 +109,7 @@ class MtrDeparaController extends BaseController
         }
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy($id)
     {
         $depara = MtrDeparaResiduo::where('empresa_id', $this->empresa_id)
             ->findOrFail($id);

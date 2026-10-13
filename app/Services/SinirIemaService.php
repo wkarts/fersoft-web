@@ -153,7 +153,7 @@ class SinirIemaService
             ->accept('*/*')
             ->connectTimeout(10)
             ->timeout(45)
-            ->get(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/'));
+            ->post(rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/')); // <-- Mudei de get para post aqui!
 
         if ($response->failed()) {
             throw new Exception(

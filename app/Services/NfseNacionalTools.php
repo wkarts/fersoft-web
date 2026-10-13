@@ -3,93 +3,460 @@
 namespace App\Services;
 
 use App\Services\Nfse\NfseEmissorInterface;
-use GuzzleHttp\Client;
-use Illuminate\Support\Facades\Log;
 use NFePHP\Common\Certificate;
 use RobRichards\XMLSecLibs\XMLSecurityDSig;
 use RobRichards\XMLSecLibs\XMLSecurityKey;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
 
 class NfseNacionalTools implements NfseEmissorInterface
 {
-    protected array $config;
-    protected Certificate $certificate;
-    protected ?string $chave = null;
-    protected ?string $protocolo = null;
-    protected ?string $xmlNfseAutorizada = null;
+    protected $config;
+    protected $certificate;
+    protected $chave = null;
+    protected $protocolo = null;
+    protected $xmlNfseAutorizada = null;
 
-    public function __construct($config, Certificate $certificate)
+    public function __construct($configJson, Certificate $certificate)
     {
-        $decoded = is_string($config) ? json_decode($config, true) : $config;
-
-        $this->config = is_array($decoded) ? $decoded : [];
+        $this->config = is_string($configJson) ? json_decode($configJson, true) : $configJson;
         $this->certificate = $certificate;
     }
 
-    public function emitir(array $dpsData)
+    /**
+     * Validação prévia de regras de negócio antes de assinar/transmitir
+     */
+    public function validarDps(array $dpsData): array
     {
-        $erros = $this->validarDps($dpsData);
-        if ($erros !== []) {
-            throw new \RuntimeException(
-                'Validação interna da DPS: ' . implode(' | ', $erros)
-            );
+        $erros = [];
+        $infDPS = $dpsData['infDPS'] ?? [];
+        $serv   = $infDPS['serv'] ?? [];
+        $cTribNac = $serv['cServ']['cTribNac'] ?? null;
+
+        $vServ = (float)($infDPS['valores']['vServPrest']['vServ'] ?? 0);
+        $vDescIncond = (float)($infDPS['valores']['trib']['vDescIncond'] ?? 0);
+
+        // Regra 260: Grupo de obra é obrigatório para serviços de construção civil
+        $constructionCodes = [
+            '070201', '070202', '070401', '070501', '070502',
+            '070601', '070602', '070701', '070801', '071701', '071901'
+        ];
+        if (in_array($cTribNac, $constructionCodes) && empty($serv['obra']['cObra'])) {
+            $erros[] = "O grupo de informações de obra (cObra) é obrigatório para o serviço de construção civil informado ({$cTribNac}).";
         }
 
-        $xml = $this->gerarDpsXml($dpsData);
-        $xmlAssinado = $this->assinarXml($xml, 'infDPS');
+        // Regra 324/542: cNBS é obrigatório quando informadas tags de IBS/CBS
+        if (isset($infDPS['valores']['trib']['tribFed']['pIBS']) && empty($serv['cServ']['cNBS'])) {
+            $erros[] = "O código NBS (cNBS) é obrigatório quando o grupo de tributação IBS/CBS for informado.";
+        }
 
-        $response = $this->transmitirParaSefaz($xmlAssinado);
+        // Regra 307: O desconto incondicionado deve ser menor que o valor do serviço
+        if ($vDescIncond > 0 && $vDescIncond >= $vServ) {
+            $erros[] = "O valor do desconto incondicionado deve ser estritamente menor que o valor do serviço.";
+        }
+
+        return $erros;
+    }
+
+    /**
+     * Emissão da NFS-e no Portal Nacional
+     */
+    public function emitir(array $dpsData)
+    {
+        // 1. Executa a validação prévia de regras de negócio
+        $errosValidacao = $this->validarDps($dpsData);
+        if (!empty($errosValidacao)) {
+            throw new \Exception("Validação Interna DPS: " . implode(' | ', $errosValidacao));
+        }
+
+        $infDPS = $dpsData['infDPS'] ?? [];
+
+        // Trata os documentos e identificadores
+        $cnpjPrestador = preg_replace('/\D/', '', $this->config['cnpj'] ?? ($infDPS['prest']['CNPJ'] ?? ''));
+        $tipoInscricao = strlen($cnpjPrestador) > 11 ? '2' : '1'; // 1 = CPF, 2 = CNPJ
+        $cnpjFormatado = str_pad($cnpjPrestador, 14, '0', STR_PAD_LEFT);
+
+        // Garante o código IBGE com 7 dígitos (ex: Lauro de Freitas 2919207)
+        $cLocEmi = str_pad(preg_replace('/\D/', '', $infDPS['cLocEmi'] ?? ($this->config['codMun'] ?? '2919207')), 7, '0', STR_PAD_LEFT);
+
+        // Pega série e número
+        $serieNota  = $this->config['serie_dps'] ?? ($infDPS['serie'] ?? '1');
+        $numeroNota = $this->config['numero_dps'] ?? ($infDPS['nDPS'] ?? '1');
+
+        $serieFormatada  = str_pad(preg_replace('/\D/', '', (string)$serieNota), 5, '0', STR_PAD_LEFT);
+        $numeroFormatado = str_pad(preg_replace('/\D/', '', (string)$numeroNota), 15, '0', STR_PAD_LEFT);
+
+        // PADRÃO EXATO TSIdDPS: 'DPS' (3) + IBGE (7) + Tipo (1) + CNPJ (14) + Série (5) + Número (15) = 45 caracteres
+        $this->chave = 'DPS' . $cLocEmi . $tipoInscricao . $cnpjFormatado . $serieFormatada . $numeroFormatado;
+
+        $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><DPS xmlns="http://www.sped.fazenda.gov.br/nfse"/>');
+        $xml->addAttribute('versao', '1.01');
+
+        $nodeInf = $xml->addChild('infDPS');
+        $nodeInf->addAttribute('Id', $this->chave);
+
+        // Cabeçalho da DPS (ordem exigida pelo XSD Nacional)
+        $nodeInf->addChild('tpAmb', (string) ($this->config['tpAmb'] ?? 1));
+        $nodeInf->addChild('dhEmi', $infDPS['dhEmi'] ?? date('Y-m-d\TH:i:sP'));
+        $nodeInf->addChild('verAplic', $infDPS['verAplic'] ?? 'FersoftERP_1.0');
+        $nodeInf->addChild('serie', (string)$serieNota);
+        $nodeInf->addChild('nDPS', (string)$numeroNota);
+        $nodeInf->addChild('dCompet', $infDPS['dCompet'] ?? date('Y-m-d'));
+        $nodeInf->addChild('tpEmit', (string) ($infDPS['tpEmit'] ?? 1));
+        $nodeInf->addChild('cLocEmi', $cLocEmi);
+
+        // =========================================================================
+        // 1. PRESTADOR (CORREÇÃO DO ERRO E1235)
+        // =========================================================================
+        $prest = $nodeInf->addChild('prest');
+        if (strlen($cnpjPrestador) > 11) {
+            $prest->addChild('CNPJ', $cnpjPrestador);
+        } else {
+            $prest->addChild('CPF', $cnpjPrestador);
+        }
+
+        // Inscrição Municipal (opcional, só adiciona se preenchida e apenas números)
+        $imPrestador = preg_replace('/\D/', '', $infDPS['prest']['IM'] ?? ($this->config['inscricao_municipal'] ?? $this->config['im'] ?? ''));
+        if (!empty($imPrestador)) {
+            $prest->addChild('IM', $imPrestador);
+        }
+
+        // Grupo regTrib é OBRIGATÓRIO no XSD da DPS Nacional
+        $regTribData = $infDPS['prest']['regTrib'] ?? [];
+        $opSimpNac   = (int) ($regTribData['opSimpNac'] ?? ($this->config['opcao_simples_nacional'] ?? 1)); // 1=Normal, 2=Simples, 3=MEI
+        $regApTribSN = (int) ($regTribData['regApTribSN'] ?? ($this->config['regime_apuracao_sn'] ?? 1));
+        $regEspTrib  = (int) ($regTribData['regEspTrib'] ?? ($this->config['regime_especial_tributacao'] ?? 0));
+
+        $regTrib = $prest->addChild('regTrib');
+        $regTrib->addChild('opSimpNac', (string) $opSimpNac);
+
+        // Se optante pelo Simples Nacional ou MEI, regApTribSN deve ser enviado
+        if (in_array($opSimpNac, [2, 3])) {
+            $regTrib->addChild('regApTribSN', (string) ($regApTribSN ?: 1));
+        }
+        $regTrib->addChild('regEspTrib', (string) $regEspTrib);
+
+        // =========================================================================
+        // 2. TOMADOR
+        // =========================================================================
+        if (isset($infDPS['toma'])) {
+            $toma = $nodeInf->addChild('toma');
+            $docTomador = preg_replace('/\D/', '', $infDPS['toma']['CNPJ'] ?? ($infDPS['toma']['CPF'] ?? ''));
+            if (strlen($docTomador) > 11) {
+                $toma->addChild('CNPJ', $docTomador);
+            } elseif (!empty($docTomador)) {
+                $toma->addChild('CPF', $docTomador);
+            }
+
+            $toma->addChild('xNome', htmlspecialchars($infDPS['toma']['xNome'] ?? 'CONSUMIDOR', ENT_QUOTES, 'UTF-8'));
+
+            if (isset($infDPS['toma']['ender'])) {
+                $end = $toma->addChild('end');
+
+                $cMunTomador = preg_replace('/\D/', '', $infDPS['toma']['ender']['cMun'] ?? $cLocEmi);
+                $cepTomador  = str_pad(preg_replace('/\D/', '', $infDPS['toma']['ender']['CEP'] ?? '40000000'), 8, '0', STR_PAD_LEFT);
+
+                $endNac = $end->addChild('endNac');
+                $endNac->addChild('cMun', $cMunTomador);
+                $endNac->addChild('CEP', $cepTomador);
+
+                $end->addChild('xLgr', htmlspecialchars($infDPS['toma']['ender']['xLgr'] ?? 'Logradouro', ENT_QUOTES, 'UTF-8'));
+                $end->addChild('nro', htmlspecialchars($infDPS['toma']['ender']['nro'] ?? 'S/N', ENT_QUOTES, 'UTF-8'));
+                $end->addChild('xBairro', htmlspecialchars($infDPS['toma']['ender']['xBairro'] ?? 'Centro', ENT_QUOTES, 'UTF-8'));
+            }
+        }
+
+        // =========================================================================
+        // 3. SERVIÇO E OBRA
+        // =========================================================================
+        if (isset($infDPS['serv'])) {
+            $serv = $nodeInf->addChild('serv');
+            if (isset($infDPS['serv']['locPrest'])) {
+                $loc = $serv->addChild('locPrest');
+                $cLocPrest = preg_replace('/\D/', '', $infDPS['serv']['locPrest']['cLocPrest'] ?? $cLocEmi);
+                $loc->addChild('cLocPrestacao', str_pad($cLocPrest, 7, '0', STR_PAD_LEFT));
+            }
+
+            if (isset($infDPS['serv']['cServ'])) {
+                $cServ = $serv->addChild('cServ');
+                $cTribNac = preg_replace('/\D/', '', $infDPS['serv']['cServ']['cTribNac'] ?? '140501');
+                $cServ->addChild('cTribNac', str_pad($cTribNac, 6, '0', STR_PAD_LEFT));
+                $cServ->addChild('xDescServ', htmlspecialchars($infDPS['serv']['cServ']['xDescServ'] ?? 'PRESTACAO DE SERVICO', ENT_QUOTES, 'UTF-8'));
+
+                $cNBS = preg_replace('/\D/', '', $infDPS['serv']['cServ']['cNBS'] ?? '101010100');
+                $cServ->addChild('cNBS', str_pad($cNBS, 9, '0', STR_PAD_LEFT));
+            }
+
+            if (!empty($infDPS['serv']['obra']['cObra'])) {
+                $obra = $serv->addChild('obra');
+                $obra->addChild('cObra', $infDPS['serv']['obra']['cObra']);
+            }
+        }
+
+        // =========================================================================
+        // 4. VALORES E IMPOSTOS
+        // =========================================================================
+        if (isset($infDPS['valores'])) {
+            $valores = $nodeInf->addChild('valores');
+            if (isset($infDPS['valores']['vServPrest'])) {
+                $vServ = $valores->addChild('vServPrest');
+                $vServFloat = (float)($infDPS['valores']['vServPrest']['vServ'] ?? 0);
+                $vServ->addChild('vServ', number_format($vServFloat, 2, '.', ''));
+            }
+
+            // Descontos e deduções (se informados)
+            if (isset($infDPS['valores']['trib']['vDescIncond']) && (float)$infDPS['valores']['trib']['vDescIncond'] > 0) {
+                $valores->addChild('vDescIncond', number_format((float)$infDPS['valores']['trib']['vDescIncond'], 2, '.', ''));
+            }
+            if (isset($infDPS['valores']['trib']['vDed']) && (float)$infDPS['valores']['trib']['vDed'] > 0) {
+                $valores->addChild('vDed', number_format((float)$infDPS['valores']['trib']['vDed'], 2, '.', ''));
+            }
+
+            if (isset($infDPS['valores']['trib'])) {
+                $trib = $valores->addChild('trib');
+
+                // ISSQN Municipal
+                // Correção E0617: Só envia pAliq se for optante do Simples Nacional
+                if (isset($infDPS['valores']['trib']['tribMun'])) {
+                    $tribMun = $trib->addChild('tribMun');
+                    $tribMun->addChild('tribISSQN', (string) ($infDPS['valores']['trib']['tribMun']['tribISSQN'] ?? 1));
+                    $tribMun->addChild('tpRetISSQN', (string) ($infDPS['valores']['trib']['tribMun']['tpRetISSQN'] ?? 1));
+
+                    // Regra E0617: opSimpNac = 1 (Normal) não pode ter pAliq em município ativo
+                    if ((int)$opSimpNac !== 1 && isset($infDPS['valores']['trib']['tribMun']['pAliq'])) {
+                        $tribMun->addChild('pAliq', number_format((float)($infDPS['valores']['trib']['tribMun']['pAliq']), 2, '.', ''));
+                    }
+                }
+
+                // Tributos Federais e Retenções
+                if (isset($infDPS['valores']['trib']['tribFed'])) {
+                    $tribFedData = $infDPS['valores']['trib']['tribFed'];
+                    $tribFed = $trib->addChild('tribFed');
+
+                    // PIS / COFINS
+                    $piscofins = $tribFed->addChild('piscofins');
+                    $cstPis = $tribFedData['piscofins']['CST'] ?? ($opSimpNac === 1 ? '01' : '07');
+                    $piscofins->addChild('CST', (string) $cstPis);
+
+                    // Retenções na fonte (INSS, IRRF, CSLL)
+                    if (isset($tribFedData['vRetCP']) && (float)$tribFedData['vRetCP'] > 0) {
+                        $tribFed->addChild('vRetCP', number_format((float)$tribFedData['vRetCP'], 2, '.', ''));
+                    }
+                    if (isset($tribFedData['vRetIRRF']) && (float)$tribFedData['vRetIRRF'] > 0) {
+                        $tribFed->addChild('vRetIRRF', number_format((float)$tribFedData['vRetIRRF'], 2, '.', ''));
+                    }
+                    if (isset($tribFedData['vRetCSLL']) && (float)$tribFedData['vRetCSLL'] > 0) {
+                        $tribFed->addChild('vRetCSLL', number_format((float)$tribFedData['vRetCSLL'], 2, '.', ''));
+                    }
+                }
+
+                // Totalizador informativo de tributos (Lei da Transparência)
+                $totTrib = $trib->addChild('totTrib');
+                $vTotTrib = $totTrib->addChild('vTotTrib');
+                $vTotTrib->addChild('vTotTribFed', '0.00');
+                $vTotTrib->addChild('vTotTribEst', '0.00');
+                $vTotTrib->addChild('vTotTribMun', '0.00');
+            }
+        }
+
+        // =========================================================================
+        // 5. GRUPO IBS/CBS (REFORMA TRIBUTÁRIA)
+        // =========================================================================
+        if (!empty($infDPS['ibscbs']['cIndOp'])) {
+            $ibscbs = $nodeInf->addChild('IBSCBS');
+            $ibscbs->addChild('finNFSe', (string) ($infDPS['ibscbs']['finNFSe'] ?? '0'));
+            $ibscbs->addChild('cIndOp', (string) $infDPS['ibscbs']['cIndOp']);
+            $ibscbs->addChild('indDest', (string) ($infDPS['ibscbs']['indDest'] ?? '1'));
+
+            $ibscbsValores = $ibscbs->addChild('valores');
+            $ibscbsTrib = $ibscbsValores->addChild('trib');
+            $ibscbsG = $ibscbsTrib->addChild('gIBSCBS');
+            $ibscbsG->addChild('CST', str_pad($infDPS['ibscbs']['CST'] ?? '000', 3, '0', STR_PAD_LEFT));
+            $ibscbsG->addChild('cClassTrib', str_pad($infDPS['ibscbs']['cClassTrib'] ?? '000001', 6, '0', STR_PAD_LEFT));
+        }
+
+        Log::info("XML DPS Gerado (Antes de Assinar): " . $xml->asXML());
+
+        // 6. ASSINATURA E TRANSMISSÃO
+        $xmlAssinado = $this->assinarXml($xml->asXML(), 'infDPS');
+        $resSefaz = $this->transmitirParaSefaz($xmlAssinado);
 
         return [
-            'xml_retorno' => $this->xmlNfseAutorizada ?: $xmlAssinado,
-            'numero_nfse' => $this->numeroNfseDoXml($this->xmlNfseAutorizada),
-            'chave' => $this->chave,
-            'protocolo' => $this->protocolo,
-            'response' => $response,
+            'numero_nfse'    => $resSefaz['numeroNfse'] ?? ($resSefaz['numeroNFSe'] ?? $numeroNota),
+            'chave'          => $this->chave,
+            'protocolo'      => $this->protocolo,
+            'xml_retorno'    => $this->xmlNfseAutorizada ?? $xmlAssinado,
+            'resposta_sefaz' => $resSefaz
         ];
     }
 
-    public function consultar(string $chave): array
-    {
-        $response = $this->request(
-            'GET',
-            $this->baseUrl() . '/nfse/' . rawurlencode($chave)
-        );
-
-        $this->hidratarRetorno($response);
-
-        return $response;
-    }
-
+    /**
+     * Transmite o Evento 101101 de Cancelamento
+     */
     public function cancelar(string $chave, string $motivo = 'Cancelamento')
     {
-        if ($chave === '') {
-            throw new \InvalidArgumentException('Informe a chave da NFS-e para cancelamento.');
-        }
+        $codigoMotivo = '1';
+        $cnpj = preg_replace('/\D/', '', $this->config['cnpj'] ?? '');
+        $idEvento = "PRE" . $chave . "101101";
 
-        $cnpj = preg_replace('/\D+/', '', (string) ($this->config['cnpj'] ?? ''));
-        $idEvento = 'PRE' . $chave . '101101';
-
-        $xml = new \SimpleXMLElement(
-            '<?xml version="1.0" encoding="UTF-8"?><pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"/>'
-        );
+        $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"/>');
         $xml->addAttribute('versao', '1.00');
 
         $inf = $xml->addChild('infPedReg');
         $inf->addAttribute('Id', $idEvento);
-        $inf->addChild('tpAmb', (string) ($this->config['tpAmb'] ?? 1));
-        $inf->addChild('verAplic', 'FersoftERP');
+        $inf->addChild('tpAmb', $this->config['tpAmb'] ?? 1);
+        $inf->addChild('verAplic', 'FersoftERP_1.0');
         $inf->addChild('dhEvento', date('Y-m-d\TH:i:sP'));
         $inf->addChild('CNPJAutor', $cnpj);
         $inf->addChild('chNFSe', $chave);
 
-        $evento = $inf->addChild('e101101');
-        $evento->addChild('xDesc', 'Cancelamento de NFS-e');
-        $evento->addChild('cMotivo', '1');
-        $evento->addChild('xMotivo', htmlspecialchars($motivo, ENT_QUOTES, 'UTF-8'));
+        $e101101 = $inf->addChild('e101101');
+        $e101101->addChild('xDesc', 'Cancelamento de NFS-e');
+        $e101101->addChild('cMotivo', $codigoMotivo);
+        $e101101->addChild('xMotivo', htmlspecialchars($motivo, ENT_QUOTES, 'UTF-8'));
 
-        $assinado = $this->assinarXml($xml->asXML(), 'infPedReg');
+        $xmlAssinado = $this->assinarXml($xml->asXML(), 'infPedReg');
 
-        return $this->transmitirEventoParaSefaz($chave, $assinado);
+        return $this->transmitirEventoParaSefaz($chave, $xmlAssinado);
+    }
+
+    protected function transmitirParaSefaz($xmlSigned)
+    {
+        $tpAmb = $this->config['tpAmb'] ?? 1;
+        $urlApi = ($tpAmb == 1)
+            ? 'https://sefin.nfse.gov.br/SefinNacional/nfse'
+            : 'https://sefin.homologacao.nfse.gov.br/SefinNacional/nfse';
+
+        return $this->executarPostSefaz($urlApi, ['dpsXmlGZipB64' => base64_encode(gzencode($xmlSigned))]);
+    }
+
+    protected function transmitirEventoParaSefaz(string $chaveNfse, string $xmlSigned)
+    {
+        $tpAmb = $this->config['tpAmb'] ?? 1;
+        $urlApi = ($tpAmb == 1)
+            ? "https://sefin.nfse.gov.br/SefinNacional/nfse/{$chaveNfse}/eventos"
+            : "https://sefin.homologacao.nfse.gov.br/SefinNacional/nfse/{$chaveNfse}/eventos";
+
+        return $this->executarPostSefaz($urlApi, ['pedidoRegistroEventoXmlGZipB64' => base64_encode(gzencode($xmlSigned))]);
+    }
+
+    protected function executarPostSefaz(string $urlApi, array $jsonPayload)
+    {
+        $certPem = $this->certificate->publicKey ?? $this->certificate->certificate ?? '';
+        $keyPem  = $this->certificate->privateKey ?? '';
+
+        $tempCert = tempnam(sys_get_temp_dir(), 'cert_');
+        $tempKey  = tempnam(sys_get_temp_dir(), 'key_');
+
+        file_put_contents($tempCert, $certPem);
+        file_put_contents($tempKey, $keyPem);
+
+        try {
+            $client = new Client([
+                'timeout'     => 30,
+                'verify'      => false,
+                'cert'        => $tempCert,
+                'ssl_key'     => $tempKey,
+                'http_errors' => false,
+            ]);
+
+            $response = $client->post($urlApi, [
+                'headers' => [
+                    'Content-Type' => 'application/json; charset=utf-8',
+                    'Accept'       => 'application/json'
+                ],
+                'json' => $jsonPayload
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $resBody    = (string) $response->getBody();
+
+            Log::info("NFS-e SefinNacional Retorno [HTTP {$statusCode}]: " . $resBody);
+
+            $resData = json_decode($resBody, true);
+
+            if ($statusCode == 200 || $statusCode == 201) {
+                $this->chave = $resData['chaveAcesso'] ?? $this->chave;
+                $this->protocolo = $resData['idDps'] ?? ('PR' . date('YmdHis'));
+
+                if (!empty($resData['nfseXmlGZipB64'])) {
+                    $this->xmlNfseAutorizada = gzdecode(base64_decode($resData['nfseXmlGZipB64']));
+                }
+
+                return $resData;
+            } else {
+                // TRATAMENTO ROBUSTO DE ERRO COM INICIAIS MAIÚSCULAS OU MINÚSCULAS
+                $erros = [];
+                if (!empty($resData['erros'])) {
+                    foreach ($resData['erros'] as $err) {
+                        $cod  = $err['Codigo'] ?? $err['codigo'] ?? 'ERRO';
+                        $desc = $err['Descricao'] ?? $err['descricao'] ?? ($err['mensagem'] ?? '');
+                        $comp = $err['Complemento'] ?? $err['complemento'] ?? '';
+
+                        $linhaErro = "[{$cod}] {$desc}";
+                        if (!empty($comp)) {
+                            $linhaErro .= " ({$comp})";
+                        }
+                        $erros[] = $linhaErro;
+                    }
+                }
+
+                $motivo = !empty($erros) ? implode(' | ', $erros) : ($resData['erro']['descricao'] ?? strip_tags($resBody));
+
+                throw new \Exception("Rejeição SEFAZ (HTTP {$statusCode}): " . trim($motivo));
+            }
+
+        } finally {
+            @unlink($tempCert);
+            @unlink($tempKey);
+        }
+    }
+
+    protected function assinarXml($xmlString, $tagName = 'infDPS')
+    {
+        $doc = new \DOMDocument();
+        $doc->preserveWhiteSpace = false;
+        $doc->formatOutput = false;
+        $doc->loadXML($xmlString);
+
+        $nodeInf = $doc->getElementsByTagName($tagName)->item(0);
+        if ($nodeInf && $nodeInf->hasAttribute('Id')) {
+            $nodeInf->setIdAttribute('Id', true);
+        }
+
+        $idNode = $nodeInf->getAttribute('Id');
+
+        $objDSig = new XMLSecurityDSig('');
+        $objDSig->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
+
+        $objDSig->addReference(
+            $nodeInf,
+            XMLSecurityDSig::SHA1,
+            ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', XMLSecurityDSig::EXC_C14N],
+            [
+                'force_uri' => true,
+                'uri'       => '#' . $idNode,
+                'overwrite' => false
+            ]
+        );
+
+        $objKey = new XMLSecurityKey(XMLSecurityKey::RSA_SHA1, ['type' => 'private']);
+
+        $privateKeyPem = $this->certificate->privateKey ?? '';
+        $publicKeyPem  = $this->certificate->publicKey ?? $this->certificate->certificate ?? '';
+
+        $objKey->loadKey($privateKeyPem);
+
+        $objDSig->sign($objKey);
+        $objDSig->add509Cert($publicKeyPem);
+
+        $rootTag = $doc->getElementsByTagName('DPS')->item(0);
+        if (!$rootTag) {
+            $rootTag = $doc->documentElement;
+        }
+        $objDSig->appendSignature($rootTag);
+
+        return $doc->saveXML();
     }
 
     public function getChave()
@@ -100,539 +467,5 @@ class NfseNacionalTools implements NfseEmissorInterface
     public function getProtocolo()
     {
         return $this->protocolo;
-    }
-
-    public function validarDps(array $dpsData): array
-    {
-        $inf = $dpsData['infDPS'] ?? [];
-        $serv = $inf['serv'] ?? [];
-        $codigo = preg_replace(
-            '/\D+/',
-            '',
-            (string) ($serv['cServ']['cTribNac'] ?? '')
-        );
-
-        $erros = [];
-
-        if (empty($inf['prest']['CNPJ'])) {
-            $erros[] = 'CNPJ do prestador não informado.';
-        }
-
-        if (
-            empty($inf['toma']['CNPJ'])
-            && empty($inf['toma']['CPF'])
-        ) {
-            $erros[] = 'Documento do tomador não informado.';
-        }
-
-        if ($codigo === '') {
-            $erros[] = 'Código de tributação nacional do serviço não informado.';
-        }
-
-        $constructionCodes = [
-            '070201', '070202', '070401', '070501', '070502',
-            '070601', '070602', '070701', '070801', '071701', '071901',
-        ];
-
-        if (
-            in_array($codigo, $constructionCodes, true)
-            && empty($serv['obra']['cObra'])
-        ) {
-            $erros[] = 'Código da obra/ART é obrigatório para o serviço informado.';
-        }
-
-        $valor = (float) ($inf['valores']['vServPrest']['vServ'] ?? 0);
-        if ($valor <= 0) {
-            $erros[] = 'Valor do serviço deve ser maior que zero.';
-        }
-
-        // Regras preservadas da implementação histórica.
-        $descontoIncondicional = (float) (
-            $inf['valores']['trib']['vDescIncond'] ?? 0
-        );
-        if (
-            $descontoIncondicional > 0
-            && $descontoIncondicional >= $valor
-        ) {
-            $erros[] = 'O valor do desconto incondicionado deve ser estritamente menor que o valor do serviço.';
-        }
-
-        if (
-            isset($inf['valores']['trib']['tribFed']['pIBS'])
-            && empty($serv['cServ']['cNBS'])
-        ) {
-            $erros[] = 'O código NBS (cNBS) é obrigatório quando o grupo de tributação IBS/CBS for informado.';
-        }
-
-        return $erros;
-    }
-
-    private function gerarDpsXml(array $dpsData): string
-    {
-        $inf = $dpsData['infDPS'] ?? [];
-
-        $cnpj = preg_replace(
-            '/\D+/',
-            '',
-            (string) ($this->config['cnpj'] ?? $inf['prest']['CNPJ'] ?? '')
-        );
-
-        $codigoMunicipio = str_pad(
-            preg_replace('/\D+/', '', (string) ($inf['cLocEmi'] ?? '')),
-            7,
-            '0',
-            STR_PAD_LEFT
-        );
-
-        $serie = (string) ($inf['serie'] ?? $this->config['serie_dps'] ?? '1');
-        $numero = (string) ($inf['nDPS'] ?? $this->config['numero_dps'] ?? '1');
-
-        $idDps = 'DPS'
-            . '1'
-            . $cnpj
-            . $codigoMunicipio
-            . str_pad($serie, 5, '0', STR_PAD_LEFT)
-            . str_pad($numero, 15, '0', STR_PAD_LEFT);
-
-        $this->chave = $idDps;
-
-        $xml = new \SimpleXMLElement(
-            '<?xml version="1.0" encoding="UTF-8"?><DPS xmlns="http://www.sped.fazenda.gov.br/nfse"/>'
-        );
-        $xml->addAttribute('versao', '1.01');
-
-        $node = $xml->addChild('infDPS');
-        $node->addAttribute('Id', $idDps);
-        $node->addChild('tpAmb', (string) ($this->config['tpAmb'] ?? 1));
-        $node->addChild('dhEmi', (string) ($inf['dhEmi'] ?? date('Y-m-d\TH:i:sP')));
-        $node->addChild('verAplic', 'FersoftERP');
-        $node->addChild('serie', $serie);
-        $node->addChild('nDPS', $numero);
-        $node->addChild('dCompet', (string) ($inf['dCompet'] ?? date('Y-m-d')));
-        $node->addChild('tpEmit', (string) ($inf['tpEmit'] ?? 1));
-        $node->addChild('cLocEmi', $codigoMunicipio);
-
-        $prest = $node->addChild('prest');
-        $prest->addChild('CNPJ', $cnpj);
-
-        $regTrib = $prest->addChild('regTrib');
-        $regTrib->addChild(
-            'opSimpNac',
-            (string) ($inf['prest']['regTrib']['opSimpNac'] ?? 1)
-        );
-        $regTrib->addChild(
-            'regApTribSN',
-            (string) ($inf['prest']['regTrib']['regApTribSN'] ?? 1)
-        );
-        $regTrib->addChild(
-            'regEspTrib',
-            (string) ($inf['prest']['regTrib']['regEspTrib'] ?? 0)
-        );
-
-        $tomador = $node->addChild('toma');
-        if (!empty($inf['toma']['CNPJ'])) {
-            $tomador->addChild(
-                'CNPJ',
-                preg_replace('/\D+/', '', (string) $inf['toma']['CNPJ'])
-            );
-        } else {
-            $tomador->addChild(
-                'CPF',
-                preg_replace('/\D+/', '', (string) ($inf['toma']['CPF'] ?? ''))
-            );
-        }
-
-        $tomador->addChild(
-            'xNome',
-            htmlspecialchars((string) ($inf['toma']['xNome'] ?? ''), ENT_QUOTES, 'UTF-8')
-        );
-
-        if (!empty($inf['toma']['ender'])) {
-            $ender = $tomador->addChild('end');
-            $enderNac = $ender->addChild('endNac');
-            $enderNac->addChild(
-                'cMun',
-                preg_replace('/\D+/', '', (string) ($inf['toma']['ender']['cMun'] ?? ''))
-            );
-            $enderNac->addChild(
-                'CEP',
-                preg_replace('/\D+/', '', (string) ($inf['toma']['ender']['CEP'] ?? ''))
-            );
-
-            $ender->addChild(
-                'xLgr',
-                htmlspecialchars((string) ($inf['toma']['ender']['xLgr'] ?? ''), ENT_QUOTES, 'UTF-8')
-            );
-            $ender->addChild('nro', (string) ($inf['toma']['ender']['nro'] ?? 'S/N'));
-            $ender->addChild(
-                'xBairro',
-                htmlspecialchars((string) ($inf['toma']['ender']['xBairro'] ?? ''), ENT_QUOTES, 'UTF-8')
-            );
-        }
-
-        $serv = $node->addChild('serv');
-        $locPrest = $serv->addChild('locPrest');
-        $locPrest->addChild(
-            'cLocPrestacao',
-            preg_replace(
-                '/\D+/',
-                '',
-                (string) ($inf['serv']['locPrest']['cLocPrest'] ?? $codigoMunicipio)
-            )
-        );
-
-        $cServ = $serv->addChild('cServ');
-        $cServ->addChild(
-            'cTribNac',
-            preg_replace(
-                '/\D+/',
-                '',
-                (string) ($inf['serv']['cServ']['cTribNac'] ?? '')
-            )
-        );
-        $cServ->addChild(
-            'xDescServ',
-            htmlspecialchars(
-                (string) ($inf['serv']['cServ']['xDescServ'] ?? ''),
-                ENT_QUOTES,
-                'UTF-8'
-            )
-        );
-
-        $cNbs = $inf['serv']['cServ']['cNBS'] ?? '101010100';
-        $cServ->addChild(
-            'cNBS',
-            preg_replace('/\D+/', '', (string) $cNbs)
-        );
-
-        if (!empty($inf['serv']['obra']['cObra'])) {
-            $obra = $serv->addChild('obra');
-            $obra->addChild('cObra', (string) $inf['serv']['obra']['cObra']);
-        }
-
-        $valores = $node->addChild('valores');
-        $vServPrest = $valores->addChild('vServPrest');
-        $vServPrest->addChild(
-            'vServ',
-            number_format(
-                (float) ($inf['valores']['vServPrest']['vServ'] ?? 0),
-                2,
-                '.',
-                ''
-            )
-        );
-
-        $trib = $valores->addChild('trib');
-        $tribMun = $trib->addChild('tribMun');
-        $tribMun->addChild(
-            'tribISSQN',
-            (string) ($inf['valores']['trib']['tribMun']['tribISSQN'] ?? 1)
-        );
-        $tribMun->addChild(
-            'tpRetISSQN',
-            (string) ($inf['valores']['trib']['tribMun']['tpRetISSQN'] ?? 1)
-        );
-
-        if (isset($inf['valores']['trib']['tribMun']['pAliq'])) {
-            $tribMun->addChild(
-                'pAliq',
-                number_format(
-                    (float) $inf['valores']['trib']['tribMun']['pAliq'],
-                    2,
-                    '.',
-                    ''
-                )
-            );
-        }
-
-        if (!empty($inf['valores']['trib']['tribFed'])) {
-            $tribFed = $trib->addChild('tribFed');
-            $piscofins = $tribFed->addChild('piscofins');
-            $piscofins->addChild(
-                'CST',
-                (string) ($inf['valores']['trib']['tribFed']['CST'] ?? '07')
-            );
-
-            foreach (['vRetCP', 'vRetIRRF', 'vRetCSLL'] as $campo) {
-                $tribFed->addChild(
-                    $campo,
-                    number_format(
-                        (float) ($inf['valores']['trib']['tribFed'][$campo] ?? 0),
-                        2,
-                        '.',
-                        ''
-                    )
-                );
-            }
-        }
-
-        // Totalizadores tributários existentes no service histórico.
-        $totTrib = $trib->addChild('totTrib');
-        $vTotTrib = $totTrib->addChild('vTotTrib');
-        $vTotTrib->addChild('vTotTribFed', '0.00');
-        $vTotTrib->addChild('vTotTribEst', '0.00');
-        $vTotTrib->addChild('vTotTribMun', '0.00');
-
-        // Grupo IBS/CBS da implementação histórica. Mantém a mecânica
-        // fiscal anterior sem alterar views ou fluxo de emissão.
-        $ibscbs = $node->addChild('IBSCBS');
-        $ibscbs->addChild('finNFSe', '0');
-        $ibscbs->addChild('cIndOp', (string) ($inf['IBSCBS']['cIndOp'] ?? '000001'));
-        $ibscbs->addChild('indDest', (string) ($inf['IBSCBS']['indDest'] ?? '1'));
-
-        $ibscbsValores = $ibscbs->addChild('valores');
-        $ibscbsTrib = $ibscbsValores->addChild('trib');
-        $gIbscbs = $ibscbsTrib->addChild('gIBSCBS');
-        $gIbscbs->addChild(
-            'CST',
-            (string) ($inf['IBSCBS']['CST'] ?? '000')
-        );
-        $gIbscbs->addChild(
-            'cClassTrib',
-            (string) ($inf['IBSCBS']['cClassTrib'] ?? '000001')
-        );
-
-        Log::info('XML DPS gerado antes da assinatura.', [
-            'chave_dps' => $this->chave,
-        ]);
-
-        return $xml->asXML();
-    }
-
-    private function assinarXml(string $xmlString, string $tagName): string
-    {
-        $doc = new \DOMDocument();
-        $doc->preserveWhiteSpace = false;
-        $doc->formatOutput = false;
-
-        if (!$doc->loadXML($xmlString)) {
-            throw new \RuntimeException('Não foi possível carregar o XML para assinatura.');
-        }
-
-        $node = $doc->getElementsByTagName($tagName)->item(0);
-        if (!$node || !$node->hasAttribute('Id')) {
-            throw new \RuntimeException(
-                "Elemento {$tagName} com atributo Id não encontrado para assinatura."
-            );
-        }
-
-        $node->setIdAttribute('Id', true);
-        $id = $node->getAttribute('Id');
-
-        $signature = new XMLSecurityDSig('');
-        $signature->setCanonicalMethod(XMLSecurityDSig::EXC_C14N);
-        $signature->addReference(
-            $node,
-            XMLSecurityDSig::SHA1,
-            [
-                'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
-                XMLSecurityDSig::EXC_C14N,
-            ],
-            [
-                'force_uri' => true,
-                'uri' => '#' . $id,
-                'overwrite' => false,
-            ]
-        );
-
-        $key = new XMLSecurityKey(
-            XMLSecurityKey::RSA_SHA1,
-            ['type' => 'private']
-        );
-        $key->loadKey((string) ($this->certificate->privateKey ?? ''));
-        $signature->sign($key);
-        $signature->add509Cert(
-            (string) (
-                $this->certificate->publicKey
-                ?? $this->certificate->certificate
-                ?? ''
-            )
-        );
-
-        $signature->appendSignature($doc->documentElement);
-
-        return $doc->saveXML();
-    }
-
-    protected function transmitirParaSefaz(string $xmlSigned): array
-    {
-        return $this->executarPostSefaz(
-            $this->baseUrl() . '/nfse',
-            ['dpsXmlGZipB64' => base64_encode(gzencode($xmlSigned))]
-        );
-    }
-
-    protected function transmitirEventoParaSefaz(
-        string $chaveNfse,
-        string $xmlSigned
-    ): array {
-        return $this->executarPostSefaz(
-            $this->baseUrl() . '/nfse/' . rawurlencode($chaveNfse) . '/eventos',
-            [
-                'pedidoRegistroEventoXmlGZipB64' =>
-                    base64_encode(gzencode($xmlSigned)),
-            ]
-        );
-    }
-
-    protected function executarPostSefaz(
-        string $urlApi,
-        array $jsonPayload
-    ): array {
-        $response = $this->request('POST', $urlApi, $jsonPayload);
-        $this->hidratarRetorno($response);
-
-        return $response;
-    }
-
-    private function request(
-        string $method,
-        string $url,
-        ?array $json = null
-    ): array {
-        [$certPath, $keyPath] = $this->temporaryCertificateFiles();
-
-        try {
-            $client = new Client([
-                'timeout' => (int) ($this->config['timeout_nfse'] ?? 45),
-                'connect_timeout' => 15,
-                'verify' => true,
-                'cert' => $certPath,
-                'ssl_key' => $keyPath,
-                'http_errors' => false,
-            ]);
-
-            $options = [
-                'headers' => [
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json; charset=utf-8',
-                ],
-            ];
-
-            if ($json !== null) {
-                $options['json'] = $json;
-            }
-
-            $response = $client->request($method, $url, $options);
-            $status = $response->getStatusCode();
-            $body = (string) $response->getBody();
-            $data = json_decode($body, true);
-
-            if ($status >= 200 && $status < 300) {
-                return is_array($data) ? $data : ['raw' => $body];
-            }
-
-            $mensagens = [];
-            if (is_array($data)) {
-                foreach ((array) ($data['erros'] ?? []) as $erro) {
-                    $mensagens[] = '[' . ($erro['codigo'] ?? 'ERRO') . '] '
-                        . ($erro['descricao'] ?? $erro['mensagem'] ?? '');
-                }
-
-                if ($mensagens === [] && isset($data['erro'])) {
-                    $mensagens[] = is_array($data['erro'])
-                        ? (string) ($data['erro']['descricao'] ?? $data['erro']['mensagem'] ?? '')
-                        : (string) $data['erro'];
-                }
-            }
-
-            $motivo = $mensagens !== []
-                ? implode(' | ', $mensagens)
-                : trim(strip_tags($body));
-
-            throw new \RuntimeException(
-                "Rejeição NFS-e (HTTP {$status}): {$motivo}"
-            );
-        } finally {
-            @unlink($certPath);
-            @unlink($keyPath);
-        }
-    }
-
-    private function temporaryCertificateFiles(): array
-    {
-        $cert = (string) (
-            $this->certificate->publicKey
-            ?? $this->certificate->certificate
-            ?? ''
-        );
-        $key = (string) ($this->certificate->privateKey ?? '');
-
-        if ($cert === '' || $key === '') {
-            throw new \RuntimeException(
-                'Certificado A1 não disponibilizou certificado/chave privada em PEM.'
-            );
-        }
-
-        $certPath = tempnam(sys_get_temp_dir(), 'nfse_cert_');
-        $keyPath = tempnam(sys_get_temp_dir(), 'nfse_key_');
-
-        file_put_contents($certPath, $cert);
-        file_put_contents($keyPath, $key);
-
-        return [$certPath, $keyPath];
-    }
-
-    private function baseUrl(): string
-    {
-        return (int) ($this->config['tpAmb'] ?? 1) === 1
-            ? 'https://sefin.nfse.gov.br/SefinNacional'
-            : 'https://sefin.homologacao.nfse.gov.br/SefinNacional';
-    }
-
-    private function hidratarRetorno(array $data): void
-    {
-        $this->chave = (string) (
-            $data['chaveAcesso']
-            ?? $data['chave']
-            ?? $this->chave
-            ?? ''
-        );
-
-        $this->protocolo = (string) (
-            $data['idDps']
-            ?? $data['protocolo']
-            ?? $this->protocolo
-            ?? ''
-        );
-
-        $encoded = $data['nfseXmlGZipB64'] ?? null;
-        if ($encoded) {
-            $decoded = base64_decode((string) $encoded, true);
-            if ($decoded !== false) {
-                $xml = @gzdecode($decoded);
-                if ($xml !== false) {
-                    $this->xmlNfseAutorizada = $xml;
-                }
-            }
-        }
-
-        if (!$this->xmlNfseAutorizada && isset($data['raw'])) {
-            $raw = (string) $data['raw'];
-            if (str_contains($raw, '<NFSe')) {
-                $this->xmlNfseAutorizada = $raw;
-            }
-        }
-    }
-
-    private function numeroNfseDoXml(?string $xml): ?string
-    {
-        if (!$xml) {
-            return null;
-        }
-
-        try {
-            $document = new \SimpleXMLElement($xml);
-            $nodes = $document->xpath('//*[local-name()="nNFSe"]');
-
-            if ($nodes && isset($nodes[0])) {
-                return trim((string) $nodes[0]);
-            }
-        } catch (\Throwable $e) {
-            // Número pode não estar presente no retorno; o controller mantém
-            // o identificador local sem invalidar a emissão autorizada.
-        }
-
-        return null;
     }
 }
