@@ -7,10 +7,9 @@ Route::group(['prefix' => 'app-install'], function () {
         $name = trim((string) config('app.name'));
         abort_unless($name !== '', 503);
 
-        // Instalação PWA é permanente e não depende do módulo opcional.
+        // PWA sempre disponível; favicon publicado só com PAG_LOGIN=access_4.
         $favicon = public_path('imgs/favicon.png');
-        if (config('login_presentation.enabled', false)
-            && config('login_presentation.global_branding_enabled', false)
+        if (config('login_presentation.page', 'access') === 'access_4'
             && class_exists(\App\Services\LoginPresentationService::class)) {
             try {
                 $candidate = app(\App\Services\LoginPresentationService::class)->faviconPath();
@@ -69,10 +68,9 @@ Route::group(['prefix' => 'app-install'], function () {
         $size = (int) $size;
         abort_unless(in_array($size, [180, 192, 512], true), 404);
 
-        // Instalação PWA é permanente e não depende do módulo opcional.
+        // PWA sempre disponível; favicon publicado só com PAG_LOGIN=access_4.
         $favicon = public_path('imgs/favicon.png');
-        if (config('login_presentation.enabled', false)
-            && config('login_presentation.global_branding_enabled', false)
+        if (config('login_presentation.page', 'access') === 'access_4'
             && class_exists(\App\Services\LoginPresentationService::class)) {
             try {
                 $candidate = app(\App\Services\LoginPresentationService::class)->faviconPath();
@@ -331,10 +329,10 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
     Route::get('/remove-cor', 'ConfigController@removeCor');
     Route::post('/save', 'ConfigController@save');
 
-    // Nenhuma rota do módulo opcional é registrada enquanto desativado.
-    // Um deploy que remova os arquivos novos não afeta /config ou /login.
-    if (config('login_presentation.enabled', false)
-        && class_exists(\App\Http\Controllers\LoginAppearanceController::class)
+    // O editor pode preparar modelos antes de mudar PAG_LOGIN.
+    // Em instalação sem o módulo, as rotas não são registradas.
+    // A autorização de superusuário é obrigatória no controller.
+    if (class_exists(\App\Http\Controllers\LoginAppearanceController::class)
         && class_exists(\App\Services\LoginPresentationService::class)) {
         Route::group(['prefix' => 'aparencia'], function () {
         Route::get('/', 'LoginAppearanceController@index')->name('config.aparencia.index');

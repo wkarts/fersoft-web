@@ -2,12 +2,11 @@
 <html lang="br">
 <head>
     @include('layouts.installable')
-    {{-- O módulo de apresentação é opcional: com ele desativado não há consulta,
-         dependência de classes novas ou alteração na identidade histórica. --}}
+    {{-- Somente PAG_LOGIN=access_4 habilita identidade publicada nos menus.
+         Qualquer login histórico mantém integralmente seus recursos visuais. --}}
     @php
         $appearanceAssets = [];
-        if (config('login_presentation.enabled', false)
-            && config('login_presentation.global_branding_enabled', false)
+        if (config('login_presentation.page', 'access') === 'access_4'
             && class_exists(\App\Services\LoginPresentationService::class)) {
             try {
                 $appearanceAssets = app(\App\Services\LoginPresentationService::class)->assetUrls();

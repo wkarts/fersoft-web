@@ -56,14 +56,12 @@ class UserController extends Controller
             return redirect('/graficos'); // Redireciona para a rota desejada
         }
 
-        // A escolha histórica permanece válida. O módulo novo é opt-in e não
-        // deve ser chamado quando uma tela antiga está selecionada.
-        $page = (string) config('login_presentation.page', env('PAG_LOGIN', 'access'));
+        // PAG_LOGIN é o único seletor; as telas históricas continuam independentes.
+        // A composição, fonte e identidade da access_4 vêm da publicação do superusuário.
+        $page = (string) config('login_presentation.page', 'access');
         $page = preg_match('/^[A-Za-z0-9_-]+$/D', $page) ? $page : 'access';
 
-        $newEnabled = (bool) config('login_presentation.enabled', false);
-        $newAvailable = $newEnabled
-            && class_exists(\App\Services\LoginPresentationService::class)
+        $newAvailable = class_exists(\App\Services\LoginPresentationService::class)
             && view()->exists('login.access_4')
             && is_file(public_path('css/login-access4.css'));
 

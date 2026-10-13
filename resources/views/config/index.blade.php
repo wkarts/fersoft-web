@@ -21,7 +21,9 @@
 </style>
 @endsection
 @section('content')
-@if(config('login_presentation.enabled', false) && class_exists(\App\Http\Controllers\LoginAppearanceController::class))
+@if((bool) data_get(session('user_logged'), 'super', false)
+    && class_exists(\App\Http\Controllers\LoginAppearanceController::class)
+    && class_exists(\App\Services\LoginPresentationService::class))
 <div class="container-fluid mb-4">
     <div class="card card-custom p-4">
         <div class="d-flex align-items-center justify-content-between flex-wrap">
