@@ -116,9 +116,15 @@ class LoginPresentationTextPersistenceTest extends TestCase
         $this->postJson('/config/aparencia/modelos', $this->payload())->assertForbidden();
         $this->assertDatabaseCount('login_presentations', 0);
 
-        $this->withSession($this->superSession())->post('/config/aparencia/modelos', $this->payload([
+        $invalid = $this->payload([
             'hero_kicker' => str_repeat('x', 101), 'form_title' => ['invalido'],
-        ]))->assertSessionHasErrors(['hero_kicker', 'form_title']);
+        ]);
+        // O Handler também apresenta ValidationException como flash na web.
+        // Validamos esse retorno e os erros estruturados da resposta JSON.
+        $this->withSession($this->superSession())->post('/config/aparencia/modelos', $invalid)
+            ->assertRedirect()->assertSessionHas('mensagem_erro');
+        $this->postJson('/config/aparencia/modelos', $invalid)
+            ->assertUnprocessable()->assertJsonValidationErrors(['hero_kicker', 'form_title']);
         $this->assertDatabaseCount('login_presentations', 0);
     }
 }
