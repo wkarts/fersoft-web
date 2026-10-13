@@ -107,8 +107,15 @@ class LoginPresentationTextPersistenceTest extends TestCase
     public function test_guest_and_non_super_cannot_change_texts_and_invalid_texts_are_rejected(): void
     {
         $this->post('/config/aparencia/modelos', $this->payload())->assertRedirect('/login');
+
+        // O Handler histórico converte HTTP 403 em redirect + flash na web.
+        // Em JSON mantém o status 403. Nenhum caminho pode gravar um modelo.
         $this->withSession(['user_logged' => ['super' => 0]])
-            ->post('/config/aparencia/modelos', $this->payload())->assertForbidden();
+            ->post('/config/aparencia/modelos', $this->payload())
+            ->assertRedirect()->assertSessionHas('mensagem_erro', 'Acesso negado.');
+        $this->postJson('/config/aparencia/modelos', $this->payload())->assertForbidden();
+        $this->assertDatabaseCount('login_presentations', 0);
+
         $this->withSession($this->superSession())->post('/config/aparencia/modelos', $this->payload([
             'hero_kicker' => str_repeat('x', 101), 'form_title' => ['invalido'],
         ]))->assertSessionHasErrors(['hero_kicker', 'form_title']);
