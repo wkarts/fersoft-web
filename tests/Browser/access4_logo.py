@@ -32,11 +32,20 @@ APPLY = """data => {
 }"""
 MEASURE = """() => {
  const visible = e => e.getClientRects().length && e.getBoundingClientRect().width && e.getBoundingClientRect().height;
- const rect = e => {const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+ const bounds = r => ({x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom});
+ const rect = e => bounds(e.getBoundingClientRect());
  const logos = [...document.querySelectorAll('.login-identity img,.login-form-mobile-brand img')].filter(visible);
  const bad = [...document.querySelectorAll('html,body,.login-shell,.login-public,.login-auth,.login-form-container,.login-identity,.login-form-mobile-brand')]
    .filter(e=>visible(e) && e.clientWidth && e.scrollWidth>e.clientWidth+1).map(e=>e.className||e.tagName);
- const controls = [...document.querySelectorAll('.login-group input,.login-form-container h2,.login-actions,.login-button')].filter(visible).map(rect);
+ const controls = [...document.querySelectorAll('.login-group input,.login-actions,.login-button')].filter(visible).map(rect);
+ // O layout compacto aprovado reserva padding lateral no h2 para a logo.
+ // Medir os glifos, não a caixa com esse espaço vazio, evita falso positivo
+ // sem deixar de detectar qualquer sobreposição real do texto.
+ for (const heading of [...document.querySelectorAll('.login-form-container h2')].filter(visible)) {
+   const range = document.createRange();
+   range.selectNodeContents(heading);
+   controls.push(...Array.from(range.getClientRects()).map(bounds));
+ }
  return {logos:logos.map(rect),controls,bad,rootWidth:document.documentElement.clientWidth,
    rootScroll:document.documentElement.scrollWidth,fit:logos.map(e=>getComputedStyle(e).objectFit)};
 }"""
@@ -122,6 +131,11 @@ def main() -> None:
                             assert len(metrics['logos']) == 1, 'Logo duplicada ou oculta'
                             logo = metrics['logos'][0]
                             assert logo['x'] >= -1 and logo['right'] <= metrics['rootWidth'] + 1, 'Logo fora da largura disponível'
+                            assert metrics['fit'] == ['contain'], 'A logo deve preservar a proporção visual'
+                            if name == 'desktop-only' and width > 960:
+                                assert abs(logo['width'] - 240) <= 1, 'Largura de desktop não aplicada'
+                            if name == 'mobile-only' and width <= 960:
+                                assert abs(logo['width'] - 112) <= 1 and abs(logo['height'] - 64) <= 1, 'Dimensões de mobile não aplicadas'
                             for c in metrics['controls']:
                                 overlap_x = min(logo['right'], c['right']) - max(logo['x'], c['x'])
                                 overlap_y = min(logo['bottom'], c['bottom']) - max(logo['y'], c['y'])
