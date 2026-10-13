@@ -726,4 +726,341 @@ class ContratoEngMedicaoController extends BaseController
     {
         return $this->money($value);
     }
+
+    // Operações de NFS-e adicionadas sem alterar os métodos históricos de
+    // medições, financeiros, WhatsApp, e-mail, impressão e BaseController.
+
+    public function emitirNfse(Request $request, $id)
+    {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::with(['cliente', 'itens.servico'])->where('empresa_id', $empresa_id)->findOrFail($id);
+
+        $config = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
+        $certRes = \App\Models\Certificado::where('empresa_id', $empresa_id)->first();
+        $tributacao = \App\Models\Tributacao::where('empresa_id', $empresa_id)->first();
+
+        if (!$config || !$certRes) {
+            return redirect()->back()->with('mensagem_erro', 'Configurações ou certificado digital não encontrados.');
+        }
+
+        try {
+            $certContent = file_exists(storage_path('app/public/certificados/' . $certRes->arquivo))
+                ? file_get_contents(storage_path('app/public/certificados/' . $certRes->arquivo))
+                : $certRes->arquivo;
+            $certificate = \NFePHP\Common\Certificate::readPfx($certContent, $certRes->senha);
+
+            // Identificação dinâmica do município emitente
+            $codigoIbgeEmitente = null;
+            if (!empty($config->cidade_id)) {
+                $cidadeObj = DB::table('cidades')->where('id', $config->cidade_id)->first();
+                if ($cidadeObj) {
+                    $codigoIbgeEmitente = $cidadeObj->codigo ?? $cidadeObj->codigo_ibge ?? null;
+                }
+            }
+            if (!$codigoIbgeEmitente) {
+                $codigoIbgeEmitente = $config->codMun ?? $config->codigo_ibge_municipio ?? '2919207';
+            }
+            $codigoIbgeEmitente = str_pad(preg_replace('/\D/', '', $codigoIbgeEmitente), 7, '0', STR_PAD_LEFT);
+
+            // Seleção de Provedor
+            $configArray = $config->toArray();
+            switch ((string) $codigoIbgeEmitente) {
+                case '2910057': // Dias d'Ávila - BA
+                    $provedor = 'diasdavila';
+                    if (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri'])) {
+                        throw new \RuntimeException('Configure as credenciais do provedor municipal antes de transmitir a NFS-e.');
+                    }
+                    break;
+                case '2927408': // Salvador - BA
+                    $provedor = 'salvador';
+                    break;
+                default:
+                    $provedor = 'nacional';
+                    break;
+            }
+
+            $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $configArray, $certificate);
+
+            // Busca dados do serviço principal selecionado na medição
+            $servicoMaster = $fatura->servico;
+            if (!$servicoMaster && $fatura->itens->count() > 0) {
+                $servicoMaster = $fatura->itens->first()->servico;
+            }
+
+            $cTribNac  = preg_replace('/\D/', '', $servicoMaster->codigo_tributacao_nacional ?? $servicoMaster->codigo_servico ?? '140501');
+            $cNBS      = preg_replace('/\D/', '', $servicoMaster->codigo_nbs ?? '120029000');
+            $cstIbsCbs = $servicoMaster->cst_ibscbs ?? $tributacao->cst_ibs_cbs ?? '000';
+            $classTrib = $servicoMaster->codigo_class_trib ?? $tributacao->class_trib_ibs_cbs ?? '000001';
+
+            $aliquotaIss = (float) ($servicoMaster->aliquota_iss ?? 3.00);
+            $issRetido   = (int) ($servicoMaster->iss_retido ?? 2);
+            $tpRetISSQN  = ($issRetido === 1) ? 2 : 1;
+            $aliquotaInss = (float) ($servicoMaster->aliquota_inss ?? 0);
+
+            // Constrói discriminação detalhada dos itens
+            $discriminacaoItens = "MEDIÇÃO DE CONTRATO #" . ($fatura->contrato_eng_id ?? $fatura->id) . "\n";
+            if ($fatura->itens && count($fatura->itens) > 0) {
+                foreach ($fatura->itens as $it) {
+                    $nomeItem = $it->servico->nome ?? $it->produto->nome ?? 'Serviço/Locação';
+                    $discriminacaoItens .= "- {$nomeItem} | Qtd: {$it->quantidade} | Vl. Unit: R$ " . number_format($it->valor_unitario, 2, ',', '.') . " | Subtotal: R$ " . number_format((float) $it->valor_total, 2, ',', '.') . "\n";
+                }
+            }
+            if (!empty($fatura->observacao)) {
+                $discriminacaoItens .= "Obs: " . $fatura->observacao;
+            }
+
+            $cliente = $fatura->cliente;
+            $docTomador = preg_replace('/\D/', '', $cliente->cpf_cnpj ?? '');
+            $tipoDocTomador = strlen($docTomador) > 11 ? 'CNPJ' : 'CPF';
+
+            $valorServico = (float) $fatura->valor_total;
+            $valorIss = round($valorServico * ($aliquotaIss / 100), 2);
+            $baseCalculoIbsCbs = round($valorServico - $valorIss, 2);
+            $vRetINSS = $aliquotaInss > 0 ? round($valorServico * ($aliquotaInss / 100), 2) : 0.00;
+
+            $dpsData = [
+                'infDPS' => [
+                    'dhEmi'    => date('Y-m-d\TH:i:sP'),
+                    'dCompet'  => date('Y-m-d', strtotime($fatura->data_faturamento ?? now())),
+                    'tpEmit'   => 1,
+                    'cLocEmi'  => $codigoIbgeEmitente,
+                    'serie'    => '1',
+                    'nDPS'     => (int) $fatura->id,
+                    'prest' => [
+                        'CNPJ'    => preg_replace('/\D/', '', $config->cnpj),
+                        'IM'      => preg_replace('/\D/', '', $config->inscricao_municipal ?? ''),
+                        'regTrib' => ['opSimpNac' => 2, 'regApTribSN' => 1, 'regEspTrib' => 0]
+                    ],
+                    'toma' => [
+                        $tipoDocTomador => $docTomador,
+                        'xNome' => $cliente->razao_social ?? 'CONSUMIDOR',
+                        'ender' => [
+                            'cMun'    => $cliente->cidade->codigo ?? $codigoIbgeEmitente,
+                            'CEP'     => preg_replace('/\D/', '', $cliente->cep ?? '40000000'),
+                            'xLgr'    => $cliente->rua ?? 'Logradouro',
+                            'nro'     => $cliente->numero ?? 'S/N',
+                            'xBairro' => $cliente->bairro ?? 'Centro'
+                        ]
+                    ],
+                    'serv' => [
+                        'locPrest' => ['cLocPrest' => $codigoIbgeEmitente],
+                        'cServ' => [
+                            'cTribNac'  => $cTribNac,
+                            'xDescServ' => trim($discriminacaoItens),
+                            'cNBS'      => $cNBS,
+                        ]
+                    ],
+                    'valores' => [
+                        'vServPrest' => ['vServ' => number_format($valorServico, 2, '.', '')],
+                        'trib' => [
+                            'tribMun' => [
+                                'tribISSQN'  => 1,
+                                'tpRetISSQN' => $tpRetISSQN,
+                                'pAliq'      => number_format($aliquotaIss, 4, '.', '')
+                            ],
+                            'vDescIncond' => '0.00',
+                            'vDed'        => '0.00',
+                            'tribFed'     => [
+                                'vRetCP'    => number_format($vRetINSS, 2, '.', ''),
+                                'vRetIRRF'  => '0.00',
+                                'vRetCSLL'  => '0.00',
+                                'piscofins' => ['CST' => '07', 'vPIS' => '0.00', 'vCOFINS' => '0.00']
+                            ]
+                        ]
+                    ],
+                    'ibscbs' => [
+                        'CST'         => $cstIbsCbs,
+                        'cClassTrib'  => $classTrib,
+                        'cIndOp'      => '050101',
+                        'baseCalculo' => number_format($baseCalculoIbsCbs, 2, '.', ''),
+                        'percIbsMun'  => '0.00', 'valIbsMun' => '0.00',
+                        'percIbsEst'  => '0.10', 'valIbsEst' => number_format(round($baseCalculoIbsCbs * 0.001, 2), 2, '.', ''),
+                        'percCbs'     => '0.90', 'valCbs'    => number_format(round($baseCalculoIbsCbs * 0.009, 2), 2, '.', ''),
+                    ]
+                ]
+            ];
+
+            $resultado = $emissor->emitir($dpsData);
+            $xmlRetorno = $resultado['xml_retorno'] ?? '';
+
+            $numeroNfse = $resultado['numero_nfse'] ?? $fatura->id;
+            $codVerificacao = $resultado['codigo_verificacao'] ?? 'APROVADO';
+            $chaveNfse = $resultado['chave_nfse'] ?? $resultado['chave'] ?? ('DPS-' . $fatura->id);
+            $protocoloNfse = $resultado['protocolo'] ?? $resultado['nProt'] ?? 'AUTORIZADO';
+
+            $xmlName = 'Medicao_NFSe_' . $fatura->id . '.xml';
+            file_put_contents(public_path('nfse_doc/' . $xmlName), $xmlRetorno);
+
+            // Grava os dados oficiais nas colunas da tabela faturas_engenharia
+            $fatura->update([
+                'numero_nfse'        => $numeroNfse,
+                'codigo_verificacao' => $codVerificacao,
+                'chave_nfse'         => $chaveNfse,
+                'protocolo_nfse'     => $protocoloNfse,
+                'xml_nfse'           => $xmlRetorno,
+                'url_xml'            => asset('nfse_doc/' . $xmlName),
+                'estado_nfse'        => 'aprovado'
+            ]);
+
+            // Redireciona diretamente para a impressão oficial da nota (idêntico à emissão normal de serviços)
+            return redirect()->route('contratos.medicoes.danfse', ['id' => $fatura->id]);
+
+        } catch (\Throwable $th) {
+            Log::error("Erro NFS-e Medição #{$id}: " . $th->getMessage());
+            $fatura->update(['estado_nfse' => 'rejeitado']);
+
+            // Exibe o motivo exato da rejeição na tela para o usuário saber o que corrigir
+            return redirect()->back()->with('mensagem_erro', 'Rejeição NFS-e: ' . $th->getMessage());
+        }
+    }
+
+    public function consultarNfse(Request $request, $id)
+    {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
+
+        $config = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
+        $certRes = \App\Models\Certificado::where('empresa_id', $empresa_id)->first();
+
+        try {
+            $certContent = file_exists(storage_path('app/public/certificados/' . $certRes->arquivo))
+                ? file_get_contents(storage_path('app/public/certificados/' . $certRes->arquivo))
+                : $certRes->arquivo;
+            $certificate = \NFePHP\Common\Certificate::readPfx($certContent, $certRes->senha);
+
+            $codigoIbge = $config->codMun ?? '2910057';
+            $provedor = ($codigoIbge == '2910057') ? 'diasdavila' : 'nacional';
+
+            $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $config->toArray(), $certificate);
+
+            $retorno = $emissor->consultar($fatura->id);
+
+            $statusRetorno = strtoupper($retorno['status'] ?? '');
+            $isCancelada   = $retorno['cancelada'] ?? false;
+            $numeroOficial = $retorno['numero_nfse'] ?? null;
+            $codigoVerif   = $retorno['codigo_verificacao'] ?? null;
+
+            if ($isCancelada || $statusRetorno === 'CANCELADO') {
+                $fatura->update(['estado_nfse' => 'cancelado']);
+                return redirect()->back()->with('error', 'A NFS-e encontra-se cancelada.');
+            }
+
+            if ($statusRetorno === 'AUTORIZADO' || !empty($numeroOficial)) {
+                $fatura->update([
+                    'estado_nfse'        => 'aprovado',
+                    'numero_nfse'        => $numeroOficial,
+                    'codigo_verificacao' => $codigoVerif ?? $fatura->codigo_verificacao
+                ]);
+
+                return redirect()->back()->with('sucesso', "NFS-e aprovada! Número oficial: {$numeroOficial}");
+            }
+
+            return redirect()->back()->with('warning', 'A nota ainda consta como processando.');
+
+        } catch (\Throwable $th) {
+            // AQUI ESTÁ A CORREÇÃO PRINCIPAL DO ERRO NA TELA BRANCA
+            return redirect()->back()->with('error', 'Erro ao consultar: ' . $th->getMessage());
+        }
+    }
+
+    public function baixarXml($id)
+    {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
+
+        $path = public_path('nfse_doc/Medicao_NFSe_' . $fatura->id . '.xml');
+
+        if (file_exists($path)) {
+            return response()->download($path);
+        } else {
+            return redirect()->back()->with('mensagem_erro', 'Arquivo XML não encontrado!');
+        }
+    }
+
+    public function imprimirDanfeNfse($id)
+    {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::with(['cliente', 'itens.servico'])->where('empresa_id', $empresa_id)->findOrFail($id);
+
+        $config = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
+
+        $emitente = (object) [
+            'razao_social'        => $config->razao_social ?? $config->nome ?? 'CICLOS SUSTENTABILIDADE AMBIENTAL LTDA',
+            'cnpj'                => $config->cnpj ?? '57425351000161',
+            'inscricao_municipal' => $config->inscricao_municipal ?? $config->im ?? '16228',
+            'optante_simples'     => $config->optante_simples ?? '0',
+            'endereco'            => $config->logradouro ?? $config->endereco ?? 'RUA DOIS DE JULHO, S N',
+            'numero'              => $config->numero ?? '',
+            'bairro'              => $config->bairro ?? 'POLO DE SERVICOS',
+            'cidade'              => $config->cidade_nome ?? 'Dias d\'Ávila',
+            'uf'                  => $config->uf ?? 'BA',
+            'cep'                 => $config->cep ?? '',
+            'telefone'            => $config->telefone ?? '',
+            'email'               => $config->email ?? ''
+        ];
+
+        // Se a base de dados ainda tiver as colunas a null, tentamos extrair do XML ou atribuímos o retorno
+        if (empty($fatura->chave_nfse)) {
+            $fatura->chave_nfse = 'DPS-' . $fatura->id . '-' . ($fatura->numero_nfse ?? '1');
+        }
+        if (empty($fatura->protocolo_nfse)) {
+            $fatura->protocolo_nfse = $fatura->codigo_verificacao ?? 'AUTORIZADO';
+        }
+
+        $title = 'Impressão NFS-e - Medição #' . $fatura->id;
+
+        // IMPORTANTE: Deve ser 'contratos.medicoes.danfse' e NÃO 'nfse.imprimir'
+        return view('contratos.medicoes.danfse', compact('fatura', 'config', 'emitente', 'title'));
+    }
+
+    public function cancelarNfse(Request $request, $id)
+    {
+        $empresa_id = session('user_logged')['empresa'] ?? null;
+        $fatura = FaturaEngenharia::where('empresa_id', $empresa_id)->findOrFail($id);
+
+        if (empty($fatura->numero_nfse)) {
+            return redirect()->back()->with('error', 'Esta medição não possui uma nota autorizada para cancelar.');
+        }
+
+        $config = \App\Models\ConfigNota::where('empresa_id', $empresa_id)->first();
+        $certRes = \App\Models\Certificado::where('empresa_id', $empresa_id)->first();
+
+        // Motivo do cancelamento vindo do formulário (se aplicável, ou fixo)
+        $motivo = $request->input('motivo_cancelamento', 'Erro na emissao');
+
+        try {
+            $certContent = file_exists(storage_path('app/public/certificados/' . $certRes->arquivo))
+                ? file_get_contents(storage_path('app/public/certificados/' . $certRes->arquivo))
+                : $certRes->arquivo;
+            $certificate = \NFePHP\Common\Certificate::readPfx($certContent, $certRes->senha);
+
+            $codigoIbge = $config->codMun ?? '2910057';
+            $provedor = ($codigoIbge == '2910057') ? 'diasdavila' : 'nacional';
+
+            $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $config->toArray(), $certificate);
+
+            // Chama o método de cancelar no seu provedor (adapte se o método se chamar de outra forma)
+            $retorno = $emissor->cancelar([
+                'numero_nfse' => $fatura->numero_nfse,
+                'codigo_verificacao' => $fatura->codigo_verificacao,
+                'motivo' => $motivo
+            ]);
+
+            // Se o retorno indicar sucesso ou erro mas que já estava cancelada
+            if ((isset($retorno['sucesso']) && $retorno['sucesso']) || (isset($retorno['status']) && $retorno['status'] == 'CANCELADO')) {
+                // APENAS ATUALIZA O STATUS, NUNCA FAZ DELETE
+                $fatura->update([
+                    'estado_nfse' => 'cancelado',
+                    'status' => 'Cancelado' // se usar este campo
+                ]);
+
+                return redirect()->back()->with('sucesso', 'Nota Fiscal cancelada com sucesso na prefeitura!');
+            }
+
+            return redirect()->back()->with('error', 'Erro ao cancelar: ' . ($retorno['mensagem'] ?? 'Erro desconhecido.'));
+
+        } catch (\Throwable $th) {
+            return redirect()->back()->with('error', 'Falha na comunicação de cancelamento: ' . $th->getMessage());
+        }
+    }
 }

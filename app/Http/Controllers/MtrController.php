@@ -51,9 +51,9 @@ class MtrController extends BaseController
         }
 
         foreach ([
-            'transportador_nome' => 'transportadora',
-            'motorista_nome' => 'motorista',
-        ] as $column => $input) {
+                     'transportador_nome' => 'transportadora',
+                     'motorista_nome' => 'motorista',
+                 ] as $column => $input) {
             if ($request->filled($input)) {
                 $query->where($column, 'like', '%' . $request->{$input} . '%');
             }
@@ -337,6 +337,8 @@ class MtrController extends BaseController
             );
 
             $manifesto = MtrManifesto::create([
+                'empresa_id' => $this->empresa_id,
+                'usuario_id' => $this->usuario_id,
                 'orgao' => $gerador->orgao ?: 'SINIR',
                 'tipo_origem' => $tipoOrigem,
                 'origem_id' => $request->input('origem_id') ?: null,
@@ -553,13 +555,13 @@ class MtrController extends BaseController
 
             $numero = data_get($resposta, 'respostaApiwsManifestoDTO.0.manifestoNumeroNacional')
                 ?: data_get($resposta, 'respostaApiwsManifestoDTO.0.manNumero')
-                ?: data_get($resposta, '0.manifestoNumeroNacional')
-                ?: data_get($resposta, 'manNumero');
+                    ?: data_get($resposta, '0.manifestoNumeroNacional')
+                        ?: data_get($resposta, 'manNumero');
 
             if (!$numero) {
                 $mensagem = data_get($resposta, 'respostaApiwsManifestoDTO.0.resposta.mensagem')
                     ?: data_get($resposta, 'respostaApiwsManifestoDTO.0.restResponseMensagem')
-                    ?: 'Resposta sem número oficial de MTR.';
+                        ?: 'Resposta sem número oficial de MTR.';
 
                 $mtr->status = 'erro';
                 $mtr->mensagem_retorno = mb_substr((string) $mensagem, 0, 2000);
@@ -741,57 +743,77 @@ class MtrController extends BaseController
             ->where('ativo', true)
             ->first();
 
-        $mtrsTransportador = [];
-        $mtrsDestinador = [];
+        $cnpjEmpresa = preg_replace('/\D+/', '', (string) ($credencial?->cpf_cnpj ?? ''));
 
-        $dtInicio = $request->input('dt_inicio_dest', date('Y-m-d', strtotime('-5 days')));
-        $dtFim = $request->input('dt_fim_dest', date('Y-m-d'));
+        // Filtros de Data
+        $dtInicioTransp = $request->input('dt_inicio_transp', date('Y-m-d', strtotime('-30 days')));
+        $dtFimTransp    = $request->input('dt_fim_transp', date('Y-m-d'));
 
-        if (Carbon::parse($dtInicio)->diffInDays(Carbon::parse($dtFim)) > 5) {
-            return redirect()->back()
-                ->with('erro', 'O período máximo permitido para consulta no SINIR é de 5 dias.');
+        $dtInicioDest   = $request->input('dt_inicio_dest', date('Y-m-d', strtotime('-30 days')));
+        $dtFimDest      = $request->input('dt_fim_dest', date('Y-m-d'));
+
+        // 1. MTRs onde a empresa atuou como TRANSPORTADOR (Consulta no Banco Local)
+        $queryTransp = MtrManifesto::where('empresa_id', $this->empresa_id)
+            ->where(function ($q) use ($cnpjEmpresa) {
+                if ($cnpjEmpresa !== '') {
+                    $q->where('transportador_cnpj', 'like', "%{$cnpjEmpresa}%");
+                }
+                $q->orWhere('tipo_origem', 'avulso');
+            })
+            ->whereBetween('data_expedicao', [$dtInicioTransp . ' 00:00:00', $dtFimTransp . ' 23:59:59']);
+
+        if ($request->filled('mtr_transp')) {
+            $queryTransp->where('numero_mtr', 'like', '%' . trim((string) $request->mtr_transp) . '%');
         }
 
-        try {
-            if ($credencial) {
-                $service = new SinirIemaService($credencial->orgao, $credencial->ambiente);
-                $token = $this->token($credencial, $service);
+        $mtrsTransportador = $queryTransp->orderByDesc('id')->get()->map(function ($item) {
+            return [
+                'id'                => $item->id,
+                'numeroMtr'         => $item->numero_mtr,
+                'dataEmissao'       => strtotime((string) $item->data_expedicao) * 1000,
+                'geradorNome'       => $item->gerador_nome,
+                'destinadorNome'    => $item->destinador_nome,
+                'transportadorNome' => $item->transportador_nome,
+                'situacao'          => ucfirst($item->status),
+            ];
+        });
 
-                $mtrsTransportador = $service->requestWithToken(
-                    $token,
-                    'GET',
-                    '/manifestosTransportador',
-                    [
-                        'dataInicio' => $request->input('dt_inicio_transp', $dtInicio),
-                        'dataFim' => $request->input('dt_fim_transp', $dtFim),
-                        'mtr' => $request->input('mtr_transp'),
-                    ]
-                );
+        // 2. MTRs onde a empresa atuou como DESTINADOR / RECEBEDOR (Consulta no Banco Local)
+        $queryDest = MtrManifesto::where('empresa_id', $this->empresa_id)
+            ->where(function ($q) use ($cnpjEmpresa) {
+                if ($cnpjEmpresa !== '') {
+                    $q->where('destinador_cnpj', 'like', "%{$cnpjEmpresa}%");
+                }
+                $q->orWhere(function ($received) {
+                    $received->where('status', 'transmitido')
+                        ->where('mensagem_retorno', 'like', '%recebido%');
+                })
+                    ->orWhere('mensagem_retorno', 'like', '%recebid%');
+            })
+            ->whereBetween('data_expedicao', [$dtInicioDest . ' 00:00:00', $dtFimDest . ' 23:59:59']);
 
-                $mtrsDestinador = $service->requestWithToken(
-                    $token,
-                    'GET',
-                    '/manifestosDestinador',
-                    [
-                        'dataInicio' => $dtInicio,
-                        'dataFim' => $dtFim,
-                        'mtr' => $request->input('mtr_dest'),
-                    ]
-                );
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Aviso ao buscar MTRs externos.', [
-                'empresa_id' => $this->empresa_id,
-                'error' => $e->getMessage(),
-            ]);
+        if ($request->filled('mtr_dest')) {
+            $queryDest->where('numero_mtr', 'like', '%' . trim((string) $request->mtr_dest) . '%');
         }
+
+        $mtrsDestinador = $queryDest->orderByDesc('id')->get()->map(function ($item) {
+            return [
+                'id'                => $item->id,
+                'numeroMtr'         => $item->numero_mtr,
+                'dataEmissao'       => strtotime((string) $item->data_expedicao) * 1000,
+                'geradorNome'       => $item->gerador_nome,
+                'destinadorNome'    => $item->destinador_nome,
+                'transportadorNome' => $item->transportador_nome,
+                'situacao'          => 'Recebido',
+            ];
+        });
 
         return view('mtr.recepcao.index', [
             'mtrsTransportador' => $mtrsTransportador,
-            'mtrsDestinador' => $mtrsDestinador,
-            'dtInicio' => $dtInicio,
-            'dtFim' => $dtFim,
-            'title' => 'Recepção e Transporte de MTR (SINIR)',
+            'mtrsDestinador'    => $mtrsDestinador,
+            'dtInicio'          => $dtInicioDest,
+            'dtFim'             => $dtFimDest,
+            'title'             => 'Recepção e Transporte de MTR (SINIR)',
         ]);
     }
 
@@ -802,68 +824,174 @@ class MtrController extends BaseController
             $service = new SinirIemaService($credencial->orgao, $credencial->ambiente);
             $token = $this->token($credencial, $service);
 
-            $service->requestWithToken($token, 'POST', '/receberManifesto', [
-                'manNumero' => (string) $request->numero_mtr,
-                'responsavelRecebimento' => (string) $request->responsavel,
-                'dataRecebimento' => (int) (
-                    Carbon::parse($request->input('data_recebimento') ?: now())->timestamp * 1000
-                ),
-                'residuos' => $request->input('residuos', []),
-            ]);
+            $numeroMtr = (string) $request->numero_mtr;
+            $responsavel = (string) $request->responsavel;
+            $dataRecebimento = (int) (\Carbon\Carbon::parse($request->input('data_recebimento') ?: now())->timestamp * 1000);
+            $residuosInput = $request->input('residuos', []);
 
+            // 1. MONTAGEM DO PAYLOAD NO FORMATO PADRÃO EXIGIDO PELA API DO SINIR
+            // Captura os dados informados na tela (placa e motorista)
+            $placaVeiculo = (string) $request->input('placa', '');
+            $nomeMotorista = (string) $request->input('motorista', '');
+
+            // Monta o payload garantindo a chave exata exigida pelo validador do SINIR
+            $payload = [
+                'manNumero' => $numeroMtr,
+                'nomeResponsavelRecebimento' => $responsavel,
+                'nomeMotorista' => $nomeMotorista,
+                'placaVeiculo' => $placaVeiculo,
+                'dataRecebimento' => $dataRecebimento,
+                'observacoes' => (string) ($request->input('observacao') ?: 'Recebimento efetuado via Fersoft ERP')
+            ];
+
+            $listaManifestoResiduos = [];
+            if (!empty($residuosInput)) {
+                foreach ($residuosInput as $residuo) {
+                    // Corrige o corte de casas decimais do PHP (troca vírgula por ponto)
+                    $qtdRecebida = (float) str_replace(',', '.', (string) ($residuo['quantidadeRecebida'] ?? '0'));
+                    $qtdEmitida  = (float) str_replace(',', '.', (string) ($residuo['quantidade'] ?? $residuo['quantidadeRecebida'] ?? '0'));
+
+                    $cod = preg_replace('/\D+/', '', (string) ($residuo['cod_ibama'] ?? $residuo['codigo_ibama'] ?? ''));
+
+                    if ($qtdRecebida > 0 && $cod !== '') {
+                        $itemPayload = [
+                            'resCodigoIbama' => $cod,
+                            'marQuantidade' => $qtdEmitida, // Chave OBRIGATÓRIA para o SINIR encontrar o item original
+                            'marQuantidadeRecebida' => $qtdRecebida,
+                            'uniCodigo' => (int) ($residuo['unidade_medida'] ?? 3),
+                            'traCodigo' => (int) ($residuo['tratamento_id'] ?? 43),
+                            'tiaCodigo' => (int) ($residuo['tratamento_id'] ?? 43),
+                            'tieCodigo' => (int) ($residuo['estado_fisico'] ?? 1),
+                            'claCodigo' => (int) ($residuo['classe_residuo'] ?? 43)
+                        ];
+
+                        // Se tivermos o ID interno da base do governo, incluímos também
+                        if (!empty($residuo['codigo_gerado'])) {
+                            $itemPayload['codigoGerado'] = (int) $residuo['codigo_gerado'];
+                            $itemPayload['resCodigo'] = (int) $residuo['codigo_gerado'];
+                        }
+
+                        $listaManifestoResiduos[] = $itemPayload;
+                    }
+                }
+            }
+
+            if (!empty($listaManifestoResiduos)) {
+                $payload['listaManifestoResiduos'] = $listaManifestoResiduos;
+            }
+
+
+
+            $baseUrl = ($credencial->ambiente === 'producao')
+                ? 'https://admin.sinir.gov.br/api'
+                : 'https://admin-homologacao.sinir.gov.br/api';
+
+            if ($credencial->orgao === 'IEMA') {
+                $baseUrl = ($credencial->ambiente === 'producao')
+                    ? 'https://mtr.iema.es.gov.br/api'
+                    : 'https://mtr-homologacao.iema.es.gov.br/api';
+            }
+
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ])
+                ->post($baseUrl . '/receberManifesto', $payload);
+
+            if ($response->failed() && $response->status() === 404) {
+                $response = \Illuminate\Support\Facades\Http::withToken($token)
+                    ->withHeaders([
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json'
+                    ])
+                    ->post($baseUrl . '/receberManifestoLote', [$payload]);
+            }
+
+            $jsonResponse = $response->json();
+            $jaRecebidoNoGoverno = false;
+
+            // Verifica se houve erro, MAS se o erro for "já recebido", perdoa o erro para salvar localmente
+            if ($response->failed() || (is_array($jsonResponse) && (isset($jsonResponse['erro']) && $jsonResponse['erro'] == true || isset($jsonResponse['erros'])))) {
+                $detalhesErro = json_encode($jsonResponse);
+
+                // Checa se a mensagem do governo indica que já foi recebido/baixado
+                if (stripos($detalhesErro, 'já recebido') !== false || stripos($detalhesErro, 'ja recebido') !== false || stripos($detalhesErro, 'situacao invalida para recebimento') !== false) {
+                    $jaRecebidoNoGoverno = true; // Ignora o erro da API e força a gravação local
+                } else {
+                    throw new \Exception("Recusado pelo SINIR. Detalhes: " . $detalhesErro);
+                }
+            }
+
+            // 5. GRAVA E CONSOLIDA NO BANCO DE DADOS LOCAL DO FERSOFT ERP
             DB::beginTransaction();
 
-            $mtr = MtrManifesto::where('empresa_id', $this->empresa_id)
-                ->where('numero_mtr', $request->numero_mtr)
+            // Captura os nomes reais enviados pelos campos ocultos da view
+            $geradorNomeForm = (string) $request->input('gerador_nome');
+            if (empty($geradorNomeForm)) {
+                $geradorNomeForm = 'GERADOR EXTERNO (NOME NÃO INFORMADO)';
+            }
+
+            $transportadorNomeForm = (string) $request->input('transportador_nome');
+            if (empty($transportadorNomeForm)) {
+                $transportadorNomeForm = 'TRANSPORTADOR (NOME NÃO INFORMADO)';
+            }
+
+            $mtr = \App\Models\MtrManifesto::where('empresa_id', $this->empresa_id)
+                ->where('numero_mtr', $numeroMtr)
                 ->first();
 
             if (!$mtr) {
-                // O schema histórico não possui tipo_origem/status exclusivos de recebimento.
-                $mtr = MtrManifesto::create([
+                // Se não existir, cria o novo manifesto de recepção
+                $mtr = \App\Models\MtrManifesto::create([
+                    'empresa_id' => $this->empresa_id,
+                    'usuario_id' => $this->usuario_id,
                     'orgao' => $credencial->orgao ?: 'SINIR',
-                    'tipo_origem' => 'avulso',
+                    'tipo_origem' => 'avulso', // Enum histórico; recepção é identificada pela mensagem de retorno
                     'seu_codigo' => 'REC-' . time(),
-                    'numero_mtr' => $request->numero_mtr,
-                    'data_expedicao' => now(),
-                    'gerador_cnpj' => preg_replace('/\D+/', '', (string) $request->input('gerador_cnpj', $credencial->cpf_cnpj)),
-                    'gerador_nome' => (string) $request->input('gerador_nome', 'GERADOR EXTERNO'),
-                    'transportador_cnpj' => preg_replace('/\D+/', '', (string) $request->input('transportador_cnpj', $credencial->cpf_cnpj)),
-                    'transportador_nome' => (string) $request->input('transportador_nome', 'TRANSPORTADOR'),
+                    'numero_mtr' => $numeroMtr,
+                    'data_expedicao' => date('Y-m-d H:i:s', $dataRecebimento / 1000), // Converte timestamp para Data
+                    'gerador_nome' => strtoupper($geradorNomeForm),
+                    'transportador_nome' => strtoupper($transportadorNomeForm),
                     'destinador_cnpj' => preg_replace('/\D+/', '', (string) $credencial->cpf_cnpj),
-                    'destinador_nome' => $credencial->descricao ?: 'EMPRESA DESTINATÁRIA',
-                    'veiculo_placa' => $request->input('placa'),
-                    'motorista_nome' => $request->input('motorista'),
-                    'status' => 'transmitido',
-                    'mensagem_retorno' => 'Manifesto recebido pelo destinador.',
+                    'destinador_nome' => strtoupper($credencial->descricao ?: 'EMPRESA DESTINATÁRIA'),
+                    'veiculo_placa' => strtoupper($request->input('placa', 'N/INF')),
+                    'motorista_nome' => strtoupper($request->input('motorista', 'N/INF')),
+                    'status' => 'transmitido', // Enum histórico; o recebimento fica na mensagem de retorno
+                    'mensagem_retorno' => $jaRecebidoNoGoverno ? 'Sincronizado: Já constava como recebido no SINIR.' : 'Manifesto recebido e baixado com sucesso no SINIR.',
                 ]);
             } else {
-                $mtr->status = 'transmitido';
-                $mtr->mensagem_retorno = 'Manifesto recebido pelo destinador.';
+                // Se já existir, atualiza os dados para não duplicar
+                $mtr->status = 'transmitido'; // Não gravar status inexistente no enum histórico
+                $mtr->mensagem_retorno = $jaRecebidoNoGoverno ? 'Sincronizado: Já constava como recebido no SINIR.' : 'Manifesto recebido e baixado com sucesso no SINIR.';
+                $mtr->gerador_nome = strtoupper($geradorNomeForm);
+                $mtr->transportador_nome = strtoupper($transportadorNomeForm);
+                $mtr->veiculo_placa = strtoupper($request->input('placa', $mtr->veiculo_placa));
+                $mtr->motorista_nome = strtoupper($request->input('motorista', $mtr->motorista_nome));
                 $mtr->save();
             }
 
-            if ($request->has('residuos')) {
-                MtrManifestoItem::where('mtr_manifesto_id', $mtr->id)->delete();
+            if (!empty($residuosInput)) {
+                // Remove os itens antigos para gravar a consolidação final
+                \App\Models\MtrManifestoItem::where('mtr_manifesto_id', $mtr->id)->delete();
 
-                foreach ((array) $request->input('residuos', []) as $residuo) {
-                    $quantidade = (float) ($residuo['quantidadeRecebida'] ?? $residuo['quantidade'] ?? 0);
-                    $codigo = preg_replace('/\D+/', '', (string) ($residuo['cod_ibama'] ?? $residuo['codigo_ibama'] ?? ''));
+                foreach ($residuosInput as $residuo) {
+                    $qtd = (float) str_replace(',', '.', (string) ($residuo['quantidadeRecebida'] ?? $residuo['quantidade'] ?? '0'));
+                    $cod = preg_replace('/\D+/', '', (string) ($residuo['cod_ibama'] ?? $residuo['codigo_ibama'] ?? ''));
 
-                    if ($quantidade <= 0 || $codigo === '') {
-                        continue;
+                    if ($qtd > 0 && $cod !== '') {
+                        \App\Models\MtrManifestoItem::create([
+                            'mtr_manifesto_id' => $mtr->id,
+                            'cod_ibama' => $cod,
+                            'descricao_residuo' => $residuo['descricao'] ?? 'RESÍDUO DECLARADO',
+                            'quantidade' => $qtd,
+                            'unidade_medida' => (string) ($residuo['unidade_medida'] ?? 3),
+                            'estado_fisico' => (int) ($residuo['estado_fisico'] ?? 1),
+                            'classe_residuo' => (string) ($residuo['classe_residuo'] ?? 43),
+                            'acondicionamento_id' => (int) ($residuo['acondicionamento_id'] ?? 8),
+                            'tratamento_id' => (int) ($residuo['tratamento_id'] ?? 43),
+                        ]);
                     }
-
-                    MtrManifestoItem::create([
-                        'mtr_manifesto_id' => $mtr->id,
-                        'cod_ibama' => $codigo,
-                        'descricao_residuo' => $residuo['descricao'] ?? 'RESÍDUO RECEBIDO',
-                        'quantidade' => $quantidade,
-                        'unidade_medida' => (string) ($residuo['unidade_medida'] ?? 2),
-                        'estado_fisico' => $residuo['estado_fisico'] ?? 1,
-                        'classe_residuo' => (string) ($residuo['classe_residuo'] ?? 43),
-                        'acondicionamento_id' => $residuo['acondicionamento_id'] ?? 8,
-                        'tratamento_id' => $residuo['tratamento_id'] ?? 43,
-                    ]);
                 }
             }
 
@@ -871,16 +999,18 @@ class MtrController extends BaseController
 
             return response()->json([
                 'success' => true,
-                'message' => 'MTR recebido e registrado localmente.',
+                'message' => $jaRecebidoNoGoverno
+                    ? 'MTR sincronizado! Ele já havia sido baixado no portal e agora está gravado no sistema.'
+                    : 'MTR recebido e baixado com sucesso no portal do SINIR e salvo localmente!',
             ]);
+
         } catch (\Throwable $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
-
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao processar recebimento: ' . $e->getMessage(),
+                'message' => $e->getMessage(),
             ], 400);
         }
     }
@@ -940,18 +1070,103 @@ class MtrController extends BaseController
     public function detalhesMtrExterno($numeroMtr)
     {
         try {
+            $numeroLimpo = preg_replace('/[^0-9a-zA-Z]/', '', (string) $numeroMtr);
+
             $credencial = $this->credencialPadrao();
             $service = new SinirIemaService($credencial->orgao, $credencial->ambiente);
+            $token = $this->token($credencial, $service);
 
-            $dados = $service->requestWithToken(
-                $this->token($credencial, $service),
-                'GET',
-                '/consultarManifesto/' . rawurlencode((string) $numeroMtr)
-            );
+            // URL DA API LEGADA CONFORME O MANUAL DO VÍDEO
+            $baseUrlLegada = ($credencial->ambiente === 'producao')
+                ? 'https://admin.sinir.gov.br/api'
+                : 'https://admin-homologacao.sinir.gov.br/api';
 
-            return response()->json(['success' => true, 'data' => $dados]);
+            if ($credencial->orgao === 'IEMA') {
+                $baseUrlLegada = ($credencial->ambiente === 'producao')
+                    ? 'https://mtr.iema.es.gov.br/api'
+                    : 'https://mtr-homologacao.iema.es.gov.br/api';
+            }
+
+            // CONSULTA NO GOVERNO USANDO A ROTA CORRETA DO MANUAL
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->get($baseUrlLegada . '/retornaManifesto/' . $numeroLimpo);
+
+            if ($response->successful()) {
+                $dados = $response->json();
+
+                $gerador = $dados['gerador']['nome'] ?? $dados['nomeGerador'] ?? $dados['geradorNome'] ?? '';
+                $transportador = $dados['transportador']['nome'] ?? $dados['nomeTransportador'] ?? $dados['transportadorNome'] ?? '';
+                $placa = $dados['placaVeiculo'] ?? $dados['veiculoPlaca'] ?? $dados['placa'] ?? '';
+                $motorista = $dados['nomeMotorista'] ?? $dados['motoristaNome'] ?? $dados['motorista'] ?? '';
+
+                $residuosApi = $dados['listaManifestoResiduos'] ?? $dados['residuos'] ?? [];
+                $residuos = [];
+
+                foreach ($residuosApi as $item) {
+                    $residuos[] = [
+                        'codigoIbama' => $item['resCodigoIbama'] ?? $item['codigoIbama'] ?? '',
+                        'descricaoResiduo' => $item['resDescricao'] ?? $item['descricao'] ?? 'RESÍDUO DECLARADO',
+                        'unidadeMedidaNome' => $item['unidade'] ?? 'TON',
+                        'quantidade' => $item['marQuantidade'] ?? $item['quantidade'] ?? 0,
+                        'codigoGerado' => $item['codigoGerado'] ?? $item['resCodigo'] ?? null, // Captura o ID interno do item
+                        'uniCodigo' => $item['uniCodigo'] ?? 3,
+                        'traCodigo' => $item['traCodigo'] ?? $item['tiaCodigo'] ?? 43,
+                        'tieCodigo' => $item['tieCodigo'] ?? 1,
+                        'claCodigo' => $item['claCodigo'] ?? 43,
+                    ];
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'numeroMtr' => $numeroLimpo,
+                        'veiculoPlaca' => $placa,
+                        'motoristaNome' => $motorista,
+                        'geradorNome' => $gerador,
+                        'transportadorNome' => $transportador,
+                        'residuos' => $residuos
+                    ]
+                ]);
+            }
+
+            // SE O GOVERNO FALHAR OU ESTIVER FORA DO AR, BUSCA NO BANCO LOCAL DO FERSOFT
+            $mtrLocal = \App\Models\MtrManifesto::with('itens')
+                ->where('empresa_id', $this->empresa_id)
+                ->where('numero_mtr', $numeroLimpo)
+                ->first();
+
+            if ($mtrLocal) {
+                $residuos = $mtrLocal->itens->map(function ($item) {
+                    return [
+                        'codigoIbama' => $item->cod_ibama,
+                        'descricaoResiduo' => $item->descricao_residuo,
+                        'unidadeMedidaNome' => 'TON',
+                        'quantidade' => $item->quantidade,
+                        'uniCodigo' => 3,
+                        'traCodigo' => $item->tratamento_id ?? 43,
+                        'tieCodigo' => $item->estado_fisico ?? 1,
+                        'claCodigo' => $item->classe_residuo ?? 43,
+                        'id' => $item->id
+                    ];
+                })->toArray();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'numeroMtr' => $mtrLocal->numero_mtr,
+                        'veiculoPlaca' => $mtrLocal->veiculo_placa,
+                        'geradorNome' => $mtrLocal->gerador_nome,
+                        'transportadorNome' => $mtrLocal->transportador_nome,
+                        'residuos' => $residuos
+                    ]
+                ]);
+            }
+
+            throw new \Exception("MTR não encontrado na base do SINIR nem no histórico local.");
+
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 
@@ -977,10 +1192,10 @@ class MtrController extends BaseController
                 'classe_residuo' => (string) ($residuo['classe_residuo'] ?? '43'),
                 'acondicionamento_id' => $residuo['acondicionamento_id']
                     ?? $residuo['acondicionamento']
-                    ?? 8,
+                        ?? 8,
                 'tratamento_id' => $residuo['tratamento_id']
                     ?? $residuo['tratamento']
-                    ?? 43,
+                        ?? 43,
             ]);
         }
     }

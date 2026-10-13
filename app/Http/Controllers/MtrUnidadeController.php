@@ -55,11 +55,11 @@ class MtrUnidadeController extends BaseController
         ]);
     }
 
-    public function create(Request $request)
+    public function create()
     {
         return view('mtr.unidades.create', $this->formData() + [
-            'title' => 'Nova Credencial / Unidade MTR',
-        ]);
+                'title' => 'Nova Credencial / Unidade MTR',
+            ]);
     }
 
     public function store(Request $request)
@@ -89,14 +89,14 @@ class MtrUnidadeController extends BaseController
         }
     }
 
-    public function edit(Request $request, $id)
+    public function edit($id)
     {
         $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
 
         return view('mtr.unidades.edit', $this->formData() + [
-            'unidade' => $unidade,
-            'title' => 'Editar Credencial MTR',
-        ]);
+                'unidade' => $unidade,
+                'title' => 'Editar Credencial MTR',
+            ]);
     }
 
     public function update(Request $request, $id)
@@ -122,7 +122,7 @@ class MtrUnidadeController extends BaseController
         }
     }
 
-    public function destroy(Request $request, $id)
+    public function destroy($id)
     {
         $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
         $unidade->delete();
