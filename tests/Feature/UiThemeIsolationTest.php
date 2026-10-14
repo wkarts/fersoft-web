@@ -39,7 +39,7 @@ class UiThemeIsolationTest extends TestCase
 
     public function test_inventario_php_executa_sem_alterar_as_views(): void
     {
-        $process = new \\Symfony\\Component\\Process\\Process([
+        $process = new \Symfony\Component\Process\Process([
             PHP_BINARY,
             base_path('scripts/auditar-tema.php'),
         ], base_path());
