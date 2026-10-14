@@ -126,6 +126,27 @@ class MtrResiduosSeederTest extends TestCase
         $this->assertSame(895, $this->importedCount());
     }
 
+    public function test_model_forca_vinculos_nulos_mesmo_com_atribuicao_direta(): void
+    {
+        $registro = new MtrResiduo();
+        $registro->res_codigo = 2147483000;
+        $registro->res_codigo_ibama = 'TESTE-GLOBAL';
+        $registro->res_descricao = 'Referência global do teste';
+        $registro->empresa_id = 99;
+        $registro->filial_id = 99;
+        $registro->usuario_id = 99;
+        $registro->save();
+
+        $salvo = DB::table('mtr_residuos')
+            ->where('res_codigo', 2147483000)
+            ->first();
+
+        $this->assertNotNull($salvo);
+        $this->assertNull($salvo->empresa_id);
+        $this->assertNull($salvo->filial_id);
+        $this->assertNull($salvo->usuario_id);
+    }
+
     public function test_catalogo_global_sem_filtros_e_sem_injecao_de_empresa_filial_usuario(): void
     {
         $root = dirname(__DIR__, 2);
