@@ -323,8 +323,7 @@ class RelatorioSuperController extends Controller
 	}
 
 	private function totalizaVendasBruta($request){
-		$vendas = Venda::
-		where('empresa_id', $request->empresa)
+		$vendas = Venda::withoutDeleted()->where('empresa_id', $request->empresa)
 		->select(\DB::raw('SUM(valor_total) as total'));
 
 		if($request->data_inicial && $request->data_final){
@@ -340,8 +339,7 @@ class RelatorioSuperController extends Controller
 
 		$soma = $vendas->total ?? 0;
 
-		$vendas = VendaCaixa::
-		where('empresa_id', $request->empresa)
+		$vendas = VendaCaixa::withoutDeleted()->where('empresa_id', $request->empresa)
 		->select(\DB::raw('SUM(valor_total) as total'));
 
 		if($request->data_inicial && $request->data_final){
@@ -380,8 +378,7 @@ class RelatorioSuperController extends Controller
 	}
 
 	private function totalizaVendas($request){
-		$vendas = Venda::
-		where('empresa_id', $request->empresa)
+		$vendas = Venda::withoutDeleted()->where('empresa_id', $request->empresa)
 		->where('estado', '!=', 'CANCELADO');
 
 		if($request->data_inicial && $request->data_final){
@@ -398,8 +395,7 @@ class RelatorioSuperController extends Controller
 	}
 
 	private function totalizaVendasCaixa($request){
-		$vendas = VendaCaixa::
-		where('empresa_id', $request->empresa)
+		$vendas = VendaCaixa::withoutDeleted()->where('empresa_id', $request->empresa)
 		->where('estado', '!=', 'CANCELADO');
 
 		if($request->data_inicial && $request->data_final){
