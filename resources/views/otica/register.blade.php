@@ -12,6 +12,7 @@
             </div>
         </div>
 
+        <!-- MODAL DE INSTRUÇÕES -->
         <div class="modal fade" id="modalGuiaPreenchimento" tabindex="-1" role="dialog">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -40,23 +41,41 @@
                     <input type="hidden" name="id" value="{{ $item->id }}">
                 @endif
 
-                <div class="row bg-light-secondary p-5 rounded mb-8 border">
-                    <div class="col-md-5">
+                <!-- ======================================================= -->
+                <!-- BLOCO 1: DADOS PRINCIPAIS (Alinhados perfeitamente)     -->
+                <!-- ======================================================= -->
+                <div class="row bg-light-secondary p-5 rounded mb-8 border align-items-end">
+
+                    <div class="col-md-2 form-group mb-0">
+                        <label class="font-weight-bold text-primary">Nº da OS</label>
+                        <!-- Puxa a sequência automática, mas permite edição livre -->
+                        <input type="text" name="numero_os" class="form-control font-weight-bolder text-primary" value="{{ $item->numero_os ?? $proximoNumero ?? '' }}" placeholder="Ex: 001">
+                    </div>
+
+                    <div class="col-md-5 form-group mb-0">
                         <label class="font-weight-bold">Cliente <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <select name="cliente_id" id="cliente_id" class="form-control select2" style="width: 100% !important;" required>
-                                @if(isset($item) && $item->cliente)
-                                    <option value="{{ $item->cliente_id }}" selected>{{ $item->cliente->razao_social }}</option>
-                                @endif
-                            </select>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalClienteRapido"><i class="fa fa-plus"></i></button>
+
+                        <!-- Solução Flexbox para alinhar o Select2 com o botão -->
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <select name="cliente_id" id="cliente_id" class="form-control select2" style="width: 100% !important;" required>
+                                    @if(isset($item) && $item->cliente)
+                                        <option value="{{ $item->cliente_id }}" selected>{{ $item->cliente->razao_social }}</option>
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="ml-2">
+                                <button type="button" class="btn btn-primary" style="height: 38px; padding: 0 15px;" data-toggle="modal" data-target="#modalClienteRapido">
+                                    <i class="fa fa-plus m-0"></i>
+                                </button>
                             </div>
                         </div>
+
                     </div>
-                    <div class="col-md-3">
-                        <label class="font-weight-bold">Status da OS</label>
-                        <select name="status" class="form-control">
+
+                    <div class="col-md-3 form-group mb-0">
+                        <label class="font-weight-bold">Status da OS <span class="text-danger">*</span></label>
+                        <select name="status" class="form-control" required>
                             <option value="orcamento" {{ (isset($item) && $item->status == 'orcamento') ? 'selected' : '' }}>Orçamento / Aguardando</option>
                             <option value="pendente" {{ (isset($item) && $item->status == 'pendente') ? 'selected' : '' }}>Aguardando Laboratório</option>
                             <option value="laboratorio" {{ (isset($item) && $item->status == 'laboratorio') ? 'selected' : '' }}>Em Produção no Lab.</option>
@@ -67,16 +86,23 @@
                             @endif
                         </select>
                     </div>
-                    <div class="col-md-4">
+
+                    <div class="col-md-2 form-group mb-0">
                         <label class="font-weight-bold">Médico / CRM</label>
                         <input type="text" name="medico" class="form-control" value="{{ $item->medico ?? '' }}">
                     </div>
                 </div>
 
+                <!-- ======================================================= -->
+                <!-- BLOCO 2: DADOS DA RECEITA (LONGE E PERTO)               -->
+                <!-- ======================================================= -->
                 <div class="row">
+                    <!-- RECEITA LONGE -->
                     <div class="col-md-6">
                         <div class="card card-custom bg-light-info shadow-sm mb-5 border">
-                            <div class="card-header border-0 pt-5 min-h-40px"><h3 class="card-title font-weight-bolder text-info font-size-h6">Receita: Longe</h3></div>
+                            <div class="card-header border-0 pt-5 min-h-40px">
+                                <h3 class="card-title font-weight-bolder text-info font-size-h6">Receita: Longe</h3>
+                            </div>
                             <div class="card-body pt-0">
                                 <div class="row mb-2 small font-weight-bold text-center">
                                     <div class="col-2">LADO</div><div class="col">ESF</div><div class="col">CIL</div><div class="col">EIXO</div><div class="col">DNP</div><div class="col">DP</div>
@@ -101,9 +127,12 @@
                         </div>
                     </div>
 
+                    <!-- RECEITA PERTO -->
                     <div class="col-md-6">
                         <div class="card card-custom bg-light-success shadow-sm mb-5 border">
-                            <div class="card-header border-0 pt-5 min-h-40px"><h3 class="card-title font-weight-bolder text-success font-size-h6">Receita: Perto</h3></div>
+                            <div class="card-header border-0 pt-5 min-h-40px">
+                                <h3 class="card-title font-weight-bolder text-success font-size-h6">Receita: Perto</h3>
+                            </div>
                             <div class="card-body pt-0">
                                 <div class="row mb-2 small font-weight-bold text-center">
                                     <div class="col-2">LADO</div><div class="col">ESF</div><div class="col">CIL</div><div class="col">EIXO</div><div class="col">ADD</div><div class="col">ALT</div>
@@ -129,9 +158,13 @@
                     </div>
                 </div>
 
+                <!-- ======================================================= -->
+                <!-- BLOCO 3: PRODUTOS (ARMAÇÃO E LENTE)                     -->
+                <!-- ======================================================= -->
                 <div class="card card-custom border shadow-none mb-8 bg-light">
                     <div class="card-body">
                         <div class="row">
+                            <!-- ARMAÇÃO -->
                             <div class="col-md-6 border-right">
                                 <label class="font-weight-bolder text-dark">Armação</label>
                                 <select name="armacao_id" id="armacao_id" class="form-control select2" style="width: 100% !important;">
@@ -143,6 +176,7 @@
                                 </div>
                             </div>
 
+                            <!-- LENTE -->
                             <div class="col-md-6">
                                 <label class="font-weight-bolder text-dark">Lente / Tratamento</label>
                                 <select name="lente_id" id="lente_id" class="form-control select2" style="width: 100% !important;">
@@ -157,30 +191,41 @@
                     </div>
                 </div>
 
-                <div class="row mb-8 align-items-end">
+                <!-- ======================================================= -->
+                <!-- BLOCO 4: INFORMAÇÕES EXTRAS E TOTAL                     -->
+                <!-- ======================================================= -->
+                <div class="row mb-5">
                     <div class="col-md-3 form-group"><label>Tipo de Lente</label><input type="text" name="tipo_lente" class="form-control" value="{{ $item->tipo_lente ?? '' }}"></div>
                     <div class="col-md-3 form-group"><label>Tratamento</label><input type="text" name="tratamento" class="form-control" value="{{ $item->tratamento ?? '' }}"></div>
                     <div class="col-md-3 form-group"><label>Pagamento</label><input type="text" name="forma_pagamento" class="form-control" value="{{ $item->forma_pagamento ?? '' }}"></div>
                     <div class="col-md-3 form-group"><label>Previsão (Dias)</label><input type="number" name="previsao_retorno_dias" class="form-control" value="{{ $item->previsao_retorno_dias ?? 30 }}"></div>
+                </div>
 
-                    <div class="col-md-5 form-group">
+                <div class="row mb-8 align-items-end">
+                    <div class="col-md-5 form-group mb-0">
                         <label>Observações Gerais</label>
                         <textarea name="observacao" class="form-control" rows="2">{{ $item->observacao ?? '' }}</textarea>
                     </div>
 
-                    <div class="col-md-3 form-group">
+                    <div class="col-md-3 form-group mb-0">
                         <label class="font-weight-bold text-dark">Foto/PDF da Receita</label>
                         <input type="file" name="anexo_receita" class="form-control-file" accept="image/*,application/pdf">
                         @if(isset($item) && $item->anexo_receita)
                             <a href="{{ asset('storage/' . $item->anexo_receita) }}" target="_blank" class="btn btn-xs btn-light-info font-weight-bold mt-2">
-                                <i class="fa fa-eye"></i> Ver Receita Anexada
+                                <i class="fa fa-eye"></i> Ver Anexo Atual
                             </a>
                         @endif
                     </div>
 
-                    <div class="col-md-4 form-group"><label class="font-weight-bolder text-danger font-size-h5">TOTAL (R$)</label><input type="text" id="total_os" name="total_os" class="form-control form-control-solid font-weight-bolder text-danger font-size-h3 bg-light-danger text-right" readonly value="0,00"></div>
+                    <div class="col-md-4 form-group mb-0">
+                        <label class="font-weight-bolder text-danger font-size-h5">TOTAL (R$)</label>
+                        <input type="text" id="total_os" name="total_os" class="form-control form-control-solid font-weight-bolder text-danger font-size-h3 bg-light-danger text-right" readonly value="0,00">
+                    </div>
                 </div>
 
+                <!-- ======================================================= -->
+                <!-- BOTÕES DE AÇÃO                                          -->
+                <!-- ======================================================= -->
                 <div class="text-right border-top pt-5">
                     <a href="{{ route('otica.index') }}" class="btn btn-secondary btn-lg mr-2">Voltar</a>
 
@@ -201,6 +246,7 @@
         </div>
     </div>
 
+    <!-- MODAL CLIENTE RÁPIDO -->
     <div class="modal fade" id="modalClienteRapido" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -283,6 +329,7 @@
                     alert("Atenção! Erro técnico na receita médica:\n\n" + mensagem);
                 }
             });
+
             const ptBR = { searching: () => "Pesquisando...", noResults: () => "Nenhum resultado encontrado", inputTooShort: () => "Digite para buscar..." };
 
             $('#cliente_id').select2({
