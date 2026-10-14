@@ -667,7 +667,7 @@ class VendaController extends Controller
         if($local_padrao == -1){
             $local_padrao = null;
         }
-        $vendas = Venda::
+        $vendas = Venda::withoutDeleted()->
         where('estado', 'DISPONIVEL')
             ->where('empresa_id', $this->empresa_id)
             ->where('forma_pagamento', '!=', 'conta_crediario')
@@ -2250,7 +2250,7 @@ class VendaController extends Controller
 
         $permissaoAcesso = __getLocaisUsarioLogado();
 
-        $vendas = Venda::
+        $vendas = Venda::withoutDeleted()->
         where('vendas.empresa_id', $this->empresa_id)
             ->where(function($query) use ($permissaoAcesso){
                 if($permissaoAcesso != null){
