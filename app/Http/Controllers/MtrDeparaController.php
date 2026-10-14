@@ -139,7 +139,11 @@ class MtrDeparaController extends BaseController
                 ->orderBy('nome')
                 ->get(),
             'residuos' => MtrResiduo::query()
-                ->where('empresa_id', $this->empresa_id)
+                ->where(function ($query) {
+                    // Catálogo oficial global + eventuais registros do tenant.
+                    $query->whereNull('empresa_id')
+                        ->orWhere('empresa_id', $this->empresa_id);
+                })
                 ->orderBy('res_codigo_ibama')
                 ->get(),
         ];
