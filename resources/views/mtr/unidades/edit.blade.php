@@ -192,7 +192,7 @@
 
             $(document).ready(function() {
                 // Somente o campo e o botão de olho originais.
-                // A leitura do token salvo é feita na primeira visualização.
+                // Carrega a credencial ao editar, mantendo-a mascarada.
                 var campoSenha = $('#senha');
                 var botaoSenha = $('#btnToggleSenha');
                 var iconeSenha = $('#iconToggleSenha');
@@ -206,23 +206,11 @@
                     botaoSenha.attr('title', mostrar ? 'Ocultar senha/token' : 'Visualizar senha/token');
                 }
 
-                botaoSenha.off('click.mtrSenha').on('click.mtrSenha', function(e) {
-                    e.preventDefault();
-
-                    if (campoSenha.attr('type') === 'text') {
-                        alterarVisualizacaoSenha(false);
-                        return;
-                    }
-
-                    // Texto já digitado ou token previamente recuperado:
-                    // somente alternar visibilidade; sem novo POST.
-                    if (campoSenha.val() !== '') {
-                        alterarVisualizacaoSenha(true);
-                        return;
-                    }
-
+                // Reutiliza a rota existente, sem duplicar controles ou campos.
+                // Na abertura do formulário mantém type=password; o olho apenas
+                // alterna a visibilidade do mesmo valor já carregado.
+                function carregarCredencialSalva(mostrar, avisarErro) {
                     if (!temCredencialSalva || consultaCredencialEmAndamento) {
-                        campoSenha.trigger('focus');
                         return;
                     }
 
@@ -237,20 +225,29 @@
                         data: { _token: "{{ csrf_token() }}" },
                         success: function(res) {
                             if (!res || !res.sucesso || typeof res.senha !== 'string' || !res.senha.length) {
-                                alert((res && res.mensagem) || 'A credencial armazenada está indisponível.');
+                                if (avisarErro) {
+                                    alert((res && res.mensagem) || 'A credencial armazenada está indisponível.');
+                                }
                                 return;
                             }
 
                             credencialCarregada = res.senha;
 
-                            // Preserva qualquer novo token digitado durante a consulta.
+                            // Não substitui algo digitado enquanto a consulta
+                            // era processada; a edição permanece intacta.
                             if (campoSenha.val() === '') {
                                 campoSenha.val(credencialCarregada);
+                                alterarVisualizacaoSenha(mostrar);
                             }
-
-                            alterarVisualizacaoSenha(true);
                         },
                         error: function(err) {
+                            // No carregamento automático a tela continua usável
+                            // mesmo se a consulta falhar; o olho permite tentar
+                            // novamente e mostrar o motivo.
+                            if (!avisarErro) {
+                                return;
+                            }
+
                             var mensagem = err.responseJSON && err.responseJSON.mensagem;
 
                             if (!mensagem && err.status === 419) {
@@ -268,7 +265,35 @@
                             botaoSenha.prop('disabled', false);
                         }
                     });
+                }
+
+                botaoSenha.off('click.mtrSenha').on('click.mtrSenha', function(e) {
+                    e.preventDefault();
+
+                    if (campoSenha.attr('type') === 'text') {
+                        alterarVisualizacaoSenha(false);
+                        return;
+                    }
+
+                    // Credencial já preenchida ou digitada: nenhuma nova requisição.
+                    if (campoSenha.val() !== '') {
+                        alterarVisualizacaoSenha(true);
+                        return;
+                    }
+
+                    if (!temCredencialSalva || consultaCredencialEmAndamento) {
+                        campoSenha.trigger('focus');
+                        return;
+                    }
+
+                    carregarCredencialSalva(true, true);
                 });
+
+                // Preenche automaticamente o campo ORIGINAL ao entrar na edição.
+                // O valor não é incluído no HTML renderizado pelo Laravel.
+                if (temCredencialSalva && campoSenha.val() === '') {
+                    carregarCredencialSalva(false, false);
+                }
 
                 // Ao salvar, não envia um token consultado que não foi alterado.
                 // O backend faz a mesma comparação como defesa adicional.
