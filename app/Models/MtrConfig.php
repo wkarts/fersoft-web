@@ -59,6 +59,10 @@ class MtrConfig extends BaseModel
 
                     if (!$laravel && !$legado) {
                         // Compatibilidade com registros antigos em texto puro.
+                        if ($camada === 0) {
+                            return $value;
+                        }
+
                         return $credencial;
                     }
 
