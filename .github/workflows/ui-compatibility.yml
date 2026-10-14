@@ -99,8 +99,8 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
         run: |
-          npm ci --ignore-scripts --no-audit
-          npm run build
+          bash -n scripts/ui/build-vite.sh
+          bash scripts/ui/build-vite.sh
       - name: Auditoria não destrutiva de todas as views e assets
         run: |
           set -euo pipefail

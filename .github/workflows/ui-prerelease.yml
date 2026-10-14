@@ -55,8 +55,8 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
         run: |
           set -euo pipefail
-          npm ci --ignore-scripts --no-audit
-          npm run build
+          bash -n scripts/ui/build-vite.sh
+          bash scripts/ui/build-vite.sh
       - name: Gerar pacote seguro de preview
         id: artifact
         if: steps.freshness.outputs.fresh == 'true'
