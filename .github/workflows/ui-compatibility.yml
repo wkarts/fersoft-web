@@ -106,7 +106,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-compat-${ github.run_id }
+          name: ui-compat-${{ github.run_id }}
           path: |
             storage/app/ui-compat/
             ui-impact-report.md
