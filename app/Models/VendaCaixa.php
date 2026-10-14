@@ -258,8 +258,7 @@ class VendaCaixa extends BaseModel
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
 
-		return VendaCaixa::
-		orderBy('id', 'desc')
+		return VendaCaixa::withoutDeleted()->orderBy('id', 'desc')
 		->whereBetween('data_registro', [$dataInicial,
 			$dataFinal])
 		->where('empresa_id', $empresa_id)
@@ -274,8 +273,7 @@ class VendaCaixa extends BaseModel
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
 
-		return VendaCaixa::
-		join('clientes', 'clientes.id' , '=', 'venda_caixas.cliente_id')
+		return VendaCaixa::withoutDeleted()->join('clientes', 'clientes.id' , '=', 'venda_caixas.cliente_id')
 		->where('clientes.razao_social', 'LIKE', "%$cliente%")
 		->where('venda_caixas.empresa_id', $empresa_id)
 		->get();
@@ -288,8 +286,7 @@ class VendaCaixa extends BaseModel
 		$data = str_replace("/", "-", $data);
 		$data = \Carbon\Carbon::parse($data)->format('Y-m-d');
 
-		return VendaCaixa::
-		whereBetween('created_at', [
+		return VendaCaixa::withoutDeleted()->whereBetween('created_at', [
 			$data . " 00:00:00",
 			$data . " 23:59:59",
 		])
@@ -302,8 +299,7 @@ class VendaCaixa extends BaseModel
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
 
-		return VendaCaixa::
-		where('NFcNumero', $nfce)
+		return VendaCaixa::withoutDeleted()->where('NFcNumero', $nfce)
 		->where('empresa_id', $empresa_id)
 		->get();
 	}
@@ -312,8 +308,7 @@ class VendaCaixa extends BaseModel
 
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
-		return VendaCaixa::
-		where('valor_total', 'LIKE', "%$valor%")
+		return VendaCaixa::withoutDeleted()->where('valor_total', 'LIKE', "%$valor%")
 		->where('empresa_id', $empresa_id)
 		->get();
 	}
@@ -322,8 +317,7 @@ class VendaCaixa extends BaseModel
 
 		$value = session('user_logged');
 		$empresa_id = $value['empresa'];
-		$c = VendaCaixa::
-		where('estado', $estado)
+		$c = VendaCaixa::withoutDeleted()->where('estado', $estado)
 		->where('empresa_id', $empresa_id)
 		->where('forma_pagamento', '!=', 'conta_crediario');
 		return $c->get();
@@ -331,8 +325,7 @@ class VendaCaixa extends BaseModel
 
 	public static function filtroDataApp($dataInicial, $dataFinal, $empresa_id){
 
-		return VendaCaixa::
-		orderBy('id', 'desc')
+		return VendaCaixa::withoutDeleted()->orderBy('id', 'desc')
 		->whereBetween('data_registro', [$dataInicial,
 			$dataFinal])
 		->where('empresa_id', $empresa_id)
@@ -340,8 +333,7 @@ class VendaCaixa extends BaseModel
 	}
 
 	public static function filtroEstadoApp($estado, $empresa_id){
-		$c = VendaCaixa::
-		where('estado', $estado)
+		$c = VendaCaixa::withoutDeleted()->where('estado', $estado)
 		->where('empresa_id', $empresa_id)
 		->where('forma_pagamento', '!=', 'conta_crediario');
 		return $c->get();
