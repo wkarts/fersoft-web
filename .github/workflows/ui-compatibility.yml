@@ -59,6 +59,21 @@ jobs:
           set -euo pipefail
           git fetch --no-tags origin main
           bash scripts/ui/compat-impact.sh
+      - name: Validar regras permanentes de versão beta
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/ui/beta-version.sh
+          bash -n scripts/ui/build-vite.sh
+          python -m py_compile scripts/ui/build-preview.py
+          test "$(bash scripts/ui/beta-version.sh v5.0.225 1)" = "v5.0.226-beta.1"
+          test "$(bash scripts/ui/beta-version.sh v5.0.225 16)" = "v5.0.226-beta.16"
+          test "$(bash scripts/ui/beta-version.sh v0.0.0 1)" = "v0.0.1-beta.1"
+          test "$(bash scripts/ui/beta-version.sh v3.7.9 100)" = "v3.7.10-beta.100"
+          if bash scripts/ui/beta-version.sh v5.0.225-beta.4 1 >/dev/null 2>&1; then
+            echo "::error::Uma beta foi aceita incorretamente como base estável."
+            exit 1
+          fi
       - name: Validar Composer e PHP
         run: |
           set -euo pipefail
