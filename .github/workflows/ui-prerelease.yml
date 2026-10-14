@@ -42,12 +42,153 @@ jobs:
             echo "fresh=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # A pre-release pertence à develop independente da fase e do sync da main.
+          # Se main estiver à frente, registra aviso mas continua: o sync trará seus commits.
           if ! git merge-base --is-ancestor origin/main HEAD; then
-            echo "::warning::Branch visual ainda não incorporou main. Pré-release BLOQUEADA; aguarde o fluxo de sincronização."
-            echo "fresh=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::warning::develop ainda aguarda importação da main; o build beta do commit atual continuará."
+            echo "- Atenção: develop ainda não contém o HEAD da main; sync pendente." >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "fresh=true" >> "$GITHUB_OUTPUT"
+      - name: Calcular versão beta incremental
+        id: beta
+        if: steps.freshness.outputs.fresh == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force origin main
+          # Somente tags estáveis vMAJOR.MINOR.PATCH alcançáveis pela main;
+          # versões RC/beta anteriores nunca são usadas como base.
+          base="$(git tag --merged origin/main --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+
+        shell: bash
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          set -euo pipefail
+          bash -n scripts/ui/build-vite.sh
+          bash scripts/ui/build-vite.sh
+      - name: Gerar pacote seguro de preview
+        id: artifact
+        if: steps.freshness.outputs.fresh == 'true'
+        shell: bash
+        env:
+          UI_BETA_VERSION: ${{ steps.beta.outputs.version }}
+          UI_BETA_BASE: ${{ steps.beta.outputs.stable }}
+        run: |
+          set -euo pipefail
+          python scripts/ui/build-preview.py
+          test -s dist/fersoft-web-ui-continuous.zip
+          sha256sum dist/fersoft-web-ui-continuous.zip > dist/fersoft-web-ui-continuous.zip.sha256
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Publicar artifact sempre que validado
+        if: steps.artifact.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fersoft-web-beta-${{ steps.beta.outputs.version }}
+          path: |
+            dist/fersoft-web-ui-continuous.zip
+            dist/fersoft-web-ui-continuous.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Conferir instalação do fluxo seguro na main
+        id: infra
+        if: steps.artifact.outputs.ready == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Antes da infraestrutura ser aprovada, não criar evento 'release.published'.
+          # Isso evita acionar o deploy-release-notes histórico sem guarda de prerelease.
+          # Não publica release enquanto o deploy estável não ignorar pré-releases.
+          guard="$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/deploy-release-notes.yml?ref=main" --jq '.content' 2>/dev/null | base64 -d || true)"
+          if gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ui-main-sync.yml?ref=main" >/dev/null 2>&1 \
+             && printf "%s" "$guard" | grep -Fq "github.event.release.prerelease == false"; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Infra PR separada deve ser incorporada à main para habilitar publicação e autosync."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Atualizar SOMENTE prerelease de desenvolvimento
+        if: steps.infra.outputs.available == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main develop
+          if [ "$(git rev-parse origin/develop)" != "$GITHUB_SHA" ]; then
+            echo "::warning::HEAD da develop mudou; não substituir beta por um commit antigo."
+            exit 0
+          fi
+          tag='ui-continuous'
+          beta_version="${{ steps.beta.outputs.version }}"
+          stable_base="${{ steps.beta.outputs.stable }}"
+          test -n "$beta_version"
+          test -n "$stable_base"
+          if gh release view "$tag" --json isPrerelease --jq '.isPrerelease' > "$RUNNER_TEMP/previous-release.txt" 2>/dev/null; then
+            if [ "$(cat "$RUNNER_TEMP/previous-release.txt")" != "true" ]; then
+              echo "::error::Tag ui-continuous já corresponde a uma release estável. Abortando."
+              exit 1
+            fi
+            existed=true
+          else
+            existed=false
+            if git ls-remote --tags origin "refs/tags/$tag" | grep -q .; then
+              echo "::error::Tag ui-continuous já existe, mas sem uma pré-release válida; abortando sem força."
+              exit 1
+            fi
+          fi
+
+          # Não alterar tags semânticas vX.Y.Z nem a main.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -f "$tag" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$tag"
+
+          cat > "$RUNNER_TEMP/ui-release-notes.md" <<EOF
+          # FERSOFT WEB $beta_version — beta contínua
+
+          Esta é a **única pré-release contínua** do sistema.
+          Toda atualização aprovada da develop renova sua versão, tag, pacote e manifesto.
+
+          - Pré-versão: $beta_version
+          - Branch de origem: develop
+          - Commit exato: $GITHUB_SHA
+          - Última release estável usada como base: $stable_base
+          - Número do build: $GITHUB_RUN_NUMBER
+          - Versão estável: não. Esta é uma beta de homologação.
+          - Temas: classic como fallback; refined disponível para avaliação.
+          - A publicação não faz merge na main nem libera automaticamente a produção.
+
+          **Atenção:** código validado por CI não substitui a homologação visual e funcional.
+          EOF
+          files=(dist/fersoft-web-ui-continuous.zip dist/fersoft-web-ui-continuous.zip.sha256)
+          if [ "$existed" = "true" ]; then
+            gh release edit "$tag" --title "FERSOFT WEB $beta_version • pré-release contínua" --prerelease --notes-file "$RUNNER_TEMP/ui-release-notes.md"
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --title "FERSOFT WEB $beta_version • pré-release contínua" --prerelease --notes-file "$RUNNER_TEMP/ui-release-notes.md"
+          fi
+          {
+            echo "## Pré-release contínua atualizada"
+            echo "- Tag única: $tag"
+            echo "- Beta publicada: $beta_version"
+            echo "- Base estável: $stable_base"
+            echo "- SHA: $GITHUB_SHA"
+            echo "- URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/ui-continuous"
+          } >> "$GITHUB_STEP_SUMMARY"
+ | sed -n '1p' || true)"
+          base="${base:-v0.0.0}"
+          version="$(bash scripts/ui/beta-version.sh "$base" "$GITHUB_RUN_NUMBER")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "stable=$base" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Versão beta do commit da develop"
+            echo "- Canal: ui-continuous"
+            echo "- Pré-versão: $version"
+            echo "- SHA: $GITHUB_SHA"
+            echo "- Base estável: $base"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Construir frontend de homologação
         if: steps.freshness.outputs.fresh == 'true'
         shell: bash
