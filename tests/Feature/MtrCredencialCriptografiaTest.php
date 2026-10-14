@@ -34,7 +34,7 @@ class MtrCredencialCriptografiaTest extends TestCase
         $model = new MtrConfig();
         $model->senha = $jwt;
 
-        $stored = (string) $model->getRawOriginal('senha');
+        $stored = (string) $model->getAttributes()['senha'];
         $this->assertNotSame($jwt, $stored);
 
         $reloaded = new MtrConfig();
