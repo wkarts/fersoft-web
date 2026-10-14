@@ -65,6 +65,7 @@ body.ui-theme-refined :is(h1, h2, h3, h4, h5, h6) {
 }
 body.ui-theme-refined :is(p, label, small, dt, dd, legend) { font-family: inherit; }
 body.ui-theme-refined :is(.text-dark, .card-title, .card-label) { color: var(--ui-ink) !important; }
+body.ui-theme-refined--dark :is(.bg-warning, .badge-warning, .label-warning) .text-dark { color: #182f36 !important; }
 body.ui-theme-refined .text-muted { color: var(--ui-muted) !important; }
 body.ui-theme-refined a:not(.btn):not(.label):not(.badge) { transition: color .16s ease; }
 body.ui-theme-refined :is(a, button, input, select, textarea):focus-visible {
@@ -204,6 +205,12 @@ body.ui-theme-refined .card .card-header .card-label {
 body.ui-theme-refined .card .card-header:is(.bg-primary, .bg-success, .bg-danger, .bg-info, .bg-dark) :is(.card-title, .card-label, .text-dark) {
     color: #fff !important;
 }
+/* Impede que extend.css transforme todos os cabeçalhos de estado na cor da marca. */
+body.ui-theme-refined :is(.card-header.bg-primary, .modal-header.bg-primary) { background: var(--ui-accent) !important; }
+body.ui-theme-refined :is(.card-header.bg-success, .modal-header.bg-success) { background: #17865d !important; }
+body.ui-theme-refined :is(.card-header.bg-danger, .modal-header.bg-danger) { background: #be4050 !important; }
+body.ui-theme-refined :is(.card-header.bg-info, .modal-header.bg-info) { background: #2c7e96 !important; }
+body.ui-theme-refined :is(.card-header.bg-warning, .modal-header.bg-warning) { background: #d69a28 !important; }
 body.ui-theme-refined .card > .card-footer:not([class*="bg-"]) {
     background: var(--ui-surface-alt) !important;
     border-top: 1px solid var(--ui-border);

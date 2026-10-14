@@ -29,6 +29,19 @@ O seletor é independente de `PAG_LOGIN`. Valores ausentes ou desconhecidos volt
 | Login público e aplicativos públicos | `login/*`, `delivery/*`, `ecommerce/*` | Fora do escopo do seletor do ERP; não devem receber `ui-theme-refined` |
 | Modo escuro histórico | variável `$tema`, `/css/escuro.css` | `classic`: idêntico ao atual. `refined`: variante `ui-theme-refined--dark` sem importar `escuro.css` global |
 
+## Inventário da árvore Git auditada
+
+A árvore completa do commit-base (`f99056d`) foi inventariada: **5.144 entradas rastreadas**, das quais **1.111 arquivos Blade**, distribuídos por **231 diretórios/grupos de views**. Há **135 arquivos JavaScript em `public/js`** e **28 CSS em `public/css`** (sem contar as bibliotecas Metronic fora dessa pasta). Os grupos mais populosos incluem `vendor` (86), `relatorios` (65), `delivery` (22), `frontBox` (22), `ecommerce` (21), `compraManual` (18), `empresas` (16), `produtos` (15), `vendas` (15), `cte` (14) e `mtr` (10).
+
+A árvore dá uma contagem **de abrangência**, não uma prova de compatibilidade visual: páginas podem ter CSS inline, bibliotecas e modais particulares. Para produzir o levantamento linha a linha de todas as views do checkout, foi criado `scripts/auditar-tema.php`. O comando é não destrutivo e identifica, por arquivo e módulo, `@extends` do shell, modais, formulários, tabelas, DataTables, Select2, wizard, abas, calendários, estilos/scripts inline, `!important`, `z-index` e `overflow`.
+
+```bash
+php scripts/auditar-tema.php
+php scripts/auditar-tema.php --out=storage/app/tema-inventario.json
+```
+
+Esse inventário serve de base para a homologação progressiva dos componentes especiais sem reescrever rotinas existentes.
+
 ## Arquitetura
 
 1. `config/ui_theme.php`: normaliza o valor do `.env` e expõe `active`.
