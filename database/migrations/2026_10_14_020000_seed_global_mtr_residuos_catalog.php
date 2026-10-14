@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Permite catálogo MTR global (empresa_id NULL) e aplica o seeder automaticamente
+ * Catálogo MTR de referência global (sem empresa, filial ou usuário) e seeder automático
  * durante php artisan migrate --force, usado pela atualização do FERSOFT WEB.
  *
  * Não altera a migration histórica e não remove registros existentes.
@@ -34,6 +34,8 @@ return new class extends Migration
             });
         }
 
+        // O seeder também limpa IDs de empresa/filial/usuário legados.
+        // Nunca cria vínculo ou aplica filtro por tenant.
         app(MtrResiduosSeeder::class)->run();
     }
 
@@ -57,7 +59,9 @@ return new class extends Migration
             throw new RuntimeException('Não foi possível ler a definição de mtr_residuos.empresa_id.');
         }
 
-        if (strtoupper((string) $column->IS_NULLABLE) === 'YES') {
+        // Mesmo quando já é NULL, remover eventual DEFAULT de empresa.
+        if (strtoupper((string) $column->IS_NULLABLE) === 'YES'
+            && $column->COLUMN_DEFAULT === null) {
             return;
         }
 
@@ -98,12 +102,8 @@ return new class extends Migration
             $parts[] = 'DROP FOREIGN KEY ' . $this->identifier((string) $reference->CONSTRAINT_NAME);
         }
 
-        $sqlColumn = 'MODIFY COLUMN `empresa_id` ' . $type . ' NULL';
-        if ($column->COLUMN_DEFAULT !== null) {
-            $sqlColumn .= ' DEFAULT ' . DB::getPdo()->quote((string) $column->COLUMN_DEFAULT);
-        } else {
-            $sqlColumn .= ' DEFAULT NULL';
-        }
+        // Catálogo global: NULL é a única ausência de vínculo permitida.
+        $sqlColumn = 'MODIFY COLUMN `empresa_id` ' . $type . ' NULL DEFAULT NULL';
         if ((string) $column->COLUMN_COMMENT !== '') {
             $sqlColumn .= ' COMMENT ' . DB::getPdo()->quote((string) $column->COLUMN_COMMENT);
         }
