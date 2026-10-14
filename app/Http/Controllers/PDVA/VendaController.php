@@ -317,7 +317,7 @@ class VendaController extends Controller
             ->where('empresa_id', $caixa->empresa_id)
             ->orderBy('id', 'desc')->first();
 
-            $vendasPdv = VendaCaixa::
+            $vendasPdv = VendaCaixa::withoutDeleted()->
             whereBetween('id', [
                 ($aberturaNfce != null ? $aberturaNfce->primeira_venda_nfce+1 : 0), 
                 ($ultimaVendaCaixa ? $ultimaVendaCaixa->id : 100000)
@@ -326,7 +326,7 @@ class VendaController extends Controller
             ->where('empresa_id', $caixa->empresa_id)
             ->get();
 
-            $vendas = Venda::
+            $vendas = Venda::withoutDeleted()->
             whereBetween('id', [
                 ($aberturaNfe != null ? $aberturaNfe->primeira_venda_nfe+1 : 0), 
                 ($ultimaVenda ? $ultimaVenda->id : 100000)
@@ -451,13 +451,13 @@ class VendaController extends Controller
             where('empresa_id', $request->empresa_id)
             ->orderBy('id', 'desc')->first();
 
-            $vendasPdv = VendaCaixa::
+            $vendasPdv = VendaCaixa::withoutDeleted()->
             whereBetween('id', [($aberturaNfce != null ? $aberturaNfce->primeira_venda_nfce +1 : 0), 
                 $ultimaVendaCaixa ? $ultimaVendaCaixa->id : 999999])
             ->where('empresa_id', $empresa_id)
             ->sum('valor_total');
 
-            $vendas = Venda::
+            $vendas = Venda::withoutDeleted()->
             whereBetween('id', [($aberturaNfe != null ? $aberturaNfe->primeira_venda_nfe+1 : 0), 
                 $ultimaVenda ? $ultimaVenda->id : 999999])
             ->where('empresa_id', $empresa_id)
@@ -492,14 +492,14 @@ class VendaController extends Controller
             $labels[] = $hora;
 
             $dataAtual = date('Y-m-d');
-            $nfce = VendaCaixa::where('empresa_id', $empresa_id)
+            $nfce = VendaCaixa::withoutDeleted()->where('empresa_id', $empresa_id)
             ->whereBetween('created_at', [
                 $dataAtual . " " . $hora,
                 $dataAtual . " " . $horaFutura,
             ])
             ->sum('valor_total');
 
-            $nfe = Venda::where('empresa_id', $empresa_id)->sum('valor_total');
+            $nfe = Venda::withoutDeleted()->where('empresa_id', $empresa_id)->sum('valor_total');
 
             $values[] = $nfce;
 
