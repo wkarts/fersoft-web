@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\ProsoftExportService;
 use App\Models\Compra;
+use App\Models\Filial;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use ZipArchive;
 
 class ProsoftExportController extends Controller
@@ -18,6 +20,87 @@ class ProsoftExportController extends Controller
     }
 
     /**
+     * Usa a empresa autenticada, nunca um empresa_id recebido via GET/POST.
+     * Filiais visíveis são somente as desta empresa e autorizadas ao usuário.
+     *
+     * Sem filial selecionada: consolida apenas os locais autorizados.
+     * "matriz" e "-1": somente registros sem filial_id.
+     */
+    private function escopo(Request $request): array
+    {
+        $sessao = session('user_logged');
+        $empresaId = filter_var($sessao['empresa'] ?? null, FILTER_VALIDATE_INT);
+        abort_unless($empresaId !== false && $empresaId > 0, 403, 'Empresa não autenticada.');
+
+        $filiais = Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get();
+
+        if (!empty($sessao['adm'])) {
+            $permiteMatriz = true;
+        } else {
+            $locais = (array) __locaisAtivos();
+            $permiteMatriz = array_key_exists('-1', $locais);
+            $idsAutorizados = array_values(array_filter(
+                array_map('intval', array_keys($locais)),
+                static fn (int $id): bool => $id > 0
+            ));
+            $filiais = $filiais->whereIn('id', $idsAutorizados)->values();
+        }
+
+        $filiaisIds = $filiais->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $selecionada = $request->input('filial_id');
+
+        if ($selecionada !== null && !is_scalar($selecionada)) {
+            abort(422, 'Filtro de filial inválido.');
+        }
+
+        $selecionada = trim((string) ($selecionada ?? ''));
+        if (in_array($selecionada, ['matriz', 'null', '-1'], true)) {
+            abort_unless($permiteMatriz, 403, 'Matriz não autorizada.');
+            $filiaisIds = [];
+        } elseif ($selecionada !== '') {
+            abort_unless(ctype_digit($selecionada) && (int) $selecionada > 0, 422, 'Filial inválida.');
+            $filialId = (int) $selecionada;
+            abort_unless(in_array($filialId, $filiaisIds, true), 403, 'Filial não autorizada para esta empresa.');
+            $filiaisIds = [$filialId];
+            $permiteMatriz = false;
+        }
+
+        return [
+            'empresa_id' => (int) $empresaId,
+            'filiais_ids' => $filiaisIds,
+            'matriz' => $permiteMatriz,
+            'filiais' => $filiais,
+        ];
+    }
+
+    /**
+     * Mesma restrição para modelos Eloquent e consultas SQL do Prosoft.
+     * Nunca produz consulta irrestrita se o usuário não possui locais.
+     */
+    private function filtrarPorEscopo($query, array $escopo, string $tabela = 'compras')
+    {
+        return $query
+            ->where($tabela . '.empresa_id', $escopo['empresa_id'])
+            ->where(function ($q) use ($escopo, $tabela): void {
+                if ($escopo['matriz']) {
+                    $q->whereNull($tabela . '.filial_id');
+                }
+
+                if ($escopo['filiais_ids'] !== []) {
+                    if ($escopo['matriz']) {
+                        $q->orWhereIn($tabela . '.filial_id', $escopo['filiais_ids']);
+                    } else {
+                        $q->whereIn($tabela . '.filial_id', $escopo['filiais_ids']);
+                    }
+                }
+
+                if (!$escopo['matriz'] && $escopo['filiais_ids'] === []) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+    }
+
+    /**
      * Exibe a tela de seleção para exportação com filtro de datas e filial.
      */
     public function index(Request $request)
@@ -27,48 +110,37 @@ class ProsoftExportController extends Controller
         $dataInicio = $request->input('data_inicio', date('Y-m-01'));
         $dataFim = $request->input('data_fim', date('Y-m-t'));
 
-        // Pega a empresa atual e a filial selecionada no filtro
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
+        $escopo = $this->escopo($request);
         $filial_id = $request->input('filial_id');
+        $filiais = $escopo['filiais'];
+        $permiteMatriz = !empty(session('user_logged')['adm'])
+            || array_key_exists('-1', (array) __locaisAtivos());
 
         // 1. ABA COMPRAS: CFOP diferente de 1933 e sem informação
-        $queryCompras = Compra::with(['fornecedor', 'itens'])
-            ->where('empresa_id', $empresa_id)
+        $queryCompras = $this->filtrarPorEscopo(Compra::with(['fornecedor', 'itens']), $escopo)
             ->whereBetween('data_emissao', [$dataInicio, $dataFim])
             ->whereHas('itens', function($q) {
-                $q->where('cfop_entrada', '!=', '1933')
-                    ->where('cfop_entrada', '!=', '2933')
-                    ->orWhereNull('cfop_entrada')
-                    ->orWhere('cfop_entrada', '');
+                $q->where(function ($filtro) {
+                    $filtro->whereNotIn('cfop_entrada', ['1933', '2933'])
+                        ->orWhereNull('cfop_entrada')
+                        ->orWhere('cfop_entrada', '');
+                });
             });
 
-        // Aplica o filtro de Matriz (NULL) ou Filial (ID)
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryCompras->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryCompras->where('filial_id', $filial_id);
-        }
 
         $compras = $queryCompras->latest()->get();
 
         // 2. ABA SERVIÇOS: Apenas CFOP igual a 1933 ou 2933
-        $queryServicos = Compra::with(['fornecedor', 'itens'])
-            ->where('empresa_id', $empresa_id)
+        $queryServicos = $this->filtrarPorEscopo(Compra::with(['fornecedor', 'itens']), $escopo)
             ->whereBetween('data_emissao', [$dataInicio, $dataFim])
             ->whereHas('itens', function($q) {
                 $q->whereIn('cfop_entrada', ['1933', '2933']);
             });
 
-        // Aplica o mesmo filtro de Matriz (NULL) ou Filial (ID)
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryServicos->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryServicos->where('filial_id', $filial_id);
-        }
 
         $servicos = $queryServicos->latest()->get();
 
-        return view('relatorios.prosoft-export', compact('title', 'compras', 'servicos', 'dataInicio', 'dataFim', 'filial_id'));
+        return view('relatorios.prosoft-export', compact('title', 'compras', 'servicos', 'dataInicio', 'dataFim', 'filial_id', 'filiais', 'permiteMatriz'));
     }
 
     /**
@@ -76,71 +148,108 @@ class ProsoftExportController extends Controller
      */
     public function exportar(Request $request)
     {
-        $compraIds = $request->input('compra_ids', []);
+        $request->validate([
+            'compra_ids' => 'required|array|min:1',
+            'compra_ids.*' => 'required|integer|min:1',
+            'filial_id' => 'nullable|string',
+            'data_inicio' => 'nullable|date_format:Y-m-d',
+            'data_fim' => 'nullable|date_format:Y-m-d',
+        ]);
 
-        if (empty($compraIds)) {
+        $escopo = $this->escopo($request);
+        $compraIds = array_values(array_unique(array_map('intval', $request->input('compra_ids', []))));
+        $dataInicio = $request->input('data_inicio', date('Y-m-01'));
+        $dataFim = $request->input('data_fim', date('Y-m-t'));
+
+        // A lista de IDs enviada pelo navegador não concede acesso aos dados.
+        // Todos os registros precisam pertencer ao tenant e ao local autorizado,
+        // além de respeitar o mesmo período da tela de seleção.
+        $permitidas = $this->filtrarPorEscopo(Compra::query(), $escopo)
+            ->whereIn('compras.id', $compraIds)
+            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim])
+            ->pluck('compras.id')
+            ->map(static fn ($id): int => (int) $id)->all();
+
+        if (count($permitidas) !== count($compraIds)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Nenhuma compra/nota selecionada para exportação.'
-            ], 422);
+                'message' => 'Existem notas fora da empresa, filial ou período autorizado. Nenhum arquivo foi gerado.',
+            ], 403);
         }
 
-        $exportDir = storage_path('app/public/prosoft_export_' . time());
-        if (!File::exists($exportDir)) {
-            File::makeDirectory($exportDir, 0755, true);
-        }
+        // Defesa em profundidade: cada gerador volta a aplicar o mesmo escopo,
+        // e não poderá ser chamado sem empresa e locais definidos.
+        $this->prosoftService->definirEscopo(
+            $escopo['empresa_id'],
+            $escopo['filiais_ids'],
+            $escopo['matriz']
+        );
 
+        // Evita colisões/mistura de dados quando usuários exportam ao mesmo tempo.
+        // Temporários e ZIP ficam fora do storage público.
+        $identificador = (string) Str::uuid();
+        $exportDir = storage_path('app/prosoft_export_' . $identificador);
+        $zipFileName = 'prosoft_export_' . date('Ymd_His') . '_' . $identificador . '.zip';
+        $zipFilePath = storage_path('app/' . $zipFileName);
+
+        File::makeDirectory($exportDir, 0755, true);
         $filesGenerated = [];
 
-        // Arquivos de geração (mantidos sem alteração na lógica de chamada)
-        $pathNotas = $exportDir . '/notas_entrada.txt';
-        $this->prosoftService->gerarArquivoNotas($compraIds, $pathNotas);
-        $filesGenerated['notas'] = $pathNotas;
+        try {
+            $pathNotas = $exportDir . '/notas_entrada.txt';
+            $this->prosoftService->gerarArquivoNotas($permitidas, $pathNotas);
+            $filesGenerated['notas'] = $pathNotas;
 
-        $pathItens = $exportDir . '/itens_notas.txt';
-        $this->prosoftService->gerarArquivoItens($compraIds, $pathItens);
-        $filesGenerated['itens'] = $pathItens;
+            $pathItens = $exportDir . '/itens_notas.txt';
+            $this->prosoftService->gerarArquivoItens($permitidas, $pathItens);
+            $filesGenerated['itens'] = $pathItens;
 
-        $pathFaturas = $exportDir . '/faturas.txt';
-        $this->prosoftService->gerarArquivoFaturas($compraIds, $pathFaturas);
-        $filesGenerated['faturas'] = $pathFaturas;
+            $pathFaturas = $exportDir . '/faturas.txt';
+            $this->prosoftService->gerarArquivoFaturas($permitidas, $pathFaturas);
+            $filesGenerated['faturas'] = $pathFaturas;
 
-        $pathItensFaturas = $exportDir . '/itens_faturas.txt';
-        $this->prosoftService->gerarArquivoItensFaturas($compraIds, $pathItensFaturas);
-        $filesGenerated['itens_faturas'] = $pathItensFaturas;
+            $pathItensFaturas = $exportDir . '/itens_faturas.txt';
+            $this->prosoftService->gerarArquivoItensFaturas($permitidas, $pathItensFaturas);
+            $filesGenerated['itens_faturas'] = $pathItensFaturas;
 
-        $pathServicos = $exportDir . '/servicos_tomados.txt';
-        $this->prosoftService->gerarArquivoServicos($compraIds, $pathServicos);
-        if (filesize($pathServicos) > 0) {
-            $filesGenerated['servicos'] = $pathServicos;
-        }
-
-        $pathTerceiros = $exportDir . '/terceiros.txt';
-        $this->prosoftService->gerarArquivoTerceiros($compraIds, $pathTerceiros);
-        if (filesize($pathTerceiros) > 0) {
-            $filesGenerated['terceiros'] = $pathTerceiros;
-        }
-
-        $pathProdutos = $exportDir . '/produtos.txt';
-        $this->prosoftService->gerarArquivoProdutos($compraIds, $pathProdutos);
-        if (filesize($pathProdutos) > 0) {
-            $filesGenerated['produtos'] = $pathProdutos;
-        }
-
-        $zipFileName = 'prosoft_export_' . date('Ymd_His') . '.zip';
-        $zipFilePath = storage_path('app/public/' . $zipFileName);
-
-        $zip = new ZipArchive();
-        if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            foreach ($filesGenerated as $filePath) {
-                if (File::exists($filePath)) {
-                    $zip->addFile($filePath, basename($filePath));
-                }
+            $pathServicos = $exportDir . '/servicos_tomados.txt';
+            $this->prosoftService->gerarArquivoServicos($permitidas, $pathServicos);
+            if (filesize($pathServicos) > 0) {
+                $filesGenerated['servicos'] = $pathServicos;
             }
-            $zip->close();
-        }
 
-        File::deleteDirectory($exportDir);
+            $pathTerceiros = $exportDir . '/terceiros.txt';
+            $this->prosoftService->gerarArquivoTerceiros($permitidas, $pathTerceiros);
+            if (filesize($pathTerceiros) > 0) {
+                $filesGenerated['terceiros'] = $pathTerceiros;
+            }
+
+            $pathProdutos = $exportDir . '/produtos.txt';
+            $this->prosoftService->gerarArquivoProdutos($permitidas, $pathProdutos);
+            if (filesize($pathProdutos) > 0) {
+                $filesGenerated['produtos'] = $pathProdutos;
+            }
+
+            $zip = new ZipArchive();
+            if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Não foi possível criar o arquivo ZIP da exportação Prosoft.');
+            }
+
+            try {
+                foreach ($filesGenerated as $filePath) {
+                    if (File::exists($filePath) && !$zip->addFile($filePath, basename($filePath))) {
+                        throw new \RuntimeException('Falha ao incluir um arquivo no ZIP da exportação Prosoft.');
+                    }
+                }
+            } finally {
+                $zip->close();
+            }
+        } catch (\Throwable $e) {
+            File::delete($zipFilePath);
+            throw $e;
+        } finally {
+            File::deleteDirectory($exportDir);
+        }
 
         return response()->download($zipFilePath)->deleteFileAfterSend(true);
     }
@@ -153,26 +262,24 @@ class ProsoftExportController extends Controller
         $dataInicio = $request->input('data_inicio', date('Y-m-01'));
         $dataFim = $request->input('data_fim', date('Y-m-t'));
         $categoriaId = $request->input('categoria_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
         $filial_id = $request->input('filial_id');
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
 
-        $categorias = \DB::table('categoria_contas')->orderBy('nome')->get();
+        $categorias = \DB::table('categoria_contas')->where('empresa_id', $empresa_id)->orderBy('nome')->get();
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->leftJoin('categoria_contas', 'categoria_contas.id', '=', 'compras.categoria_conta_id')
-            ->where('compras.empresa_id', $empresa_id)
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )
+            ->leftJoin('categoria_contas', function ($join) use ($empresa_id) {
+                $join->on('categoria_contas.id', '=', 'compras.categoria_conta_id')
+                    ->where('categoria_contas.empresa_id', $empresa_id);
+            })
             ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         if (!empty($categoriaId)) {
             $query->where('compras.categoria_conta_id', $categoriaId);
-        }
-
-        // Filtro de Matriz vs Filial no Ajuste Fiscal
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
         }
 
         $resumo = $query->select(
@@ -197,19 +304,23 @@ class ProsoftExportController extends Controller
      */
     public function aplicarAjusteLote(Request $request)
     {
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
-        $filial_id = $request->input('filial_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id);
-
-        // Garante que o Update em Lote não altere dados de outra Filial/Matriz
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
+        // Recusa categorias de outra empresa antes de qualquer alteração.
+        foreach (['filtro_categoria_id', 'nova_categoria_id'] as $campoCategoria) {
+            if ($request->filled($campoCategoria)) {
+                abort_unless(\DB::table('categoria_contas')
+                    ->where('empresa_id', $empresa_id)
+                    ->where('id', $request->input($campoCategoria))
+                    ->exists(), 403, 'Categoria não pertence à empresa atual.');
+            }
         }
+
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        );
 
         if ($request->filled('filtro_cfop')) {
             $filtroCfop = trim($request->input('filtro_cfop'));
@@ -310,14 +421,14 @@ class ProsoftExportController extends Controller
             }
 
             if ($request->filled('nova_categoria_id')) {
-                \DB::table('compras')->where('id', $item->compra_id)->update([
+                \DB::table('compras')->where('empresa_id', $empresa_id)->where('id', $item->compra_id)->update([
                     'categoria_conta_id' => $request->input('nova_categoria_id')
                 ]);
                 $comprasAtualizadasCategoria[$item->compra_id] = true;
             }
 
             // Apenas para listar no resumo de sucesso
-            $compraModel = \App\Models\Compra::with('fornecedor')->find($item->compra_id);
+            $compraModel = \App\Models\Compra::with('fornecedor')->where('empresa_id', $empresa_id)->find($item->compra_id);
             if ($compraModel) {
                 $fornecedorNome = $compraModel->fornecedor->razao_social ?? 'Fornecedor não identificado';
                 $numNota = !empty($compraModel->nf) && $compraModel->nf != '0' ? $compraModel->nf : $compraModel->numero_emissao;
@@ -345,8 +456,8 @@ class ProsoftExportController extends Controller
      */
     public function auditarPisCofinsPeriodo(Request $request)
     {
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
-        $filial_id = $request->input('filial_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
 
@@ -354,17 +465,10 @@ class ProsoftExportController extends Controller
             return redirect()->back()->with('error', 'Por favor, informe a data inicial e final para a auditoria.');
         }
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id)
-            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
-
-        // Respeita o filtro de Matriz/Filial
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
-        }
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         // Pega todos os itens do período
         $itens = $query->select(
@@ -424,22 +528,19 @@ class ProsoftExportController extends Controller
         $viewDataInicio = date('Y-m-d', strtotime($dataInicio));
         $viewDataFim = date('Y-m-d', strtotime($dataFim));
 
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
+        $escopo = $this->escopo($request);
         $filial_id = $request->input('filial_id');
+        $filiais = $escopo['filiais'];
+        $permiteMatriz = !empty(session('user_logged')['adm'])
+            || array_key_exists('-1', (array) __locaisAtivos());
 
         // -------------------------------------------------------------
         // 1. CRÉDITOS / AQUISIÇÕES (Entradas / Compras do banco)
         // -------------------------------------------------------------
-        $queryCompras = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id)
-            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryCompras->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryCompras->where('compras.filial_id', $filial_id);
-        }
+        $queryCompras = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         $comprasAgrupadas = $queryCompras->select(
             \DB::raw('"Compra (Entrada)" as tipo'),
@@ -457,15 +558,8 @@ class ProsoftExportController extends Controller
         // -------------------------------------------------------------
         // 2. DÉBITOS / RECEITAS (Processando Vendas e lendo XMLs)
         // -------------------------------------------------------------
-        $queryVendas = \DB::table('vendas')
-            ->where('empresa_id', $empresa_id)
+        $queryVendas = $this->filtrarPorEscopo(\DB::table('vendas'), $escopo, 'vendas')
             ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryVendas->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryVendas->where('filial_id', $filial_id);
-        }
 
         $vendasList = $queryVendas->select('id', 'path_xml')->get();
         $vendasProcessadas = [];
@@ -535,15 +629,8 @@ class ProsoftExportController extends Controller
         // -------------------------------------------------------------
         // 3. DÉBITOS / CT-E (Conhecimentos de Transporte)
         // -------------------------------------------------------------
-        $queryCtes = \DB::table('ctes')
-            ->where('empresa_id', $empresa_id)
+        $queryCtes = $this->filtrarPorEscopo(\DB::table('ctes'), $escopo, 'ctes')
             ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryCtes->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryCtes->where('filial_id', $filial_id);
-        }
 
         $ctesAgrupados = $queryCtes->select(
             \DB::raw('"CT-e (Transporte)" as tipo'),
@@ -585,6 +672,6 @@ class ProsoftExportController extends Controller
         $dataInicio = $viewDataInicio;
         $dataFim = $viewDataFim;
 
-        return view('prosoft.apuracao_pis_cofins', compact('title', 'dataInicio', 'dataFim', 'filial_id', 'apuracao'));
+        return view('prosoft.apuracao_pis_cofins', compact('title', 'dataInicio', 'dataFim', 'filial_id', 'apuracao', 'filiais', 'permiteMatriz'));
     }
 }
