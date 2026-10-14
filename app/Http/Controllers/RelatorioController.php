@@ -749,6 +749,10 @@ class RelatorioController extends Controller
         $itensVenda = ItemVenda
             ::select(\DB::raw('produtos.id as id, produtos.nome as nome, produtos.grade as grade, produtos.str_grade as str_grade, produtos.valor_venda, produtos.valor_compra, sum(item_vendas.quantidade) as total, sum(item_vendas.quantidade * item_vendas.valor) as total_dinheiro, produtos.unidade_venda'))
             ->join('produtos', 'produtos.id', '=', 'item_vendas.produto_id')
+                ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('vendas.deleted_at');
+                })
             ->orWhere(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_vendas.created_at', [$data_inicial,
@@ -782,6 +786,10 @@ class RelatorioController extends Controller
         $itensVendaCaixa = ItemVendaCaixa
             ::select(\DB::raw('produtos.id as id, produtos.nome as nome, produtos.grade as grade, produtos.str_grade as str_grade, produtos.valor_venda, produtos.valor_compra, sum(item_venda_caixas.quantidade) as total, sum(item_venda_caixas.quantidade * item_venda_caixas.valor) as total_dinheiro, produtos.unidade_venda'))
             ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
+                ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('venda_caixas.deleted_at');
+                })
             ->orWhere(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_venda_caixas.created_at', [$data_inicial,
@@ -2196,6 +2204,9 @@ class RelatorioController extends Controller
                 ->join('produtos', 'produtos.id', '=', 'item_vendas.produto_id')
                 ->join('categorias', 'categorias.id', '=', 'produtos.categoria_id')
                 ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('vendas.deleted_at');
+                })
                 ->groupBy('item_vendas.produto_id')
                 ->where('produtos.empresa_id', $this->empresa_id);
 
@@ -2232,6 +2243,9 @@ class RelatorioController extends Controller
                 ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
                 ->join('categorias', 'categorias.id', '=', 'produtos.categoria_id')
                 ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('venda_caixas.deleted_at');
+                })
                 ->where('produtos.empresa_id', $this->empresa_id)
                 ->where('venda_caixas.rascunho', 0)
                 ->where('venda_caixas.consignado', 0)
@@ -2330,6 +2344,9 @@ class RelatorioController extends Controller
                 ->join('produtos', 'produtos.id', '=', 'item_vendas.produto_id')
                 ->join('categorias', 'categorias.id', '=', 'produtos.categoria_id')
                 ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('vendas.deleted_at');
+                })
                 ->join('usuarios', 'vendas.vendedor_id', '=', 'usuarios.id')
                 ->join('funcionarios', 'funcionarios.usuario_id', '=', 'usuarios.id')
 
@@ -2363,6 +2380,9 @@ class RelatorioController extends Controller
                 ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
                 ->join('categorias', 'categorias.id', '=', 'produtos.categoria_id')
                 ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('venda_caixas.deleted_at');
+                })
                 ->join('usuarios', 'venda_caixas.usuario_id', '=', 'usuarios.id')
                 ->join('funcionarios', 'funcionarios.usuario_id', '=', 'usuarios.id')
                 ->where('produtos.empresa_id', $this->empresa_id)
@@ -3592,6 +3612,9 @@ class RelatorioController extends Controller
         where('vendas.empresa_id', $this->empresa_id)
             ->select('item_vendas.*')
             ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('vendas.deleted_at');
+                })
             ->when($data_inicial != '', function($q) use ($data_inicial){
                 return $q->whereDate('item_vendas.created_at', '>=', $data_inicial);
             })
@@ -3633,6 +3656,9 @@ class RelatorioController extends Controller
         where('venda_caixas.empresa_id', $this->empresa_id)
             ->select('item_venda_caixas.*')
             ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                    return $q->whereNull('venda_caixas.deleted_at');
+                })
             ->when($data_inicial != '', function($q) use ($data_inicial){
                 return $q->whereDate('item_venda_caixas.created_at', '>=', $data_inicial);
             })
