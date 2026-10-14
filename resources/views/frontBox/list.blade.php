@@ -439,8 +439,8 @@
 																<i class="la la-print"></i>
 															</a>
 
-															@if(!$v->NFcNumero && !$v->rascunho && !$v->consignado)
-															<a title="GERAR NFCE" id="btn_envia_{{$v->id}}" class="btn btn-warning spinner-white spinner-right btn-sm" onclick='swal("Atenção!", "Deseja enviar esta venda para Sefaz?", "warning").then((sim) => {if(sim){ emitirNFCe({{$v->id}}) }else{return false} })' href="#!">
+															@if(($v->estado == 'REJEITADO' || (!$v->NFcNumero && $v->estado == 'DISPONIVEL')) && !$v->rascunho && !$v->consignado)
+															<a title="{{ $v->estado == 'REJEITADO' ? 'RETRANSMITIR NFCe REJEITADA' : 'GERAR NFCe' }}" id="btn_envia_{{$v->id}}" class="btn btn-warning spinner-white spinner-right btn-sm" onclick='swal("Atenção!", "Deseja enviar esta venda para Sefaz?", "warning").then((sim) => {if(sim){ emitirNFCe({{$v->id}}) }else{return false} })' href="#!">
 																<i class="las la-file-invoice"></i>
 															</a>
 															@endif
@@ -642,12 +642,12 @@
 
 												@endif
 
-												@if(!$v->NFcNumero)
+												@if(($v->estado == 'REJEITADO' || (!$v->NFcNumero && $v->estado == 'DISPONIVEL')) && !$v->rascunho && !$v->consignado)
 
 												<div class="col-sm-12 col-lg-12 col-md-12 col-xl-6">
 													<a style="width: 100%; margin-top: 5px;" id="btn_envia_grid_{{$v->id}}" onclick='swal("Atenção!", "Deseja enviar esta venda para Sefaz?", "warning").then((sim) => {if(sim){ emitirNFCe({{$v->id}}) }else{return false} })' href="#!" class="btn btn-warning spinner-white spinner-right">
 														<i class="la la-file-invoice"></i>
-														Transmitir NFCe
+														{{ $v->estado == 'REJEITADO' ? 'Retransmitir NFCe' : 'Transmitir NFCe' }}
 													</a>
 												</div>
 												@endif
