@@ -37,6 +37,14 @@ class SinirIemaService
             throw new Exception('A credencial MTR não possui senha/token configurado.');
         }
 
+        // Defesa adicional contra chamadas diretas ao service com o valor bruto
+        // do banco: ciphertext Laravel nunca é uma senha ou Bearer Token válido.
+        if (str_starts_with($senhaLimpa, 'eyJpdiI6')) {
+            throw new Exception(
+                'Credencial MTR ainda criptografada. Utilize a leitura pelo model MtrConfig e verifique a APP_KEY.'
+            );
+        }
+
         if (strlen($senhaLimpa) > 100) {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $senhaLimpa,
