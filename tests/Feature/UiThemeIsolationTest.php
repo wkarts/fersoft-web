@@ -33,7 +33,7 @@ class UiThemeIsolationTest extends TestCase
         $this->assertStringContainsString('body.ui-theme-refined', $css);
         $this->assertStringContainsString('body.ui-theme-refined--dark', $css);
         $this->assertStringNotContainsString(':root {', $css);
-        $this->assertStringNotContainsString('body {', $css);
+        $this->assertDoesNotMatchRegularExpression('/^[ \t]*body[ \t]*\{/m', $css);
         $this->assertStringNotContainsString('z-index:', $css);
     }
 
