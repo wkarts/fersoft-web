@@ -1,7 +1,7 @@
 name: UI Visual - 3 Pre-release continua
 on:
   push:
-    branches: [feat/ui-refined-theme-opt-in-20261014]
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ jobs:
 
   preview-package:
     needs: compatibility
-    if: github.ref == 'refs/heads/feat/ui-refined-theme-opt-in-20261014'
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -36,7 +36,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
+          git fetch --no-tags origin main develop
+          if [ "$(git rev-parse origin/develop)" != "$GITHUB_SHA" ]; then
+            echo "::warning::Run superado por atualização de develop. Não publica a pré-release antiga."
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if ! git merge-base --is-ancestor origin/main HEAD; then
             echo "::warning::Branch visual ainda não incorporou main. Pré-release BLOQUEADA; aguarde o fluxo de sincronização."
             echo "fresh=false" >> "$GITHUB_OUTPUT"
@@ -79,7 +84,10 @@ jobs:
           set -euo pipefail
           # Antes da infraestrutura ser aprovada, não criar evento 'release.published'.
           # Isso evita acionar o deploy-release-notes histórico sem guarda de prerelease.
-          if gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ui-main-sync.yml?ref=main" >/dev/null 2>&1; then
+          # Não publica release enquanto o deploy estável não ignorar pré-releases.
+          guard="$(gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/deploy-release-notes.yml?ref=main" --jq '.content' 2>/dev/null | base64 -d || true)"
+          if gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ui-main-sync.yml?ref=main" >/dev/null 2>&1 \
+             && printf "%s" "$guard" | grep -Fq "github.event.release.prerelease == false"; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::Infra PR separada deve ser incorporada à main para habilitar publicação e autosync."
@@ -92,6 +100,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          git fetch --no-tags origin main develop
+          if [ "$(git rev-parse origin/develop)" != "$GITHUB_SHA" ] \
+             || ! git merge-base --is-ancestor origin/main "$GITHUB_SHA"; then
+            echo "::warning::HEAD develop mudou ou está atrás da main. Pré-release anterior preservada."
+            exit 0
+          fi
           tag='ui-continuous'
           if gh release view "$tag" --json isPrerelease --jq '.isPrerelease' > "$RUNNER_TEMP/previous-release.txt" 2>/dev/null; then
             if [ "$(cat "$RUNNER_TEMP/previous-release.txt")" != "true" ]; then
@@ -101,6 +115,10 @@ jobs:
             existed=true
           else
             existed=false
+            if git ls-remote --tags origin "refs/tags/$tag" | grep -q .; then
+              echo "::error::Tag ui-continuous já existe, mas sem uma pré-release válida; abortando sem força."
+              exit 1
+            fi
           fi
 
           # Não alterar tags semânticas vX.Y.Z nem a main.
@@ -113,7 +131,7 @@ jobs:
           cat > "$RUNNER_TEMP/ui-release-notes.md" <<EOF
           PRÉ-RELEASE CONTÍNUA — APENAS HOMOLOGAÇÃO DO NOVO VISUAL
 
-          - Branch: feat/ui-refined-theme-opt-in-20261014
+          - Branch: develop
           - Commit: $GITHUB_SHA
           - Base estável observada: ${stable:-não encontrada}
           - Build: ${GITHUB_RUN_NUMBER}

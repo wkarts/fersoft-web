@@ -3,7 +3,7 @@ on:
   workflow_call:
   workflow_dispatch:
   pull_request:
-    branches: [feat/ui-refined-theme-opt-in-20261014]
+    branches: [develop]
 
 permissions:
   contents: read

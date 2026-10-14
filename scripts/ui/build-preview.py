@@ -50,7 +50,7 @@ def permitted(name: str) -> bool:
 def main() -> None:
     sha = git("rev-parse", "HEAD")
     branch = os.environ.get("GITHUB_REF_NAME", git("branch", "--show-current"))
-    if branch != "feat/ui-refined-theme-opt-in-20261014":
+    if branch != "develop":
         raise SystemExit("ERRO: pacote exclusivo da branch visual; nenhuma release da main permitida.")
 
     tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode("utf-8").split("\0")
