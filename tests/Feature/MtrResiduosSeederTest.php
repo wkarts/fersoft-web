@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\MtrResiduo;
 use Database\Seeders\MtrResiduosSeeder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +10,8 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Testes em SQLite :memory: isolado. Nunca utiliza um banco de produção.
+ * Testes isolados em SQLite :memory: ou no MySQL fersoft_test.
+ * Nenhuma tabela preexistente é recriada ou apagada.
  */
 class MtrResiduosSeederTest extends TestCase
 {
@@ -80,6 +82,9 @@ class MtrResiduosSeederTest extends TestCase
         $this->assertSame('010101', DB::table('mtr_residuos')->where('res_codigo', 735)->value('res_codigo_ibama'));
         $this->assertSame('010304(*)', DB::table('mtr_residuos')->where('res_codigo', 740)->value('res_codigo_ibama'));
         $this->assertNull(DB::table('mtr_residuos')->where('res_codigo', 645)->value('empresa_id'));
+        $this->assertSame(0, DB::table('mtr_residuos')->whereNotNull('empresa_id')->count());
+        $this->assertSame(0, DB::table('mtr_residuos')->whereNotNull('filial_id')->count());
+        $this->assertSame(0, DB::table('mtr_residuos')->whereNotNull('usuario_id')->count());
         $this->assertCount(895, array_unique($this->catalogCodes()));
     }
 
@@ -100,7 +105,7 @@ class MtrResiduosSeederTest extends TestCase
         $this->assertSame(895, $this->importedCount());
     }
 
-    public function test_corrige_descricao_antiga_sem_alterar_dados_de_tenant(): void
+    public function test_corrige_descricao_antiga_e_mantem_campo_de_empresa_nulo(): void
     {
         $this->seed(MtrResiduosSeeder::class);
         $before = DB::table('mtr_residuos')->where('res_codigo', 645)->first();
@@ -114,14 +119,14 @@ class MtrResiduosSeederTest extends TestCase
         $after = DB::table('mtr_residuos')->where('res_codigo', 645)->first();
 
         $this->assertSame($before->id, $after->id);
-        $this->assertSame($before->empresa_id, $after->empresa_id);
-        $this->assertSame($before->filial_id, $after->filial_id);
-        $this->assertSame($before->usuario_id, $after->usuario_id);
+        $this->assertNull($after->empresa_id);
+        $this->assertNull($after->filial_id);
+        $this->assertNull($after->usuario_id);
         $this->assertSame('Resíduos de ferro ou aço', $after->res_descricao);
         $this->assertSame(895, $this->importedCount());
     }
 
-    public function test_catalogo_global_e_visivel_no_depara_sem_remover_escopo_do_tenant(): void
+    public function test_catalogo_global_sem_filtros_e_sem_injecao_de_empresa_filial_usuario(): void
     {
         $root = dirname(__DIR__, 2);
         $controller = file_get_contents($root . '/app/Http/Controllers/MtrDeparaController.php');
@@ -130,9 +135,28 @@ class MtrResiduosSeederTest extends TestCase
             $root . '/database/migrations/2026_10_14_020000_seed_global_mtr_residuos_catalog.php'
         );
 
-        $this->assertStringContainsString("->whereNull('empresa_id')", $controller);
-        $this->assertStringContainsString("->orWhere('empresa_id', \$this->empresa_id)", $controller);
+        // A relação De-Para continua sendo por empresa, mas a leitura do
+        // catálogo é incondicional e compartilhada por todos os tenants.
+        $this->assertStringContainsString("'residuos' => MtrResiduo::query()", $controller);
+        $begin = strpos($controller, "'residuos' => MtrResiduo::query()");
+        $catalogQuery = substr($controller, $begin, 140);
+        $this->assertStringContainsString("->orderBy('res_codigo_ibama')", $catalogQuery);
+        $this->assertStringNotContainsString("where('empresa_id'", $catalogQuery);
+        $this->assertStringNotContainsString("whereNull('empresa_id'", $catalogQuery);
+        $this->assertStringNotContainsString("filial_id", $catalogQuery);
+
+        // O model não pode herdar injeção de IDs do TenantInjectable.
+        $model = new MtrResiduo();
+        foreach (['empresa_id', 'filial_id', 'usuario_id'] as $field) {
+            $this->assertNotContains($field, $model->getFillable());
+        }
+
+        $seeder = file_get_contents($root . '/database/seeders/MtrResiduosSeeder.php');
+        $this->assertStringContainsString("'empresa_id' => null", $seeder);
+        $this->assertStringContainsString("'filial_id' => null", $seeder);
+        $this->assertStringContainsString("'usuario_id' => null", $seeder);
         $this->assertStringContainsString('MtrResiduosSeeder::class', $databaseSeeder);
         $this->assertStringContainsString('app(MtrResiduosSeeder::class)->run()', $migration);
+        $this->assertStringContainsString("NULL DEFAULT NULL", $migration);
     }
 }
