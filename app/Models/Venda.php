@@ -396,8 +396,7 @@ use MultiEmpresaTrait;
     public static function filtroData($dataInicial, $dataFinal, $estado, $tipoPesquisaData, $numero_nfe, $dataEmissao){
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->whereBetween($tipoPesquisaData, [$dataInicial,
                 $dataFinal])
             ->where('vendas.empresa_id', $empresa_id)
@@ -420,8 +419,7 @@ use MultiEmpresaTrait;
 
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
             ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
             ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
@@ -440,8 +438,7 @@ use MultiEmpresaTrait;
     public static function filtroCliente($cliente, $estado, $tipoPesquisa, $numero_nfe){
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
             ->where('clientes.'.$tipoPesquisa, 'LIKE', "%$cliente%")
             ->where('vendas.empresa_id', $empresa_id)
@@ -457,8 +454,7 @@ use MultiEmpresaTrait;
     public static function filtroEstado($estado, $numero_nfe){
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
-        $c = Venda::
-        where('vendas.estado', $estado)
+        $c = Venda::withoutDeleted()->where('vendas.estado', $estado)
             ->where('vendas.empresa_id', $empresa_id)
             ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
 
@@ -471,8 +467,7 @@ use MultiEmpresaTrait;
 
     public static function filtroDataApp($dataInicial, $dataFinal, $estado, $empresa_id){
 
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->whereBetween('data_registro', [$dataInicial,
                 $dataFinal])
             ->where('vendas.empresa_id', $empresa_id)
@@ -485,8 +480,7 @@ use MultiEmpresaTrait;
 
     public static function filtroDataClienteApp($cliente, $dataInicial, $dataFinal, $estado, $empresa_id){
 
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
             ->where('clientes.razao_social', 'LIKE', "%$cliente%")
             ->where('vendas.forma_pagamento', '!=', 'conta_crediario')
@@ -501,8 +495,7 @@ use MultiEmpresaTrait;
 
     public static function filtroClienteApp($cliente, $estado, $empresa_id){
 
-        $c = Venda::
-        select('vendas.*')
+        $c = Venda::withoutDeleted()->select('vendas.*')
             ->join('clientes', 'clientes.id' , '=', 'vendas.cliente_id')
             ->where('clientes.razao_social', 'LIKE', "%$cliente%")
             ->where('vendas.empresa_id', $empresa_id)
@@ -515,8 +508,7 @@ use MultiEmpresaTrait;
 
     public static function filtroEstadoApp($estado, $empresa_id){
 
-        $c = Venda::
-        where('vendas.estado', $estado)
+        $c = Venda::withoutDeleted()->where('vendas.estado', $estado)
             ->where('vendas.empresa_id', $empresa_id)
             ->where('vendas.forma_pagamento', '!=', 'conta_crediario');
         return $c->get();

@@ -1059,7 +1059,7 @@ class VendaCaixaController extends Controller
         // ->where('empresa_id', $this->empresa_id)
         // ->orderBy('id', 'desc')->first();
 
-        $vendas = VendaCaixa::
+        $vendas = VendaCaixa::withoutDeleted()->
         whereDate('created_at', date('Y-m-d'))
             ->where('empresa_id', $this->empresa_id)
             ->where('usuario_id', get_id_user())
@@ -1084,7 +1084,7 @@ class VendaCaixaController extends Controller
         // echo $comissao;
         // die;
 
-        $vendas = VendaCaixa::
+        $vendas = VendaCaixa::withoutDeleted()->
         where('empresa_id', $this->empresa_id)
             ->get();
 

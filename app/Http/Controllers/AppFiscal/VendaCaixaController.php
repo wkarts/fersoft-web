@@ -26,7 +26,7 @@ use App\Models\ItemVendaCaixaPreVenda;
 class VendaCaixaController extends Controller
 {
 	public function index(Request $request){
-		$vendas = VendaCaixa::orderBy('id', 'desc')
+		$vendas = VendaCaixa::withoutDeleted()->orderBy('id', 'desc')
 		->where('empresa_id', $request->empresa_id)
 		->limit(50)->get();
 
@@ -99,7 +99,7 @@ class VendaCaixaController extends Controller
 		// 	);
 		// }
 
-		$vendas = VendaCaixa::
+		$vendas = VendaCaixa::withoutDeleted()->
 		where('empresa_id', $request->empresa_id)
 		->where('forma_pagamento', '!=', 'conta_crediario');
 
@@ -140,7 +140,7 @@ class VendaCaixaController extends Controller
 	}
 
 	public function getVenda($id){
-		$venda = VendaCaixa::find($id);
+		$venda = VendaCaixa::withoutDeleted()->findOrFail($id);
 		$venda->cliente;
 		$venda->natureza;
 		// $venda->itens;
@@ -385,17 +385,20 @@ class VendaCaixaController extends Controller
 	// }
 
 	public function delete(Request $request){
-		$venda = VendaCaixa::find($request->id);
+		$venda = VendaCaixa::where('empresa_id', $request->empresa_id)->findOrFail($request->id);
+		if($venda->trashed()){
+			return response()->json(true, 200);
+		}
 		$config = ConfigNota::where('empresa_id', $venda->empresa_id)->first();
 		$senha = $request->senha;
 
 		if($config->senha_remover == ""){
 			$delete = $venda->delete();
-			return response()->json($delete, 200);
+			return response()->json($delete || $venda->trashed(), 200);
 		}else{
 			if(md5($senha) == $config->senha_remover){
 				$delete = $venda->delete();
-				return response()->json($delete, 200);
+				return response()->json($delete || $venda->trashed(), 200);
 			}
 			else{
 				return response()->json("Senha incorreta", 403);
