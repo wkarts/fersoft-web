@@ -509,7 +509,7 @@ class RelatorioController extends Controller
             $data_final = $this->parseDate($data_final, true);
         }
 
-        $vendas = Venda::withoutDeleted()->orWhere(function($q) use ($data_inicial, $data_final){
+        $vendas = Venda::withoutDeleted()->where(function($q) use ($data_inicial, $data_final){
             if($data_inicial && $data_final){
                 return $q->whereBetween('vendas.data_registro', [$data_inicial,
                     $data_final]);
@@ -541,7 +541,7 @@ class RelatorioController extends Controller
             $vendas = [];
         }
 
-        $vendasCaixa = VendaCaixa::withoutDeleted()->orWhere(function($q) use ($data_inicial, $data_final){
+        $vendasCaixa = VendaCaixa::withoutDeleted()->where(function($q) use ($data_inicial, $data_final){
             if($data_inicial && $data_final){
                 return $q->whereBetween('venda_caixas.data_registro', [$data_inicial,
                     $data_final]);
@@ -753,7 +753,7 @@ class RelatorioController extends Controller
                 ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
                     return $q->whereNull('vendas.deleted_at');
                 })
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_vendas.created_at', [$data_inicial,
                         $data_final]);
@@ -790,7 +790,7 @@ class RelatorioController extends Controller
                 ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
                     return $q->whereNull('venda_caixas.deleted_at');
                 })
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_venda_caixas.created_at', [$data_inicial,
                         $data_final]);
@@ -887,7 +887,7 @@ class RelatorioController extends Controller
 
         $vendas = Venda::withoutDeleted()->select(\DB::raw('clientes.id as id, clientes.razao_social as nome, count(*) as total, sum(valor_total-desconto+acrescimo) as total_dinheiro'))
             ->join('clientes', 'clientes.id', '=', 'vendas.cliente_id')
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('vendas.data_registro', [$data_inicial,
                         $data_final]);
@@ -902,7 +902,7 @@ class RelatorioController extends Controller
 
         $vendaCaixa = VendaCaixa::withoutDeleted()->select(\DB::raw('clientes.id as id, clientes.razao_social as nome, count(*) as total, sum(valor_total) as total_dinheiro'))
             ->join('clientes', 'clientes.id', '=', 'venda_caixas.cliente_id')
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('venda_caixas.created_at', [$data_inicial,
                         $data_final]);
@@ -1067,7 +1067,7 @@ class RelatorioController extends Controller
 
         $vendas = Venda::withoutDeleted()->select(\DB::raw('vendas.id, DATE_FORMAT(vendas.data_registro, "%d/%m/%Y %H:%i") as data, (valor_total-desconto+acrescimo) as valor_total'))
             ->join('item_vendas', 'item_vendas.venda_id', '=', 'vendas.id')
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('vendas.created_at', [$data_inicial,
                         $data_final]);
@@ -1089,7 +1089,7 @@ class RelatorioController extends Controller
         $vendasCaixa = VendaCaixa::withoutDeleted()->select(\DB::raw('venda_caixas.id, DATE_FORMAT(venda_caixas.data_registro, "%d/%m/%Y %H:%i") as data, (valor_total) as valor_total'))
             ->join('item_venda_caixas', 'item_venda_caixas.venda_caixa_id', '=', 'venda_caixas.id')
 
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('venda_caixas.created_at', [$data_inicial,
                         $data_final]);
@@ -1151,7 +1151,7 @@ class RelatorioController extends Controller
         $vendasCaixa = VendaCaixa::withoutDeleted()->select(\DB::raw('venda_caixas.id, DATE_FORMAT(venda_caixas.created_at, "%d/%m/%Y %H:%i") as data, (valor_total) as valor_total'))
             ->join('item_venda_caixas', 'item_venda_caixas.venda_caixa_id', '=', 'venda_caixas.id')
 
-            ->orWhere(function($q) use ($data_inicial, $data_final){
+            ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('venda_caixas.created_at', [$data_inicial,
                         $data_final]);
