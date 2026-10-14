@@ -37,6 +37,22 @@ class UiThemeIsolationTest extends TestCase
         $this->assertStringNotContainsString('z-index:', $css);
     }
 
+    public function test_inventario_php_executa_sem_alterar_as_views(): void
+    {
+        $process = new \\Symfony\\Component\\Process\\Process([
+            PHP_BINARY,
+            base_path('scripts/auditar-tema.php'),
+        ], base_path());
+        $process->run();
+
+        $this->assertTrue(
+            $process->isSuccessful(),
+            $process->getErrorOutput() . PHP_EOL . $process->getOutput()
+        );
+        $this->assertStringContainsString('Views Blade:', $process->getOutput());
+        $this->assertStringContainsString('Módulos mais volumosos:', $process->getOutput());
+    }
+
     public function test_fontes_reutilizam_o_repositorio_do_access4(): void
     {
         $assets = file_get_contents(resource_path('views/themes/refined/assets.blade.php'));
