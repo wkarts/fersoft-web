@@ -10,6 +10,14 @@
             </div>
         @endif
 
+        @if($errors->any())
+            <div class="alert alert-danger">
+                @foreach($errors->all() as $erro)
+                    <div>{{ $erro }}</div>
+                @endforeach
+            </div>
+        @endif
+
         <div class="card mb-4">
             <div class="card-header" id="card-titulo">Cadastrar / Atualizar Preço</div>
             <div class="card-body">
@@ -20,7 +28,7 @@
                         <select name="produto_id" class="form-control select2" id="kt_select2_1" style="width: 100%" required>
                             <option value="">Selecione o produto de sucata...</option>
                             @foreach($produtos as $p)
-                                <option value="{{ $p->id }}">
+                                <option value="{{ $p->id }}" {{ old('produto_id') == $p->id ? 'selected' : '' }}>
                                     {{ !empty($p->referencia) ? '[' . $p->referencia . '] ' : '' }}{{ $p->nome }}
                                 </option>
                             @endforeach
@@ -28,7 +36,7 @@
                     </div>
                     <div class="col-md-3">
                         <label>Preço Base NFe (R$)</label>
-                        <input type="text" name="preco_nfe" id="preco_nfe" class="form-control" placeholder="Ex: 12,90" required>
+                        <input type="text" name="preco_nfe" id="preco_nfe" class="form-control" value="{{ old('preco_nfe') }}" placeholder="Ex: 12,90" inputmode="decimal" required>
                     </div>
                     <div class="col-md-3">
                         <label>&nbsp;</label>
@@ -63,9 +71,14 @@
                                         <i class="fas fa-edit"></i>
                                     </button>
 
-                                    <a href="{{ url('/tabelaPrecoNfe/delete/'.$preco->id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Excluir este preço?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    <form action="{{ route('tabela-preco-nfe.delete', $preco->id) }}" method="POST"
+                                          class="d-inline" onsubmit="return confirm('Excluir este preço?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm" title="Excluir preço">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         @endforeach
@@ -83,11 +96,12 @@
 
 @section('javascript')
     <script>
-        $('.btn-editar').click(function() {
-            let produtoId = $(this).data('id');
-            let preco = $(this).data('preco');
+        $(document).on('click', '.btn-editar', function() {
+            let produtoId = $(this).attr('data-id');
+            let preco = $(this).attr('data-preco');
 
-            $('#produto_id').val(produtoId).trigger('change');
+            // Reutiliza a seleção existente, inclusive com Select2.
+            $('#kt_select2_1').val(produtoId).trigger('change');
             $('#preco_nfe').val(preco);
             $('#card-titulo').html('<strong>Editando Preço do Produto</strong>');
             window.scrollTo({top: 0, behavior: 'smooth'});
