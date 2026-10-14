@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             CategoriaSeed::class,
             CidadeSeed::class,
             PontoPermissoesSeeder::class,
+            MtrResiduosSeeder::class,
         ]);
     }
 }

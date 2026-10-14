@@ -138,8 +138,8 @@ class MtrDeparaController extends BaseController
                 ->select('id', 'nome')
                 ->orderBy('nome')
                 ->get(),
+            // Catálogo de referência global: jamais filtrar por empresa ou filial.
             'residuos' => MtrResiduo::query()
-                ->where('empresa_id', $this->empresa_id)
                 ->orderBy('res_codigo_ibama')
                 ->get(),
         ];
