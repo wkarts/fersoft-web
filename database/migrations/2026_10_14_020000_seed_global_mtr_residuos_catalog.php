@@ -122,8 +122,30 @@ return new class extends Migration
             );
         }
 
-        // Mesmo ALTER mantém o vínculo FK após alterar apenas a nulidade.
-        DB::statement('ALTER TABLE `mtr_residuos` ' . implode(', ', $parts));
+        // Preferir a alteração direta: não mexe na FK quando MySQL permite.
+        try {
+            DB::statement('ALTER TABLE `mtr_residuos` ' . $sqlColumn . ', ALGORITHM=INPLACE');
+            return;
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Alguns MySQLs não permitem MODIFY enquanto há FK na coluna.
+            // Não ocultar outras falhas de DDL.
+            $errorNumber = (int) ($e->errorInfo[1] ?? 0);
+            if ($references === [] || !in_array($errorNumber, [1832, 1833], true)) {
+                throw $e;
+            }
+        }
+
+        // MySQL exige FOREIGN_KEY_CHECKS=OFF para ADD FK via INPLACE;
+        // o procedimento é restrito a esta conexão e a uma única instrução
+        // ALTER, sem qualquer INSERT/UPDATE enquanto as verificações estiverem OFF.
+        // As demais sessões mantêm a verificação de integridade ligada.
+        $previousChecks = (int) DB::selectOne('SELECT @@SESSION.FOREIGN_KEY_CHECKS AS enabled')->enabled;
+        try {
+            DB::statement('SET SESSION FOREIGN_KEY_CHECKS = 0');
+            DB::statement('ALTER TABLE `mtr_residuos` ' . implode(', ', $parts) . ', ALGORITHM=INPLACE');
+        } finally {
+            DB::statement('SET SESSION FOREIGN_KEY_CHECKS = ' . $previousChecks);
+        }
     }
 
     private function identifier(string $value): string
