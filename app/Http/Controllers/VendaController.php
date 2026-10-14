@@ -1083,34 +1083,67 @@ class VendaController extends Controller
     }
 
     public function delete($id){
-        $venda = Venda::
-        where('empresa_id', $this->empresa_id)
-            ->where('id', $id)
-            ->first();
+        try {
+            $resultado = DB::transaction(function () use ($id) {
+                // Bloqueia a venda durante o estorno. Duas requisições
+                // simultâneas não podem devolver o mesmo estoque duas vezes.
+                $venda = Venda::where('empresa_id', $this->empresa_id)
+                    ->where('id', $id)
+                    ->lockForUpdate()
+                    ->first();
 
-        if(!valida_objeto($venda)){
+                if(!valida_objeto($venda)){
+                    return 'negado';
+                }
+
+                if($venda->trashed()){
+                    return 'ja_removida';
+                }
+
+                $this->criarLog($venda, 'deletar');
+
+                $comissao = ComissaoVenda::where('empresa_id', $this->empresa_id)
+                    ->where('tabela', 'vendas')
+                    ->where('venda_id', $id)
+                    ->first();
+
+                if($comissao != null){
+                    $comissao->delete();
+                }
+
+                if($venda->troca()){
+                    $venda->troca()->delete();
+                }
+
+                $this->reverteEstoque($venda->itens);
+
+                // BaseModel faz soft delete customizado e retorna false
+                // quando a coluna deleted_at existe. Confirmar o estado real.
+                $excluiu = $venda->delete();
+                if(!$excluiu && !$venda->trashed()){
+                    throw new \RuntimeException('Falha ao concluir a exclusão da venda.');
+                }
+
+                return 'removida';
+            }, 3);
+        }catch(\Throwable $e){
+            Log::error('Erro ao excluir venda.', [
+                'venda_id' => $id,
+                'empresa_id' => $this->empresa_id,
+                'erro' => $e->getMessage(),
+            ]);
+            session()->flash('mensagem_erro', 'Não foi possível remover a venda. Nenhum estorno parcial foi confirmado.');
+            return redirect('/vendas');
+        }
+
+        if($resultado === 'negado'){
             return redirect('/403');
         }
 
-        $this->criarLog($venda, 'deletar');
-
-        $comissao = ComissaoVenda::
-        where('empresa_id', $this->empresa_id)
-            ->where('tabela', 'vendas')
-            ->where('venda_id', $id)
-            ->first();
-
-        if($comissao != null)
-            $comissao->delete();
-
-        if($venda->troca()){
-            $venda->troca()->delete();
-        }
-
-        $this->reverteEstoque($venda->itens);
-        $venda->delete();
-        session()->flash("mensagem_sucesso", "Venda removida!");
-
+        session()->flash(
+            'mensagem_sucesso',
+            $resultado === 'ja_removida' ? 'Esta venda já estava removida.' : 'Venda removida!'
+        );
         return redirect('/vendas');
     }
 
