@@ -65,7 +65,7 @@ jobs:
         if: steps.artifact.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: fersoft-web-ui-preview-${ github.run_number }
+          name: fersoft-web-ui-preview-${{ github.run_number }}
           path: dist/fersoft-web-ui-continuous.zip
           if-no-files-found: error
           retention-days: 30
@@ -74,7 +74,7 @@ jobs:
         if: steps.artifact.outputs.ready == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Antes da infraestrutura ser aprovada, não criar evento 'release.published'.
@@ -89,7 +89,7 @@ jobs:
         if: steps.infra.outputs.available == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           tag='ui-continuous'
@@ -129,7 +129,7 @@ jobs:
           fi
           {
             echo "## Pré-release contínua atualizada"
-            echo "- Tag única: `$tag` (apenas esta tag é movimentada)"
-            echo "- SHA: `$GITHUB_SHA`"
-            echo "- URL: ${ github.server_url }/${ github.repository }/releases/tag/ui-continuous"
+            echo "- Tag única: $tag (apenas esta tag é movimentada)"
+            echo "- SHA: $GITHUB_SHA"
+            echo "- URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/ui-continuous"
           } >> "$GITHUB_STEP_SUMMARY"

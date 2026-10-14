@@ -44,8 +44,8 @@ jobs:
           base="$(git merge-base "origin/main" "origin/${UI_BRANCH}")"
           git diff --name-only "$base" "origin/main" > "$RUNNER_TEMP/main-changes.txt"
           echo "## Sincronização main → interface visual" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Base comum: `$base`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Main: `$(git rev-parse origin/main)`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Base comum: $base" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Main: $(git rev-parse origin/main)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Alterações desde a base: $(wc -l < "$RUNNER_TEMP/main-changes.txt") arquivos" >> "$GITHUB_STEP_SUMMARY"
           echo "### Arquivos que podem exigir compatibilização" >> "$GITHUB_STEP_SUMMARY"
           {
@@ -62,7 +62,7 @@ jobs:
         if: steps.impact.outputs.needs_sync == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -80,7 +80,7 @@ jobs:
 
             title="[UI-SYNC] Conflitos na importação da main"
             existing="$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[UI-SYNC] Conflitos na importação da main") | .number' | head -1 || true)"
-            body="Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH. Run: ${ github.server_url }/${ github.repository }/actions/runs/${ github.run_id }.\n\nArquivos:\n$conflicts"
+            body="Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.\n\nArquivos:\n$conflicts"
             if [ -n "$existing" ]; then
               gh issue comment "$existing" --body "$body" || true
             else
@@ -98,7 +98,7 @@ jobs:
         if: steps.merge.outputs.synced == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Commits com GITHUB_TOKEN não acionam workflow push: explicitamos dispatch.
@@ -109,9 +109,9 @@ jobs:
         if: steps.impact.outputs.needs_sync == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ui-main-impact-${ github.run_id }
+          name: ui-main-impact-${{ github.run_id }}
           path: |
-            ${ runner.temp }/main-changes.txt
-            ${ runner.temp }/ui-impact.txt
+            ${{ runner.temp }}/main-changes.txt
+            ${{ runner.temp }}/ui-impact.txt
           if-no-files-found: warn
           retention-days: 30
