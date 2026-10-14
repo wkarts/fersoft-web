@@ -862,20 +862,42 @@ class ProsoftExportService
 
     public function aplicarAjusteEmLote(array $filtros, array $alteracoes, array $compraIds = [])
     {
-        $query = \DB::table('item_compras');
+        if ($this->empresaId === null) {
+            throw new \LogicException('Escopo Prosoft não definido. Ajuste interrompido.');
+        }
+
+        $query = \DB::table('item_compras')
+            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
+            ->where('compras.empresa_id', $this->empresaId)
+            ->where(function ($q): void {
+                if ($this->incluiMatriz) {
+                    $q->whereNull('compras.filial_id');
+                }
+                if ($this->filiaisIds !== []) {
+                    if ($this->incluiMatriz) {
+                        $q->orWhereIn('compras.filial_id', $this->filiaisIds);
+                    } else {
+                        $q->whereIn('compras.filial_id', $this->filiaisIds);
+                    }
+                }
+                if (!$this->incluiMatriz && $this->filiaisIds === []) {
+                    $q->whereRaw('1 = 0');
+                }
+            })
+            ->select('item_compras.*');
 
         if (!empty($compraIds)) {
-            $query->whereIn('compra_id', $compraIds);
+            $query->whereIn('item_compras.compra_id', $compraIds);
         }
 
         if (!empty($filtros['cfop'])) {
-            $query->where('cfop_entrada', $filtros['cfop']);
+            $query->where('item_compras.cfop_entrada', $filtros['cfop']);
         }
         if (!empty($filtros['cst_icms'])) {
-            $query->where('cst_icms', $filtros['cst_icms']);
+            $query->where('item_compras.cst_icms', $filtros['cst_icms']);
         }
         if (!empty($filtros['cst_pis'])) {
-            $query->where('cst_pis', $filtros['cst_pis']);
+            $query->where('item_compras.cst_pis', $filtros['cst_pis']);
         }
 
         $itens = $query->get();
@@ -915,7 +937,28 @@ class ProsoftExportService
             }
 
             if (!empty($updateData)) {
-                \DB::table('item_compras')->where('id', $item->id)->update($updateData);
+                \DB::table('item_compras')
+                    ->where('id', $item->id)
+                    ->whereIn('compra_id', function ($q) {
+                        $q->select('id')->from('compras')
+                            ->where('empresa_id', $this->empresaId)
+                            ->where(function ($sub): void {
+                                if ($this->incluiMatriz) {
+                                    $sub->whereNull('filial_id');
+                                }
+                                if ($this->filiaisIds !== []) {
+                                    if ($this->incluiMatriz) {
+                                        $sub->orWhereIn('filial_id', $this->filiaisIds);
+                                    } else {
+                                        $sub->whereIn('filial_id', $this->filiaisIds);
+                                    }
+                                }
+                                if (!$this->incluiMatriz && $this->filiaisIds === []) {
+                                    $sub->whereRaw('1 = 0');
+                                }
+                            });
+                    })
+                    ->update($updateData);
             }
         }
 
