@@ -1,0 +1,36 @@
+name: UI Branch Policy
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    env:
+      UI_FLOW_PHASE: ${{ vars.UI_FLOW_PHASE }}
+      PR_BASE: ${{ github.event.pull_request.base.ref }}
+      PR_HEAD: ${{ github.event.pull_request.head.ref }}
+      PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+    steps:
+      - name: Respeitar fases
+        run: |
+          set -euo pipefail
+          phase="$UI_FLOW_PHASE"
+          [ -n "$phase" ] || phase="transition"
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then exit 0; fi
+          if [ "$phase" = "transition" ]; then
+            if [ "$PR_BASE" = "main" ] && [ "$PR_HEAD" = "develop" ]; then
+              echo "::error::Redesenho ainda em homologacao."
+              exit 1
+            fi
+          elif [ "$phase" = "standard" ]; then
+            if [ "$PR_BASE" = "main" ] && { [ "$PR_HEAD" != "develop" ] || [ "$PR_REPO" != "$GITHUB_REPOSITORY" ]; }; then
+              echo "::error::Promocao para main exige PR de develop."
+              exit 1
+            fi
+          else
+            echo "::error::UI_FLOW_PHASE invalido."
+            exit 1
+          fi
