@@ -613,7 +613,10 @@ class ProsoftExportService
             $ie = preg_replace('/[^0-9]/', '', $fornecedor->ie_rg ?? '');
             $numeroNota = (!empty($compra->nf) && $compra->nf != '0') ? $compra->nf : $compra->numero_emissao;
 
-            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)->where('compra_id', $compra->id)->get();
+            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)
+                ->where('compra_id', $compra->id)
+                ->where('filial_id', $compra->filial_id)
+                ->get();
 
             if ($faturas->isEmpty()) {
                 $faturas = collect([
@@ -696,7 +699,10 @@ class ProsoftExportService
                 $cfop4 = '2' . substr($cfop4, 1);
             }
 
-            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)->where('compra_id', $compra->id)->get();
+            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)
+                ->where('compra_id', $compra->id)
+                ->where('filial_id', $compra->filial_id)
+                ->get();
             if ($faturas->isEmpty()) {
                 $faturas = collect([
                     (object)[
