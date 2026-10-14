@@ -79,7 +79,12 @@ jobs:
           php artisan config:clear
           php artisan view:clear
           php artisan view:cache
-          php artisan route:list --compact >/dev/null || php artisan route:list >/dev/null
+          mkdir -p storage/app/ui-compat
+          if ! php artisan route:list > storage/app/ui-compat/route-list.txt 2>&1; then
+            echo "::error::php artisan route:list falhou. Log completo abaixo e no artifact:"
+            tail -n 120 storage/app/ui-compat/route-list.txt
+            exit 1
+          fi
       - name: Executar suíte de testes completa
         run: ./vendor/bin/phpunit
       - name: Compilar assets Vite
