@@ -1,135 +1,16 @@
-name: UI Visual - 3 Pre-release continua
+name: UI historica - pre-release desativada
 on:
-  push:
-    branches: [feat/ui-refined-theme-opt-in-20261014]
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-concurrency:
-  group: ui-preview-continuous
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  compatibility:
-    uses: ./.github/workflows/ui-compatibility.yml
-
-  preview-package:
-    needs: compatibility
-    if: github.ref == 'refs/heads/feat/ui-refined-theme-opt-in-20261014'
+  archived:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Impedir preview desatualizado
-        id: freshness
-        shell: bash
+      - name: Branch historica substituida pela develop
         run: |
-          set -euo pipefail
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor origin/main HEAD; then
-            echo "::warning::Branch visual ainda não incorporou main. Pré-release BLOQUEADA; aguarde o fluxo de sincronização."
-            echo "fresh=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "fresh=true" >> "$GITHUB_OUTPUT"
-      - name: Construir frontend de homologação
-        if: steps.freshness.outputs.fresh == 'true'
-        shell: bash
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: 'true'
-        run: |
-          set -euo pipefail
-          npm ci --ignore-scripts --no-audit
-          npm run build
-      - name: Gerar pacote seguro de preview
-        id: artifact
-        if: steps.freshness.outputs.fresh == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python scripts/ui/build-preview.py
-          test -s dist/fersoft-web-ui-continuous.zip
-          echo "ready=true" >> "$GITHUB_OUTPUT"
-      - name: Publicar artifact sempre que validado
-        if: steps.artifact.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: fersoft-web-ui-preview-${{ github.run_number }}
-          path: dist/fersoft-web-ui-continuous.zip
-          if-no-files-found: error
-          retention-days: 30
-      - name: Conferir instalação do fluxo seguro na main
-        id: infra
-        if: steps.artifact.outputs.ready == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          # Antes da infraestrutura ser aprovada, não criar evento 'release.published'.
-          # Isso evita acionar o deploy-release-notes histórico sem guarda de prerelease.
-          if gh api "repos/$GITHUB_REPOSITORY/contents/.github/workflows/ui-main-sync.yml?ref=main" >/dev/null 2>&1; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Infra PR separada deve ser incorporada à main para habilitar publicação e autosync."
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Atualizar SOMENTE prerelease de desenvolvimento
-        if: steps.infra.outputs.available == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tag='ui-continuous'
-          if gh release view "$tag" --json isPrerelease --jq '.isPrerelease' > "$RUNNER_TEMP/previous-release.txt" 2>/dev/null; then
-            if [ "$(cat "$RUNNER_TEMP/previous-release.txt")" != "true" ]; then
-              echo "::error::Tag ui-continuous já corresponde a uma release estável. Abortando."
-              exit 1
-            fi
-            existed=true
-          else
-            existed=false
-          fi
-
-          # Não alterar tags semânticas vX.Y.Z nem a main.
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -f "$tag" "$GITHUB_SHA"
-          git push --force origin "refs/tags/$tag"
-
-          stable="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n 1 || true)"
-          cat > "$RUNNER_TEMP/ui-release-notes.md" <<EOF
-          PRÉ-RELEASE CONTÍNUA — APENAS HOMOLOGAÇÃO DO NOVO VISUAL
-
-          - Branch: feat/ui-refined-theme-opt-in-20261014
-          - Commit: $GITHUB_SHA
-          - Base estável observada: ${stable:-não encontrada}
-          - Build: ${GITHUB_RUN_NUMBER}
-          - Status: testes de compatibilidade aprovados; QA visual/funcional completo ainda pendente.
-          - NÃO é release estável nem autoriza implantação em produção.
-          - APP_UI_THEME=classic continua padrão; para teste: APP_UI_THEME=refined.
-          EOF
-          if [ "$existed" = "true" ]; then
-            gh release edit "$tag" --title "FERSOFT WEB • UI contínua • build $GITHUB_RUN_NUMBER" --prerelease --notes-file "$RUNNER_TEMP/ui-release-notes.md"
-            gh release upload "$tag" dist/fersoft-web-ui-continuous.zip --clobber
-          else
-            gh release create "$tag" dist/fersoft-web-ui-continuous.zip --target "$GITHUB_SHA" --title "FERSOFT WEB • UI contínua • build $GITHUB_RUN_NUMBER" --prerelease --notes-file "$RUNNER_TEMP/ui-release-notes.md"
-          fi
-          {
-            echo "## Pré-release contínua atualizada"
-            echo "- Tag única: $tag (apenas esta tag é movimentada)"
-            echo "- SHA: $GITHUB_SHA"
-            echo "- URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/ui-continuous"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "A branch anterior do novo visual está arquivada para consulta."
+          echo "A pré-release única ui-continuous agora pertence SOMENTE à branch develop."
+          echo "Este workflow não publica nem altera tags/releases."
