@@ -12,11 +12,11 @@ permissions:
   issues: write
 
 concurrency:
-  group: ui-main-to-refined
+  group: ui-main-to-develop
   cancel-in-progress: false
 
 env:
-  UI_BRANCH: feat/ui-refined-theme-opt-in-20261014
+  UI_BRANCH: develop
 
 jobs:
   import-main:
@@ -90,7 +90,11 @@ jobs:
           fi
 
           # Único destino autorizado: branch visual; NUNCA 'main'.
-          git push origin "HEAD:refs/heads/$UI_BRANCH"
+          if ! git push origin "HEAD:refs/heads/$UI_BRANCH"; then
+            echo "::error::Push para develop rejeitado; sincronização não concluída e nenhum histórico forçado."
+            gh issue create --title "[UI-SYNC] Push bloqueado" --body "Falha de push no run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || true
+            exit 1
+          fi
           echo "synced=true" >> "$GITHUB_OUTPUT"
           echo "Main integrada a $UI_BRANCH sem alterar a main." >> "$GITHUB_STEP_SUMMARY"
 
