@@ -131,6 +131,46 @@ class MtrUnidadeController extends BaseController
             ->with('sucesso', 'Credencial removida com sucesso!');
     }
 
+    /**
+     * Revelação explícita sob demanda. Nunca injeta a credencial no HTML inicial
+     * ou no campo 'senha' do formulário, evitando regravação acidental.
+     */
+    public function revelarSenha($id)
+    {
+        $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+        abort_unless(valida_objeto($unidade), 403);
+
+        try {
+            $senha = $unidade->senha; // Accessor central do model faz a descriptografia.
+
+            if ($senha === null || $senha === '') {
+                return response()->json([
+                    'sucesso' => false,
+                    'mensagem' => 'Esta unidade não possui senha/token cadastrado.',
+                ], 404)->header('Cache-Control', 'private, no-store');
+            }
+
+            return response()->json([
+                'sucesso' => true,
+                'senha' => $senha,
+            ])->header('Cache-Control', 'private, no-store')
+                ->header('Pragma', 'no-cache');
+        } catch (\Throwable $e) {
+            // Não registrar o token, ciphertext ou exceção completa nos logs.
+            Log::warning('Não foi possível consultar a credencial MTR armazenada.', [
+                'empresa_id' => $this->empresa_id,
+                'registro_id' => $id,
+                'tipo_erro' => get_class($e),
+            ]);
+
+            return response()->json([
+                'sucesso' => false,
+                'mensagem' => 'Credencial indisponível para leitura. Verifique a chave de criptografia original ou informe um novo token.',
+            ], 422)->header('Cache-Control', 'private, no-store');
+        }
+    }
+
     public function testarConexao(Request $request)
     {
         try {

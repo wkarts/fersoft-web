@@ -990,6 +990,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::match(['post', 'put'], '/update/{id}', 'MtrUnidadeController@update')->name('mtr.unidades.update');
         Route::get('/delete/{id}', 'MtrUnidadeController@destroy')->name('mtr.unidades.destroy');
         Route::post('/testar-conexao', 'MtrUnidadeController@testarConexao')->name('mtr.unidades.testarConexao');
+        Route::post('/revelar-credencial/{id}', 'MtrUnidadeController@revelarSenha')
+            ->middleware('throttle:5,1')->name('mtr.unidades.revelarSenha');
     });
 
     Route::group(['prefix' => 'mtr/depara-residuos', 'middleware' => 'verificaEmpresa'], function(){

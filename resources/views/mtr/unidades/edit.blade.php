@@ -123,9 +123,9 @@
                         <div class="col-md-6 form-group">
                             <label class="font-weight-bold">
                                 Senha do Portal MTR / Token de Integração:
-                                @if(!empty($unidade->senha))
+                                @if($unidade->getRawOriginal('senha') !== null && $unidade->getRawOriginal('senha') !== '')
                                     <span class="badge badge-light-success text-success ml-2 font-weight-bold">
-                                    <i class="fa fa-check-circle text-success"></i> Token cadastrado ({{ strlen($unidade->senha) }} caracteres)
+                                    <i class="fa fa-check-circle text-success"></i> Credencial cadastrada (criptografada)
                                 </span>
                                 @else
                                     <span class="badge badge-light-danger text-danger ml-2 font-weight-bold">
@@ -136,12 +136,33 @@
                             <div class="input-group">
                                 <input type="password" name="senha" id="senha" class="form-control" autocomplete="new-password" placeholder="Cole aqui o novo token se desejar alterá-lo">
                                 <div class="input-group-append">
-                                    <button class="btn btn-secondary" type="button" id="btnToggleSenha" title="Visualizar Token">
+                                    <button class="btn btn-secondary" type="button" id="btnToggleSenha" title="Visualizar novo token digitado">
                                         <i class="fa fa-eye" id="iconToggleSenha"></i>
                                     </button>
                                 </div>
                             </div>
                             <small class="form-text text-muted">Deixe em branco para manter o token atual ou cole o novo gerado no SINIR.</small>
+                            @if($unidade->getRawOriginal('senha') !== null && $unidade->getRawOriginal('senha') !== '')
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-light-primary btn-sm" id="btnRevelarSenha">
+                                        <i class="fa fa-key mr-1"></i> Visualizar token cadastrado
+                                    </button>
+                                    <div id="boxSenhaSalva" class="mt-2" style="display: none;">
+                                        <label for="senhaSalva" class="font-weight-bold">
+                                            Token atual (somente leitura; não será enviado ao salvar)
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="text" id="senhaSalva" class="form-control"
+                                                readonly autocomplete="off" spellcheck="false">
+                                            <div class="input-group-append">
+                                                <button type="button" class="btn btn-secondary" id="btnOcultarSenha">
+                                                    <i class="fa fa-eye-slash mr-1"></i> Ocultar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="col-md-3 form-group">
@@ -201,6 +222,44 @@
                         campo.attr('type', 'password');
                         icone.removeClass('fa-eye-slash').addClass('fa-eye');
                     }
+                });
+
+                // Leitura do token salvo: ação explícita, POST com CSRF, sem
+                // preencher o campo de edição para não regravar acidentalmente.
+                $('#btnRevelarSenha').on('click', function(e) {
+                    e.preventDefault();
+
+                    var btn = $(this);
+                    btn.prop('disabled', true);
+
+                    $.ajax({
+                        url: "{{ route('mtr.unidades.revelarSenha', $unidade->id) }}",
+                        type: "POST",
+                        dataType: "json",
+                        data: { _token: "{{ csrf_token() }}" },
+                        success: function(res) {
+                            if (res.sucesso && typeof res.senha === 'string') {
+                                $('#senhaSalva').val(res.senha);
+                                $('#boxSenhaSalva').show();
+                            } else {
+                                alert((res && res.mensagem) || 'Não foi possível consultar a credencial.');
+                            }
+                        },
+                        error: function(err) {
+                            var mensagem = err.responseJSON && err.responseJSON.mensagem
+                                ? err.responseJSON.mensagem
+                                : 'Não foi possível consultar a credencial armazenada.';
+                            alert(mensagem);
+                        },
+                        complete: function() {
+                            btn.prop('disabled', false);
+                        }
+                    });
+                });
+
+                $('#btnOcultarSenha').on('click', function() {
+                    $('#senhaSalva').val('');
+                    $('#boxSenhaSalva').hide();
                 });
 
                 // 2. Select2 para clientes
