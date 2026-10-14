@@ -105,7 +105,22 @@ class MtrUnidadeController extends BaseController
 
         try {
             $unidade = MtrConfig::where('empresa_id', $this->empresa_id)->findOrFail($id);
-            $unidade->fill($this->payload($request, false));
+            $dados = $this->payload($request, false);
+
+            if (isset($dados['senha'])) {
+                try {
+                    // A credencial revelada no campo original não deve ser
+                    // criptografada novamente quando o usuário só a visualizou.
+                    if (hash_equals((string) $unidade->senha, (string) $dados['senha'])) {
+                        unset($dados['senha']);
+                    }
+                } catch (\Throwable $e) {
+                    // Permite substituir credenciais legadas indecifráveis
+                    // sem impedir a atualização; não registra o segredo.
+                }
+            }
+
+            $unidade->fill($dados);
             $unidade->save();
 
             return redirect()->route('mtr.unidades.index')
