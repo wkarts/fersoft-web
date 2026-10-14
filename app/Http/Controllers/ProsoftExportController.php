@@ -7,6 +7,7 @@ use App\Services\ProsoftExportService;
 use App\Models\Compra;
 use App\Models\Filial;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use ZipArchive;
 
 class ProsoftExportController extends Controller
@@ -147,71 +148,108 @@ class ProsoftExportController extends Controller
      */
     public function exportar(Request $request)
     {
-        $compraIds = $request->input('compra_ids', []);
+        $request->validate([
+            'compra_ids' => 'required|array|min:1',
+            'compra_ids.*' => 'required|integer|min:1',
+            'filial_id' => 'nullable|string',
+            'data_inicio' => 'nullable|date_format:Y-m-d',
+            'data_fim' => 'nullable|date_format:Y-m-d',
+        ]);
 
-        if (empty($compraIds)) {
+        $escopo = $this->escopo($request);
+        $compraIds = array_values(array_unique(array_map('intval', $request->input('compra_ids', []))));
+        $dataInicio = $request->input('data_inicio', date('Y-m-01'));
+        $dataFim = $request->input('data_fim', date('Y-m-t'));
+
+        // A lista de IDs enviada pelo navegador não concede acesso aos dados.
+        // Todos os registros precisam pertencer ao tenant e ao local autorizado,
+        // além de respeitar o mesmo período da tela de seleção.
+        $permitidas = $this->filtrarPorEscopo(Compra::query(), $escopo)
+            ->whereIn('compras.id', $compraIds)
+            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim])
+            ->pluck('compras.id')
+            ->map(static fn ($id): int => (int) $id)->all();
+
+        if (count($permitidas) !== count($compraIds)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Nenhuma compra/nota selecionada para exportação.'
-            ], 422);
+                'message' => 'Existem notas fora da empresa, filial ou período autorizado. Nenhum arquivo foi gerado.',
+            ], 403);
         }
 
-        $exportDir = storage_path('app/public/prosoft_export_' . time());
-        if (!File::exists($exportDir)) {
-            File::makeDirectory($exportDir, 0755, true);
-        }
+        // Defesa em profundidade: cada gerador volta a aplicar o mesmo escopo,
+        // e não poderá ser chamado sem empresa e locais definidos.
+        $this->prosoftService->definirEscopo(
+            $escopo['empresa_id'],
+            $escopo['filiais_ids'],
+            $escopo['matriz']
+        );
 
+        // Evita colisões/mistura de dados quando usuários exportam ao mesmo tempo.
+        // Temporários e ZIP ficam fora do storage público.
+        $identificador = (string) Str::uuid();
+        $exportDir = storage_path('app/prosoft_export_' . $identificador);
+        $zipFileName = 'prosoft_export_' . date('Ymd_His') . '_' . $identificador . '.zip';
+        $zipFilePath = storage_path('app/' . $zipFileName);
+
+        File::makeDirectory($exportDir, 0755, true);
         $filesGenerated = [];
 
-        // Arquivos de geração (mantidos sem alteração na lógica de chamada)
-        $pathNotas = $exportDir . '/notas_entrada.txt';
-        $this->prosoftService->gerarArquivoNotas($compraIds, $pathNotas);
-        $filesGenerated['notas'] = $pathNotas;
+        try {
+            $pathNotas = $exportDir . '/notas_entrada.txt';
+            $this->prosoftService->gerarArquivoNotas($permitidas, $pathNotas);
+            $filesGenerated['notas'] = $pathNotas;
 
-        $pathItens = $exportDir . '/itens_notas.txt';
-        $this->prosoftService->gerarArquivoItens($compraIds, $pathItens);
-        $filesGenerated['itens'] = $pathItens;
+            $pathItens = $exportDir . '/itens_notas.txt';
+            $this->prosoftService->gerarArquivoItens($permitidas, $pathItens);
+            $filesGenerated['itens'] = $pathItens;
 
-        $pathFaturas = $exportDir . '/faturas.txt';
-        $this->prosoftService->gerarArquivoFaturas($compraIds, $pathFaturas);
-        $filesGenerated['faturas'] = $pathFaturas;
+            $pathFaturas = $exportDir . '/faturas.txt';
+            $this->prosoftService->gerarArquivoFaturas($permitidas, $pathFaturas);
+            $filesGenerated['faturas'] = $pathFaturas;
 
-        $pathItensFaturas = $exportDir . '/itens_faturas.txt';
-        $this->prosoftService->gerarArquivoItensFaturas($compraIds, $pathItensFaturas);
-        $filesGenerated['itens_faturas'] = $pathItensFaturas;
+            $pathItensFaturas = $exportDir . '/itens_faturas.txt';
+            $this->prosoftService->gerarArquivoItensFaturas($permitidas, $pathItensFaturas);
+            $filesGenerated['itens_faturas'] = $pathItensFaturas;
 
-        $pathServicos = $exportDir . '/servicos_tomados.txt';
-        $this->prosoftService->gerarArquivoServicos($compraIds, $pathServicos);
-        if (filesize($pathServicos) > 0) {
-            $filesGenerated['servicos'] = $pathServicos;
-        }
-
-        $pathTerceiros = $exportDir . '/terceiros.txt';
-        $this->prosoftService->gerarArquivoTerceiros($compraIds, $pathTerceiros);
-        if (filesize($pathTerceiros) > 0) {
-            $filesGenerated['terceiros'] = $pathTerceiros;
-        }
-
-        $pathProdutos = $exportDir . '/produtos.txt';
-        $this->prosoftService->gerarArquivoProdutos($compraIds, $pathProdutos);
-        if (filesize($pathProdutos) > 0) {
-            $filesGenerated['produtos'] = $pathProdutos;
-        }
-
-        $zipFileName = 'prosoft_export_' . date('Ymd_His') . '.zip';
-        $zipFilePath = storage_path('app/public/' . $zipFileName);
-
-        $zip = new ZipArchive();
-        if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-            foreach ($filesGenerated as $filePath) {
-                if (File::exists($filePath)) {
-                    $zip->addFile($filePath, basename($filePath));
-                }
+            $pathServicos = $exportDir . '/servicos_tomados.txt';
+            $this->prosoftService->gerarArquivoServicos($permitidas, $pathServicos);
+            if (filesize($pathServicos) > 0) {
+                $filesGenerated['servicos'] = $pathServicos;
             }
-            $zip->close();
-        }
 
-        File::deleteDirectory($exportDir);
+            $pathTerceiros = $exportDir . '/terceiros.txt';
+            $this->prosoftService->gerarArquivoTerceiros($permitidas, $pathTerceiros);
+            if (filesize($pathTerceiros) > 0) {
+                $filesGenerated['terceiros'] = $pathTerceiros;
+            }
+
+            $pathProdutos = $exportDir . '/produtos.txt';
+            $this->prosoftService->gerarArquivoProdutos($permitidas, $pathProdutos);
+            if (filesize($pathProdutos) > 0) {
+                $filesGenerated['produtos'] = $pathProdutos;
+            }
+
+            $zip = new ZipArchive();
+            if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException('Não foi possível criar o arquivo ZIP da exportação Prosoft.');
+            }
+
+            try {
+                foreach ($filesGenerated as $filePath) {
+                    if (File::exists($filePath) && !$zip->addFile($filePath, basename($filePath))) {
+                        throw new \RuntimeException('Falha ao incluir um arquivo no ZIP da exportação Prosoft.');
+                    }
+                }
+            } finally {
+                $zip->close();
+            }
+        } catch (\Throwable $e) {
+            File::delete($zipFilePath);
+            throw $e;
+        } finally {
+            File::deleteDirectory($exportDir);
+        }
 
         return response()->download($zipFilePath)->deleteFileAfterSend(true);
     }
