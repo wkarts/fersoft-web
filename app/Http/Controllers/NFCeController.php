@@ -44,9 +44,17 @@ class NFCeController extends Controller
     public function gerar(Request $request){
 
         $vendaId = $request->vendaId;
-        $venda = VendaCaixa::
-        where('id', $vendaId)
+        $venda = VendaCaixa::where('empresa_id', $this->empresa_id)
+            ->where('id', $vendaId)
             ->first();
+
+        if (!valida_objeto($venda)) {
+            return response()->json('Venda não autorizada.', 403);
+        }
+
+        $retransmitindo = $venda->estado === 'REJEITADO';
+        $chaveOriginal = (string) $venda->chave;
+        $numeroOriginal = (int) $venda->NFcNumero;
 
         if(isset($request->doc)){
             $venda->cpf = $request->doc;
@@ -90,6 +98,16 @@ class NFCeController extends Controller
 
                 $nfce = $nfe_service->gerarNFCe($vendaId);
                 if(!isset($nfce['erros_xml'])){
+                    // Não assinar, transmitir nem salvar se o serviço alterar
+                    // qualquer parte da identidade fiscal da nota rejeitada.
+                    if ($retransmitindo
+                        && ($chaveOriginal !== (string) ($nfce['chave'] ?? '')
+                            || $numeroOriginal !== (int) ($nfce['nNf'] ?? 0))) {
+                        return response()->json([
+                            'erros_xml' => ['Chave ou número da NFC-e divergiu da emissão original. Retransmissão bloqueada.'],
+                        ], 409);
+                    }
+
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
                     $signed = $nfe_service->sign($nfce['xml']);
 
@@ -99,14 +117,20 @@ class NFCeController extends Controller
                         }
                         $venda->contigencia = 1;
                         $venda->reenvio_contigencia = 0;
-                        $venda->chave = $nfce['chave'];
+                        if (!$retransmitindo) {
+                            $venda->chave = $nfce['chave'];
+                            $venda->NFcNumero = $nfce['nNf'];
+                        }
                         $venda->path_xml = $nfce['chave'] . '.xml';
                         $venda->estado = 'APROVADO';
-                        $venda->NFcNumero = $nfce['nNf'];
                         $venda->data_emissao = date('Y-m-d H:i:s');
                         $venda->save();
-                        $config->ultimo_numero_nfce = $nfce['nNf'];
-                        $config->save();
+                        // O número da primeira emissão já foi reservado pelo serviço.
+                        // Uma rejeitada retransmitida nunca reduz/avança o contador.
+                        if (!$retransmitindo && (int)$config->ultimo_numero_nfce < (int)$nfce['nNf']) {
+                            $config->ultimo_numero_nfce = $nfce['nNf'];
+                            $config->save();
+                        }
 
                         safe_file_put_contents(public_path('xml_nfce_contigencia/').$nfce['chave'].'.xml', $signed);
 
@@ -115,14 +139,18 @@ class NFCeController extends Controller
                     }else{
                         $resultado = $nfe_service->transmitirNfce($signed, $nfce['chave'], $vendaId);
                         if(substr($resultado, 0, 4) != 'Erro'){
-                            $venda->chave = $nfce['chave'];
+                            if (!$retransmitindo) {
+                                $venda->chave = $nfce['chave'];
+                                $venda->NFcNumero = $nfce['nNf'];
+                            }
                             $venda->path_xml = $nfce['chave'] . '.xml';
                             $venda->estado = 'APROVADO';
                             $venda->data_emissao = date('Y-m-d H:i:s');
-                            $venda->NFcNumero = $nfce['nNf'];
                             $venda->save();
-                            $config->ultimo_numero_nfce = $nfce['nNf'];
-                            $config->save();
+                            if (!$retransmitindo && (int)$config->ultimo_numero_nfce < (int)$nfce['nNf']) {
+                                $config->ultimo_numero_nfce = $nfce['nNf'];
+                                $config->save();
+                            }
                             $this->enviarEmailAutomatico($venda);
                             // $this->importaXmlSieg($venda);
                             $file = safe_file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
@@ -132,9 +160,9 @@ class NFCeController extends Controller
                             if($venda->chave == ''){
                                 $venda->chave = $nfce['chave'];
                             }
-                            if($venda->signed_xml == null){
-                                $venda->signed_xml = $signed;
-                            }
+                            // A reemissão corrigida conserva a mesma chave,
+                            // mas pode trazer outros dados válidos no XML.
+                            $venda->signed_xml = $signed;
                             $venda->save();
                         }
 
