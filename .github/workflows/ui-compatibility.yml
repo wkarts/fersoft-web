@@ -1,0 +1,114 @@
+name: UI Visual - 2 Compatibilidade
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    branches: [feat/ui-refined-theme-opt-in-20261014]
+
+permissions:
+  contents: read
+
+jobs:
+  full-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fersoft_test
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: fersoft_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      TEST_DB_CONNECTION: mysql
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_DATABASE: fersoft_test
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Auditar escopo de mudanças com main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          bash scripts/ui/compat-impact.sh
+      - name: Validar Composer e PHP
+        run: |
+          set -euo pipefail
+          composer validate --no-check-publish --strict
+          php -l config/ui_theme.php
+          php -l scripts/auditar-tema.php
+          php -l scripts/auditar-assets.php
+      - name: Inicializar ambiente isolado de teste
+        run: bash scripts/ci/bootstrap-env.sh
+      - name: Instalar dependências Laravel
+        env:
+          COMPOSER_PROCESS_TIMEOUT: '0'
+          COMPOSER_NO_AUDIT: '1'
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Compilar todas as views e validar configurações
+        run: |
+          set -euo pipefail
+          php artisan config:clear
+          php artisan view:clear
+          php artisan view:cache
+          php artisan route:list --compact >/dev/null || php artisan route:list >/dev/null
+      - name: Executar suíte de testes completa
+        run: ./vendor/bin/phpunit
+      - name: Compilar assets Vite
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          npm ci --ignore-scripts --no-audit
+          npm run build
+      - name: Auditoria não destrutiva de todas as views e assets
+        run: |
+          set -euo pipefail
+          mkdir -p storage/app/ui-compat
+          php scripts/auditar-tema.php --out=storage/app/ui-compat/views.json | tee storage/app/ui-compat/views.txt
+          php scripts/auditar-assets.php --out=storage/app/ui-compat/assets.json | tee storage/app/ui-compat/assets.txt
+      - name: Guardas de coexistência e histórico
+        run: |
+          set -euo pipefail
+          grep -q "APP_UI_THEME=classic" .env.example
+          grep -q "PAG_LOGIN=access" .env.example
+          grep -q "default/menu_" resources/views/default/layout.blade.php
+          grep -q 'ui-theme-refined' resources/views/default/menu_lateral.blade.php
+          grep -q 'ui-theme-refined' resources/views/default/menu_superior.blade.php
+      - name: Exportar relatório de compatibilidade
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-compat-${ github.run_id }
+          path: |
+            storage/app/ui-compat/
+            ui-impact-report.md
+          if-no-files-found: warn
+          retention-days: 30

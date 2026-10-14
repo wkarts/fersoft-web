@@ -1,0 +1,117 @@
+name: UI Visual - 1 Sincronizar main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: ui-main-to-refined
+  cancel-in-progress: false
+
+env:
+  UI_BRANCH: feat/ui-refined-theme-opt-in-20261014
+
+jobs:
+  import-main:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Conferir branches e calcular mudanças
+        id: impact
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main" "refs/heads/${UI_BRANCH}:refs/remotes/origin/${UI_BRANCH}"
+          if git merge-base --is-ancestor "origin/main" "origin/${UI_BRANCH}"; then
+            echo "needs_sync=false" >> "$GITHUB_OUTPUT"
+            echo "Branch visual já contém o HEAD da main." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "needs_sync=true" >> "$GITHUB_OUTPUT"
+          base="$(git merge-base "origin/main" "origin/${UI_BRANCH}")"
+          git diff --name-only "$base" "origin/main" > "$RUNNER_TEMP/main-changes.txt"
+          echo "## Sincronização main → interface visual" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Base comum: `$base`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Main: `$(git rev-parse origin/main)`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Alterações desde a base: $(wc -l < "$RUNNER_TEMP/main-changes.txt") arquivos" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Arquivos que podem exigir compatibilização" >> "$GITHUB_STEP_SUMMARY"
+          {
+            grep -E '^(resources/views/|public/(css|js|metronic)/|app/Helpers/Menu.php|app/Providers/|routes/|resources/js/|package(-lock)?.json)' "$RUNNER_TEMP/main-changes.txt" || true
+          } > "$RUNNER_TEMP/ui-impact.txt"
+          if [ -s "$RUNNER_TEMP/ui-impact.txt" ]; then
+            sed 's/^/- `/;s/$/`/' "$RUNNER_TEMP/ui-impact.txt" | head -100 >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Nenhum arquivo da camada visual/contratos foi alterado." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Incorporar main SEM alterar main
+        id: merge
+        if: steps.impact.outputs.needs_sync == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$UI_BRANCH" "origin/$UI_BRANCH"
+
+          if ! git merge --no-ff --no-edit -m "chore(ui-sync): import main $(git rev-parse --short origin/main)" origin/main; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            git merge --abort || true
+            echo "::error::Conflito main → $UI_BRANCH. Sem push; alterações preservadas."
+            {
+              echo "## Sincronização BLOQUEADA por conflitos"
+              echo "$conflicts" | sed 's/^/- `/;s/$/`/'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            title="[UI-SYNC] Conflitos na importação da main"
+            existing="$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[UI-SYNC] Conflitos na importação da main") | .number' | head -1 || true)"
+            body="Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH. Run: ${ github.server_url }/${ github.repository }/actions/runs/${ github.run_id }.\n\nArquivos:\n$conflicts"
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "$body" || true
+            else
+              gh issue create --title "$title" --body "$body" || true
+            fi
+            exit 1
+          fi
+
+          # Único destino autorizado: branch visual; NUNCA 'main'.
+          git push origin "HEAD:refs/heads/$UI_BRANCH"
+          echo "synced=true" >> "$GITHUB_OUTPUT"
+          echo "Main integrada a $UI_BRANCH sem alterar a main." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Acionar validação e pré-release na branch visual
+        if: steps.merge.outputs.synced == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${ secrets.GITHUB_TOKEN }
+        run: |
+          set -euo pipefail
+          # Commits com GITHUB_TOKEN não acionam workflow push: explicitamos dispatch.
+          gh workflow run ui-prerelease.yml --ref "$UI_BRANCH"
+          echo "- Workflow de pré-release solicitado para $UI_BRANCH" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Anexar lista de impactos
+        if: steps.impact.outputs.needs_sync == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-main-impact-${ github.run_id }
+          path: |
+            ${ runner.temp }/main-changes.txt
+            ${ runner.temp }/ui-impact.txt
+          if-no-files-found: warn
+          retention-days: 30
