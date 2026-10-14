@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\LogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\VendaCaixa;
 use App\Models\Venda;
 use App\Helpers\StockMove;
@@ -861,66 +863,97 @@ class FrontBoxController extends Controller
     }
 
     public function deleteVenda($id){
-        $venda = VendaCaixa::findOrFail($id);
+        try {
+            $resultado = DB::transaction(function () use ($id) {
+                // A trava protege o mesmo registro contra estornos concorrentes.
+                $venda = VendaCaixa::where('empresa_id', $this->empresa_id)
+                    ->where('id', $id)
+                    ->lockForUpdate()
+                    ->first();
 
-        if(valida_objeto($venda)){
-            $stockMove = new StockMove();
-            $this->criarLog($venda, 'deletar');
-            $comissao = ComissaoVenda::
-            where('empresa_id', $this->empresa_id)
-            ->where('tabela', 'venda_caixas')
-            ->where('venda_id', $id)
-            ->first();
-
-            if($comissao != null)
-                $comissao->delete();
-
-            if($venda->troca()){
-                $venda->troca()->delete();
-            }
-
-            foreach($venda->itens as $i){
-                if($i->produto->receita){
-
-                    $receita = $i->produto->receita;
-                    foreach($receita->itens as $rec){
-
-                        if($i->itemPedido != NULL && $i->itemPedido->tamanho != NULL){
-                            $totalSabores = count($i->itemPedido->sabores);
-                            $produtoPizza = ProdutoPizza::
-                            where('produto_id', $i->produto->delivery->id)
-                            ->where('tamanho_id', $i->itemPedido->tamanho->id)
-                            ->first();
-
-                            $stockMove->pluStock(
-                                $rec->produto_id, $i->quantidade *
-                                ((($rec->quantidade/$totalSabores)/$receita->pedacos)*$produtoPizza->tamanho->pedacos)/$receita->rendimento
-                            );
-
-                        }else{
-                            $stockMove->pluStock($rec->produto_id,
-                                $i->quantidade);
-                        }
-                    }
-                }else{
-                    $stockMove->pluStock($i->produto_id,
-                        $i->quantidade); // -50 na altera valor compra
+                if(!valida_objeto($venda)){
+                    return 'negado';
                 }
-            }
 
-            ContaReceber::where('venda_caixa_id', $venda->id)
-            ->delete();
+                if($venda->trashed()){
+                    return 'ja_removida';
+                }
 
-            $deleted = $venda->delete();
-            if($deleted || $venda->trashed()){
-                session()->flash("mensagem_sucesso", "Venda removida com sucesso!");
-            }else{
-                session()->flash('mensagem_erro', 'Erro ao remover venda!');
-            }
+                $stockMove = new StockMove();
+                $this->criarLog($venda, 'deletar');
+                $comissao = ComissaoVenda::
+                where('empresa_id', $this->empresa_id)
+                ->where('tabela', 'venda_caixas')
+                ->where('venda_id', $id)
+                ->first();
+
+                if($comissao != null)
+                    $comissao->delete();
+
+                if($venda->troca()){
+                    $venda->troca()->delete();
+                }
+
+                foreach($venda->itens as $i){
+                    if($i->produto->receita){
+
+                        $receita = $i->produto->receita;
+                        foreach($receita->itens as $rec){
+
+                            if($i->itemPedido != NULL && $i->itemPedido->tamanho != NULL){
+                                $totalSabores = count($i->itemPedido->sabores);
+                                $produtoPizza = ProdutoPizza::
+                                where('produto_id', $i->produto->delivery->id)
+                                ->where('tamanho_id', $i->itemPedido->tamanho->id)
+                                ->first();
+
+                                $stockMove->pluStock(
+                                    $rec->produto_id, $i->quantidade *
+                                    ((($rec->quantidade/$totalSabores)/$receita->pedacos)*$produtoPizza->tamanho->pedacos)/$receita->rendimento
+                                );
+
+                            }else{
+                                $stockMove->pluStock($rec->produto_id,
+                                    $i->quantidade);
+                            }
+                        }
+                    }else{
+                        $stockMove->pluStock($i->produto_id,
+                            $i->quantidade); // -50 na altera valor compra
+                    }
+                }
+
+
+                ContaReceber::where('venda_caixa_id', $venda->id)
+                    ->delete();
+
+                // O BaseModel retorna false no soft delete intencional.
+                $excluiu = $venda->delete();
+                if(!$excluiu && !$venda->trashed()){
+                    throw new \RuntimeException('Falha ao concluir a exclusão do PDV.');
+                }
+
+                return 'removida';
+            }, 3);
+        }catch(\Throwable $e){
+            Log::error('Erro ao excluir venda PDV.', [
+                'venda_id' => $id,
+                'empresa_id' => $this->empresa_id,
+                'erro' => $e->getMessage(),
+            ]);
+            session()->flash('mensagem_erro', 'Não foi possível remover a venda. Nenhum estorno parcial foi confirmado.');
             return redirect('/frenteCaixa/devolucao');
-        }else{
+        }
+
+        if($resultado === 'negado'){
             return redirect('/403');
         }
+
+        session()->flash(
+            'mensagem_sucesso',
+            $resultado === 'ja_removida' ? 'Esta venda já estava removida.' : 'Venda removida com sucesso!'
+        );
+        return redirect('/frenteCaixa/devolucao');
     }
 
     public function retornaEstoque($id){
