@@ -64,7 +64,7 @@ class FrontBoxController extends Controller
     }
 
     private function getRascunhos(){
-        return VendaCaixa::
+        return VendaCaixa::withoutDeleted()->
         where('rascunho', 1)
         ->where('empresa_id', $this->empresa_id)
         ->limit(20)
@@ -73,7 +73,7 @@ class FrontBoxController extends Controller
     }
 
     private function getConsignadas(){
-        return VendaCaixa::
+        return VendaCaixa::withoutDeleted()->
         where('consignado', 1)
         ->where('empresa_id', $this->empresa_id)
         ->limit(50)
@@ -1016,13 +1016,15 @@ class FrontBoxController extends Controller
     }
 
     public function deleteRascunho($id){
-        $venda = VendaCaixa
-        ::where('id', $id)
-        ->first();
+        $venda = VendaCaixa::withoutDeleted()
+            ->where('empresa_id', $this->empresa_id)
+            ->where('id', $id)
+            ->first();
 
         if(valida_objeto($venda)){
             if($venda->rascunho){
-                if($venda->delete()){
+                $excluiu = $venda->delete();
+                if($excluiu || $venda->trashed()){
                     session()->flash("mensagem_sucesso", "Venda removida com sucesso!");
                 }else{
                     session()->flash('mensagem_erro', 'Erro ao remover venda!');
@@ -1356,7 +1358,10 @@ class FrontBoxController extends Controller
                     }
                 }
             }
-            $vendas = VendaCaixa::whereIn('id', $data)->get();
+            // Mantém filtros de empresa, filial, data e exclusão já aplicados.
+            $vendas = $vendas->filter(function ($v) use ($data) {
+                return in_array($v->id, $data);
+            })->values();
         }
 
 
