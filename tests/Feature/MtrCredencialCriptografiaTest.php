@@ -155,6 +155,13 @@ class MtrCredencialCriptografiaTest extends TestCase
         // visualizar o valor anterior não deve gerar nova criptografia.
         $this->assertStringContainsString("if (campoSenha.val() !== '')", $view);
         $this->assertStringContainsString('campoSenha.val(credencialCarregada)', $view);
+
+        // Ao abrir a edição, deve preencher o ÚNICO campo e mantê-lo oculto.
+        // A consulta usa o mesmo endpoint do olho, sem expor o token no HTML.
+        $this->assertStringContainsString('type="password" name="senha" id="senha"', $view);
+        $this->assertStringContainsString('carregarCredencialSalva(false, false);', $view);
+        $this->assertStringContainsString('carregarCredencialSalva(true, true);', $view);
+        $this->assertStringContainsString('alterarVisualizacaoSenha(mostrar)', $view);
         $this->assertStringContainsString("alterarVisualizacaoSenha(false)", $view);
         $this->assertStringContainsString("campoSenha.prop('disabled', true)", $view);
         $controller = file_get_contents($root . '/app/Http/Controllers/MtrUnidadeController.php');
