@@ -8,6 +8,78 @@ use Carbon\Carbon;
 
 class ProsoftExportService
 {
+    private ?int $empresaId = null;
+    private array $filiaisIds = [];
+    private bool $incluiMatriz = false;
+
+    /**
+     * Empresa e locais recebidos somente após validação no controller.
+     * Sem escopo, os geradores falham em vez de consultar todas as empresas.
+     */
+    public function definirEscopo(int $empresaId, array $filiaisIds, bool $incluiMatriz): void
+    {
+        if ($empresaId <= 0) {
+            throw new \InvalidArgumentException('Empresa inválida para exportação Prosoft.');
+        }
+
+        $this->empresaId = $empresaId;
+        $this->filiaisIds = array_values(array_unique(array_filter(
+            array_map('intval', $filiaisIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        $this->incluiMatriz = $incluiMatriz;
+    }
+
+    private function comprasNoEscopo(array $compraIds, array $relacoes, bool $apenasServicos = false)
+    {
+        if ($this->empresaId === null) {
+            throw new \LogicException('Escopo Prosoft não definido. Exportação interrompida.');
+        }
+
+        $empresaId = $this->empresaId;
+        $with = [];
+        foreach ($relacoes as $relacao) {
+            if ($relacao === 'fornecedor') {
+                $with['fornecedor'] = static function ($query) use ($empresaId): void {
+                    $query->where('empresa_id', $empresaId);
+                };
+            } elseif ($relacao === 'itens.produto') {
+                $with['itens.produto'] = static function ($query) use ($empresaId): void {
+                    $query->where('empresa_id', $empresaId);
+                };
+            } else {
+                $with[] = $relacao;
+            }
+        }
+
+        $query = Compra::with($with)
+            ->where('compras.empresa_id', $this->empresaId)
+            ->whereIn('compras.id', $compraIds)
+            ->where(function ($q): void {
+                if ($this->incluiMatriz) {
+                    $q->whereNull('compras.filial_id');
+                }
+                if ($this->filiaisIds !== []) {
+                    if ($this->incluiMatriz) {
+                        $q->orWhereIn('compras.filial_id', $this->filiaisIds);
+                    } else {
+                        $q->whereIn('compras.filial_id', $this->filiaisIds);
+                    }
+                }
+                if (!$this->incluiMatriz && $this->filiaisIds === []) {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+
+        if ($apenasServicos) {
+            $query->whereHas('itens', static function ($q): void {
+                $q->whereIn('cfop_entrada', ['1933', '2933']);
+            });
+        }
+
+        return $query->get();
+    }
+
     private function formatField($value, $length, $type = 'string', $precision = 2)
     {
         if ($type === 'decimal') {
@@ -47,7 +119,7 @@ class ProsoftExportService
      */
     public function gerarArquivoNotas(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['fornecedor', 'itens'])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor', 'itens']);
         $linhas = [];
 
         foreach ($compras as $compra) {
@@ -67,7 +139,7 @@ class ProsoftExportService
 
             $codCtbNota = '';
             if (!empty($compra->categoria_conta_id)) {
-                $cat = \DB::table('categoria_contas')->where('id', $compra->categoria_conta_id)->first();
+                $cat = \DB::table('categoria_contas')->where('empresa_id', $this->empresaId)->where('id', $compra->categoria_conta_id)->first();
                 if ($cat && !empty($cat->int_ctb)) {
                     $codCtbNota = $cat->int_ctb;
                 }
@@ -205,10 +277,7 @@ class ProsoftExportService
      */
     public function gerarArquivoItens(array $compraIds, string $filePath)
     {
-        $compras = Compra::with([
-            'fornecedor',
-            'itens.produto'
-        ])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor', 'itens.produto']);
 
         $linhas = [];
 
@@ -221,7 +290,7 @@ class ProsoftExportService
 
             $codCtb = '';
             if (!empty($compra->categoria_conta_id)) {
-                $categoria = \DB::table('categoria_contas')->where('id', $compra->categoria_conta_id)->first();
+                $categoria = \DB::table('categoria_contas')->where('empresa_id', $this->empresaId)->where('id', $compra->categoria_conta_id)->first();
                 if ($categoria && !empty($categoria->int_ctb)) {
                     $codCtb = $categoria->int_ctb;
                 }
@@ -417,12 +486,7 @@ class ProsoftExportService
      */
     public function gerarArquivoServicos(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['fornecedor', 'itens'])
-            ->whereIn('id', $compraIds)
-            ->whereHas('itens', function($q) {
-                $q->whereIn('cfop_entrada', ['1933', '2933']);
-            })
-            ->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor', 'itens'], true);
 
         $linhas = [];
 
@@ -433,7 +497,7 @@ class ProsoftExportService
 
             $codCtbNota = '';
             if (!empty($compra->categoria_conta_id)) {
-                $cat = \DB::table('categoria_contas')->where('id', $compra->categoria_conta_id)->first();
+                $cat = \DB::table('categoria_contas')->where('empresa_id', $this->empresaId)->where('id', $compra->categoria_conta_id)->first();
                 if ($cat) {
                     if (!empty($cat->int_ctb_servico)) {
                         $codCtbNota = $cat->int_ctb_servico;
@@ -539,7 +603,7 @@ class ProsoftExportService
      */
     public function gerarArquivoFaturas(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['fornecedor'])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor']);
         $linhas = [];
 
         foreach ($compras as $compra) {
@@ -549,7 +613,7 @@ class ProsoftExportService
             $ie = preg_replace('/[^0-9]/', '', $fornecedor->ie_rg ?? '');
             $numeroNota = (!empty($compra->nf) && $compra->nf != '0') ? $compra->nf : $compra->numero_emissao;
 
-            $faturas = \App\Models\ContaPagar::where('compra_id', $compra->id)->get();
+            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)->where('compra_id', $compra->id)->get();
 
             if ($faturas->isEmpty()) {
                 $faturas = collect([
@@ -616,7 +680,7 @@ class ProsoftExportService
      */
     public function gerarArquivoItensFaturas(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['fornecedor'])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor']);
         $linhas = [];
 
         foreach ($compras as $compra) {
@@ -632,7 +696,7 @@ class ProsoftExportService
                 $cfop4 = '2' . substr($cfop4, 1);
             }
 
-            $faturas = \App\Models\ContaPagar::where('compra_id', $compra->id)->get();
+            $faturas = \App\Models\ContaPagar::where('empresa_id', $this->empresaId)->where('compra_id', $compra->id)->get();
             if ($faturas->isEmpty()) {
                 $faturas = collect([
                     (object)[
@@ -672,7 +736,7 @@ class ProsoftExportService
      */
     public function gerarArquivoTerceiros(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['fornecedor'])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['fornecedor']);
         $linhas = [];
         $fornecedoresProcessados = [];
 
@@ -743,7 +807,7 @@ class ProsoftExportService
      */
     public function gerarArquivoProdutos(array $compraIds, string $filePath)
     {
-        $compras = Compra::with(['itens.produto'])->whereIn('id', $compraIds)->get();
+        $compras = $this->comprasNoEscopo($compraIds, ['itens.produto']);
         $linhas = [];
         $produtosProcessados = [];
 
