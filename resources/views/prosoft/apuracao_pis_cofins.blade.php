@@ -28,9 +28,11 @@
                         <label for="filial_id" class="font-weight-bold">Local (Matriz / Filial):</label>
                         <select name="filial_id" id="filial_id" class="form-control">
                             <option value="">Todas (Consolidado)</option>
-                            <option value="matriz" {{ (request('filial_id') === 'matriz' || (isset($filial_id) && $filial_id === 'matriz')) ? 'selected' : '' }}>Matriz</option>
-                            @foreach(\App\Models\Filial::all() as $f)
-                                <option value="{{ $f->id }}" {{ (request('filial_id') == $f->id || (isset($filial_id) && $filial_id == $f->id)) ? 'selected' : '' }}>{{ $f->nome ?? 'Filial '.$f->id }}</option>
+                            @if($permiteMatriz)
+                                         <option value="matriz" {{ (request('filial_id') === 'matriz' || (isset($filial_id) && $filial_id === 'matriz')) ? 'selected' : '' }}>Matriz</option>
+                                    @endif
+                            @foreach($filiais as $f)
+                                <option value="{{ $f->id }}" {{ (request('filial_id') == $f->id || (isset($filial_id) && $filial_id == $f->id)) ? 'selected' : '' }}>{{ $f->descricao ?? $f->nome_fantasia ?? 'Filial '.$f->id }}</option>
                             @endforeach
                         </select>
                     </div>
