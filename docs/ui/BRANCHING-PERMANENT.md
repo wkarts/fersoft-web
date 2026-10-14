@@ -7,7 +7,7 @@
 | main | Versão estável e releases oficiais | Permanente |
 | develop | Integração, desenvolvimento visual e pré-release contínua | Permanente |
 | feature/*, fix/* | Desenvolvimento específico | Temporárias |
-| ui-continuous (tag) | Uma única pré-release continuamente atualizada a partir de develop | Permanente |
+| ui-continuous (tag) | Uma única pré-release continuamente atualizada a partir de develop, com nome/versionamento vX.Y.Z-beta.N | Permanente |
 
 A branch develop foi criada com o histórico do redesenho, sem trazer o código visual para a main. A PR visual antiga #268 é histórica e não deve entrar na main.
 
@@ -18,7 +18,7 @@ A branch develop foi criada com o histórico do redesenho, sem trazer o código 
 - Continuar criando branches funcionais e PRs para main, como é feito atualmente.
 - Após cada merge na main, ui-main-sync.yml importa os commits na develop por merge normal de Git, preservando os commits exclusivos do novo tema.
 - Caso exista conflito, a sincronização deve abortar sem push e abrir uma Issue. É proibido reset hard, force push ou descartar arquivos de develop.
-- A develop executa ui-compatibility.yml e, apenas quando validada e atualizada com main, publica a pré-release rolante de tag ui-continuous.
+- A develop sempre dispara o pipeline beta após push/commit/merge, mesmo quando a main tenha uma atualização ainda não sincronizada. A compatibilidade continua obrigatória: só um build validado substitui a pré-release existente, e o fluxo main → develop segue importando os commits estáveis sem sobrescrever o tema.
 - Nenhuma ferramenta de CI ou fluxo de release deve fazer merge de develop para main neste período.
 
 ### Período 2 — UI aprovada; ciclo oficial de desenvolvimento
@@ -30,7 +30,7 @@ Depois de aprovar e publicar a nova interface por PR develop para main, configur
 Até então, sua ausência equivale a transition. Apenas a variável muda; os workflows não precisam de nova branch nem de alteração.
 
 - Branches de implementação abrem PRs para develop.
-- Develop integra, valida e mantém a mesma pré-release contínua.
+- Develop integra, valida e **atualiza a versão beta a cada commit/merge**, preservando a mesma pré-release contínua e a tag ui-continuous.
 - Quando aprovado, abrir PR de develop para main.
 - O merge na main aciona a release oficial (versionamento estável que já existe).
 - Main → develop continua habilitado para incorporar quaisquer hotfixes e alinhar o merge de produção à integração.
@@ -61,6 +61,9 @@ A PR definitiva de promoção do visual deve ter origem develop e destino main, 
 - No modo standard, o check falha se uma PR para main não vier de develop do mesmo repositório.
 - Um check falho **não bloqueia sozinho** um merge sem branch protection/ruleset. Exigir checks e revisões nas regras de proteção de main e develop.
 - Para sincronização direta main → develop, o bot github-actions necessita de permissão de push (ou exceção controlada nas regras). Se a política de segurança impedir, o job falhará sem sobrescrever a branch.
+- Cada push/merge em develop dispara o pipeline de pré-release, independente de UI_FLOW_PHASE. Runs ultrapassados por commits mais recentes são cancelados e não substituem o pacote atual.
+- A versão beta é calculada com o PATCH seguinte à última tag estável alcançável pela main e o número sequencial do workflow: se a estável é v5.0.225, o build 18 recebe v5.0.226-beta.18. O número pode apresentar saltos quando runs falham ou são cancelados, sem reutilização de builds.
+- O GitHub mantém uma única Release marcada como pré-release na tag móvel ui-continuous. Seu título, ZIP e manifesto public/ui-build-info.json exibem a beta atual. Os runs de Actions preservam os builds históricos pelo período de retenção configurado.
 - Em conflito, falha de PHPUnit/build ou commit desatualizado, manter o último pacote validado.
 - O seletor global do tema é APP_UI_THEME=classic ou APP_UI_THEME=refined. O catálogo publicado por SUPERADMIN, e as preferências por empresa e usuário, serão desenvolvidos posteriormente na develop e não alteram esses workflows.
 
