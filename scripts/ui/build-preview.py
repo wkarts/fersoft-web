@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import subprocess
 import zipfile
 from datetime import datetime, timezone
@@ -51,7 +52,14 @@ def main() -> None:
     sha = git("rev-parse", "HEAD")
     branch = os.environ.get("GITHUB_REF_NAME", git("branch", "--show-current"))
     if branch != "develop":
-        raise SystemExit("ERRO: pacote exclusivo da branch visual; nenhuma release da main permitida.")
+        raise SystemExit("ERRO: pacote exclusivo da develop; nenhuma release da main permitida.")
+
+    beta_version = os.environ.get("UI_BETA_VERSION", "").strip()
+    stable_base = os.environ.get("UI_BETA_BASE", "").strip()
+    if not re.fullmatch(r"v\d+\.\d+\.\d+-beta\.[1-9]\d*", beta_version):
+        raise SystemExit("ERRO: UI_BETA_VERSION ausente ou formato beta inválido.")
+    if not re.fullmatch(r"v\d+\.\d+\.\d+", stable_base):
+        raise SystemExit("ERRO: UI_BETA_BASE precisa identificar uma versão estável.")
 
     tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode("utf-8").split("\0")
     entries = {name for name in tracked if name and permitted(name)}
@@ -66,12 +74,14 @@ def main() -> None:
     if not entries:
         raise SystemExit("ERRO: conjunto de arquivos do pacote está vazio.")
 
-    stable_tags = git("tag", "--list", "v[0-9]*.[0-9]*.[0-9]*", "--sort=-version:refname").splitlines()
     metadata = {
-        "release_channel": "ui-continuous-prerelease",
+        "release_channel": "beta-continuous",
+        "release_type": "prerelease",
+        "version": beta_version,
+        "beta_version": beta_version,
         "branch": branch,
         "git_commit_sha": sha,
-        "base_stable_tag": stable_tags[0] if stable_tags else None,
+        "base_stable_tag": stable_base,
         "build_number": os.environ.get("GITHUB_RUN_NUMBER", "local"),
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "requires_manual_ui_validation": True,
@@ -79,7 +89,10 @@ def main() -> None:
     }
 
     with zipfile.ZipFile(ARCHIVE, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-        archive.writestr("ui-build-info.json", json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+        build_info = json.dumps(metadata, ensure_ascii=False, indent=2) + "\n"
+        # Metadados verificáveis tanto no pacote quanto no endpoint estático do preview.
+        archive.writestr("ui-build-info.json", build_info)
+        archive.writestr("public/ui-build-info.json", build_info)
         for name in sorted(entries):
             file = ROOT / name
             if file.is_file() and not file.is_symlink():
