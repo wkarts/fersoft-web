@@ -262,26 +262,24 @@ class ProsoftExportController extends Controller
         $dataInicio = $request->input('data_inicio', date('Y-m-01'));
         $dataFim = $request->input('data_fim', date('Y-m-t'));
         $categoriaId = $request->input('categoria_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
         $filial_id = $request->input('filial_id');
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
 
-        $categorias = \DB::table('categoria_contas')->orderBy('nome')->get();
+        $categorias = \DB::table('categoria_contas')->where('empresa_id', $empresa_id)->orderBy('nome')->get();
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->leftJoin('categoria_contas', 'categoria_contas.id', '=', 'compras.categoria_conta_id')
-            ->where('compras.empresa_id', $empresa_id)
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )
+            ->leftJoin('categoria_contas', function ($join) use ($empresa_id) {
+                $join->on('categoria_contas.id', '=', 'compras.categoria_conta_id')
+                    ->where('categoria_contas.empresa_id', $empresa_id);
+            })
             ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         if (!empty($categoriaId)) {
             $query->where('compras.categoria_conta_id', $categoriaId);
-        }
-
-        // Filtro de Matriz vs Filial no Ajuste Fiscal
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
         }
 
         $resumo = $query->select(
@@ -306,19 +304,23 @@ class ProsoftExportController extends Controller
      */
     public function aplicarAjusteLote(Request $request)
     {
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
-        $filial_id = $request->input('filial_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id);
-
-        // Garante que o Update em Lote não altere dados de outra Filial/Matriz
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
+        // Recusa categorias de outra empresa antes de qualquer alteração.
+        foreach (['filtro_categoria_id', 'nova_categoria_id'] as $campoCategoria) {
+            if ($request->filled($campoCategoria)) {
+                abort_unless(\DB::table('categoria_contas')
+                    ->where('empresa_id', $empresa_id)
+                    ->where('id', $request->input($campoCategoria))
+                    ->exists(), 403, 'Categoria não pertence à empresa atual.');
+            }
         }
+
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        );
 
         if ($request->filled('filtro_cfop')) {
             $filtroCfop = trim($request->input('filtro_cfop'));
@@ -419,14 +421,14 @@ class ProsoftExportController extends Controller
             }
 
             if ($request->filled('nova_categoria_id')) {
-                \DB::table('compras')->where('id', $item->compra_id)->update([
+                \DB::table('compras')->where('empresa_id', $empresa_id)->where('id', $item->compra_id)->update([
                     'categoria_conta_id' => $request->input('nova_categoria_id')
                 ]);
                 $comprasAtualizadasCategoria[$item->compra_id] = true;
             }
 
             // Apenas para listar no resumo de sucesso
-            $compraModel = \App\Models\Compra::with('fornecedor')->find($item->compra_id);
+            $compraModel = \App\Models\Compra::with('fornecedor')->where('empresa_id', $empresa_id)->find($item->compra_id);
             if ($compraModel) {
                 $fornecedorNome = $compraModel->fornecedor->razao_social ?? 'Fornecedor não identificado';
                 $numNota = !empty($compraModel->nf) && $compraModel->nf != '0' ? $compraModel->nf : $compraModel->numero_emissao;
@@ -454,8 +456,8 @@ class ProsoftExportController extends Controller
      */
     public function auditarPisCofinsPeriodo(Request $request)
     {
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
-        $filial_id = $request->input('filial_id');
+        $escopo = $this->escopo($request);
+        $empresa_id = $escopo['empresa_id'];
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
 
@@ -463,17 +465,10 @@ class ProsoftExportController extends Controller
             return redirect()->back()->with('error', 'Por favor, informe a data inicial e final para a auditoria.');
         }
 
-        $query = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id)
-            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
-
-        // Respeita o filtro de Matriz/Filial
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $query->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $query->where('compras.filial_id', $filial_id);
-        }
+        $query = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         // Pega todos os itens do período
         $itens = $query->select(
