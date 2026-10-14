@@ -286,7 +286,7 @@ class RelatorioController extends Controller
             ->select('venda_id', DB::raw('SUM(quantidade) as quantidade_vendida'))
             ->groupBy('venda_id');
 
-        $vendas = Venda::withoutDeleted()->query()
+        $vendas = Venda::withoutDeleted()
             ->leftJoinSub($itensVendaSub, 'iv', function ($join) {
                 $join->on('iv.venda_id', '=', 'vendas.id');
             })
@@ -323,7 +323,7 @@ class RelatorioController extends Controller
             ->select('venda_caixa_id', DB::raw('SUM(quantidade) as quantidade_vendida'))
             ->groupBy('venda_caixa_id');
 
-        $vendasCaixa = VendaCaixa::withoutDeleted()->query()
+        $vendasCaixa = VendaCaixa::withoutDeleted()
             ->leftJoinSub($itensVendaCaixaSub, 'ivc', function ($join) {
                 $join->on('ivc.venda_caixa_id', '=', 'venda_caixas.id');
             })
