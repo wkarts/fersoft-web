@@ -55,6 +55,16 @@ A aprovação da PR #273 não mescla o novo tema nem promove develop para main. 
 
 A PR definitiva de promoção do visual deve ter origem develop e destino main, permanecer draft até a aprovação e não ser mesclada durante transition.
 
+## Proteção de publicação estável em alterações de infraestrutura
+
+O workflow de release oficial `release.yml` continua exclusivo da `main`, mas ignora pushes que alterem **somente** caminhos de suporte: `.github/workflows/**`, `docs/ui/**` e `scripts/ui/**`.
+
+Isso permite integrar a PR de infraestrutura #273 sem publicar uma nova release estável por uma mudança que não alterou a aplicação. O filtro segue a semântica padrão `paths-ignore` do GitHub Actions: se um mesmo merge também alterar `app/**`, `resources/views/**`, `public/**` ou qualquer arquivo fora dos caminhos ignorados, a release estável **continua sendo gerada** normalmente.
+
+O disparo manual `workflow_dispatch` também permanece disponível e não é afetado pelo filtro de paths. A publicação de pré-release da `develop` continua separada da publicação estável da `main`.
+
+**Matriz de segurança (PR #273):** seus 12 arquivos alterados pertencem integralmente aos caminhos ignorados. Portanto, seu merge isolado não deve criar release estável. A futura promoção da PR #274, que modifica layouts e CSS da aplicação, continua elegível para release estável após aprovação.
+
 ## Controles e restrições
 
 - No modo transition, o check de política falha se PR develop → main tentar ser promovida.
