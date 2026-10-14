@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\VendaBalcao;
 use App\Models\ItemVendaBalcao;
 use App\Models\FaturaVendaBalcao;
@@ -87,7 +89,7 @@ class VendaBalcaoController extends Controller
         if($local_padrao == -1){
             $local_padrao = null;
         }
-        $vendas = VendaBalcao::
+        $vendas = VendaBalcao::withoutDeleted()->
         select('venda_balcaos.*')
         ->where('venda_balcaos.empresa_id', $this->empresa_id)
         ->where(function($query) use ($permissaoAcesso){
@@ -460,10 +462,48 @@ class VendaBalcaoController extends Controller
     }
 
     public function destroy($id){
-        $item = VendaBalcao::findOrFail($id);
-        $this->reverteEstoque($item->itens);
-        $item->delete();
-        session()->flash("mensagem_sucesso", "Venda balcão removida!");
+        try {
+            $resultado = DB::transaction(function () use ($id) {
+                $item = VendaBalcao::where('empresa_id', $this->empresa_id)
+                    ->where('id', $id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if(!valida_objeto($item)){
+                    return 'negado';
+                }
+
+                if($item->trashed()){
+                    return 'ja_removida';
+                }
+
+                $this->reverteEstoque($item->itens);
+
+                $excluiu = $item->delete();
+                if(!$excluiu && !$item->trashed()){
+                    throw new \RuntimeException('Não foi possível excluir a venda de balcão.');
+                }
+
+                return 'removida';
+            }, 3);
+        }catch(\Throwable $e){
+            Log::error('Erro ao excluir venda de balcão.', [
+                'venda_id' => $id,
+                'empresa_id' => $this->empresa_id,
+                'erro' => $e->getMessage(),
+            ]);
+            session()->flash('mensagem_erro', 'Não foi possível remover a venda de balcão.');
+            return redirect()->back();
+        }
+
+        if($resultado === 'negado'){
+            return redirect('/403');
+        }
+
+        session()->flash(
+            'mensagem_sucesso',
+            $resultado === 'ja_removida' ? 'Esta venda de balcão já estava removida.' : 'Venda balcão removida!'
+        );
         return redirect()->back();
     }
 
