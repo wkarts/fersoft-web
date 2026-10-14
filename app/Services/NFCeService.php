@@ -499,6 +499,65 @@ class NFCeService{
         return in_array((int)$tributacao->regime, [0, 2], true);
     }
 
+    /**
+     * Em uma NFC-e rejeitada a identidade fiscal já foi definida.
+     * A chave e o XML original fornecem série, número, cNF e data.
+     *
+     * Falha de forma segura caso qualquer informação esteja ausente ou
+     * inconsistente; jamais reserva novo número ou sorteia outro cNF.
+     */
+    private function identidadeOriginalNFCe(VendaCaixa $venda, $config): array
+    {
+        $chave = trim((string) $venda->chave);
+        if (!preg_match('/^[0-9]{44}$/D', $chave) || substr($chave, 20, 2) !== '65') {
+            throw new \DomainException('NFC-e rejeitada sem chave de acesso válida. Não é seguro gerar outra chave ao retransmitir.');
+        }
+
+        $numero = (int) substr($chave, 25, 9);
+        if ($numero <= 0 || (int) $venda->NFcNumero !== $numero) {
+            throw new \DomainException('Número da NFC-e rejeitada diverge da chave original. Corrija a inconsistência antes de retransmitir.');
+        }
+
+        if (substr($chave, 6, 14) !== $this->onlyDigits($config->cnpj)
+            || (int) substr($chave, 0, 2) !== (int) $config->cUF) {
+            throw new \DomainException('Emitente da NFC-e rejeitada diverge da chave original. Retransmissão bloqueada.');
+        }
+
+        $assinado = trim((string) $venda->signed_xml);
+        if ($assinado === '') {
+            throw new \DomainException('XML assinado original da NFC-e rejeitada indisponível. Não é seguro trocar a data ou a chave.');
+        }
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        if (!@$dom->loadXML($assinado, LIBXML_NONET)) {
+            throw new \DomainException('XML assinado original inválido. Retransmissão bloqueada para preservar a chave.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $infNFe = $xpath->query('//nfe:infNFe')->item(0);
+
+        if (!$infNFe || $infNFe->getAttribute('Id') !== 'NFe' . $chave) {
+            throw new \DomainException('A chave do XML assinado não coincide com a chave da venda. Retransmissão bloqueada.');
+        }
+
+        $dhEmi = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhEmi)', $infNFe));
+        if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\+|-)[0-9]{2}:[0-9]{2}$/D', $dhEmi)
+            || substr($dhEmi, 2, 2) . substr($dhEmi, 5, 2) !== substr($chave, 2, 4)) {
+            throw new \DomainException('Data original da NFC-e incompatível com a chave. Não será gerada outra identificação.');
+        }
+
+        return [
+            'chave' => $chave,
+            'cUF' => (int) substr($chave, 0, 2),
+            'cNF' => substr($chave, 35, 8),
+            'serie' => (int) substr($chave, 22, 3),
+            'nNF' => $numero,
+            'tpEmis' => (int) substr($chave, 34, 1),
+            'dhEmi' => $dhEmi,
+        ];
+    }
+
     private function reservarNumeroNFCe(VendaCaixa $venda, $config): int
     {
         if ($venda->NFcNumero && $venda->NFcNumero > 0) {
@@ -608,6 +667,15 @@ class NFCeService{
 
         }
 
+        $identidadeOriginal = null;
+        if ($venda->estado === 'REJEITADO') {
+            try {
+                $identidadeOriginal = $this->identidadeOriginalNFCe($venda, $config);
+            } catch (\DomainException $e) {
+                return ['erros_xml' => [$e->getMessage()]];
+            }
+        }
+
         $nfe = new Make();
         $stdInNFe = new \stdClass();
         $stdInNFe->versao = '4.00'; //versão do layout
@@ -618,22 +686,22 @@ class NFCeService{
 
         //IDE
         $stdIde = new \stdClass();
-        $stdIde->cUF = $config->cUF;
-        $stdIde->cNF = rand(11111111, 99999999);
+        $stdIde->cUF = $identidadeOriginal['cUF'] ?? $config->cUF;
+        $stdIde->cNF = $identidadeOriginal['cNF'] ?? rand(11111111, 99999999);
         $stdIde->natOp = $config->natureza->natureza;
 
         // $stdIde->indPag = 1; //NÃO EXISTE MAIS NA VERSÃO 4.00 // forma de pagamento
 
         $stdIde->mod = 65;
-        $stdIde->serie = $config->numero_serie_nfce;
-        $stdIde->nNF = $this->reservarNumeroNFCe($venda, $config);
-        $stdIde->dhEmi = FiscalDateHelper::nowXml();
+        $stdIde->serie = $identidadeOriginal['serie'] ?? $config->numero_serie_nfce;
+        $stdIde->nNF = $identidadeOriginal['nNF'] ?? $this->reservarNumeroNFCe($venda, $config);
+        $stdIde->dhEmi = $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
         $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = 1;
         $stdIde->idDest = 1;
         $stdIde->cMunFG = $config->codMun;
         $stdIde->tpImp = 4;
-        $stdIde->tpEmis = 1;
+        $stdIde->tpEmis = $identidadeOriginal['tpEmis'] ?? 1;
         $stdIde->cDV = 0;
         $stdIde->tpAmb = (int)$config->ambiente;
         $stdIde->finNFe = 1;
@@ -1327,9 +1395,28 @@ class NFCeService{
                 ];
             }
 
+            $chaveGerada = (string) $nfe->getChave();
+            if ($identidadeOriginal !== null && !hash_equals($identidadeOriginal['chave'], $chaveGerada)) {
+                return [
+                    'erros_xml' => ['A NFC-e gerada mudou a chave original. Transmissão bloqueada; nenhum novo número foi reservado.'],
+                ];
+            }
+
+            $xmlFinal = $this->finalizeReformaTributariaXml($xml, $venda)['xml'];
+            if ($identidadeOriginal !== null) {
+                $xmlValidacao = new \DOMDocument('1.0', 'UTF-8');
+                if (!@$xmlValidacao->loadXML($xmlFinal, LIBXML_NONET)
+                    || !$xmlValidacao->getElementsByTagName('infNFe')->item(0)
+                    || $xmlValidacao->getElementsByTagName('infNFe')->item(0)->getAttribute('Id') !== 'NFe' . $chaveGerada) {
+                    return [
+                        'erros_xml' => ['A chave do XML reconstruído diverge da chave original. Transmissão bloqueada.'],
+                    ];
+                }
+            }
+
             $arr = [
-                'chave' => $nfe->getChave(),
-                'xml' => $this->finalizeReformaTributariaXml($xml, $venda)['xml'],
+                'chave' => $chaveGerada,
+                'xml' => $xmlFinal,
                 'nNf' => $stdIde->nNF,
                 'modelo' => $nfe->getModelo()
             ];
@@ -1444,17 +1531,28 @@ class NFCeService{
             if($arr['xMotivo'] == 'Autorizado o uso da NFC-e'){
                 if($venda->estado != 'APROVADO'){
 
-                    $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+                    $chaveRecebida = (string) ($arr['protNFe']['infProt']['chNFe'] ?? '');
+                    $chaveOriginal = trim((string) $venda->chave);
+                    $numeroOriginal = (int) $venda->NFcNumero;
+                    $numeroNaChave = strlen($chaveOriginal) === 44
+                        ? (int) substr($chaveOriginal, 25, 9) : 0;
 
-                    $chave = $arr['protNFe']['infProt']['chNFe'];
+                    // Consultar a situação na SEFAZ não é emitir outra nota.
+                    // Jamais trocar a chave ou incrementar o número por aqui.
+                    if ($chaveRecebida === '' || !hash_equals($chaveOriginal, $chaveRecebida)
+                        || $numeroOriginal <= 0 || $numeroOriginal !== $numeroNaChave) {
+                        Log::warning('NFC-e: retorno de consulta com identidade fiscal inconsistente.', [
+                            'venda_id' => $venda->id,
+                            'empresa_id' => $this->empresa_id,
+                        ]);
+                        return json_encode([
+                            'erro' => 'Consulta bloqueada: chave ou número fiscal divergente. Nenhuma numeração foi alterada.',
+                        ]);
+                    }
+
                     $nRec = $venda->recibo;
-
                     $venda->estado = 'APROVADO';
-                    $venda->NFcNumero = $config->ultimo_numero_nfce+1;
                     $venda->save();
-
-                    $config->ultimo_numero_nfce = $config->ultimo_numero_nfce+1;
-                    $config->save();
                     try{
                         $xml = Complements::toAuthorize($venda->signed_xml, $nRec);
                         safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml',$xml);

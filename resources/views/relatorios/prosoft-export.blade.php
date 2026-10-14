@@ -35,9 +35,11 @@
                                 <label for="filial_id">Local (Matriz / Filial):</label>
                                 <select name="filial_id" id="filial_id" class="form-control">
                                     <option value="">Todas (Misturado)</option>
-                                    <option value="matriz" {{ (request('filial_id') === 'matriz' || (isset($filial_id) && $filial_id === 'matriz')) ? 'selected' : '' }}>Matriz</option>
-                                    @foreach(\App\Models\Filial::all() as $f)
-                                        <option value="{{ $f->id }}" {{ (request('filial_id') == $f->id || (isset($filial_id) && $filial_id == $f->id)) ? 'selected' : '' }}>{{ $f->nome ?? 'Filial '.$f->id }}</option>
+                                    @if($permiteMatriz)
+                                         <option value="matriz" {{ (request('filial_id') === 'matriz' || (isset($filial_id) && $filial_id === 'matriz')) ? 'selected' : '' }}>Matriz</option>
+                                    @endif
+                                    @foreach($filiais as $f)
+                                        <option value="{{ $f->id }}" {{ (request('filial_id') == $f->id || (isset($filial_id) && $filial_id == $f->id)) ? 'selected' : '' }}>{{ $f->descricao ?? $f->nome_fantasia ?? 'Filial '.$f->id }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -53,7 +55,9 @@
                             @csrf
 
                             <!-- NOVO CAMPO OCULTO: Garante que a exportação ZIP saiba qual filial está selecionada -->
-                            <input type="hidden" name="filial_id" value="{{ request('filial_id', 'matriz') }}">
+                            <input type="hidden" name="filial_id" value="{{ $filial_id ?? '' }}">
+                            <input type="hidden" name="data_inicio" value="{{ $dataInicio }}">
+                            <input type="hidden" name="data_fim" value="{{ $dataFim }}">
 
                             <ul class="nav nav-tabs" id="prosoftTabs" role="tablist">
                                 <li class="nav-item">

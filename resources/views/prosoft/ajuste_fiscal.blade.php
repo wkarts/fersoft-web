@@ -45,7 +45,7 @@
                     <!-- Repassa silenciosamente as datas e a filial atuais que estão na tela -->
                     <input type="hidden" name="data_inicio" value="{{ $dataInicio ?? date('Y-m-01') }}">
                     <input type="hidden" name="data_fim" value="{{ $dataFim ?? date('Y-m-t') }}">
-                    <input type="hidden" name="filial_id" value="{{ $filial_id ?? 'matriz' }}">
+                    <input type="hidden" name="filial_id" value="{{ $filial_id ?? '' }}">
 
                     <button type="submit" class="btn btn-warning font-weight-bold">
                         <i class="fas fa-magic"></i> Auditar PIS/COFINS Automático (Período)
