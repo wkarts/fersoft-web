@@ -15,6 +15,7 @@ jobs:
       BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
       SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
       SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+      PR_DRAFT: ${{ github.event.pull_request.draft }}
     steps:
       - name: Conferir fase e origem do PR
         shell: bash
@@ -43,6 +44,10 @@ jobs:
           fi
           if [ "$phase" = "transition" ]; then
             if [ "$BASE_BRANCH" = "main" ] && [ "$SOURCE_BRANCH" = "develop" ]; then
+              if [ "$PR_DRAFT" = "true" ]; then
+                echo "PR draft develop -> main mantida apenas como acompanhamento; promocao continua impossivel."
+                exit 0
+              fi
               echo "::error::Promocao develop -> main bloqueada ate a aprovacao da nova UI."
               exit 1
             fi
