@@ -24,7 +24,7 @@ class VendaController extends Controller
 {
 
 	public function index(Request $request){
-		$vendas = Venda::orderBy('id', 'desc')
+		$vendas = Venda::withoutDeleted()->orderBy('id', 'desc')
 		->where('empresa_id', $request->empresa_id)
 		->limit(40)->get();
 		foreach($vendas as $v){
@@ -117,7 +117,7 @@ class VendaController extends Controller
 	}
 
 	public function getVenda($id){
-		$venda = Venda::find($id);
+		$venda = Venda::withoutDeleted()->findOrFail($id);
 		$venda->cliente;
 		$venda->natureza;
 		$venda->itens;
@@ -495,17 +495,20 @@ class VendaController extends Controller
 	}
 
 	public function delete(Request $request){
-		$venda = Venda::find($request->id);
+		$venda = Venda::where('empresa_id', $request->empresa_id)->findOrFail($request->id);
+		if($venda->trashed()){
+			return response()->json(true, 200);
+		}
 		$config = ConfigNota::where('empresa_id', $venda->empresa_id)->first();
 		$senha = $request->senha;
 
 		if($config->senha_remover == ""){
 			$delete = $venda->delete();
-			return response()->json($delete, 200);
+			return response()->json($delete || $venda->trashed(), 200);
 		}else{
 			if(md5($senha) == $config->senha_remover){
 				$delete = $venda->delete();
-				return response()->json($delete, 200);
+				return response()->json($delete || $venda->trashed(), 200);
 			}
 			else{
 				return response()->json("Senha incorreta", 403);
