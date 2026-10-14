@@ -136,33 +136,13 @@
                             <div class="input-group">
                                 <input type="password" name="senha" id="senha" class="form-control" autocomplete="new-password" placeholder="Cole aqui o novo token se desejar alterá-lo">
                                 <div class="input-group-append">
-                                    <button class="btn btn-secondary" type="button" id="btnToggleSenha" title="Visualizar novo token digitado">
+                                    <button class="btn btn-secondary" type="button" id="btnToggleSenha" title="Visualizar ou ocultar senha/token">
                                         <i class="fa fa-eye" id="iconToggleSenha"></i>
                                     </button>
                                 </div>
                             </div>
                             <small class="form-text text-muted">Deixe em branco para manter o token atual ou cole o novo gerado no SINIR.</small>
-                            @if($unidade->getRawOriginal('senha') !== null && $unidade->getRawOriginal('senha') !== '')
-                                <div class="mt-2">
-                                    <button type="button" class="btn btn-light-primary btn-sm" id="btnRevelarSenha">
-                                        <i class="fa fa-key mr-1"></i> Visualizar token cadastrado
-                                    </button>
-                                    <div id="boxSenhaSalva" class="mt-2" style="display: none;">
-                                        <label for="senhaSalva" class="font-weight-bold">
-                                            Token atual (somente leitura; não será enviado ao salvar)
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="text" id="senhaSalva" class="form-control"
-                                                readonly autocomplete="off" spellcheck="false">
-                                            <div class="input-group-append">
-                                                <button type="button" class="btn btn-secondary" id="btnOcultarSenha">
-                                                    <i class="fa fa-eye-slash mr-1"></i> Ocultar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
+
                         </div>
 
                         <div class="col-md-3 form-group">
@@ -211,55 +191,91 @@
             var $ = window.jQuery;
 
             $(document).ready(function() {
-                // 1. Alternar visualização da senha/token
-                $('#btnToggleSenha').on('click', function() {
-                    var campo = $('#senha');
-                    var icone = $('#iconToggleSenha');
-                    if (campo.attr('type') === 'password') {
-                        campo.attr('type', 'text');
-                        icone.removeClass('fa-eye').addClass('fa-eye-slash');
-                    } else {
-                        campo.attr('type', 'password');
-                        icone.removeClass('fa-eye-slash').addClass('fa-eye');
-                    }
-                });
+                // Somente o campo e o botão de olho originais.
+                // A leitura do token salvo é feita na primeira visualização.
+                var campoSenha = $('#senha');
+                var botaoSenha = $('#btnToggleSenha');
+                var iconeSenha = $('#iconToggleSenha');
+                var temCredencialSalva = {{ $unidade->getRawOriginal('senha') !== null && $unidade->getRawOriginal('senha') !== '' ? 'true' : 'false' }};
+                var credencialCarregada = null;
+                var consultaCredencialEmAndamento = false;
 
-                // Leitura do token salvo: ação explícita, POST com CSRF, sem
-                // preencher o campo de edição para não regravar acidentalmente.
-                $('#btnRevelarSenha').on('click', function(e) {
+                function alterarVisualizacaoSenha(mostrar) {
+                    campoSenha.attr('type', mostrar ? 'text' : 'password');
+                    iconeSenha.toggleClass('fa-eye', !mostrar).toggleClass('fa-eye-slash', mostrar);
+                    botaoSenha.attr('title', mostrar ? 'Ocultar senha/token' : 'Visualizar senha/token');
+                }
+
+                botaoSenha.off('click.mtrSenha').on('click.mtrSenha', function(e) {
                     e.preventDefault();
 
-                    var btn = $(this);
-                    btn.prop('disabled', true);
+                    if (campoSenha.attr('type') === 'text') {
+                        alterarVisualizacaoSenha(false);
+                        return;
+                    }
+
+                    // Texto já digitado ou token previamente recuperado:
+                    // somente alternar visibilidade; sem novo POST.
+                    if (campoSenha.val() !== '') {
+                        alterarVisualizacaoSenha(true);
+                        return;
+                    }
+
+                    if (!temCredencialSalva || consultaCredencialEmAndamento) {
+                        campoSenha.trigger('focus');
+                        return;
+                    }
+
+                    consultaCredencialEmAndamento = true;
+                    botaoSenha.prop('disabled', true);
 
                     $.ajax({
                         url: "{{ route('mtr.unidades.revelarSenha', $unidade->id) }}",
-                        type: "POST",
-                        dataType: "json",
+                        type: 'POST',
+                        dataType: 'json',
+                        cache: false,
                         data: { _token: "{{ csrf_token() }}" },
                         success: function(res) {
-                            if (res.sucesso && typeof res.senha === 'string') {
-                                $('#senhaSalva').val(res.senha);
-                                $('#boxSenhaSalva').show();
-                            } else {
-                                alert((res && res.mensagem) || 'Não foi possível consultar a credencial.');
+                            if (!res || !res.sucesso || typeof res.senha !== 'string' || !res.senha.length) {
+                                alert((res && res.mensagem) || 'A credencial armazenada está indisponível.');
+                                return;
                             }
+
+                            credencialCarregada = res.senha;
+
+                            // Preserva qualquer novo token digitado durante a consulta.
+                            if (campoSenha.val() === '') {
+                                campoSenha.val(credencialCarregada);
+                            }
+
+                            alterarVisualizacaoSenha(true);
                         },
                         error: function(err) {
-                            var mensagem = err.responseJSON && err.responseJSON.mensagem
-                                ? err.responseJSON.mensagem
-                                : 'Não foi possível consultar a credencial armazenada.';
+                            var mensagem = err.responseJSON && err.responseJSON.mensagem;
+
+                            if (!mensagem && err.status === 419) {
+                                mensagem = 'A sessão expirou. Atualize a página e tente novamente.';
+                            } else if (!mensagem && err.status === 429) {
+                                mensagem = 'Limite temporário de consultas atingido. Aguarde um minuto.';
+                            } else if (!mensagem) {
+                                mensagem = 'Não foi possível consultar a credencial armazenada (HTTP ' + err.status + ').';
+                            }
+
                             alert(mensagem);
                         },
                         complete: function() {
-                            btn.prop('disabled', false);
+                            consultaCredencialEmAndamento = false;
+                            botaoSenha.prop('disabled', false);
                         }
                     });
                 });
 
-                $('#btnOcultarSenha').on('click', function() {
-                    $('#senhaSalva').val('');
-                    $('#boxSenhaSalva').hide();
+                // Ao salvar, não envia um token consultado que não foi alterado.
+                // O backend faz a mesma comparação como defesa adicional.
+                campoSenha.closest('form').off('submit.mtrSenha').on('submit.mtrSenha', function() {
+                    if (credencialCarregada !== null && campoSenha.val() === credencialCarregada) {
+                        campoSenha.prop('disabled', true);
+                    }
                 });
 
                 // 2. Select2 para clientes
@@ -283,6 +299,10 @@
 
                     var cpfUsuario = $('#cpf_usuario').val() || $('#cpf_cnpj').val();
                     var senha = $('#senha').val();
+                    // Sem alteração, o servidor reutiliza a credencial armazenada.
+                    if (credencialCarregada !== null && senha === credencialCarregada) {
+                        senha = '';
+                    }
                     var unidadeId = $('#unidade_id').val();
                     var orgao = $('#orgao').val();
                     var ambiente = $('#ambiente').val();
