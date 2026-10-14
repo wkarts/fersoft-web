@@ -41,6 +41,11 @@ jobs:
             echo "=== FIM DO INVENTÁRIO ===\n";
           ' > storage/app/tema-modulos.tsv
           cat storage/app/tema-modulos.tsv
+      - name: Validar e auditar todos os assets CSS/JS
+        run: |
+          set -euo pipefail
+          php -l scripts/auditar-assets.php
+          php scripts/auditar-assets.php --out=storage/app/tema-assets.json | tee storage/app/tema-assets-resumo.txt
       - name: Publicar inventário completo (JSON + TSV)
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,5 +55,7 @@ jobs:
             storage/app/tema-inventario.json
             storage/app/tema-resumo.txt
             storage/app/tema-modulos.tsv
+            storage/app/tema-assets.json
+            storage/app/tema-assets-resumo.txt
           if-no-files-found: error
           retention-days: 30
