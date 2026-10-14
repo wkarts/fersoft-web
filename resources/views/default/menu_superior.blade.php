@@ -124,7 +124,7 @@
     </style>
 
 
-    @if($tema == 2)
+    @if($tema == 2 && !config('ui_theme.active', false))
         <link href="/css/escuro.css" rel="stylesheet" type="text/css" />
     @endif
 
@@ -138,11 +138,16 @@
         }*/
 
     </style>
+    {{-- Tema do ERP opt-in: o clássico não carrega nenhum asset adicional. --}}
+    @if(config('ui_theme.active', false))
+        @include('themes.refined.assets')
+    @endif
+
 </head>
 <!-- end::Head -->
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config('ui_theme.active', false))ui-theme-refined @if(($tema ?? 1) == 2)ui-theme-refined--dark@endif @endif">
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
