@@ -1345,6 +1345,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/detalhes/{id}', 'AberturaCaixaController@detalhes');
         Route::get('/imprimir/{id}', 'AberturaCaixaController@imprimir');
         Route::get('/imprimir80/{id}', 'AberturaCaixaController@imprimir80');
+        Route::get('/imprimir80-profissional/{id}', 'AberturaCaixaController@imprimir80Profissional');
         Route::get('/filtro', 'AberturaCaixaController@filtro');
     });
 
