@@ -110,6 +110,20 @@ class NFCeController extends Controller
 
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
                     $signed = $nfe_service->sign($nfce['xml']);
+                    if ($retransmitindo) {
+                        // A assinatura também deve manter a identidade fiscal;
+                        // somente um XML com o mesmo Id pode seguir à SEFAZ.
+                        $xmlAssinado = new \DOMDocument('1.0', 'UTF-8');
+                        $infOriginal = false;
+                        if (is_string($signed) && @$xmlAssinado->loadXML($signed, LIBXML_NONET)) {
+                            $infOriginal = $xmlAssinado->getElementsByTagName('infNFe')->item(0);
+                        }
+                        if (!$infOriginal || $infOriginal->getAttribute('Id') !== 'NFe' . $chaveOriginal) {
+                            return response()->json([
+                                'erros_xml' => ['Assinatura alterou a chave da NFC-e original. Transmissão bloqueada.'],
+                            ], 409);
+                        }
+                    }
 
                     if($this->getContigencia()){
                         if(!is_dir(public_path('xml_nfce_contigencia'))){
@@ -123,6 +137,9 @@ class NFCeController extends Controller
                         }
                         $venda->path_xml = $nfce['chave'] . '.xml';
                         $venda->estado = 'APROVADO';
+                        if ($retransmitindo) {
+                            $venda->signed_xml = $signed;
+                        }
                         $venda->data_emissao = date('Y-m-d H:i:s');
                         $venda->save();
                         // O número da primeira emissão já foi reservado pelo serviço.
@@ -145,6 +162,9 @@ class NFCeController extends Controller
                             }
                             $venda->path_xml = $nfce['chave'] . '.xml';
                             $venda->estado = 'APROVADO';
+                            if ($retransmitindo) {
+                                $venda->signed_xml = $signed;
+                            }
                             $venda->data_emissao = date('Y-m-d H:i:s');
                             $venda->save();
                             if (!$retransmitindo && (int)$config->ultimo_numero_nfce < (int)$nfce['nNf']) {
