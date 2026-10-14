@@ -1531,17 +1531,28 @@ class NFCeService{
             if($arr['xMotivo'] == 'Autorizado o uso da NFC-e'){
                 if($venda->estado != 'APROVADO'){
 
-                    $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+                    $chaveRecebida = (string) ($arr['protNFe']['infProt']['chNFe'] ?? '');
+                    $chaveOriginal = trim((string) $venda->chave);
+                    $numeroOriginal = (int) $venda->NFcNumero;
+                    $numeroNaChave = strlen($chaveOriginal) === 44
+                        ? (int) substr($chaveOriginal, 25, 9) : 0;
 
-                    $chave = $arr['protNFe']['infProt']['chNFe'];
+                    // Consultar a situação na SEFAZ não é emitir outra nota.
+                    // Jamais trocar a chave ou incrementar o número por aqui.
+                    if ($chaveRecebida === '' || !hash_equals($chaveOriginal, $chaveRecebida)
+                        || $numeroOriginal <= 0 || $numeroOriginal !== $numeroNaChave) {
+                        Log::warning('NFC-e: retorno de consulta com identidade fiscal inconsistente.', [
+                            'venda_id' => $venda->id,
+                            'empresa_id' => $this->empresa_id,
+                        ]);
+                        return json_encode([
+                            'erro' => 'Consulta bloqueada: chave ou número fiscal divergente. Nenhuma numeração foi alterada.',
+                        ]);
+                    }
+
                     $nRec = $venda->recibo;
-
                     $venda->estado = 'APROVADO';
-                    $venda->NFcNumero = $config->ultimo_numero_nfce+1;
                     $venda->save();
-
-                    $config->ultimo_numero_nfce = $config->ultimo_numero_nfce+1;
-                    $config->save();
                     try{
                         $xml = Complements::toAuthorize($venda->signed_xml, $nRec);
                         safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml',$xml);
