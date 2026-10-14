@@ -11,8 +11,9 @@ use RuntimeException;
  * Catálogo de resíduos MTR do arquivo MTR_RESIDUOS.ndjson.
  *
  * Identidade funcional: res_codigo (índice UNIQUE da migration existente).
- * Não importa PKs da origem nem modifica vínculos empresa/filial/usuário
- * de registros preexistentes. Os itens novos são referências globais.
+ * Não importa PKs ou vínculos empresa/filial/usuário da origem.
+ * As referências são globais: os três campos de vínculo são sempre NULL,
+ * inclusive nos registros preexistentes e nos códigos fora do catálogo.
  */
 class MtrResiduosSeeder extends Seeder
 {
@@ -37,6 +38,21 @@ class MtrResiduosSeeder extends Seeder
 
         // Uma transação para não deixar importações parciais. É seguro reexecutar.
         DB::transaction(function () use ($data): void {
+            // Catálogo oficial não pertence a nenhum tenant. Corrige vínculos
+            // herdados sem alterar registros que já estiverem normalizados.
+            DB::table(self::TABLE)
+                ->where(function ($query): void {
+                    $query->whereNotNull('empresa_id')
+                        ->orWhereNotNull('filial_id')
+                        ->orWhereNotNull('usuario_id');
+                })
+                ->update([
+                    'empresa_id' => null,
+                    'filial_id' => null,
+                    'usuario_id' => null,
+                    'updated_at' => now()->toDateTimeString(),
+                ]);
+
             foreach (array_chunk($data, 100, true) as $chunk) {
                 $codes = array_keys($chunk);
                 $existing = DB::table(self::TABLE)
@@ -70,6 +86,8 @@ class MtrResiduosSeeder extends Seeder
                         continue;
                     }
 
+                    // Mesmo em instalações com sessão de empresa, não
+                    // importar nem injetar identificadores de tenant.
                     $inserts[] = $item + [
                         'empresa_id' => null,
                         'filial_id' => null,
