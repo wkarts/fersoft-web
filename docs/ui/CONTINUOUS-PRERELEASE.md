@@ -6,13 +6,16 @@
 
 1. **Sincronização (`ui-main-sync.yml`):** executado ao receber commits na `main` e uma vez ao dia como recuperação. Tenta *git merge* unilateral **main → develop**, nunca a operação contrária. Se houver conflito, NÃO faz push e abre/atualiza issue de resolução, mantendo a branch visual intacta. Realiza `workflow_dispatch` explícito, pois pushes com `GITHUB_TOKEN` não disparam novos workflows `push`.
 2. **Compatibilidade (`ui-compatibility.yml`):** workflow reutilizável e manual que gera relatório de impacto por arquivo, compila todas as views, executa suíte PHPUnit, build Vite e inventário de CSS/JS/Blade. Qualquer teste falho **bloqueia** a pré-release. *Não cria patches semânticos automaticamente* quando mudanças de negócio/UI exigem adaptação; nesses casos o relatório é para revisão.
-3. **Pré-release contínua (`ui-prerelease.yml`):** gatilhada por push na branch visual ou por dispatch do fluxo 1. Chama fluxo 2 obrigatoriamente, verifica que a branch está atualizada com a `main`, compila Vite, empacota sem credenciais e mantém **uma única pré-release** `ui-continuous` e asset `fersoft-web-ui-continuous.zip`. Versões estáveis `vX.Y.Z` permanecem intactas.
+3. **Pré-release contínua (`ui-prerelease.yml`):** gatilhada por push na branch visual ou por dispatch do fluxo 1. Chama fluxo 2 obrigatoriamente, verifica que o commit ainda é o HEAD atual da `develop` (não bloqueia o build se uma sincronização da `main` estiver pendente), compila Vite, empacota sem credenciais e mantém **uma única pré-release** `ui-continuous` e asset `fersoft-web-ui-continuous.zip`, atualizando seu título e manifesto com `vMAJOR.MINOR.NEXT_PATCH-beta.BUILD` a cada build aprovado. Versões estáveis `vX.Y.Z` permanecem intactas.
 
 ## Proteção e ativação
 
 - A `main` tem os fluxos estáveis originais de release e deploy. O workflow de notas de release recebe guarda para **ignorar pré-releases**; nenhuma pré-release visual deve disparar deploy estável.
 - Enquanto o PR de infraestrutura (separado do #268) não for incorporado à `main`, o fluxo da branch visual pode validar e produzir **artefatos de Actions**, mas não publica Github Release. Isso evita eventos `release.published` não protegidos.
 - A identidade da branch pode ser migrada futuramente: atualizar de forma coordenada `UI_BRANCH`, os filtros YAML e o nome esperado pelo empacotador. Nesta etapa a referência é `develop`.
+- Todo push/commit/merge na `develop` inicia o workflow, na fase `transition` ou `standard`. Caso vários commits cheguem rapidamente, builds obsoletos são cancelados; somente a versão beta do HEAD validado substitui a pré-release existente.
+- A versão é `vX.Y.(Z+1)-beta.N`, sendo a base a última tag estável da `main` e `N` o número crescente do workflow. Ex.: `v5.0.225` → `v5.0.226-beta.37` (build 37). Os números podem saltar por falhas/cancelamentos, sem perder rastreabilidade.
+- O registro rolling continua com a única tag `ui-continuous` e um ZIP substituível; versões antigas ficam no histórico de artefatos dos runs do Actions durante a retenção configurada.
 - A pré-release **não** altera `composer.json`, `APP_VERSION`, domínio de produção, banco de dados nem versões oficiais.
 - A configuração do tema (uma variável de ambiente): `APP_UI_THEME=classic` ou `APP_UI_THEME=refined`. Login permanece independente com `PAG_LOGIN`.
 - O novo design system e os temas administráveis pelo SUPERADMIN (catálogo de temas, concessões por empresa, preferência por usuário, publicação/versionamento) são **escopo futuro**, não implementados por estes workflows.
