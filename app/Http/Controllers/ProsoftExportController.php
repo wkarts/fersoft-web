@@ -528,22 +528,19 @@ class ProsoftExportController extends Controller
         $viewDataInicio = date('Y-m-d', strtotime($dataInicio));
         $viewDataFim = date('Y-m-d', strtotime($dataFim));
 
-        $empresa_id = __empresa_id_logada() ?? $request->empresa_id;
+        $escopo = $this->escopo($request);
         $filial_id = $request->input('filial_id');
+        $filiais = $escopo['filiais'];
+        $permiteMatriz = !empty(session('user_logged')['adm'])
+            || array_key_exists('-1', (array) __locaisAtivos());
 
         // -------------------------------------------------------------
         // 1. CRÉDITOS / AQUISIÇÕES (Entradas / Compras do banco)
         // -------------------------------------------------------------
-        $queryCompras = \DB::table('item_compras')
-            ->join('compras', 'compras.id', '=', 'item_compras.compra_id')
-            ->where('compras.empresa_id', $empresa_id)
-            ->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryCompras->whereNull('compras.filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryCompras->where('compras.filial_id', $filial_id);
-        }
+        $queryCompras = $this->filtrarPorEscopo(
+            \DB::table('item_compras')->join('compras', 'compras.id', '=', 'item_compras.compra_id'),
+            $escopo
+        )->whereBetween('compras.data_emissao', [$dataInicio, $dataFim]);
 
         $comprasAgrupadas = $queryCompras->select(
             \DB::raw('"Compra (Entrada)" as tipo'),
@@ -561,15 +558,8 @@ class ProsoftExportController extends Controller
         // -------------------------------------------------------------
         // 2. DÉBITOS / RECEITAS (Processando Vendas e lendo XMLs)
         // -------------------------------------------------------------
-        $queryVendas = \DB::table('vendas')
-            ->where('empresa_id', $empresa_id)
+        $queryVendas = $this->filtrarPorEscopo(\DB::table('vendas'), $escopo, 'vendas')
             ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryVendas->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryVendas->where('filial_id', $filial_id);
-        }
 
         $vendasList = $queryVendas->select('id', 'path_xml')->get();
         $vendasProcessadas = [];
@@ -639,15 +629,8 @@ class ProsoftExportController extends Controller
         // -------------------------------------------------------------
         // 3. DÉBITOS / CT-E (Conhecimentos de Transporte)
         // -------------------------------------------------------------
-        $queryCtes = \DB::table('ctes')
-            ->where('empresa_id', $empresa_id)
+        $queryCtes = $this->filtrarPorEscopo(\DB::table('ctes'), $escopo, 'ctes')
             ->whereBetween('data_emissao', [$dataInicio, $dataFim]);
-
-        if ($filial_id === 'null' || $filial_id === 'matriz') {
-            $queryCtes->whereNull('filial_id');
-        } elseif (!empty($filial_id)) {
-            $queryCtes->where('filial_id', $filial_id);
-        }
 
         $ctesAgrupados = $queryCtes->select(
             \DB::raw('"CT-e (Transporte)" as tipo'),
@@ -689,6 +672,6 @@ class ProsoftExportController extends Controller
         $dataInicio = $viewDataInicio;
         $dataFim = $viewDataFim;
 
-        return view('prosoft.apuracao_pis_cofins', compact('title', 'dataInicio', 'dataFim', 'filial_id', 'apuracao'));
+        return view('prosoft.apuracao_pis_cofins', compact('title', 'dataInicio', 'dataFim', 'filial_id', 'apuracao', 'filiais', 'permiteMatriz'));
     }
 }
