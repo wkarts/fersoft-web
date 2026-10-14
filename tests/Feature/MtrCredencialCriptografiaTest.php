@@ -27,6 +27,21 @@ class MtrCredencialCriptografiaTest extends TestCase
         $this->assertArrayNotHasKey('senha', $reloaded->toArray());
     }
 
+    public function test_token_jwt_e_credencial_legitima_apos_descriptografar(): void
+    {
+        // eyJhbGci... é o cabeçalho de um JWT, não o ciphertext do Laravel.
+        $jwt = 'eyJhbGciOiJIUzUxMiJ9.' . 'eyJzdWIiOiJ0ZXN0ZSJ9.' . str_repeat('a', 64);
+        $model = new MtrConfig();
+        $model->senha = $jwt;
+
+        $stored = (string) $model->getRawOriginal('senha');
+        $this->assertNotSame($jwt, $stored);
+
+        $reloaded = new MtrConfig();
+        $reloaded->setRawAttributes(['senha' => $stored], true);
+        $this->assertSame($jwt, $reloaded->senha);
+    }
+
     public function test_credencial_antiga_em_texto_puro_continua_legivel(): void
     {
         $model = new MtrConfig();
@@ -128,9 +143,22 @@ class MtrCredencialCriptografiaTest extends TestCase
 
         $this->assertStringContainsString("Route::post('/revelar-credencial/{id}'", $route);
         $this->assertStringContainsString("->middleware('throttle:5,1')", $route);
-        $this->assertStringContainsString('id="btnRevelarSenha"', $view);
-        $this->assertStringContainsString('id="senhaSalva"', $view);
+        // A edição deve manter somente o campo e o olho originais.
+        $this->assertSame(1, substr_count($view, 'name="senha" id="senha"'));
+        $this->assertSame(1, substr_count($view, 'id="btnToggleSenha"'));
+        $this->assertStringNotContainsString('id="btnRevelarSenha"', $view);
+        $this->assertStringNotContainsString('id="senhaSalva"', $view);
+        $this->assertStringNotContainsString('id="btnOcultarSenha"', $view);
         $this->assertStringNotContainsString('value="{{ $unidade->senha }}"', $view);
+
+        // A consulta usa o mesmo campo e só ocorre na primeira visualização;
+        // visualizar o valor anterior não deve gerar nova criptografia.
+        $this->assertStringContainsString("if (campoSenha.val() !== '')", $view);
+        $this->assertStringContainsString('campoSenha.val(credencialCarregada)', $view);
+        $this->assertStringContainsString("alterarVisualizacaoSenha(false)", $view);
+        $this->assertStringContainsString("campoSenha.prop('disabled', true)", $view);
+        $controller = file_get_contents($root . '/app/Http/Controllers/MtrUnidadeController.php');
+        $this->assertStringContainsString('hash_equals((string) $unidade->senha, (string) $dados[\'senha\'])', $controller);
         $this->assertStringContainsString("->text('senha')->nullable()", $migration);
         $this->assertStringContainsString('public function down(): void', $migration);
     }
