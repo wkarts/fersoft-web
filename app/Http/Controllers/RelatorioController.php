@@ -1831,6 +1831,10 @@ class RelatorioController extends Controller
                     ->where('empresa_id', $this->empresa_id)
                     ->first();
 
+                if($venda == null){
+                    continue;
+                }
+
                 // echo $c;
                 echo "Venda código $venda->id alterada comissao<br>";
                 if($venda->vendedor_setado){
@@ -1921,7 +1925,7 @@ class RelatorioController extends Controller
                     ->first();
             }
 
-            if($venda->estado == 'CANCELADO'){
+            if($venda == null || $venda->estado == 'CANCELADO'){
                 $cancelada = true;
             }
 
@@ -1980,20 +1984,20 @@ class RelatorioController extends Controller
                 ->where('empresa_id', $this->empresa_id)
                 ->first();
 
-            $total = $venda->valor_total;
+            $total = $venda ? $venda->valor_total : 0;
         }elseif($tipo == 'Balcão'){
             $venda = VendaBalcao::
             where('id', $comissao->venda_id)
                 ->where('empresa_id', $this->empresa_id)
                 ->first();
 
-            $total = $venda->valor_total;
+            $total = $venda ? $venda->valor_total : 0;
         }else{
             $venda = Venda::withoutDeleted()->where('id', $comissao->venda_id)
                 ->where('empresa_id', $this->empresa_id)
                 ->first();
 
-            $total = $venda->valor_total - $venda->desconto + $venda->acrescimo;
+            $total = $venda ? ($venda->valor_total - $venda->desconto + $venda->acrescimo) : 0;
         }
         if($venda == null) return 0;
         return $total;
@@ -2003,6 +2007,9 @@ class RelatorioController extends Controller
         $tipo = $comissao->tipo();
         if($tipo == 'PDV'){
             $venda = VendaCaixa::withoutDeleted()->find($comissao->venda_id);
+            if($venda == null){
+                return false;
+            }
             foreach($venda->itens as $i){
                 if($i->produto_id == $produto_id){
                     return true;
@@ -2012,6 +2019,9 @@ class RelatorioController extends Controller
         }else{
 
             $venda = Venda::withoutDeleted()->find($comissao->venda_id);
+            if($venda == null){
+                return false;
+            }
             foreach($venda->itens as $i){
                 if($i->produto_id == $produto_id){
                     return true;
