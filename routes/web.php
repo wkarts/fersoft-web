@@ -380,6 +380,12 @@ Route::group(['prefix' => '/super-admin'], function(){
     Route::get('/alertas', 'SuperAdminController@alertas');
     Route::get('/altera-status/{id}', 'SuperAdminController@alteraStatus');
     Route::get('/altera-todos', 'SuperAdminController@alteraTodos');
+
+    // A autorização SUPER é validada no controller, sem tocar no estado da sessão de acesso.
+    Route::get('/database-health', 'SuperAdminDatabaseHealthController@index')
+        ->middleware('throttle:30,1')
+        ->name('super-admin.database-health');
+
 });
 
 Route::group(['prefix' => '/etiquetas', 'middleware' => 'verificaEmpresa'], function(){
