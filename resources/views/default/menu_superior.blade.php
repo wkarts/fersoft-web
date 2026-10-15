@@ -1920,7 +1920,10 @@
                     @endif
 
                     <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-                        @forelse($appVersionHistoryGrouped as $major => $items)
+                        {{-- Não usar @forelse aqui: a compilação das views legadas
+                             não fechava o foreach gerado, gerando ParseError no PHP. --}}
+                        @if(count($appVersionHistoryGrouped ?? []) > 0)
+                            @foreach($appVersionHistoryGrouped as $major => $items)
                             @php($majorId = 'top-major-'.$major)
                             <div class="card">
                                 <div class="card-header" id="head-{{ $majorId }}">
@@ -1953,9 +1956,10 @@
                                     </div>
                                 </div>
                             </div>
-                        @empty
+                            @endforeach
+                        @else
                             <div class="text-center text-muted">Nenhuma versão interna registrada.</div>
-                        @endforelse
+                        @endif
                     </div>
                 </div>
                 <div class="modal-footer">
