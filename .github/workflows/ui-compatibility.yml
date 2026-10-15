@@ -1,0 +1,142 @@
+name: UI Visual - 2 Compatibilidade
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  full-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: fersoft_test
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: fersoft_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      TEST_DB_CONNECTION: mysql
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_DATABASE: fersoft_test
+      TEST_DB_USERNAME: root
+      TEST_DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Auditar escopo de mudanças com main
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          bash scripts/ui/compat-impact.sh
+      - name: Validar regras permanentes de versão beta
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/ui/beta-version.sh
+          bash -n scripts/ui/build-vite.sh
+          python -m py_compile scripts/ui/build-preview.py
+          test "$(bash scripts/ui/beta-version.sh v5.0.225 1)" = "v5.0.226-beta.1"
+          test "$(bash scripts/ui/beta-version.sh v5.0.225 16)" = "v5.0.226-beta.16"
+          test "$(bash scripts/ui/beta-version.sh v0.0.0 1)" = "v0.0.1-beta.1"
+          test "$(bash scripts/ui/beta-version.sh v3.7.9 100)" = "v3.7.10-beta.100"
+          if bash scripts/ui/beta-version.sh v5.0.225-beta.4 1 >/dev/null 2>&1; then
+            echo "::error::Uma beta foi aceita incorretamente como base estável."
+            exit 1
+          fi
+      - name: Validar Composer e PHP
+        run: |
+          set -euo pipefail
+          composer validate --no-check-publish --strict
+          php -l config/ui_theme.php
+          php -l scripts/auditar-tema.php
+          php -l scripts/auditar-assets.php
+      - name: Inicializar ambiente isolado de teste
+        run: bash scripts/ci/bootstrap-env.sh
+      - name: Instalar dependências Laravel
+        env:
+          COMPOSER_PROCESS_TIMEOUT: '0'
+          COMPOSER_NO_AUDIT: '1'
+        run: composer install --prefer-dist --no-interaction --no-progress
+      - name: Compilar todas as views e validar configurações
+        run: |
+          set -euo pipefail
+          php artisan config:clear
+          php artisan view:clear
+          php artisan view:cache
+          mkdir -p storage/app/ui-compat
+          if ! php artisan route:list > storage/app/ui-compat/route-list.txt 2>&1; then
+            echo "route:list falhou; verificando se é defeito legado idêntico ao da main."
+            tail -n 50 storage/app/ui-compat/route-list.txt
+            if grep -Fq 'Class "App\Http\Controllers\Api\PedidoController" does not exist' storage/app/ui-compat/route-list.txt \
+              && git diff --quiet origin/main HEAD -- routes/api.php routes/web.php \
+              && ! git cat-file -e "origin/main:app/Http/Controllers/Api/PedidoController.php" 2>/dev/null; then
+              echo "::warning::Falha legada de route:list também existente na main; não ocultar em report, mas não bloquear pré-release visual por defeito preexistente."
+              echo "- Baseline de rotas: falha histórica do PedidoController em main (precisa de PR funcional separada)." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::Alteração de rotas fora do baseline da main; bloqueando pré-release."
+              exit 1
+            fi
+          fi
+      - name: Executar suíte de testes completa
+        run: ./vendor/bin/phpunit
+      - name: Compilar assets Vite
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+        run: |
+          bash -n scripts/ui/build-vite.sh
+          bash scripts/ui/build-vite.sh
+      - name: Auditoria não destrutiva de todas as views e assets
+        run: |
+          set -euo pipefail
+          mkdir -p storage/app/ui-compat
+          php scripts/auditar-tema.php --out=storage/app/ui-compat/views.json | tee storage/app/ui-compat/views.txt
+          php scripts/auditar-assets.php --out=storage/app/ui-compat/assets.json | tee storage/app/ui-compat/assets.txt
+      - name: Guardas de coexistência e histórico
+        run: |
+          set -euo pipefail
+          grep -q "APP_UI_THEME=classic" .env.example
+          grep -q "PAG_LOGIN=access" .env.example
+          grep -q "default/menu_" resources/views/default/layout.blade.php
+          grep -q 'ui-theme-refined' resources/views/default/menu_lateral.blade.php
+          grep -q 'ui-theme-refined' resources/views/default/menu_superior.blade.php
+      - name: Exportar relatório de compatibilidade
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-compat-${{ github.run_id }}
+          path: |
+            storage/app/ui-compat/
+            ui-impact-report.md
+          if-no-files-found: warn
+          retention-days: 30

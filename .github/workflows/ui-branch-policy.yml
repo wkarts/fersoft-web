@@ -1,0 +1,63 @@
+name: UI Visual - Politica de branches
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      UI_FLOW_PHASE: ${{ vars.UI_FLOW_PHASE }}
+      BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+      SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+      SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+      PR_DRAFT: ${{ github.event.pull_request.draft }}
+    steps:
+      - name: Conferir fase e origem do PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          phase="$UI_FLOW_PHASE"
+          [ -n "$phase" ] || phase="transition"
+          case "$phase" in
+            transition|standard) ;;
+            *)
+              echo "::error::UI_FLOW_PHASE invalido. Use transition ou standard."
+              exit 1
+              ;;
+          esac
+          {
+            echo "## Politica de branches (permanente)"
+            echo "- Fase: $phase"
+            echo "- Destino: $BASE_BRANCH"
+            echo "- Origem: $SOURCE_BRANCH"
+            echo "- Canal de pre-release: develop"
+            echo "- Canal de release estavel: main"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "Execucao informativa sem PR."
+            exit 0
+          fi
+          if [ "$phase" = "transition" ]; then
+            if [ "$BASE_BRANCH" = "main" ] && [ "$SOURCE_BRANCH" = "develop" ]; then
+              if [ "$PR_DRAFT" = "true" ]; then
+                echo "PR draft develop -> main mantida apenas como acompanhamento; promocao continua impossivel."
+                exit 0
+              fi
+              echo "::error::Promocao develop -> main bloqueada ate a aprovacao da nova UI."
+              exit 1
+            fi
+            echo "PR compativel com periodo de transicao."
+            exit 0
+          fi
+          if [ "$BASE_BRANCH" = "main" ]; then
+            if [ "$SOURCE_BRANCH" != "develop" ] || [ "$SOURCE_REPOSITORY" != "$GITHUB_REPOSITORY" ]; then
+              echo "::error::Na fase standard, somente PR de develop do mesmo repositorio pode entrar na main."
+              exit 1
+            fi
+          fi
+          echo "PR compativel com fluxo definitivo."

@@ -3,6 +3,12 @@ name: Release - Automático e Manual
 on:
   push:
     branches: [main]
+    # Alterações somente de infraestrutura visual/CI não representam uma nova versão do ERP.
+    # Se houver qualquer mudança funcional fora dos caminhos abaixo, a release estável continua.
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'docs/ui/**'
+      - 'scripts/ui/**'
   workflow_dispatch:
     inputs:
       version:
