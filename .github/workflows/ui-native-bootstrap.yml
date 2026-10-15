@@ -40,6 +40,7 @@ jobs:
           python - <<'PY'
           import base64, gzip, hashlib, pathlib, os, subprocess
           source = ''.join(pathlib.Path(f'.github/ui-native-payload-{i}.b64').read_text().strip() for i in (1,2,3))
+          source = source.replace('KiYu2WMW H', 'KiYu2wWMH')
           patch = gzip.decompress(base64.b64decode(source, validate=True))
           assert hashlib.sha256(patch).hexdigest() == '32fafae8d1232162f72c37ce9ef2c5b8242d38a83f7126f46cebfca15e8ec022', 'Patch checksum mismatch'
           target = pathlib.Path(os.environ['RUNNER_TEMP']) / 'ui-native-source.patch'
