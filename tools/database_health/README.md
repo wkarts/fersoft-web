@@ -28,13 +28,13 @@ python tools/database_health/db_health.py clean-copy banco.zip banco-saneado.zip
   --config tools/database_health/fersoft-health.json
 ```
 
-O modo padrão somente aplica redactions declaradas no perfil. A cópia é escrita em outro caminho e o programa se recusa a sobrescrever arquivos existentes sem `--overwrite`. Para usar uma regra de exclusão declarada no JSON é necessário passar `--apply-deletes`. Sem esse sinalizador o relatório apenas conta as linhas candidatas.
+O modo padrão somente aplica redactions declaradas no perfil. A cópia é escrita em outro caminho e o programa se recusa a sobrescrever arquivos existentes sem `--overwrite`. O perfil Fersoft identifica como candidatos os registros `logs` com `acao=exception` e `modelo=Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException`; a regra só apaga essas linhas quando `--apply-deletes` é informado. Sem esse sinalizador o relatório apenas conta as linhas candidatas.
 
 A limpeza padrão troca códigos de QR de pareamento nos caminhos descritos no JSON, remove assinaturas/data URLs de imagem e Base64 reconhecível nas colunas permitidas e recodifica somente os `INSERT`s dessas tabelas. O restante do dump é copiado sem interpretação nem extração de caminhos do ZIP. Os relatórios JSON e Markdown ficam ao lado do arquivo de saída, por padrão.
 
-## Regras de exclusão opcionais
+## Regras de exclusão
 
-O perfil começa sem exclusões automáticas. Uma regra precisa ter nome, tabela e todas as condições verdadeiras. Exemplo para uma política revisada por um operador:
+O perfil Fersoft contém uma regra específica para o ruído histórico de HTTP 404 observado neste dump. Nenhuma outra retenção é presumida. Novas regras devem ser adicionadas somente após revisar o relatório. A forma de uma regra é:
 
 ```json
 "delete_rules": [
@@ -49,7 +49,7 @@ O perfil começa sem exclusões automáticas. Uma regra precisa ter nome, tabela
 ]
 ```
 
-Esse exemplo apenas ilustra a sintaxe; não faz parte do perfil padrão nem estabelece retenção. Antes de usar `--apply-deletes`, valide o volume de candidatos no relatório e restaure a saída em banco isolado.
+Antes de usar `--apply-deletes`, valide o volume de candidatos no relatório e restaure a saída em banco isolado. A cópia de saída continua sendo um dump offline e não altera banco ativo.
 
 Operadores disponíveis: `equals`, `contains`, `in` e `is_null`. Várias condições na mesma regra são combinadas com AND. Regras diferentes são combinadas com OR.
 

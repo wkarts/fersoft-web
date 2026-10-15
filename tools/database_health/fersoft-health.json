@@ -39,5 +39,18 @@
     "base64_min_chars": 512,
     "replacement": "[REMOVIDO_APOS_PERSISTENCIA]"
   },
-  "delete_rules": []
+  "delete_rules": [
+    {
+      "name": "ruido_not_found_http_404",
+      "table": "logs",
+      "where": [
+        {"column": "acao", "op": "equals", "value": "exception"},
+        {
+          "column": "modelo",
+          "op": "equals",
+          "value": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException"
+        }
+      ]
+    }
+  ]
 }
