@@ -147,7 +147,7 @@
 <!-- end::Head -->
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config('ui_theme.active', false))ui-theme-refined @if(($tema ?? 1) == 2)ui-theme-refined--dark@endif @endif">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config('ui_theme.active', false))ui-theme-refined @if(($uiResolvedTheme['dark'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif">
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
@@ -368,6 +368,10 @@
             </div>
 
             <div id="kt_content" class="content d-flex flex-column flex-column-fluid">
+                {{-- Shell adicional apenas no visual refinado. Menus, ações e modais legados permanecem operacionais. --}}
+                @if(config('ui_theme.active', false))
+                    @include('themes.refined.workbench')
+                @endif
                 <div style="list-style-type: none;" id="kt_subheader" class="subheader py-2 py-lg-4 subheader-solid w-100">
 
                     <div class="row w-75 ml-2">
