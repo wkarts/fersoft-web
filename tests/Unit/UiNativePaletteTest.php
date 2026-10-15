@@ -46,10 +46,65 @@ final class UiNativePaletteTest extends TestCase
         self::assertStringNotContainsString('id="kt_header_menu"', $native);
     }
 
-    public function test_native_adapter_uses_current_classic_sources_without_mutating_them(): void
+    public function test_native_adapter_preserves_classic_sources_except_approved_blade_fixes(): void
     {
         $root = dirname(__DIR__, 2);
-        $manifest = json_decode(file_get_contents($root . '/tests/fixtures/ui/native-contract.json'), true, 512, JSON_THROW_ON_ERROR);
-        foreach ($manifest['source_sha256'] as $file => $hash) self::assertSame($hash, hash_file('sha256', $root . '/' . $file), $file);
+        $manifest = json_decode(
+            file_get_contents($root . '/tests/fixtures/ui/native-contract.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        foreach ($manifest['source_sha256'] as $file => $originalHash) {
+            $content = file_get_contents($root . '/' . $file);
+
+            if (str_ends_with($file, 'menu_lateral.blade.php')
+                || str_ends_with($file, 'menu_superior.blade.php')) {
+                // Reverte SOMENTE o ajuste de classes que corrige diretivas Blade
+                // malformadas; qualquer mudança adicional no layout classico falha.
+                $historical = str_ends_with($file, 'menu_lateral.blade.php')
+                    ? '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact@endif @endif">'
+                    : '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact@endif @endif>';
+
+                $count = 0;
+                $content = preg_replace_callback(
+                    '/^<body id="kt_body" @class\\(\\[[\\s\\S]*?^\\s*\\]\\)>/m',
+                    static function () use ($historical) { return $historical; },
+                    $content,
+                    1,
+                    $count
+                );
+                self::assertSame(1, $count, 'Mudanca nao autorizada no body classico: ' . $file);
+            }
+
+            if (str_ends_with($file, 'menu_superior.blade.php')) {
+                // O unico outro ajuste aprovado e o fechamento do bloco de
+                // historico de releases (causa do ParseError no PHP compilado).
+                $approved = [
+                    "                        {{-- Não usar @forelse aqui: a compilação das views legadas\n"
+                    . "                             não fechava o foreach gerado, gerando ParseError no PHP. --}}\n"
+                    . "                        @if(count(\$appVersionHistoryGrouped ?? []) > 0)\n"
+                    . "                            @foreach(\$appVersionHistoryGrouped as \$major => \$items)"
+                        => "                        @forelse(\$appVersionHistoryGrouped as \$major => \$items)",
+                    "                            @php\n                                \$majorId = 'top-major-' . \$major;\n                            @endphp"
+                        => "                            @php(\$majorId = 'top-major-'.\$major)",
+                    "                            @endforeach\n                        @else\n"
+                    . "                            <div class=\"text-center text-muted\">Nenhuma versão interna registrada.</div>\n"
+                    . "                        @endif"
+                        => "                        @empty\n"
+                        . "                            <div class=\"text-center text-muted\">Nenhuma versão interna registrada.</div>\n"
+                        . "                        @endforelse",
+                ];
+
+                foreach ($approved as $current => $historical) {
+                    self::assertSame(1, substr_count($content, $current), 'Bloco historico divergente: ' . $current);
+                    $content = str_replace($current, $historical, $content);
+                }
+            }
+
+            self::assertSame($originalHash, hash('sha256', $content),
+                'Alteracao inesperada em codigo historico: ' . $file);
+        }
     }
 }
