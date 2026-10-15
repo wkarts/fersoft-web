@@ -238,3 +238,51 @@ body.ui-native-shell .ui-mobile-brand {display:none;}
  body.ui-native-shell .ui-actions > .topbar {width:100%;justify-content:flex-end;gap:8px;}
  body.ui-native-shell .ui-session {gap:5px 10px;}
 }
+
+/* Proposal alignment: keep the canvas light, use the approved dark sidebar,
+   and restore the denser dashboard/header hierarchy without changing actions. */
+body.ui-native-shell .ui-masthead { gap:12px; padding:8px 20px; }
+body.ui-native-shell .ui-actions > .container-fluid { min-width:0; }
+body.ui-native-shell .ui-actions #ui-actions-menu-wrapper,
+body.ui-native-shell .ui-actions #ui-actions-menu { width:100%; min-width:0; }
+body.ui-native-shell .ui-actions .menu-nav { width:100%; align-items:center; flex-wrap:wrap; }
+body.ui-native-shell .ui-actions .ui-header-company { order:1; }
+body.ui-native-shell .ui-actions .ui-header-environment { order:2; }
+body.ui-native-shell .ui-actions .ui-header-unit { order:3; }
+body.ui-native-shell .ui-actions .ui-header-theme { order:4; margin-left:auto; }
+body.ui-native-shell .ui-actions .ui-header-whatsapp { order:5; }
+body.ui-native-shell .ui-actions .ui-header-company > a:not(.info-plan) {
+    display:inline-flex; align-items:center; min-height:36px; padding:8px 12px;
+    border:1px solid var(--ui-border); border-radius:9px;
+    background:var(--ui-surface-alt)!important; color:var(--ui-ink)!important;
+    font-weight:600;
+}
+body.ui-native-shell .ui-actions .ui-header-company > a.info-plan {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; min-width:34px; height:34px; border-radius:9px;
+}
+body.ui-native-shell .ui-actions .ui-header-environment > a {
+    display:inline-flex; align-items:center; min-height:36px; padding:8px 12px;
+    border:1px solid var(--ui-warning-border); border-radius:9px;
+    background:var(--ui-warning-bg)!important; color:var(--ui-warning-text)!important;
+    font-weight:600;
+}
+body.ui-native-shell .ui-actions .ui-header-theme > a,
+body.ui-native-shell .ui-actions .ui-header-whatsapp > a,
+body.ui-native-shell .ui-actions .ui-header-whatsapp > button {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height:36px; padding:8px 12px; border:1px solid var(--ui-border);
+    border-radius:9px; background:var(--ui-surface); color:var(--ui-ink)!important;
+    font-weight:600; white-space:nowrap;
+}
+body.ui-native-shell .ui-actions .ui-header-unit .form-control { min-width:190px; max-width:250px; height:36px; }
+body.ui-native-shell .ui-actions .ui-header-unit .btn { min-width:36px; min-height:36px; border-radius:8px; }
+body.ui-native-shell .ui-actions > .topbar { align-items:center; gap:8px; }
+body.ui-native-shell .ui-user-avatar {
+    display:inline-flex; flex:0 0 34px; align-items:center; justify-content:center;
+    width:34px; height:34px; margin-right:3px; border-radius:50%;
+    background:var(--ui-accent-soft); color:var(--ui-accent);
+}
+body.ui-native-shell .ui-user-avatar i { color:inherit!important; font-size:16px; }
+body.ui-native-shell .ui-masthead-tools { gap:6px; }
+body.ui-native-shell .ui-chart-empty { height:170px; margin:16px 18px; }

@@ -637,7 +637,7 @@
                                     @endif
 
                                     @if(!session('tipo_contador'))
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-company" data-menu-toggle="click" aria-haspopup="true">
 
 
                                             <a class="label label-xl label-inline label-primary info-plan mr-1">
@@ -649,7 +649,7 @@
                                             </a>
                                         </li>
 
-                                        <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-environment" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-info @else label-info @endif">
                                                 Ambiente: {{session('user_logged')['ambiente']}}
                                             </a>
@@ -684,12 +684,12 @@
 										</li>
 										@endif -->
                                     @if(!session('tipo_contador'))
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline @if($tema == 1) label-warning @else label-warning @endif">
-                                                Tema
+                                                <i class="la la-palette mr-1" aria-hidden="true"></i> Tema
                                             </a>
                                         </li>
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-whatsapp" data-menu-toggle="click" aria-haspopup="true">
                                             {!! __view_connect_api_whatsapp_modal_button() !!}
                                         </li>
                                     @endif
@@ -713,7 +713,7 @@
                                     @endif
 
                                     @if(empresaComFilial() && sizeof(getLocaisUsarioLogado()) > 1)
-                                        <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
+                                        <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2 ui-header-unit" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
                                             <div class="d-flex align-items-center">
                                                 <div class="label label-xl label-inline @if($tema == 1) label-light-primary @else label-primary @endif" style="width: 100%;">
                                                     {!! __view_locais_select_menu_superior() !!}
@@ -967,6 +967,7 @@
 
                     <div class="topbar-item user-tour">
                         <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                            <span class="ui-user-avatar" aria-hidden="true"><i class="la la-user"></i></span>
                             <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
                             <span style="margin-left: 3px; width: 100" class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
 
@@ -996,7 +997,9 @@
             </div>
             <div class="ui-masthead-tools">
                 <button type="button" class="ui-icon-button" data-ui-command-open aria-label="Pesquisar módulos (Ctrl+K)" aria-haspopup="dialog" aria-controls="ui-command-palette"><i class="la la-search" aria-hidden="true"></i></button>
+                @if(session('tipo_contador'))
                 <a href="{{ route('ui.themes.index') }}" class="ui-icon-button" aria-label="Escolher tema"><i class="la la-palette" aria-hidden="true"></i></a>
+                @endif
             </div>
         </header>
                 <div id="ui-session" class="ui-session">

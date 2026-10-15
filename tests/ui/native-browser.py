@@ -28,10 +28,18 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('h1').first.inner_text() == 'Dashboard Analítico Executivo'
     assert '6.479.876,12' in page.locator('.ui-metrics').inner_text()
     assert page.locator('.ui-chart-empty').count() == 2
+    assert page.locator('.ui-chart-empty').first.evaluate('(e)=>e.getBoundingClientRect().height <= 180'), 'Empty charts exceed the proposal density.'
     assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu was exposed.'
     for selector in ['a[href="/login/logoff"]', '#set-location-top', '#btn-whatsapp-global', '#dataHoraClock']:
         assert page.locator(selector).count() == 1, 'Missing/duplicated operational control: ' + selector
     assert page.locator('.ui-finance-link').count() == 4
+    assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
+    assert page.locator('.ui-masthead-tools [aria-label="Escolher tema"]').count() == 0, 'A duplicate theme shortcut is visible.'
+    if theme == 'fer-slate':
+        sidebar_color = page.locator('#ui-sidebar').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+        canvas_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+        assert sidebar_color == 'rgb(28, 32, 48)', 'The slate variant must use the approved dark sidebar.'
+        assert canvas_color == 'rgb(245, 247, 251)', 'The slate variant must keep the workspace light.'
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
     assert page.locator('body').get_attribute('data-ui-layout') == layout
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme == 'fer-night')
@@ -50,6 +58,10 @@ def check_page(page, theme, layout, density, width):
         link.click()
         assert link.get_attribute('aria-expanded') == 'false'
         if layout == 'lateral':
+            unit = page.locator('.ui-header-unit')
+            theme_action = page.locator('.ui-header-theme')
+            if unit.count() and theme_action.count():
+                assert unit.bounding_box()['x'] < theme_action.bounding_box()['x'], 'Unit selection must precede theme actions in the header.'
             page.locator('[data-ui-collapse]').click()
             assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
             page.locator('[data-ui-collapse]').click()

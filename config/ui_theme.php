@@ -8,7 +8,7 @@ $active = $mode === 'refined';
 return [
     'name' => $active ? 'refined' : 'classic',
     'active' => $active,
-    'default_preset' => 'fer-light',
+    'default_preset' => 'fer-slate',
     'support_url' => env('HUB_BASE_URL', ''),
     'support_token' => env('HUB_TOKEN', ''),
     'support_phone' => env('CONTATO_SUPORTE', ''),

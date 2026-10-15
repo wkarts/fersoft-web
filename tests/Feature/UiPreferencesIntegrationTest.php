@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\UiThemeController;
 use App\Models\UiThemePreset;
 use App\Services\UiThemeService;
+use App\Support\UiThemePalette;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,6 +83,21 @@ final class UiPreferencesIntegrationTest extends TestCase
         }
     }
 
+    public function test_unselected_theme_matches_light_workspace_and_dark_sidebar_reference(): void
+    {
+        $resolved = $this->resolved(1, 11);
+        $tokens = UiThemePalette::tokens($resolved);
+
+        $this->assertSame('fer-slate', $resolved['slug']);
+        $this->assertFalse($resolved['dark']);
+        $this->assertSame('#F5F7FB', $tokens['--ui-bg']);
+        $this->assertSame('#1C2030', $tokens['--ui-aside']);
+        $this->assertGreaterThanOrEqual(
+            4.5,
+            UiThemePalette::contrast($tokens['--ui-aside'], $tokens['--ui-sidebar-ink'])
+        );
+    }
+
     public function test_personal_preferences_are_scoped_to_company_and_user(): void
     {
         $this->select(1, 11, 'fer-night', 'superior');
@@ -118,7 +134,7 @@ final class UiPreferencesIntegrationTest extends TestCase
         $this->select(1, 11, $preset->slug);
         $this->assertSame($preset->slug, $this->resolved(1, 11)['slug']);
         $this->forbidden(fn () => $this->select(2, 11, $preset->slug));
-        $this->assertSame('fer-light', $this->resolved(2, 12)['slug']);
+        $this->assertSame('fer-slate', $this->resolved(2, 12)['slug']);
     }
 
     public function test_company_default_and_reset_preserve_other_personal_settings(): void
@@ -142,7 +158,7 @@ final class UiPreferencesIntegrationTest extends TestCase
         $this->select(1, 11, $preset->slug);
         $request = $this->requestFor(1, 1, true);
         app(UiThemeController::class)->archive($request, $preset);
-        $this->assertSame('fer-light', $this->resolved(1, 11)['slug']);
+        $this->assertSame('fer-slate', $this->resolved(1, 11)['slug']);
         $this->assertSame($preset->slug, DB::table('ui_theme_user_preferences')->where('user_id', 11)->value('theme_slug'));
     }
 
