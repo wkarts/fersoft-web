@@ -253,7 +253,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif @endif">
 
     <input type="hidden" id="filial" value="{{ session('user_logged')['filial_id'] }}">
 

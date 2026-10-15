@@ -48,6 +48,14 @@ $clock = substr($legacyLayout, $clockStart, $clockEnd + strlen('</script>') - $c
 $clock = str_replace('{{ Carbon::now()->getOffset() / 60 }}', (string) (\Carbon\Carbon::now()->getOffset() / 60), $clock);
 $target = storage_path('app/ui-browser');
 if (!is_dir($target)) mkdir($target, 0775, true);
+// Prove every render exists; the legacy exception handler can exit CLI with zero.
+register_shutdown_function(static function () use ($target): void {
+    if (count(glob($target . '/fer-*.html')) !== 12) {
+        fwrite(STDERR, 'Rendering incomplete: expected 12 actual Blade fixtures.' . PHP_EOL);
+        exit(1);
+    }
+});
+file_put_contents($target . '/native-compiled.php', $app['blade.compiler']->compileString(file_get_contents(resource_path('views/themes/refined/layout.blade.php'))));
 $palettes=config('ui_theme.presets');
 foreach ($palettes as $slug=>$definition) {
     foreach (['lateral','superior'] as $mode) {

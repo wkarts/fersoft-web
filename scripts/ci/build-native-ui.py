@@ -7,6 +7,12 @@ def write(p,s):
  f=ROOT/p;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(s)
 def replace_once(s,a,b):
  assert s.count(a)==1, (a[:90],s.count(a));return s.replace(a,b,1)
+# Blade directives need a word boundary before @endif. Correct only UI opt-in
+# tokens introduced by the previous theme work, not the classic business markup.
+for p in ['resources/views/default/menu_lateral.blade.php', 'resources/views/default/menu_superior.blade.php', 'resources/views/themes/refined/studio/index.blade.php']:
+ s=read(p)
+ fixed=s.replace('ui-theme-refined--dark@endif', 'ui-theme-refined--dark @endif').replace('ui-density-compact@endif', 'ui-density-compact @endif').replace('ui-studio__theme--selected@endif', 'ui-studio__theme--selected @endif')
+ if fixed != s: write(p, fixed)
 legacy=read('resources/views/default/menu_lateral.blade.php')
 # Preserve all business controls, php blocks, event handlers, alerts and assets.
 head=legacy[legacy.index("    @include('layouts.installable')"):legacy.index('</head>')]
@@ -67,7 +73,7 @@ __HEAD__
     $uiMenuMode = in_array($uiPreferredMenu, ['lateral', 'superior'], true) ? $uiPreferredMenu : (($tipoMenu ?? 'lateral') === 'superior' ? 'superior' : 'lateral');
     $uiIdentity = (string) (session('user_logged.empresa', 0)) . ':' . (string) session('user_logged.id', 0);
 @endphp
-<body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif"
+<body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif"
       data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}">
 <a class="ui-skip" href="#kt_content">Ir para o conteúdo</a>
 <div class="ui-app">
@@ -141,7 +147,9 @@ write('tests/fixtures/ui/native-contract.json',json.dumps(manifest,indent=2)+'\n
 for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
  p='resources/views/frontBox/'+name+'.blade.php'
  s=read(p)
- if 'ui-pos-refined' in s: continue
+ if 'ui-pos-refined' in s:
+  write(p, s.replace('ui-theme-refined--dark@endif', 'ui-theme-refined--dark @endif').replace('ui-density-compact@endif', 'ui-density-compact @endif'))
+  continue
  before='</head>'
  extra="""@if(config('ui_theme.active', false))
     @php $uiResolvedTheme = app(\\App\\Services\\UiThemeService::class)->resolve(($tema ?? 1) == 2); @endphp
@@ -150,6 +158,6 @@ for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
 @endif
 </head>"""
  s=replace_once(s, before, extra)
- s=replace_once(s, 'page-loading pdv-minimal"', "page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif\"")
+ s=replace_once(s, 'page-loading pdv-minimal"', "page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif @endif\"")
  write(p,s)
 print('Generated native shell',len(layout),'and widgets compatibility',len(bundle))

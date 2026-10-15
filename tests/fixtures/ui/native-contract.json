@@ -1,8 +1,8 @@
 {
   "baseline_commit": "aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6",
   "source_sha256": {
-    "resources/views/default/menu_lateral.blade.php": "60b431fb8b9b4c98bde0d2649f275173d04a11b9797c04d9f2ca7acec3168129",
-    "resources/views/default/menu_superior.blade.php": "37596e46631e5ef1cb27a68c2a8445170dbbe40158c1d4a61c929db5d709d36a",
+    "resources/views/default/menu_lateral.blade.php": "736ed30bc060a6d6e809a60b8e231cf97c415a85db61b6e34214df2c03405255",
+    "resources/views/default/menu_superior.blade.php": "9c0ade528ba96e745b769d24e1de00c83bcdac809f139c484258aafd5ddc94cf",
     "public/metronic/js/scripts.bundle.js": "097d134d7c603c4f36408e1fc2fdc5a1094059d1f721f5f3041b731eeab6d0bb"
   },
   "legacy_contracts_preserved": [

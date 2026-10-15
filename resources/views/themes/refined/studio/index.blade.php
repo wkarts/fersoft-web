@@ -53,7 +53,7 @@
                     $selected = $uiCurrentSlug === (string) $slug;
                     $themeName = (string) ($definition['name'] ?? $slug);
                 @endphp
-                <article class="ui-studio__theme @if($selected)ui-studio__theme--selected@endif">
+                <article class="ui-studio__theme @if($selected)ui-studio__theme--selected @endif">
                     <div class="ui-studio__theme-preview"
                          style="--sample-sidebar: {{ $definition['sidebar'] ?? '#fff' }};
                                 --sample-page: {{ $definition['background'] ?? '#f5f7fb' }};

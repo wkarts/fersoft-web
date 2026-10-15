@@ -101,7 +101,7 @@
     $uiMenuMode = in_array($uiPreferredMenu, ['lateral', 'superior'], true) ? $uiPreferredMenu : (($tipoMenu ?? 'lateral') === 'superior' ? 'superior' : 'lateral');
     $uiIdentity = (string) (session('user_logged.empresa', 0)) . ':' . (string) session('user_logged.id', 0);
 @endphp
-<body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif"
+<body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif"
       data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}">
 <a class="ui-skip" href="#kt_content">Ir para o conteúdo</a>
 <div class="ui-app">
