@@ -40,16 +40,7 @@
 @php
     $uiResolvedTheme = $uiResolvedTheme
         ?? app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
-    $uiCssTokens = [
-        '--ui-accent' => $uiResolvedTheme['accent'] ?? '#168F81',
-        '--ui-accent-hover' => $uiResolvedTheme['accent_hover'] ?? '#11786D',
-        '--ui-bg' => $uiResolvedTheme['background'] ?? '#F5F7FB',
-        '--ui-surface' => $uiResolvedTheme['surface'] ?? '#FFFFFF',
-        '--ui-aside' => $uiResolvedTheme['sidebar'] ?? '#FFFFFF',
-        '--ui-ink' => $uiResolvedTheme['text'] ?? '#1C2A40',
-        '--ui-border' => $uiResolvedTheme['border'] ?? '#DEE5EF',
-        '--ui-sidebar-ink' => $uiResolvedTheme['sidebar_text'] ?? '#24334E',
-    ];
+    $uiCssTokens = \App\Support\UiThemePalette::tokens($uiResolvedTheme);
 @endphp
 <link rel="stylesheet" href="{{ asset('css/theme-refined-shell.css') }}?v={{ filemtime(public_path('css/theme-refined-shell.css')) }}">
 <style>

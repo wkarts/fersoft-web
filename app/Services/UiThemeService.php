@@ -173,6 +173,7 @@ class UiThemeService
         $slug = isset($themes[$settings->default_theme_slug ?? ''])
             ? $settings->default_theme_slug : $fallbackSlug;
         $colorMode = 'follow';
+        $menuMode = 'follow';
         $density = null; // Sem preferência pessoal, respeitar densidade do tema.
 
         if ($companyId > 0 && $userId > 0 && $this->databaseReady()) {
@@ -188,6 +189,7 @@ class UiThemeService
                     }
                     $colorMode = (string) $preference->color_mode;
                     $density = (string) $preference->density;
+                    $menuMode = (string) ($preference->menu_mode ?? 'follow');
                 }
             } catch (\Throwable $e) {
                 // Falha opcional da preferência = tema refinado padrão.
@@ -214,6 +216,7 @@ class UiThemeService
             'active' => true,
             'dark' => $dark,
             'color_mode' => $colorMode,
+            'menu_mode' => in_array($menuMode, ['lateral', 'superior'], true) ? $menuMode : 'follow',
             'density' => in_array($density, ['compact', 'comfortable'], true)
                 ? $density
                 : (in_array($definition['density'] ?? '', ['compact', 'comfortable'], true)

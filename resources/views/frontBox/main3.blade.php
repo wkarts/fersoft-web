@@ -294,6 +294,11 @@
         }
     }
 </style>
+@if(config('ui_theme.active', false))
+    @php $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2); @endphp
+    @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
+    <link rel="stylesheet" href="{{ asset('css/ui-pos.css') }}?v={{ filemtime(public_path('css/ui-pos.css')) }}">
+@endif
 </head>
 
 
@@ -301,7 +306,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif">
 
 	<input type="hidden" id="categorias" value="{{json_encode($categorias)}}" name="">
 	<input type="hidden" id="clientes" value="{{json_encode($clientes)}}" name="">

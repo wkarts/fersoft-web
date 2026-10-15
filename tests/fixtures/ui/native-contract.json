@@ -1,0 +1,18 @@
+{
+  "baseline_commit": "aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6",
+  "source_sha256": {
+    "resources/views/default/menu_lateral.blade.php": "60b431fb8b9b4c98bde0d2649f275173d04a11b9797c04d9f2ca7acec3168129",
+    "resources/views/default/menu_superior.blade.php": "37596e46631e5ef1cb27a68c2a8445170dbbe40158c1d4a61c929db5d709d36a",
+    "public/metronic/js/scripts.bundle.js": "097d134d7c603c4f36408e1fc2fdc5a1094059d1f721f5f3041b731eeab6d0bb"
+  },
+  "legacy_contracts_preserved": [
+    "action links",
+    "conditional modules",
+    "user/company permissions",
+    "alert modals",
+    "all page-specific scripts",
+    "dynamic grids",
+    "session widgets"
+  ],
+  "native_layout": "themes.refined.layout"
+}

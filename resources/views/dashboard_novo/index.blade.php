@@ -1,6 +1,9 @@
 @extends('default.layout')
 
 @section('content')
+@if(config('ui_theme.active', false))
+    @include('themes.refined.dashboard')
+@else
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
@@ -465,4 +468,5 @@
             }
         }).render();
     </script>
+@endif
 @endsection

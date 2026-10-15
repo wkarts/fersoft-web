@@ -7,6 +7,7 @@ use App\Models\UiThemePreset;
 use App\Services\UiThemeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -77,6 +78,7 @@ class UiThemeController extends Controller
             'theme_slug' => ['required', 'string', 'max:80'],
             'color_mode' => ['required', Rule::in(['follow', 'light', 'dark'])],
             'density' => ['required', Rule::in(['comfortable', 'compact'])],
+            'menu_mode' => ['sometimes', Rule::in(['follow', 'lateral', 'superior'])],
         ]);
 
         $context = $this->context();
@@ -84,15 +86,24 @@ class UiThemeController extends Controller
         $super = (bool) ($context['super'] ?? false);
         abort_unless($this->themes->canSelect($company, $data['theme_slug'], $super), 403);
 
-        $now = now();
-        DB::table('ui_theme_user_preferences')->updateOrInsert(
-            ['company_id' => $company, 'user_id' => (int) $context['id']],
-            [
-                'theme_slug' => $data['theme_slug'],
-                'color_mode' => $data['color_mode'],
-                'density' => $data['density'],
-                'updated_at' => $now,
-            ]
+        $values = [
+            'theme_slug' => $data['theme_slug'],
+            'color_mode' => $data['color_mode'],
+            'density' => $data['density'],
+            'updated_at' => now(),
+            'created_at' => now(),
+        ];
+        if (Schema::hasColumn('ui_theme_user_preferences', 'menu_mode')) {
+            $values['menu_mode'] = $data['menu_mode'] ?? 'follow';
+        } elseif (($data['menu_mode'] ?? 'follow') !== 'follow') {
+            throw ValidationException::withMessages(['menu_mode' => 'O atualizador ainda não concluiu a instalação das preferências de navegação.']);
+        }
+        // Native upsert respects the existing unique company/user key under concurrent requests.
+        $updatedColumns = array_values(array_diff(array_keys($values), ['created_at']));
+        DB::table('ui_theme_user_preferences')->upsert(
+            [array_merge(['company_id' => $company, 'user_id' => (int) $context['id']], $values)],
+            ['company_id', 'user_id'],
+            $updatedColumns
         );
 
         return redirect()->route('ui.themes.index')
@@ -149,6 +160,15 @@ class UiThemeController extends Controller
         return ($light + .05) / ($dark + .05);
     }
 
+    public function reset(Request $request)
+    {
+        $this->requireTables();
+        $context = $this->context();
+        DB::table('ui_theme_user_preferences')->where('company_id', (int) $context['empresa'])
+            ->where('user_id', (int) $context['id'])->delete();
+        return redirect()->route('ui.themes.index')->with('ui_theme_feedback', 'Preferência removida. O padrão da empresa será utilizado.');
+    }
+
     public function store(Request $request)
     {
         $this->superOnly();
@@ -198,13 +218,14 @@ class UiThemeController extends Controller
                   'sidebar_text', 'text', 'border'] as $key) {
             $colors[$key] = strtoupper($data[$key]);
         }
-        $preset->update([
+        $changed = UiThemePreset::query()->whereKey($preset->id)->where('status', 'draft')->update([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
-            'colors' => $colors,
+            'colors' => json_encode($colors, JSON_THROW_ON_ERROR),
             'sidebar_style' => $data['sidebar_style'],
             'density' => $data['density'],
         ]);
+        abort_unless($changed === 1 || UiThemePreset::query()->whereKey($preset->id)->where('status', 'draft')->exists(), 409, 'O estado do tema mudou. Recarregue a página.');
 
         return redirect()->route('ui.themes.index')
             ->with('ui_theme_feedback', 'Rascunho atualizado sem modificar temas já publicados.');

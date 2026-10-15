@@ -9,6 +9,7 @@
 @php
     $uiCurrentSlug = (string) ($currentTheme['slug'] ?? 'fer-light');
     $uiCurrentMode = (string) ($currentTheme['color_mode'] ?? 'follow');
+    $uiCurrentMenu = (string) ($currentTheme['menu_mode'] ?? 'follow');
     $uiCurrentDensity = (string) ($currentTheme['density'] ?? 'comfortable');
     $uiEditColors = is_array($editingTheme?->colors ?? null) ? $editingTheme->colors : [];
 @endphp
@@ -42,7 +43,9 @@
                 <h2 id="ui-studio-choose-title">Minha aparência</h2>
                 <p>Todos os módulos e permissões permanecem os mesmos; apenas a apresentação visual muda.</p>
             </div>
-            <span class="ui-studio__count">{{ count($availableThemes) }} temas disponíveis</span>
+            <div><span class="ui-studio__count">{{ count($availableThemes) }} temas disponíveis</span>
+                <form action="{{ route('ui.themes.reset') }}" method="POST" class="mt-3">@csrf<button type="submit" class="ui-studio__publish">Usar padrão da empresa</button></form>
+            </div>
         </div>
         <div class="ui-studio__themes">
             @foreach($availableThemes as $slug => $definition)
@@ -94,6 +97,11 @@
                                     <option value="compact" @if($selected && $uiCurrentDensity === 'compact') selected @endif>Compacta</option>
                                 </select>
                             </label>
+                            <label><span>Navegação</span><select name="menu_mode">
+                                <option value="follow" @if($selected && $uiCurrentMenu === 'follow') selected @endif>Padrão do usuário</option>
+                                <option value="lateral" @if($selected && $uiCurrentMenu === 'lateral') selected @endif>Menu lateral</option>
+                                <option value="superior" @if($selected && $uiCurrentMenu === 'superior') selected @endif>Menu superior</option>
+                            </select></label>
                         </div>
                         <button type="submit" class="ui-studio__apply">{{ $selected ? 'Atualizar preferência' : 'Usar este tema' }}</button>
                     </form>
