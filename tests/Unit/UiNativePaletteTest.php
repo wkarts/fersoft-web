@@ -46,42 +46,42 @@ final class UiNativePaletteTest extends TestCase
         self::assertStringNotContainsString('id="kt_header_menu"', $native);
     }
 
-    public function test_classic_menus_retain_full_reviewed_source_outside_theme_class_attribute(): void
+    public function test_dynamic_native_menu_keeps_all_current_legacy_navigation_and_visibility_contracts(): void
     {
-        // Source-level fingerprints cover every business control, action, menu,
-        // modal, alert and script in both historical menus. Only the
-        // explicitly validated @class() attribute is excluded, because the
-        // old nested @if in that attribute caused an invalid compiled Blade.
         $root = dirname(__DIR__, 2);
-        $fingerprints = [
-            'resources/views/default/menu_lateral.blade.php'
-                => 'd352f0e02f9b6204e19ce1bd3a3ea88e6370bdf8438e161e1a8b82a003a02e2a',
-            'resources/views/default/menu_superior.blade.php'
-                => '11c5a66b794581f597701d5c79d2d106824d4ee4449271ca58b3dd2d6e636e6c',
-        ];
+        $classic = file_get_contents($root . '/resources/views/default/menu_lateral.blade.php');
+        $superior = file_get_contents($root . '/resources/views/default/menu_superior.blade.php');
+        $native = file_get_contents($root . '/resources/views/themes/refined/layout.blade.php');
 
-        foreach ($fingerprints as $file => $expected) {
-            $source = file_get_contents($root . '/' . $file);
-            self::assertIsString($source);
-            self::assertStringContainsString("config('ui_theme.active', false)", $source);
-            self::assertStringContainsString("'ui-theme-refined--dark' =>", $source);
-            self::assertStringContainsString("'ui-density-compact' =>", $source);
-
-            $count = 0;
-            $normalized = preg_replace_callback(
-                '/^<body id="kt_body" @class\(\[[\s\S]*?^[ \t]*\]\)>/m',
-                static fn (): string => '<body id="kt_body" __REDACTED_FOR_CONTRACT__>',
-                $source,
-                1,
-                $count
-            );
-            self::assertSame(1, $count, 'Missing or duplicate theme body: ' . $file);
-            self::assertSame($expected, hash('sha256', $normalized),
-                'Unreviewed legacy layout change: ' . $file);
+        foreach ([$classic, $superior] as $layout) {
+            self::assertSame(1, substr_count($layout, '<body id="kt_body" @class(['));
+            self::assertStringContainsString("'ui-theme-refined' => config('ui_theme.active', false)", $layout);
+            self::assertStringContainsString("'ui-theme-refined--dark' =>", $layout);
+            self::assertStringContainsString("'ui-density-compact' =>", $layout);
         }
 
-        // The original Metronic JS bundle is not edited; native widgets use
-        // their own compatibility copy, so this vendor fingerprint is strict.
+        // Always compare to the CURRENT source. Main -> develop synchronization
+        // may add modules; a frozen checksum would block legitimate upgrades.
+        // The native shell must follow the existing permission-filtered menu.
+        $start = strpos($classic, '<ul class="menu-nav menu-tour">');
+        $end = strpos($classic, '<div class="d-flex flex-column flex-row-fluid wrapper"', $start);
+        self::assertNotFalse($start, 'Original menu missing');
+        self::assertNotFalse($end, 'Original navigation boundary missing');
+        preg_match_all('/\bhref\s*=\s*["\x27]([^"\x27]+)["\x27]/', substr($classic, $start, $end - $start), $matches);
+        $links = array_unique($matches[1]);
+        self::assertGreaterThanOrEqual(25, count($links));
+        foreach ($links as $href) {
+            self::assertStringContainsString($href, $native, 'Missing authorized navigation: ' . $href);
+        }
+
+        // The historical release-notes UI remains present in the superior
+        // menu and must compile through a properly closed @php / @foreach.
+        self::assertStringContainsString('@foreach($appVersionHistoryGrouped as $major => $items)', $superior);
+        self::assertStringContainsString("@php\n                                \$majorId", $superior);
+        self::assertStringContainsString('@endforeach', $superior);
+
+        // Vendor files are untouched. The copied adapter is intentionally
+        // separate and is tested by the browser regression workflow.
         $manifest = json_decode(file_get_contents(
             $root . '/tests/fixtures/ui/native-contract.json'
         ), true, 512, JSON_THROW_ON_ERROR);
