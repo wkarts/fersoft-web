@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "adapter": "mysql-dump",
+  "tables": {
+    "logs": {
+      "timestamp_fields": ["created_at"],
+      "group_by": ["acao", "modelo"],
+      "duplicate_fields": [
+        "empresa_id",
+        "usuario_id",
+        "filial_id",
+        "acao",
+        "modelo",
+        "registro_id",
+        "dados_anteriores",
+        "dados_depois",
+        "created_at"
+      ]
+    },
+    "connect_api_webhook_events": {
+      "timestamp_fields": ["received_at"],
+      "group_by": ["event_type", "status"],
+      "duplicate_fields": ["deduplication_key"]
+    }
+  },
+  "redaction": {
+    "columns_by_table": {
+      "logs": ["dados_anteriores", "dados_depois"],
+      "connect_api_webhook_events": ["payload", "normalized_payload"]
+    },
+    "sensitive_json_paths": [
+      ["data", "qrcode", "code"],
+      ["data", "qrcode", "base64"],
+      ["data", "qrcode", "image"],
+      ["data", "qr", "code"],
+      ["qrcode", "code"],
+      ["qr", "code"]
+    ],
+    "base64_min_chars": 512,
+    "replacement": "[REMOVIDO_APOS_PERSISTENCIA]"
+  },
+  "delete_rules": []
+}
