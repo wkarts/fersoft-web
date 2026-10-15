@@ -15,14 +15,24 @@ class UiThemeService
 
     public function databaseReady(): bool
     {
+        $request = request();
+        $cached = $request->attributes->get('ui_theme.schema.ready');
+        if (is_bool($cached)) {
+            return $cached;
+        }
+
         try {
-            return Schema::hasTable('ui_theme_presets')
+            $ready = Schema::hasTable('ui_theme_presets')
                 && Schema::hasTable('ui_theme_company_settings')
                 && Schema::hasTable('ui_theme_user_preferences');
         } catch (\Throwable $e) {
             // O tema em si não pode derrubar o ERP se o banco estiver indisponível.
-            return false;
+            $ready = false;
         }
+
+        // Cache somente na requisição, nunca globalmente entre empresas.
+        $request->attributes->set('ui_theme.schema.ready', $ready);
+        return $ready;
     }
 
     public function builtinThemes(): array
@@ -32,14 +42,25 @@ class UiThemeService
 
     public function publishedThemes(): array
     {
+        $request = request();
+        $cached = $request->attributes->get('ui_theme.published');
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         $themes = $this->builtinThemes();
 
         if (!$this->databaseReady()) {
+            $request->attributes->set('ui_theme.published', $themes);
             return $themes;
         }
 
         try {
             foreach (UiThemePreset::query()->where('status', 'published')->get() as $record) {
+                // Presets de fábrica jamais podem ser sobrescritos pelo catálogo SQL.
+                if (array_key_exists($record->slug, $this->builtinThemes())) {
+                    continue;
+                }
                 $colors = is_array($record->colors) ? $record->colors : [];
                 $themes[$record->slug] = $this->safeDefinition($colors, [
                     'name' => (string) $record->name,
@@ -54,6 +75,7 @@ class UiThemeService
             // Uma falha no catálogo adicional não pode impedir renderizar o ERP.
         }
 
+        $request->attributes->set('ui_theme.published', $themes);
         return $themes;
     }
 
