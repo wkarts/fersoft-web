@@ -1689,6 +1689,28 @@ class NFCeService{
                 return "Erro: [$std->cStat] - $std->xMotivo";
             }
 
+            // No retorno síncrono, o código real da NFC-e fica em
+            // protNFe/infProt; cStat do envelope pode ser apenas 104.
+            // Registrar 704 e demais rejeições com o código verdadeiro.
+            $protocoloRetorno = $std->protNFe->infProt ?? null;
+            $codigoNota = (int) ($protocoloRetorno->cStat ?? 0);
+            $motivoNota = (string) ($protocoloRetorno->xMotivo ?? $motivo);
+
+            if ($codigoNota > 0 && !in_array($codigoNota, [100, 150], true)) {
+                $this->resultadoUltimaTransmissao = 'rejeicao_sefaz';
+                $this->concluirLogTransmissao(
+                    $logger, $registro, 'rejeitado',
+                    (string) $codigoNota, $motivoNota, $resp
+                );
+                Log::warning('NFC-e: rejeição de documento informada pela SEFAZ.', [
+                    ...$contexto,
+                    'cStat_lote' => $codigo,
+                    'cStat' => $codigoNota,
+                    'xMotivo' => $motivoNota,
+                ]);
+                return "Erro: [$codigoNota] - $motivoNota";
+            }
+
             if($venda != null && $venda->recibo == null){
                 $venda->recibo = $resp;
                 $venda->save();
