@@ -219,10 +219,12 @@ class NFCeController extends Controller
                                 'exception' => $e,
                             ]);
 
+                            // A UI legada espera um array JSON de mensagens
+                            // (o mesmo contrato dos demais erros de geração).
                             return response()->json([
-                                'erros_xml' => [$e instanceof \DomainException
+                                $e instanceof \DomainException
                                     ? $e->getMessage()
-                                    : 'Não foi possível conferir o histórico fiscal desta venda. Retransmissão bloqueada.'],
+                                    : 'Não foi possível conferir o histórico fiscal desta venda. Retransmissão bloqueada.',
                             ], 409);
                         }
                     }
