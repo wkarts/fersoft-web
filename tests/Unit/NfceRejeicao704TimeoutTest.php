@@ -165,7 +165,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
         $this->assertStringContainsString("'document_type' => 'NFCe'", $service);
         $this->assertStringContainsString("'NFC-e: SEFAZ retornou código de não autorização.'", $service);
         $this->assertStringContainsString("Log::error('NFC-e: rejeição de documento informada pela SEFAZ.'", $service);
-        $this->assertStringContainsString("'cStat' => $codigoNota", $service);
+        $this->assertStringContainsString("'cStat' => \$codigoNota", $service);
         $this->assertStringContainsString("Log::error('NFC-e: falha técnica/comunicação SOAP-SSL.'", $service);
         $this->assertStringContainsString("'retorno_codigo' => \$codigo", $service);
         $this->assertStringContainsString("'retorno_mensagem' => \$mensagem", $service);
