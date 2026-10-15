@@ -634,6 +634,13 @@
                                             </a>
                                         </li>
 
+                                        <li class="menu-item @if(request()->routeIs('super-admin.database-health')) menu-item-active @endif" aria-haspopup="true">
+                                            <a href="{{ route('super-admin.database-health') }}" class="menu-link">
+                                                <i class="menu-bullet menu-bullet-line"><span></span></i>
+                                                <span class="menu-text">Saúde do banco</span>
+                                            </a>
+                                        </li>
+
                                         <li class="menu-item  menu-item-submenu" aria-haspopup="true" data-menu-toggle="hover">
                                             <a href="/connect-api" class="menu-link menu-">
                                                 <i class="menu-bullet menu-bullet-line">
