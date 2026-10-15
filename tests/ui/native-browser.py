@@ -37,8 +37,10 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
     assert page.locator('.ui-masthead-tools').count() == 0, 'Unrequested search/theme shortcuts are visible.'
     assert page.locator('[data-ui-command-open]').count() == 0, 'Unrequested module search is visible.'
-    assert page.locator('.ui-sidebar-footer .ui-footer-link').count() == 1, 'The proposal has one sidebar support action.'
-    assert page.locator('.ui-sidebar-footer .ui-footer-link').inner_text().strip() == 'Central de suporte'
+    support_action = page.locator('.ui-sidebar-footer .ui-footer-link')
+    assert support_action.count() <= 1, 'The proposal has at most one sidebar support action.'
+    if support_action.count():
+        assert support_action.inner_text().strip() == 'Central de suporte'
     assert page.locator('.ui-sidebar-footer a[href*="/ui/temas"]').count() == 0, 'Theme choice must stay in the header.'
     sidebar_color = page.locator('#ui-sidebar').evaluate('(e)=>getComputedStyle(e).backgroundColor')
     canvas_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
@@ -79,9 +81,10 @@ def check_page(page, theme, layout, density, width):
             submenu_id = last_group.get_attribute('aria-controls')
             assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
             page.keyboard.press('Escape')
-    page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
-    page.locator('[data-ui-support-open]').click()
-    assert page.evaluate('window.__supportOpens') == ['open'], 'Sidebar support must open the existing support integration.'
+    if support_action.count():
+        page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
+        page.locator('[data-ui-support-open]').click()
+        assert page.evaluate('window.__supportOpens') == ['open'], 'Sidebar support must open the existing support integration.'
     page.locator('[data-target="#fixture-modal"]').click()
     page.locator('#fixture-modal').wait_for(state='visible')
     assert page.locator('#fixture-name').input_value() == 'Preservado'

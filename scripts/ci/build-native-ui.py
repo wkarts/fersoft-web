@@ -115,11 +115,13 @@ __VERSION__
             <p class="ui-nav-caption">Áreas da aplicação</p>
 __NAV__
         </nav>
+        @if(config('ui_theme.support_url') || config('ui_theme.support_phone'))
         <div class="ui-sidebar-footer">
             <button type="button" class="ui-footer-link ui-support-link" data-ui-support-open>
                 <i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span><span class="ui-support-indicator" aria-hidden="true"></span>
             </button>
         </div>
+        @endif
     </aside>
     <div class="ui-menu-backdrop" data-ui-menu-close hidden></div>
     <div id="kt_wrapper" class="ui-workspace">
