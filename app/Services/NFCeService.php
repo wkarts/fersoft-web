@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\Fiscal\EmissionLogger;
 use App\Models\FiscalEmissionLog;
+use Illuminate\Support\Facades\Storage;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -558,6 +559,212 @@ class NFCeService{
             'tpEmis' => (int) substr($chave, 34, 1),
             'dhEmi' => $dhEmi,
         ];
+    }
+
+    /**
+     * Lê uma identidade fiscal somente de XML com assinatura já armazenado.
+     * Não gera número, cNF ou chave e não realiza chamada à SEFAZ.
+     */
+    private function identidadeNfceDeXmlAssinado(VendaCaixa $venda, $config, string $xml): array
+    {
+        if ($xml === '' || strlen($xml) > 5 * 1024 * 1024) {
+            throw new \DomainException('XML fiscal original ausente ou excessivamente grande.');
+        }
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        if (!@$dom->loadXML($xml, LIBXML_NONET)) {
+            throw new \DomainException('O XML fiscal original não pôde ser interpretado.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $info = $xpath->query('//nfe:infNFe')->item(0);
+        if (!$info || $xpath->query('//*[local-name()="Signature" and namespace-uri()="http://www.w3.org/2000/09/xmldsig#"]')->length === 0) {
+            throw new \DomainException('Não foi encontrado um XML NFC-e assinado e identificável.');
+        }
+
+        $id = (string) $info->getAttribute('Id');
+        $chave = str_starts_with($id, 'NFe') ? substr($id, 3) : '';
+        if (!preg_match('/^[0-9]{44}$/D', $chave) || substr($chave, 20, 2) !== '65') {
+            throw new \DomainException('A identificação fiscal no XML original é inválida.');
+        }
+
+        // Confere o dígito verificador para evitar recuperar uma chave truncada
+        // ou inválida de uma cópia histórica.
+        $peso = 2;
+        $soma = 0;
+        for ($i = 42; $i >= 0; $i--) {
+            $soma += (int) $chave[$i] * $peso;
+            $peso = $peso === 9 ? 2 : $peso + 1;
+        }
+        $dv = 11 - $soma % 11;
+        if ($dv >= 10) {
+            $dv = 0;
+        }
+        if ((int) $chave[43] !== $dv) {
+            throw new \DomainException('Dígito verificador da chave recuperada não confere.');
+        }
+
+        $numero = (int) $xpath->evaluate('string(./nfe:ide/nfe:nNF)', $info);
+        $serie = (int) $xpath->evaluate('string(./nfe:ide/nfe:serie)', $info);
+        $cnf = (string) $xpath->evaluate('string(./nfe:ide/nfe:cNF)', $info);
+        $tpEmis = (int) $xpath->evaluate('string(./nfe:ide/nfe:tpEmis)', $info);
+        $modelo = (int) $xpath->evaluate('string(./nfe:ide/nfe:mod)', $info);
+        $cuf = (int) $xpath->evaluate('string(./nfe:ide/nfe:cUF)', $info);
+        $emitenteXml = preg_replace(
+            '/\D+/', '', (string) $xpath->evaluate('string(./nfe:emit/nfe:CNPJ)', $info)
+        );
+
+        if ($modelo !== 65 || $numero <= 0
+            || $numero !== (int) substr($chave, 25, 9)
+            || $serie !== (int) substr($chave, 22, 3)
+            || !preg_match('/^[0-9]{1,8}$/D', $cnf)
+            || str_pad($cnf, 8, '0', STR_PAD_LEFT) !== substr($chave, 35, 8)
+            || $tpEmis !== (int) $chave[34]
+            || $cuf !== (int) substr($chave, 0, 2)
+            || $emitenteXml !== substr($chave, 6, 14)) {
+            throw new \DomainException('Número, série, cNF, emitente ou modelo do XML divergente da chave fiscal.');
+        }
+
+        // Reaproveita todas as verificações existentes de tenant e dhEmi.
+        // O clone NÃO é salvo; serve apenas para validar os metadados da fonte.
+        $candidato = clone $venda;
+        $candidato->chave = $chave;
+        $candidato->NFcNumero = $numero;
+        $candidato->signed_xml = $xml;
+        $identidade = $this->identidadeOriginalNFCe($candidato, $config);
+
+        return [
+            'chave' => $identidade['chave'],
+            'numero' => $numero,
+            'signed_xml' => $xml,
+        ];
+    }
+
+    /**
+     * Recupera chave/número perdidos usando provas fiscais já persistidas.
+     * Se não houver documento original assinado, NÃO presume que uma
+     * venda marcada REJEITADO jamais foi enviada à SEFAZ.
+     *
+     * O método retorna a proposta de recuperação, sem salvar o model.
+     */
+    public function recuperarIdentidadeNfceRejeitada(VendaCaixa $venda, $config): array
+    {
+        if ($venda->estado !== 'REJEITADO' || (int) $venda->empresa_id !== (int) $this->empresa_id) {
+            throw new \DomainException('Recuperação permitida somente para NFC-e rejeitada da empresa autenticada.');
+        }
+
+        $candidatos = [];
+        $chavesEmLogs = [];
+        $xmlDaVenda = trim((string) $venda->signed_xml);
+
+        if ($xmlDaVenda !== '') {
+            // Inconsistência no XML principal nunca é ignorada silenciosamente.
+            $candidatos[] = $this->identidadeNfceDeXmlAssinado($venda, $config, $xmlDaVenda)
+                + ['origem' => 'venda_caixas.signed_xml'];
+        }
+
+        try {
+            $logs = FiscalEmissionLog::where('empresa_id', $this->empresa_id)
+                ->where('document_type', 'NFCe')
+                ->where('document_id', $venda->id)
+                ->orderBy('id', 'desc')
+                ->limit(51)
+                ->get(['id', 'chave', 'numero', 'filial_id', 'xml_envio_path']);
+        } catch (\Throwable $e) {
+            Log::error('NFC-e: falha na leitura da auditoria fiscal para recuperar identificação.', [
+                'empresa_id' => $this->empresa_id,
+                'venda_id' => $venda->id,
+                'exception' => $e,
+            ]);
+            if ($candidatos === []) {
+                throw new \DomainException('Não foi possível consultar o histórico fiscal da nota. Emissão bloqueada.');
+            }
+            $logs = collect();
+        }
+
+        if ($logs->count() > 50) {
+            throw new \DomainException('Histórico fiscal extenso requer conciliação manual antes da retransmissão.');
+        }
+
+        foreach ($logs as $log) {
+            if ($log->filial_id !== null && (int) $log->filial_id !== (int) $venda->filial_id) {
+                throw new \DomainException('Há emissão associada a outra filial. Recuperação automática bloqueada.');
+            }
+
+            $chaveLog = trim((string) $log->chave);
+            if (preg_match('/^[0-9]{44}$/D', $chaveLog)) {
+                $chavesEmLogs[$chaveLog] = true;
+            }
+
+            $path = (string) $log->xml_envio_path;
+            if ($path === '' || !preg_match(
+                '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\.xml$~D',
+                $path
+            )) {
+                continue;
+            }
+
+            try {
+                if (!Storage::disk('local')->exists($path)) {
+                    continue;
+                }
+                $xml = (string) Storage::disk('local')->get($path);
+                $identidade = $this->identidadeNfceDeXmlAssinado($venda, $config, $xml);
+                if ($chaveLog !== '' && $chaveLog !== $identidade['chave']) {
+                    throw new \DomainException('Chave do registro de auditoria diverge do XML que ele referencia.');
+                }
+                if ((int) $log->numero > 0 && (int) $log->numero !== $identidade['numero']) {
+                    throw new \DomainException('Número do registro de auditoria diverge do XML original.');
+                }
+                $candidatos[] = $identidade + ['origem' => 'fiscal_emission_logs#' . $log->id];
+            } catch (\DomainException $e) {
+                // Um vínculo contraditório com chave declarada não pode ser
+                // ignorado escolhendo outro XML de uma tentativa posterior.
+                if ($chaveLog !== '') {
+                    throw $e;
+                }
+                Log::warning('NFC-e: documento antigo de auditoria não permite recuperar a chave.', [
+                    'empresa_id' => $this->empresa_id,
+                    'venda_id' => $venda->id,
+                    'fiscal_emission_log_id' => $log->id,
+                    'motivo' => $e->getMessage(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('NFC-e: erro ao ler XML assinado na auditoria fiscal.', [
+                    'empresa_id' => $this->empresa_id,
+                    'venda_id' => $venda->id,
+                    'fiscal_emission_log_id' => $log->id,
+                    'exception' => $e,
+                ]);
+                throw new \DomainException('Não foi possível validar o XML do histórico fiscal. Retransmissão bloqueada.');
+            }
+        }
+
+        if ($candidatos === []) {
+            throw new \DomainException(
+                'Venda marcada REJEITADO sem chave/número recuperáveis de um XML assinado. '
+                . 'Não é possível confirmar que a emissão nunca chegou à SEFAZ. '
+                . 'Confira o histórico fiscal desta venda antes de qualquer nova emissão.'
+            );
+        }
+
+        $chaves = array_unique(array_merge(
+            array_column($candidatos, 'chave'), array_keys($chavesEmLogs)
+        ));
+        if (count($chaves) !== 1) {
+            throw new \DomainException('Foram encontradas chaves fiscais diferentes para a mesma venda. Conciliação manual obrigatória.');
+        }
+
+        $escolhida = $candidatos[0];
+        $chaveSalva = trim((string) $venda->chave);
+        $numeroSalvo = (int) $venda->NFcNumero;
+        if (($chaveSalva !== '' && !hash_equals($chaveSalva, $escolhida['chave']))
+            || ($numeroSalvo > 0 && $numeroSalvo !== $escolhida['numero'])) {
+            throw new \DomainException('A identidade recuperada diverge dos dados existentes na venda. Nenhum campo foi alterado.');
+        }
+
+        return $escolhida;
     }
 
     /**
