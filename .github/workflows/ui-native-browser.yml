@@ -1,0 +1,90 @@
+name: UI - Navegacao nativa e widgets reais
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'resources/views/**'
+      - 'public/css/**'
+      - 'public/js/**'
+      - 'app/Support/UiThemePalette.php'
+      - 'app/Services/UiThemeService.php'
+      - 'app/Http/Controllers/UiThemeController.php'
+      - 'scripts/ci/build-native-ui.py'
+      - 'tests/ui/**'
+      - 'tests/Unit/UiNativePaletteTest.php'
+      - '.github/workflows/ui-native-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-native-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'true'
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      APP_UI_THEME: classic
+      COMPOSER_NO_AUDIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_sqlite, pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, bcmath
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar ambiente de teste sem banco de cliente
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs storage/app/ui-browser
+          cp .env.example .env
+          echo "APP_KEY=$(php -r 'echo "base64:".base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+      - name: Compilar shell a partir dos controles atuais preservados
+        run: |
+          set -euo pipefail
+          python scripts/ci/build-native-ui.py
+          php -l app/Support/UiThemePalette.php
+          php -l app/Http/Controllers/UiThemeController.php
+          php -l tests/ui/render-native.php
+          node --check public/js/ui-operational.js
+          node --check public/js/ui-legacy-widgets.js
+      - name: Instalar dependencias existentes do ERP
+        run: composer install --prefer-dist --no-interaction --no-progress --quiet
+      - name: Testar contratos e compilar Blades reais
+        run: |
+          set -euo pipefail
+          php artisan config:clear
+          php artisan view:cache
+          vendor/bin/phpunit --filter UiNativePaletteTest
+          php tests/ui/render-native.php
+      - name: Testar browser desktop e mobile
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet playwright==1.51.0
+          python -m playwright install --with-deps chromium
+          python tests/ui/native-browser.py
+      - name: Publicar capturas e resultados de componentes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-native-browser-${{ github.run_id }}
+          path: |
+            storage/app/ui-browser/
+            storage/logs/laravel.log
+          if-no-files-found: warn
+          retention-days: 14
