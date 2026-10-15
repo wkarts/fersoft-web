@@ -330,9 +330,12 @@
 
     @yield('css')
 
-    {{-- Tema do ERP opt-in: o clássico não carrega nenhum asset adicional. --}}
+    {{-- Tema opt-in: calcular no layout pai para disponibilizar dark/density ao body. --}}
     @if(config('ui_theme.active', false))
-        @include('themes.refined.assets')
+        @php
+            $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
+        @endphp
+        @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
     @endif
 
 </head>
@@ -341,7 +344,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable @if(config('ui_theme.active', false))ui-theme-refined @if(($tema ?? 1) == 2)ui-theme-refined--dark@endif @endif">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable @if(config('ui_theme.active', false))ui-theme-refined @if(($uiResolvedTheme['dark'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif">
 
 <!-- aside-minimize -->
 <!-- page-loading -->
@@ -1257,6 +1260,10 @@
             </div>
 
             <div id="kt_content" class="content d-flex flex-column flex-column-fluid">
+                {{-- Shell adicional apenas no visual refinado. Menus, ações e modais legados permanecem operacionais. --}}
+                @if(config('ui_theme.active', false))
+                    @include('themes.refined.workbench')
+                @endif
                 <div id="kt_subheader" class="subheader py-2 py-lg-4  subheader-solid ">
 
                     @if($ultimoAcesso != null)
