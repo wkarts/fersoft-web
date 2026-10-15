@@ -82,6 +82,31 @@ foreach ($paths as $file) {
         ];
         fwrite(STDERR, "Compiled directive counts: " . json_encode($raw) . "\n");
 
+        $controlTypes = [
+            T_IF => 'if', T_ENDIF => 'endif',
+            T_FOREACH => 'foreach', T_ENDFOREACH => 'endforeach',
+            T_FOR => 'for', T_ENDFOR => 'endfor',
+            T_WHILE => 'while', T_ENDWHILE => 'endwhile',
+            T_SWITCH => 'switch', T_ENDSWITCH => 'endswitch',
+        ];
+        $controlCounts = [];
+        $starts = [];
+        $ends = [];
+        foreach (token_get_all($contents) as $token) {
+            if (!is_array($token) || !isset($controlTypes[$token[0]])) {
+                continue;
+            }
+            $name = $controlTypes[$token[0]];
+            $controlCounts[$name] = ($controlCounts[$name] ?? 0) + 1;
+            if (str_starts_with($name, 'end')) {
+                $ends[] = [$name, $token[2]];
+            } else {
+                $starts[] = [$name, $token[2]];
+            }
+        }
+        fwrite(STDERR, "PHP token control counts: " . json_encode($controlCounts) . "\n");
+        fwrite(STDERR, "Last PHP control openings: " . json_encode(array_slice($starts, -20)) . "\n");
+
         $bracketStack = [];
         $unexpected = [];
         $currentLine = 1;
