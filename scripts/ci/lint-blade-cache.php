@@ -41,7 +41,7 @@ foreach ($paths as $file) {
     // Diagnose unclosed Blade "if:" structures even when the parser only
     // reports a generic unexpected EOF on the last compiled line.
     if ($contents !== false) {
-        preg_match_all('/<\?php\s+if\s*\([^?]*\?>|<\?php\s+endif\s*;\s*\?>/s', $contents, $tokens, PREG_OFFSET_CAPTURE);
+        preg_match_all('/<\?php\s+if\s*\([\s\S]*?\?>|<\?php\s+endif\s*;\s*\?>/s', $contents, $tokens, PREG_OFFSET_CAPTURE);
         $open = [];
         $orphan = [];
         foreach ($tokens[0] ?? [] as [$token, $offset]) {
