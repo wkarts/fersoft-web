@@ -81,6 +81,15 @@ jobs:
           php -l config/ui_theme.php
           php -l scripts/auditar-tema.php
           php -l scripts/auditar-assets.php
+      - name: Validar PHP e JavaScript da nova interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l app/Services/UiThemeService.php
+          php -l app/Models/UiThemePreset.php
+          php -l app/Http/Controllers/UiThemeController.php
+          node --check public/js/theme-refined-workbench.js
+          node --check public/js/theme-refined-studio.js
       - name: Inicializar ambiente isolado de teste
         run: bash scripts/ci/bootstrap-env.sh
       - name: Instalar dependências Laravel
