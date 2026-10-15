@@ -107,6 +107,76 @@ foreach ($paths as $file) {
         fwrite(STDERR, "PHP token control counts: " . json_encode($controlCounts) . "\n");
         fwrite(STDERR, "Last PHP control openings: " . json_encode(array_slice($starts, -20)) . "\n");
 
+        // Parse PHP alternative control syntax (if(...): ... endif;) with
+        // nesting, not just counts. Laravel's generated loops also contain
+        // foreach(...): and endforeach; in long mixed HTML/PHP templates.
+        $phpTokens = token_get_all($contents);
+        $openingTokens = [
+            T_IF => 'if', T_FOREACH => 'foreach', T_FOR => 'for',
+            T_WHILE => 'while', T_SWITCH => 'switch',
+        ];
+        $closingTokens = [
+            T_ENDIF => 'if', T_ENDFOREACH => 'foreach', T_ENDFOR => 'for',
+            T_ENDWHILE => 'while', T_ENDSWITCH => 'switch',
+        ];
+        $altStack = [];
+        $altMismatches = [];
+        $tokenCount = count($phpTokens);
+        for ($i = 0; $i < $tokenCount; $i++) {
+            $token = $phpTokens[$i];
+            if (!is_array($token)) {
+                continue;
+            }
+            $id = $token[0];
+            if (isset($openingTokens[$id])) {
+                $start = $i + 1;
+                while ($start < $tokenCount
+                    && is_array($phpTokens[$start])
+                    && $phpTokens[$start][0] === T_WHITESPACE) {
+                    $start++;
+                }
+                if ($phpTokens[$start] ?? null !== '(') {
+                    continue;
+                }
+                $depth = 0;
+                $after = null;
+                for ($j = $start; $j < $tokenCount; $j++) {
+                    if ($phpTokens[$j] === '(') {
+                        $depth++;
+                    } elseif ($phpTokens[$j] === ')') {
+                        $depth--;
+                        if ($depth === 0) {
+                            $after = $j + 1;
+                            break;
+                        }
+                    }
+                }
+                if ($after === null) {
+                    continue;
+                }
+                while ($after < $tokenCount
+                    && is_array($phpTokens[$after])
+                    && in_array($phpTokens[$after][0], [T_WHITESPACE, T_COMMENT], true)) {
+                    $after++;
+                }
+                if (($phpTokens[$after] ?? null) === ':') {
+                    $altStack[] = ['type' => $openingTokens[$id], 'line' => $token[2]];
+                }
+            } elseif (isset($closingTokens[$id])) {
+                $expected = $closingTokens[$id];
+                $top = array_pop($altStack);
+                if ($top === null || $top['type'] !== $expected) {
+                    $altMismatches[] = [
+                        'close' => $expected,
+                        'line' => $token[2],
+                        'top' => $top,
+                    ];
+                }
+            }
+        }
+        fwrite(STDERR, "Alternative PHP syntax unclosed: " . json_encode(array_slice($altStack, -18)) . "\n");
+        fwrite(STDERR, "Alternative PHP syntax mismatches: " . json_encode(array_slice($altMismatches, -18)) . "\n");
+
         $bracketStack = [];
         $unexpected = [];
         $currentLine = 1;
