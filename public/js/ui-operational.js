@@ -59,6 +59,13 @@
         entry.node.classList.toggle('ui-nav-expanded', expanded);
         entry.submenu.hidden = !expanded;
         entry.link.setAttribute('aria-expanded', String(expanded));
+        entry.submenu.style.removeProperty('transform');
+        if (expanded && desktop.matches && body.dataset.uiLayout === 'superior') {
+            const rect = entry.submenu.getBoundingClientRect();
+            let offset = Math.min(0, window.innerWidth - 12 - rect.right);
+            if (rect.left + offset < 12) offset = 12 - rect.left;
+            if (offset) entry.submenu.style.transform = 'translateX(' + offset + 'px)';
+        }
     }
     navigation.querySelectorAll('.menu-item').forEach((node, index) => {
         const link = Array.from(node.children).find(el => el.matches('a.menu-toggle'));
@@ -127,6 +134,12 @@
         if (desktop.matches && body.dataset.uiLayout === 'superior') toggles.forEach(entry => setGroup(entry, false));
     }
     desktop.addEventListener('change', changeViewport);
+    let resizeTick = 0;
+    window.addEventListener('resize', () => {
+        cancelAnimationFrame(resizeTick);
+        resizeTick = requestAnimationFrame(() => toggles.filter(entry => !entry.submenu.hidden)
+            .forEach(entry => setGroup(entry, true)));
+    });
     changeViewport();
     // Expose a small event contract for the support adapter, not a provider-specific API.
     document.querySelectorAll('[data-ui-support-open]').forEach(button => button.addEventListener('click', () => {

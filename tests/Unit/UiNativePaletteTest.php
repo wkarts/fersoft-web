@@ -46,7 +46,7 @@ final class UiNativePaletteTest extends TestCase
         self::assertStringNotContainsString('id="kt_header_menu"', $native);
     }
 
-    public function test_classic_menu_sources_remain_byte_identical(): void
+    public function test_native_adapter_uses_current_classic_sources_without_mutating_them(): void
     {
         $root = dirname(__DIR__, 2);
         $manifest = json_decode(file_get_contents($root . '/tests/fixtures/ui/native-contract.json'), true, 512, JSON_THROW_ON_ERROR);

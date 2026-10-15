@@ -71,7 +71,7 @@ try:
       page.wait_for_timeout(200)
       assert not page.locator('#fixture-modal').is_visible()
       assert page.locator('#fixture-select').evaluate('(e)=>jQuery(e).hasClass("select2-hidden-accessible")')
-      assert page.locator('#fixture-grid').evaluate('(e)=>jQuery(e).data("KTDatatable") != null')
+      assert page.locator('#fixture-grid').evaluate('(e)=>jQuery(e).closest(".datatable").data("KTDatatable") != null')
       if density=='comfortable': page.screenshot(path=str(FIXTURES/f'{theme}-{layout}-{width}.png'),full_page=True)
       # Legacy endpoint polling may produce known exceptions; preserve a full diagnostic, never mark errors clean.
       report.append({'fixture':filename,'viewport':width,'layout_checks':'passed','javascript_errors':errors})

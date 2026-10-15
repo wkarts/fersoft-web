@@ -75,7 +75,7 @@ foreach ($palettes as $slug=>$definition) {
     foreach (['lateral','superior'] as $mode) {
         foreach (['comfortable','compact'] as $density) {
             $theme=array_merge($definition,['slug'=>$slug,'active'=>true,'density'=>$density,'color_mode'=>'follow']);
-            $app['request']->attributes->set('fersoft.ui_theme.light',$theme);
+            $app['request']->attributes->set('fersoft.ui_theme.1:1:0:light',$theme);
             $data=array_merge($base,['tipoMenu'=>$mode]);
             $factory=$app['view'];
             $content=$factory->make('themes.refined.dashboard',$data)->render();

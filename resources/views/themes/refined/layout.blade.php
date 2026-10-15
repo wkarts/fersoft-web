@@ -595,6 +595,17 @@
     <div id="kt_wrapper" class="ui-workspace">
         <header class="ui-masthead">
             <button type="button" class="ui-icon-button ui-mobile-trigger" data-ui-menu-open aria-label="Abrir navegação" aria-controls="ui-sidebar" aria-expanded="false">☰</button>
+            <div class="ui-mobile-brand">
+                <a href="/graficos" class="brand-logo">
+                    @if($logo != "" && env("LOGOCLIENTE") == 1)
+                        <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
+                    @else
+                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
+                    @endif
+                </a>
+
+
+            </div>
             <div class="ui-operational-actions">
             <div id="ui-actions" class="ui-actions">
 

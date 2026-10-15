@@ -99,6 +99,9 @@ __NAV__
     <div id="kt_wrapper" class="ui-workspace">
         <header class="ui-masthead">
             <button type="button" class="ui-icon-button ui-mobile-trigger" data-ui-menu-open aria-label="Abrir navegação" aria-controls="ui-sidebar" aria-expanded="false">☰</button>
+            <div class="ui-mobile-brand">
+__MOBILEBRAND__
+            </div>
             <div class="ui-operational-actions">
 __ACTIONS__
             </div>
@@ -121,7 +124,7 @@ __RUNTIME__
 </body>
 </html>
 '''
-for key,val in dict(HEAD=head,BRAND=brand,VERSION=version,NAV=nav,ACTIONS=actions,SESSION=session,PALETTE=palette,CONTACT=contact,RUNTIME=runtime).items():
+for key,val in dict(HEAD=head,BRAND=brand,MOBILEBRAND=brand,VERSION=version,NAV=nav,ACTIONS=actions,SESSION=session,PALETTE=palette,CONTACT=contact,RUNTIME=runtime).items():
  layout=replace_once(layout,'__'+key+'__',val)
 layout='\n'.join(line.rstrip() for line in layout.splitlines())+'\n'
 write('resources/views/themes/refined/layout.blade.php',layout)
