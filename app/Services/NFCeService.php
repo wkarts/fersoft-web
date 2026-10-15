@@ -1695,16 +1695,19 @@ class NFCeService{
             }
 
             try {
-                $xml = Complements::toAuthorize($signXml, $resp);
-                safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
                 $protocolo = (string) ($std->protNFe->infProt->nProt ?? '');
                 $codigoAutorizacao = (int) ($std->protNFe->infProt->cStat ?? 0);
+                $chaveAutorizada = (string) ($std->protNFe->infProt->chNFe ?? '');
 
-                // Somente protocolo de autorização efetivo é sucesso.
-                if (!in_array($codigoAutorizacao, [100, 150], true) || $protocolo === '') {
-                    throw new \RuntimeException('Retorno sem protocolo de autorização validado.');
+                // Antes de gravar no diretório de XML autorizado, confirmar
+                // a chave e o protocolo realmente recebidos da SEFAZ.
+                if (!in_array($codigoAutorizacao, [100, 150], true)
+                    || $protocolo === '' || !hash_equals((string) $chave, $chaveAutorizada)) {
+                    throw new \RuntimeException('Retorno sem autorização compatível com a chave da NFC-e.');
                 }
 
+                $xml = Complements::toAuthorize($signXml, $resp);
+                safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
                 $this->resultadoUltimaTransmissao = 'autorizada';
                 $this->concluirLogTransmissao(
                     $logger, $registro, 'aprovado',
