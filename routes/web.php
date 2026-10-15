@@ -354,6 +354,18 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
     }
 });
 
+// ====================================================
+// CATÁLOGO DO NOVO TEMA — exclusivamente opt-in e sob sessão do ERP.
+// Rotas próprias; nenhum grupo/middleware histórico é alterado.
+// ====================================================
+Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], function () {
+    Route::get('/', 'UiThemeController@index')->name('ui.themes.index');
+    Route::post('/preferencia', 'UiThemeController@select')->name('ui.themes.select');
+    Route::post('/modelos', 'UiThemeController@store')->name('ui.themes.store');
+    Route::post('/modelos/{preset}/publicar', 'UiThemeController@publish')->name('ui.themes.publish');
+    Route::post('/empresas/liberar', 'UiThemeController@grant')->name('ui.themes.grant');
+});
+
 Route::group(['prefix' => 'videos', 'middleware' => 'verificaEmpresa'], function(){
     Route::get('/', 'VideoController@index');
     Route::get('/delete/{id}', 'VideoController@delete');
