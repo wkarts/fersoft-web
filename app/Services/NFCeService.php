@@ -23,6 +23,8 @@ use NFePHP\NFe\Factories\Contingency;
 use App\Services\ReformaTributariaService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Services\Fiscal\EmissionLogger;
+use App\Models\FiscalEmissionLog;
 
 error_reporting(E_ALL);
 ini_set('display_errors', 'On');
@@ -542,7 +544,7 @@ class NFCeService{
         }
 
         $dhEmi = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhEmi)', $infNFe));
-        if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\+|-)[0-9]{2}:[0-9]{2}$/D', $dhEmi)
+        if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D', $dhEmi)
             || substr($dhEmi, 2, 2) . substr($dhEmi, 5, 2) !== substr($chave, 2, 4)) {
             throw new \DomainException('Data original da NFC-e incompatível com a chave. Não será gerada outra identificação.');
         }
@@ -556,6 +558,96 @@ class NFCeService{
             'tpEmis' => (int) substr($chave, 34, 1),
             'dhEmi' => $dhEmi,
         ];
+    }
+
+    /**
+     * A falha de comunicação na transmissão não é rejeição comprovada.
+     * Antes de reenviar consulta a mesma chave na SEFAZ para evitar
+     * duplicidades quando a autorização ocorreu apesar do timeout.
+     */
+    public function consultarSituacaoDaChave(string $chave): array
+    {
+        if (!preg_match('/^[0-9]{44}$/D', $chave) || substr($chave, 20, 2) !== '65') {
+            throw new \DomainException('Chave de NFC-e inválida para consulta.');
+        }
+
+        $resposta = $this->tools->sefazConsultaChave($chave);
+        $dados = (new Standardize($resposta))->toArray();
+        if (!is_array($dados)) {
+            throw new \RuntimeException('A SEFAZ não retornou uma situação fiscal interpretável.');
+        }
+
+        $codigo = (int) ($dados['cStat'] ?? 0);
+        $protocolo = $dados['protNFe']['infProt'] ?? [];
+        $statusProtocolo = (int) ($protocolo['cStat'] ?? 0);
+        $motivo = (string) ($dados['xMotivo'] ?? $protocolo['xMotivo'] ?? 'Situação desconhecida');
+
+        if (in_array($codigo, [100, 150], true)
+            || in_array($statusProtocolo, [100, 150], true)) {
+            $chaveAutorizada = (string) ($protocolo['chNFe'] ?? '');
+            if (!in_array($statusProtocolo, [100, 150], true)
+                || !hash_equals($chave, $chaveAutorizada)) {
+                throw new \DomainException('A SEFAZ indicou autorização sem protocolo compatível com a chave consultada.');
+            }
+
+            return [
+                'situacao' => 'autorizada',
+                'codigo' => $statusProtocolo,
+                'motivo' => $motivo,
+                'resposta' => $resposta,
+            ];
+        }
+
+        if ($codigo === 217) {
+            return [
+                'situacao' => 'nao_consta',
+                'codigo' => 217,
+                'motivo' => $motivo,
+            ];
+        }
+
+        return [
+            'situacao' => 'indeterminada',
+            'codigo' => $codigo ?: $statusProtocolo,
+            'motivo' => $motivo,
+        ];
+    }
+
+    /**
+     * Se a SEFAZ já autorizou durante um timeout, reconcilia o status
+     * sem alterar número, série, chave nem contador do emitente.
+     */
+    public function conciliarAutorizacaoConsultada(VendaCaixa $venda, array $situacao): void
+    {
+        if (($situacao['situacao'] ?? null) !== 'autorizada') {
+            throw new \LogicException('Reconciliação exige autorização fiscal confirmada.');
+        }
+
+        $chave = trim((string) $venda->chave);
+        $numero = (int) $venda->NFcNumero;
+        if (!preg_match('/^[0-9]{44}$/D', $chave)
+            || $numero <= 0 || (int) substr($chave, 25, 9) !== $numero) {
+            throw new \DomainException('A chave e o número originais estão inconsistentes. Nenhuma alteração foi feita.');
+        }
+
+        // O protocolo só será anexado ao XML que foi efetivamente assinado.
+        try {
+            $xmlAssinado = trim((string) $venda->signed_xml);
+            if ($xmlAssinado !== '') {
+                $xmlAutorizado = Complements::toAuthorize($xmlAssinado, (string) $situacao['resposta']);
+                safe_file_put_contents(public_path('xml_nfce/' . $chave . '.xml'), $xmlAutorizado);
+                $venda->path_xml = $chave . '.xml';
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NFC-e autorizada mas houve falha ao compor XML protocolado da consulta.', [
+                'empresa_id' => $this->empresa_id,
+                'venda_id' => $venda->id,
+                'motivo' => $e->getMessage(),
+            ]);
+        }
+
+        $venda->estado = 'APROVADO';
+        $venda->save();
     }
 
     private function reservarNumeroNFCe(VendaCaixa $venda, $config): int
@@ -1473,48 +1565,209 @@ class NFCeService{
         return $this->tools->signNFe($xml);
     }
 
-    public function transmitirNfce($signXml, $chave, $venda_id = null){
-        try{
-            $idLote = str_pad(100, 15, '0', STR_PAD_LEFT);
+    /**
+     * Resultado técnico da última tentativa para não classificar
+     * timeouts SOAP/SSL como rejeições fiscais confirmadas.
+     */
+    private string $resultadoUltimaTransmissao = 'indeterminado';
 
-            // ✅ Guard mínimo (sem refatoração) para não quebrar se contingency não estiver setada
-            if(isset($this->tools->contingency) && isset($this->tools->contingency->type) && $this->tools->contingency->type == 'OFFLINE'){
+    public function tipoUltimoResultadoTransmissao(): string
+    {
+        return $this->resultadoUltimaTransmissao;
+    }
 
-            }else{
-                $resp = $this->tools->sefazEnviaLote([$signXml], $idLote, 1);
-
-                sleep(7);
-                $st = new Standardize();
-                $std = $st->toStd($resp);
-
-                if ($std->cStat != 103 && $std->cStat != 104) {
-                    return "Erro: [$std->cStat] - $std->xMotivo";
-                }
-
-                if($venda_id != null){
-                    $venda = VendaCaixa::where('id', $venda_id)->first();
-                    if($venda != null && $venda->recibo == null){
-                        $venda->recibo = $resp;
-                        $venda->save();
-                    }
-                }
-
-                $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                try {
-
-                    $xml = Complements::toAuthorize($signXml, $resp);
-                    safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
-                    return $std->protNFe->infProt->nProt;
-                } catch (\Exception $e) {
-                    return "Erro: " . $st->toJson($resp);
-                }
-            }
-
-
-        } catch(\Exception $e){
-            return "Erro: ".$e->getMessage() ;
+    /**
+     * Registra cada tentativa na auditoria fiscal já existente, com XML de
+     * envio/retorno no disco privado. Falha de auditoria nunca altera uma
+     * resposta fiscal nem transforma comunicação em autorização.
+     */
+    private function concluirLogTransmissao(
+        ?EmissionLogger $logger,
+        ?FiscalEmissionLog $registro,
+        string $status,
+        ?string $codigo,
+        string $mensagem,
+        ?string $retorno = null
+    ): void {
+        if (!$logger || !$registro) {
+            return;
         }
 
+        try {
+            $logger->finish($registro, [
+                'status' => $status,
+                'retorno_codigo' => $codigo,
+                'retorno_mensagem' => $mensagem,
+            ], $retorno, [
+                'cStat' => $codigo,
+                'xMotivo' => $mensagem,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('NFC-e: falha ao finalizar auditoria da transmissão.', [
+                'empresa_id' => $this->empresa_id,
+                'fiscal_emission_log_id' => $registro->id,
+                'exception' => $e,
+            ]);
+        }
+    }
+
+    public function transmitirNfce($signXml, $chave, $venda_id = null){
+        $this->resultadoUltimaTransmissao = 'indeterminado';
+
+        $venda = $venda_id !== null
+            ? VendaCaixa::where('empresa_id', $this->empresa_id)->find($venda_id)
+            : null;
+
+        $contexto = [
+            'empresa_id' => $this->empresa_id,
+            'filial_id' => $venda?->filial_id,
+            'venda_id' => $venda_id,
+            'numero_nfce' => $venda?->NFcNumero,
+            'chave' => $chave,
+        ];
+
+        $logger = null;
+        $registro = null;
+        try {
+            $logger = new EmissionLogger((int) $this->empresa_id);
+            $registro = $logger->start([
+                'usuario_id' => session('user_logged')['id'] ?? null,
+                'filial_id' => $venda?->filial_id,
+                'document_type' => 'NFCe',
+                'document_id' => $venda_id,
+                'document_reference' => $venda_id !== null ? (string) $venda_id : null,
+                'numero' => $venda?->NFcNumero,
+                'serie' => strlen((string) $chave) === 44 ? substr($chave, 22, 3) : null,
+                'ambiente' => (int) ($this->config['tpAmb'] ?? 0) ?: null,
+            ], (string) $signXml, $chave);
+        } catch (\Throwable $e) {
+            Log::error('NFC-e: falha ao iniciar registro de auditoria fiscal.', [
+                ...$contexto,
+                'exception' => $e,
+            ]);
+        }
+
+        Log::info('NFC-e: tentativa de transmissão iniciada.', $contexto);
+
+        try {
+            $idLote = str_pad(100, 15, '0', STR_PAD_LEFT);
+
+            // Mantém o comportamento de contingência do emissor existente.
+            if (isset($this->tools->contingency)
+                && isset($this->tools->contingency->type)
+                && $this->tools->contingency->type == 'OFFLINE') {
+                $this->resultadoUltimaTransmissao = 'contingencia';
+                $this->concluirLogTransmissao(
+                    $logger, $registro, 'contingencia', null, 'Emissão em contingência offline.'
+                );
+                Log::info('NFC-e: emissão em contingência offline.', $contexto);
+                return null;
+            }
+
+            $resp = $this->tools->sefazEnviaLote([$signXml], $idLote, 1);
+            sleep(7);
+            $st = new Standardize();
+            $std = $st->toStd($resp);
+            $codigo = isset($std->cStat) ? (string) $std->cStat : null;
+            $motivo = (string) ($std->xMotivo ?? 'Resposta SEFAZ sem motivo informado.');
+
+            if ($std->cStat != 103 && $std->cStat != 104) {
+                $this->resultadoUltimaTransmissao = in_array((int)$std->cStat, [105, 656], true)
+                    ? 'em_processamento' : 'rejeicao_sefaz';
+
+                $this->concluirLogTransmissao(
+                    $logger, $registro,
+                    $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'rejeitado' : 'em_processamento',
+                    $codigo, $motivo, $resp
+                );
+                Log::log(
+                    $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'error' : 'warning',
+                    'NFC-e: SEFAZ retornou código de não autorização.', [
+                    ...$contexto,
+                    'cStat' => $codigo,
+                    'xMotivo' => $motivo,
+                    'resultado' => $this->resultadoUltimaTransmissao,
+                ]);
+                return "Erro: [$std->cStat] - $std->xMotivo";
+            }
+
+            // No retorno síncrono, o código real da NFC-e fica em
+            // protNFe/infProt; cStat do envelope pode ser apenas 104.
+            // Registrar 704 e demais rejeições com o código verdadeiro.
+            $protocoloRetorno = $std->protNFe->infProt ?? null;
+            $codigoNota = (int) ($protocoloRetorno->cStat ?? 0);
+            $motivoNota = (string) ($protocoloRetorno->xMotivo ?? $motivo);
+
+            if ($codigoNota > 0 && !in_array($codigoNota, [100, 150], true)) {
+                $this->resultadoUltimaTransmissao = 'rejeicao_sefaz';
+                $this->concluirLogTransmissao(
+                    $logger, $registro, 'rejeitado',
+                    (string) $codigoNota, $motivoNota, $resp
+                );
+                Log::error('NFC-e: rejeição de documento informada pela SEFAZ.', [
+                    ...$contexto,
+                    'cStat_lote' => $codigo,
+                    'cStat' => $codigoNota,
+                    'xMotivo' => $motivoNota,
+                ]);
+                return "Erro: [$codigoNota] - $motivoNota";
+            }
+
+            if($venda != null && $venda->recibo == null){
+                $venda->recibo = $resp;
+                $venda->save();
+            }
+
+            try {
+                $protocolo = (string) ($std->protNFe->infProt->nProt ?? '');
+                $codigoAutorizacao = (int) ($std->protNFe->infProt->cStat ?? 0);
+                $chaveAutorizada = (string) ($std->protNFe->infProt->chNFe ?? '');
+
+                // Antes de gravar no diretório de XML autorizado, confirmar
+                // a chave e o protocolo realmente recebidos da SEFAZ.
+                if (!in_array($codigoAutorizacao, [100, 150], true)
+                    || $protocolo === '' || !hash_equals((string) $chave, $chaveAutorizada)) {
+                    throw new \RuntimeException('Retorno sem autorização compatível com a chave da NFC-e.');
+                }
+
+                $xml = Complements::toAuthorize($signXml, $resp);
+                safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml', $xml);
+                $this->resultadoUltimaTransmissao = 'autorizada';
+                $this->concluirLogTransmissao(
+                    $logger, $registro, 'aprovado',
+                    (string)$codigoAutorizacao, 'Autorização confirmada pela SEFAZ.', $resp
+                );
+                Log::info('NFC-e: transmissão autorizada.', [
+                    ...$contexto,
+                    'cStat' => $codigoAutorizacao,
+                    'protocolo' => $protocolo,
+                ]);
+                return $protocolo;
+            } catch (\Throwable $e) {
+                $this->resultadoUltimaTransmissao = 'indeterminado';
+                $this->concluirLogTransmissao(
+                    $logger, $registro, 'erro_tecnico', $codigo, $e->getMessage(), $resp
+                );
+                Log::error('NFC-e: falha ao processar autorização retornada pela SEFAZ.', [
+                    ...$contexto,
+                    'cStat' => $codigo,
+                    'xMotivo' => $motivo,
+                    'exception' => $e,
+                ]);
+                return "Erro: " . $st->toJson($resp);
+            }
+        } catch (\Throwable $e) {
+            // SSL timeout e falhas de rede são resultado INDETERMINADO.
+            $this->resultadoUltimaTransmissao = 'indeterminado';
+            $this->concluirLogTransmissao(
+                $logger, $registro, 'erro_tecnico', null, $e->getMessage()
+            );
+            Log::error('NFC-e: falha técnica/comunicação SOAP-SSL.', [
+                ...$contexto,
+                'exception' => $e,
+            ]);
+            return "Erro: " . $e->getMessage();
+        }
     }
 
     public function consultarNFCe($venda){
