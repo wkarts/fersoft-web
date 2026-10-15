@@ -71,6 +71,44 @@ foreach ($paths as $file) {
     }
 
     fwrite(STDERR, "COMPILED FILE: {$file}\n");
+    if ($contents !== false) {
+        $raw = [
+            'if' => preg_match_all('/<\?php\s+if\s*\(/', $contents),
+            'endif' => preg_match_all('/<\?php\s+endif\s*;/', $contents),
+            'foreach' => preg_match_all('/<\?php\s+foreach\s*\(/', $contents),
+            'endforeach' => preg_match_all('/<\?php\s+endforeach\s*;/', $contents),
+            'for' => preg_match_all('/<\?php\s+for\s*\(/', $contents),
+            'endfor' => preg_match_all('/<\?php\s+endfor\s*;/', $contents),
+        ];
+        fwrite(STDERR, "Compiled directive counts: " . json_encode($raw) . "\n");
+
+        $bracketStack = [];
+        $unexpected = [];
+        $currentLine = 1;
+        $pairs = [')' => '(', '}' => '{', ']' => '['];
+        foreach (token_get_all($contents) as $token) {
+            if (is_array($token)) {
+                $currentLine = $token[2] + substr_count($token[1], "\n");
+                continue;
+            }
+            if (in_array($token, ['(', '{', '['], true)) {
+                $bracketStack[] = ['symbol' => $token, 'line' => $currentLine];
+            } elseif (isset($pairs[$token])) {
+                $opened = array_pop($bracketStack);
+                if ($opened === null || $opened['symbol'] !== $pairs[$token]) {
+                    $unexpected[] = ['symbol' => $token, 'line' => $currentLine, 'opened' => $opened];
+                }
+            }
+            $currentLine += substr_count($token, "\n");
+        }
+        if ($bracketStack) {
+            fwrite(STDERR, "Unclosed PHP token brackets: " . json_encode(array_slice($bracketStack, -20)) . "\n");
+        }
+        if ($unexpected) {
+            fwrite(STDERR, "Unexpected PHP token brackets: " . json_encode(array_slice($unexpected, -10)) . "\n");
+        }
+    }
+
     if (preg_match('/on line (\d+)/', $text, $match) && $contents !== false) {
         $line = (int) $match[1];
         $lines = explode("\n", $contents);
