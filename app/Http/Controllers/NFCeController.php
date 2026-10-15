@@ -410,11 +410,8 @@ class NFCeController extends Controller
                     }else{
                         $resultado = $nfe_service->transmitirNfce($signed, $nfce['chave'], $vendaId);
                         $tipoResultado = $nfe_service->tipoUltimoResultadoTransmissao();
-                        $this->registrarEventoNfce($venda, 'transmissao_resultado', [
-                            'classificacao' => $tipoResultado,
-                            'retorno_resumido' => substr((string) $resultado, 0, 400),
-                        ], in_array($tipoResultado, ['rejeicao_sefaz', 'indeterminado'], true)
-                            ? 'error' : ($tipoResultado === 'autorizada' ? 'info' : 'warning'));
+                        $nivelResultado = in_array($tipoResultado, ['rejeicao_sefaz', 'indeterminado'], true)
+                            ? 'error' : ($tipoResultado === 'autorizada' ? 'info' : 'warning');
                         if(substr((string) $resultado, 0, 4) != 'Erro'){
                             if (!$retransmitindo) {
                                 $venda->chave = $nfce['chave'];
@@ -427,6 +424,10 @@ class NFCeController extends Controller
                             }
                             $venda->data_emissao = date('Y-m-d H:i:s');
                             $venda->save();
+                            $this->registrarEventoNfce($venda, 'transmissao_resultado', [
+                                'classificacao' => $tipoResultado,
+                                'retorno_resumido' => substr((string) $resultado, 0, 400),
+                            ], $nivelResultado);
                             if (!$retransmitindo && (int)$config->ultimo_numero_nfce < (int)$nfce['nNf']) {
                                 $config->ultimo_numero_nfce = $nfce['nNf'];
                                 $config->save();
@@ -443,8 +444,15 @@ class NFCeController extends Controller
                             if($venda->chave == ''){
                                 $venda->chave = $nfce['chave'];
                             }
+                            if (!$retransmitindo) {
+                                $venda->NFcNumero = (int) $nfce['nNf'];
+                            }
                             $venda->signed_xml = $signed;
                             $venda->save();
+                            $this->registrarEventoNfce($venda, 'transmissao_resultado', [
+                                'classificacao' => $tipoResultado,
+                                'retorno_resumido' => substr((string) $resultado, 0, 400),
+                            ], $nivelResultado);
                         }
 
                         echo json_encode($resultado);
