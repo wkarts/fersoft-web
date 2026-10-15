@@ -41,6 +41,12 @@ Aprovações manuais entram em \`docs/ui/coverage-reviews.json\` e devem trazer 
 
 Na promoção FINAL do redesign, o comando \`php scripts/ui/coverage-report.php --require-complete\` pode bloquear integração quando houver arquivos sem revisão. Na fase de implantação parcial, o mesmo comando **sem** \`--require-complete\` informa lacunas sem impedir os builds beta contínuos da \`develop\`.
 
+## Bloqueio automatizado da promoção final
+
+O arquivo `.github/workflows/ui-promotion-coverage.yml` implementa o gate de homologação **somente** quando uma PR não-draft de `develop → main` for aberta/revisada e `UI_FLOW_PHASE=standard`. Ele recalcúla os inventários e executa `--require-complete`, falhando se ainda houver views ou assets sem decisão auditável. PRs de funcionalidades e a fase `transition` não são afetadas.
+
+Para que esse bloqueio também seja obrigatório para todos os mantenedores, exigir o check de promoção nas regras de proteção/rulesets da `main`. Sem essa regra, um administrador autorizado ainda poderá ultrapassar checks falhos. **O workflow não realiza merges, releases nem alterações de banco.**
+
 ## Fluxo de desenvolvimento imutável
 
 \`feature/* → PR para develop → CI + homologação → beta contínua da develop\`.
