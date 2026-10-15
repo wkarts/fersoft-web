@@ -243,6 +243,30 @@ class NFCeController extends Controller
                         }
                     }
 
+                    // Guarda a chave e o XML assinado ANTES da chamada SOAP.
+                    // Em caso de timeout, o número já está reservado; sem esta
+                    // persistência a próxima tentativa gerava outro cNF/chave.
+                    if (!$retransmitindo && (string) $venda->chave !== ''
+                        && !hash_equals((string) $venda->chave, (string) $nfce['chave'])) {
+                        $this->registrarEventoNfce($venda, 'chave_anterior_divergente', [
+                            'chave_gerada' => $nfce['chave'],
+                        ], 'error');
+                        return response()->json([
+                            'erros_xml' => ['Já existe uma chave para esta venda; gerar outra automaticamente foi bloqueado.'],
+                        ], 409);
+                    }
+
+                    if (!$retransmitindo && !$venda->chave) {
+                        $venda->chave = $nfce['chave'];
+                    }
+                    $venda->signed_xml = $signed;
+                    $venda->save();
+
+                    $this->registrarEventoNfce($venda, 'xml_assinado', [
+                        'sha256_xml_assinado' => hash('sha256', (string) $signed),
+                        'retransmissao' => $retransmitindo,
+                    ]);
+
                     if($this->getContigencia()){
                         if(!is_dir(public_path('xml_nfce_contigencia'))){
                             mkdir(public_path('xml_nfce_contigencia'), 0777, true);
@@ -269,11 +293,19 @@ class NFCeController extends Controller
 
                         safe_file_put_contents(public_path('xml_nfce_contigencia/').$nfce['chave'].'.xml', $signed);
 
+                        $this->registrarEventoNfce($venda, 'contingencia_offline', [
+                            'resultado' => 'armazenado_para_transmissao',
+                        ]);
                         echo json_encode('OFFL');
 
                     }else{
                         $resultado = $nfe_service->transmitirNfce($signed, $nfce['chave'], $vendaId);
-                        if(substr($resultado, 0, 4) != 'Erro'){
+                        $tipoResultado = $nfe_service->tipoUltimoResultadoTransmissao();
+                        $this->registrarEventoNfce($venda, 'transmissao_resultado', [
+                            'classificacao' => $tipoResultado,
+                            'retorno_resumido' => substr((string) $resultado, 0, 400),
+                        ], $tipoResultado === 'autorizada' ? 'info' : 'warning');
+                        if(substr((string) $resultado, 0, 4) != 'Erro'){
                             if (!$retransmitindo) {
                                 $venda->chave = $nfce['chave'];
                                 $venda->NFcNumero = $nfce['nNf'];
@@ -294,12 +326,13 @@ class NFCeController extends Controller
                             $file = safe_file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
                             importaXmlSieg($file, $this->empresa_id);
                         }else{
+                            // Mantém compatibilidade com o estado legado usado
+                            // pela grid do PDV. O log identifica separadamente
+                            // rejeição fiscal (cStat) e timeout SOAP/SSL.
                             $venda->estado = 'REJEITADO';
                             if($venda->chave == ''){
                                 $venda->chave = $nfce['chave'];
                             }
-                            // A reemissão corrigida conserva a mesma chave,
-                            // mas pode trazer outros dados válidos no XML.
                             $venda->signed_xml = $signed;
                             $venda->save();
                         }
