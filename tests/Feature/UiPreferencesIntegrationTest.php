@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\UiThemeController;
 use App\Models\UiThemePreset;
 use App\Services\UiThemeService;
+use App\Support\UiThemePalette;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,23 @@ final class UiPreferencesIntegrationTest extends TestCase
         } catch (HttpExceptionInterface $exception) {
             $this->assertSame(403, $exception->getStatusCode());
         }
+    }
+
+    public function test_unselected_theme_matches_approved_light_workspace_and_sidebar_reference(): void
+    {
+        $resolved = $this->resolved(1, 11);
+        $tokens = UiThemePalette::tokens($resolved);
+
+        $this->assertSame('fer-light', $resolved['slug']);
+        $this->assertFalse($resolved['dark']);
+        $this->assertSame('#F5F7F7', $tokens['--ui-bg']);
+        $this->assertSame('#FFFFFF', $tokens['--ui-aside']);
+        $this->assertSame('#1F9866', $tokens['--ui-accent']);
+        $this->assertSame('#182F36', $tokens['--ui-ink']);
+        $this->assertGreaterThanOrEqual(
+            4.5,
+            UiThemePalette::contrast($tokens['--ui-aside'], $tokens['--ui-sidebar-ink'])
+        );
     }
 
     public function test_personal_preferences_are_scoped_to_company_and_user(): void
@@ -173,3 +191,4 @@ final class UiPreferencesIntegrationTest extends TestCase
         DB::disableQueryLog();
     }
 }
+

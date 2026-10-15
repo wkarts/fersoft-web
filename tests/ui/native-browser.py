@@ -28,10 +28,34 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('h1').first.inner_text() == 'Dashboard Analítico Executivo'
     assert '6.479.876,12' in page.locator('.ui-metrics').inner_text()
     assert page.locator('.ui-chart-empty').count() == 2
+    assert page.locator('.ui-chart-empty').first.evaluate('(e)=>e.getBoundingClientRect().height <= 205'), 'Empty charts do not match the proposal height.'
+    assert page.locator('.ui-metric').first.evaluate('(e)=>e.getBoundingClientRect().height <= 128'), 'Metric cards exceed the proposal height.'
     assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu was exposed.'
     for selector in ['a[href="/login/logoff"]', '#set-location-top', '#btn-whatsapp-global', '#dataHoraClock']:
         assert page.locator(selector).count() == 1, 'Missing/duplicated operational control: ' + selector
     assert page.locator('.ui-finance-link').count() == 4
+    assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
+    assert page.locator('.ui-masthead-tools').count() == 0, 'Unrequested search/theme shortcuts are visible.'
+    assert page.locator('[data-ui-command-open]').count() == 0, 'Unrequested module search is visible.'
+    support_action = page.locator('.ui-sidebar-footer .ui-footer-link')
+    assert support_action.count() <= 1, 'The proposal has at most one sidebar support action.'
+    if support_action.count():
+        assert support_action.inner_text().strip() == 'Central de suporte'
+    assert page.locator('.ui-sidebar-footer a[href*="/ui/temas"]').count() == 0, 'Theme choice must stay in the header.'
+    sidebar_color = page.locator('#ui-sidebar').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+    canvas_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+    body_text_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).color')
+    operator_color = page.locator('.ui-actions .user-tour .text-info').first.evaluate('(e)=>getComputedStyle(e).color')
+    assert operator_color == body_text_color, 'The operator name must use the proposal text color.'
+    session_info = page.locator('.ui-session .text-info').first
+    if session_info.count():
+        assert session_info.evaluate('(e)=>getComputedStyle(e).color') == body_text_color, 'Session details must use the proposal text color.'
+    if theme == 'fer-light':
+        assert sidebar_color == 'rgb(255, 255, 255)', 'The approved default uses a light sidebar.'
+        assert canvas_color == 'rgb(245, 247, 247)', 'The approved default uses the proposal canvas.'
+    if theme == 'fer-slate':
+        assert sidebar_color == 'rgb(29, 38, 57)', 'The optional slate variant uses the proposal dark-sidebar color.'
+        assert canvas_color == 'rgb(245, 247, 247)', 'The slate variant keeps the workspace light.'
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
     assert page.locator('body').get_attribute('data-ui-layout') == layout
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme == 'fer-night')
@@ -50,6 +74,10 @@ def check_page(page, theme, layout, density, width):
         link.click()
         assert link.get_attribute('aria-expanded') == 'false'
         if layout == 'lateral':
+            unit = page.locator('.ui-header-unit')
+            theme_action = page.locator('.ui-header-theme')
+            if unit.count() and theme_action.count():
+                assert unit.bounding_box()['x'] < theme_action.bounding_box()['x'], 'Unit selection must precede theme actions in the header.'
             page.locator('[data-ui-collapse]').click()
             assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
             page.locator('[data-ui-collapse]').click()
@@ -59,12 +87,14 @@ def check_page(page, theme, layout, density, width):
             submenu_id = last_group.get_attribute('aria-controls')
             assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
             page.keyboard.press('Escape')
-    page.keyboard.press('Control+k')
-    assert page.locator('#ui-command-palette').is_visible()
-    page.locator('#ui-command-search').fill('Financeiro')
-    assert page.locator('.ui-command__result:visible').count() > 0
-    page.keyboard.press('Escape')
-    assert not page.locator('#ui-command-palette').is_visible()
+    if support_action.count() and support_action.is_visible():
+        if width < 992:
+            page.locator('[data-ui-menu-open]').click()
+        page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
+        page.locator('[data-ui-support-open]').click()
+        assert page.evaluate('window.__supportOpens') == ['open'], 'Sidebar support must open the existing support integration.'
+        if width < 992:
+            page.locator('#ui-sidebar [data-ui-menu-close]').click()
     page.locator('[data-target="#fixture-modal"]').click()
     page.locator('#fixture-modal').wait_for(state='visible')
     assert page.locator('#fixture-name').input_value() == 'Preservado'
@@ -139,3 +169,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

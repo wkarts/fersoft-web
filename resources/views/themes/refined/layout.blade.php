@@ -102,7 +102,7 @@
     $uiIdentity = (string) (session('user_logged.empresa', 0)) . ':' . (string) session('user_logged.id', 0);
 @endphp
 <body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif"
-      data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}">
+      data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}" data-ui-theme="{{ $uiResolvedTheme['slug'] ?? 'fer-light' }}">
 <a class="ui-skip" href="#kt_content">Ir para o conteúdo</a>
 <div class="ui-app">
     <aside id="ui-sidebar" class="ui-sidebar" aria-label="Navegação da aplicação">
@@ -591,12 +591,13 @@
 
                     </ul>
         </nav>
+        @if(config('ui_theme.support_url') || config('ui_theme.support_phone'))
         <div class="ui-sidebar-footer">
-            <a href="{{ route('ui.themes.index') }}" class="ui-footer-link"><i class="la la-palette" aria-hidden="true"></i><span>Aparência da interface</span></a>
-            @if(config('ui_theme.support_url') || config('ui_theme.support_phone'))
-                <button type="button" class="ui-footer-link" data-ui-support-open><i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span></button>
-            @endif
+            <button type="button" class="ui-footer-link ui-support-link" data-ui-support-open>
+                <i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span><span class="ui-support-indicator" aria-hidden="true"></span>
+            </button>
         </div>
+        @endif
     </aside>
     <div class="ui-menu-backdrop" data-ui-menu-close hidden></div>
     <div id="kt_wrapper" class="ui-workspace">
@@ -637,7 +638,7 @@
                                     @endif
 
                                     @if(!session('tipo_contador'))
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-company" data-menu-toggle="click" aria-haspopup="true">
 
 
                                             <a class="label label-xl label-inline label-primary info-plan mr-1">
@@ -645,13 +646,13 @@
                                             </a>
 
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-success @else label-success @endif">
-                                                Empresa: {{session('user_logged')['empresa_nome']}}
+                                                <span class="ui-company-label">EMPRESA ATIVA</span><strong class="ui-company-name">{{session('user_logged')['empresa_nome']}}</strong>
                                             </a>
                                         </li>
 
-                                        <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li id="ambiente-tour" class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-environment" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-info @else label-info @endif">
-                                                Ambiente: {{session('user_logged')['ambiente']}}
+                                                <i class="la la-check ui-environment-check" aria-hidden="true"></i><span>{{session('user_logged')['ambiente']}}</span>
                                             </a>
                                         </li>
 
@@ -684,13 +685,17 @@
 										</li>
 										@endif -->
                                     @if(!session('tipo_contador'))
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
-                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline @if($tema == 1) label-warning @else label-warning @endif">
-                                                Tema
-                                            </a>
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme" data-menu-toggle="click" aria-haspopup="true">
+                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline @if($tema == 1) label-warning @else label-warning @endif"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
                                         </li>
-                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-whatsapp" data-menu-toggle="click" aria-haspopup="true">
                                             {!! __view_connect_api_whatsapp_modal_button() !!}
+                                        </li>
+                                    @endif
+
+                                    @if(session('tipo_contador'))
+                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme">
+                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
                                         </li>
                                     @endif
 
@@ -713,7 +718,7 @@
                                     @endif
 
                                     @if(empresaComFilial() && sizeof(getLocaisUsarioLogado()) > 1)
-                                        <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
+                                        <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2 ui-header-unit" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
                                             <div class="d-flex align-items-center">
                                                 <div class="label label-xl label-inline @if($tema == 1) label-light-primary @else label-primary @endif" style="width: 100%;">
                                                     {!! __view_locais_select_menu_superior() !!}
@@ -967,7 +972,7 @@
 
                     <div class="topbar-item user-tour">
                         <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-                            <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
+                            <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span><span class="ui-user-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}</span>
                             <span style="margin-left: 3px; width: 100" class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
 
                             <a style="margin-left: 10px;" href="/login/logoff" class="btn btn-danger">
@@ -993,10 +998,6 @@
             </div>
 
 
-            </div>
-            <div class="ui-masthead-tools">
-                <button type="button" class="ui-icon-button" data-ui-command-open aria-label="Pesquisar módulos (Ctrl+K)" aria-haspopup="dialog" aria-controls="ui-command-palette"><i class="la la-search" aria-hidden="true"></i></button>
-                <a href="{{ route('ui.themes.index') }}" class="ui-icon-button" aria-label="Escolher tema"><i class="la la-palette" aria-hidden="true"></i></a>
             </div>
         </header>
                 <div id="ui-session" class="ui-session">
@@ -1051,57 +1052,6 @@
         </main>
     </div>
 </div>
-{{-- Novo posto de navegação: apenas refina a experiência, não substitui ações do ERP.
-     Os módulos são fornecidos pelo mesmo helper/permissões da navegação original. --}}
-@php
-    $uiAvailableNavigation = is_array($menu ?? null) ? $menu : [];
-    $uiCurrentModule = (string) ($rotaAtiva ?? 'Início');
-@endphp
-<div id="ui-command-palette" class="ui-command" role="dialog" aria-modal="true"
-     aria-labelledby="ui-command-title" aria-hidden="true" hidden>
-    <div class="ui-command__backdrop" data-ui-command-close></div>
-    <div class="ui-command__dialog" role="document">
-        <div class="ui-command__heading">
-            <h2 id="ui-command-title">Acessar módulo ou funcionalidade</h2>
-            <button type="button" class="ui-command__close" aria-label="Fechar pesquisa" data-ui-command-close>
-                <i class="la la-times" aria-hidden="true"></i>
-            </button>
-        </div>
-        <div class="ui-command__input-row">
-            <i class="la la-search" aria-hidden="true"></i>
-            <input type="search" id="ui-command-search" autocomplete="off" spellcheck="false"
-                   placeholder="Pesquisar produtos, fiscal, financeiro, clientes..."
-                   aria-controls="ui-command-results">
-            <span class="ui-command__shortcut">ESC para fechar</span>
-        </div>
-        <div class="ui-command__results" id="ui-command-results" tabindex="-1">
-            @foreach($uiAvailableNavigation as $group)
-                @if((!isset($group['ativo']) || $group['ativo']) && !empty($group['subs']))
-                    <section class="ui-command__group" data-ui-command-group>
-                        <h3>{{ $group['titulo'] ?? 'Outros' }}</h3>
-                        @foreach($group['subs'] as $item)
-                            @if(!isset($item['rota_ativa']) && !empty($item['rota']))
-                                <a href="{{ $item['rota'] }}"
-                                   @isset($item['target']) target="_blank" rel="noopener" @endisset
-                                   class="ui-command__result"
-                                   data-ui-command-result
-                                   data-search="{{ ($group['titulo'] ?? '') . ' ' . ($item['nome'] ?? '') }}"
-                                   tabindex="-1">
-                                    <span class="ui-command__result-icon"><i class="la la-angle-right" aria-hidden="true"></i></span>
-                                    <span>{{ $item['nome'] ?? '' }}</span>
-                                    <span class="ui-command__group-label">{{ $group['titulo'] ?? '' }}</span>
-                                </a>
-                            @endif
-                        @endforeach
-                    </section>
-                @endif
-            @endforeach
-            <div class="ui-command__empty" data-ui-command-empty hidden>Nenhum módulo disponível com este termo.</div>
-        </div>
-        <div class="ui-command__foot">Os módulos exibidos respeitam as permissões atuais do ERP.</div>
-    </div>
-</div>
-
         <div id="box_whatsapp" class="wcard">
             <div class="wcard-header">
                 <div class="wcard-logo">
@@ -2252,7 +2202,7 @@
 @endif
 
 <!-- Atendimento e Suporte Online -->
-@include('themes.refined.support')
+@include('layouts.support')
 
 <script type="text/javascript">
     const formatar = (data) => {

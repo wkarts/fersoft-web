@@ -236,3 +236,4 @@ class UiThemeService
         return array_key_exists($slug, $this->availableForCompany($companyId, $super));
     }
 }
+
