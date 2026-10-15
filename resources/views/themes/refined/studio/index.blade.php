@@ -2,6 +2,7 @@
 
 @section('css')
 <link rel="stylesheet" href="{{ asset('css/theme-refined-studio.css') }}?v={{ filemtime(public_path('css/theme-refined-studio.css')) }}">
+<script src="{{ asset('js/theme-refined-studio.js') }}?v={{ filemtime(public_path('js/theme-refined-studio.js')) }}" defer></script>
 @endsection
 
 @section('content')
@@ -198,14 +199,17 @@
                     <p>Conceda acesso ao tema publicado sem modificar a preferência pessoal dos usuários.</p>
                     <form method="POST" action="{{ route('ui.themes.grant') }}" class="ui-studio__admin-form">
                         @csrf
-                        <label class="ui-studio__full">Empresa
-                            <select name="company_id" required>
-                                <option value="">Selecione a empresa</option>
-                                @foreach($companies as $company)
-                                    <option value="{{ $company->id }}">{{ $company->nome }} ({{ $company->id }})</option>
-                                @endforeach
-                            </select>
-                        </label>
+                        <div class="ui-studio__full ui-studio__company-chooser" data-ui-company-chooser
+                             data-search-url="{{ route('ui.themes.company.search') }}">
+                            <label>Empresa
+                                <input type="search" autocomplete="off" data-ui-company-search
+                                       placeholder="Pesquisar nome ou código da empresa (mínimo 2 caracteres)"
+                                       aria-label="Pesquisar empresa" required>
+                            </label>
+                            <input type="hidden" name="company_id" data-ui-company-id>
+                            <div class="ui-studio__company-results" role="listbox" aria-label="Empresas encontradas"
+                                 aria-live="polite" data-ui-company-results hidden></div>
+                        </div>
                         <label class="ui-studio__full">Tema
                             <select name="theme_slug" required>
                                 @foreach($availableThemes as $slug => $definition)
@@ -220,14 +224,17 @@
                     <p>O padrão vale apenas quando o usuário não definiu sua preferência pessoal.</p>
                     <form method="POST" action="{{ route('ui.themes.company.default') }}" class="ui-studio__admin-form">
                         @csrf
-                        <label class="ui-studio__full">Empresa
-                            <select name="company_id" required>
-                                <option value="">Selecione a empresa</option>
-                                @foreach($companies as $company)
-                                    <option value="{{ $company->id }}">{{ $company->nome }} ({{ $company->id }})</option>
-                                @endforeach
-                            </select>
-                        </label>
+                        <div class="ui-studio__full ui-studio__company-chooser" data-ui-company-chooser
+                             data-search-url="{{ route('ui.themes.company.search') }}">
+                            <label>Empresa
+                                <input type="search" autocomplete="off" data-ui-company-search
+                                       placeholder="Pesquisar nome ou código da empresa (mínimo 2 caracteres)"
+                                       aria-label="Pesquisar empresa" required>
+                            </label>
+                            <input type="hidden" name="company_id" data-ui-company-id>
+                            <div class="ui-studio__company-results" role="listbox" aria-label="Empresas encontradas"
+                                 aria-live="polite" data-ui-company-results hidden></div>
+                        </div>
                         <label class="ui-studio__full">Tema já liberado para a empresa
                             <select name="theme_slug" required>
                                 @foreach($availableThemes as $slug => $definition)
