@@ -124,19 +124,32 @@ class NFCeController extends Controller
 
             $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
 
-            $nfe_service = new NFCeService([
-                "atualizacao" => date('Y-m-d h:i:s'),
-                "tpAmb" => (int)$config->ambiente,
-                "razaosocial" => $config->razao_social,
-                "siglaUF" => $config->UF,
-                "cnpj" => $cnpj,
-                "is_filial" => $isFilial,
-                "schemes" => config('fiscal.default_schemes'),
-                "versao" => "4.00",
-                "tokenIBPT" => "AAAAAAA",
-                "CSC" => $config->csc,
-                "CSCid" => $config->csc_id
-            ]);
+            try {
+                $nfe_service = new NFCeService([
+                    "atualizacao" => date('Y-m-d h:i:s'),
+                    "tpAmb" => (int)$config->ambiente,
+                    "razaosocial" => $config->razao_social,
+                    "siglaUF" => $config->UF,
+                    "cnpj" => $cnpj,
+                    "is_filial" => $isFilial,
+                    "schemes" => config('fiscal.default_schemes'),
+                    "versao" => "4.00",
+                    "tokenIBPT" => "AAAAAAA",
+                    "CSC" => $config->csc,
+                    "CSCid" => $config->csc_id
+                ]);
+            } catch (\Throwable $e) {
+                $this->registrarEventoNfce($venda, 'servico_falhou', [
+                    'tipo_erro' => get_class($e),
+                    'mensagem' => $e->getMessage(),
+                ], 'error');
+                Log::error('NFC-e: falha ao inicializar serviço fiscal.', [
+                    'empresa_id' => $this->empresa_id,
+                    'venda_id' => $vendaId,
+                    'exception' => $e,
+                ]);
+                return response()->json(['Falha ao inicializar emissão NFC-e. Verifique o log técnico.'], 500);
+            }
 
             if($venda->estado == 'REJEITADO' || $venda->estado == 'DISPONIVEL'){
                 $this->registrarEventoNfce($venda, 'solicitacao', [
@@ -209,7 +222,20 @@ class NFCeController extends Controller
                     }
                 }
 
-                $nfce = $nfe_service->gerarNFCe($vendaId);
+                try {
+                    $nfce = $nfe_service->gerarNFCe($vendaId);
+                } catch (\Throwable $e) {
+                    $this->registrarEventoNfce($venda, 'geracao_exception', [
+                        'tipo_erro' => get_class($e),
+                        'mensagem' => $e->getMessage(),
+                    ], 'error');
+                    Log::error('NFC-e: exceção na geração do XML.', [
+                        'empresa_id' => $this->empresa_id,
+                        'venda_id' => $vendaId,
+                        'exception' => $e,
+                    ]);
+                    return response()->json(['Não foi possível gerar o XML da NFC-e. Consulte o log técnico.'], 500);
+                }
                 if(!isset($nfce['erros_xml'])){
                     // Não assinar, transmitir nem salvar se o serviço alterar
                     // qualquer parte da identidade fiscal da nota rejeitada.
@@ -226,7 +252,20 @@ class NFCeController extends Controller
                     }
 
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                    $signed = $nfe_service->sign($nfce['xml']);
+                    try {
+                        $signed = $nfe_service->sign($nfce['xml']);
+                    } catch (\Throwable $e) {
+                        $this->registrarEventoNfce($venda, 'assinatura_exception', [
+                            'tipo_erro' => get_class($e),
+                            'mensagem' => $e->getMessage(),
+                        ], 'error');
+                        Log::error('NFC-e: falha ao assinar XML.', [
+                            'empresa_id' => $this->empresa_id,
+                            'venda_id' => $vendaId,
+                            'exception' => $e,
+                        ]);
+                        return response()->json(['Falha na assinatura fiscal da NFC-e. Consulte o log técnico.'], 500);
+                    }
                     if ($retransmitindo) {
                         // A assinatura também deve manter a identidade fiscal;
                         // somente um XML com o mesmo Id pode seguir à SEFAZ.
