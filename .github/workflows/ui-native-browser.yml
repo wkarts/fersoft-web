@@ -69,7 +69,7 @@ jobs:
           php -r '
             require "vendor/autoload.php";
             $app = require "bootstrap/app.php";
-            $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+            $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
             $source = resource_path("views/default/menu_lateral.blade.php");
             $compiled = app("blade.compiler")->getCompiledPath($source);
             if (!is_file($compiled)) { throw new RuntimeException("Blade não compilado: ".$source); }
