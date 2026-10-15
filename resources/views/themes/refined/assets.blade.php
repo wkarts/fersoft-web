@@ -35,3 +35,28 @@
     @endforeach
 </style>
 <link rel="stylesheet" href="{{ asset('css/theme-refined.css') }}?v={{ filemtime(public_path('css/theme-refined.css')) }}">
+
+{{-- Os tokens são validados no backend; o ERP clássico jamais carrega este bloco. --}}
+@php
+    $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
+    $uiCssTokens = [
+        '--ui-accent' => $uiResolvedTheme['accent'] ?? '#168F81',
+        '--ui-accent-hover' => $uiResolvedTheme['accent_hover'] ?? '#11786D',
+        '--ui-bg' => $uiResolvedTheme['background'] ?? '#F5F7FB',
+        '--ui-surface' => $uiResolvedTheme['surface'] ?? '#FFFFFF',
+        '--ui-aside' => $uiResolvedTheme['sidebar'] ?? '#FFFFFF',
+        '--ui-ink' => $uiResolvedTheme['text'] ?? '#1C2A40',
+        '--ui-border' => $uiResolvedTheme['border'] ?? '#DEE5EF',
+        '--ui-sidebar-ink' => $uiResolvedTheme['sidebar_text'] ?? '#24334E',
+    ];
+@endphp
+<link rel="stylesheet" href="{{ asset('css/theme-refined-shell.css') }}?v={{ filemtime(public_path('css/theme-refined-shell.css')) }}">
+<style>
+    body.ui-theme-refined,
+    body.ui-theme-refined.ui-theme-refined--dark {
+        @foreach($uiCssTokens as $token => $value)
+            {{ $token }}: {{ $value }};
+        @endforeach
+    }
+</style>
+<script src="{{ asset('js/theme-refined-workbench.js') }}?v={{ filemtime(public_path('js/theme-refined-workbench.js')) }}" defer></script>
