@@ -335,10 +335,22 @@ class VendaCaixaController extends Controller
                     }
                 }else{
                     if($fromPrevenda){
-                        $result = VendaCaixaPreVenda::find($venda['id']);
+                        $result = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }else{
-                        $result = VendaCaixa::find($venda['id']);
+                        $result = VendaCaixa::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }
+
+                    // Uma alteração comercial NÃO pode apagar a identidade fiscal
+                    // que já foi reservada/transmitida, nem converter uma rejeitada
+                    // novamente para DISPONIVEL apenas pela edição.
+                    $preservaIdentidadeFiscal = !$fromPrevenda && (
+                        in_array((string)$result->estado, ['REJEITADO', 'APROVADO', 'CANCELADO'], true)
+                        || (int)$result->NFcNumero > 0
+                        || trim((string)$result->chave) !== ''
+                        || trim((string)$result->signed_xml) !== ''
+                        || trim((string)$result->recibo) !== ''
+                        || trim((string)$result->path_xml) !== ''
+                    );
 
                     $result->cliente_id = $venda['cliente'];
                     $result->usuario_id = get_id_user();
@@ -349,10 +361,12 @@ class VendaCaixaController extends Controller
                     $result->dinheiro_recebido = str_replace(",", ".", $venda['dinheiro_recebido']);
                     $result->forma_pagamento = $venda['acao'] == 'credito' ? 'credito' : " ";
                     $result->tipo_pagamento = sizeof($pag_multi) > 0 ? '99' : $venda['tipo_pagamento'];
-                    $result->estado = 'DISPONIVEL';
-                    $result->NFcNumero = 0;
-                    $result->chave = '';
-                    $result->path_xml = '';
+                    if (!$preservaIdentidadeFiscal) {
+                        $result->estado = 'DISPONIVEL';
+                        $result->NFcNumero = 0;
+                        $result->chave = '';
+                        $result->path_xml = '';
+                    }
                     $result->nome = $venda['nome'] ?? '';
                     $result->rascunho = $venda['rascunho'];
                     if(isset($result->consignado)){
