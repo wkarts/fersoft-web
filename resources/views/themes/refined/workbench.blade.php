@@ -6,7 +6,7 @@
 @endphp
 <section class="ui-workbench" aria-label="Acesso rápido ao sistema">
     <div class="ui-workbench__identity">
-        <span class="ui-workbench__product">FERSOFT <strong>WEB</strong></span>
+        <span class="ui-workbench__product">{{ config('app.name') }}</span>
         <span class="ui-workbench__divider" aria-hidden="true">/</span>
         <span class="ui-workbench__module" title="{{ $uiCurrentModule }}">{{ $uiCurrentModule ?: 'Área de trabalho' }}</span>
     </div>
