@@ -221,8 +221,9 @@ foreach ($paths as $file) {
         }
     }
 
-    // Bail immediately to avoid hiding the first cause.
-    break;
+    // Continue to expose every invalid compiled view in one CI run.
+    // The developer fixes sources; this script never rewrites templates.
+    continue;
 }
 
 printf("Blade compiled PHP lint: %d files checked, %d failures.\n", $count, $failed);
