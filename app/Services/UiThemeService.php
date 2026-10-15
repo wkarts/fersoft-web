@@ -170,7 +170,7 @@ class UiThemeService
         $themes = $this->availableForCompany($companyId, $super);
         $settings = $this->companySettings($companyId);
 
-        $fallbackSlug = (string) config('ui_theme.default_preset', 'fer-slate');
+        $fallbackSlug = (string) config('ui_theme.default_preset', 'fer-light');
         $slug = isset($themes[$settings->default_theme_slug ?? ''])
             ? $settings->default_theme_slug : $fallbackSlug;
         $hasPersonalChoice = false;
@@ -236,3 +236,4 @@ class UiThemeService
         return array_key_exists($slug, $this->availableForCompany($companyId, $super));
     }
 }
+

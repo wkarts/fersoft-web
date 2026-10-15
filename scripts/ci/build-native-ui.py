@@ -7,6 +7,18 @@ def write(p,s):
  f=ROOT/p;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(s)
 def replace_once(s,a,b):
  assert s.count(a)==1, (a[:90],s.count(a));return s.replace(a,b,1)
+def add_item_class(markup, marker, class_name):
+ assert markup.count(marker)==1, (marker, markup.count(marker))
+ marker_at=markup.index(marker)
+ item_at=markup.rfind('<li',0,marker_at)
+ tag_end=markup.find('>',item_at)+1
+ assert item_at>=0 and tag_end>item_at, (marker, item_at, tag_end)
+ opening=markup[item_at:tag_end]
+ class_match=re.search(r'class="([^"]*)"',opening)
+ assert class_match, opening
+ if class_name in class_match.group(1).split(): return markup
+ updated=opening[:class_match.start(1)]+class_match.group(1)+' '+class_name+opening[class_match.end(1):]
+ return markup[:item_at]+updated+markup[tag_end:]
 # Blade directives need a word boundary before @endif. Correct only UI opt-in
 # tokens introduced by the previous theme work, not the classic business markup.
 for p in ['resources/views/default/menu_lateral.blade.php', 'resources/views/default/menu_superior.blade.php', 'resources/views/themes/refined/studio/index.blade.php']:
@@ -39,12 +51,32 @@ nav=nav.replace('class="menu-nav menu-tour"','class="ui-nav-list menu-tour"')
 nav=nav.replace('style="background: #000"','')
 a=legacy.index('            <div id="kt_header"');b=legacy.index('            <div id="kt_content"',a)
 actions=legacy[a:b]
+# Mark the original controls without changing their routes or handlers.
+for marker,class_name in [
+ ("Empresa: {{session('user_logged')['empresa_nome']}}",'ui-header-company'),
+ ('id="ambiente-tour"','ui-header-environment'),
+ ('data-target="#modal-tema"','ui-header-theme'),
+ ('__view_connect_api_whatsapp_modal_button()','ui-header-whatsapp'),
+ ('__view_locais_select_menu_superior()','ui-header-unit'),
+]: actions=add_item_class(actions,marker,class_name)
 # Only native shell owns positioning; bootstrap dropdowns/widgets remain functional.
 actions=actions.replace('id="kt_header" class="header header-fixed"','id="ui-actions" class="ui-actions"')
 actions=actions.replace('id="kt_header_menu_wrapper"','id="ui-actions-menu-wrapper"').replace('id="kt_header_menu"','id="ui-actions-menu"')
 actions=actions.replace('id="kt_scrolltop"','id="ui-scrolltop"')
 # Native appearance opens the catalog, not the old global-theme modal.
 actions=actions.replace('data-toggle="modal" href="#!" data-target="#modal-tema"', "href=\"{{ route('ui.themes.index') }}\"")
+actions=replace_once(actions,"Empresa: {{session('user_logged')['empresa_nome']}}",'<span class="ui-company-label">EMPRESA ATIVA</span><strong class="ui-company-name">{{session(\'user_logged\')[\'empresa_nome\']}}</strong>')
+actions=replace_once(actions,"Ambiente: {{session('user_logged')['ambiente']}}",'<i class="la la-check ui-environment-check" aria-hidden="true"></i><span>{{session(\'user_logged\')[\'ambiente\']}}</span>')
+# Counter accounts retain one theme action in the same header group.
+actions=replace_once(actions,'                                    @endif\n\n                                    @if($contrato == 0)','                                    @endif\n\n                                    @if(session(\'tipo_contador\'))\n                                        <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme">\n                                            <a href="{{ route(\'ui.themes.index\') }}" class="label label-xl label-inline"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>\n                                        </li>\n                                    @endif\n\n                                    @if($contrato == 0)')
+theme_match=re.search('<a\\b[^>]*route\\([^>]*ui\\.themes\\.index[^>]*>\\s*Tema\\s*</a>',actions,re.S)
+assert theme_match, 'Theme link is missing from the original header actions.'
+theme_link=theme_match.group(0)
+tag_end=theme_link.index('>')+1
+closing=theme_link.rfind('</a>')
+theme_link=theme_link[:tag_end]+'<i class="la la-palette" aria-hidden="true"></i><span>Tema</span>'+theme_link[closing:]
+actions=actions.replace(theme_match.group(0),theme_link,1)
+actions=replace_once(actions,'<span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>','<span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span><span class="ui-user-avatar" aria-hidden="true">{{ \\Illuminate\\Support\\Str::upper(\\Illuminate\\Support\\Str::substr((string) session(\'user_logged.nome\', \'?\'), 0, 1)) }}</span>')
 # Exactly the actions in the original template, not a rewritten subset.
 a=legacy.index('                <div id="kt_subheader"');b=legacy.index('\n                </div>',legacy.index('{!! __view_datahora_clock() !!}',a))+len('\n                </div>')
 session=legacy[a:b].replace('id="kt_subheader" class="subheader py-2 py-lg-4  subheader-solid "','id="ui-session" class="ui-session"')
@@ -56,13 +88,8 @@ a=legacy.index('<div class="modal fade" id="modal-dinamic"');b=legacy.rindex('</
 runtime=legacy[a:b]
 # Keep dependency for business widgets; prevent only the old layout's auto initialization.
 runtime=runtime.replace('src="/metronic/js/scripts.bundle.js"','src="/js/ui-legacy-widgets.js"')
-# The original support config is unchanged in classic; our copy configures right side.
-runtime=runtime.replace("@include('layouts.support')", "@include('themes.refined.support')")
-# Native theme button opens catalogue; original modal still accessible to change layout choice.
-# Workbench: retain only palette, not an additional title/header row not present in approved design.
-w=read('resources/views/themes/refined/workbench.blade.php')
-a=w.index('<div id="ui-command-palette"')
-palette=w[:w.index('<section class="ui-workbench"')]+w[a:]
+# Keep the original Hub support integration and its setup script intact.
+# The approved HTML has no command palette or module-search shortcut.
 layout='''<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -74,7 +101,7 @@ __HEAD__
     $uiIdentity = (string) (session('user_logged.empresa', 0)) . ':' . (string) session('user_logged.id', 0);
 @endphp
 <body id="kt_body" class="ui-theme-refined ui-native-shell @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif"
-      data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}">
+      data-ui-layout="{{ $uiMenuMode }}" data-ui-identity="{{ $uiIdentity }}" data-ui-theme="{{ $uiResolvedTheme['slug'] ?? 'fer-light' }}">
 <a class="ui-skip" href="#kt_content">Ir para o conteúdo</a>
 <div class="ui-app">
     <aside id="ui-sidebar" class="ui-sidebar" aria-label="Navegação da aplicação">
@@ -89,10 +116,9 @@ __VERSION__
 __NAV__
         </nav>
         <div class="ui-sidebar-footer">
-            <a href="{{ route('ui.themes.index') }}" class="ui-footer-link"><i class="la la-palette" aria-hidden="true"></i><span>Aparência da interface</span></a>
-            @if(config('ui_theme.support_url') || config('ui_theme.support_phone'))
-                <button type="button" class="ui-footer-link" data-ui-support-open><i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span></button>
-            @endif
+            <button type="button" class="ui-footer-link ui-support-link" data-ui-support-open>
+                <i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span><span class="ui-support-indicator" aria-hidden="true"></span>
+            </button>
         </div>
     </aside>
     <div class="ui-menu-backdrop" data-ui-menu-close hidden></div>
@@ -105,10 +131,6 @@ __MOBILEBRAND__
             <div class="ui-operational-actions">
 __ACTIONS__
             </div>
-            <div class="ui-masthead-tools">
-                <button type="button" class="ui-icon-button" data-ui-command-open aria-label="Pesquisar módulos (Ctrl+K)" aria-haspopup="dialog" aria-controls="ui-command-palette"><i class="la la-search" aria-hidden="true"></i></button>
-                <a href="{{ route('ui.themes.index') }}" class="ui-icon-button" aria-label="Escolher tema"><i class="la la-palette" aria-hidden="true"></i></a>
-            </div>
         </header>
 __SESSION__
         <main id="kt_content" class="ui-page" tabindex="-1">
@@ -116,7 +138,6 @@ __SESSION__
         </main>
     </div>
 </div>
-__PALETTE__
 __CONTACT__
 __RUNTIME__
 @stack('scripts')
@@ -124,7 +145,7 @@ __RUNTIME__
 </body>
 </html>
 '''
-for key,val in dict(HEAD=head,BRAND=brand,MOBILEBRAND=brand,VERSION=version,NAV=nav,ACTIONS=actions,SESSION=session,PALETTE=palette,CONTACT=contact,RUNTIME=runtime).items():
+for key,val in dict(HEAD=head,BRAND=brand,MOBILEBRAND=brand,VERSION=version,NAV=nav,ACTIONS=actions,SESSION=session,CONTACT=contact,RUNTIME=runtime).items():
  layout=replace_once(layout,'__'+key+'__',val)
 layout='\n'.join(line.rstrip() for line in layout.splitlines())+'\n'
 write('resources/views/themes/refined/layout.blade.php',layout)
@@ -183,3 +204,4 @@ for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
  s=replace_once(s, 'page-loading pdv-minimal"', "page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif @endif\"")
  write(p,s)
 print('Generated native shell',len(layout),'and widgets compatibility',len(bundle))
+

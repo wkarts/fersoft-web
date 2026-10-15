@@ -2,7 +2,8 @@
     window.hubSettings = {
         "position": "left",
         "type": "expanded_bubble",
-        "launcherTitle": "Suporte"
+        "launcherTitle": "Suporte",
+        "hideMessageBubble": {{ config('ui_theme.active', false) ? 'true' : 'false' }}
     };
 
     (function(d, t) {

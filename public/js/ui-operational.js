@@ -145,4 +145,16 @@
     document.querySelectorAll('[data-ui-support-open]').forEach(button => button.addEventListener('click', () => {
         window.dispatchEvent(new CustomEvent('ui:support:open'));
     }));
+    window.addEventListener('ui:support:open', () => {
+        const providers = [window.$hub, window.$chatwoot];
+        for (const chat of providers) {
+            if (chat && typeof chat.toggle === 'function') {
+                chat.toggle('open');
+                return;
+            }
+        }
+        const launcher = document.querySelector('.hub-widget-bubble, .hub--bubble-holder button, .woot-widget-bubble, .woot--bubble-holder button, [data-testid="launcher"]');
+        if (launcher) launcher.click();
+    });
 })();
+
