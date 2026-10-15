@@ -82,9 +82,13 @@ def check_page(page, theme, layout, density, width):
             assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
             page.keyboard.press('Escape')
     if support_action.count():
+        if width < 992:
+            page.locator('[data-ui-menu-open]').click()
         page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
         page.locator('[data-ui-support-open]').click()
         assert page.evaluate('window.__supportOpens') == ['open'], 'Sidebar support must open the existing support integration.'
+        if width < 992:
+            page.locator('#ui-sidebar [data-ui-menu-close]').click()
     page.locator('[data-target="#fixture-modal"]').click()
     page.locator('#fixture-modal').wait_for(state='visible')
     assert page.locator('#fixture-name').input_value() == 'Preservado'

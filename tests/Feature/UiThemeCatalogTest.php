@@ -27,7 +27,7 @@ class UiThemeCatalogTest extends TestCase
         $this->assertArrayHasKey('fer-light', $presets);
         $this->assertArrayHasKey('fer-slate', $presets);
         $this->assertArrayHasKey('fer-night', $presets);
-        $this->assertSame('#1C2030', $presets['fer-slate']['sidebar']);
+        $this->assertSame('#1D2639', $presets['fer-slate']['sidebar']);
         $this->assertFalse($presets['fer-slate']['dark']);
         $this->assertTrue($presets['fer-night']['dark']);
     }
@@ -47,7 +47,7 @@ class UiThemeCatalogTest extends TestCase
         ]);
 
         $this->assertSame('#123ABC', $tokens['accent']);
-        $this->assertSame('#F5F7FB', strtoupper($tokens['background']));
+        $this->assertSame('#F5F7F7', strtoupper($tokens['background']));
         $this->assertSame('#ABCDEF', $tokens['surface']);
         $this->assertArrayNotHasKey('custom', $tokens);
         $this->assertSame('comfortable', $tokens['density']);

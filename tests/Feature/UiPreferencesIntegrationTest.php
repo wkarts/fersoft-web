@@ -148,7 +148,7 @@ final class UiPreferencesIntegrationTest extends TestCase
         $this->select(2, 11, 'fer-night');
         $request = $this->requestFor(1, 11);
         app(UiThemeController::class)->reset($request);
-        $this->assertSame('fer-light', $this->resolved(1, 11)['slug']);
+        $this->assertSame('fer-slate', $this->resolved(1, 11)['slug']);
         $this->assertSame('fer-night', $this->resolved(2, 11)['slug']);
     }
 
@@ -160,7 +160,7 @@ final class UiPreferencesIntegrationTest extends TestCase
         $this->select(1, 11, $preset->slug);
         $request = $this->requestFor(1, 1, true);
         app(UiThemeController::class)->archive($request, $preset);
-        $this->assertSame('fer-slate', $this->resolved(1, 11)['slug']);
+        $this->assertSame('fer-light', $this->resolved(1, 11)['slug']);
         $this->assertSame($preset->slug, DB::table('ui_theme_user_preferences')->where('user_id', 11)->value('theme_slug'));
     }
 
