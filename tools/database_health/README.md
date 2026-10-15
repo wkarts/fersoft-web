@@ -30,7 +30,7 @@ python tools/database_health/db_health.py clean-copy banco.zip banco-saneado.zip
 
 O modo padrão somente aplica redactions declaradas no perfil. A cópia é escrita em outro caminho e o programa se recusa a sobrescrever arquivos existentes sem `--overwrite`. O perfil Fersoft identifica como candidatos os registros `logs` com `acao=exception` e `modelo=Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException`; a regra só apaga essas linhas quando `--apply-deletes` é informado. Sem esse sinalizador o relatório apenas conta as linhas candidatas.
 
-A limpeza padrão troca códigos de QR de pareamento nos caminhos descritos no JSON, remove assinaturas/data URLs de imagem e Base64 reconhecível nas colunas permitidas e recodifica somente os `INSERT`s dessas tabelas. O restante do dump é copiado sem interpretação nem extração de caminhos do ZIP. Os relatórios JSON e Markdown ficam ao lado do arquivo de saída, por padrão.
+A limpeza padrão troca códigos de QR de pareamento, remove credenciais sob chaves sensíveis configuradas (`senha`, `password`, tokens e chaves) e remove assinaturas/data URLs de imagem e Base64 reconhecível nas colunas permitidas. Ela recodifica somente os `INSERT`s dessas tabelas. O restante do dump é copiado sem interpretação nem extração de caminhos do ZIP. Os relatórios JSON e Markdown ficam ao lado do arquivo de saída, por padrão.
 
 ## Regras de exclusão
 
@@ -57,7 +57,7 @@ Operadores disponíveis: `equals`, `contains`, `in` e `is_null`. Várias condiç
 
 - É uma ferramenta de dump, não de produção ao vivo. Não recebe DSN, usuário ou senha.
 - O relatório mede bytes das tuplas `INSERT`; não equivale ao tamanho físico de índices, páginas, fragmentação ou arquivos do servidor.
-- A detecção de Base64 é heurística. Um token longo pode ser texto legítimo; uma limpeza só o remove em colunas selecionadas e em campos explicitamente marcados, exceto assinaturas claras de imagem e caminhos de QR configurados.
+- A detecção de Base64 é heurística. Um token longo pode ser texto legítimo; uma limpeza só o remove em colunas selecionadas e em campos explicitamente marcados, exceto assinaturas claras de imagem, caminhos de QR e chaves de credenciais configuradas.
 - A deduplicação compara somente as colunas definidas por tabela. O resultado é candidato de duplicidade, não autorização para apagar registros.
 - Regras de retenção não vêm presumidas. Defina-as por ambiente após validar obrigações legais, auditoria e necessidade de reprocessamento.
 - Use um dump protegido e mantenha o original. A validação final deve ocorrer em restauração isolada antes de qualquer troca de ambiente.

@@ -33,6 +33,11 @@ HEADER_RE = re.compile(
 DATA_URI_RE = re.compile(r"data:image/[a-z0-9.+-]+;base64,", re.IGNORECASE)
 BASE64_RE = re.compile(r"^[A-Za-z0-9+/\r\n]+={0,2}$")
 IMAGE_PREFIXES = ("/9j/", "iVBORw0KGgo", "R0lGOD", "UklGR")
+REDACTION_MARKERS = {
+    "[base64_removido_apos_persistencia]",
+    "[removido_apos_persistencia]",
+    "[conteudo_transitorio_removido]",
+}
 BINARY_KEYS = {
     "base64", "image_base64", "imagem_base64", "photo_base64", "foto_base64",
     "snapshot_base64", "file_base64", "jpeg_base64", "jpg_base64", "png_base64",
@@ -56,6 +61,8 @@ class ColumnStats:
     base64_candidate_bytes: int = 0
     data_uris: int = 0
     qr_secrets: int = 0
+    sensitive_fields: int = 0
+    sensitive_value_bytes: int = 0
 
 
 @dataclasses.dataclass
@@ -155,6 +162,11 @@ class MySQLDumpAdapter(DatabaseAdapter):
                         current["deleted_in_statement"] += 1
                     else:
                         rendered = render_tuple(cleaned_fields)
+                        if not current["header_emitted"]:
+                            emit(header)
+                            if not header.endswith((b"\n", b"\r")):
+                                emit(b"\n")
+                            current["header_emitted"] = True
                         if held_row is not None:
                             emit(held_row + b",\n")
                         held_row = rendered
@@ -169,9 +181,6 @@ class MySQLDumpAdapter(DatabaseAdapter):
                         # All rows in this INSERT were explicitly deleted.
                         emit(b"")
                     else:
-                        emit(header)
-                        if not header.endswith((b"\n", b"\r")):
-                            emit(b"\n")
                         emit(held_row)
                         emit(suffix)
                 else:
@@ -207,7 +216,7 @@ class MySQLDumpAdapter(DatabaseAdapter):
                 prefix = raw_line[:value_start]
                 rewrite = table in rewrite_tables and output is not None
                 current = {"table": table, "columns": columns, "rewrite": rewrite, "last_emit": 0,
-                           "parse_warnings": 0, "deleted_in_statement": 0}
+                           "parse_warnings": 0, "deleted_in_statement": 0, "header_emitted": False}
                 header = prefix
                 pending = raw_line[value_start:]
                 if not rewrite:
@@ -344,6 +353,10 @@ def looks_like_image(value: str) -> bool:
     return len(trimmed) >= 64 and trimmed.startswith(IMAGE_PREFIXES)
 
 
+def is_redaction_marker(value) -> bool:
+    return isinstance(value, str) and value.strip().casefold() in REDACTION_MARKERS
+
+
 def base64_candidate(value: str, threshold: int) -> bool:
     candidate = value.strip()
     if len(candidate) < threshold:
@@ -364,6 +377,7 @@ def sanitize_json_value(value, cfg: dict, path: tuple[str, ...] = (), inside_qr:
         return value, 0
     replacement = cfg.get("replacement", "[REMOVIDO_APOS_PERSISTENCIA]")
     sensitive_paths = cfg.get("sensitive_json_paths", [])
+    sensitive_keys = {normalize_key(key) for key in cfg.get("sensitive_json_keys", [])}
     if isinstance(value, dict):
         result = {}
         changed = 0
@@ -371,14 +385,15 @@ def sanitize_json_value(value, cfg: dict, path: tuple[str, ...] = (), inside_qr:
             norm = normalize_key(key)
             child_path = path + (norm,)
             qr_context = inside_qr or norm in QR_CONTAINER_KEYS
-            path_sensitive = any(json_path_matches([normalize_key(x) if x != "*" else "*" for x in pattern], child_path) for pattern in sensitive_paths)
+            path_sensitive = any(json_path_matches([normalize_key(x) if x != "*" else "*" for x in pattern], child_path) for pattern in sensitive_paths) and not is_redaction_marker(child)
             binary_field = (
                 norm in BINARY_KEYS or "base64" in norm or "data_url" in norm
             ) and isinstance(child, str) and (
                 looks_like_image(child)
                 or base64_candidate(child, int(cfg.get("base64_min_chars", 512)))
             )
-            if path_sensitive or binary_field or (inside_qr and norm in QR_SECRET_KEYS and isinstance(child, str) and child.strip()):
+            credential_field = norm in sensitive_keys and child is not None and child != "" and not is_redaction_marker(child)
+            if path_sensitive or binary_field or credential_field or (inside_qr and norm in QR_SECRET_KEYS and isinstance(child, str) and child.strip() and not is_redaction_marker(child)):
                 result[key] = replacement
                 changed += 1
                 continue
@@ -414,21 +429,28 @@ def sanitize_json_value(value, cfg: dict, path: tuple[str, ...] = (), inside_qr:
     return value, 0
 
 
-def scan_json_markers(value: str, threshold: int) -> tuple[int, int, int, int]:
-    """Return base64 candidates, candidate bytes, data-URI count and QR-secret count."""
+def scan_json_markers(value: str, threshold: int, sensitive_keys: set[str]) -> tuple[int, int, int, int, int, int]:
+    """Return Base64, data-URI, QR and credential indicators without values."""
     try:
         node = json.loads(value)
     except (ValueError, TypeError):
         node = value
     candidates = candidate_bytes = data_uris = qr_secrets = 0
+    sensitive_fields = sensitive_value_bytes = 0
 
     def walk(item, path: tuple[str, ...] = (), in_qr: bool = False):
-        nonlocal candidates, candidate_bytes, data_uris, qr_secrets
+        nonlocal candidates, candidate_bytes, data_uris, qr_secrets, sensitive_fields, sensitive_value_bytes
         if isinstance(item, dict):
             for key, child in item.items():
                 norm = normalize_key(key)
                 qr = in_qr or norm in QR_CONTAINER_KEYS
-                if in_qr and norm in QR_SECRET_KEYS and isinstance(child, str) and child.strip():
+                if norm in sensitive_keys and child is not None and child != "" and not is_redaction_marker(child):
+                    sensitive_fields += 1
+                    try:
+                        sensitive_value_bytes += len(json.dumps(child, ensure_ascii=False).encode("utf-8"))
+                    except (TypeError, ValueError):
+                        pass
+                if in_qr and norm in QR_SECRET_KEYS and isinstance(child, str) and child.strip() and not is_redaction_marker(child):
                     qr_secrets += 1
                 walk(child, path + (norm,), qr)
         elif isinstance(item, list):
@@ -442,7 +464,7 @@ def scan_json_markers(value: str, threshold: int) -> tuple[int, int, int, int]:
                 candidate_bytes += len(item.encode("utf-8"))
 
     walk(node)
-    return candidates, candidate_bytes, data_uris, qr_secrets
+    return candidates, candidate_bytes, data_uris, qr_secrets, sensitive_fields, sensitive_value_bytes
 
 
 def rule_matches(rule: dict, values: dict[str, Optional[str]]) -> bool:
@@ -515,7 +537,15 @@ class AnalysisEngine:
                 metric.non_null += 1
                 metric.value_bytes += size
                 metric.max_bytes = max(metric.max_bytes, size)
-                needs_scan = size >= threshold or b"data:image/" in measured.lower()
+                marker_keys = {
+                    normalize_key(key)
+                    for key in self.redaction.get("sensitive_json_keys", [])
+                } | QR_CONTAINER_KEYS
+                lower_measured = measured.lower()
+                has_structured_marker = name in selected and any(
+                    key.encode("utf-8") in lower_measured for key in marker_keys
+                )
+                needs_scan = size >= threshold or b"data:image/" in lower_measured or has_structured_marker
                 if name in configured_fields or needs_scan:
                     value = decode_sql_value(raw_value)
                     if name in configured_fields:
@@ -523,7 +553,8 @@ class AnalysisEngine:
                 else:
                     value = None
                 if needs_scan and value:
-                    candidates, candidate_bytes, uris, qr = scan_json_markers(value, threshold)
+                    sensitive_keys = {normalize_key(key) for key in self.redaction.get("sensitive_json_keys", [])}
+                    candidates, candidate_bytes, uris, qr, sensitive, sensitive_bytes = scan_json_markers(value, threshold, sensitive_keys)
                     # Check the full string as well as nested JSON text.
                     direct_candidate = base64_candidate(value, threshold)
                     if direct_candidate and candidates == 0:
@@ -534,6 +565,8 @@ class AnalysisEngine:
                     metric.base64_candidate_bytes += candidate_bytes
                     metric.data_uris += uris
                     metric.qr_secrets += qr
+                    metric.sensitive_fields += sensitive
+                    metric.sensitive_value_bytes += sensitive_bytes
             elif name in configured_fields:
                 values[name] = None
 
@@ -817,11 +850,11 @@ def render_markdown(report: dict) -> str:
     for table in report["tables"][:25]:
         lines.append(f"| {table['name']} | {table['rows']:,} | {table['approx_sql_row_bytes']:,} | {table['duplicate_rows']:,} | {table['delete_candidates']:,} |")
     for table in report["tables"]:
-        notable = [col for col in table["top_columns"] if col["base64_candidates"] or col["data_uris"] or col["qr_secrets"]]
+        notable = [col for col in table["top_columns"] if col["base64_candidates"] or col["data_uris"] or col["qr_secrets"] or col["sensitive_fields"]]
         if notable:
-            lines.extend(["", f"## Sinais em `{table['name']}`", "", "| Coluna | Bytes | Máximo | Candidatos Base64 | Data URLs | Campos QR |", "|---|---:|---:|---:|---:|---:|"])
+            lines.extend(["", f"## Sinais em `{table['name']}`", "", "| Coluna | Bytes | Máximo | Candidatos Base64 | Data URLs | Campos QR | Credenciais |", "|---|---:|---:|---:|---:|---:|---:|"])
             for col in notable[:10]:
-                lines.append(f"| {col['name']} | {col['value_bytes']:,} | {col['max_bytes']:,} | {col['base64_candidates']:,} | {col['data_uris']:,} | {col['qr_secrets']:,} |")
+                lines.append(f"| {col['name']} | {col['value_bytes']:,} | {col['max_bytes']:,} | {col['base64_candidates']:,} | {col['data_uris']:,} | {col['qr_secrets']:,} | {col['sensitive_fields']:,} |")
     lines.extend(["", "## Limites de segurança", "", "A ferramenta não conecta ao banco nem altera o arquivo de origem. A limpeza só gera uma nova cópia; regras de exclusão só são aplicadas com `--apply-deletes`. Candidatos Base64 são indicadores heurísticos e precisam ser interpretados no contexto da coluna.", ""])
     return "\n".join(lines)
 

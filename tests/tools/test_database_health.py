@@ -34,6 +34,7 @@ class DatabaseHealthCliTest(unittest.TestCase):
                     "connect_api_webhook_events": ["payload", "normalized_payload"],
                 },
                 "sensitive_json_paths": [["data", "qrcode", "code"]],
+                "sensitive_json_keys": ["senha"],
                 "base64_min_chars": 64,
                 "replacement": "[REDACTED]",
             },
@@ -54,8 +55,8 @@ class DatabaseHealthCliTest(unittest.TestCase):
             "(1, 'keep comma, parentheses (and semicolon;) intact');\n"
             "INSERT INTO `logs` (`id`, `acao`, `modelo`, `created_at`, `dados_depois`) VALUES\n"
             "(1, 'exception', 'NotFoundHttpException', '2026-01-01 10:00:00', '\"{\\\"message\\\":\\\"route not found\\\"}\"'),\n"
-            "(2, 'update', 'Pedido', '2026-01-02 10:00:00', '{\\\"ok\\\":true}'),\n"
-            "(3, 'update', 'Pedido', '2026-01-02 10:00:00', '{\\\"ok\\\":true}');\n"
+            "(2, 'update', 'Pedido', '2026-01-02 10:00:00', '{\\\"ok\\\":true,\\\"senha\\\":\\\"sample-secret\\\"}'),\n"
+            "(3, 'update', 'Pedido', '2026-01-02 10:00:00', '{\\\"ok\\\":true,\\\"senha\\\":\\\"sample-secret\\\"}');\n"
             "INSERT INTO `connect_api_webhook_events` (`id`, `event_type`, `deduplication_key`, `payload`, `normalized_payload`, `received_at`) VALUES\n"
             "(1, 'qrcode-updated', 'evt-1', '{\"data\":{\"qrcode\":{\"code\":\"PAIRING-SECRET\",\"status\":\"pending\"},\"avatar\":\"data:image/png;base64,AAAA\"}}', NULL, '2026-01-03 10:00:00');\n"
         ).encode("utf-8")
@@ -92,6 +93,8 @@ class DatabaseHealthCliTest(unittest.TestCase):
         event_columns = {column["name"]: column for column in tables["connect_api_webhook_events"]["top_columns"]}
         self.assertEqual(1, event_columns["payload"]["qr_secrets"])
         self.assertEqual(1, event_columns["payload"]["data_uris"])
+        log_columns = {column["name"]: column for column in tables["logs"]["top_columns"]}
+        self.assertEqual(2, log_columns["dados_depois"]["sensitive_fields"])
 
     def test_clean_copy_redacts_qr_without_changing_other_member_or_deleting(self):
         output = self.directory / "clean.zip"
@@ -102,10 +105,12 @@ class DatabaseHealthCliTest(unittest.TestCase):
         self.assertIn(b"PAIRING-SECRET", self.original_sql)
         self.assertNotIn(b"PAIRING-SECRET", cleaned)
         self.assertNotIn(b"data:image/png;base64", cleaned)
+        self.assertNotIn(b"sample-secret", cleaned)
         self.assertIn(b"[REDACTED]", cleaned)
         self.assertIn(b"INSERT INTO `ordinary` (`id`, `message`) VALUES\n(1, 'keep comma, parentheses (and semicolon;) intact');\n", cleaned)
         self.assertIn(b"'NotFoundHttpException'", cleaned)
-        self.assertIn(b"INSERT INTO `logs`", cleaned)
+        self.assertLess(cleaned.index(b"INSERT INTO `logs`"), cleaned.index(b"(1, 'exception'"))
+        self.assertIn(b'"senha":"[REDACTED]"', cleaned)
         self.assertNotEqual(self.original_sql, cleaned)
 
     def test_explicit_delete_rebuilds_statement_without_trailing_comma(self):
@@ -116,8 +121,13 @@ class DatabaseHealthCliTest(unittest.TestCase):
         self.assertNotIn(b"NotFoundHttpException", cleaned)
         self.assertIn(b"(2, 'update'", cleaned)
         self.assertIn(b"(3, 'update'", cleaned)
-        self.assertIn(b"(3, 'update', 'Pedido', '2026-01-02 10:00:00', '{\\\"ok\\\":true}');", cleaned)
+        self.assertIn(b"(3, 'update', 'Pedido', '2026-01-02 10:00:00', '{\"ok\":true,\"senha\":\"[REDACTED]\"}');", cleaned)
         self.assertNotIn(b"),\n;", cleaned)
+        report_path = self.directory / "pruned-analysis.json"
+        self.run_cli("analyze", output, "--config", self.config_path, "--report-json", report_path)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        logs = next(table for table in report["tables"] if table["name"] == "logs")
+        self.assertEqual(2, logs["rows"])
 
     def test_refuses_to_overwrite_existing_output_by_default(self):
         output = self.directory / "already.zip"
