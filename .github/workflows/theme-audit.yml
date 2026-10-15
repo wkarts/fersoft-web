@@ -7,6 +7,10 @@ on:
       - 'public/css/theme-refined.css'
       - 'config/ui_theme.php'
       - 'scripts/auditar-tema.php'
+      - 'scripts/auditar-assets.php'
+      - 'scripts/ui/coverage-report.php'
+      - 'docs/ui/coverage-reviews.json'
+      - 'docs/ui/COBERTURA-INTEGRAL.md'
       - '.github/workflows/theme-audit.yml'
   workflow_dispatch:
 
@@ -46,6 +50,17 @@ jobs:
           set -euo pipefail
           php -l scripts/auditar-assets.php
           php scripts/auditar-assets.php --out=storage/app/tema-assets.json | tee storage/app/tema-assets-resumo.txt
+      - name: Gerar matriz de cobertura sem afirmar migração não homologada
+        run: |
+          set -euo pipefail
+          php -l scripts/ui/coverage-report.php
+          php scripts/ui/coverage-report.php \
+            --views=storage/app/tema-inventario.json \
+            --assets=storage/app/tema-assets.json \
+            --decisions=docs/ui/coverage-reviews.json \
+            --out=storage/app/tema-cobertura.json \
+            --csv=storage/app/tema-cobertura.csv \
+            | tee storage/app/tema-cobertura-resumo.txt
       - name: Publicar inventário completo (JSON + TSV)
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,5 +72,8 @@ jobs:
             storage/app/tema-modulos.tsv
             storage/app/tema-assets.json
             storage/app/tema-assets-resumo.txt
+            storage/app/tema-cobertura.json
+            storage/app/tema-cobertura.csv
+            storage/app/tema-cobertura-resumo.txt
           if-no-files-found: error
           retention-days: 30
