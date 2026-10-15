@@ -62,11 +62,16 @@ class UiThemeCatalogTest extends TestCase
             'ui.themes.duplicate',
             'ui.themes.publish',
             'ui.themes.archive',
+            'ui.themes.company.search',
             'ui.themes.grant',
             'ui.themes.company.default',
         ] as $name) {
             $this->assertTrue(Route::has($name), "Rota ausente: {$name}");
-            $this->assertContains('verificaEmpresa', Route::getRoutes()->getByName($name)->gatherMiddleware());
+            $route = Route::getRoutes()->getByName($name);
+            $this->assertContains('verificaEmpresa', $route->gatherMiddleware());
+            [$controller, $method] = explode('@', $route->getActionName(), 2);
+            $this->assertTrue(class_exists($controller), "Controller ausente: {$controller}");
+            $this->assertTrue(method_exists($controller, $method), "Método ausente: {$controller}@{$method}");
         }
     }
 
