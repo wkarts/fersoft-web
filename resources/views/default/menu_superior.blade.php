@@ -138,6 +138,12 @@
         }*/
 
     </style>
+    {{-- Apenas o shell refinado habilita CSS das páginas no menu superior.
+         O tema clássico conserva exatamente o comportamento anterior. --}}
+    @if(config('ui_theme.active', false))
+        @yield('css')
+    @endif
+
     {{-- Tema opt-in: calcular no layout pai para disponibilizar dark/density ao body. --}}
     @if(config('ui_theme.active', false))
         @php
