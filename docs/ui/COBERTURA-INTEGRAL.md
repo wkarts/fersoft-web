@@ -1,62 +1,69 @@
-# Cobertura integral e homologação do redesenho — FERSOFT WEB
+# Expansão visual integral — responsabilidade do desenvolvimento, sem tarefas nas hospedagens
 
-> Documento de controle da expansão visual, vinculado EXCLUSIVAMENTE à \`develop\`. A PR de promoção \`develop → main\` (#274) continua como rascunho até a conclusão integral. A versão clássica segue preservada.
+## Entrega contratada
 
-## Qual é o escopo, sem reduzir ou mascarar
+O novo visual do FERSOFT WEB é entregue como **código da aplicação**, por PRs destinadas à **`develop`**, com pré-release beta contínua. O desenvolvedor implementa o novo shell, componentes, estilos, adaptadores, módulos e testes. A pessoa que utiliza ou hospeda o ERP **não precisa executar scripts de auditoria, registrar manualmente 1.695 aprovações ou preencher planilhas**.
 
-A auditoria inicial identificou **1.112 views Blade**, **241 grupos**, **668 Blades que estendem diretamente o shell ERP** e **576 assets CSS/JS/TS/SCSS**. Estes números são o ponto de partida da auditoria (não uma contagem congelada). Os scripts \`scripts/auditar-tema.php\` e \`scripts/auditar-assets.php\` devem recalculá-los em todo novo build de inventário.
+A `main` permanece a linha estável. A promoção final `develop → main` é deliberada, mediante aprovação do redesenho, e a versão beta continua permanentemente na `develop`.
 
-**Nenhuma herança de \`default.layout\`, classe CSS \`ui-theme-refined\`, estilização superficial nem CI verde equivale à homologação visual de uma tela.** A PR #275, já incorporada à \`develop\`, entrega somente a fundação compartilhada: presets, catálogo SUPERADMIN, seleção por empresa/usuário, shell progressivo e busca por módulos. Ela não concluiu a substituição do Metronic nem a revisão individual de todos os módulos.
+## Como o diagnóstico é realizado — AUTOMATICAMENTE
 
-Todas as views/assets inventariados devem passar por triagem expressa:
-- **Homologado:** design novo funcional e aprovado no contexto real; registro de evidência (PR/teste/captura), responsável e verificação de regressão.
-- **Dispensado com justificativa:** arquivo que não deve herdar o visual interno por função específica (p.ex., XML, HTML de e-mail, PDF fiscal, impressão dedicada, página pública/login independente). A dispensa precisa de responsável, justificativa e evidência. Não é exclusão silenciosa.
-- **Pendente:** estado automático de todos os arquivos não revisados, mesmo quando seus componentes herdam parte do shell.
+O GitHub Actions executa no desenvolvimento, sem banco nem instalação em hospedagens:
 
-Arquivos novos entram no inventário automaticamente como **pendentes**. A meta final não é modificar arbitrariamente 1.112 arquivos: é garantir que **100% deles tenham tratamento justificado e verificado**, evitando danos a e-mails, impressões, portais e rotas públicas.
+1. `scripts/auditar-tema.php` — encontra e classifica as views Blade.
+2. `scripts/auditar-assets.php` — identifica arquivos CSS/JS e dependências técnicas.
+3. `scripts/ui/coverage-report.php` — cruza os dois inventários e emite JSON/CSV com grupos, tipo de integração herdada, indicadores e prioridade de migração.
+4. O próprio workflow `theme-audit.yml` anexa os três relatórios aos artifacts do GitHub Actions.
 
-## Contrato funcional — todas as áreas
+Os comandos são **internos ao CI**. São documentados para reprodução técnica por desenvolvedores, não para execução por clientes, superadmins da aplicação nem operadores de hospedagem. Nenhum servidor cliente precisa instalar, configurar, programar cron ou executar qualquer relatório desse tipo.
 
-| Macroetapa | Abrangência | Resultado que comprova a entrega |
-|---|---|---|
-| 1. Shell e identidade | Layout lateral/superior, logo oficial, topo com empresa/ambiente/filial/PDV/WhatsApp/perfil/logoff, sessão, rolagem e suporte | Regressão visual real no desktop/mobile/PWA e todos os controles ativos |
-| 2. Design system próprio | Tokens, temas claro/sidebar escura/noturno, densidades, fontes access_4, botões, cards, formulários, responsividade, focus/feedback, acessibilidade | Biblioteca reutilizável com contratos Blade/JS e testes sem exigir mudança de regras de negócio |
-| 3. Componentes e adaptadores | Modal, wizard, Select2, DataTable/KTDatatable, tooltips, alerts, toasts, tabs, filtros, anexos, calendários, grids AJAX | Mesmas ações/eventos preservados; componentes migrados deixam dependências antigas quando homologados |
-| 4. Cadastros e gestão | Clientes, produtos, fornecedores, usuários, permissões, empresas, perfis, serviços, estoque, inventário, compras | Salvar, editar, excluir conforme autorização; grid continua acessível sem recarregar |
-| 5. Comercial e operação | Vendas, orçamento, pedidos, PDV, caixa, delivery, NFC-e offline, serviços, contratos/medições | Fluxos completos sem regressão de validação, preço, unidade, cliente ou navegação |
-| 6. Financeiro/fiscal/documentos | Contas a pagar/receber, conciliação, banking, NF-e/NFC-e/NFS-e/CT-e/MDF-e/DFe, MTR, SPED, relatórios | Mesmos valores, retornos, transmissões e permissões, sem adulterar cálculos, XML ou impressões |
-| 7. Superfícies independentes | Login \`access_4\`, portais, modelos de e-mail, impressões, PDF, páginas públicas, PWA | Avaliação contextual com preservação de contratos, ou exceção técnica documentada |
-| 8. Homologação integral | Todos os grupos/views e assets inventariados e revisados, incluindo inclusão de telas posteriores | Nenhum pendente sem justificativa; CI + QA de navegador real; rollback \`APP_UI_THEME=classic\` |
+O relatório é um diagnóstico, não uma lista de assinaturas: **nenhum arquivo exige marcação manual de `homologado` ou `dispensado`**. Os testes e correções são realizados durante o desenvolvimento e vinculados às PRs reais que alteram os módulos.
 
-Não inventar métricas nem gráficos do dashboard: os dados reais, ausência de série, saldos e alertas são preservados. A barra preta de janela instalada pertence ao contêiner do aplicativo/PWA e não deve ser copiada como HTML de Blade.
+## Números medidos
 
-## Registro obrigatório por arquivo
+A auditoria executada em 15/10/2026 na PR #276 identificou:
 
-O CI gera:
-- \`tema-inventario.json\`: caminho, módulo, herança do layout, sinais de JS/CSS, formulários, tabelas, modais etc.
-- \`tema-assets.json\`: caminho, tipo, tamanho, indicadores de plugins e SHA.
-- \`tema-cobertura.json\` e \`tema-cobertura.csv\`: estado **de cada view e asset** e totais por grupo, sem declarar migração concluída por inferência.
+| Elemento | Quantidade |
+|---|---:|
+| Views Blade | 1.115 |
+| Grupos de views | 241 |
+| Views que herdam diretamente o shell ERP | 669 |
+| Assets CSS/JS e relacionados | 580 |
+| Total de arquivos rastreados tecnicamente | 1.695 |
 
-Aprovações manuais entram em \`docs/ui/coverage-reviews.json\` e devem trazer \`situacao\`, \`responsavel\`, \`evidencia\`; para \`dispensado_justificado\`, trazer também \`justificativa\`. Sem esses campos, o relatório deve falhar. Não preencher aprovações falsas nem copiar evidências de outro módulo.
+Essas quantidades mudam com novos arquivos. **Não representam 1.695 modificações isoladas obrigatórias:** componentes compartilhados podem modernizar várias telas sem reescrever cada Blade. No entanto, a aplicação prática desses componentes precisa ser verificada por módulo, especialmente onde há scripts e estilos próprios. Também não significa que as 669 views herdadas já estejam homologadas.
 
-Na promoção FINAL do redesign, o comando \`php scripts/ui/coverage-report.php --require-complete\` pode bloquear integração quando houver arquivos sem revisão. Na fase de implantação parcial, o mesmo comando **sem** \`--require-complete\` informa lacunas sem impedir os builds beta contínuos da \`develop\`.
+## Expansão que eu devo implementar no código
 
-## Bloqueio automatizado da promoção final
+| Área | Entrega efetiva |
+|---|---|
+| Shell lateral e superior | Navegação operacional, permissões originais, topbar, empresa, filial, ambiente, PDV, WhatsApp, alertas, suporte e contexto de sessão preservados |
+| Design system | Componentes Blade/JS próprios, fontes do access_4, tokens, claro/escuro, sidebar clara/escura, densidade, responsividade, acessibilidade |
+| Componentes operacionais | Formulários, máscaras, validações, Select2, tabelas, DataTables/KTDatatable, grids AJAX, modais, wizards, notificações, calendários, uploads |
+| Cadastros, estoque, compras, vendas | Redesenho de views reais com salvar, editar, filtrar e navegar funcionando como antes |
+| Operações especiais | PDV, caixa, delivery, contratos/medições, fiscal, NFS-e/NF-e/NFC-e, MTR, financeiro, conciliação e relatórios |
+| Superfícies específicas | E-mails, PDFs, impressão fiscal, login, portais e PWA preservados nos seus contratos, sem aplicação indiscriminada do CSS interno |
+| Regressão | Testes automatizados de código, componentes e browser nos fluxos mais críticos; comparação com capturas reais sem inventar dados |
 
-O arquivo `.github/workflows/ui-promotion-coverage.yml` implementa o gate de homologação **somente** quando uma PR não-draft de `develop → main` for aberta/revisada e `UI_FLOW_PHASE=standard`. Ele recalcúla os inventários e executa `--require-complete`, falhando se ainda houver views ou assets sem decisão auditável. PRs de funcionalidades e a fase `transition` não são afetadas.
+Metronic/Bootstrap 4 permanecem **onde ainda houver dependência**, até o componente correspondente ser substituído e testado. O objetivo de longo prazo é um shell realmente independente, não apenas outro CSS em cima do Metronic.
 
-Para que esse bloqueio também seja obrigatório para todos os mantenedores, exigir o check de promoção nas regras de proteção/rulesets da `main`. Sem essa regra, um administrador autorizado ainda poderá ultrapassar checks falhos. **O workflow não realiza merges, releases nem alterações de banco.**
+## Implantação — sem tarefa extra em cada hospedagem
 
-## Fluxo de desenvolvimento imutável
+No ambiente clássico, o sistema continua em `APP_UI_THEME=classic`. O novo visual é controlado pela mesma configuração já prevista:
 
-\`feature/* → PR para develop → CI + homologação → beta contínua da develop\`.
+```dotenv
+APP_UI_THEME=classic   # interface atual, padrão e fallback
+APP_UI_THEME=refined   # nova arquitetura visual, após distribuição homologada
+```
 
-A \`main\` continua estável; atualizações na \`main\` são importadas unilateralmente para a \`develop\`. Somente depois da aprovação final: \`develop → PR #274 → main → release estável\`. A pré-release beta permanece para sempre vinculada à \`develop\` nas duas fases.
+O catálogo de preferências por usuário/empresa é opcional e independente da distribuição de versões.
 
-Não substituir bibliotecas Metronic/Bootstrap 4 de uma só vez: manter adaptadores para módulos ainda não convertidos, sem erros de focus, scroll, z-index, event handlers ou Ajax. Uma vez migrado e testado o módulo, eliminar sua dependência específica quando possível.
+O deploy usa os **mecanismos já existentes da aplicação**, incluindo as migrations da feature quando cabíveis ao ambiente. Scripts de auditoria não são parte da rotina de instalação, atualização, inicialização da aplicação nem do acesso do usuário. Ações normais de deploy Laravel, como migrations quando realmente necessárias, não devem ser confundidas com execução manual de ferramentas internas de auditoria.
 
-## Verificação mínima por tela
+A pré-release é gerada pelo GitHub a cada commit/merge na `develop`, independentemente da fase `transition` ou `standard`. Nada é empurrado automaticamente da `develop` para a `main`.
 
-Toda tela autenticada deve ser testada com menu lateral e superior, tema claro e escuro quando aplicável, densidade confortável/compacta, ao menos desktop e mobile, usuário comum e SUPERADMIN segundo permissões. Para tela operacional: filtros, modal, Select2, DataTable, salvar/editar/Ajax, print/exportação e navegação de volta. Anexar referência de prova no registro.
+## Critério real de conclusão
 
-A matriz é uma ferramenta de **contabilidade de cobertura**, não um gerador automático de CSS para todos os arquivos.
+A finalização depende do **código implementado, testes automatizados, homologação nos módulos reais e aprovação do redesenho**. Uma planilha completa, uma contagem de arquivos ou um CI verde por si só não provam a experiência funcional.
+
+A fundação foi introduzida pela PR #275. A PR #276 apenas automatiza a análise técnica para orientar as próximas implementações e **não adiciona requisitos operacionais às hospedagens**. A PR #274, que eventualmente promoverá o novo visual para `main`, continua rascunho até a conclusão real.
