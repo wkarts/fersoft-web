@@ -155,24 +155,27 @@ class UiThemeService
         }
 
         $request = request();
-        $key = 'fersoft.ui_theme.' . ($legacyDark === null ? 'auto' : ($legacyDark ? 'dark' : 'light'));
-        $cached = $request->attributes->get($key);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
-        $session = $request->session()->get('user_logged', []);
+        $session = $request->hasSession() ? $request->session()->get('user_logged', []) : [];
         $context = is_array($session) ? $session : [];
         $companyId = (int) ($context['empresa'] ?? 0);
         $userId = (int) ($context['id'] ?? 0);
         $super = (bool) ($context['super'] ?? false);
+        // Scope cached values to company, user, privilege and requested color mode.
+        $key = 'fersoft.ui_theme.' . $companyId . ':' . $userId . ':' . (int) $super
+            . ':' . ($legacyDark === null ? 'auto' : ($legacyDark ? 'dark' : 'light'));
+        $cached = $request->attributes->get($key);
+        if (is_array($cached)) {
+            return $cached;
+        }
         $themes = $this->availableForCompany($companyId, $super);
         $settings = $this->companySettings($companyId);
 
         $fallbackSlug = (string) config('ui_theme.default_preset', 'fer-light');
         $slug = isset($themes[$settings->default_theme_slug ?? ''])
             ? $settings->default_theme_slug : $fallbackSlug;
+        $hasPersonalChoice = false;
         $colorMode = 'follow';
+        $menuMode = 'follow';
         $density = null; // Sem preferência pessoal, respeitar densidade do tema.
 
         if ($companyId > 0 && $userId > 0 && $this->databaseReady()) {
@@ -185,9 +188,11 @@ class UiThemeService
                 if ($preference) {
                     if (isset($themes[$preference->theme_slug])) {
                         $slug = $preference->theme_slug;
+                        $hasPersonalChoice = true;
                     }
                     $colorMode = (string) $preference->color_mode;
                     $density = (string) $preference->density;
+                    $menuMode = (string) ($preference->menu_mode ?? 'follow');
                 }
             } catch (\Throwable $e) {
                 // Falha opcional da preferência = tema refinado padrão.
@@ -198,7 +203,8 @@ class UiThemeService
         $themeDark = (bool) ($definition['dark'] ?? false);
         $dark = $colorMode === 'dark'
             ? true
-            : ($colorMode === 'light' ? false : ($themeDark || (bool) $legacyDark));
+            : ($colorMode === 'light' ? false
+                : ($hasPersonalChoice ? $themeDark : ($themeDark || (bool) $legacyDark)));
 
         // Uma preferência de modo claro/escuro adapta o conjunto de superfícies,
         // nunca aplica texto escuro sobre fundo escuro nem vice-versa.
@@ -214,6 +220,7 @@ class UiThemeService
             'active' => true,
             'dark' => $dark,
             'color_mode' => $colorMode,
+            'menu_mode' => in_array($menuMode, ['lateral', 'superior'], true) ? $menuMode : 'follow',
             'density' => in_array($density, ['compact', 'comfortable'], true)
                 ? $density
                 : (in_array($definition['density'] ?? '', ['compact', 'comfortable'], true)

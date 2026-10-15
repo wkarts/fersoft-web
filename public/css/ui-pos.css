@@ -1,0 +1,27 @@
+/* Standalone POS presentation adapter. No change to payment, fiscal, scanner or shortcut contracts. */
+body.ui-pos-refined { background:var(--ui-bg)!important;color:var(--ui-ink);font-family:'RefinedTypeface',system-ui,sans-serif; }
+body.ui-pos-refined .pdv-header {align-items:center;gap:8px 0;}
+body.ui-pos-refined .card.card-custom {background:var(--ui-surface);border:1px solid var(--ui-border)!important;border-radius:12px!important;box-shadow:0 4px 18px #15384c0c;}
+body.ui-pos-refined .card-header {border-bottom:1px solid var(--ui-border);background:var(--ui-surface)!important;color:var(--ui-ink);}
+body.ui-pos-refined .card-title,body.ui-pos-refined .card-header h4,body.ui-pos-refined .card-header h5 {font-weight:600;color:var(--ui-ink);}
+body.ui-pos-refined .card-body {background:var(--ui-surface);color:var(--ui-ink);scrollbar-width:thin;scrollbar-color:var(--ui-border) transparent;}
+body.ui-pos-refined .pdv-actions .btn,body.ui-pos-refined .pdv-top-actions .btn {border-radius:8px;font-size:11px;font-weight:600;}
+body.ui-pos-refined .form-control {border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-ink);font:inherit;}
+body.ui-pos-refined .form-control:focus {border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-focus);}
+body.ui-pos-refined .table,body.ui-pos-refined .datatable {font-variant-numeric:tabular-nums;color:var(--ui-ink);}
+body.ui-pos-refined .table thead th {background:var(--ui-surface-alt);font-size:10px;font-weight:600;color:var(--ui-muted);}
+body.ui-pos-refined .table td {border-color:var(--ui-border);}
+body.ui-pos-refined #total-venda,body.ui-pos-refined #total_caixa {font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+body.ui-pos-refined #finalizar-venda {border-radius:10px;min-height:48px;background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-on-accent);}
+body.ui-pos-refined #finalizar-venda i {color:inherit;}
+body.ui-pos-refined #finalizar-venda:disabled {opacity:.55;cursor:not-allowed;}
+body.ui-pos-refined .modal-content {background:var(--ui-surface);color:var(--ui-ink);border:1px solid var(--ui-border);border-radius:12px;}
+body.ui-pos-refined .modal-header {border-bottom:1px solid var(--ui-border);}
+body.ui-pos-refined .modal-title {color:var(--ui-ink);font-size:16px;font-weight:600;}
+body.ui-pos-refined .modal-footer {background:var(--ui-surface-alt);border-top:1px solid var(--ui-border);}
+body.ui-pos-refined .btn-primary,body.ui-pos-refined .btn-success {color:var(--ui-on-accent);}
+body.ui-pos-refined .select2-selection,body.ui-pos-refined .select2-dropdown {border-color:var(--ui-border);background:var(--ui-surface);color:var(--ui-ink);}
+body.ui-pos-refined .text-muted {color:var(--ui-muted)!important;}
+body.ui-pos-refined .bg-light {background:var(--ui-surface-alt)!important;}
+body.ui-pos-refined.ui-density-compact .pdv-actions .btn {padding:7px 9px;}
+@media(max-width:600px){body.ui-pos-refined .container{padding-left:10px;padding-right:10px;}body.ui-pos-refined .pdv-top-actions{display:flex;flex-wrap:wrap;gap:7px;}body.ui-pos-refined .modal-title{font-size:14px;}}

@@ -361,6 +361,7 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
 Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], function () {
     Route::get('/', 'UiThemeController@index')->name('ui.themes.index');
     Route::post('/preferencia', 'UiThemeController@select')->name('ui.themes.select');
+    Route::post('/preferencia/padrao', 'UiThemeController@reset')->name('ui.themes.reset');
     Route::post('/modelos', 'UiThemeController@store')->name('ui.themes.store');
     Route::post('/modelos/{preset}', 'UiThemeController@update')->name('ui.themes.update');
     Route::post('/modelos/{preset}/duplicar', 'UiThemeController@duplicate')->name('ui.themes.duplicate');

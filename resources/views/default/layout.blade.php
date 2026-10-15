@@ -102,7 +102,7 @@
 @endphp
 
 {{-- 1. DEFINE O LAYOUT PAI NO TOPO --}}
-@extends('default/menu_'.$tipoMenu)
+@extends(config('ui_theme.active', false) ? 'themes.refined.layout' : 'default/menu_'.$tipoMenu)
 
 {{-- 2. ALERTA DE TAREFAS NO TOPO DA TELA --}}
 @if($alertaTarefa)

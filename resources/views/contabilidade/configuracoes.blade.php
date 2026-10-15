@@ -1,4 +1,4 @@
-@extends('default/menu_'.$tipoMenu)
+@extends(config('ui_theme.active', false) ? 'themes.refined.layout' : 'default/menu_'.$tipoMenu)
 
 @section('content')
 <div class="container-fluid mt-4">

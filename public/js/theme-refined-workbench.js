@@ -43,7 +43,7 @@
 
     function open() {
         if (!panel.hidden) return;
-        if (document.querySelector('.modal.show, .swal-modal')) return;
+        if (document.querySelector('.modal.show, .swal-overlay--show-modal, .swal2-container')) return;
         previousFocus = document.activeElement;
         panel.hidden = false;
         panel.setAttribute('aria-hidden', 'false');

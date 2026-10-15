@@ -30,6 +30,7 @@ DEVELOPMENT_AUDITORS = {
     "scripts/auditar-tema.php",
     "scripts/auditar-assets.php",
     "scripts/ui/coverage-report.php",
+    "scripts/ci/build-native-ui.py",
 }
 
 
@@ -57,6 +58,12 @@ def permitted(name: str) -> bool:
 
 
 def main() -> None:
+    # Regenerate the native shell from the current business controls before packing.
+    # This executes only in the GitHub build job, never at the customer installation.
+    generator = ROOT / "scripts/ci/build-native-ui.py"
+    if generator.is_file():
+        import sys
+        subprocess.run([sys.executable, str(generator)], cwd=ROOT, check=True)
     sha = git("rev-parse", "HEAD")
     branch = os.environ.get("GITHUB_REF_NAME", git("branch", "--show-current"))
     if branch != "develop":

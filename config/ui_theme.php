@@ -9,6 +9,9 @@ return [
     'name' => $active ? 'refined' : 'classic',
     'active' => $active,
     'default_preset' => 'fer-light',
+    'support_url' => env('HUB_BASE_URL', ''),
+    'support_token' => env('HUB_TOKEN', ''),
+    'support_phone' => env('CONTATO_SUPORTE', ''),
     // Presets imutáveis disponíveis por padrão. Temas personalizados só aparecem
     // após publicação pelo superadmin e liberação à empresa.
     'presets' => [

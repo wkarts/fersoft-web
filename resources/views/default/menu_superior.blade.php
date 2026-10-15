@@ -156,7 +156,15 @@
 <!-- end::Head -->
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config('ui_theme.active', false))ui-theme-refined @if(($uiResolvedTheme['dark'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact@endif @endif">
+<body id="kt_body" @class([
+        'header-fixed',
+        'header-mobile-fixed',
+        'subheader-enabled',
+        'subheader-fixed',
+        'ui-theme-refined' => config('ui_theme.active', false),
+        'ui-theme-refined--dark' => config('ui_theme.active', false) && ($uiResolvedTheme['dark'] ?? false),
+        'ui-density-compact' => config('ui_theme.active', false) && (($uiResolvedTheme['density'] ?? '') === 'compact'),
+    ])>
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
@@ -1912,8 +1920,13 @@
                     @endif
 
                     <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-                        @forelse($appVersionHistoryGrouped as $major => $items)
-                            @php($majorId = 'top-major-'.$major)
+                        {{-- Não usar @forelse aqui: a compilação das views legadas
+                             não fechava o foreach gerado, gerando ParseError no PHP. --}}
+                        @if(count($appVersionHistoryGrouped ?? []) > 0)
+                            @foreach($appVersionHistoryGrouped as $major => $items)
+                            @php
+                                $majorId = 'top-major-' . $major;
+                            @endphp
                             <div class="card">
                                 <div class="card-header" id="head-{{ $majorId }}">
                                     <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
@@ -1945,9 +1958,10 @@
                                     </div>
                                 </div>
                             </div>
-                        @empty
+                            @endforeach
+                        @else
                             <div class="text-center text-muted">Nenhuma versão interna registrada.</div>
-                        @endforelse
+                        @endif
                     </div>
                 </div>
                 <div class="modal-footer">
