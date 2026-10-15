@@ -176,6 +176,15 @@ foreach ($paths as $file) {
         }
         fwrite(STDERR, "Alternative PHP syntax unclosed: " . json_encode(array_slice($altStack, -18)) . "\n");
         fwrite(STDERR, "Alternative PHP syntax mismatches: " . json_encode(array_slice($altMismatches, -18)) . "\n");
+        if ($altStack) {
+            $from = max(1, $altStack[0]['line'] - 3);
+            $compiledLines = explode("\n", $contents);
+            fwrite(STDERR, "PHP compiled source around unclosed directive:\n");
+            for ($idx = $from; $idx < min(count($compiledLines), $from + 82); $idx++) {
+                fwrite(STDERR, sprintf("%5d | %s\n", $idx, $compiledLines[$idx - 1]));
+            }
+        }
+
 
         $bracketStack = [];
         $unexpected = [];
