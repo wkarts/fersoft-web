@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   deploy:
+    # As pré-releases do tema visual nunca podem acionar o deploy estável.
+    if: github.event_name != 'release' || github.event.release.prerelease == false
     runs-on: ubuntu-latest
     steps:
       - name: Resolver versão
