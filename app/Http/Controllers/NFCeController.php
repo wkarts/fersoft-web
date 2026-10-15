@@ -22,6 +22,8 @@ use App\Models\Contigencia;
 use App\Models\Certificado;
 use App\Models\VendaCaixaPreVenda;
 use App\Services\NFCeService;
+use App\Services\LogService;
+use Illuminate\Support\Facades\Log;
 use Mail;
 use App\Models\Filial;
 use Dompdf\Dompdf;
@@ -41,6 +43,46 @@ class NFCeController extends Controller
         });
     }
 
+    /**
+     * Auditoria interna e técnica da NFC-e. Somente metadados, sem CPF/CNPJ,
+     * XML, credenciais ou payload sensível nos logs de atividade.
+     * Falha no registro de auditoria não mascara a resposta da SEFAZ.
+     */
+    private function registrarEventoNfce(VendaCaixa $venda, string $etapa, array $detalhes = [], string $nivel = 'info'): void
+    {
+        $contexto = array_merge([
+            'empresa_id' => $this->empresa_id,
+            'filial_id' => $venda->filial_id,
+            'usuario_id' => session('user_logged')['id'] ?? null,
+            'venda_id' => $venda->id,
+            'numero_nfce' => $venda->NFcNumero,
+            'chave' => $venda->chave,
+            'estado' => $venda->estado,
+            'etapa' => $etapa,
+        ], $detalhes);
+
+        Log::log($nivel, 'NFC-e: ' . $etapa, $contexto);
+
+        try {
+            $auditoria = new LogService(
+                $this->empresa_id,
+                session('user_logged')['id'] ?? null,
+                $venda->filial_id
+            );
+            $auditoria->registrar('nfce_' . $etapa, 'venda_caixas', [
+                'registro_id' => $venda->id,
+                'dados_depois' => $contexto,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('NFC-e: falha inesperada no registro de auditoria interna.', [
+                'empresa_id' => $this->empresa_id,
+                'venda_id' => $venda->id,
+                'etapa' => $etapa,
+                'exception' => $e,
+            ]);
+        }
+    }
+
     public function gerar(Request $request){
 
         $vendaId = $request->vendaId;
@@ -52,14 +94,17 @@ class NFCeController extends Controller
             return response()->json('Venda não autorizada.', 403);
         }
 
-        $retransmitindo = $venda->estado === 'REJEITADO';
-        $chaveOriginal = (string) $venda->chave;
-        $numeroOriginal = (int) $venda->NFcNumero;
-
-        if(isset($request->doc)){
+        // Preserva a entrada original do documento do consumidor ANTES da
+        // geração da NFC-e e da consulta de reenvio. A PR anterior havia
+        // adiado essa atualização e podia perder o CPF neste fluxo.
+        if(isset($request->doc) && in_array($venda->estado, ['DISPONIVEL', 'REJEITADO'], true)){
             $venda->cpf = $request->doc;
             $venda->save();
         }
+
+        $retransmitindo = $venda->estado === 'REJEITADO';
+        $chaveOriginal = (string) $venda->chave;
+        $numeroOriginal = (int) $venda->NFcNumero;
 
         if(valida_objeto($venda)){
 
@@ -79,37 +124,148 @@ class NFCeController extends Controller
 
             $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
 
-            $nfe_service = new NFCeService([
-                "atualizacao" => date('Y-m-d h:i:s'),
-                "tpAmb" => (int)$config->ambiente,
-                "razaosocial" => $config->razao_social,
-                "siglaUF" => $config->UF,
-                "cnpj" => $cnpj,
-                "is_filial" => $isFilial,
-                "schemes" => config('fiscal.default_schemes'),
-                "versao" => "4.00",
-                "tokenIBPT" => "AAAAAAA",
-                "CSC" => $config->csc,
-                "CSCid" => $config->csc_id
-            ]);
+            try {
+                $nfe_service = new NFCeService([
+                    "atualizacao" => date('Y-m-d h:i:s'),
+                    "tpAmb" => (int)$config->ambiente,
+                    "razaosocial" => $config->razao_social,
+                    "siglaUF" => $config->UF,
+                    "cnpj" => $cnpj,
+                    "is_filial" => $isFilial,
+                    "schemes" => config('fiscal.default_schemes'),
+                    "versao" => "4.00",
+                    "tokenIBPT" => "AAAAAAA",
+                    "CSC" => $config->csc,
+                    "CSCid" => $config->csc_id
+                ]);
+            } catch (\Throwable $e) {
+                $this->registrarEventoNfce($venda, 'servico_falhou', [
+                    'tipo_erro' => get_class($e),
+                    'mensagem' => $e->getMessage(),
+                ], 'error');
+                Log::error('NFC-e: falha ao inicializar serviço fiscal.', [
+                    'empresa_id' => $this->empresa_id,
+                    'venda_id' => $vendaId,
+                    'exception' => $e,
+                ]);
+                return response()->json(['Falha ao inicializar emissão NFC-e. Verifique o log técnico.'], 500);
+            }
 
             if($venda->estado == 'REJEITADO' || $venda->estado == 'DISPONIVEL'){
+                $this->registrarEventoNfce($venda, 'solicitacao', [
+                    'retransmissao' => $retransmitindo,
+                    'documento_consumidor_informado' => $request->has('doc'),
+                ]);
                 header('Content-type: text/html; charset=UTF-8');
 
-                $nfce = $nfe_service->gerarNFCe($vendaId);
+                if ($retransmitindo) {
+                    // Um timeout de SSL/SOAP não prova rejeição da SEFAZ.
+                    // Consulta a chave antes de corrigir data/hora ou transmitir
+                    // outra versão assinada do XML.
+                    try {
+                        $situacao = $nfe_service->consultarSituacaoDaChave($chaveOriginal);
+                    } catch (\Throwable $e) {
+                        $this->registrarEventoNfce($venda, 'consulta_falhou', [
+                            'tipo_erro' => get_class($e),
+                            'mensagem' => $e->getMessage(),
+                        ], 'error');
+                        Log::error('NFC-e: exceção completa da consulta SEFAZ.', [
+                            'empresa_id' => $this->empresa_id,
+                            'venda_id' => $vendaId,
+                            'exception' => $e,
+                        ]);
+                        return response()->json(
+                            'Erro: Não foi possível confirmar a situação da NFC-e na SEFAZ. '
+                            . 'A transmissão foi interrompida para evitar duplicidade. Tente consultar a chave novamente.'
+                        );
+                    }
+
+                    $this->registrarEventoNfce($venda, 'consulta_retorno', [
+                        'situacao' => $situacao['situacao'],
+                        'cStat' => $situacao['codigo'] ?? null,
+                        'xMotivo' => $situacao['motivo'] ?? null,
+                    ], $situacao['situacao'] === 'indeterminada' ? 'error' : 'info');
+
+                    if ($situacao['situacao'] === 'autorizada') {
+                        // A SEFAZ pode ter autorizado a nota durante o timeout.
+                        // Recupera o protocolo sem gerar nova chave ou número.
+                        try {
+                            $nfe_service->conciliarAutorizacaoConsultada($venda, $situacao);
+                        } catch (\Throwable $e) {
+                            $this->registrarEventoNfce($venda, 'conciliacao_falhou', [
+                                'tipo_erro' => get_class($e),
+                                'mensagem' => $e->getMessage(),
+                            ], 'error');
+                            Log::error('NFC-e: falha de conciliação, exceção completa.', [
+                                'empresa_id' => $this->empresa_id,
+                                'venda_id' => $vendaId,
+                                'exception' => $e,
+                            ]);
+                            return response()->json(
+                                'Erro: Esta NFC-e já consta autorizada na SEFAZ, mas houve falha na conciliação local. '
+                                . 'Não retransmita; consulte o suporte com a chave original.'
+                            );
+                        }
+
+                        $this->registrarEventoNfce($venda, 'autorizacao_recuperada', [
+                            'cStat' => $situacao['codigo'] ?? null,
+                            'situacao' => 'autorizada',
+                        ]);
+                        return response()->json('Apro');
+                    }
+
+                    if ($situacao['situacao'] !== 'nao_consta') {
+                        return response()->json(
+                            'Erro: Consulta prévia da NFC-e retornou [' . $situacao['codigo'] . '] '
+                            . $situacao['motivo'] . '. Reenvio suspenso para preservar chave e número.'
+                        );
+                    }
+                }
+
+                try {
+                    $nfce = $nfe_service->gerarNFCe($vendaId);
+                } catch (\Throwable $e) {
+                    $this->registrarEventoNfce($venda, 'geracao_exception', [
+                        'tipo_erro' => get_class($e),
+                        'mensagem' => $e->getMessage(),
+                    ], 'error');
+                    Log::error('NFC-e: exceção na geração do XML.', [
+                        'empresa_id' => $this->empresa_id,
+                        'venda_id' => $vendaId,
+                        'exception' => $e,
+                    ]);
+                    return response()->json(['Não foi possível gerar o XML da NFC-e. Consulte o log técnico.'], 500);
+                }
                 if(!isset($nfce['erros_xml'])){
                     // Não assinar, transmitir nem salvar se o serviço alterar
                     // qualquer parte da identidade fiscal da nota rejeitada.
                     if ($retransmitindo
                         && ($chaveOriginal !== (string) ($nfce['chave'] ?? '')
                             || $numeroOriginal !== (int) ($nfce['nNf'] ?? 0))) {
+                        $this->registrarEventoNfce($venda, 'identidade_divergente', [
+                            'chave_gerada' => $nfce['chave'] ?? null,
+                            'numero_gerado' => $nfce['nNf'] ?? null,
+                        ], 'error');
                         return response()->json([
                             'erros_xml' => ['Chave ou número da NFC-e divergiu da emissão original. Retransmissão bloqueada.'],
                         ], 409);
                     }
 
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                    $signed = $nfe_service->sign($nfce['xml']);
+                    try {
+                        $signed = $nfe_service->sign($nfce['xml']);
+                    } catch (\Throwable $e) {
+                        $this->registrarEventoNfce($venda, 'assinatura_exception', [
+                            'tipo_erro' => get_class($e),
+                            'mensagem' => $e->getMessage(),
+                        ], 'error');
+                        Log::error('NFC-e: falha ao assinar XML.', [
+                            'empresa_id' => $this->empresa_id,
+                            'venda_id' => $vendaId,
+                            'exception' => $e,
+                        ]);
+                        return response()->json(['Falha na assinatura fiscal da NFC-e. Consulte o log técnico.'], 500);
+                    }
                     if ($retransmitindo) {
                         // A assinatura também deve manter a identidade fiscal;
                         // somente um XML com o mesmo Id pode seguir à SEFAZ.
@@ -119,11 +275,36 @@ class NFCeController extends Controller
                             $infOriginal = $xmlAssinado->getElementsByTagName('infNFe')->item(0);
                         }
                         if (!$infOriginal || $infOriginal->getAttribute('Id') !== 'NFe' . $chaveOriginal) {
+                            $this->registrarEventoNfce($venda, 'assinatura_divergente', [], 'error');
                             return response()->json([
                                 'erros_xml' => ['Assinatura alterou a chave da NFC-e original. Transmissão bloqueada.'],
                             ], 409);
                         }
                     }
+
+                    // Guarda a chave e o XML assinado ANTES da chamada SOAP.
+                    // Em caso de timeout, o número já está reservado; sem esta
+                    // persistência a próxima tentativa gerava outro cNF/chave.
+                    if (!$retransmitindo && (string) $venda->chave !== ''
+                        && !hash_equals((string) $venda->chave, (string) $nfce['chave'])) {
+                        $this->registrarEventoNfce($venda, 'chave_anterior_divergente', [
+                            'chave_gerada' => $nfce['chave'],
+                        ], 'error');
+                        return response()->json([
+                            'erros_xml' => ['Já existe uma chave para esta venda; gerar outra automaticamente foi bloqueado.'],
+                        ], 409);
+                    }
+
+                    if (!$retransmitindo && !$venda->chave) {
+                        $venda->chave = $nfce['chave'];
+                    }
+                    $venda->signed_xml = $signed;
+                    $venda->save();
+
+                    $this->registrarEventoNfce($venda, 'xml_assinado', [
+                        'sha256_xml_assinado' => hash('sha256', (string) $signed),
+                        'retransmissao' => $retransmitindo,
+                    ]);
 
                     if($this->getContigencia()){
                         if(!is_dir(public_path('xml_nfce_contigencia'))){
@@ -151,11 +332,20 @@ class NFCeController extends Controller
 
                         safe_file_put_contents(public_path('xml_nfce_contigencia/').$nfce['chave'].'.xml', $signed);
 
+                        $this->registrarEventoNfce($venda, 'contingencia_offline', [
+                            'resultado' => 'armazenado_para_transmissao',
+                        ]);
                         echo json_encode('OFFL');
 
                     }else{
                         $resultado = $nfe_service->transmitirNfce($signed, $nfce['chave'], $vendaId);
-                        if(substr($resultado, 0, 4) != 'Erro'){
+                        $tipoResultado = $nfe_service->tipoUltimoResultadoTransmissao();
+                        $this->registrarEventoNfce($venda, 'transmissao_resultado', [
+                            'classificacao' => $tipoResultado,
+                            'retorno_resumido' => substr((string) $resultado, 0, 400),
+                        ], in_array($tipoResultado, ['rejeicao_sefaz', 'indeterminado'], true)
+                            ? 'error' : ($tipoResultado === 'autorizada' ? 'info' : 'warning'));
+                        if(substr((string) $resultado, 0, 4) != 'Erro'){
                             if (!$retransmitindo) {
                                 $venda->chave = $nfce['chave'];
                                 $venda->NFcNumero = $nfce['nNf'];
@@ -176,12 +366,13 @@ class NFCeController extends Controller
                             $file = safe_file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
                             importaXmlSieg($file, $this->empresa_id);
                         }else{
+                            // Mantém compatibilidade com o estado legado usado
+                            // pela grid do PDV. O log identifica separadamente
+                            // rejeição fiscal (cStat) e timeout SOAP/SSL.
                             $venda->estado = 'REJEITADO';
                             if($venda->chave == ''){
                                 $venda->chave = $nfce['chave'];
                             }
-                            // A reemissão corrigida conserva a mesma chave,
-                            // mas pode trazer outros dados válidos no XML.
                             $venda->signed_xml = $signed;
                             $venda->save();
                         }
@@ -189,6 +380,10 @@ class NFCeController extends Controller
                         echo json_encode($resultado);
                     }
                 }else{
+                    $this->registrarEventoNfce($venda, 'geracao_recusada', [
+                        'erros' => $nfce['erros_xml'],
+                        'exception' => $nfce['exception'] ?? null,
+                    ], 'error');
                     return response()->json($nfce['erros_xml'], 401);
                 }
 
