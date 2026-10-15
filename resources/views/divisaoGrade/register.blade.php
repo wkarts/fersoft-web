@@ -26,7 +26,7 @@
 										<div class="form-group validated col-sm-6 col-lg-6">
 											<label class="col-form-label">Nome</label>
 											<div class="">
-												<input type="text" class="form-control @if($errors->has('nome')) is-invalid @endif" name="nome" value="{{{ isset($divisaoGrade) ? $divisaoGrade->nome : old('nome') }}}">
+												<input type="text" class="form-control @if($errors->has('nome')) is-invalid @endif" name="nome" maxlength="100" value="{{{ isset($divisaoGrade) ? $divisaoGrade->nome : old('nome') }}}">
 												@if($errors->has('nome'))
 												<div class="invalid-feedback">
 													{{ $errors->first('nome') }}
