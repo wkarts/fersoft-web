@@ -117,12 +117,12 @@ class DivisaoGradeController extends Controller
 
 	private function _validate(Request $request){
 		$rules = [
-			'nome' => 'required|max:30'
+			'nome' => 'required|max:100'
 		];
 
 		$messages = [
 			'nome.required' => 'O campo nome é obrigatório.',
-			'nome.max' => '50 caracteres maximos permitidos.'
+			'nome.max' => 'O campo nome deve ter no máximo 100 caracteres.'
 		];
 		$this->validate($request, $rules, $messages);
 	}
