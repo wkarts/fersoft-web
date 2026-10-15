@@ -8,29 +8,22 @@ use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
 
+/**
+ * Regressão: não inventar data nova nem diagnóstico fiscal para 704/timeout.
+ * Não invoca webservice externo nem escreve dados de produção.
+ */
 class NfceRejeicao704TimeoutTest extends TestCase
 {
     private function chave(): string
     {
-        // Chave apenas de teste: cUF=29, AAMM=2610, mod=65, nNF=347.
+        // Chave ilustrativa: UF=29, AAMM=2610, mod=65, número=347.
         return '29261012345678000195650120000003471000412340';
     }
 
-    private function horario(array $identidade, string $agora): string
+    private function consultar(string $xml): array
     {
         $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
-        $method = new ReflectionMethod($service, 'horarioRetransmissaoNFCe');
-        return $method->invoke($service, $identidade, $agora);
-    }
 
-    private function identidade(string $emissao): array
-    {
-        return ['chave' => $this->chave(), 'dhEmi' => $emissao];
-    }
-
-    private function consulta(string $xml): array
-    {
-        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
         $tools = new class($xml) {
             public function __construct(private string $xml) {}
             public function sefazConsultaChave(string $chave): string
@@ -38,21 +31,27 @@ class NfceRejeicao704TimeoutTest extends TestCase
                 return $this->xml;
             }
         };
+
         (new ReflectionProperty(NFCeService::class, 'tools'))->setValue($service, $tools);
-        return $service->consultarSituacaoDaChave($this->chave());
+        return (new ReflectionMethod(NFCeService::class, 'consultarSituacaoDaChave'))
+            ->invoke($service, $this->chave());
     }
 
-    private function xmlConsulta(int $cStat, string $motivo, ?string $chaveProt = null): string
-    {
-        $prot = '';
-        if ($chaveProt !== null) {
-            $prot = '<protNFe versao="4.00"><infProt>'
+    private function xmlConsulta(
+        int $cStat,
+        string $motivo,
+        ?string $chaveProtocolo = null,
+        int $cStatProtocolo = 100
+    ): string {
+        $protocolo = '';
+        if ($chaveProtocolo !== null) {
+            $protocolo = '<protNFe versao="4.00"><infProt>'
                 . '<tpAmb>2</tpAmb><verAplic>TESTE</verAplic>'
-                . '<chNFe>' . $chaveProt . '</chNFe>'
+                . '<chNFe>' . $chaveProtocolo . '</chNFe>'
                 . '<dhRecbto>2026-10-15T10:00:00-03:00</dhRecbto>'
                 . '<nProt>129260000000000</nProt>'
                 . '<digVal>AA==</digVal>'
-                . '<cStat>100</cStat><xMotivo>Autorizado o uso da NF-e</xMotivo>'
+                . '<cStat>' . $cStatProtocolo . '</cStat><xMotivo>' . $motivo . '</xMotivo>'
                 . '</infProt></protNFe>';
         }
 
@@ -61,100 +60,132 @@ class NfceRejeicao704TimeoutTest extends TestCase
             . '<tpAmb>2</tpAmb><verAplic>TESTE</verAplic>'
             . '<cStat>' . $cStat . '</cStat><xMotivo>' . $motivo . '</xMotivo>'
             . '<cUF>29</cUF><chNFe>' . $this->chave() . '</chNFe>'
-            . $prot . '</retConsSitNFe>';
+            . $protocolo . '</retConsSitNFe>';
     }
 
-    public function test_rejeicao_704_renova_apenas_hora_no_mes_da_chave(): void
+    public function test_data_original_da_nota_nao_e_substituida_por_limiar_arbitrario(): void
     {
-        $identidade = $this->identidade('2026-10-15T09:00:00-03:00');
-        $this->assertSame(
-            '2026-10-15T10:08:00-03:00',
-            $this->horario($identidade, '2026-10-15T10:08:00-03:00')
+        $service = file_get_contents(
+            dirname(__DIR__, 2) . '/app/Services/NFCeService.php'
         );
-        $this->assertSame($this->chave(), $identidade['chave']);
+
+        $this->assertStringContainsString(
+            "\$stdIde->dhEmi = \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
+            $service
+        );
+        $this->assertStringNotContainsString('horarioRetransmissaoNFCe', $service);
+        $this->assertStringNotContainsString('$diferenca >= 60', $service);
+        $this->assertStringContainsString("hash_equals(\$identidadeOriginal['chave'], \$chaveGerada)", $service);
     }
 
-    public function test_emissao_recente_nao_e_alterada_sem_necessidade(): void
+    public function test_consulta_217_informa_nao_consta_sem_inventar_rejeicao(): void
     {
-        $this->assertSame(
-            '2026-10-15T10:07:50-03:00',
-            $this->horario(
-                $this->identidade('2026-10-15T10:07:50-03:00'),
-                '2026-10-15T10:08:20-03:00'
-            )
+        $dados = $this->consultar(
+            $this->xmlConsulta(217, 'NF-e não consta na base de dados')
         );
+
+        $this->assertSame('nao_consta', $dados['situacao']);
+        $this->assertSame(217, $dados['codigo']);
     }
 
-    public function test_mudanca_de_dia_no_mes_preserva_identidade_fiscal(): void
+    public function test_autorizacao_100_confirmada_na_consulta_eh_diferente_de_timeout(): void
     {
-        $this->assertSame(
-            '2026-10-15T00:01:00-03:00',
-            $this->horario(
-                $this->identidade('2026-10-14T23:55:00-03:00'),
-                '2026-10-15T00:01:00-03:00'
-            )
+        $dados = $this->consultar(
+            $this->xmlConsulta(100, 'Autorizado o uso da NFC-e', $this->chave())
         );
+
+        $this->assertSame('autorizada', $dados['situacao']);
+        $this->assertSame(100, $dados['codigo']);
     }
 
-    public function test_virada_de_mes_nao_pode_criar_outra_chave_implicitamente(): void
+    public function test_autorizacao_fora_do_prazo_150_eh_tratada_como_autorizacao(): void
+    {
+        $dados = $this->consultar(
+            $this->xmlConsulta(150, 'Autorizado fora do prazo', $this->chave(), 150)
+        );
+
+        $this->assertSame('autorizada', $dados['situacao']);
+        $this->assertSame(150, $dados['codigo']);
+    }
+
+    public function test_protocolo_de_outra_nota_nao_pode_ser_conciliado(): void
     {
         $this->expectException(\DomainException::class);
-        $this->expectExceptionMessage('alteraria a chave de acesso');
-        $this->horario(
-            $this->identidade('2026-10-31T23:55:00-03:00'),
-            '2026-11-01T00:06:00-03:00'
+        $this->consultar(
+            $this->xmlConsulta(100, 'Autorizado', str_repeat('9', 44))
         );
     }
 
-    public function test_consulta_sefaz_217_libera_avaliacao_para_reenvio(): void
+    public function test_indisponibilidade_da_sefaz_nao_eh_rejeicao_confirmada(): void
     {
-        $resultado = $this->consulta($this->xmlConsulta(217, 'NF-e não consta na base de dados'));
-        $this->assertSame('nao_consta', $resultado['situacao']);
-        $this->assertSame(217, $resultado['codigo']);
+        $dados = $this->consultar(
+            $this->xmlConsulta(108, 'Serviço paralisado momentaneamente')
+        );
+
+        $this->assertSame('indeterminada', $dados['situacao']);
+        $this->assertSame(108, $dados['codigo']);
     }
 
-    public function test_autorizacao_ocorrida_durante_timeout_impede_novo_envio(): void
+    public function test_cpf_eh_persistido_antes_da_consulta_e_da_geracao_do_xml(): void
     {
-        $resultado = $this->consulta($this->xmlConsulta(100, 'Autorizado o uso da NF-e', $this->chave()));
-        $this->assertSame('autorizada', $resultado['situacao']);
-        $this->assertSame(100, $resultado['codigo']);
-        $this->assertStringContainsString('<protNFe', $resultado['resposta']);
+        $controller = file_get_contents(
+            dirname(__DIR__, 2) . '/app/Http/Controllers/NFCeController.php'
+        );
+
+        $inicio = strpos($controller, 'public function gerar(Request $request)');
+        $fim = strpos($controller, 'public function transmitirContigencia(', $inicio);
+        $metodo = substr($controller, $inicio, $fim - $inicio);
+
+        $cpf = strpos($metodo, '$venda->cpf = $request->doc');
+        $consulta = strpos($metodo, 'consultarSituacaoDaChave(');
+        $geracao = strpos($metodo, 'gerarNFCe($vendaId)');
+
+        $this->assertNotFalse($cpf);
+        $this->assertNotFalse($consulta);
+        $this->assertNotFalse($geracao);
+        $this->assertLessThan($consulta, $cpf);
+        $this->assertLessThan($geracao, $cpf);
+        $this->assertSame(1, substr_count($metodo, '$venda->cpf = $request->doc'));
     }
 
-    public function test_protocolo_de_outra_chave_nao_serve_para_consiliar(): void
-    {
-        $this->expectException(\DomainException::class);
-        $this->consulta($this->xmlConsulta(100, 'Autorizado', str_repeat('9', 44)));
-    }
-
-    public function test_sefaz_fora_do_ar_nao_libera_retransmissao(): void
-    {
-        $resultado = $this->consulta($this->xmlConsulta(108, 'Serviço paralisado momentaneamente'));
-        $this->assertSame('indeterminada', $resultado['situacao']);
-        $this->assertSame(108, $resultado['codigo']);
-    }
-
-    public function test_controller_consulta_antes_de_gerar_nova_versao_do_xml(): void
+    public function test_fluxo_registra_diagnosticos_internos_e_no_laravel(): void
     {
         $root = dirname(__DIR__, 2);
         $controller = file_get_contents($root . '/app/Http/Controllers/NFCeController.php');
         $service = file_get_contents($root . '/app/Services/NFCeService.php');
+
+        $this->assertStringContainsString('new LogService(', $controller);
+        $this->assertStringContainsString("->registrar('nfce_' . \$etapa", $controller);
+        $this->assertStringContainsString("Log::log(\$nivel, 'NFC-e: ' . \$etapa", $controller);
+        $this->assertStringContainsString("'consulta_falhou'", $controller);
+        $this->assertStringContainsString("'geracao_recusada'", $controller);
+        $this->assertStringContainsString("'transmissao_resultado'", $controller);
+
+        $this->assertStringContainsString('new EmissionLogger(', $service);
+        $this->assertStringContainsString("'document_type' => 'NFCe'", $service);
+        $this->assertStringContainsString("Log::warning('NFC-e: SEFAZ retornou código", $service);
+        $this->assertStringContainsString("Log::error('NFC-e: falha técnica/comunicação SOAP-SSL.'", $service);
+        $this->assertStringContainsString("'retorno_codigo' => \$codigo", $service);
+        $this->assertStringContainsString("'retorno_mensagem' => \$mensagem", $service);
+        $this->assertStringContainsString('tipoUltimoResultadoTransmissao()', $service);
+    }
+
+    public function test_assinatura_e_chave_sao_preservadas_antes_do_envio_soap(): void
+    {
+        $controller = file_get_contents(
+            dirname(__DIR__, 2) . '/app/Http/Controllers/NFCeController.php'
+        );
+
         $inicio = strpos($controller, 'public function gerar(Request $request)');
         $fim = strpos($controller, 'public function transmitirContigencia(', $inicio);
-        $gerar = substr($controller, $inicio, $fim - $inicio);
+        $metodo = substr($controller, $inicio, $fim - $inicio);
 
-        $this->assertNotFalse($inicio);
-        $this->assertNotFalse($fim);
-        $consulta = strpos($gerar, 'consultarSituacaoDaChave(');
-        $criacao = strpos($gerar, 'gerarNFCe($vendaId)');
-        $this->assertNotFalse($consulta);
-        $this->assertNotFalse($criacao);
-        $this->assertLessThan($criacao, $consulta);
-        $this->assertStringContainsString("if ($" . "situacao['situacao'] === 'autorizada')", $gerar);
-        $this->assertStringContainsString("if ($" . "situacao['situacao'] !== 'nao_consta')", $gerar);
-        $this->assertStringContainsString("hash_equals($" . "identidadeOriginal['chave'], $" . "chaveGerada)", $service);
-        $this->assertStringContainsString('horarioRetransmissaoNFCe(', $service);
-        $this->assertStringContainsString('conciliarAutorizacaoConsultada(', $service);
-        $this->assertStringContainsString('LIBXML_NONET', $service);
+        $persistir = strpos($metodo, '$venda->signed_xml = $signed;');
+        $transmitir = strpos($metodo, 'transmitirNfce($signed,');
+        $this->assertNotFalse($persistir);
+        $this->assertNotFalse($transmitir);
+        $this->assertLessThan($transmitir, $persistir);
+        $this->assertStringContainsString("hash_equals((string) \$venda->chave, (string) \$nfce['chave'])", $metodo);
+        $this->assertStringContainsString("'sha256_xml_assinado'", $metodo);
     }
 }
