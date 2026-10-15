@@ -31,7 +31,8 @@ body.ui-theme-refined #kt_aside {
     box-shadow: 6px 0 30px rgba(16, 35, 58, .035);
 }
 body.ui-theme-refined #kt_brand {
-    background: var(--ui-aside) !important;
+    /* Mantém a identidade do cliente legível mesmo em sidebar escura. */
+    background: var(--ui-surface) !important;
     border-bottom: 1px solid var(--ui-border);
     min-height: 66px;
 }
@@ -58,6 +59,15 @@ body.ui-theme-refined #kt_aside .menu-nav > .menu-item > .menu-link {
 body.ui-theme-refined #kt_aside .menu-nav > .menu-item > .menu-link .menu-text,
 body.ui-theme-refined #kt_aside .menu-nav > .menu-item > .menu-link .menu-icon {
     color: var(--ui-sidebar-ink) !important;
+}
+/* Os SVG Metronic possuem fill="#000000" embutido e não herdam o texto claro. */
+body.ui-theme-refined #kt_aside .menu-link .svg-icon svg [fill="#000000"],
+body.ui-theme-refined #kt_aside .menu-link .svg-icon svg [fill="#000"] {
+    fill: var(--ui-sidebar-ink) !important;
+}
+body.ui-theme-refined #kt_aside .menu-item-active > .menu-link .svg-icon svg [fill="#000000"],
+body.ui-theme-refined #kt_aside .menu-item-open > .menu-link .svg-icon svg [fill="#000000"] {
+    fill: var(--ui-accent) !important;
 }
 body.ui-theme-refined #kt_aside .menu-nav > .menu-item.menu-item-active > .menu-link,
 body.ui-theme-refined #kt_aside .menu-nav > .menu-item.menu-item-open > .menu-link,
