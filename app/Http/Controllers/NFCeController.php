@@ -56,11 +56,6 @@ class NFCeController extends Controller
         $chaveOriginal = (string) $venda->chave;
         $numeroOriginal = (int) $venda->NFcNumero;
 
-        if(isset($request->doc)){
-            $venda->cpf = $request->doc;
-            $venda->save();
-        }
-
         if(valida_objeto($venda)){
 
             $config = ConfigNota::
@@ -95,6 +90,59 @@ class NFCeController extends Controller
 
             if($venda->estado == 'REJEITADO' || $venda->estado == 'DISPONIVEL'){
                 header('Content-type: text/html; charset=UTF-8');
+
+                if ($retransmitindo) {
+                    // Um timeout de SSL/SOAP não prova rejeição da SEFAZ.
+                    // Consulta a chave antes de corrigir data/hora ou transmitir
+                    // outra versão assinada do XML.
+                    try {
+                        $situacao = $nfe_service->consultarSituacaoDaChave($chaveOriginal);
+                    } catch (\Throwable $e) {
+                        \Log::warning('NFC-e: consulta de segurança falhou antes do reenvio.', [
+                            'empresa_id' => $this->empresa_id,
+                            'venda_id' => $vendaId,
+                            'erro' => $e->getMessage(),
+                        ]);
+                        return response()->json(
+                            'Erro: Não foi possível confirmar a situação da NFC-e na SEFAZ. '
+                            . 'A transmissão foi interrompida para evitar duplicidade. Tente consultar a chave novamente.'
+                        );
+                    }
+
+                    if ($situacao['situacao'] === 'autorizada') {
+                        // A SEFAZ pode ter autorizado a nota durante o timeout.
+                        // Recupera o protocolo sem gerar nova chave ou número.
+                        try {
+                            $nfe_service->conciliarAutorizacaoConsultada($venda, $situacao);
+                        } catch (\Throwable $e) {
+                            \Log::warning('NFC-e: autorização encontrada, mas conciliação falhou.', [
+                                'empresa_id' => $this->empresa_id,
+                                'venda_id' => $vendaId,
+                                'erro' => $e->getMessage(),
+                            ]);
+                            return response()->json(
+                                'Erro: Esta NFC-e já consta autorizada na SEFAZ, mas houve falha na conciliação local. '
+                                . 'Não retransmita; consulte o suporte com a chave original.'
+                            );
+                        }
+
+                        return response()->json('Apro');
+                    }
+
+                    if ($situacao['situacao'] !== 'nao_consta') {
+                        return response()->json(
+                            'Erro: Consulta prévia da NFC-e retornou [' . $situacao['codigo'] . '] '
+                            . $situacao['motivo'] . '. Reenvio suspenso para preservar chave e número.'
+                        );
+                    }
+                }
+
+                // Dados complementares só são atualizados após confirmar
+                // que a venda não consta autorizada na SEFAZ.
+                if(isset($request->doc)){
+                    $venda->cpf = $request->doc;
+                    $venda->save();
+                }
 
                 $nfce = $nfe_service->gerarNFCe($vendaId);
                 if(!isset($nfce['erros_xml'])){
