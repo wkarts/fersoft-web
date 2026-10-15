@@ -38,7 +38,8 @@
 
 {{-- Os tokens são validados no backend; o ERP clássico jamais carrega este bloco. --}}
 @php
-    $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
+    $uiResolvedTheme = $uiResolvedTheme
+        ?? app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
     $uiCssTokens = [
         '--ui-accent' => $uiResolvedTheme['accent'] ?? '#168F81',
         '--ui-accent-hover' => $uiResolvedTheme['accent_hover'] ?? '#11786D',
