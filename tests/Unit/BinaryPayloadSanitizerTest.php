@@ -32,4 +32,13 @@ class BinaryPayloadSanitizerTest extends TestCase
         self::assertSame('[DADO_SENSIVEL_REMOVIDO]', $decoded['config']['password']);
         self::assertTrue($decoded['config']['active']);
     }
+    public function testPreservesExistingCredentialRedactionMarker(): void
+    {
+        $sanitized = BinaryPayloadSanitizer::sanitize([
+            'senha' => '[CREDENCIAL_PROTEGIDA]',
+        ]);
+
+        self::assertSame('[CREDENCIAL_PROTEGIDA]', $sanitized['senha']);
+    }
+
 }
