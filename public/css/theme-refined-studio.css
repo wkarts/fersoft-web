@@ -320,3 +320,41 @@ body.ui-theme-refined .ui-studio__archive button {
     body.ui-theme-refined .ui-studio__model { align-items: flex-start; flex-direction: column; }
     body.ui-theme-refined .ui-studio__model-actions { justify-content: flex-start; }
 }
+
+
+body.ui-theme-refined .ui-studio__company-chooser {position: relative;}
+body.ui-theme-refined .ui-studio__company-results {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% - 1px);
+    z-index: 40;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    max-height: 260px;
+    overflow-y: auto;
+    box-shadow: 0 13px 28px rgba(14, 32, 54, .13);
+}
+body.ui-theme-refined .ui-studio__company-results[hidden] {display: none;}
+body.ui-theme-refined .ui-studio__company-option {
+    display: block;
+    width: 100%;
+    padding: 11px 13px;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--ui-border);
+    color: var(--ui-ink);
+    font: inherit;
+    cursor: pointer;
+}
+body.ui-theme-refined .ui-studio__company-option:hover,
+body.ui-theme-refined .ui-studio__company-option:focus-visible {
+    background: color-mix(in srgb, var(--ui-accent) 10%, var(--ui-surface));
+    outline-color: var(--ui-accent);
+}
+body.ui-theme-refined .ui-studio__company-empty {
+    padding: 15px;
+    color: var(--ui-muted);
+    font-size: 12px;
+}
