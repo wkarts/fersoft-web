@@ -4,7 +4,7 @@
 namespace App\Support;
 
 /**
- * Remove conteúdo binário/Base64 de estruturas que serão persistidas ou auditadas.
+ * Remove segredos e conteúdo binário/Base64 de estruturas persistidas ou auditadas.
  *
  * O Base64 continua permitido durante o transporte ADP -> navegador -> request.
  * Depois da persistência física da imagem, apenas referências pequenas devem seguir
@@ -13,6 +13,14 @@ namespace App\Support;
 final class BinaryPayloadSanitizer
 {
     private const REMOVED_MARKER = '[BASE64_REMOVIDO_APOS_PERSISTENCIA]';
+    private const SENSITIVE_REMOVED_MARKER = '[DADO_SENSIVEL_REMOVIDO]';
+
+    private const SENSITIVE_KEYS = [
+        'senha', 'password', 'password_confirmation', 'passwordconfirmation',
+        'senha_confirmation', 'senhaconfirmation', 'token', 'access_token', 'accesstoken',
+        'refresh_token', 'refreshtoken', 'api_key', 'apikey', 'client_secret', 'clientsecret',
+        'secret', 'authorization', 'private_key', 'privatekey', 'webhook_secret', 'webhooksecret',
+    ];
 
     private const BINARY_KEYS = [
         'base64',
@@ -83,6 +91,13 @@ final class BinaryPayloadSanitizer
 
         foreach ($data as $key => $value) {
             $keyString = strtolower((string)$key);
+
+            if (self::isSensitiveKey($keyString) && self::hasValue($value)) {
+                $result[$key] = self::isSensitiveRedactionMarker($value)
+                    ? $value
+                    : self::SENSITIVE_REMOVED_MARKER;
+                continue;
+            }
 
             if (is_array($value)) {
                 $result[$key] = self::sanitizeArray($value, $localReplacement);
@@ -167,6 +182,30 @@ final class BinaryPayloadSanitizer
         $sample = substr($value, 0, 4096);
 
         return preg_match('/^[A-Za-z0-9+\/\r\n]+={0,2}$/', $sample) === 1;
+    }
+
+    private static function isSensitiveKey(string $key): bool
+    {
+        $normalized = preg_replace('/[^a-z0-9]+/', '_', strtolower($key)) ?? strtolower($key);
+        return in_array($normalized, self::SENSITIVE_KEYS, true);
+    }
+
+    private static function isSensitiveRedactionMarker(mixed $value): bool
+    {
+        return is_string($value) && in_array(trim($value), [
+            self::SENSITIVE_REMOVED_MARKER,
+            self::REMOVED_MARKER,
+            '[CREDENCIAL_PROTEGIDA]',
+        ], true);
+    }
+
+    private static function hasValue(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        return !is_array($value) || $value !== [];
     }
 
     private static function isBinaryKey(?string $key): bool
