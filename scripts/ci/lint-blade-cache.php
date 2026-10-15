@@ -135,7 +135,7 @@ foreach ($paths as $file) {
                     && $phpTokens[$start][0] === T_WHITESPACE) {
                     $start++;
                 }
-                if ($phpTokens[$start] ?? null !== '(') {
+                if (($phpTokens[$start] ?? null) !== '(') {
                     continue;
                 }
                 $depth = 0;
