@@ -59,6 +59,9 @@ class UiThemeController extends Controller
             'customThemes' => $super
                 ? UiThemePreset::query()->orderByDesc('id')->limit(100)->get()
                 : collect(),
+            'editingTheme' => $super && request()->filled('edit_theme')
+                ? UiThemePreset::query()->where('status', 'draft')->findOrFail((int) request('edit_theme'))
+                : null,
             'companies' => $super
                 ? Empresa::query()->orderBy('nome')->select(['id', 'nome'])->limit(200)->get()
                 : collect(),
@@ -96,12 +99,9 @@ class UiThemeController extends Controller
             ->with('ui_theme_feedback', 'Sua preferência visual foi salva para esta empresa.');
     }
 
-    public function store(Request $request)
+    private function validatedThemeData(Request $request): array
     {
-        $this->superOnly();
-        $this->requireTables();
-
-        $data = $request->validate([
+        return $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:400'],
             'accent' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/D'],
@@ -115,6 +115,15 @@ class UiThemeController extends Controller
             'sidebar_style' => ['required', Rule::in(['light', 'dark'])],
             'density' => ['required', Rule::in(['comfortable', 'compact'])],
         ]);
+
+    }
+
+    public function store(Request $request)
+    {
+        $this->superOnly();
+        $this->requireTables();
+
+        $data = $this->validatedThemeData($request);
 
         $slug = Str::slug($data['name']);
         abort_unless(
@@ -144,6 +153,85 @@ class UiThemeController extends Controller
 
         return redirect()->route('ui.themes.index')
             ->with('ui_theme_feedback', 'Tema criado como rascunho. Publique quando estiver pronto.');
+    }
+
+    public function update(Request $request, UiThemePreset $preset)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless($preset->status === 'draft', 403, 'Temas publicados não podem ser alterados.');
+
+        $data = $this->validatedThemeData($request);
+        $colors = [];
+        foreach (['accent', 'accent_hover', 'background', 'surface', 'sidebar',
+                  'sidebar_text', 'text', 'border'] as $key) {
+            $colors[$key] = strtoupper($data[$key]);
+        }
+        $preset->update([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'colors' => $colors,
+            'sidebar_style' => $data['sidebar_style'],
+            'density' => $data['density'],
+        ]);
+
+        return redirect()->route('ui.themes.index')
+            ->with('ui_theme_feedback', 'Rascunho atualizado sem modificar temas já publicados.');
+    }
+
+    public function duplicate(Request $request, UiThemePreset $preset)
+    {
+        $this->superOnly();
+        $this->requireTables();
+
+        UiThemePreset::query()->create([
+            'slug' => substr($preset->slug, 0, 54) . '-copia-' . strtolower(Str::random(8)),
+            'name' => Str::limit($preset->name . ' - Cópia', 120, ''),
+            'description' => $preset->description,
+            'colors' => $preset->colors,
+            'sidebar_style' => $preset->sidebar_style,
+            'density' => $preset->density,
+            'status' => 'draft',
+            'created_by' => (int) $this->context()['id'],
+        ]);
+        return redirect()->route('ui.themes.index')
+            ->with('ui_theme_feedback', 'Nova versão em rascunho criada a partir do tema escolhido.');
+    }
+
+    public function archive(Request $request, UiThemePreset $preset)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless($preset->status === 'published', 422);
+
+        $preset->update(['status' => 'archived']);
+
+        return redirect()->route('ui.themes.index')
+            ->with('ui_theme_feedback', 'Tema arquivado. Usuários passarão a utilizar o fallback autorizado.');
+    }
+
+    public function setDefault(Request $request)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        $data = $request->validate([
+            'company_id' => ['required', 'integer', 'exists:empresas,id'],
+            'theme_slug' => ['required', 'string', 'max:80'],
+        ]);
+        $companyId = (int) $data['company_id'];
+        abort_unless(
+            $this->themes->canSelect($companyId, $data['theme_slug'], false),
+            403,
+            'Libere o tema à empresa antes de defini-lo como padrão.'
+        );
+
+        DB::table('ui_theme_company_settings')->updateOrInsert(
+            ['company_id' => $companyId],
+            ['default_theme_slug' => $data['theme_slug'], 'updated_at' => now()]
+        );
+
+        return redirect()->route('ui.themes.index')
+            ->with('ui_theme_feedback', 'Tema padrão da empresa atualizado. Preferências individuais foram preservadas.');
     }
 
     public function publish(Request $request, UiThemePreset $preset)
