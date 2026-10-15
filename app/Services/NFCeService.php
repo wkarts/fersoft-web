@@ -559,39 +559,6 @@ class NFCeService{
     }
 
     /**
-     * Somente o horário, dentro do mesmo AAMM fiscal, pode ser renovado
-     * para NFC-e rejeitada. Série, nNF, cNF, tpEmis e chave não mudam.
-     *
-     * Um período diferente requer tratamento fiscal explícito: jamais
-     * criar outra chave implicitamente a partir da mesma venda.
-     */
-    private function horarioRetransmissaoNFCe(array $identidade, string $agora): string
-    {
-        try {
-            $original = new \DateTimeImmutable($identidade['dhEmi']);
-            $atual = new \DateTimeImmutable($agora);
-        } catch (\Throwable $e) {
-            throw new \DomainException('Data/hora fiscal inválida. Retransmissão bloqueada.');
-        }
-
-        $diferenca = $atual->getTimestamp() - $original->getTimestamp();
-        // Evita aproximação da tolerância de cinco minutos na SEFAZ
-        // e ajusta eventual relógio original adiantado.
-        if ($diferenca >= 60 || $diferenca < -60) {
-            $aammAtual = substr($agora, 2, 2) . substr($agora, 5, 2);
-            if ($aammAtual !== substr($identidade['chave'], 2, 4)) {
-                throw new \DomainException(
-                    'A emissão original pertence a outro mês/ano. Atualizar a data alteraria a chave de acesso. '
-                    . 'Não foi realizada nova emissão; solicite tratamento fiscal específico.'
-                );
-            }
-            return $agora;
-        }
-
-        return $identidade['dhEmi'];
-    }
-
-    /**
      * A falha de comunicação na transmissão não é rejeição comprovada.
      * Antes de reenviar consulta a mesma chave na SEFAZ para evitar
      * duplicidades quando a autorização ocorreu apesar do timeout.
@@ -791,14 +758,9 @@ class NFCeService{
         }
 
         $identidadeOriginal = null;
-        $dhEmiRetransmissao = null;
         if ($venda->estado === 'REJEITADO') {
             try {
                 $identidadeOriginal = $this->identidadeOriginalNFCe($venda, $config);
-                $dhEmiRetransmissao = $this->horarioRetransmissaoNFCe(
-                    $identidadeOriginal,
-                    FiscalDateHelper::nowXml()
-                );
             } catch (\DomainException $e) {
                 return ['erros_xml' => [$e->getMessage()]];
             }
@@ -823,7 +785,7 @@ class NFCeService{
         $stdIde->mod = 65;
         $stdIde->serie = $identidadeOriginal['serie'] ?? $config->numero_serie_nfce;
         $stdIde->nNF = $identidadeOriginal['nNF'] ?? $this->reservarNumeroNFCe($venda, $config);
-        $stdIde->dhEmi = $dhEmiRetransmissao ?? FiscalDateHelper::nowXml();
+        $stdIde->dhEmi = $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
         $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = 1;
         $stdIde->idDest = 1;
