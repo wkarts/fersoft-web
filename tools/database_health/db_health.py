@@ -354,7 +354,14 @@ def looks_like_image(value: str) -> bool:
 
 
 def is_redaction_marker(value) -> bool:
-    return isinstance(value, str) and value.strip().casefold() in REDACTION_MARKERS
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().casefold()
+    return normalized in REDACTION_MARKERS or (
+        normalized.startswith("[")
+        and normalized.endswith("]")
+        and any(marker in normalized for marker in ("remov", "redact", "sanitiz", "mask"))
+    )
 
 
 def base64_candidate(value: str, threshold: int) -> bool:

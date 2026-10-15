@@ -112,6 +112,15 @@ class DatabaseHealthCliTest(unittest.TestCase):
         self.assertLess(cleaned.index(b"INSERT INTO `logs`"), cleaned.index(b"(1, 'exception'"))
         self.assertIn(b'"senha":"[REDACTED]"', cleaned)
         self.assertNotEqual(self.original_sql, cleaned)
+        report_path = self.directory / "clean-analysis.json"
+        self.run_cli("analyze", output, "--config", self.config_path, "--report-json", report_path)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        tables = {table["name"]: table for table in report["tables"]}
+        logs = {column["name"]: column for column in tables["logs"]["top_columns"]}
+        events = {column["name"]: column for column in tables["connect_api_webhook_events"]["top_columns"]}
+        self.assertEqual(0, logs["dados_depois"]["sensitive_fields"])
+        self.assertEqual(0, events["payload"]["qr_secrets"])
+        self.assertEqual(3, tables["logs"]["rows"])
 
     def test_explicit_delete_rebuilds_statement_without_trailing_comma(self):
         output = self.directory / "pruned.zip"
