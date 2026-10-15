@@ -44,7 +44,9 @@ class UiThemeService
                 $themes[$record->slug] = $this->safeDefinition($colors, [
                     'name' => (string) $record->name,
                     'description' => (string) ($record->description ?? ''),
-                    'dark' => $record->sidebar_style === 'dark',
+                    // Sidebar escura não implica modo escuro da página.
+                    // O contraste de fundo do modelo determina o modo sugerido.
+                    'dark' => $this->isDarkBackground((string) ($colors['background'] ?? '#FFFFFF')),
                     'density' => (string) $record->density,
                 ]);
             }
@@ -111,6 +113,19 @@ class UiThemeService
         return $definition;
     }
 
+    private function isDarkBackground(string $hex): bool
+    {
+        if (!preg_match('/^#[A-Fa-f0-9]{6}$/D', $hex)) {
+            return false;
+        }
+        $rgb = [
+            hexdec(substr($hex, 1, 2)),
+            hexdec(substr($hex, 3, 2)),
+            hexdec(substr($hex, 5, 2)),
+        ];
+        return (0.2126 * $rgb[0] + 0.7152 * $rgb[1] + 0.0722 * $rgb[2]) < 125;
+    }
+
     public function resolve(?bool $legacyDark = null): array
     {
         if (!config('ui_theme.active', false)) {
@@ -162,6 +177,15 @@ class UiThemeService
         $dark = $colorMode === 'dark'
             ? true
             : ($colorMode === 'light' ? false : ($themeDark || (bool) $legacyDark));
+
+        // Uma preferência de modo claro/escuro adapta o conjunto de superfícies,
+        // nunca aplica texto escuro sobre fundo escuro nem vice-versa.
+        if ($dark !== $themeDark) {
+            $fallbackPalette = $this->builtinThemes()[$dark ? 'fer-night' : 'fer-light'] ?? [];
+            foreach (['background', 'surface', 'sidebar', 'sidebar_text', 'text', 'border'] as $key) {
+                $definition[$key] = $fallbackPalette[$key] ?? $definition[$key] ?? '';
+            }
+        }
 
         $resolved = array_merge($definition, [
             'slug' => $slug,
