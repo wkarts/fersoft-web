@@ -6,6 +6,7 @@ use App\Jobs\ProcessConnectApiWebhookEvent;
 use App\Models\ConnectApiInstance;
 use App\Models\ConnectApiWebhookEvent;
 use App\Services\ConnectApi\ConnectApiWebhookNormalizer;
+use App\Support\ConnectApiWebhookPayloadSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -90,6 +91,10 @@ class ConnectApiWebhookController extends Controller
             json_encode($payload),
         ]));
 
+        // The original payload remains available above for stable deduplication; only storage is sanitized.
+        $payloadForStorage = ConnectApiWebhookPayloadSanitizer::sanitize($payload);
+        $normalizedForStorage = ConnectApiWebhookPayloadSanitizer::sanitize($normalized);
+
         $event = ConnectApiWebhookEvent::firstOrCreate(
             ['deduplication_key' => $deduplicationKey],
             [
@@ -102,8 +107,8 @@ class ConnectApiWebhookController extends Controller
                     ?? ''
                 ),
                 'message_id' => $normalized['message_id'] ?: null,
-                'payload' => $payload,
-                'normalized_payload' => $normalized,
+                'payload' => $payloadForStorage,
+                'normalized_payload' => $normalizedForStorage,
                 'status' => 'received',
                 'attempts' => 0,
                 'received_at' => now(),
