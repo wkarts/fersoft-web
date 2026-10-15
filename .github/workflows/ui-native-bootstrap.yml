@@ -1,0 +1,84 @@
+name: UI - Preparar fontes na branch isolada
+on:
+  push:
+    branches: [feat/ui-operational-redesign-20261015]
+    paths:
+      - '.github/ui-native-payload-3.b64'
+      - '.github/workflows/ui-native-bootstrap.yml'
+permissions:
+  contents: write
+concurrency:
+  group: ui-native-source-transport
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'wkarts/fersoft-web' && github.ref == 'refs/heads/feat/ui-operational-redesign-20261015'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      COMPOSER_NO_AUDIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Conferir material completo
+        id: source
+        run: |
+          if test -s .github/ui-native-payload-1.b64 && test -s .github/ui-native-payload-2.b64 && test -s .github/ui-native-payload-3.b64; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Aplicar patch de fontes com integridade verificada
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, gzip, hashlib, pathlib, os, subprocess
+          source = ''.join(pathlib.Path(f'.github/ui-native-payload-{i}.b64').read_text().strip() for i in (1,2,3))
+          patch = gzip.decompress(base64.b64decode(source, validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '32fafae8d1232162f72c37ce9ef2c5b8242d38a83f7126f46cebfca15e8ec022', 'Patch checksum mismatch'
+          target = pathlib.Path(os.environ['RUNNER_TEMP']) / 'ui-native-source.patch'
+          target.write_bytes(patch)
+          subprocess.run(['git', 'apply', '--check', '--index', str(target)], check=True)
+          subprocess.run(['git', 'apply', '--index', str(target)], check=True)
+          PY
+          python scripts/ci/build-native-ui.py
+          git add -- resources/views/themes/refined/layout.blade.php public/js/ui-legacy-widgets.js resources/views/default/layout.blade.php resources/views/contabilidade/configuracoes.blade.php resources/views/dashboard_novo/index.blade.php resources/views/frontBox/main.blade.php resources/views/frontBox/main2.blade.php resources/views/frontBox/main3.blade.php resources/views/frontBox/pdv_assincrono.blade.php tests/fixtures/ui/native-contract.json
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(ui): layout operacional nativo, dashboard real, POS e preferências integradas'
+          git push origin HEAD:refs/heads/feat/ui-operational-redesign-20261015
+      - uses: shivammathur/setup-php@v2
+        if: steps.source.outputs.ready == 'true'
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_sqlite, pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, bcmath
+          coverage: none
+      - name: Renderizar fontes Blade no Laravel real
+        if: steps.source.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs storage/app/ui-browser
+          cp .env.example .env
+          export APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
+          composer install --prefer-dist --no-interaction --no-progress --quiet
+          php artisan config:clear
+          php artisan view:cache
+          vendor/bin/phpunit --filter UiNativePaletteTest
+          php tests/ui/render-native.php
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.source.outputs.ready == 'true'
+        with:
+          name: ui-native-first-render-${{ github.run_id }}
+          path: |
+            storage/app/ui-browser/
+            storage/logs/laravel.log
+          if-no-files-found: warn
+          retention-days: 7
