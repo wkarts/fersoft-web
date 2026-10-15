@@ -542,7 +542,7 @@ class NFCeService{
         }
 
         $dhEmi = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhEmi)', $infNFe));
-        if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\+|-)[0-9]{2}:[0-9]{2}$/D', $dhEmi)
+        if (!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D', $dhEmi)
             || substr($dhEmi, 2, 2) . substr($dhEmi, 5, 2) !== substr($chave, 2, 4)) {
             throw new \DomainException('Data original da NFC-e incompatível com a chave. Não será gerada outra identificação.');
         }
@@ -556,6 +556,129 @@ class NFCeService{
             'tpEmis' => (int) substr($chave, 34, 1),
             'dhEmi' => $dhEmi,
         ];
+    }
+
+    /**
+     * Somente o horário, dentro do mesmo AAMM fiscal, pode ser renovado
+     * para NFC-e rejeitada. Série, nNF, cNF, tpEmis e chave não mudam.
+     *
+     * Um período diferente requer tratamento fiscal explícito: jamais
+     * criar outra chave implicitamente a partir da mesma venda.
+     */
+    private function horarioRetransmissaoNFCe(array $identidade, string $agora): string
+    {
+        try {
+            $original = new \DateTimeImmutable($identidade['dhEmi']);
+            $atual = new \DateTimeImmutable($agora);
+        } catch (\Throwable $e) {
+            throw new \DomainException('Data/hora fiscal inválida. Retransmissão bloqueada.');
+        }
+
+        $diferenca = $atual->getTimestamp() - $original->getTimestamp();
+        // Evita aproximação da tolerância de cinco minutos na SEFAZ
+        // e ajusta eventual relógio original adiantado.
+        if ($diferenca >= 60 || $diferenca < -60) {
+            $aammAtual = substr($agora, 2, 2) . substr($agora, 5, 2);
+            if ($aammAtual !== substr($identidade['chave'], 2, 4)) {
+                throw new \DomainException(
+                    'A emissão original pertence a outro mês/ano. Atualizar a data alteraria a chave de acesso. '
+                    . 'Não foi realizada nova emissão; solicite tratamento fiscal específico.'
+                );
+            }
+            return $agora;
+        }
+
+        return $identidade['dhEmi'];
+    }
+
+    /**
+     * A falha de comunicação na transmissão não é rejeição comprovada.
+     * Antes de reenviar consulta a mesma chave na SEFAZ para evitar
+     * duplicidades quando a autorização ocorreu apesar do timeout.
+     */
+    public function consultarSituacaoDaChave(string $chave): array
+    {
+        if (!preg_match('/^[0-9]{44}$/D', $chave) || substr($chave, 20, 2) !== '65') {
+            throw new \DomainException('Chave de NFC-e inválida para consulta.');
+        }
+
+        $resposta = $this->tools->sefazConsultaChave($chave);
+        $dados = (new Standardize($resposta))->toArray();
+        if (!is_array($dados)) {
+            throw new \RuntimeException('A SEFAZ não retornou uma situação fiscal interpretável.');
+        }
+
+        $codigo = (int) ($dados['cStat'] ?? 0);
+        $protocolo = $dados['protNFe']['infProt'] ?? [];
+        $statusProtocolo = (int) ($protocolo['cStat'] ?? 0);
+        $motivo = (string) ($dados['xMotivo'] ?? $protocolo['xMotivo'] ?? 'Situação desconhecida');
+
+        if (in_array($codigo, [100, 150], true)
+            || in_array($statusProtocolo, [100, 150], true)) {
+            $chaveAutorizada = (string) ($protocolo['chNFe'] ?? '');
+            if (!in_array($statusProtocolo, [100, 150], true)
+                || !hash_equals($chave, $chaveAutorizada)) {
+                throw new \DomainException('A SEFAZ indicou autorização sem protocolo compatível com a chave consultada.');
+            }
+
+            return [
+                'situacao' => 'autorizada',
+                'codigo' => $statusProtocolo,
+                'motivo' => $motivo,
+                'resposta' => $resposta,
+            ];
+        }
+
+        if ($codigo === 217) {
+            return [
+                'situacao' => 'nao_consta',
+                'codigo' => 217,
+                'motivo' => $motivo,
+            ];
+        }
+
+        return [
+            'situacao' => 'indeterminada',
+            'codigo' => $codigo ?: $statusProtocolo,
+            'motivo' => $motivo,
+        ];
+    }
+
+    /**
+     * Se a SEFAZ já autorizou durante um timeout, reconcilia o status
+     * sem alterar número, série, chave nem contador do emitente.
+     */
+    public function conciliarAutorizacaoConsultada(VendaCaixa $venda, array $situacao): void
+    {
+        if (($situacao['situacao'] ?? null) !== 'autorizada') {
+            throw new \LogicException('Reconciliação exige autorização fiscal confirmada.');
+        }
+
+        $chave = trim((string) $venda->chave);
+        $numero = (int) $venda->NFcNumero;
+        if (!preg_match('/^[0-9]{44}$/D', $chave)
+            || $numero <= 0 || (int) substr($chave, 25, 9) !== $numero) {
+            throw new \DomainException('A chave e o número originais estão inconsistentes. Nenhuma alteração foi feita.');
+        }
+
+        // O protocolo só será anexado ao XML que foi efetivamente assinado.
+        try {
+            $xmlAssinado = trim((string) $venda->signed_xml);
+            if ($xmlAssinado !== '') {
+                $xmlAutorizado = Complements::toAuthorize($xmlAssinado, (string) $situacao['resposta']);
+                safe_file_put_contents(public_path('xml_nfce/' . $chave . '.xml'), $xmlAutorizado);
+                $venda->path_xml = $chave . '.xml';
+            }
+        } catch (\Throwable $e) {
+            Log::warning('NFC-e autorizada mas houve falha ao compor XML protocolado da consulta.', [
+                'empresa_id' => $this->empresa_id,
+                'venda_id' => $venda->id,
+                'motivo' => $e->getMessage(),
+            ]);
+        }
+
+        $venda->estado = 'APROVADO';
+        $venda->save();
     }
 
     private function reservarNumeroNFCe(VendaCaixa $venda, $config): int
@@ -668,9 +791,14 @@ class NFCeService{
         }
 
         $identidadeOriginal = null;
+        $dhEmiRetransmissao = null;
         if ($venda->estado === 'REJEITADO') {
             try {
                 $identidadeOriginal = $this->identidadeOriginalNFCe($venda, $config);
+                $dhEmiRetransmissao = $this->horarioRetransmissaoNFCe(
+                    $identidadeOriginal,
+                    FiscalDateHelper::nowXml()
+                );
             } catch (\DomainException $e) {
                 return ['erros_xml' => [$e->getMessage()]];
             }
@@ -695,7 +823,7 @@ class NFCeService{
         $stdIde->mod = 65;
         $stdIde->serie = $identidadeOriginal['serie'] ?? $config->numero_serie_nfce;
         $stdIde->nNF = $identidadeOriginal['nNF'] ?? $this->reservarNumeroNFCe($venda, $config);
-        $stdIde->dhEmi = $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
+        $stdIde->dhEmi = $dhEmiRetransmissao ?? FiscalDateHelper::nowXml();
         $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
         $stdIde->tpNF = 1;
         $stdIde->idDest = 1;
