@@ -366,6 +366,7 @@ Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], functi
     Route::post('/modelos/{preset}/duplicar', 'UiThemeController@duplicate')->name('ui.themes.duplicate');
     Route::post('/modelos/{preset}/publicar', 'UiThemeController@publish')->name('ui.themes.publish');
     Route::post('/modelos/{preset}/arquivar', 'UiThemeController@archive')->name('ui.themes.archive');
+    Route::get('/empresas/buscar', 'UiThemeController@companySearch')->name('ui.themes.company.search');
     Route::post('/empresas/liberar', 'UiThemeController@grant')->name('ui.themes.grant');
     Route::post('/empresas/padrao', 'UiThemeController@setDefault')->name('ui.themes.company.default');
 });
