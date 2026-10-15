@@ -9,6 +9,7 @@
     $uiCurrentSlug = (string) ($currentTheme['slug'] ?? 'fer-light');
     $uiCurrentMode = (string) ($currentTheme['color_mode'] ?? 'follow');
     $uiCurrentDensity = (string) ($currentTheme['density'] ?? 'comfortable');
+    $uiEditColors = is_array($editingTheme?->colors ?? null) ? $editingTheme->colors : [];
 @endphp
 <div class="ui-studio" id="ui-theme-studio">
     <header class="ui-studio__head">
@@ -111,15 +112,18 @@
             </div>
             <div class="ui-studio__admin-grid">
                 <div class="ui-studio__panel">
-                    <h3>Criar novo tema</h3>
-                    <p>Escolha o nome, o comportamento e as cores. O tema será salvo como rascunho, sem afetar clientes.</p>
-                    <form method="POST" action="{{ route('ui.themes.store') }}" class="ui-studio__admin-form">
+                    <h3>{{ $editingTheme ? 'Editar rascunho' : 'Criar novo tema' }}</h3>
+                    <p>Escolha o nome, o comportamento e as cores. Somente modelos publicados ficam disponíveis para as empresas.</p>
+                    @if($editingTheme)
+                        <a class="ui-studio__back" href="{{ route('ui.themes.index') }}">Cancelar edição e criar outro tema</a>
+                    @endif
+                    <form method="POST" action="{{ $editingTheme ? route('ui.themes.update', $editingTheme->id) : route('ui.themes.store') }}" class="ui-studio__admin-form">
                         @csrf
                         <label class="ui-studio__full">Nome do tema
-                            <input type="text" name="name" maxlength="120" value="{{ old('name') }}" required placeholder="Ex.: Corporativo Azul">
+                            <input type="text" name="name" maxlength="120" value="{{ old('name', $editingTheme?->name ?? '') }}" required placeholder="Ex.: Corporativo Azul">
                         </label>
                         <label class="ui-studio__full">Descrição
-                            <input type="text" name="description" maxlength="400" value="{{ old('description') }}" placeholder="Como é este tema">
+                            <input type="text" name="description" maxlength="400" value="{{ old('description', $editingTheme?->description ?? '') }}" placeholder="Como é este tema">
                         </label>
                         @foreach([
                             'accent' => ['Cor principal', '#168F81'],
@@ -133,22 +137,22 @@
                         ] as $field => $color)
                             <label class="ui-studio__color-field">
                                 <span>{{ $color[0] }}</span>
-                                <input type="color" name="{{ $field }}" value="{{ old($field, $color[1]) }}" required>
+                                <input type="color" name="{{ $field }}" value="{{ old($field, $uiEditColors[$field] ?? $color[1]) }}" required>
                             </label>
                         @endforeach
                         <label>Menu predominante
                             <select name="sidebar_style">
-                                <option value="light" @if(old('sidebar_style') === 'light') selected @endif>Claro</option>
-                                <option value="dark" @if(old('sidebar_style', 'dark') === 'dark') selected @endif>Escuro</option>
+                                <option value="light" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'dark') === 'light') selected @endif>Claro</option>
+                                <option value="dark" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'dark') === 'dark') selected @endif>Escuro</option>
                             </select>
                         </label>
                         <label>Densidade inicial
                             <select name="density">
-                                <option value="comfortable">Confortável</option>
-                                <option value="compact" @if(old('density') === 'compact') selected @endif>Compacta</option>
+                                <option value="comfortable" @if(old('density', $editingTheme?->density ?? 'comfortable') === 'comfortable') selected @endif>Confortável</option>
+                                <option value="compact" @if(old('density', $editingTheme?->density ?? 'comfortable') === 'compact') selected @endif>Compacta</option>
                             </select>
                         </label>
-                        <button type="submit" class="ui-studio__apply ui-studio__full">Criar rascunho</button>
+                        <button type="submit" class="ui-studio__apply ui-studio__full">{{ $editingTheme ? 'Salvar alterações do rascunho' : 'Criar rascunho' }}</button>
                     </form>
                 </div>
                 <div class="ui-studio__panel">
@@ -160,14 +164,30 @@
                                 <strong>{{ $model->name }}</strong>
                                 <small>{{ $model->slug }}</small>
                             </div>
-                            @if($model->status === 'published')
-                                <span class="ui-studio__published">Publicado</span>
-                            @else
-                                <form method="POST" action="{{ route('ui.themes.publish', $model->id) }}">
+                            <div class="ui-studio__model-actions">
+                                @if($model->status === 'published')
+                                    <span class="ui-studio__published">Publicado</span>
+                                    <details class="ui-studio__archive">
+                                        <summary>Arquivar</summary>
+                                        <form method="POST" action="{{ route('ui.themes.archive', $model->id) }}">
+                                            @csrf
+                                            <button type="submit" class="ui-studio__publish">Confirmar arquivamento</button>
+                                        </form>
+                                    </details>
+                                @elseif($model->status === 'draft')
+                                    <a class="ui-studio__publish" href="{{ route('ui.themes.index') }}?edit_theme={{ $model->id }}">Editar</a>
+                                    <form method="POST" action="{{ route('ui.themes.publish', $model->id) }}">
+                                        @csrf
+                                        <button type="submit" class="ui-studio__publish">Publicar</button>
+                                    </form>
+                                @else
+                                    <span class="ui-studio__published">Arquivado</span>
+                                @endif
+                                <form method="POST" action="{{ route('ui.themes.duplicate', $model->id) }}">
                                     @csrf
-                                    <button type="submit" class="ui-studio__publish">Publicar</button>
+                                    <button type="submit" class="ui-studio__publish">Duplicar</button>
                                 </form>
-                            @endif
+                            </div>
                         </div>
                     @empty
                         <div class="ui-studio__empty">Nenhum tema personalizado criado. Os temas padrão já estão disponíveis.</div>
@@ -194,6 +214,28 @@
                             </select>
                         </label>
                         <button type="submit" class="ui-studio__apply ui-studio__full">Liberar tema à empresa</button>
+                    </form>
+                    <div class="ui-studio__separator"></div>
+                    <h3>Definir padrão da empresa</h3>
+                    <p>O padrão vale apenas quando o usuário não definiu sua preferência pessoal.</p>
+                    <form method="POST" action="{{ route('ui.themes.company.default') }}" class="ui-studio__admin-form">
+                        @csrf
+                        <label class="ui-studio__full">Empresa
+                            <select name="company_id" required>
+                                <option value="">Selecione a empresa</option>
+                                @foreach($companies as $company)
+                                    <option value="{{ $company->id }}">{{ $company->nome }} ({{ $company->id }})</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="ui-studio__full">Tema já liberado para a empresa
+                            <select name="theme_slug" required>
+                                @foreach($availableThemes as $slug => $definition)
+                                    <option value="{{ $slug }}">{{ $definition['name'] ?? $slug }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <button type="submit" class="ui-studio__apply ui-studio__full">Salvar padrão da empresa</button>
                     </form>
                 </div>
             </div>
