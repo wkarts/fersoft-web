@@ -1,35 +1,27 @@
 from pathlib import Path
-r=Path.cwd()
-g=r/'scripts/ci/build-native-ui.py'
-s=g.read_text()
-anchor="legacy=read('resources/views/default/menu_lateral.blade.php')"
-insert="""# Blade directives need a word boundary before @endif. Correct only UI opt-in
-# tokens introduced by the previous theme work, not the classic business markup.
-for p in ['resources/views/default/menu_lateral.blade.php', 'resources/views/default/menu_superior.blade.php', 'resources/views/themes/refined/studio/index.blade.php']:
- s=read(p)
- fixed=s.replace('ui-theme-refined--dark@endif', 'ui-theme-refined--dark @endif').replace('ui-density-compact@endif', 'ui-density-compact @endif').replace('ui-studio__theme--selected@endif', 'ui-studio__theme--selected @endif')
- if fixed != s: write(p, fixed)
-"""
-if '# Blade directives need a word boundary' not in s:
- assert s.count(anchor)==1
- s=s.replace(anchor,insert+anchor)
- start=s.index("layout='''");end=s.index('for key,val',start)
- s=s[:start]+s[start:end].replace('--dark@endif','--dark @endif').replace('ui-density-compact@endif','ui-density-compact @endif')+s[end:]
- start=s.index('# POS pages');t=s[start:]
- t=t.replace("s=read(p)\n if 'ui-pos-refined' in s: continue", "s=read(p)\n if 'ui-pos-refined' in s:\n  write(p, s.replace('ui-theme-refined--dark@endif', 'ui-theme-refined--dark @endif').replace('ui-density-compact@endif', 'ui-density-compact @endif'))\n  continue")
- t=t.replace("($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark@endif", "($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif").replace("=== 'compact')ui-density-compact@endif @endif", "=== 'compact')ui-density-compact @endif @endif")
- s=s[:start]+t
- g.write_text(s)
-p=r/'tests/ui/render-native.php';s=p.read_text();a="$palettes=config('ui_theme.presets');"
-b="""// Prove every render exists; the legacy exception handler can exit CLI with zero.
-register_shutdown_function(static function () use ($target): void {
-    if (count(glob($target . '/fer-*.html')) !== 12) {
-        fwrite(STDERR, 'Rendering incomplete: expected 12 actual Blade fixtures.' . PHP_EOL);
-        exit(1);
+p=Path('tests/ui/render-native.php');s=p.read_text()
+block=r'''// Real menu helper, real permission filtering, test-only in-memory rows.
+Schema::create('tributacaos', function (Blueprint $t) { $t->increments('id'); $t->integer('empresa_id'); $t->integer('regime')->default(1); });
+Schema::create('empresas', function (Blueprint $t) { $t->increments('id'); $t->string('nome'); $t->text('permissao')->nullable(); });
+Schema::create('planos', function (Blueprint $t) { $t->increments('id'); $t->string('nome'); });
+Schema::create('plano_empresas', function (Blueprint $t) { $t->increments('id'); $t->integer('empresa_id'); $t->integer('plano_id'); });
+DB::table('tributacaos')->insert(['id'=>1,'empresa_id'=>1,'regime'=>1]);
+DB::table('planos')->insert(['id'=>1,'nome'=>'Plano de teste']);
+DB::table('plano_empresas')->insert(['id'=>1,'empresa_id'=>1,'plano_id'=>1]);
+$fixtureAllowedTitles=['Cadastros','ClassTrib','e-DOC','Atendimento','Documentos Eletrônicos','Entradas','Gestão Pessoal','Controle de Ponto','Estoque','Kardex (Beta)','Vendas','Contratos','MTR 3.0','Emissão de NFSe','Vendas Balcão','Financeiro'];
+$fixturePermissions=[];
+foreach ((new \App\Helpers\Menu())->getMenu() as $group) {
+    if (in_array($group['titulo'], $fixtureAllowedTitles, true)) {
+        foreach ($group['subs'] as $link) if (!empty($link['rota'])) $fixturePermissions[]=$link['rota'];
     }
-});
-file_put_contents($target . '/native-compiled.php', $app['blade.compiler']->compileString(file_get_contents(resource_path('views/themes/refined/layout.blade.php'))));
-$palettes=config('ui_theme.presets');"""
-if 'register_shutdown_function' not in s:
- assert s.count(a)==1
- s=s.replace(a,b);p.write_text(s)
+}
+DB::table('empresas')->insert(['id'=>1,'nome'=>'EMPRESA DE TESTE','permissao'=>json_encode($fixturePermissions)]);
+'''
+if "Schema::create('tributacaos'" not in s:
+ assert s.count('$base = [') == 1
+ s=s.replace('$base = [',block+'\n$base = [')
+ start=s.index("$labels=['Auditoria'");end=s.index('// Reuse the application',start)
+ s=s[:start]+s[end:]
+ p.write_text(s)
+p=Path('tests/ui/native-browser.py');s=p.read_text();s=s.replace("assert page.locator('#ui-navigation').get_by_text('NÃO AUTORIZADO').count()==0", "assert page.locator('#ui-navigation a[href=\"/logs\"]').count()==0")
+p.write_text(s)
