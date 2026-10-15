@@ -93,7 +93,9 @@ final class BinaryPayloadSanitizer
             $keyString = strtolower((string)$key);
 
             if (self::isSensitiveKey($keyString) && self::hasValue($value)) {
-                $result[$key] = self::SENSITIVE_REMOVED_MARKER;
+                $result[$key] = self::isSensitiveRedactionMarker($value)
+                    ? $value
+                    : self::SENSITIVE_REMOVED_MARKER;
                 continue;
             }
 
@@ -186,6 +188,15 @@ final class BinaryPayloadSanitizer
     {
         $normalized = preg_replace('/[^a-z0-9]+/', '_', strtolower($key)) ?? strtolower($key);
         return in_array($normalized, self::SENSITIVE_KEYS, true);
+    }
+
+    private static function isSensitiveRedactionMarker(mixed $value): bool
+    {
+        return is_string($value) && in_array(trim($value), [
+            self::SENSITIVE_REMOVED_MARKER,
+            self::REMOVED_MARKER,
+            '[CREDENCIAL_PROTEGIDA]',
+        ], true);
     }
 
     private static function hasValue(mixed $value): bool
