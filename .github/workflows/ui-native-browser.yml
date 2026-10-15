@@ -54,6 +54,29 @@ jobs:
           mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs storage/app/ui-browser
           cp .env.example .env
           echo "APP_KEY=$(php -r 'echo "base64:".base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+      - name: Instalar dependencias existentes do ERP
+        run: composer install --prefer-dist --no-interaction --no-progress --quiet
+      - name: Validar TODAS as Blades versionadas antes de gerar arquivos
+        run: |
+          set -euo pipefail
+          php artisan config:clear
+          php artisan view:clear
+          php artisan view:cache
+          test -d storage/framework/views
+          find storage/framework/views -type f -name '*.php' -print0 \
+            | xargs -0 -r -n1 -P8 php -l > storage/app/ui-browser/compiled-php-lint.txt
+          # A linha abaixo também valida a view cujo hash foi reportado no homolog3.
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(\\Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+            $source = resource_path("views/default/menu_lateral.blade.php");
+            $compiled = app("blade.compiler")->getCompiledPath($source);
+            if (!is_file($compiled)) { throw new RuntimeException("Blade não compilado: ".$source); }
+            echo "menu_lateral compilado: ".$compiled.PHP_EOL;
+            passthru(escapeshellarg(PHP_BINARY)." -l ".escapeshellarg($compiled), $status);
+            exit($status);
+          '
       - name: Compilar shell a partir dos controles atuais preservados
         run: |
           set -euo pipefail
@@ -63,8 +86,7 @@ jobs:
           php -l tests/ui/render-native.php
           node --check public/js/ui-operational.js
           node --check public/js/ui-legacy-widgets.js
-      - name: Instalar dependencias existentes do ERP
-        run: composer install --prefer-dist --no-interaction --no-progress --quiet
+          git diff --stat -- resources/views/themes/refined/layout.blade.php resources/views/default/menu_lateral.blade.php
       - name: Testar contratos e compilar Blades reais
         run: |
           set -euo pipefail
