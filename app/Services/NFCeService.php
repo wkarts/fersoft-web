@@ -1680,7 +1680,9 @@ class NFCeService{
                     $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'rejeitado' : 'em_processamento',
                     $codigo, $motivo, $resp
                 );
-                Log::warning('NFC-e: SEFAZ retornou código de não autorização.', [
+                Log::log(
+                    $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'error' : 'warning',
+                    'NFC-e: SEFAZ retornou código de não autorização.', [
                     ...$contexto,
                     'cStat' => $codigo,
                     'xMotivo' => $motivo,
@@ -1702,7 +1704,7 @@ class NFCeService{
                     $logger, $registro, 'rejeitado',
                     (string) $codigoNota, $motivoNota, $resp
                 );
-                Log::warning('NFC-e: rejeição de documento informada pela SEFAZ.', [
+                Log::error('NFC-e: rejeição de documento informada pela SEFAZ.', [
                     ...$contexto,
                     'cStat_lote' => $codigo,
                     'cStat' => $codigoNota,
