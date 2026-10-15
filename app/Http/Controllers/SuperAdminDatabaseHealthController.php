@@ -11,7 +11,12 @@ class SuperAdminDatabaseHealthController extends Controller
     public function index(DatabaseHealthOverview $overview)
     {
         $user = session('user_logged');
-        abort_unless(is_array($user) && (int) ($user['super'] ?? 0) === 1, 403);
+        if (!is_array($user) || (int) ($user['super'] ?? 0) !== 1) {
+            return response('Acesso restrito.', 403, [
+                'Cache-Control' => 'no-store',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
 
         $snapshot = $overview->snapshot();
         $snapshot['checked_at_label'] = $snapshot['checked_at']->format('d/m/Y H:i:s');
