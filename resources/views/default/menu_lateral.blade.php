@@ -330,9 +330,12 @@
 
     @yield('css')
 
-    {{-- Tema do ERP opt-in: o clássico não carrega nenhum asset adicional. --}}
+    {{-- Tema opt-in: calcular no layout pai para disponibilizar dark/density ao body. --}}
     @if(config('ui_theme.active', false))
-        @include('themes.refined.assets')
+        @php
+            $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
+        @endphp
+        @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
     @endif
 
 </head>
