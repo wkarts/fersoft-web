@@ -25,6 +25,12 @@ BLOCK_PREFIXES = (
     "public/imagens_produtos/", "public/foto_usuario/", "public/retorno.ret",
 )
 BLOCK_EXT = {".bak", ".backup", ".key", ".pem", ".pfx", ".p12", ".sqlite", ".db", ".sql", ".log", ".ret"}
+# Auditorias internas são executadas no GitHub Actions, não nas instalações do ERP.
+DEVELOPMENT_AUDITORS = {
+    "scripts/auditar-tema.php",
+    "scripts/auditar-assets.php",
+    "scripts/ui/coverage-report.php",
+}
 
 
 def git(*args: str) -> str:
@@ -36,6 +42,8 @@ def permitted(name: str) -> bool:
     if p.is_absolute() or ".." in p.parts or not p.parts:
         return False
     if p.parts[0] not in ROOTS and name not in TOP_FILES:
+        return False
+    if name in DEVELOPMENT_AUDITORS:
         return False
     if name.startswith(BLOCK_PREFIXES):
         return False
