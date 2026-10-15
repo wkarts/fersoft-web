@@ -36,8 +36,11 @@ final class ConnectApiWebhookPayloadSanitizer
                 $normalizedKey = strtolower((string) $key);
                 $normalizedKey = preg_replace('/[^a-z0-9]+/', '_', $normalizedKey) ?? $normalizedKey;
                 $isQrContainer = $insideQr || in_array($normalizedKey, self::QR_CONTAINERS, true);
+                $directQrValue = in_array($normalizedKey, self::QR_CONTAINERS, true)
+                    && is_string($child)
+                    && trim($child) !== '';
 
-                if ($insideQr && in_array($normalizedKey, self::QR_SECRETS, true) && is_string($child) && trim($child) !== '') {
+                if ($directQrValue || ($insideQr && in_array($normalizedKey, self::QR_SECRETS, true) && is_string($child) && trim($child) !== '')) {
                     $result[$key] = self::REMOVED_MARKER;
                     continue;
                 }
@@ -50,10 +53,6 @@ final class ConnectApiWebhookPayloadSanitizer
 
         if (is_string($value)) {
             $trimmed = trim($value);
-
-            if ($insideQr && $trimmed !== '') {
-                return self::REMOVED_MARKER;
-            }
 
             if ($trimmed !== '' && in_array($trimmed[0], ['{', '[', '"'], true)) {
                 $decoded = json_decode($trimmed, true);
