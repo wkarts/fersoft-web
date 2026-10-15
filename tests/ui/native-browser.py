@@ -34,7 +34,7 @@ try:
       assert page.locator('h1').first.inner_text()=='Dashboard Analítico Executivo'
       assert '6.479.876,12' in page.locator('.ui-metrics').inner_text()
       assert page.locator('.ui-chart-empty').count()==2
-      assert page.locator('#ui-navigation').get_by_text('NÃO AUTORIZADO').count()==0
+      assert page.locator('#ui-navigation a[href="/logs"]').count()==0
       assert page.locator('a[href="/login/logoff"]').count()==1
       assert page.locator('#set-location-top').count()==1
       assert page.locator('#btn-whatsapp-global').count()==1

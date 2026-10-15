@@ -25,6 +25,23 @@ Schema::create('filials', function (Blueprint $table) { $table->increments('id')
 Schema::create('usuarios', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->text('locais'); $table->integer('local_padrao'); $table->timestamps(); });
 DB::table('usuarios')->insert(['id'=>1,'empresa_id'=>1,'locais'=>'["-1","2"]','local_padrao'=>-1]);
 DB::table('filials')->insert(['id'=>2,'empresa_id'=>1,'status'=>1,'descricao'=>'Filial de teste']);
+// Real menu helper, real permission filtering, test-only in-memory rows.
+Schema::create('tributacaos', function (Blueprint $t) { $t->increments('id'); $t->integer('empresa_id'); $t->integer('regime')->default(1); });
+Schema::create('empresas', function (Blueprint $t) { $t->increments('id'); $t->string('nome'); $t->text('permissao')->nullable(); });
+Schema::create('planos', function (Blueprint $t) { $t->increments('id'); $t->string('nome'); });
+Schema::create('plano_empresas', function (Blueprint $t) { $t->increments('id'); $t->integer('empresa_id'); $t->integer('plano_id'); });
+DB::table('tributacaos')->insert(['id'=>1,'empresa_id'=>1,'regime'=>1]);
+DB::table('planos')->insert(['id'=>1,'nome'=>'Plano de teste']);
+DB::table('plano_empresas')->insert(['id'=>1,'empresa_id'=>1,'plano_id'=>1]);
+$fixtureAllowedTitles=['Cadastros','ClassTrib','e-DOC','Atendimento','Documentos Eletrônicos','Entradas','Gestão Pessoal','Controle de Ponto','Estoque','Kardex (Beta)','Vendas','Contratos','MTR 3.0','Emissão de NFSe','Vendas Balcão','Financeiro'];
+$fixturePermissions=[];
+foreach ((new \App\Helpers\Menu())->getMenu() as $group) {
+    if (in_array($group['titulo'], $fixtureAllowedTitles, true)) {
+        foreach ($group['subs'] as $link) if (!empty($link['rota'])) $fixturePermissions[]=$link['rota'];
+    }
+}
+DB::table('empresas')->insert(['id'=>1,'nome'=>'EMPRESA DE TESTE','permissao'=>json_encode($fixturePermissions)]);
+
 $base = [
     'title'=>'Dashboard de teste','tema'=>1,'tema_menu'=>1,'logo'=>'','alertas'=>[], 'rotaAtiva'=>'Financeiro','uri'=>'/contasPagar','configCatraca'=>null,'deliveryConfig'=>false,'ifoodConfig'=>false,
     'alerta_sonoro'=>'','tipoMenu'=>'lateral','armazenamento'=>0,'totalParaArmazenar'=>0,'percentualArmazenamento'=>0,'video_url'=>'','ultimoAcesso'=>(object)['created_at'=>'2026-10-14 17:14:47','ip_address'=>'192.0.2.10'],
@@ -37,9 +54,6 @@ $base = [
     'produtosAlerta'=>collect([(object)['nome'=>'PRODUTO TESTE 2','quantidade'=>0,'unidade_venda'=>'UN']]),
     'pagarVencidas'=>122.35,'pagarNoPeriodo'=>1450.10,'receberVencidas'=>99.90,'receberNoPeriodo'=>1876.20,'saldosContas'=>collect([(object)['nome'=>'Conta principal','saldo'=>1234.56]]),
 ];
-$labels=['Auditoria','Cadastros','ClassTrib','e-DOC','Atendimento','Documentos Eletrônicos','Entradas','Gestão Pessoal','Controle de Ponto','Estoque','Kardex (Beta)','Vendas','Contratos','MTR 3.0','Emissão de NFSe','Vendas Balcão','Financeiro'];
-$base['menu']=array_map(fn($label)=>['titulo'=>$label,'ativo'=>true,'icone'=>'<i class="la la-folder"></i>','subs'=>[['nome'=>'Consultar '. $label,'rota'=>'/test/'.rawurlencode($label)],['nome'=>'Novo cadastro','rota'=>'/test/new']]],$labels);
-$base['menu'][]=['titulo'=>'NÃO AUTORIZADO','ativo'=>false,'icone'=>'','subs'=>[['nome'=>'Restrito','rota'=>'/should-not-exist']]];
 // Reuse the application's actual clock implementation, supplied by default.layout in production.
 $legacyLayout = file_get_contents(resource_path('views/default/layout.blade.php'));
 $clockStart = strpos($legacyLayout, '<script>' . PHP_EOL . '    window.SERVER_OFFSET_MIN');
