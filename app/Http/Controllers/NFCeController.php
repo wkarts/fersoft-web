@@ -24,6 +24,7 @@ use App\Models\VendaCaixaPreVenda;
 use App\Services\NFCeService;
 use App\Services\LogService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Mail;
 use App\Models\Filial;
 use Dompdf\Dompdf;
@@ -159,9 +160,76 @@ class NFCeController extends Controller
                 header('Content-type: text/html; charset=UTF-8');
 
                 if ($retransmitindo) {
+                    // Notas antigas podem ter perdido a chave na edição da venda.
+                    // Recuperar só de um XML assinado persistido, jamais
+                    // sorteando nova identidade por causa do estado REJEITADO.
+                    $precisaRecuperar = !preg_match('/^[0-9]{44}$/D', $chaveOriginal)
+                        || $numeroOriginal <= 0
+                        || trim((string)$venda->signed_xml) === '';
+
+                    if ($precisaRecuperar) {
+                        try {
+                            $origemFiscal = $nfe_service->recuperarIdentidadeNfceRejeitada($venda, $config);
+
+                            $venda = DB::transaction(function () use ($venda, $origemFiscal) {
+                                $atual = VendaCaixa::where('empresa_id', $this->empresa_id)
+                                    ->where('id', $venda->id)
+                                    ->lockForUpdate()
+                                    ->firstOrFail();
+
+                                if ($atual->estado !== 'REJEITADO') {
+                                    throw new \DomainException('O estado desta venda mudou durante a recuperação.');
+                                }
+                                if ((trim((string)$atual->chave) !== ''
+                                        && !hash_equals(trim((string)$atual->chave), $origemFiscal['chave']))
+                                    || ((int)$atual->NFcNumero > 0
+                                        && (int)$atual->NFcNumero !== (int)$origemFiscal['numero'])
+                                    || (trim((string)$atual->signed_xml) !== ''
+                                        && !hash_equals(trim((string)$atual->signed_xml), $origemFiscal['signed_xml']))) {
+                                    throw new \DomainException('Uma identificação fiscal diferente já está armazenada. Nenhum campo será alterado.');
+                                }
+
+                                $atual->chave = $origemFiscal['chave'];
+                                $atual->NFcNumero = (int) $origemFiscal['numero'];
+                                if (trim((string)$atual->signed_xml) === '') {
+                                    $atual->signed_xml = $origemFiscal['signed_xml'];
+                                }
+                                $atual->save();
+                                return $atual;
+                            }, 3);
+
+                            $chaveOriginal = (string) $venda->chave;
+                            $numeroOriginal = (int) $venda->NFcNumero;
+
+                            $this->registrarEventoNfce($venda, 'identidade_recuperada', [
+                                'origem' => $origemFiscal['origem'],
+                                'sha256_xml_original' => hash('sha256', $origemFiscal['signed_xml']),
+                            ]);
+                        } catch (\Throwable $e) {
+                            $this->registrarEventoNfce($venda, 'recuperacao_bloqueada', [
+                                'tipo_erro' => get_class($e),
+                                'mensagem' => $e->getMessage(),
+                                'tem_chave' => trim((string)$venda->chave) !== '',
+                                'tem_numero' => (int)$venda->NFcNumero > 0,
+                                'tem_xml_assinado' => trim((string)$venda->signed_xml) !== '',
+                            ], 'error');
+                            Log::error('NFC-e: identidade rejeitada sem evidência fiscal suficiente para recuperar.', [
+                                'empresa_id' => $this->empresa_id,
+                                'venda_id' => $venda->id,
+                                'exception' => $e,
+                            ]);
+
+                            return response()->json([
+                                'erros_xml' => [$e instanceof \DomainException
+                                    ? $e->getMessage()
+                                    : 'Não foi possível conferir o histórico fiscal desta venda. Retransmissão bloqueada.'],
+                            ], 409);
+                        }
+                    }
+
                     // Um timeout de SSL/SOAP não prova rejeição da SEFAZ.
-                    // Consulta a chave antes de corrigir data/hora ou transmitir
-                    // outra versão assinada do XML.
+                    // Consulta a chave ANTES de transmitir outro XML.
+                    // Se já estiver autorizada, recupera autorização sem duplicar.
                     try {
                         $situacao = $nfe_service->consultarSituacaoDaChave($chaveOriginal);
                     } catch (\Throwable $e) {
