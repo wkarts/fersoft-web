@@ -1,4 +1,4 @@
-/* FERSOFT WEB — navegação rápida progressiva, isolada em APP_UI_THEME=refined.
+/* Navegação rápida do ERP, isolada em APP_UI_THEME=refined.
  * Nenhum evento Metronic/Bootstrap é interceptado ou substituído.
  */
 (function () {
