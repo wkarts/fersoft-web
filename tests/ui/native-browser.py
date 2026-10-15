@@ -44,6 +44,12 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('.ui-sidebar-footer a[href*="/ui/temas"]').count() == 0, 'Theme choice must stay in the header.'
     sidebar_color = page.locator('#ui-sidebar').evaluate('(e)=>getComputedStyle(e).backgroundColor')
     canvas_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
+    body_text_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).color')
+    operator_color = page.locator('.ui-actions .user-tour .text-info').first.evaluate('(e)=>getComputedStyle(e).color')
+    assert operator_color == body_text_color, 'The operator name must use the proposal text color.'
+    session_info = page.locator('.ui-session .text-info').first
+    if session_info.count():
+        assert session_info.evaluate('(e)=>getComputedStyle(e).color') == body_text_color, 'Session details must use the proposal text color.'
     if theme == 'fer-light':
         assert sidebar_color == 'rgb(255, 255, 255)', 'The approved default uses a light sidebar.'
         assert canvas_color == 'rgb(245, 247, 247)', 'The approved default uses the proposal canvas.'

@@ -50,6 +50,7 @@ body.ui-native-shell #ui-scrolltop { display:none!important; }
 body.ui-native-shell .ui-session { display:flex; align-items:center; flex-wrap:wrap; gap:6px 18px; padding:8px 22px; border-bottom:1px solid var(--ui-border); background:var(--ui-surface-alt); color:var(--ui-muted); font-size:10px; }
 body.ui-native-shell .ui-session .btn { padding:0!important; height:auto!important; font-size:10px!important; background:transparent!important; cursor:default; }
 body.ui-native-shell .ui-session .text-success { color:var(--ui-ink)!important; }
+body.ui-native-shell .ui-session .text-info,body.ui-native-shell .ui-actions .user-tour .text-info { color:var(--ui-ink)!important; }
 body.ui-native-shell .ui-session .not-mobile, body.ui-native-shell .ui-session .kt-hidden-mobile { display:inline-flex; }
 body.ui-native-shell .ui-page { min-width:0; padding:23px 22px 32px; outline:none; min-height:70vh; }
 body.ui-native-shell .ui-page > .container { max-width:none; padding-left:0; padding-right:0; }
