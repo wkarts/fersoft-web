@@ -156,7 +156,15 @@
 <!-- end::Head -->
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config('ui_theme.active', false))ui-theme-refined @if(($uiResolvedTheme['dark'] ?? false))ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif @endif">
+<body id="kt_body" @class([
+        'header-fixed',
+        'header-mobile-fixed',
+        'subheader-enabled',
+        'subheader-fixed',
+        'ui-theme-refined' => config('ui_theme.active', false),
+        'ui-theme-refined--dark' => config('ui_theme.active', false) && ($uiResolvedTheme['dark'] ?? false),
+        'ui-density-compact' => config('ui_theme.active', false) && (($uiResolvedTheme['density'] ?? '') === 'compact'),
+    ])>
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
