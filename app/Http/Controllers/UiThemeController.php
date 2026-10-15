@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UiThemeController extends Controller
 {
@@ -100,7 +101,7 @@ class UiThemeController extends Controller
 
     private function validatedThemeData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:400'],
             'accent' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/D'],
@@ -115,6 +116,37 @@ class UiThemeController extends Controller
             'density' => ['required', Rule::in(['comfortable', 'compact'])],
         ]);
 
+        // Não publicar temas cujo texto se torne ilegível nas áreas principais.
+        if ($this->contrast($data['surface'], $data['text']) < 4.5) {
+            throw ValidationException::withMessages([
+                'text' => 'O texto precisa ter contraste suficiente com os cartões (mínimo 4,5:1).',
+            ]);
+        }
+        if ($this->contrast($data['sidebar'], $data['sidebar_text']) < 4.5) {
+            throw ValidationException::withMessages([
+                'sidebar_text' => 'O texto precisa ter contraste suficiente com o menu (mínimo 4,5:1).',
+            ]);
+        }
+
+        return $data;
+    }
+
+    private function contrast(string $background, string $foreground): float
+    {
+        $luminance = static function (string $hex): float {
+            $channels = [];
+            for ($offset = 1; $offset <= 5; $offset += 2) {
+                $value = hexdec(substr($hex, $offset, 2)) / 255;
+                $channels[] = $value <= .04045
+                    ? $value / 12.92
+                    : (($value + .055) / 1.055) ** 2.4;
+            }
+            return .2126 * $channels[0] + .7152 * $channels[1] + .0722 * $channels[2];
+        };
+
+        $light = max($luminance($background), $luminance($foreground));
+        $dark = min($luminance($background), $luminance($foreground));
+        return ($light + .05) / ($dark + .05);
     }
 
     public function store(Request $request)
