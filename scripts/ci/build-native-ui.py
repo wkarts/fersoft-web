@@ -145,7 +145,16 @@ if "@include('themes.refined.dashboard')" not in s:
 write('resources/views/dashboard_novo/index.blade.php',s)
 # Workbench is now a palette only in native shell but remains compatible with direct legacy extends.
 manifest={'baseline_commit':'aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6','source_sha256':{p:hashlib.sha256(read(p).encode()).hexdigest() for p in ['resources/views/default/menu_lateral.blade.php','resources/views/default/menu_superior.blade.php','public/metronic/js/scripts.bundle.js']},'legacy_contracts_preserved':['action links','conditional modules','user/company permissions','alert modals','all page-specific scripts','dynamic grids','session widgets'],'native_layout': 'themes.refined.layout'}
-write('tests/fixtures/ui/native-contract.json',json.dumps(manifest,indent=2)+'\n')
+# The committed baseline is an immutable contract. Rebuilding the native
+# shell must NEVER silently rebaseline legacy hashes to its current inputs;
+# otherwise a regression could be hidden by simply running the generator.
+# The test explicitly normalizes only the approved Blade fixes.
+contract_path = ROOT / 'tests/fixtures/ui/native-contract.json'
+if not contract_path.is_file():
+    raise RuntimeError('Missing immutable native UI baseline fixture')
+existing_contract = json.loads(contract_path.read_text())
+assert existing_contract.get('baseline_commit') == 'aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6'
+assert set(existing_contract.get('source_sha256', {})) == set(manifest['source_sha256'])
 # POS pages own their operational layout; only opt-in presentation is added.
 for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
  p='resources/views/frontBox/'+name+'.blade.php'
