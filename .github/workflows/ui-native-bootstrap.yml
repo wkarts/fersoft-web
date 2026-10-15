@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Conferir material completo
         id: source
         run: |
@@ -47,9 +47,15 @@ jobs:
           target.write_bytes(patch)
           subprocess.run(['git', 'apply', '--check', '--index', str(target)], check=True)
           subprocess.run(['git', 'apply', '--index', str(target)], check=True)
+          generator = pathlib.Path('scripts/ci/build-native-ui.py')
+          text = generator.read_text()
+          old = "write('public/js/ui-legacy-widgets.js',bundle)"
+          new = "write('public/js/ui-legacy-widgets.js', '\\n'.join(line.rstrip() for line in bundle.split('\\n')))"
+          assert text.count(old) == 1
+          generator.write_text(text.replace(old, new))
           PY
           python scripts/ci/build-native-ui.py
-          git add -- resources/views/themes/refined/layout.blade.php public/js/ui-legacy-widgets.js resources/views/default/layout.blade.php resources/views/contabilidade/configuracoes.blade.php resources/views/dashboard_novo/index.blade.php resources/views/frontBox/main.blade.php resources/views/frontBox/main2.blade.php resources/views/frontBox/main3.blade.php resources/views/frontBox/pdv_assincrono.blade.php tests/fixtures/ui/native-contract.json
+          git add -- scripts/ci/build-native-ui.py resources/views/themes/refined/layout.blade.php public/js/ui-legacy-widgets.js resources/views/default/layout.blade.php resources/views/contabilidade/configuracoes.blade.php resources/views/dashboard_novo/index.blade.php resources/views/frontBox/main.blade.php resources/views/frontBox/main2.blade.php resources/views/frontBox/main3.blade.php resources/views/frontBox/pdv_assincrono.blade.php tests/fixtures/ui/native-contract.json
           git diff --cached --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
