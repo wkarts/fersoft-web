@@ -63,8 +63,10 @@ jobs:
           php artisan view:clear
           php artisan view:cache
           test -d storage/framework/views
-          find storage/framework/views -type f -name '*.php' -print0 \
-            | xargs -0 -r -n1 -P8 php -l > storage/app/ui-browser/compiled-php-lint.txt
+          php -l scripts/ci/lint-blade-cache.php
+          # Diferente de view:cache, testa a sintaxe do PHP realmente compilado.
+          # Em erro mostra arquivo Blade original e linhas geradas.
+          php scripts/ci/lint-blade-cache.php | tee storage/app/ui-browser/compiled-php-lint.txt
           # A linha abaixo também valida a view cujo hash foi reportado no homolog3.
           php -r '
             require "vendor/autoload.php";
