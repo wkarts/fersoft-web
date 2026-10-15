@@ -62,10 +62,10 @@ final class UiNativePaletteTest extends TestCase
             if (str_ends_with($file, 'menu_lateral.blade.php')
                 || str_ends_with($file, 'menu_superior.blade.php')) {
                 // Reverte SOMENTE o ajuste de classes que corrige diretivas Blade
-                // malformadas; qualquer mudança adicional no layout classico falha.
+                // malformadas; o baseline foi calculado com os dois @endif separados.\n                // Qualquer outra mudança no layout clássico continua reprovando.
                 $historical = str_ends_with($file, 'menu_lateral.blade.php')
-                    ? '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact@endif @endif">'
-                    : '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark@endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact@endif @endif>';
+                    ? '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark @endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact @endif @endif">'
+                    : '<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed @if(config(\'ui_theme.active\', false))ui-theme-refined @if(($uiResolvedTheme[\'dark\'] ?? false))ui-theme-refined--dark @endif @if(($uiResolvedTheme[\'density\'] ?? \'\') === \'compact\')ui-density-compact @endif @endif>';
 
                 $count = 0;
                 $content = preg_replace_callback(
