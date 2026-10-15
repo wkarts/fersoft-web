@@ -362,8 +362,12 @@ Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], functi
     Route::get('/', 'UiThemeController@index')->name('ui.themes.index');
     Route::post('/preferencia', 'UiThemeController@select')->name('ui.themes.select');
     Route::post('/modelos', 'UiThemeController@store')->name('ui.themes.store');
+    Route::post('/modelos/{preset}', 'UiThemeController@update')->name('ui.themes.update');
+    Route::post('/modelos/{preset}/duplicar', 'UiThemeController@duplicate')->name('ui.themes.duplicate');
     Route::post('/modelos/{preset}/publicar', 'UiThemeController@publish')->name('ui.themes.publish');
+    Route::post('/modelos/{preset}/arquivar', 'UiThemeController@archive')->name('ui.themes.archive');
     Route::post('/empresas/liberar', 'UiThemeController@grant')->name('ui.themes.grant');
+    Route::post('/empresas/padrao', 'UiThemeController@setDefault')->name('ui.themes.company.default');
 });
 
 Route::group(['prefix' => 'videos', 'middleware' => 'verificaEmpresa'], function(){
