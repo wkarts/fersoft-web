@@ -144,7 +144,7 @@ if "@include('themes.refined.dashboard')" not in s:
  pos=s.rindex('@endsection');s=s[:pos]+'@endif\n'+s[pos:]
 write('resources/views/dashboard_novo/index.blade.php',s)
 # Workbench is now a palette only in native shell but remains compatible with direct legacy extends.
-manifest={'baseline_commit':'aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6','source_sha256':{p:hashlib.sha256(read(p).encode()).hexdigest() for p in ['resources/views/default/menu_lateral.blade.php','resources/views/default/menu_superior.blade.php','public/metronic/js/scripts.bundle.js']},'legacy_contracts_preserved':['action links','conditional modules','user/company permissions','alert modals','all page-specific scripts','dynamic grids','session widgets'],'native_layout': 'themes.refined.layout'}
+manifest={'source_sha256':{p:hashlib.sha256(read(p).encode()).hexdigest() for p in ['resources/views/default/menu_lateral.blade.php','resources/views/default/menu_superior.blade.php','public/metronic/js/scripts.bundle.js']},'legacy_contracts_preserved':['action links','conditional modules','user/company permissions','alert modals','all page-specific scripts','dynamic grids','session widgets'],'native_layout': 'themes.refined.layout'}
 # The committed baseline is an immutable contract. Rebuilding the native
 # shell must NEVER silently rebaseline legacy hashes to its current inputs;
 # otherwise a regression could be hidden by simply running the generator.
@@ -153,8 +153,18 @@ contract_path = ROOT / 'tests/fixtures/ui/native-contract.json'
 if not contract_path.is_file():
     raise RuntimeError('Missing immutable native UI baseline fixture')
 existing_contract = json.loads(contract_path.read_text())
-assert existing_contract.get('baseline_commit') == 'aa7ddba5ac6ee1abb2dda799ac4387313d5b00e6'
-assert set(existing_contract.get('source_sha256', {})) == set(manifest['source_sha256'])
+# Preserve the reviewed baseline from the committed fixture: a main->develop
+# sync may legitimately change the classic menu, but cannot silently rewrite it.
+baseline_commit = existing_contract.get('baseline_commit', '')
+if not re.fullmatch(r'[a-f0-9]{40}', str(baseline_commit)):
+    raise RuntimeError('Native UI baseline commit is invalid')
+expected_sources = existing_contract.get('source_sha256', {})
+if not isinstance(expected_sources, dict) or set(expected_sources) != set(manifest['source_sha256']):
+    raise RuntimeError('Immutable legacy source list changed')
+for path, sha in manifest['source_sha256'].items():
+    if sha != expected_sources[path]:
+        raise RuntimeError('Legacy source changed without reviewing baseline: ' + path)
+manifest['baseline_commit'] = baseline_commit
 # POS pages own their operational layout; only opt-in presentation is added.
 for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
  p='resources/views/frontBox/'+name+'.blade.php'
