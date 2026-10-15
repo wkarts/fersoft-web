@@ -62,9 +62,8 @@ class UiThemeController extends Controller
             'editingTheme' => $super && request()->filled('edit_theme')
                 ? UiThemePreset::query()->where('status', 'draft')->findOrFail((int) request('edit_theme'))
                 : null,
-            'companies' => $super
-                ? Empresa::query()->orderBy('nome')->select(['id', 'nome'])->limit(200)->get()
-                : collect(),
+            // Empresas são pesquisadas sob demanda, sem carregar centenas na tela.
+            'companies' => collect(),
             'companySettings' => $this->themes->companySettings($company),
             'isSuperadmin' => $super,
         ]);
@@ -208,6 +207,32 @@ class UiThemeController extends Controller
 
         return redirect()->route('ui.themes.index')
             ->with('ui_theme_feedback', 'Tema arquivado. Usuários passarão a utilizar o fallback autorizado.');
+    }
+
+    public function companySearch(Request $request)
+    {
+        $this->superOnly();
+        $this->requireTables();
+
+        $data = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:100'],
+        ]);
+        $search = trim($data['q']);
+        $results = Empresa::query()
+            ->select(['id', 'nome'])
+            ->where(function ($query) use ($search) {
+                $query->where('nome', 'like', '%' . $search . '%');
+                if (ctype_digit($search)) {
+                    $query->orWhere('id', (int) $search);
+                }
+            })
+            ->orderBy('nome')->limit(20)->get()
+            ->map(fn ($company) => [
+                'id' => (int) $company->id,
+                'name' => (string) $company->nome,
+            ]);
+
+        return response()->json(['items' => $results]);
     }
 
     public function setDefault(Request $request)
