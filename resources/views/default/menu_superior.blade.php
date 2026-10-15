@@ -1924,7 +1924,9 @@
                              não fechava o foreach gerado, gerando ParseError no PHP. --}}
                         @if(count($appVersionHistoryGrouped ?? []) > 0)
                             @foreach($appVersionHistoryGrouped as $major => $items)
-                            @php($majorId = 'top-major-'.$major)
+                            @php
+                                $majorId = 'top-major-' . $major;
+                            @endphp
                             <div class="card">
                                 <div class="card-header" id="head-{{ $majorId }}">
                                     <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
