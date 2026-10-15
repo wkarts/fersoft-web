@@ -81,7 +81,7 @@ def check_page(page, theme, layout, density, width):
             submenu_id = last_group.get_attribute('aria-controls')
             assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
             page.keyboard.press('Escape')
-    if support_action.count():
+    if support_action.count() and support_action.is_visible():
         if width < 992:
             page.locator('[data-ui-menu-open]').click()
         page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
