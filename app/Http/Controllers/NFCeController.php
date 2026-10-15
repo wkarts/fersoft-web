@@ -184,7 +184,7 @@ class NFCeController extends Controller
                         'situacao' => $situacao['situacao'],
                         'cStat' => $situacao['codigo'] ?? null,
                         'xMotivo' => $situacao['motivo'] ?? null,
-                    ], $situacao['situacao'] === 'nao_consta' ? 'info' : 'warning');
+                    ], $situacao['situacao'] === 'indeterminada' ? 'error' : 'info');
 
                     if ($situacao['situacao'] === 'autorizada') {
                         // A SEFAZ pode ter autorizado a nota durante o timeout.
@@ -343,7 +343,8 @@ class NFCeController extends Controller
                         $this->registrarEventoNfce($venda, 'transmissao_resultado', [
                             'classificacao' => $tipoResultado,
                             'retorno_resumido' => substr((string) $resultado, 0, 400),
-                        ], $tipoResultado === 'autorizada' ? 'info' : 'warning');
+                        ], in_array($tipoResultado, ['rejeicao_sefaz', 'indeterminado'], true)
+                            ? 'error' : ($tipoResultado === 'autorizada' ? 'info' : 'warning'));
                         if(substr((string) $resultado, 0, 4) != 'Erro'){
                             if (!$retransmitindo) {
                                 $venda->chave = $nfce['chave'];
