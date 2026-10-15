@@ -38,6 +38,38 @@ foreach ($paths as $file) {
         $source = str_replace($pathPrefix, '', trim($match[1]));
     }
     fwrite(STDERR, "SOURCE BLADE: {$source}\n");
+    // Diagnose unclosed Blade "if:" structures even when the parser only
+    // reports a generic unexpected EOF on the last compiled line.
+    if ($contents !== false) {
+        preg_match_all('/<\?php\s+if\s*\([^?]*\?>|<\?php\s+endif\s*;\s*\?>/s', $contents, $tokens, PREG_OFFSET_CAPTURE);
+        $open = [];
+        $orphan = [];
+        foreach ($tokens[0] ?? [] as [$token, $offset]) {
+            $lineNumber = substr_count($contents, "\n", 0, $offset) + 1;
+            if (preg_match('/<\?php\s+endif\b/', $token)) {
+                if (count($open) === 0) {
+                    $orphan[] = $lineNumber;
+                } else {
+                    array_pop($open);
+                }
+            } elseif (preg_match('/:\s*\?>$/', $token)) {
+                $open[] = [
+                    'line' => $lineNumber,
+                    'text' => preg_replace('/\s+/', ' ', substr($token, 0, 230)),
+                ];
+            }
+        }
+        if (count($open)) {
+            fwrite(STDERR, "UNMATCHED COMPILED if/endif, most recent opens:\n");
+            foreach (array_slice($open, -12) as $entry) {
+                fwrite(STDERR, "  Line {$entry['line']}: {$entry['text']}\n");
+            }
+        }
+        if (count($orphan)) {
+            fwrite(STDERR, "Orphan endif lines: " . implode(', ', $orphan) . "\n");
+        }
+    }
+
     fwrite(STDERR, "COMPILED FILE: {$file}\n");
     if (preg_match('/on line (\d+)/', $text, $match) && $contents !== false) {
         $line = (int) $match[1];
