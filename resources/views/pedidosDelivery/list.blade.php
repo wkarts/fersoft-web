@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('css')
 <style type="text/css">
 	.collapsed{
@@ -24,12 +28,13 @@
 </style>
 @endsection
 @section('content')
+<header class="fer-page__heading"><h1>{{ $tipo }}</h1></header>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-list">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
-			<form method="get" action="/pedidosDelivery/filtro">
+			<form method="get" action="/pedidosDelivery/filtro" class="fer-filter">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-3 col-md-4 col-sm-6">
@@ -202,7 +207,7 @@
 </div>
 
 <div class="modal fade" id="modal-alerta-novo-pedido" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-lg fer-dialog" role="document">
         <div class="modal-content" style="border-radius: 12px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
             <div class="modal-header bg-danger text-white" style="border-radius: 12px 12px 0 0;">
                 <h4 class="modal-title font-weight-bold" style="color: white !important;">
@@ -218,7 +223,7 @@
                     <p class="text-muted" style="font-size: 16px;">Aguardando a sua confirmação para ir para a cozinha!</p>
                 </div>
                 
-                <table class="table table-bordered table-hover">
+                <table class="fer-results table table-bordered table-hover">
                     <thead class="thead-light">
                         <tr>
                             <th class="text-center">Cliente</th>

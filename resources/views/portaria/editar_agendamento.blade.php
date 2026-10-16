@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="container-fluid">
+<div class="fer-extra fer-extra--support fer-extra--portaria container-fluid">
     <div class="row mb-4">
         <div class="col-12">
             <h2 class="page-title"><i class="fas fa-edit"></i> Editar Agendamento</h2>

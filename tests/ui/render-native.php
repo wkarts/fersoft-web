@@ -23,8 +23,11 @@ $app['request']->setLaravelSession($app['session']->driver());
 session(['user_logged' => ['id' => 1, 'empresa' => 1, 'nome' => 'Operador de teste', 'empresa_nome' => 'EMPRESA DE TESTE', 'ambiente' => 'Homologação', 'super' => 0, 'tipo_representante' => 0], 'alerta_tarefas_visto' => true]);
 Schema::create('filials', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->integer('status'); $table->string('descricao'); $table->timestamps(); });
 Schema::create('usuarios', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->text('locais'); $table->integer('local_padrao'); $table->timestamps(); });
+Schema::create('cidades', function (Blueprint $table) { $table->increments('id'); $table->string('codigo'); $table->string('nome'); $table->string('uf', 2); $table->timestamps(); });
+Schema::create('config_caixas', function (Blueprint $table) { $table->increments('id'); $table->integer('usuario_id'); $table->text('tipos_pagamento')->nullable(); $table->string('tipo_pagamento_padrao')->nullable(); $table->timestamps(); });
 DB::table('usuarios')->insert(['id'=>1,'empresa_id'=>1,'locais'=>'["-1","2"]','local_padrao'=>-1]);
 DB::table('filials')->insert(['id'=>2,'empresa_id'=>1,'status'=>1,'descricao'=>'Filial de teste']);
+DB::table('cidades')->insert(['id'=>1,'codigo'=>'3550308','nome'=>'São Paulo','uf'=>'SP']);
 // Real menu helper, real permission filtering, test-only in-memory rows.
 Schema::create('tributacaos', function (Blueprint $t) { $t->increments('id'); $t->integer('empresa_id'); $t->integer('regime')->default(1); });
 Schema::create('empresas', function (Blueprint $t) { $t->increments('id'); $t->string('nome'); $t->text('permissao')->nullable(); });
@@ -64,8 +67,12 @@ $target = storage_path('app/ui-browser');
 if (!is_dir($target)) mkdir($target, 0775, true);
 // Prove every render exists; the legacy exception handler can exit CLI with zero.
 register_shutdown_function(static function () use ($target): void {
-    if (count(glob($target . '/fer-*.html')) !== 12) {
-        fwrite(STDERR, 'Rendering incomplete: expected 12 actual Blade fixtures.' . PHP_EOL);
+    if (count(glob($target . '/fer-*.html')) !== 12
+        || !is_file($target . '/operational-funcionarios-list.html')
+        || !is_file($target . '/operational-funcionarios-register.html')
+        || !is_file($target . '/operational-cte-register.html')
+        || !is_file($target . '/operational-pdv.html')) {
+        fwrite(STDERR, 'Rendering incomplete: expected 12 dashboard and 4 operational Blade fixtures.' . PHP_EOL);
         exit(1);
     }
 });
@@ -79,7 +86,8 @@ foreach ($palettes as $slug=>$definition) {
             $data=array_merge($base,['tipoMenu'=>$mode]);
             $factory=$app['view'];
             $content=$factory->make('themes.refined.dashboard',$data)->render();
-            // Test Bootstrap modal/Select2/KTDatatable under the SAME production shell and bundles.
+            // Test modal, Select2 and the compatible datagrid API under the
+            // production shell without including the Metronic runtime.
             $content .= '<section class="ui-panel" id="fixture-legacy"><div class="ui-panel-body"><h2>Componentes operacionais de teste</h2><button type="button" class="btn btn-primary" data-toggle="modal" data-target="#fixture-modal">Abrir modal de teste</button><select id="fixture-select" class="form-control"><option value="1">Item de teste</option><option value="2">Outro item</option></select><table id="fixture-grid" class="table"><thead><tr><th>Produto</th><th>Quantidade</th></tr></thead><tbody><tr><td>Produto de teste</td><td>2</td></tr></tbody></table></div></section><div class="modal fade" id="fixture-modal" tabindex="-1" role="dialog" aria-labelledby="fixture-modal-title"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h2 class="modal-title" id="fixture-modal-title">Modal de teste</h2><button type="button" data-dismiss="modal" class="close" aria-label="Fechar modal">×</button></div><div class="modal-body"><label>Nome<input class="form-control" value="Preservado" id="fixture-name"></label></div></div></div></div>';
             $factory->startSection('content', new \Illuminate\Support\HtmlString($content));
             $html=$factory->make('themes.refined.layout',$data)->render();
@@ -88,4 +96,75 @@ foreach ($palettes as $slug=>$definition) {
         }
     }
 }
-echo 'Rendered 12 native Blade fixtures into '.$target.PHP_EOL;
+
+// Render the ACTUAL operational Blade content with isolated in-memory data.
+// Only the parent @extends changes in this fixture: default.layout queries
+// unrelated task/notification tables before it reaches the refined shell.
+$light = array_merge(config('ui_theme.presets.fer-light'), [
+    'slug' => 'fer-light', 'active' => true, 'density' => 'comfortable', 'color_mode' => 'follow',
+]);
+$app['request']->attributes->set('fersoft.ui_theme.1:1:0:light', $light);
+$employee = new \App\Models\Funcionario([
+    'nome' => 'Funcionário de teste', 'telefone' => '(11) 90000-0000',
+    'rua' => 'Rua Exemplo', 'numero' => '10', 'bairro' => 'Centro',
+    'status_funcionario' => 'Ativo', 'data_admissao' => '2025-01-10',
+]);
+$employee->id = 7;
+$employee->setRelation('funcao', (object) ['nome' => 'Operação']);
+$operationalData = array_merge($base, [
+    'funcionarios' => collect([$employee]),
+    'funcoes' => collect([(object) ['id' => 1, 'nome' => 'Operação']]),
+    'usuarios' => collect([(object) ['id' => 1, 'nome' => 'Operador de teste']]),
+    'empresa_id' => 1,
+]);
+$app['view']->share('errors', new \Illuminate\Support\ViewErrorBag());
+foreach (['funcionarios.list' => 'funcionarios-list', 'funcionarios.register' => 'funcionarios-register'] as $view => $file) {
+    $app['view']->flushSections();
+    $source = file_get_contents(resource_path('views/' . str_replace('.', '/', $view) . '.blade.php'));
+    $source = str_replace("@extends('default.layout')", "@extends('themes.refined.layout')", $source);
+    if (!str_contains($source, "@extends('themes.refined.layout')")) {
+        throw new RuntimeException('Expected default.layout in operational fixture ' . $view);
+    }
+    $html = \Illuminate\Support\Facades\Blade::render($source, $operationalData);
+    file_put_contents($target . '/operational-' . $file . '.html', $html);
+}
+
+// Fiscal document in creation mode: genuine CT-e fields and modal, with no
+// submission or transmission. All examples exist only in these test fixtures.
+$city = (object) ['id' => 1, 'nome' => 'São Paulo', 'uf' => 'SP'];
+$client = (object) [
+    'id' => 3, 'razao_social' => 'Cliente de teste', 'cpf_cnpj' => '00000000000',
+    'ie_rg' => '', 'rua' => 'Rua Exemplo', 'numero' => '10', 'bairro' => 'Centro',
+    'cidade' => $city,
+];
+$cteData = array_merge($operationalData, [
+    'clientes' => collect([$client]), 'naturezas' => collect([(object) ['id' => 1, 'natureza' => 'Prestação de serviço']]),
+    'veiculos' => collect(), 'cidades' => collect([$city]), 'tributacao' => (object) ['regime' => 1],
+    'config' => (object) ['ambiente' => 2, 'nat_op_padrao' => 1, 'codMun' => '3550308'],
+    'lastCte' => 0, 'tiposTomador' => ['0' => 'Remetente'], 'modals' => ['01' => 'Rodoviário'],
+    'unidadesMedida' => ['01' => 'KG'], 'tiposMedida' => ['Peso bruto'], 'cteJs' => true,
+]);
+$app['view']->flushSections();
+$cteSource = file_get_contents(resource_path('views/cte/register.blade.php'));
+$cteSource = str_replace("@extends('default.layout')", "@extends('themes.refined.layout')", $cteSource);
+if (!str_contains($cteSource, "@extends('themes.refined.layout')")) throw new RuntimeException('CT-e parent missing');
+file_put_contents($target . '/operational-cte-register.html', \Illuminate\Support\Facades\Blade::render($cteSource, $cteData));
+
+// The PDV owns a separate full-page Blade template. The fixture executes its
+// real markup and scripts with empty lists and never sends a sale or fiscal API.
+$pdvData = array_merge($base, [
+    'usuario' => (object) ['caixa_livre' => 0, 'permite_desconto' => 1, 'somente_fiscal' => 0],
+    'config' => (object) [
+        'percentual_max_desconto' => 10, 'senha_remover' => '', 'parcelamento_maximo' => 1,
+        'tipo_pagamento_padrao' => '01', 'codMun' => '3550308',
+    ],
+    'categorias' => collect(), 'clientes' => collect([$client]), 'produtosMaisVendidos' => collect(),
+    'tiposPagamento' => ['01' => 'Dinheiro', '17' => 'PIX'], 'contasEmpresa' => collect(),
+    'funcionarios' => collect(), 'vendedores' => collect(), 'acessores' => collect(),
+    'rascunhos' => collect(), 'consignadas' => collect(), 'atalhos' => null,
+    'certificado' => null, 'filial' => null,
+]);
+$app['view']->flushSections();
+$pdvSource = file_get_contents(resource_path('views/frontBox/pdv_assincrono.blade.php'));
+file_put_contents($target . '/operational-pdv.html', \Illuminate\Support\Facades\Blade::render($pdvSource, $pdvData));
+echo 'Rendered 12 dashboard and 4 operational Blade fixtures into '.$target.PHP_EOL;

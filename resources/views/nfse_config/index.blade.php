@@ -1,4 +1,7 @@
 @extends('default.layout', ['title' => 'Configuração da NFSe'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
 <style type="text/css">
@@ -22,7 +25,7 @@
 		cursor: pointer;
 	}
 </style>
-<div class=" d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="document-fiscal-page document-fiscal-page--nfse-config  d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">

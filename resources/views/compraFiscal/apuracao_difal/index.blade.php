@@ -1,11 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
-<div class="container-fluid">
+<div class="operations-page operations-page--purchase container-fluid">
     <div class="row">
         <div class="col-md-12">
-            <div class="card">
+            <div class="card operations-panel">
                 <div class="card-header">
-                    <h3 class="card-title">{{ $formTitle }}</h3>
+                    <h3 class="card-title operations-page__title">{{ $formTitle }}</h3>
                     <div class="card-tools">
                         <a href="{{ route('compraFiscal.difal.create') }}" class="btn btn-success btn-sm">
                             <i class="fa fa-plus"></i> Nova Apuração
@@ -72,7 +75,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalDetalhes" tabindex="-1" role="dialog">
+<div class="modal fade operations-dialog" id="modalDetalhes" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">

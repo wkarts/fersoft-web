@@ -1,10 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Clientes</h1></header>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-list">
 
 	<div class="card-body">
-		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+		<div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-12">
 				<div class="row">
 					<a style="margin-left: 5px; margin-top: 5px;" href="/clientes/new" class="btn btn-lg btn-success">
@@ -23,7 +27,7 @@
 
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-			<form method="get" action="/clientes/pesquisa">
+			<form method="get" action="/clientes/pesquisa" class="fer-filter">
 				<div class="row align-items-center">
 					<div class="col-lg-2 col-xl-2">
 						<div class="row align-items-center">
@@ -99,7 +103,7 @@
 			<label>Total de clientes cadastrados: <strong class="text-info">{{$totalGeralClientes}}</strong></label>
 			@endif
 
-			<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+			<div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 				<div class="wizard-nav">
 					<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
 						<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
@@ -256,7 +260,7 @@
 </div>
 
 <div class="modal fade" id="modal_historico_cliente" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog modal-xl fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info">
                 <h5 class="modal-title text-white">Histórico Financeiro: <span id="nome_cliente_hist"></span></h5>
@@ -286,7 +290,7 @@
 </div>
 
 <div class="modal fade" id="modal_receitas_cliente" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl" role="document"> <div class="modal-content">
+    <div class="modal-dialog modal-xl fer-dialog" role="document"> <div class="modal-content">
             <div class="modal-header bg-primary">
                 <h5 class="modal-title text-white">Histórico de Receitas Óticas</h5>
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>

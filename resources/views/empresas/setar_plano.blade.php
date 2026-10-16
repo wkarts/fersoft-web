@@ -1,14 +1,23 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-empresas">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="ui-admin-panel gutter-b ">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
 				<form method="post" action="/empresas/setarPlano">
 					<input type="hidden" name="id" value="{{$empresa->id}}">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel gutter-b ">
+						<div class="ui-admin-panel-head">
 
 							<h3 class="card-title">Setar Plano</h3>
 						</div>
@@ -99,7 +108,7 @@
 						</div>
 
 					</div>
-					<div class="card-footer">
+					<div class="ui-admin-panel-foot">
 
 						<div class="row">
 							<div class="col-xl-2">
@@ -126,6 +135,7 @@
 	</div>
 </div>
 
+</div>
 @section('javascript')
 <script type="text/javascript">
 	var planos = [];

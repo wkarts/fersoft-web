@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card">
+<div class="fer-extra fer-extra--contratos fer-extra--canvas card">
     <div class="card-body">
         <h4>Nova Medição / Faturamento Mensal</h4>
         <p><strong>Contrato ID:</strong> {{ $contrato->id }} | <strong>Cliente:</strong> {{ $contrato->cliente->razao_social ?? '' }}</p>

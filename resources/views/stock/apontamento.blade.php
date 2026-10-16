@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
 <style>
@@ -8,7 +12,7 @@
     .btn-success:hover { transform: translateY(-2px); }
 </style>
 
-<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="fer-extra fer-extra--stock fer-extra--canvas d-flex flex-column flex-column-fluid" id="kt_content">
     <div class="container">
         <form method="post" action="/estoque/saveApontamento" id="formApontamento">
             @csrf

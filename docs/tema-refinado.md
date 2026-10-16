@@ -47,7 +47,7 @@ Esse inventário serve de base para a homologação progressiva dos componentes 
 1. `config/ui_theme.php`: normaliza o valor do `.env` e expõe `active`.
 2. Layouts `default/menu_lateral` e `default/menu_superior`: adicionam classe `ui-theme-refined` **somente** com `active=true` e carregam `themes.refined.assets` ao final do `head`.
 3. `resources/views/themes/refined/assets.blade.php`: seleciona a mesma família tipográfica publicada no login `access_4`, com fallback local e nenhuma dependência de front-end nova.
-4. `public/css/theme-refined.css`: tokens (claro e escuro), sidebar, topbar, cards, filtros, formulários, botões, select, tabelas, modais, toast, dropdown, wizard, breakpoints e foco.
+4. `public/css/fer-design-system.css`: componentes próprios sobre os tokens validados por empresa, incluindo cards, formulários, tabelas, modais, estados e responsividade. `public/css/ui-operational.css` define o shell.
 5. Não foi adicionado JavaScript: controles existentes continuam sob responsabilidade do Metronic, Bootstrap, jQuery e código de cada rotina.
 
 ## Regras de compatibilidade

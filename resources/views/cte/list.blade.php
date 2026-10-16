@@ -1,12 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="cte-page cte-page--list">
+	<div class="cte-page__content card-body">
 
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+		<div class="cte-list-intro" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/cte/filtro">
+			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-filters" method="get" action="/cte/filtro">
 				<div class="row align-items-center">
 					<div class="form-group col-lg-2 col-xl-2">
 						<div class="row">
@@ -88,7 +91,7 @@
 				</div>
 			</form>
 			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de CTe</h4>
+			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-page__title">Lista de CTe</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Registros: <strong class="text-success">{{sizeof($ctes)}}</strong></label>
 			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -667,7 +670,7 @@
 </div>
 
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -696,7 +699,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -725,7 +728,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -765,7 +768,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -811,7 +814,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -859,7 +862,7 @@
 </div>
 
 
-<div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

@@ -133,6 +133,88 @@ def check_page(page, theme, layout, density, width):
     page.evaluate('window.scrollTo(0,0)')
 
 
+def check_employee_page(page, kind, width):
+    """Exercise actual operational Blade, with safe fixture values only."""
+    assert page.locator('body.ui-native-shell').count() == 1
+    assert page.locator('#ui-navigation a[href="/funcionarios"]').count() >= 1
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), 'Operational page overflows viewport.'
+    assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")')
+    if width < 992:
+        page.locator('[data-ui-menu-open]').click()
+        assert page.locator('#ui-sidebar').get_attribute('aria-modal') == 'true'
+        page.keyboard.press('Escape')
+    if kind == 'list':
+        assert page.locator('h1').first.inner_text() == 'Funcionários'
+        assert page.locator('table.ui-people-table tbody tr').count() == 1
+        assert 'Funcionário de teste' in page.locator('table.ui-people-table').inner_text()
+        assert page.locator('a[href="/funcionarios/new"]').count() == 1
+        assert page.locator('a[href="/funcionarios/comissao"]').count() == 1
+        page.locator('[data-people-tab="grid"]').click()
+        assert page.locator('#ui-people-grid').is_visible()
+        assert 'Funcionário de teste' in page.locator('#ui-people-grid').inner_text()
+        page.locator('[data-people-tab="table"]').click()
+        assert page.locator('#ui-people-table').is_visible()
+        page.locator('[data-target="#modal_import_excel"]').click()
+        page.locator('#modal_import_excel').wait_for(state='visible')
+        assert page.locator('#modal_import_excel form').get_attribute('action') == '/funcionarios/importExcel'
+        assert page.locator('#modal_import_excel input[name="file"]').get_attribute('type') == 'file'
+        assert page.locator('#modal_import_excel a[href="/funcionarios/downloadLayout"]').count() == 1
+        page.locator('#modal_import_excel [data-dismiss="modal"]').first.click()
+        page.locator('#modal_import_excel').wait_for(state='hidden')
+    else:
+        assert page.get_by_text('Novo Colaborador').count() >= 1
+        form = page.locator('form[action="/funcionarios/save"]').first
+        assert form.get_attribute('method').lower() == 'post'
+        for name in ['nome', 'cpf', 'rg', 'data_nascimento', 'data_admissao',
+                     'status_funcionario', 'cep', 'rua', 'numero', 'telefone',
+                     'funcao_id', 'filial_id', 'usuario_id', 'salario', 'cnh']:
+            assert form.locator(f'[name="{name}"]').count() >= 1, 'Missing employee field ' + name
+        assert form.locator('[name="nome"]').get_attribute('required') is not None
+        form.locator('[name="nome"]').fill('Nome de teste não enviado')
+        assert form.locator('[name="nome"]').input_value() == 'Nome de teste não enviado'
+        assert not form.evaluate('(e)=>e.checkValidity()'), 'Required CPF validation was lost.'
+        assert form.locator('[name="funcao_id"]').evaluate('(e)=>jQuery(e).hasClass("select2-hidden-accessible")')
+        page.locator('[data-target="#modal_funcao"]').click()
+        page.locator('#modal_funcao').wait_for(state='visible')
+        assert page.locator('#nome_funcao_quick').count() == 1
+        page.locator('#modal_funcao [data-dismiss="modal"]').first.click()
+        page.locator('#modal_funcao').wait_for(state='hidden')
+        assert page.locator('a[href="/funcionarios"]').count() >= 1
+
+
+def check_critical_flow(page, kind, width):
+    """Real CT-e and PDV templates, without committing or transmitting data."""
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), kind + ' overflows viewport.'
+    assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")')
+    assert page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor') == 'rgb(245, 247, 247)'
+    if kind == 'cte-register':
+        assert page.locator('body.ui-native-shell .cte-page--register').count() == 1
+        assert 'EMISSÃO DE CTe' in page.locator('h1.cte-page__title').inner_text()
+        assert page.locator('form[action="/cte/importarXml"] input[name="file"]').count() == 1
+        for name in ['natureza', 'cliente', 'tomador', 'valor_carga', 'quantidade_carga']:
+            assert page.locator(f'[name="{name}"]').count() >= 1, 'CT-e field missing: ' + name
+        assert page.locator('#kt_select2_1').evaluate('(e)=>jQuery(e).hasClass("select2-hidden-accessible")')
+        page.locator('button[onclick="novoRemetente()"]').first.click()
+        page.locator('#modal-cliente').wait_for(state='visible')
+        assert page.locator('#modal-cliente #razao_social2').count() == 1
+        assert page.locator('#remetente_destinatario').input_value() == 'remetente'
+        page.locator('#modal-cliente [data-dismiss="modal"]').first.click()
+        page.locator('#modal-cliente').wait_for(state='hidden')
+        assert page.locator('#finalizar[onclick="salvarCTe()"]').count() == 1
+    else:
+        assert page.locator('body.ui-pos-refined .ui-pos-frame').count() == 1
+        assert page.locator('a[href="/frenteCaixa/list"]').count() >= 1
+        assert page.locator('#produto-search').count() == 1
+        assert page.locator('#tipo-pagamento option[value="01"]').count() == 1
+        assert page.locator('#finalizar-venda').is_disabled(), 'Empty sale must not be finalized.'
+        page.locator('.pdv-top-actions [data-toggle="dropdown"]').click()
+        page.locator('.pdv-top-actions [data-target="#modal2"]').click()
+        page.locator('#modal2').wait_for(state='visible')
+        assert page.locator('#modal2 .modal-content').count() == 1
+        page.locator('#modal2 [data-dismiss="modal"]').first.click()
+        page.locator('#modal2').wait_for(state='hidden')
+
+
 def main():
     layout_source = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text()
     support_source = (ROOT / 'resources/views/layouts/support.blade.php').read_text()
@@ -175,12 +257,67 @@ def main():
                                 report.append(case)
                                 page.close()
                             print(filename, f'{width}x{height}', 'passed', flush=True)
+            for kind in ['list', 'register']:
+                filename = f'operational-funcionarios-{kind}.html'
+                for width, height in [(1920, 1032), (1366, 768), (768, 1024), (390, 844)]:
+                    case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
+                    errors = []
+                    page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                    page.set_default_timeout(12000)
+                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    page.route('https://**/*', lambda route: route.abort())
+                    try:
+                        page.goto(f'http://127.0.0.1:8765/fixtures/{filename}', wait_until='domcontentloaded')
+                        page.wait_for_timeout(300)
+                        check_employee_page(page, kind, width)
+                        assert not errors, 'Unexpected JavaScript exception: ' + '; '.join(errors)
+                        page.screenshot(path=str(FIXTURES / f'operational-funcionarios-{kind}-{width}.png'), full_page=True)
+                        case['status'] = 'passed'
+                    except Exception as error:
+                        case['status'] = 'failed'
+                        case['error'] = str(error)
+                        page.screenshot(path=str(FIXTURES / f'FAILED-operational-funcionarios-{kind}-{width}.png'), full_page=True)
+                        raise
+                    finally:
+                        case['javascript_errors'] = errors
+                        report.append(case)
+                        page.close()
+                    print(filename, f'{width}x{height}', 'passed', flush=True)
+            for kind in ['cte-register', 'pdv']:
+                filename = f'operational-{kind}.html'
+                for width, height in [(1920, 1032), (1366, 768), (768, 1024), (390, 844)]:
+                    case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
+                    errors = []
+                    page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                    page.set_default_timeout(12000)
+                    page.on('pageerror', lambda error: errors.append(str(error)))
+                    page.route('https://**/*', lambda route: route.abort())
+                    if kind == 'pdv':
+                        page.route('**/aberturaCaixa/verificaHoje', lambda route: route.fulfill(
+                            status=200, content_type='application/json', body='0'))
+                    try:
+                        page.goto(f'http://127.0.0.1:8765/fixtures/{filename}', wait_until='domcontentloaded')
+                        page.wait_for_timeout(350)
+                        check_critical_flow(page, kind, width)
+                        assert not errors, 'Unexpected JavaScript exception: ' + '; '.join(errors)
+                        page.screenshot(path=str(FIXTURES / f'operational-{kind}-{width}.png'), full_page=True)
+                        case['status'] = 'passed'
+                    except Exception as error:
+                        case['status'] = 'failed'
+                        case['error'] = str(error)
+                        page.screenshot(path=str(FIXTURES / f'FAILED-operational-{kind}-{width}.png'), full_page=True)
+                        raise
+                    finally:
+                        case['javascript_errors'] = errors
+                        report.append(case)
+                        page.close()
+                    print(filename, f'{width}x{height}', 'passed', flush=True)
             browser.close()
     finally:
         server.shutdown()
         (FIXTURES / 'browser-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    assert len(report) == 48 and all(row['status'] == 'passed' for row in report)
-    print('48 real Blade/browser scenarios passed with no JavaScript exceptions.')
+    assert len(report) == 64 and all(row['status'] == 'passed' for row in report)
+    print('64 real Blade/browser scenarios passed with no JavaScript exceptions.')
 
 
 if __name__ == '__main__':

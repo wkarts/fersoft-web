@@ -1,16 +1,20 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Contas a Pagar</h1></header>
 
 {{-- Inicialização de somas --}}
 <?php 
     $somaValor = 0; $somaPago = 0; $somaPendente = 0; 
 ?>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-list">
     <div class="card-body">
         
         {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E RETENÇÕES --}}
-        <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft mb-5">
+        <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft mb-5">
             <div class="col-12 d-flex justify-content-between align-items-center p-0">
                 <a href="/contasPagar/new" class="btn btn-lg btn-success font-weight-bold">
                     <i class="fa fa-plus"></i> Nova Conta a Pagar
@@ -25,7 +29,7 @@
 
         {{-- (GRUPO) FILTROS DE BUSCA: Onde o usuário define o que quer ver na tela --}}
         <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside">
-            <form method="get" action="/contasPagar/filtro">
+            <form method="get" action="/contasPagar/filtro" class="fer-filter">
                 <div class="row align-items-center">
                     <div class="form-group col-lg-4">
                         <label class="col-form-label font-weight-bold">Fornecedor</label>
@@ -148,7 +152,7 @@
             <label>Total de registros: {{ sizeof($contas) }}</label>
 
             {{-- (GRUPO) TABELA PRINCIPAL: Exibição dos dados das contas --}}
-            <div class="datatable datatable-bordered datatable-default datatable-primary datatable-loaded mt-4">
+            <div class="datatable datatable-bordered datatable-default datatable-primary datatable-loaded mt-4 fer-results">
                 <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                     <thead class="datatable-head">
                         <tr class="datatable-row">
@@ -363,7 +367,7 @@
         </div> </div> </div> {{-- (GRUPO) MODAIS: Janelas que abrem por cima da tela (Ex: Vincular Veículo) --}}
 @foreach($contas as $c)
 <div class="modal fade" id="modal_veiculo_{{$c->id}}" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog fer-dialog" role="document">
         <div class="modal-content">
             <form method="post" action="{{ route('contasPagar.setVeiculo', [$c->id]) }}">
                 @csrf
@@ -388,7 +392,7 @@
 
 {{-- MODAL DE BAIXA PARCIAL --}}
 <div class="modal fade" id="modal-baixa-parcial" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title font-weight-bold">Baixa Parcial de Conta</h5>

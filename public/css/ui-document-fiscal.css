@@ -1,0 +1,283 @@
+/* Superfícies fiscais do FERSOFT: somente views de operação, não DANFE/PDF. */
+.document-fiscal-page {
+    --df-paper: #fff;
+    --df-canvas: #f5f7f7;
+    --df-ink: #182f36;
+    --df-muted: #63777d;
+    --df-line: #dce7e7;
+    --df-green: #1f9866;
+    --df-green-dark: #15754f;
+    --df-green-pale: #eaf5ef;
+    color: var(--df-ink);
+    font-family: Poppins, Inter, system-ui, sans-serif;
+    width: 100%;
+    min-width: 0;
+}
+.document-fiscal-page,
+.document-fiscal-page *,
+.document-fiscal-dialog,
+.document-fiscal-dialog * { box-sizing: border-box; }
+body.ui-theme-refined--dark .document-fiscal-page {
+    --df-paper: #1c333b;
+    --df-canvas: #152a31;
+    --df-ink: #eef6f4;
+    --df-muted: #b7c8cb;
+    --df-line: #38535c;
+    --df-green: #62d3ab;
+    --df-green-dark: #8fdab7;
+    --df-green-pale: #23483d;
+}
+.document-fiscal-page.card,
+.document-fiscal-page .card,
+.document-fiscal-page .card-modern,
+.document-fiscal-page .card-custom,
+.document-fiscal-page .kt-portlet,
+.document-fiscal-page .panel {
+    min-width: 0;
+    background: var(--df-paper) !important;
+    border: 1px solid var(--df-line) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 18px #213b4510 !important;
+    color: var(--df-ink);
+}
+.document-fiscal-page.card,
+.document-fiscal-page > .card,
+.document-fiscal-page > .card-custom { margin-bottom: 18px; }
+.document-fiscal-page .card-header,
+.document-fiscal-page .card-header-custom,
+.document-fiscal-page .kt-portlet__head {
+    min-height: 56px;
+    padding: 14px 20px !important;
+    border: 0;
+    border-bottom: 1px solid var(--df-line) !important;
+    border-radius: 12px 12px 0 0 !important;
+    background: var(--df-paper) !important;
+    color: var(--df-ink) !important;
+}
+.document-fiscal-page .card-body,
+.document-fiscal-page .kt-portlet__body { padding: 20px !important; }
+.document-fiscal-page .card-footer {
+    padding: 15px 20px !important;
+    background: var(--df-paper) !important;
+    border-top: 1px solid var(--df-line) !important;
+    border-radius: 0 0 12px 12px !important;
+}
+.document-fiscal-page .card-title,
+.document-fiscal-page .card-label,
+.document-fiscal-page .title,
+.document-fiscal-page h2,
+.document-fiscal-page h3,
+.document-fiscal-page h4,
+.document-fiscal-page .section-title {
+    color: var(--df-ink) !important;
+    font-family: Poppins, Inter, system-ui, sans-serif;
+    font-size: 18px;
+    font-weight: 600 !important;
+    line-height: 1.4;
+    letter-spacing: -.025em;
+}
+.document-fiscal-page > h2,
+.document-fiscal-page > .container-fluid > h2 { margin: 0 0 18px; font-size: 21px; }
+.document-fiscal-page .card-subtitle,
+.document-fiscal-page .text-muted,
+.document-fiscal-page .form-text { color: var(--df-muted) !important; }
+.document-fiscal-page .sub-section-title,
+.document-fiscal-page .kt-section__title {
+    color: var(--df-green-dark) !important;
+    border-bottom: 1px solid var(--df-line) !important;
+    padding-bottom: 9px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.document-fiscal-page :is(.text-primary, .text-info, .text-success):not(.btn) { color: var(--df-green-dark) !important; }
+.document-fiscal-page .container,
+.document-fiscal-page .container-fluid { max-width: 100%; padding-left: 20px; padding-right: 20px; }
+.document-fiscal-page .form-group { min-width: 0; }
+.document-fiscal-page label,
+.document-fiscal-page .col-form-label,
+.document-fiscal-dialog label {
+    color: var(--df-muted, #63777d) !important;
+    font: 600 11px/1.45 Poppins, Inter, system-ui, sans-serif;
+    margin-bottom: 7px;
+}
+.document-fiscal-page :is(.form-control, .custom-select, .select2-container .select2-selection),
+.document-fiscal-dialog :is(.form-control, .custom-select, .select2-container .select2-selection) {
+    color: var(--df-ink, #182f36) !important;
+    background: var(--df-paper, #fff) !important;
+    border: 1px solid var(--df-line, #dce7e7) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    min-height: 38px;
+    font: 500 11px/1.5 Poppins, Inter, system-ui, sans-serif;
+}
+.document-fiscal-page :is(input.form-control, select.form-control, textarea.form-control, .custom-select),
+.document-fiscal-dialog :is(input.form-control, select.form-control, textarea.form-control, .custom-select) {
+    height: auto;
+    padding: 8px 11px;
+}
+.document-fiscal-page textarea.form-control,
+.document-fiscal-dialog textarea.form-control { min-height: 88px; resize: vertical; }
+.document-fiscal-page .select2-container,
+.document-fiscal-dialog .select2-container { max-width: 100%; }
+.document-fiscal-page .select2-selection,
+.document-fiscal-dialog .select2-selection { display: flex; align-items: center; }
+.document-fiscal-page .input-group-text,
+.document-fiscal-dialog .input-group-text {
+    min-height: 38px;
+    color: var(--df-muted, #63777d);
+    border: 1px solid var(--df-line, #dce7e7);
+    background: var(--df-canvas, #f5f7f7);
+}
+.document-fiscal-page :is(.form-control, .custom-select, .select2-selection):focus,
+.document-fiscal-dialog :is(.form-control, .custom-select, .select2-selection):focus {
+    border-color: var(--df-green, #1f9866) !important;
+    outline: 2px solid #1f986655;
+    outline-offset: 1px;
+}
+.document-fiscal-page :is(.btn, button.btn, a.btn),
+.document-fiscal-dialog :is(.btn, button.btn, a.btn) {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 8px 13px;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    white-space: normal;
+    text-decoration: none;
+    font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif;
+}
+.document-fiscal-page .btn i,
+.document-fiscal-dialog .btn i { margin: 0; color: inherit; font-size: 15px; }
+.document-fiscal-page :is(.btn-primary, .btn-success),
+.document-fiscal-dialog :is(.btn-primary, .btn-success) { color: #fff !important; background: #1f9866 !important; border-color: #1f9866 !important; }
+.document-fiscal-page :is(.btn-primary, .btn-success):hover,
+.document-fiscal-dialog :is(.btn-primary, .btn-success):hover { background: #15754f !important; border-color: #15754f !important; }
+.document-fiscal-page :is(.btn-info, .btn-light-primary, .btn-light-success),
+.document-fiscal-dialog :is(.btn-info, .btn-light-primary, .btn-light-success) { color: #15754f !important; background: #eaf5ef !important; border-color: #cde9da !important; }
+.document-fiscal-page :is(.btn-danger, .btn-light-danger),
+.document-fiscal-dialog :is(.btn-danger, .btn-light-danger) { color: #c94e5d !important; background: #fff0f2 !important; border-color: #f4d5da !important; }
+.document-fiscal-page .btn-warning,
+.document-fiscal-dialog .btn-warning { color: #986324 !important; background: #fff8e8 !important; border-color: #f3e1b7 !important; }
+.document-fiscal-page :is(.btn-secondary, .btn-light, .btn-light-dark, .btn-default),
+.document-fiscal-dialog :is(.btn-secondary, .btn-light, .btn-light-dark, .btn-default) { color: #425960 !important; background: #f5f7f7 !important; border-color: #dce7e7 !important; }
+.document-fiscal-page .btn:disabled,
+.document-fiscal-dialog .btn:disabled { cursor: not-allowed; opacity: .55; }
+.document-fiscal-page :is(a, button, input, select, textarea):focus-visible,
+.document-fiscal-dialog :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--df-green, #1f9866);
+    outline-offset: 2px;
+}
+.document-fiscal-page :is(.table-responsive, .datatable, .datatable-scroll) { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-color: #c5d6d6 transparent; }
+.document-fiscal-page :is(table.table, table.datatable-table) { color: var(--df-ink); width: 100%; border-collapse: collapse !important; border-spacing: 0 !important; }
+.document-fiscal-page :is(table.table, table.datatable-table) thead th {
+    color: var(--df-muted) !important;
+    background: var(--df-canvas) !important;
+    border-bottom: 1px solid var(--df-line) !important;
+    border-top: 0 !important;
+    font: 600 10px/1.4 Poppins, Inter, system-ui, sans-serif;
+    padding: 11px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+.document-fiscal-page :is(table.table, table.datatable-table) td {
+    border-top: 0 !important;
+    border-bottom: 1px solid var(--df-line) !important;
+    padding: 12px;
+    color: var(--df-ink);
+    font-size: 11px;
+    vertical-align: middle;
+}
+.document-fiscal-page :is(table.table, table.datatable-table) tbody tr { background: var(--df-paper) !important; box-shadow: none !important; }
+.document-fiscal-page :is(table.table, table.datatable-table) tbody tr:hover { background: var(--df-canvas) !important; }
+.document-fiscal-page .metric-card { transform: none !important; }
+.document-fiscal-page .badge,
+.document-fiscal-page .label,
+.document-fiscal-page .badge-status {
+    border-radius: 999px !important;
+    box-shadow: none !important;
+    padding: 5px 9px;
+    font: 600 10px/1.4 Poppins, Inter, system-ui, sans-serif;
+}
+.document-fiscal-page :is(.badge-light-primary, .label-light-primary, .bg-light-primary) { color: var(--df-green-dark) !important; background: var(--df-green-pale) !important; }
+.document-fiscal-page :is(.badge-light-success, .label-light-success, .bg-light-success) { color: var(--df-green-dark) !important; background: var(--df-green-pale) !important; }
+.document-fiscal-page .pagination { flex-wrap: wrap; gap: 5px; }
+.document-fiscal-page .page-link { border: 1px solid var(--df-line); color: var(--df-muted); background: var(--df-paper); border-radius: 7px !important; }
+.document-fiscal-page .page-item.active .page-link { color: #fff; background: var(--df-green); border-color: var(--df-green); }
+.document-fiscal-page .alert {
+    border-radius: 9px;
+    border: 1px solid var(--df-line);
+    box-shadow: none;
+    padding: 12px 15px;
+    font-size: 11px;
+}
+.document-fiscal-page .alert-light-primary,
+.document-fiscal-page .alert-light-info { background: var(--df-green-pale) !important; color: var(--df-green-dark) !important; }
+.document-fiscal-page .wizard-nav { background: var(--df-paper); border-bottom: 1px solid var(--df-line); }
+.document-fiscal-page .wizard-steps { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px !important; }
+.document-fiscal-page .wizard-step { padding: 9px 15px !important; background: var(--df-canvas); border: 1px solid var(--df-line); border-radius: 8px; }
+.document-fiscal-page .wizard-step[data-wizard-state=current] { background: var(--df-green-pale); border-color: #b8dfcc; }
+.document-fiscal-page .wizard-step[data-wizard-state=current] .wizard-title { color: var(--df-green-dark) !important; }
+.document-fiscal-page .wizard-title { font-size: 11px !important; margin: 0; }
+.document-fiscal-page .wizard-bar { display: none; }
+.document-fiscal-page .nav-tabs { gap: 6px; border-bottom: 1px solid var(--df-line); }
+.document-fiscal-page .nav-tabs .nav-link { border-radius: 8px 8px 0 0; color: var(--df-muted); }
+.document-fiscal-page .nav-tabs .nav-link.active { color: var(--df-green-dark); border-color: var(--df-line) var(--df-line) var(--df-paper); }
+.document-fiscal-page .btn-action-icon { width: 34px; min-height: 34px; padding: 5px !important; }
+.document-fiscal-page .form-inline { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+.document-fiscal-page .form-inline label { margin-bottom: 6px; }
+.document-fiscal-dialog { --df-paper: #fff; --df-ink: #182f36; --df-muted: #63777d; --df-line: #dce7e7; --df-green: #1f9866; font-family: Poppins, Inter, system-ui, sans-serif; }
+body.ui-theme-refined--dark .document-fiscal-dialog {
+    --df-paper: #1c333b;
+    --df-ink: #eef6f4;
+    --df-muted: #b7c8cb;
+    --df-line: #38535c;
+    --df-green: #62d3ab;
+}
+.document-fiscal-dialog .modal-dialog { max-width: min(calc(100vw - 32px), 820px); }
+.document-fiscal-dialog .modal-dialog:not(.modal-lg):not(.modal-xl) { max-width: min(calc(100vw - 32px), 520px); }
+.document-fiscal-dialog .modal-dialog.modal-xl { max-width: min(calc(100vw - 32px), 1100px); }
+.document-fiscal-dialog .modal-content {
+    color: var(--df-ink);
+    background: var(--df-paper);
+    border: 1px solid var(--df-line) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px #152c3240 !important;
+    overflow: hidden;
+}
+.document-fiscal-dialog .modal-header {
+    min-height: 58px;
+    padding: 15px 20px !important;
+    background: var(--df-paper) !important;
+    color: var(--df-ink) !important;
+    border-bottom: 1px solid var(--df-line) !important;
+}
+.document-fiscal-dialog .modal-title,
+.document-fiscal-dialog .modal-header h5 { color: var(--df-ink) !important; font: 600 17px/1.35 Poppins, Inter, system-ui, sans-serif; }
+.document-fiscal-dialog .modal-header :is(.text-white, i) { color: var(--df-ink) !important; }
+.document-fiscal-dialog .modal-header .close { color: var(--df-muted) !important; opacity: 1; text-shadow: none; }
+.document-fiscal-dialog .modal-body { padding: 20px !important; max-height: min(70vh, 680px); overflow-y: auto; }
+.document-fiscal-dialog .modal-footer { padding: 14px 20px !important; border-top: 1px solid var(--df-line) !important; background: var(--df-paper) !important; }
+@media (max-width: 991px) {
+    .document-fiscal-page .container,
+    .document-fiscal-page .container-fluid { padding-left: 14px; padding-right: 14px; }
+    .document-fiscal-page .card-body,
+    .document-fiscal-page .kt-portlet__body { padding: 16px !important; }
+    .document-fiscal-page .card-header,
+    .document-fiscal-page .card-header-custom { padding: 13px 16px !important; }
+    .document-fiscal-page .row > [class*="col-"] { min-width: 0; }
+}
+@media (max-width: 575px) {
+    .document-fiscal-page .container,
+    .document-fiscal-page .container-fluid { padding-left: 10px; padding-right: 10px; }
+    .document-fiscal-page .card-body { padding: 14px !important; }
+    .document-fiscal-page .card-header { align-items: flex-start; flex-wrap: wrap; gap: 9px; }
+    .document-fiscal-page .wizard-steps { padding: 10px !important; }
+    .document-fiscal-page .wizard-step { flex: 1 1 140px; }
+    .document-fiscal-page .table-responsive { margin: 0 -4px; }
+    .document-fiscal-page .card-toolbar,
+    .document-fiscal-page .form-inline { width: 100%; }
+    .document-fiscal-dialog .modal-dialog { margin: 12px auto; }
+    .document-fiscal-dialog .modal-body { padding: 16px !important; }
+}

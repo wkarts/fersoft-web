@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
     @section('css')
         <style type="text/css">
@@ -64,7 +67,7 @@
         </style>
     @endsection
 
-    <div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="document-fiscal-page document-fiscal-page--nfse content d-flex flex-column flex-column-fluid" id="kt_content">
 
         <div class="row" id="anime" style="display: none">
             <div class="col-s8 offset-s2 text-center">
@@ -552,7 +555,7 @@
     </div>
 
     <!-- Modal Cadastrar Novo Cliente -->
-    <div class="modal fade" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
                 <div class="modal-header bg-primary text-white">

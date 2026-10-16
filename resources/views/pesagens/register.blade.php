@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
     <style type="text/css">
@@ -33,7 +37,7 @@
             color: #000 !important;
         }
     </style>
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--pesagens card card-custom gutter-b">
         <div class="card-body">
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
@@ -128,7 +132,7 @@
                                     </tr>
 
                                     <!-- Modal Tickets -->
-                                    <div class="modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
+                                    <div class="modal fer-extra-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
                                                 <div class="modal-header bg-primary text-white">

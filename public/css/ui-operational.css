@@ -1,4 +1,4 @@
-/* Approved operational layout. Bootstrap/KT remain adapters for legacy widgets.
+/* Approved operational layout. Runtime adapters preserve existing widget contracts.
    APP_UI_THEME=classic keeps the previous layout available as a rollback. */
 body.ui-native-shell { margin:0; --ui-sidebar-width:264px; --ui-top-height:74px; background:var(--ui-bg); color:var(--ui-ink); }
 body.ui-native-shell .ui-app { display:flex; min-height:100vh; min-height:100dvh; }
@@ -192,9 +192,9 @@ body.ui-native-shell .ui-finance-link strong {font-size:17px;white-space:nowrap;
  body.ui-native-shell .ui-data-scroll {max-height:none;overflow:visible;}
  body.ui-native-shell .ui-panel {break-inside:avoid;box-shadow:none;}
 }
-@font-face{font-family:'Line Awesome Free';font-style:normal;font-weight:900;font-display:swap;src:url('/metronic/css/fonts/line-awesome/la-solid-900.woff2') format('woff2');}
-@font-face{font-family:'Line Awesome Free';font-style:normal;font-weight:400;font-display:swap;src:url('/metronic/css/fonts/line-awesome/la-regular-400.woff2') format('woff2');}
-@font-face{font-family:'Line Awesome Brands';font-style:normal;font-weight:400;font-display:swap;src:url('/metronic/css/fonts/line-awesome/la-brands-400.woff2') format('woff2');}
+@font-face{font-family:'Line Awesome Free';font-style:normal;font-weight:900;font-display:swap;src:url('/fonts/la-solid-900.woff2') format('woff2');}
+@font-face{font-family:'Line Awesome Free';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/la-regular-400.woff2') format('woff2');}
+@font-face{font-family:'Line Awesome Brands';font-style:normal;font-weight:400;font-display:swap;src:url('/fonts/la-brands-400.woff2') format('woff2');}
 body.ui-native-shell .ui-actions #ui-actions-menu-wrapper,body.ui-native-shell .ui-actions #ui-actions-menu{transform:none!important;display:block!important;max-width:100%;left:auto!important;right:auto!important;top:auto!important;}
 body.ui-native-shell .ui-actions .input-group {max-width:min(300px,100%);}
 body.ui-native-shell .ui-actions .menu-nav .menu-item.ml-1 {min-width:0!important;}

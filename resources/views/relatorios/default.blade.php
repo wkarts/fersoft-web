@@ -6,7 +6,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	@if(config('ui_theme.active', false))
-	<link rel="stylesheet" href="{{ asset('css/theme-refined.css') }}?v={{ filemtime(public_path('css/theme-refined.css')) }}" media="screen">
+	{{-- Relatórios em tela acompanham a proposta; a folha de impressão/PDF fica intacta. --}}
 	<style media="screen">
 		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-Regular.ttf') }}') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-Medium.ttf') }}') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }

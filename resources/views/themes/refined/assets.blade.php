@@ -38,15 +38,12 @@
     @endif
     @endforeach
 </style>
-<link rel="stylesheet" href="{{ asset('css/theme-refined.css') }}?v={{ filemtime(public_path('css/theme-refined.css')) }}">
-
 {{-- As cores publicadas continuam sujeitas à validação e ao isolamento multiempresa. --}}
 @php
     $uiResolvedTheme = $uiResolvedTheme
         ?? app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
     $uiCssTokens = \App\Support\UiThemePalette::tokens($uiResolvedTheme);
 @endphp
-<link rel="stylesheet" href="{{ asset('css/theme-refined-shell.css') }}?v={{ filemtime(public_path('css/theme-refined-shell.css')) }}">
 <style>
     body.ui-theme-refined,
     body.ui-theme-refined.ui-theme-refined--dark {

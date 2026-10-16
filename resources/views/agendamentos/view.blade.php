@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
     <style type="text/css">
@@ -132,7 +136,7 @@
         }
     </style>
 
-    <div class="container-fluid p-0">
+    <div class="fer-extra fer-extra--support fer-extra--agendamentos container-fluid p-0">
 
         <!-- BANNER DE TAREFAS VENCIDAS -->
         @if(isset($tarefasAtrasadas) && count($tarefasAtrasadas) > 0)
@@ -266,7 +270,7 @@
     </div>
 
     <!-- MODAL VISUALIZAR E EXECUTAR TAREFA (DESIGN PROFISSIONAL) -->
-    <div class="modal fade" id="modal-ver-tarefa" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal fer-extra-modal fade" id="modal-ver-tarefa" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content border-0 shadow-lg rounded-lg">
                 <div class="modal-header bg-dark text-white py-4 px-5">
@@ -341,7 +345,7 @@
     </div>
 
     <!-- MODAL CADASTRAR TAREFA RÁPIDA -->
-    <div class="modal fade" id="modal-nova-tarefa" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modal-nova-tarefa" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form method="post" action="/tarefas/save">
@@ -438,7 +442,7 @@
     </div>
 
     <!-- MODAL 1: NOVO AGENDAMENTO DE OS -->
-    <div class="modal fade" id="modal1" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal fer-extra-modal fade" id="modal1" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content border-0 shadow-lg">
                 <form method="post" action="/agendamentos/save">
@@ -515,7 +519,7 @@
     </div>
 
     <!-- MODAL JUSTIFICATIVA DE ATRASO -->
-    <div class="modal fade" id="modal-justificativa-atraso" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal fer-extra-modal fade" id="modal-justificativa-atraso" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-danger text-white">

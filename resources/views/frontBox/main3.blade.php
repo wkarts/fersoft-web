@@ -11,38 +11,58 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 	<meta name="Cache-Control" content="no-cache">
 	<!--begin::Fonts -->
+	{{-- Fonte local do tema aprovado; o carregamento remoto fica restrito ao tema clássico. --}}
+	@unless(config('ui_theme.active', false))
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
+	@endunless
 
+	@if(config('ui_theme.active', false))
+	<link href="/css/bootstrap4_5_1.min.css" rel="stylesheet" type="text/css" />
+	<link href="/css/vendor/select2-4.0.13.css" rel="stylesheet" type="text/css" />
+	<link href="/css/vendor/bootstrap-datepicker-1.9.0.css" rel="stylesheet" type="text/css" />
+	<link href="/css/vendor/bootstrap-timepicker-and-daterangepicker.css" rel="stylesheet" type="text/css" />
+	@else
 	<link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
 	<!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
 	<link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
+	@endif
 
 	<link href="/css/style.css" rel="stylesheet" type="text/css" />
 
 	<!--end::Page Vendors Styles -->
 
-	@if($tema == 2)
+	@if($tema == 2 && !config('ui_theme.active', false))
 	<link href="/css/escuro.css" rel="stylesheet" type="text/css" />
 	@endif
 
 	<!--begin::Global Theme Styles(used by all pages) -->
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
 	<link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
 	<link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css" />
 
 	<link href="/metronic/css/pricing.css" rel="stylesheet" type="text/css" />
+	@endunless
 	<!--end::Global Theme Styles -->
 
 	<!--begin::Layout Skins(used by all pages) -->
 
+	{{-- Skins antigas disponíveis apenas no rollback clássico. O visual operacional é definido por ui-pos.css. --}}
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/light.css" rel="stylesheet" type="text/css" />
 	<link href="/metronic/css/light-menu.css" rel="stylesheet" type="text/css" />
 	<link href="/metronic/css/dark-brand.css" rel="stylesheet" type="text/css" />
 	<link href="/metronic/css/dark-aside.css" rel="stylesheet" type="text/css" />
+	@endunless
 
+	@if(config('ui_theme.active', false))
+	<link rel="stylesheet" href="/css/line-awesome.min.css">
+	<link rel="stylesheet" href="/css/font-awesome.min.css">
+	@else
 	<link rel="stylesheet" href="https://maxst.icons8.com/vue-static/landings/line-awesome/line-awesome/1.3.0/css/line-awesome.min.css">
 
 	<link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+	@endif
 
     <!-- Inclusão Centralizada dos Scripts de Monitoramento -->
     @include('layouts.tracking')
@@ -204,96 +224,7 @@
 			font-size: 20px !important;
 		}
 	</style>
-<style type="text/css">
-    /* PDV Minimal / Mobile-first tweaks (sem refatoração brusca) */
-    body.pdv-minimal .card.card-custom { border-radius: 10px; }
 
-    body.pdv-minimal .pdv-actions{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-    }
-    body.pdv-minimal .pdv-actions .btn{ margin: 0 !important; }
-
-    body.pdv-minimal .pdv-header{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-    }
-
-    /* Tabelas do PDV: evita "estourar" em telas pequenas */
-    body.pdv-minimal .datatable{
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-    body.pdv-minimal .datatable .datatable-table{
-        min-width: 720px;
-    }
-
-    @media (max-width: 991px){
-        body.pdv-minimal .container{ max-width: 100%; }
-    }
-
-    @media (max-width: 768px){
-        body.pdv-minimal .container{
-            padding-left: 8px !important;
-            padding-right: 8px !important;
-        }
-
-        body.pdv-minimal .card-header{
-            padding: 10px 12px !important;
-        }
-        body.pdv-minimal .card-body{
-            padding: 12px !important;
-        }
-
-        body.pdv-minimal h4{ font-size: 1.05rem; }
-        body.pdv-minimal h5{ font-size: 1.00rem; }
-        body.pdv-minimal h6{ font-size: 0.90rem; }
-
-        body.pdv-minimal .btn.btn-lg{
-            padding: .45rem .60rem !important;
-            font-size: .85rem !important;
-            line-height: 1.1 !important;
-        }
-        body.pdv-minimal .btn{
-            padding: .40rem .55rem;
-            font-size: .85rem;
-        }
-
-        body.pdv-minimal .label.label-xl{
-            font-size: 0.95rem !important;
-            padding: 10px 12px !important;
-            white-space: nowrap;
-        }
-
-        body.pdv-minimal input.form-control,
-        body.pdv-minimal select.form-control{
-            height: 42px;
-            font-size: 0.95rem;
-        }
-
-        /* Reduz "gaps" e margens grandes (sem mexer no HTML todo) */
-        body.pdv-minimal .gutter-b{ margin-bottom: 12px !important; }
-    }
-
-    @media (max-width: 576px){
-        body.pdv-minimal .btn.btn-lg{
-            padding: .40rem .55rem !important;
-            font-size: .82rem !important;
-        }
-        body.pdv-minimal h4{ font-size: 1.00rem; }
-        body.pdv-minimal .label.label-xl{ font-size: 0.90rem !important; }
-
-        /* Deixa o topo mais "enxuto" */
-        body.pdv-minimal .pdv-top-actions .btn{
-            padding: .35rem .50rem !important;
-            font-size: .82rem !important;
-        }
-    }
-</style>
 @if(config('ui_theme.active', false))
     @php $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2); @endphp
     @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
@@ -372,11 +303,11 @@
 	    <input type="hidden" id="filial" name="filial" value="">
 	@endif
 
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="card card-custom gutter-b example example-compact ui-pos-frame">
 		<div class="col-lg-12">
 			<div class="">
 
-				<div class="row mt-5">
+				<div class="row mt-5 ui-pos-toolbar-row">
 
 					<div class="col-lg-1 col-md-12">
 
@@ -619,11 +550,11 @@
 			</div>
 
 
-			<hr>
-			<div class="row">
+			<hr class="ui-pos-section-divider">
+			<div class="row ui-pos-workarea">
 
 				<div class="col-sm-12 col-lg-9 col-md-12 col-12">
-					<div class="card card-custom gutter-b example example-compact">
+					<div class="card card-custom gutter-b example example-compact ui-pos-panel ui-pos-line-items">
 						<div class="card-header">
 							<div class="row" style="margin-top: 10px;width:100%">
 								<div class="col-12">
@@ -721,7 +652,7 @@
 
 					</div>
 
-					<div class="card card-custom gutter-b example example-compact" style="margin-top: -20px; height: auto;">
+					<div class="card card-custom gutter-b example example-compact ui-pos-panel" style="margin-top: -20px; height: auto;">
 						<div class="card-body">
 							<div class="row align-items-center">
 
@@ -794,7 +725,7 @@
 
 					<!-- Para produtos footer -->
 					@if($atalhos && $atalhos->exibe_produtos)
-					<div class="card card-custom gutter-b example example-compact" style="margin-top: -20px; height: auto;">
+					<div class="card card-custom gutter-b example example-compact ui-pos-panel" style="margin-top: -20px; height: auto;">
 						<div class="card-body">
 							<div class="row align-items-center">
 								<div class="form-group col-xl-2 col-lg-4">
@@ -899,7 +830,7 @@
 			</div>
 
 			<div class="col-sm-3 col-lg-3 col-md-12 col-12 @if($atalhos && $atalhos->exibe_produtos) d-none @endif" id="div-categorias">
-				<div class="card card-custom gutter-b example example-compact">
+				<div class="card card-custom gutter-b example example-compact ui-pos-panel">
 					<div class="card-header">
 						<div class="form-group validated col-12 pdv-actions" style="margin-top: 15px;">
 							<button title="Informar Cliente" id="click-client" class="btn btn-danger btn-lg"  @if(isset($is_troca)) style="display:none" @endif>
@@ -1013,7 +944,7 @@
 
 			<!-- para produtos -->
 			<div class="col-sm-3 col-lg-3 col-md-12 col-12 @if($atalhos && !$atalhos->exibe_produtos) d-none @endif" id="div-categorias">
-				<div class="card card-custom gutter-b example example-compact">
+				<div class="card card-custom gutter-b example example-compact ui-pos-panel">
 					<div class="card-header" style="">
 						<div class="row" style="height: 72px; overflow-x: auto; width: auto; white-space: nowrap">
 							<div class="form-group validated col-sm-12 col-lg-12 col-12 col-sm-12" style="margin-top: 10px;">
@@ -1042,7 +973,7 @@
 						<div class="row" id="prods" style="visibility: hidden">
 							@foreach($produtosMaisVendidos as $p)
 							<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6" id="atalho_add" onclick="adicionarProdutoRapido2('{{$p->id}}')">
-								<div class="card card-custom gutter-b example example-compact">
+								<div class="card card-custom gutter-b example example-compact ui-pos-panel">
 									<div class="card-header" style="height: 200px;">
 										<div class="symbol symbol-circle symbol-lg-100">
 											@if($p->imagem)
@@ -2946,6 +2877,7 @@
 		</div>
 
 		<div class="modal-loading loading-class"></div>
+		@unless(config('ui_theme.active', false))
 
 		<script>
 			var KTAppSettings = {
@@ -3007,18 +2939,36 @@
 				"font-family": "Poppins"
 			};
 		</script>
+		@endunless
 
 		<!-- end::Global Config -->
-		<!--begin::Global Theme Bundle(used by all pages) -->
+		{{-- Bibliotecas operacionais do PDV; os bundles clássicos ficam disponíveis no rollback. --}}
+		@if(config('ui_theme.active', false))
+		<script src="/js/vendor/jquery-3.4.1.js"></script>
+		<script src="/js/vendor/popper-1.16.1.js"></script>
+		<script src="/js/vendor/bootstrap-4.5.3.js"></script>
+		<script src="/js/vendor/moment-2.29.1.js"></script>
+		<script src="/js/vendor/bootstrap-datepicker-1.9.0.js"></script>
+		<script src="/js/bootstrap-datepicker.pt-BR.min.js"></script>
+		<script src="/js/vendor/bootstrap-timepicker-0.5.2.js"></script>
+		<script src="/js/vendor/daterangepicker-3.1.js"></script>
+		<script src="/js/vendor/select2-4.0.13.js"></script>
+		<script src="/js/vendor/inputmask-4.0.9.js"></script>
+		<script src="/js/vendor/apexcharts-3.22.0.js"></script>
+		<script src="/js/fer-runtime.js"></script>
+		@else
 		<script src="/metronic/js/plugins.bundle.js" type="text/javascript"></script>
 		<script src="/metronic/js/prismjs.bundle.js" type="text/javascript"></script>
 		<script src="/metronic/js/scripts.bundle.js" type="text/javascript"></script>
 		<script src="/metronic/js/wizard.js" type="text/javascript"></script>
 
 		<script src="/metronic/js/fullcalendar.bundle.js" type="text/javascript"></script>
+		@endif
 		<script type="text/javascript" src="/js/jquery.mask.min.js"></script>
 		<script type="text/javascript" src="/js/mascaras.js"></script>
+		@unless(config('ui_theme.active', false))
 		<script src="/metronic/js/select2.js" type="text/javascript"></script>
+		@endunless
 		<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.2.0/sweetalert2.all.min.js"></script> -->
 		<script src="/js/sweetalert.min.js"></script>
 
@@ -3053,7 +3003,11 @@
 		<script>
 
 			jQuery(document).ready(function() {
+				@if(config('ui_theme.active', false))
+				window.FerRuntime.initSelect2(document);
+				@else
 				KTSelect2.init();
+				@endif
 				$('.select2-selection__arrow').addClass('select2-selection__arroww')
 
 				$('.select2-selection__arrow').removeClass('select2-selection__arrow')

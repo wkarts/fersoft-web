@@ -1,15 +1,21 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
-
-
-	<div class="card-body">
-
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+<div class="ui-people ui-people-commission">
+    <header class="ui-people-heading"><div><h1>Comissões</h1></div></header>
+	<div class="ui-people-panel">
+		<div id="kt_user_profile_aside">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form method="get" action="/funcionarios/comissaoFiltro">
+			<form method="get" action="/funcionarios/comissaoFiltro" class="ui-people-filters">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-3 col-md-4 col-sm-6">
@@ -69,15 +75,15 @@
 					</div>
 
 					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Pesquisa</button>
+						<button class="btn ui-people-primary">Pesquisa</button>
 					</div>
 				</div>
 			</form>
-			<br>
+
 
 
 			<div class="row">
-				<div class="col-lg-3 col-xl-3 col-6">
+				<div class="col-lg-3 col-xl-3 col-12">
 					<button style="width: 100%" class="btn btn-success" disabled id="btn-pagar" onclick="pagar()">
 						<i class="la la-money"></i>
 						Pagar Comissão(s) <strong id="total-select">R$ 0,00</strong></button>
@@ -87,34 +93,34 @@
 				<div class="row">
 					<div class="col-xl-12">
 
-						<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+					<div id="kt_datatable" class="ui-people-table-scroll">
 
-							<table class="datatable-table" style="max-width: 100%; overflow: scroll">
-								<thead class="datatable-head">
-									<tr class="datatable-row" style="left: 0px;">
-										<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 70px;"></span></th>
-										<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 200px;">Vendedor</span></th>
-										<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">% Comissão</span></th>
-										<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Valor da venda</span></th>
-										<th data-field="OrderID" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Valor da comissão</span></th>
-										<th data-field="Country" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Tipo</span></th>
-										<th data-field="ShipDate" class="datatable-cell datatable-cell-sort"><span style="width: 100px;">Estado</span></th>
+							<table class="ui-people-table">
+								<thead>
+									<tr>
+										<th data-field="OrderID"><span></span></th>
+										<th data-field="OrderID"><span>Vendedor</span></th>
+										<th data-field="OrderID"><span>% Comissão</span></th>
+										<th data-field="OrderID"><span>Valor da venda</span></th>
+										<th data-field="OrderID"><span>Valor da comissão</span></th>
+										<th data-field="Country"><span>Tipo</span></th>
+										<th data-field="ShipDate"><span>Estado</span></th>
 
-										<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">Data</span></th>
+										<th data-field="CompanyName"><span>Data</span></th>
 
-										<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 120px;">Data de pagamento</span></th>
-										<th data-field="CompanyName" class="datatable-cell datatable-cell-sort"><span style="width: 150px;">Ações</span></th>
+										<th data-field="CompanyName"><span>Data de pagamento</span></th>
+										<th data-field="CompanyName"><span>Ações</span></th>
 									</tr>
 								</thead>
 
-								<tbody id="body" class="datatable-body">
+								<tbody id="body">
 
 									<?php 
 									$soma = 0;
 									$somaVendas = 0;
 									?>
 									@foreach($comissoes as $e)
-									<tr class="datatable-row">
+									<tr>
 										<td id="checkbox">
 
 											@if(!$e->status)
@@ -132,22 +138,22 @@
 
 										</td>
 
-										<td class="datatable-cell" style="display: none">
+										<td style="display: none">
 											<span class="codigo" id="id">
 												{{ $e->id }}
 											</span>
 										</td>
-										<td class="datatable-cell">
-											<span class="codigo" style="width: 200px;">
+										<td>
+											<span class="codigo">
 												{{ $e->funcionario->nome }}
 											</span>
 										</td>
 
-										<td class="datatable-cell"><span class="codigo" style="width: 100px;" >{{ number_format($e->funcionario->percentual_comissao, 2, ',', '.') }}</span>
+										<td><span class="codigo" >{{ number_format($e->funcionario->percentual_comissao, 2, ',', '.') }}</span>
 										</td>
 										
-										<td class="datatable-cell">
-											<span class="codigo" style="width: 100px;">
+										<td>
+											<span class="codigo">
 												@if($e->valodDaVenda)
 												{{ moeda($e->valodDaVenda->valor_total) }}
 												@else
@@ -162,17 +168,17 @@
 										}
 										?>
 
-										<td class="datatable-cell"><span class="codigo" style="width: 100px;" id="">{{ moeda($e->valor) }}</span>
+										<td><span class="codigo" id="">{{ moeda($e->valor) }}</span>
 										</td>
 
-										<td class="datatable-cell">
-											<span class="codigo" style="width: 100px;" id="">
+										<td>
+											<span class="codigo" id="">
 												{{$e->tipo()}}
 											</span>
 										</td>
 
-										<td class="datatable-cell">
-											<span class="codigo" style="width: 100px;">
+										<td>
+											<span class="codigo">
 												@if($e->status == true)
 												<span class="label label-xl label-inline label-light-success">Pago</span>
 
@@ -183,10 +189,10 @@
 											</span>
 										</td>
 
-										<td class="datatable-cell"><span class="codigo" style="width: 120px;">{{ \Carbon\Carbon::parse($e->created_at)->format('d/m/Y H:i')}}</span>
+										<td><span class="codigo">{{ \Carbon\Carbon::parse($e->created_at)->format('d/m/Y H:i')}}</span>
 										</td>
-										<td class="datatable-cell">
-											<span class="codigo" style="width: 120px;">
+										<td>
+											<span class="codigo">
 												@if($e->status == true)
 												{{ \Carbon\Carbon::parse($e->updated_at)->format('d/m/Y H:i')}}
 												@else
@@ -194,9 +200,9 @@
 												@endif
 											</span>
 										</td>
-										<td class="datatable-cell"><span class="codigo" style="width: 150px;">
+										<td><span class="codigo">
 
-											<a class="btn btn-danger btn-sm" title="REMOVER" onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/comissaoDelte/{{$e->id}}" }else{return false} })' href="#!">
+											<a class="btn btn-sm ui-people-danger" title="REMOVER" onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/funcionarios/comissaoDelte/{{$e->id}}" }else{return false} })' href="#!">
 												<i class="la la-trash"></i>
 											</a>
 										</td>
@@ -224,6 +230,5 @@
 			</div>
 		</div>
 	</div>
-</div>
 
 @endsection	

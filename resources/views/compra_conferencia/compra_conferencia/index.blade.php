@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>{{ $title }}</h1></header>
 
 <style>
     /* CONFIGURAÇÕES GERAIS DE IMPRESSÃO */
@@ -40,14 +45,14 @@
         /* Estilização manual para garantir que as cores dos badges apareçam */
         .badge-danger { background-color: #F64E60 !important; color: #fff !important; }
         .badge-warning { background-color: #FFA800 !important; color: #fff !important; }
-        .badge-success { background-color: #1BC5BD !important; color: #fff !important; }
-        .badge-primary { background-color: #3699FF !important; color: #fff !important; }
-        .label-light-success { background-color: #C9F7F5 !important; color: #1BC5BD !important; }
-        .label-light-info { background-color: #EEE5FF !important; color: #8950FC !important; }
+        .badge-success { background-color: #1f9866 !important; color: #fff !important; }
+        .badge-primary { background-color: #1f9866 !important; color: #fff !important; }
+        .label-light-success { background-color: #eaf5ef !important; color: #1f9866 !important; }
+        .label-light-info { background-color: #eaf5ef !important; color: #15754f !important; }
     }
 </style>
 
-<div class="card card-custom">
+<div class="card card-custom fer-page fer-detail">
     <div class="card-header no-print">
         <h3 class="card-title">{{ $title }}</h3>
     </div>
@@ -158,7 +163,7 @@
                         <td>{{ $c->fornecedor->razao_social ?? 'N/A' }}</td>
                         <td class="text-right">{{ number_format($c->itens->sum('quantidade'), 2, ',', '.') }}</td>
                         <td class="text-right">R$ {{ number_format($valorNota, 2, ',', '.') }}</td>
-                        <td class="text-right" style="color: #1BC5BD !important;">R$ {{ number_format($valorPago, 2, ',', '.') }}</td>
+                        <td class="text-right" style="color: #1f9866 !important;">R$ {{ number_format($valorPago, 2, ',', '.') }}</td>
                         <td class="text-right" style="color: #F64E60 !important;">R$ {{ number_format($falta, 2, ',', '.') }}</td>
                         <td>
                             @forelse($c->contasPagar as $cp)

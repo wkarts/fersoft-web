@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-<div class="card shadow-sm border-0">
+<div class="fer-extra fer-extra--contratos fer-extra--canvas card shadow-sm border-0">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="text-primary font-weight-bold m-0">
@@ -172,7 +176,7 @@
 </div>
 
 <!-- Modal Alocar Funcionário -->
-<div class="modal fade" id="modalAlocarFuncionario" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modalAlocarFuncionario" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <form method="POST" action="/contratos/alocar-funcionario/{{ $contratoEng->id }}">
             @csrf

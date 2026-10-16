@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
     <style>
         /* Força a visibilidade e o estilo padrão dos selects de filtro */
@@ -21,7 +25,7 @@
         }
     </style>
 
-    <div class="card shadow-sm border-0 mb-3">
+    <div class="fer-extra fer-extra--contratos fer-extra--canvas card shadow-sm border-0 mb-3">
         <div class="card-body bg-light rounded">
             <form action="{{ route('contratos.medicoes.index') }}" method="GET">
                 <div class="row">

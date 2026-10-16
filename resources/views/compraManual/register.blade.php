@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Nova Compra Manual</h1></header>
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
 		<lottie-player src="/anime/{{\App\Models\Venda::randSuccess()}}" background="transparent" speed="0.8" style="width: 100%; height: 300px;" autoplay>
@@ -9,7 +14,7 @@
 <div class="row @if(env('ANIMACAO')) animate__animated @endif animate__bounce" id="content" style="display: block">
 	<div class="d-flex flex-column flex-column-fluid" id="kt_content">
 		<input type="hidden" id="produtos" value="{{json_encode($produtos)}}" name="">
-		<div class="card card-custom gutter-b example example-compact">
+		<div class="card card-custom gutter-b example example-compact fer-page fer-detail">
 			<div class="container">
 				<div class="col-lg-12">
 					<br>
@@ -525,7 +530,7 @@
 </div>
 
 <div class="modal fade" id="modal-fornecedor" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Fornecedor</h5>
@@ -725,7 +730,7 @@
 </div>
 
 <div class="modal fade" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Produto</h5>
@@ -1364,7 +1369,7 @@
 </div>
 
 <div class="modal fade" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Transportadora</h5>

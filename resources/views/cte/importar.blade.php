@@ -1,6 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--importar">
     <div class="card-header">
         <h3 class="card-title">Importação de CT-e (Contas a Receber)</h3>
     </div>

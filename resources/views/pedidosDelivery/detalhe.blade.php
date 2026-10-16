@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Detalhes do Pedido Delivery</h1></header>
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="card-body">
 
 		<div class="card card-custom gutter-b">
@@ -333,7 +338,7 @@
 
 @if($pedido->endereco)
 <div class="modal fade" id="modal-endereco" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENDEREÇO</h5>
@@ -357,7 +362,7 @@
 @endif
 
 <div class="modal fade" id="modal-push" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENVIAR Push App</h5>
@@ -434,7 +439,7 @@
 </div>
 
 <div class="modal fade" id="modal-consulta" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">PAGSEGURO</h5>
@@ -458,7 +463,7 @@
 </div>
 
 <div class="modal fade" id="modal-sms" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENVIAR SMS</h5>

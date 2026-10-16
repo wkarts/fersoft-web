@@ -26,15 +26,15 @@ class UiThemeIsolationTest extends TestCase
         }
     }
 
-    public function test_css_do_tema_nao_usa_seletores_globais_para_substituir_o_legado(): void
+    public function test_css_proprio_fica_isolado_no_shell_aprovado(): void
     {
-        $css = file_get_contents(public_path('css/theme-refined.css'));
+        $css = file_get_contents(public_path('css/fer-design-system.css'));
 
-        $this->assertStringContainsString('body.ui-theme-refined', $css);
-        $this->assertStringContainsString('body.ui-theme-refined--dark', $css);
+        $this->assertStringContainsString('body.ui-native-shell', $css);
+        $this->assertStringContainsString('body.ui-native-shell.ui-theme-refined--dark', $css);
         $this->assertStringNotContainsString(':root {', $css);
         $this->assertDoesNotMatchRegularExpression('/^[ \t]*body[ \t]*\{/m', $css);
-        $this->assertStringNotContainsString('z-index:', $css);
+        $this->assertStringNotContainsString('/metronic/', $css);
     }
 
     public function test_inventario_php_executa_sem_alterar_as_views(): void

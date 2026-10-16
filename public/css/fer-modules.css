@@ -1,0 +1,176 @@
+/* Operational screens, using the surfaces, spacing and color of the approved
+   FerSoft HTML. These rules are intentionally scoped to screens that have been
+   converted to the new page structure; field names and handlers stay in Blade. */
+body.ui-native-shell .ui-page .fer-page__heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 63px;
+  margin: 0 0 14px;
+}
+body.ui-native-shell .ui-page .fer-page__heading h1 {
+  margin: 0;
+  color: var(--ui-ink, #182f36);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+body.ui-native-shell .ui-page .fer-page__heading p {
+  margin: 4px 0 0;
+  color: var(--ui-muted, #62777d);
+  font-size: 11px;
+}
+body.ui-native-shell .ui-page .fer-page.fer-list,
+body.ui-native-shell .ui-page .fer-page.fer-form {
+  margin: 0;
+  padding: 0;
+  border: 0!important;
+  border-radius: 0!important;
+  box-shadow: none!important;
+  background: transparent!important;
+}
+body.ui-native-shell .ui-page .fer-page.fer-list > .card-body,
+body.ui-native-shell .ui-page .fer-page.fer-form > .card-body {
+  padding: 0;
+  border-radius: 0;
+  background: transparent!important;
+}
+body.ui-native-shell .ui-page .fer-list .fer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 15px;
+}
+body.ui-native-shell .ui-page .fer-list .fer-actions > :is(.row,.col-12) {
+  width: 100%;
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-list .fer-actions .row { gap: 6px; margin: 0; }
+body.ui-native-shell .ui-page .fer-list .fer-actions :is(a,button) { margin: 0!important; }
+body.ui-native-shell .ui-page .fer-list .fer-filter {
+  padding: 17px 18px 4px;
+  margin: 0 0 15px;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-list .fer-filter .row { margin-inline: -7px; }
+body.ui-native-shell .ui-page .fer-list .fer-filter [class*="col-"] { padding-inline: 7px; min-width: 0; }
+body.ui-native-shell .ui-page .fer-list .fer-filter :is(.form-group,.col-form-label) { margin-bottom: 12px; }
+body.ui-native-shell .ui-page .fer-list :is(.fer-results,.fer-panel),
+body.ui-native-shell .ui-page .fer-form .fer-panel {
+  background: var(--ui-surface, #fff)!important;
+  border: 1px solid var(--ui-border, #dce7e7)!important;
+  border-radius: 12px!important;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-list .fer-results { min-width: 0; overflow: hidden; }
+body.ui-native-shell .ui-page .fer-list .fer-results .wizard-nav { padding: 0 14px; }
+body.ui-native-shell .ui-page .fer-list .fer-results .wizard-steps { padding: 0!important; }
+body.ui-native-shell .ui-page .fer-list .fer-results [data-wizard-type="step-content"] { overflow-x: auto; }
+body.ui-native-shell .ui-page .fer-list .fer-results .datatable { box-shadow: none; border: 0; }
+body.ui-native-shell .ui-page .fer-list .fer-results .datatable-table { margin: 0; }
+body.ui-native-shell .ui-page .fer-list .fer-results .datatable-table th,
+body.ui-native-shell .ui-page .fer-list .fer-results .datatable-table td { height: auto!important; padding: 10px 12px!important; }
+body.ui-native-shell .ui-page .fer-list .fer-results .datatable-table tbody tr:hover { background: var(--ui-hover, #eef4f2); }
+body.ui-native-shell .ui-page .fer-list .fer-results :is(.pagination,.datatable-pager) { margin: 10px 14px; }
+body.ui-native-shell .ui-page .fer-list .wizard-title :is(i,.la) { font-size: 15px!important; }
+body.ui-native-shell .ui-page .fer-list .fer-list__caption {
+  margin: 15px 0 9px;
+  color: var(--ui-ink, #182f36);
+  font-size: 13px;
+  font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-form .fer-panel { min-width: 0; overflow: visible; }
+body.ui-native-shell .ui-page .fer-form .fer-panel > .container,
+body.ui-native-shell .ui-page .fer-form .fer-panel > .container-fluid { width: 100%; max-width: none; padding: 18px 20px; }
+body.ui-native-shell .ui-page .fer-form .fer-panel > .container > .col-lg-12 > br:first-child { display: none; }
+body.ui-native-shell .ui-page .fer-form #content.fer-panel { padding: 18px 20px; }
+body.ui-native-shell .ui-page .fer-form .fer-panel > .card-body { padding: 18px 20px; }
+body.ui-native-shell .ui-page .fer-form .wizard-nav { border-bottom: 1px solid var(--ui-border, #dce7e7); padding: 0 15px; }
+body.ui-native-shell .ui-page .fer-form .wizard-steps { gap: 4px; padding: 0!important; }
+body.ui-native-shell .ui-page .fer-form .wizard-step { min-height: 40px; padding: 10px 12px; }
+body.ui-native-shell .ui-page .fer-form .wizard-step .wizard-title { font-size: 11px!important; }
+body.ui-native-shell .ui-page .fer-form .wizard-step .wizard-title span { font-size: inherit; }
+body.ui-native-shell .ui-page .fer-form .form-group { margin-bottom: 15px; }
+body.ui-native-shell .ui-page .fer-form .card > .card-header { min-height: 52px; }
+body.ui-native-shell .ui-page .fer-form .card > .card-header .card-title { font-size: 13px; }
+body.ui-native-shell .ui-page .fer-form .form-control,
+body.ui-native-shell .ui-page .fer-form .custom-select { min-height: 38px; }
+body.ui-native-shell .ui-page .fer-detail { margin-bottom: 16px; }
+body.ui-native-shell .ui-page .fer-page.fer-detail:not(.card) {
+  margin: 0 0 16px;
+  padding: 18px 20px;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-detail > .card-body { padding: 18px 20px; }
+body.ui-native-shell .ui-page .fer-detail .wizard-steps { padding: 0 12px!important; }
+body.ui-native-shell .ui-page .fer-detail .wizard-title i { font-size: 15px!important; }
+body.ui-native-shell .ui-page .fer-detail .table-responsive { border: 1px solid var(--ui-border, #dce7e7); border-radius: 9px; }
+body.ui-native-shell .ui-page .fer-detail .kt-section__body { min-width: 0; }
+body.ui-native-shell .ui-page .fer-list #kt_user_profile_aside { margin-left: 0!important; margin-right: 0!important; }
+body.ui-native-shell .ui-page .fer-board { min-width: 0; }
+body.ui-native-shell .ui-page .fer-board > .container-fluid { max-width: none; padding: 0; }
+body.ui-native-shell .ui-page .fer-board .kanban-col {
+  background: var(--ui-surface-alt, #fafcfc);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-board .kanban-card { background: var(--ui-surface, #fff); border-color: var(--ui-border, #dce7e7); }
+body.ui-native-shell .ui-page .fer-board .kanban-actions { border-top-color: var(--ui-border, #dce7e7); }
+@media screen {
+  body.ui-native-shell .ui-page .fer-finance,
+  body.ui-native-shell .ui-page .fer-advance { max-width: none; margin-top: 0!important; padding: 0!important; }
+  body.ui-native-shell .ui-page .fer-finance > .card,
+  body.ui-native-shell .ui-page .fer-advance > .card {
+    background: var(--ui-surface, #fff);
+    border: 1px solid var(--ui-border, #dce7e7)!important;
+    border-radius: 12px!important;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+  }
+  body.ui-native-shell .ui-page .fer-finance .card-header.text-white,
+  body.ui-native-shell .ui-page .fer-finance .card-header.bg-info {
+    background: var(--ui-surface, #fff)!important;
+    color: var(--ui-ink, #182f36)!important;
+    border-bottom: 1px solid var(--ui-border, #dce7e7);
+  }
+  body.ui-native-shell .ui-page .fer-advance .titulo-centralizado { color: var(--ui-ink, #182f36); }
+  body.ui-native-shell .ui-page .fer-advance .card-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  body.ui-native-shell .ui-page .fer-advance .card-tools > * { margin: 0!important; }
+}
+body.ui-native-shell .fer-dialog .modal-content { border-radius: 12px; border-color: var(--ui-border, #dce7e7); }
+body.ui-native-shell .fer-dialog .modal-header { background: var(--ui-surface, #fff)!important; color: var(--ui-ink, #182f36)!important; padding: 15px 19px; }
+body.ui-native-shell .fer-dialog .modal-title { color: var(--ui-ink, #182f36); font-size: 15px; }
+body.ui-native-shell .fer-dialog .modal-header :is(h4,h5,span,.close) { color: var(--ui-ink, #182f36)!important; }
+body.ui-native-shell .fer-dialog .modal-header.bg-danger { background: var(--ui-danger-bg, #fff0f2)!important; border-bottom-color: var(--ui-danger-border, #f5cdd2); }
+body.ui-native-shell .fer-dialog .modal-header.bg-danger :is(h4,h5,span,.close) { color: var(--ui-danger-text, #c94e5d)!important; }
+body.ui-native-shell .fer-dialog .modal-body { padding: 20px; }
+body.ui-native-shell .fer-dialog .modal-footer { padding: 13px 19px; }
+@media (max-width: 991px) {
+  body.ui-native-shell .ui-page .fer-list .fer-filter { padding: 14px 14px 2px; }
+  body.ui-native-shell .ui-page .fer-list .fer-actions .row { gap: 7px; }
+  body.ui-native-shell .ui-page .fer-page__heading { min-height: 49px; }
+}
+@media screen and (max-width: 767px) {
+  body.ui-native-shell .ui-page .fer-advance .card-header { align-items: flex-start; flex-direction: column; }
+  body.ui-native-shell .ui-page .fer-advance .titulo-centralizado { position: static; transform: none; white-space: normal; }
+  body.ui-native-shell .ui-page .fer-advance .card-tools { width: 100%; margin-left: 0!important; }
+}
+@media (max-width: 575px) {
+  body.ui-native-shell .ui-page .fer-page__heading h1 { font-size: 19px; }
+  body.ui-native-shell .ui-page .fer-list .fer-actions :is(a,button) { min-height: 38px; }
+  body.ui-native-shell .ui-page .fer-list .fer-results .datatable { overflow-x: auto; }
+  body.ui-native-shell .ui-page .fer-form .fer-panel > .card-body { padding: 14px; }
+  body.ui-native-shell .ui-page .fer-page.fer-detail:not(.card) { padding: 14px; }
+  body.ui-native-shell .ui-page .fer-board .kanban-board { display: grid; grid-template-columns: minmax(0, 1fr); }
+  body.ui-native-shell .ui-page .fer-board .kanban-col { min-width: 0; max-width: none; }
+  body.ui-native-shell .fer-dialog { margin: 8px auto; }
+  body.ui-native-shell .fer-dialog .modal-body { max-height: 70dvh; padding: 14px; }
+}

@@ -90,7 +90,7 @@ Esse rollback de apresentação **não apaga dados nem reverte tabelas**.
 | Publicação e escolha | `app/Http/Controllers/UiThemeController.php` |
 | Persistência | `database/migrations/2026_10_14_23010*.php` |
 | Shell progressivo | `resources/views/themes/refined/workbench.blade.php` |
-| CSS shell | `public/css/theme-refined-shell.css` |
+| CSS shell e componentes | `public/css/ui-operational.css`, `public/css/fer-design-system.css` |
 | Busca de módulos | `public/js/theme-refined-workbench.js` |
 | Administração | `resources/views/themes/refined/studio/index.blade.php` |
 | JS busca de empresa | `public/js/theme-refined-studio.js` |

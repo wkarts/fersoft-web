@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Editar Venda</h1></header>
 <style type="text/css">
 	#focus-codigo:hover{
 		cursor: pointer
@@ -31,8 +36,8 @@
             font-size: 10px;
             padding: 1px 6px;
             border-radius: 20px;
-            background: rgba(54,153,255,.10);
-            color: #3699FF;
+            background: rgba(31,152,102,.10);
+            color: #1f9866;
             font-weight: 700;
         }
 	.rt-mini label{
@@ -52,7 +57,7 @@
         .rt-row-tight{ margin-left:-6px; margin-right:-6px; }
         .rt-row-tight > [class*="col-"]{ padding-left:6px; padding-right:6px; }
 </style>
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<div class="card-body">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
@@ -777,7 +782,7 @@
 </div>
 
 <div class="modal fade" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Referência NF-e</h5>
@@ -827,7 +832,7 @@
 </div>
 
 <div class="modal fade" id="modal-grade" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Grade</h5>
@@ -843,7 +848,7 @@
 </div>
 
 <div class="modal fade" id="modal-dimensao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Dimensão do produto</h5>
@@ -914,7 +919,7 @@
 </div>
 
 <div class="modal fade" id="modal-cartao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">INFORME OS DADOS DO CARTÃO</h5>
@@ -957,7 +962,7 @@
 </div>
 
 <div class="modal fade" id="modal-pag-outros" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">INFORME A DESCRIÇAO DO TIPO DE PAGAMENTO OUTROS</h5>
@@ -984,7 +989,7 @@
 </div>
 
 <div class="modal fade" id="modal-edit-item" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Alterar item da venda</h5>
@@ -1027,7 +1032,7 @@
 </div>
 
 <div class="modal fade" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Produto</h5>
@@ -1574,7 +1579,7 @@
 </div>
 
 <div class="modal fade" id="modal-cod-barras" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-sm" role="document">
+	<div class="modal-dialog modal-sm fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">INFORME O CÓDIGO MANUAL</h5>
@@ -1599,7 +1604,7 @@
 </div>
 
 <div class="modal fade" id="modal-pagamentos" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">PAGAMENTOS</h5>
@@ -1638,7 +1643,7 @@
 	</div>
 </div>
 <div class="modal fade" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Transportadora</h5>

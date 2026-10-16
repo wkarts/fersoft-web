@@ -1,7 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container-fluid mt-5 pt-3">
+<header class="fer-page__heading"><h1>Conciliação Financeira</h1></header>
+    <div class="container-fluid mt-5 pt-3 fer-page fer-finance">
 
         @if(session('mensagem_sucesso'))
             <div class="alert alert-success shadow-sm"><i class="fas fa-check-circle"></i> {{ session('mensagem_sucesso') }}</div>
@@ -12,7 +17,7 @@
 
         {{-- CARD DE FILTROS --}}
         <div class="card shadow-sm mb-4" style="border: none;">
-            <div class="card-header text-white" style="background-color: #8b5cf6; border-radius: 5px 5px 0 0;">
+            <div class="card-header text-white" style="background-color: #1f9866; border-radius: 5px 5px 0 0;">
                 <h5 class="mb-0 font-weight-bold"><i class="fas fa-filter mr-2"></i> Filtrar Lançamentos</h5>
             </div>
             <div class="card-body">
@@ -44,7 +49,7 @@
                             <input type="date" name="data_fim" class="form-control" value="{{ request('data_fim') }}">
                         </div>
                         <div class="col-md-2">
-                            <button type="submit" class="btn text-white w-100 font-weight-bold" style="background-color: #8b5cf6;">Filtrar</button>
+                            <button type="submit" class="btn text-white w-100 font-weight-bold" style="background-color: #1f9866;">Filtrar</button>
                         </div>
                     </div>
                 </form>
@@ -238,7 +243,7 @@
                                                 <div class="btn-group-vertical">
                                                     <button type="button" class="btn btn-sm btn-primary font-weight-bold mb-1" onclick="abrirModalVincular({{ json_encode($l) }})">Opções</button>
                                                     <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold mb-1" onclick="abrirModalNovo({{ json_encode($l) }})">+ Novo</button>
-                                                    <button type="button" class="btn btn-sm text-white font-weight-bold mb-1" style="background-color: #8b5cf6;" onclick="abrirModalTransferir({{ json_encode($l) }})">Transf.</button>
+                                                    <button type="button" class="btn btn-sm text-white font-weight-bold mb-1" style="background-color: #1f9866;" onclick="abrirModalTransferir({{ json_encode($l) }})">Transf.</button>
                                                     <button type="button" class="btn btn-sm btn-light border-secondary font-weight-bold mb-1" title="Apenas arquivar e tirar da tela" onclick="confirmarOKIndividual({{ $l->id }})">
                                                         <i class="fas fa-check-double text-success"></i> OK
                                                     </button>
@@ -278,12 +283,12 @@
 
     {{-- MODAL VINCULAR (MULTIPLA ESCOLHA) --}}
     <div class="modal fade" id="modalVincular" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg fer-dialog">
             <form action="{{ url('financeiro/conciliacao/conciliar') }}" method="POST" id="formVincular" onsubmit="return validarFechamento()">
                 @csrf
                 <input type="hidden" name="extrato_id" id="vincular_extrato_id">
                 <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header text-white" style="background-color: #3b82f6;">
+                    <div class="modal-header text-white" style="background-color: #1f9866;">
                         <h5 class="modal-title font-weight-bold"><i class="fas fa-link mr-2"></i> Vincular Títulos Manualmente</h5>
                         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                     </div>
@@ -357,7 +362,7 @@
 
     {{-- MODAL + NOVO --}}
     <div class="modal fade" id="modalNovo" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog fer-dialog">
             <form action="{{ url('financeiro/conciliacao/criarEConciliar') }}" method="POST">
                 @csrf
                 <input type="hidden" name="extrato_id" id="novo_extrato_id">
@@ -468,17 +473,17 @@
 
     {{-- MODAL TRANSFERIR --}}
     <div class="modal fade" id="modalTransferir" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog fer-dialog">
             <form action="{{ url('financeiro/conciliacao/transferir') }}" method="POST">
                 @csrf
                 <input type="hidden" name="extrato_id" id="transf_extrato_id">
                 <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header text-white" style="background-color: #8b5cf6;">
+                    <div class="modal-header text-white" style="background-color: #1f9866;">
                         <h5 class="modal-title font-weight-bold"><i class="fas fa-exchange-alt mr-2"></i> Transferência Interna</h5>
                         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
-                        <div class="alert bg-white mb-4 shadow-sm" style="border-left: 4px solid #8b5cf6;" id="info_extrato_transf"></div>
+                        <div class="alert bg-white mb-4 shadow-sm" style="border-left: 4px solid #1f9866;" id="info_extrato_transf"></div>
 
                         <div class="form-group mb-3">
                             <label class="font-weight-bold text-muted small">Para qual conta foi/veio o dinheiro?</label>
@@ -501,7 +506,7 @@
                         </div>
                     </div>
                     <div class="modal-footer bg-white border-0">
-                        <button type="submit" class="btn text-white font-weight-bold px-4" style="background-color: #8b5cf6;">Confirmar Fluxo</button>
+                        <button type="submit" class="btn text-white font-weight-bold px-4" style="background-color: #1f9866;">Confirmar Fluxo</button>
                     </div>
                 </div>
             </form>
@@ -510,9 +515,9 @@
 
     {{-- MODAL MANUAL --}}
     <div class="modal fade" id="modalManualConciliacao" tabindex="-1">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-xl fer-dialog">
             <div class="modal-content shadow-lg border-0">
-                <div class="modal-header text-white" style="background-color: #8b5cf6;">
+                <div class="modal-header text-white" style="background-color: #1f9866;">
                     <h5 class="modal-title font-weight-bold"><i class="fas fa-book-open mr-2"></i> Manual: Conciliação Bancária Inteligente</h5>
                     <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
                 </div>
@@ -789,7 +794,7 @@
             document.getElementById('info_extrato_transf').innerHTML = `
         <span class="small text-muted font-weight-bold">Descrição do Banco:</span><br>
         <strong class="text-dark">${dados.descricao}</strong><br>
-        <strong class="h5" style="color: #8b5cf6;">R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+        <strong class="h5" style="color: #1f9866;">R$ ${parseFloat(dados.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
     `;
 
             let selectCat = document.getElementById('select_cat_transf');

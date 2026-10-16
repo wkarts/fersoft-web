@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Exportar para Balança</h1></header>
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<form class="card-body" method="post" action="/produtos/exportacaoBalanca">
 		@csrf
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">

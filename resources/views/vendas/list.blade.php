@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Vendas</h1></header>
+<div class="card card-custom gutter-b fer-page fer-list">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -9,7 +13,7 @@
 			<input type="hidden" id="pass" value="{{ $config->senha_remover }}">
 			@endif
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/vendas/filtro">
+			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/vendas/filtro">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-2 col-sm-6">
@@ -142,7 +146,7 @@
 			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Lista de Vendas</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight">Registros: <strong class="text-success">{{sizeof($vendas)}}</strong></label>
-			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+			<div class="row fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
                 <div class="d-flex align-items-center @if(env('ANIMACAO')) animate__animated animate__backInRight @endif">
                     <a href="/vendas/nova" class="btn btn-success mr-3">
                         <i class="la la-plus"></i>
@@ -164,7 +168,7 @@
 		<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 			<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-				<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+				<div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 					<!--begin: Wizard Nav-->
 
 					<div class="wizard-nav">
@@ -784,7 +788,7 @@
 </div>
 
 <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento"></strong></h5>
@@ -813,7 +817,7 @@
 </div>
 
 <div class="modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CANCELAR NFe <strong class="text-danger" id="numero_cancelamento2"></strong></h5>
@@ -842,7 +846,7 @@
 </div>
 
 <div class="modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<form class="modal-content" method="post" action="/vendas/enviar-whats">
 			@csrf
 			<div class="modal-header">
@@ -894,7 +898,7 @@
 
 
 <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CONSULTA DE NFe</h5>
@@ -916,7 +920,7 @@
 </div>
 
 <div class="modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">INUTILIZAÇÃO DE NÚMERO(s) DE NFe </h5>
@@ -956,7 +960,7 @@
 </div>
 
 <div class="modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao"></strong></h5>
@@ -984,7 +988,7 @@
 </div>
 
 <div class="modal fade" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CARTA DE CORREÇÃO NFe <strong class="text-danger" id="numero_correcao_aux"></strong></h5>
@@ -1013,7 +1017,7 @@
 </div>
 
 <div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ENVIAR EMAIL PEDIDO #<strong class="text-danger" id="numero_nf"></strong></h5>

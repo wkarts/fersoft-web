@@ -1,0 +1,244 @@
+/* NF-e de remessa, MDF-e e SPED NFC-e: aparência FERSOFT aprovada.
+   Os widgets, atributos de estado, URLs e nomes dos campos permanecem nas views. */
+.fiscal-page {
+    --fiscal-surface: #fff;
+    --fiscal-soft: #fafcfc;
+    --fiscal-ink: #182f36;
+    --fiscal-muted: #62777d;
+    --fiscal-border: #dce7e7;
+    --fiscal-green: #1f9866;
+    --fiscal-green-dark: #15754f;
+    --fiscal-green-soft: #eaf5ef;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    color: var(--fiscal-ink);
+    background: transparent;
+    font-family: Poppins, Inter, system-ui, sans-serif;
+}
+.fiscal-page, .fiscal-page *, .fiscal-dialog, .fiscal-dialog * { box-sizing: border-box; }
+body.ui-theme-refined--dark .fiscal-page {
+    --fiscal-surface: #1c333b;
+    --fiscal-soft: #223b43;
+    --fiscal-ink: #eef6f4;
+    --fiscal-muted: #b7c8cb;
+    --fiscal-border: #38535c;
+    --fiscal-green: #62d3ab;
+    --fiscal-green-dark: #8fdab7;
+    --fiscal-green-soft: #23483d;
+}
+.fiscal-page .fiscal-page__content {
+    background: var(--fiscal-surface);
+    border: 1px solid var(--fiscal-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+    padding: 24px;
+    min-width: 0;
+}
+.fiscal-page :is(.content, .kt-section, .kt-section__body, #kt_content, #content, #kt_user_profile_aside) {
+    background: transparent;
+    box-shadow: none;
+    min-width: 0;
+}
+.fiscal-page #kt_user_profile_aside { margin: 0 !important; }
+.fiscal-page #content { padding: 0; }
+.fiscal-page .fiscal-page__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 15px;
+    margin-bottom: 17px;
+    border-bottom: 1px solid var(--fiscal-border);
+}
+.fiscal-page .fiscal-page__heading .fiscal-page__title { order: -1; margin: 0; }
+.fiscal-page .fiscal-page__header-action { flex: 0 0 auto; }
+.fiscal-page .fiscal-page__header-action .form-group { padding: 0; margin: 0; }
+.fiscal-page .fiscal-page__header-action #form-import { margin: 0; }
+.fiscal-page .fiscal-panel {
+    border: 1px solid var(--fiscal-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px #213b4510;
+    background: var(--fiscal-surface);
+    margin: 16px 0;
+    min-width: 0;
+}
+.fiscal-page .fiscal-panel > .card-header {
+    min-height: 54px;
+    padding: 13px 18px;
+    background: var(--fiscal-surface);
+    border-bottom: 1px solid var(--fiscal-border);
+    border-radius: 12px 12px 0 0;
+}
+.fiscal-page .fiscal-panel > .card-body { padding: 18px 20px; }
+.fiscal-page .fiscal-panel > .card-footer { padding: 13px 20px; background: var(--fiscal-soft); border-top: 1px solid var(--fiscal-border); }
+.fiscal-page .fiscal-page__title {
+    color: var(--fiscal-ink) !important;
+    font-size: 21px;
+    line-height: 1.35;
+    letter-spacing: -.035em;
+    font-weight: 600;
+    margin: 0 0 18px;
+}
+.fiscal-page .fiscal-section-title,
+.fiscal-page .card-title:not(.wizard-title) {
+    color: var(--fiscal-ink) !important;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 0 0 10px;
+    margin: 17px 0 18px;
+    border-bottom: 1px solid var(--fiscal-border);
+}
+.fiscal-page .fiscal-panel .card-title { padding: 0; margin: 0; border: 0; font-size: 13px; }
+.fiscal-page :is(h3, h4, h5):not(.fiscal-page__title):not(.wizard-title):not(.card-title) {
+    color: var(--fiscal-ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.fiscal-page .form-group { min-width: 0; margin-bottom: 16px; }
+.fiscal-page label, .fiscal-page .col-form-label { color: var(--fiscal-muted); font-size: 11px; font-weight: 600; line-height: 1.45; }
+.fiscal-page .col-form-label { padding: 0; margin-bottom: 7px; }
+.fiscal-page :is(.form-control, .custom-select, .select2-container .select2-selection) {
+    min-height: 38px;
+    color: var(--fiscal-ink);
+    background: var(--fiscal-surface);
+    border: 1px solid var(--fiscal-border);
+    border-radius: 8px;
+    box-shadow: none;
+    font: 500 11px/1.5 Poppins, Inter, system-ui, sans-serif;
+}
+.fiscal-page :is(.form-control, .custom-select) { height: auto; padding: 8px 11px; }
+.fiscal-page textarea.form-control { min-height: 88px; resize: vertical; }
+.fiscal-page :is(.form-control, .custom-select, .select2-container .select2-selection):focus,
+.fiscal-dialog :is(.form-control, .custom-select):focus {
+    border-color: var(--fiscal-green, #1f9866);
+    outline: 2px solid #1f986666;
+    outline-offset: 1px;
+    box-shadow: none;
+}
+.fiscal-page .select2-container { max-width: 100%; }
+.fiscal-page .select2-container .select2-selection { display: flex; align-items: center; }
+.fiscal-page .input-group-text { background: var(--fiscal-soft); color: var(--fiscal-muted); border: 1px solid var(--fiscal-border); min-height: 38px; }
+.fiscal-page :is(.btn, button.btn, a.btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 8px 13px;
+    border-radius: 8px;
+    box-shadow: none;
+    font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif;
+    text-decoration: none;
+    white-space: normal;
+}
+.fiscal-page .btn i { color: inherit; font-size: 15px; margin: 0; }
+.fiscal-page :is(.btn-primary, .btn-success) { background: var(--fiscal-green) !important; border-color: var(--fiscal-green) !important; color: #fff !important; }
+.fiscal-page :is(.btn-primary, .btn-success):hover { background: var(--fiscal-green-dark) !important; border-color: var(--fiscal-green-dark) !important; }
+.fiscal-page :is(.btn-info, .btn-light-primary, .btn-light-success) { background: var(--fiscal-green-soft) !important; border-color: #cde9da !important; color: var(--fiscal-green-dark) !important; }
+.fiscal-page :is(.btn-info, .btn-light-primary, .btn-light-success):hover { border-color: var(--fiscal-green) !important; }
+.fiscal-page .btn-danger { background: #fff0f2 !important; border-color: #f4d5da !important; color: #c94e5d !important; }
+.fiscal-page .btn-warning { background: #fff8e8 !important; border-color: #f3e1b7 !important; color: #986324 !important; }
+.fiscal-page .btn-dark { background: var(--fiscal-soft) !important; border-color: var(--fiscal-border) !important; color: var(--fiscal-ink) !important; }
+.fiscal-page .btn.disabled, .fiscal-page .btn:disabled { opacity: .55; cursor: not-allowed; }
+.fiscal-page :is(a, button, input, select, textarea):focus-visible,
+.fiscal-dialog :is(a, button, input, select, textarea):focus-visible { outline: 2px solid var(--fiscal-green, #1f9866); outline-offset: 2px; }
+.fiscal-page .kt-section { padding: 0; margin: 0; }
+.fiscal-page .kt-section__body { padding: 0; }
+.fiscal-page .wizard, .fiscal-page .wizard-nav { min-width: 0; background: transparent; border: 0; }
+.fiscal-page .wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 !important;
+    border-bottom: 1px solid var(--fiscal-border);
+}
+.fiscal-page .wizard-step { width: auto; min-width: 120px; min-height: 43px; flex: 0 1 auto; cursor: pointer; }
+.fiscal-page .wizard-step .wizard-label { display: flex; align-items: center; min-height: 43px; padding: 0 13px; }
+.fiscal-page .wizard-step .wizard-title,
+.fiscal-page .wizard-step .wizard-title span { margin: 0; color: var(--fiscal-muted) !important; font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.fiscal-page .wizard-step .wizard-title i { font-size: 17px !important; margin-right: 5px; vertical-align: middle; }
+.fiscal-page .wizard-step .wizard-bar { height: 2px; background: transparent; }
+.fiscal-page .wizard-step[data-wizard-state="current"] .wizard-title,
+.fiscal-page .wizard-step[data-wizard-state="current"] .wizard-title span { color: var(--fiscal-green-dark) !important; }
+.fiscal-page .wizard-step[data-wizard-state="current"] .wizard-bar { background: var(--fiscal-green); }
+.fiscal-page :is(#kt_datatable, .datatable, .table-responsive) { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-color: #c5d6d6 transparent; }
+.fiscal-page .datatable-table { min-width: 880px; width: 100%; border-collapse: collapse; }
+.fiscal-page table.table { width: 100%; border-collapse: collapse; }
+.fiscal-page :is(.datatable-table, table.table) thead { background: var(--fiscal-soft); }
+.fiscal-page :is(.datatable-table, table.table) th {
+    padding: 10px 12px;
+    color: var(--fiscal-muted);
+    background: var(--fiscal-soft);
+    border-bottom: 1px solid var(--fiscal-border);
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+}
+.fiscal-page :is(.datatable-table, table.table) td {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--fiscal-border);
+    color: var(--fiscal-ink);
+    vertical-align: middle;
+    font-size: 11px;
+}
+.fiscal-page :is(.datatable-table, table.table) tbody tr:hover { background: var(--fiscal-soft); }
+.fiscal-page .datatable-table .datatable-cell > span { max-width: none; }
+.fiscal-page .fiscal-filters {
+    padding: 16px 18px 2px;
+    border: 1px solid var(--fiscal-border);
+    border-radius: 10px;
+    background: var(--fiscal-soft);
+    margin-bottom: 20px;
+}
+.fiscal-page .fiscal-filters > .row { margin-inline: -8px; }
+.fiscal-page .fiscal-filters .row > [class*="col-"] { padding-inline: 8px; }
+.fiscal-page .fiscal-filters .form-group { margin-bottom: 14px; }
+.fiscal-page .fiscal-list-intro { margin: 0 0 20px !important; }
+.fiscal-page .fiscal-list-intro .fiscal-page__title { margin-bottom: 4px; }
+.fiscal-page .fiscal-list-intro > label { display: block; margin: 0 0 14px; }
+.fiscal-page .fiscal-list-intro > .row .form-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.fiscal-page .alert { border-radius: 9px; }
+.fiscal-page .text-info { color: var(--fiscal-green-dark) !important; }
+.fiscal-page hr { border-color: var(--fiscal-border); }
+.fiscal-dialog .modal-dialog { max-width: min(900px, calc(100vw - 28px)); margin: 22px auto; }
+.fiscal-dialog .modal-dialog.modal-xl { max-width: min(1120px, calc(100vw - 28px)); }
+.fiscal-dialog .modal-content { border: 1px solid #dce7e7; border-radius: 12px; background: #fff; box-shadow: 0 20px 60px #213b4530; overflow: hidden; }
+.fiscal-dialog .modal-header { padding: 17px 20px; border-bottom: 1px solid #dce7e7; background: #fafcfc; }
+.fiscal-dialog .modal-header .modal-title { color: #182f36; font: 600 16px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.fiscal-dialog .modal-header .close { min-width: 34px; min-height: 34px; border-radius: 7px; color: #62777d; opacity: 1; }
+.fiscal-dialog .modal-body { max-height: calc(100dvh - 180px); overflow-y: auto; padding: 20px; }
+.fiscal-dialog .modal-footer { padding: 14px 20px; border-top: 1px solid #dce7e7; background: #fafcfc; }
+.fiscal-dialog :is(.form-control, .custom-select) { min-height: 38px; border: 1px solid #dce7e7; border-radius: 8px; color: #182f36; background: #fff; }
+.fiscal-dialog .btn { min-height: 36px; border-radius: 8px; font: 600 11px Poppins, Inter, system-ui, sans-serif; }
+.fiscal-dialog .btn-success { background: #1f9866 !important; border-color: #1f9866 !important; color: #fff !important; }
+body.ui-theme-refined--dark .fiscal-dialog .modal-content { background: #1c333b; border-color: #38535c; }
+body.ui-theme-refined--dark .fiscal-dialog :is(.modal-header, .modal-footer) { background: #223b43; border-color: #38535c; }
+body.ui-theme-refined--dark .fiscal-dialog .modal-header .modal-title { color: #eef6f4; }
+body.ui-theme-refined--dark .fiscal-dialog .modal-header .close { color: #b7c8cb; }
+body.ui-theme-refined--dark .fiscal-dialog :is(.form-control, .custom-select) { background: #1c333b; border-color: #38535c; color: #eef6f4; }
+body.ui-theme-refined--dark .fiscal-page :is(.btn-success, .btn-primary) { color: #11252c !important; }
+
+@media (max-width: 991px) {
+    .fiscal-page .fiscal-page__content { padding: 18px; }
+    .fiscal-page .fiscal-panel > .card-body { padding: 16px; }
+}
+@media (max-width: 575px) {
+    .fiscal-page .fiscal-page__content { padding: 14px; }
+    .fiscal-page .fiscal-page__title { font-size: 19px; }
+    .fiscal-page .fiscal-section-title { font-size: 15px; }
+    .fiscal-page .fiscal-panel { margin: 12px 0; }
+    .fiscal-page .fiscal-panel > .card-body { padding: 13px; }
+    .fiscal-page .wizard-step { flex: 1 1 45%; min-width: 0; }
+    .fiscal-page .wizard-step .wizard-label { padding: 0 8px; }
+    .fiscal-page .fiscal-filters { padding: 14px 14px 1px; }
+    .fiscal-page .fiscal-filters > .row > [class*="col-"] { width: 100%; max-width: 100%; flex: 0 0 100%; }
+    .fiscal-page .fiscal-list-intro > .row .form-group { width: 100%; }
+    .fiscal-dialog .modal-dialog { max-width: calc(100vw - 16px); margin: 8px auto; }
+    .fiscal-dialog .modal-body { max-height: calc(100dvh - 135px); padding: 14px; }
+    .fiscal-dialog .modal-footer { gap: 8px; justify-content: stretch; }
+    .fiscal-dialog .modal-footer .btn { flex: 1 1 auto; }
+}
