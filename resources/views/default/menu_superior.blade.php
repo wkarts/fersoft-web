@@ -1944,7 +1944,7 @@
                     @endif
 
                     <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-                        {{-- Não usar @forelse aqui: a compilação das views legadas
+                        {{-- Não usar a diretiva forelse aqui: a compilação das views legadas
                              não fechava o foreach gerado, gerando ParseError no PHP. --}}
                         @if(count($appVersionHistoryGrouped ?? []) > 0)
                             @foreach($appVersionHistoryGrouped as $major => $items)

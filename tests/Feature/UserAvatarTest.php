@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Middleware\VerificaEmpresa;
 use App\Models\Usuario;
 use App\Services\UserAvatarService;
 use Illuminate\Database\Schema\Blueprint;
@@ -41,6 +40,9 @@ class UserAvatarTest extends TestCase
             $this->assertContains('verificaEmpresa', $route->gatherMiddleware());
             $this->assertNotContains('validaAcesso', $route->gatherMiddleware());
         }
+        $upload = Route::getRoutes()->getByName('usuarios.profile.photo');
+        $this->assertContains('verificaContratoAssinado', $upload->gatherMiddleware());
+        $this->assertContains('limiteArmazenamento', $upload->gatherMiddleware());
     }
 
     public function test_only_logged_user_receives_uploaded_photo_and_session_is_refreshed(): void
@@ -50,7 +52,7 @@ class UserAvatarTest extends TestCase
 
         // O middleware de empresa já é verificado na rota; o banco mínimo do
         // teste exercita a autorização explícita do endpoint pelo id da sessão.
-        $response = $this->withoutMiddleware(VerificaEmpresa::class)
+        $response = $this->withoutMiddleware()
             ->withSession(['user_logged' => ['id' => $mine->id, 'empresa' => 8]])
             ->post(route('usuarios.profile.photo'), [
                 'foto' => UploadedFile::fake()->image('retrato.png', 80, 80),
@@ -77,13 +79,14 @@ class UserAvatarTest extends TestCase
     {
         $mine = Usuario::create(['empresa_id' => 8, 'nome' => 'Ana', 'img' => '']);
 
-        $this->withoutMiddleware(VerificaEmpresa::class)
+        $this->withoutMiddleware()
             ->withSession(['user_logged' => ['id' => $mine->id, 'empresa' => 8]])
-            ->from(route('usuarios.profile'))
+            ->withHeader('Accept', 'application/json')
             ->post(route('usuarios.profile.photo'), [
                 'foto' => UploadedFile::fake()->create('script.svg', 1, 'image/svg+xml'),
             ])
-            ->assertSessionHasErrors('foto');
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('foto');
 
         $this->assertSame('', $mine->fresh()->img);
         $this->assertNull(app(UserAvatarService::class)->url('../.env'));
@@ -94,8 +97,9 @@ class UserAvatarTest extends TestCase
     {
         $mine = Usuario::create(['empresa_id' => 8, 'nome' => 'Ana', 'img' => '']);
 
-        $this->withoutMiddleware(VerificaEmpresa::class)
+        $this->withoutMiddleware()
             ->withSession(['user_logged' => ['id' => $mine->id, 'empresa' => 9]])
+            ->withHeader('Accept', 'application/json')
             ->post(route('usuarios.profile.photo'), [
                 'foto' => UploadedFile::fake()->image('retrato.png', 80, 80),
             ])
