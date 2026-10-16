@@ -2,13 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\UiThemeController;
 use App\Http\Middleware\VerificaEmpresa;
 use App\Services\UiThemeService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\View;
-use Mockery;
+use Illuminate\View\View;
 use Tests\TestCase;
 
 /** SQLite em memória: nunca aponta para o banco de homologação/produção. */
@@ -25,19 +27,26 @@ class UiThemeInstallationTest extends TestCase
 
     public function test_personal_studio_displays_factory_themes_before_installation(): void
     {
-        View::shouldReceive('make')->once()
-            ->with('themes.refined.studio.index', Mockery::on(function (array $data) {
-                return $data['catalogReady'] === false
-                    && isset($data['availableThemes']['fer-light'])
-                    && count($data['customThemes']) === 0;
-            }), [])
-            ->andReturn('Temas de fábrica disponíveis');
+        $route = Route::getRoutes()->getByName('ui.themes.index');
+        $this->assertNotNull($route);
+        $this->assertContains('GET', $route->methods());
+        $this->assertStringEndsWith('UiThemeController@index', $route->getActionName());
 
-        $this->withoutMiddleware(VerificaEmpresa::class)
-            ->withSession(['user_logged' => ['id' => 11, 'empresa' => 1, 'super' => 0]])
-            ->get('/ui/temas')
-            ->assertOk()
-            ->assertSee('Temas de fábrica disponíveis');
+        $session = app('session')->driver();
+        $session->put('user_logged', ['id' => 11, 'empresa' => 1, 'super' => 0]);
+        $request = Request::create('/ui/temas', 'GET');
+        $request->setLaravelSession($session);
+        $this->app->instance('request', $request);
+
+        // Inspeciona o resultado do GET antes de renderizar o layout legado, sem
+        // interferir no View Factory compartilhado pelos middlewares do ERP.
+        $view = app(UiThemeController::class)->index();
+        $this->assertInstanceOf(View::class, $view);
+        $this->assertSame('themes.refined.studio.index', $view->name());
+        $data = $view->getData();
+        $this->assertFalse($data['catalogReady']);
+        $this->assertArrayHasKey('fer-light', $data['availableThemes']);
+        $this->assertCount(0, $data['customThemes']);
         $this->assertFalse(Schema::hasTable('ui_theme_presets'));
     }
 
@@ -45,7 +54,7 @@ class UiThemeInstallationTest extends TestCase
     {
         $this->withoutMiddleware(VerificaEmpresa::class)
             ->withSession(['user_logged' => ['id' => 11, 'empresa' => 1, 'super' => 0]])
-            ->get('/config/temas')
+            ->getJson('/config/temas')
             ->assertForbidden();
     }
 
