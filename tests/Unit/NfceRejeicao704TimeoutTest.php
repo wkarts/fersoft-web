@@ -83,7 +83,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
         );
         $this->assertStringContainsString("NFCE_704_CONFIRMAR_DHEMI", $controller);
         $this->assertStringContainsString("consulta_sefaz_cStat' => 217", $controller);
-        $this->assertStringContainsString("'dhSaiEnt' => $dhSaiEnt !== '' ? $dhSaiEnt : null", $service);
+        $this->assertStringContainsString("'dhSaiEnt' => \$dhSaiEnt !== '' ? \$dhSaiEnt : null", $service);
         $this->assertStringContainsString("\$stdIde->dhSaiEnt = \$identidadeOriginal['dhSaiEnt']", $service);
     }
 
@@ -223,7 +223,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
 
         $cpf = strpos($metodo, '$venda->cpf = $request->doc');
         $consulta = strpos($metodo, 'consultarSituacaoDaChave(');
-        $geracao = strpos($metodo, 'gerarNFCe($vendaId)');
+        $geracao = strpos($metodo, 'gerarNFCe($vendaId,');
 
         $this->assertNotFalse($cpf);
         $this->assertNotFalse($consulta);
