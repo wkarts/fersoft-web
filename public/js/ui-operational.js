@@ -35,6 +35,7 @@
     // The operational header can grow when real company or account controls
     // wrap. Align the sidebar bands with the actual header and session rows.
     function alignSidebarBands() {
+        if (masthead) body.style.setProperty('--ui-masthead-height', masthead.getBoundingClientRect().height + 'px');
         if (!desktop.matches || body.dataset.uiLayout !== 'lateral' || !masthead || !sessionBar) {
             body.style.removeProperty('--ui-sidebar-brand-height');
             body.style.removeProperty('--ui-sidebar-version-height');

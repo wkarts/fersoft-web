@@ -123,6 +123,8 @@
 .ui-people-form .image-input [data-action="change"] input { position: absolute; left: 0; top: 0; opacity: 0; width: 25px; height: 25px; cursor: pointer; }
 .ui-people-contact-fields { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
 .ui-people-form-actions { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--people-line); padding-top: 14px; }
+.ui-people-form .ui-people-submit-actions { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.ui-people-form .ui-people-submit-actions > .btn { min-width: 0; max-width: 100%; }
 .ui-people-person { padding: 17px; min-width: 0; }
 .ui-people-person-head h3 { color: var(--people-ink); font-size: 13px; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
 .ui-people-details { margin: 14px 0; }
@@ -192,5 +194,9 @@
   .ui-people-section-body { padding: 13px; }
   .ui-people-grid-pane .ui-people-person-body > div { align-items: flex-start; }
   .ui-people-form-head .card-toolbar, .ui-people-form-head .btn { width: 100%; }
+  .ui-people-form .ui-people-submit-actions > .btn {
+    flex: 1 1 130px;
+    padding-inline: 9px!important;
+  }
   .ui-people-modal .modal-footer .btn { flex: 1; }
 }

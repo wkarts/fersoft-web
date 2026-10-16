@@ -47,7 +47,7 @@
 				</div>
 			</div>
 
-			<form @if(isset($item) && !isset($clone)) action="/nferemessa/update/{{$item->id}}" @else action="/nferemessa/store" @endif class="col-lg-12" method="post">
+			<form @if(isset($item) && !isset($clone)) action="/nferemessa/update/{{$item->id}}" @else action="/nferemessa/store" @endif class="col-lg-12 fiscal-remessa-form" method="post">
 
 				@if(isset($item) && !isset($clone))
 				@method('put')
@@ -1136,7 +1136,7 @@
 					</div>
 				</div>
 
-				<div class="row">
+				<div class="row fiscal-remessa-actions">
 
 					<div class="col-sm-6 col-lg-6 col-md-6 col-xl-6 col-12">
 						<button type="submit" style="width: 100%;" class="btn btn-success btn-nfe" @if(!isset($item)) disabled @endif>@if(isset($item) && !isset($clone)) Atualizar NFe @else Salvar NFe @endif</button>
@@ -1149,7 +1149,7 @@
 
 
 
-<div class="modal fade fiscal-dialog" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1695,7 +1695,7 @@
 	</div>
 </div>
 
-<div class="modal fade fiscal-dialog" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1769,7 +1769,7 @@
 </div>
 
 
-<div class="modal fade fiscal-dialog" id="modal-pag-outros" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-pag-outros" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1796,7 +1796,7 @@
 	</div>
 </div>
 
-<div class="modal fade fiscal-dialog" id="modal-nome-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-nome-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1821,7 +1821,7 @@
 	</div>
 </div>
 
-<div class="modal fade fiscal-dialog" id="modal-cod-barras" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-cod-barras" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-sm" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1846,7 +1846,7 @@
 	</div>
 </div>
 
-<div class="modal fade fiscal-dialog" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1897,8 +1897,7 @@
 								</select>
 
 							</div>
-							<div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-								<br><br>
+			<div class="form-group validated col-lg-2 col-md-2 col-sm-6 fiscal-remessa-lookup">
 								<a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 									<span>
 										<i class="fa fa-search"></i>
@@ -2042,7 +2041,7 @@
 	</div>
 </div>
 
-<div class="modal fade fiscal-dialog" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog fiscal-remessa-dialog" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -2095,8 +2094,7 @@
 								</select>
 
 							</div>
-							<div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-								<br><br>
+			<div class="form-group validated col-lg-2 col-md-2 col-sm-6 fiscal-remessa-lookup">
 								<a type="button" id="btn-consulta-cadastro3" onclick="consultaCadastro3()" class="btn btn-success spinner-white spinner-right">
 									<span>
 										<i class="fa fa-search"></i>

@@ -65,6 +65,39 @@ def extract_critical_counts(source):
 
 
 class DevelopViewContract(unittest.TestCase):
+    def test_product_wizards_submit_one_valid_form(self):
+        # HTML silently ignores a nested <form>, leaving wizard fields outside
+        # the submitted form in several browsers.
+        class FormNestingParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.open_forms = 0
+                self.forms = []
+                self.nested = False
+
+            def handle_starttag(self, tag, attributes):
+                if tag != 'form':
+                    return
+                self.nested |= self.open_forms > 0
+                self.open_forms += 1
+                self.forms.append(dict(attributes))
+
+            def handle_endtag(self, tag):
+                if tag == 'form':
+                    self.open_forms -= 1
+
+        for name in ('register', 'register_grade', 'duplicar'):
+            source = (ROOT / f'resources/views/produtos/{name}.blade.php').read_text(encoding='utf-8')
+            parser = FormNestingParser()
+            parser.feed(source)
+            with self.subTest(view=name):
+                self.assertFalse(parser.nested)
+                self.assertEqual(0, parser.open_forms)
+                self.assertEqual(1, len(parser.forms))
+                self.assertEqual('kt_form', parser.forms[0].get('id'))
+                self.assertEqual('post', parser.forms[0].get('method'))
+                self.assertIn('name="_token"', source)
+
     def test_theme_management_keeps_separate_authorized_area_and_existing_actions(self):
         personal = (ROOT / 'resources/views/themes/refined/studio/index.blade.php').read_text(encoding='utf-8')
         admin = (ROOT / 'resources/views/themes/refined/studio/admin.blade.php').read_text(encoding='utf-8')

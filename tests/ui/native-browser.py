@@ -58,11 +58,19 @@ def check_collapsed_navigation(page, persistent=False):
     active = page.locator('#ui-navigation .ui-nav-list > .menu-item.menu-item-open > .menu-toggle').first
     active_id = active.get_attribute('aria-controls') if active.count() else None
     collapse = page.locator('[data-ui-collapse]')
+    brand_box = page.locator('.ui-brand').bounding_box()
+    button_box = collapse.bounding_box()
+    assert abs(button_box['x'] + button_box['width'] / 2 - (brand_box['x'] + brand_box['width'])) <= 2, \
+        'Collapse button must sit over the brand and header divider.'
     collapse.click()
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
     assert collapse.get_attribute('aria-expanded') == 'false'
     assert collapse.get_attribute('aria-label') == 'Expandir navegação'
     assert abs(page.locator('#ui-sidebar').bounding_box()['width'] - 80) <= 2, 'Collapsed rail must retain an 80px icon column.'
+    brand_box = page.locator('.ui-brand').bounding_box()
+    button_box = collapse.bounding_box()
+    assert abs(button_box['x'] + button_box['width'] / 2 - (brand_box['x'] + brand_box['width'])) <= 2, \
+        'Expand button moved away from the same divider.'
     assert page.locator('.ui-brand-symbol').is_visible(), 'The application symbol must remain reachable.'
     assert not page.locator('#ui-sidebar .brand-logo').is_visible()
 
@@ -210,6 +218,11 @@ def check_superior_navigation(page, resize=False):
         menu: document.querySelector('#ui-sidebar').getBoundingClientRect().toJSON()
     })''')
     header, menu = positions['header'], positions['menu']
+    session_box = page.locator('.ui-session').bounding_box()
+    assert abs(header['top']) <= 2 and abs(menu['top'] - header['bottom']) <= 2, \
+        'Header and navigation strips must remain stacked while scrolling.'
+    assert abs(session_box['y'] - menu['bottom']) <= 2, \
+        'The session strip must remain fixed directly below the top navigation.'
     assert menu['top'] >= -2 and menu['bottom'] <= page.viewport_size['height'], 'Top menu disappeared while scrolling.'
     assert (header['bottom'] <= menu['top'] + 2 or header['top'] >= menu['bottom'] - 2), \
         'Top menu overlaps the header after scrolling.'
@@ -254,6 +267,11 @@ def check_page(page, theme, layout, density, width):
     assert len(navigation_contract(page)) >= 8, 'The permission-filtered menu lost groups.'
     for selector in ['a[href="/login/logoff"]', '#set-location-top', '#btn-whatsapp-global', '#dataHoraClock']:
         assert page.locator(selector).count() == 1, 'Missing/duplicated operational control: ' + selector
+    unit_select = page.locator('.ui-header-unit #filial_id_top')
+    assert unit_select.count() == 1 and page.locator('label[for="filial_id_top"].ui-unit-caption').count() == 1, \
+        'Unit selection must keep its real control and an accessible label.'
+    if width < 992:
+        assert unit_select.bounding_box()['width'] >= 120, 'The mobile unit selector is too narrow to use.'
     assert page.locator('.ui-finance-link').count() == 4
     assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
     assert page.locator('.ui-header-pdv a[href="/frenteCaixa"]').count() == 1, 'The existing PDV action is missing.'
@@ -332,6 +350,22 @@ def check_page(page, theme, layout, density, width):
             'The main header and sidebar brand separator do not align.'
         assert abs((session['y'] + session['height']) - (version['y'] + version['height'])) <= 2, \
             'The session strip and sidebar version separator do not align.'
+        if theme == 'fer-light' and density == 'comfortable' and width == 1920:
+            page.evaluate('''() => {
+                const spacer=document.createElement('div');
+                spacer.id='ui-session-scroll-test';spacer.style.height='1500px';
+                document.querySelector('.ui-page').appendChild(spacer);
+                window.scrollTo(0, 600);
+            }''')
+            page.wait_for_function('window.scrollY >= 400')
+            header_box = page.locator('.ui-masthead').bounding_box()
+            session_box = page.locator('.ui-session').bounding_box()
+            assert abs(header_box['y']) <= 2 and abs(session_box['y'] - (header_box['y'] + header_box['height'])) <= 2, \
+                'The session strip must remain fixed directly below the header.'
+            page.evaluate('''() => {
+                document.querySelector('#ui-session-scroll-test').remove();
+                window.scrollTo(0, 0);
+            }''')
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme in ('fer-night', 'fer-graphite'))
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-density-compact")') == (density == 'compact')
     if width < 992:

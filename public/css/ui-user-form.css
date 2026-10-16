@@ -10,6 +10,11 @@
   background: var(--ui-bg, #f5f7f7);
   color: var(--user-ink);
 }
+.ui-admin.ui-admin-usuarios {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
 .ui-admin-usuarios .ui-admin-panel {
   background: var(--user-surface);
   border-color: var(--user-border);
@@ -18,6 +23,13 @@
 .ui-admin-usuarios .ui-admin-panel-foot {
   background: var(--user-soft);
   border-color: var(--user-border);
+}
+.ui-admin-usuarios .ui-admin-panel-head > h1.card-title {
+  margin: 0;
+  color: var(--user-ink);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .ui-admin-usuarios .ui-admin-panel > .container > .col-lg-12 {
@@ -43,10 +55,13 @@
 /* Form fields follow the same grid at all breakpoints, including the dynamic Locais field. */
 .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px 20px;
   margin: 0;
   align-items: start;
+}
+.ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child > .ui-user-profile-photo {
+  grid-column: span 2;
 }
 .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child > .form-group {
   position: relative;
@@ -66,6 +81,8 @@
   margin: 0 0 7px;
   line-height: 1.35;
   color: var(--user-muted);
+  font-size: 11px;
+  font-weight: 500;
 }
 .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child > .form-group:has(> button[data-toggle="popover"]) > .col-form-label {
   padding-right: 37px;
@@ -197,24 +214,24 @@
 }
 .ui-admin-usuarios form[action^="/usuarios/"] .checkbox-inline {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 166px), 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 9px;
   width: 100%;
-  margin-top: 8px!important;
+  margin-top: 11px!important;
 }
 .ui-admin-usuarios form[action^="/usuarios/"] .checkbox-inline .checkbox {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  min-height: 36px;
+  min-height: 43px;
   margin: 0;
-  padding: 7px 9px;
+  padding: 9px 11px;
   border: 1px solid var(--user-border);
   border-radius: 7px;
   background: var(--user-surface);
   color: var(--user-ink);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
   overflow-wrap: anywhere;
   cursor: pointer;
@@ -275,8 +292,7 @@
 .ui-admin-usuarios .ui-user-profile-photo__actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 11px;
+  gap: 13px;
   min-width: 0;
 }
 .ui-admin-usuarios .ui-user-profile-photo__preview {
@@ -301,33 +317,57 @@
   object-fit: cover;
 }
 .ui-admin-usuarios .ui-user-profile-photo__actions > div {
-  flex: 1 1 190px;
+  flex: 1 1 auto;
   min-width: 0;
 }
-.ui-admin-usuarios .ui-user-profile-photo__actions input[type="file"] {
+.ui-admin-usuarios .ui-user-profile-photo__picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
-  max-width: 100%;
-  height: auto;
-  padding: 5px;
-  color: var(--user-ink);
+  min-height: 38px;
+  padding: 4px;
+  border: 1px solid var(--user-border);
+  border-radius: 7px;
   background: var(--user-surface);
-  border-color: var(--user-border);
-  cursor: pointer;
 }
-.ui-admin-usuarios .ui-user-profile-photo__actions input[type="file"]::file-selector-button {
-  padding: 5px 9px;
-  margin-right: 8px;
+.ui-admin-usuarios .ui-user-profile-photo__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.ui-admin-usuarios .ui-user-profile-photo__pick-button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 29px;
+  margin: 0;
+  padding: 5px 11px;
   border: 1px solid var(--user-border);
   border-radius: 5px;
   background: var(--user-soft);
   color: var(--user-ink);
-  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
 }
-.ui-admin-usuarios form[action^="/usuarios/"] .ui-user-profile-photo .ui-user-profile-photo__actions > .form-control {
-  flex: 1 1 140px;
-  width: 0!important;
+.ui-admin-usuarios .ui-user-profile-photo__input:focus-visible + .ui-user-profile-photo__pick-button {
+  outline: 3px solid var(--user-accent);
+  outline-offset: 2px;
+}
+.ui-admin-usuarios .ui-user-profile-photo__input.is-invalid + .ui-user-profile-photo__pick-button {
+  border-color: #cc6170;
+}
+.ui-admin-usuarios .ui-user-profile-photo__filename {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--user-muted);
+  font-size: 11px;
 }
 .ui-admin-usuarios form.ui-user-profile-photo {
   max-width: 680px;
@@ -345,7 +385,7 @@
   height: 82px;
   font-size: 28px;
 }
-.ui-admin-usuarios form.ui-user-profile-photo .ui-user-profile-photo__actions label {
+.ui-admin-usuarios form.ui-user-profile-photo .ui-user-profile-photo__title {
   display: block;
   margin: 0 0 7px;
   color: var(--user-ink);
@@ -363,10 +403,28 @@
   margin-top: 20px;
 }
 .ui-admin-usuarios .ui-user-profile-photo__buttons .btn { min-width: 110px; }
+.ui-admin-usuarios .ui-user-profile-photo__buttons .btn-light {
+  border: 1px solid var(--user-border);
+  background: var(--user-surface);
+  color: var(--user-ink);
+}
+.ui-admin-usuarios .ui-user-profile-photo__buttons .btn-light:hover {
+  border-color: var(--user-accent);
+  background: var(--user-accent-soft);
+  color: var(--user-ink);
+}
 
+@media (min-width: 1650px) {
+  .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
 @media (max-width: 1199px) {
   .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child > .ui-user-name-field {
+    grid-column: span 2;
   }
 }
 @media (max-width: 600px) {
@@ -374,6 +432,11 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
+  .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body > .row:first-child > :is(.ui-user-profile-photo, .ui-user-name-field) {
+    grid-column: auto;
+  }
+  .ui-admin-usuarios .ui-user-profile-photo__actions { flex-wrap: wrap; }
+  .ui-admin-usuarios .ui-user-profile-photo__picker { width: 100%; }
   .ui-admin-usuarios form[action^="/usuarios/"] .kt-section__body { padding-top: 13px; }
   .ui-admin-usuarios .ui-admin-panel-foot { padding: 12px; }
   .ui-admin-usuarios .ui-admin-panel-foot > .row > :is(.col-lg-3, .col-sm-6) {

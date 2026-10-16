@@ -86,7 +86,9 @@
 
     <link rel="stylesheet" href="{{ asset('css/ui-operational.css') }}?v={{ filemtime(public_path('css/ui-operational.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/fer-design-system.css') }}?v={{ filemtime(public_path('css/fer-design-system.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-form-harmony.css') }}?v={{ filemtime(public_path('css/ui-form-harmony.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/ui-top-nav.css') }}?v={{ filemtime(public_path('css/ui-top-nav.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-dialog-navigation.css') }}?v={{ filemtime(public_path('css/ui-dialog-navigation.css')) }}">
     @stack('styles')
 
 </head>

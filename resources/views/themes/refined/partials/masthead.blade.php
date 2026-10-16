@@ -83,7 +83,7 @@
 										@endif -->
                                     @if(!session('tipo_contador'))
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme" data-menu-toggle="click" aria-haspopup="true">
-                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline @if($tema == 1) label-warning @else label-warning @endif"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
+                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline @if($tema == 1) label-warning @else label-warning @endif" aria-label="Tema" title="Tema"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
                                         </li>
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-whatsapp" data-menu-toggle="click" aria-haspopup="true">
                                             {!! __view_connect_api_whatsapp_modal_button() !!}
@@ -92,7 +92,7 @@
 
                                     @if(session('tipo_contador'))
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme">
-                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
+                                            <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline" aria-label="Tema" title="Tema"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
                                         </li>
                                     @endif
 
@@ -124,7 +124,8 @@
                                     @endif
 
                                     @if(empresaComFilial() && sizeof(getLocaisUsarioLogado()) > 1)
-                                        <li class="menu-item menu-item-submenu menu-item-rel ml-1 mt-2 ui-header-unit" data-menu-toggle="click" aria-haspopup="true" style="min-width: 240px;">
+                                        <li class="menu-item menu-item-submenu menu-item-rel ui-header-unit" data-menu-toggle="click" aria-haspopup="true">
+                                            <label for="filial_id_top" class="ui-unit-caption">Unidade</label>
                                             <div class="d-flex align-items-center">
                                                 <div class="label label-xl label-inline @if($tema == 1) label-light-primary @else label-primary @endif" style="width: 100%;">
                                                     {!! __view_locais_select_menu_superior() !!}

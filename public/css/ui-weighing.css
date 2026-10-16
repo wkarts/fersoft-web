@@ -349,3 +349,329 @@ body.ui-native-shell .fer-weighing-ticket-list .badge { width: auto !important; 
     body.ui-native-shell .fer-weighing-modal .modal-title { flex: 1 1 100%; }
     body.ui-native-shell .fer-weighing-modal .modal-header > .close { margin-left: auto; }
 }
+
+/* Listagem e filtros: limitados à pesagem, sem alterar grids dos diálogos. */
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-toolbar {
+    gap: 10px 16px;
+    margin-bottom: 21px;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-toolbar > div:first-child { min-width: 0; }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-toolbar #btnNovaPesagem {
+    min-height: 40px;
+    margin: 0;
+    padding: 8px 14px;
+    font-size: 12px;
+}
+body.ui-native-shell .fer-extra--pesagens .quick-actions { gap: 6px; flex-wrap: wrap; }
+body.ui-native-shell .fer-extra--pesagens .quick-action-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0 !important;
+    border-radius: 8px;
+}
+body.ui-native-shell .fer-extra--pesagens .quick-action-icon i { font-size: 14px; }
+body.ui-native-shell .fer-extra--pesagens .quick-action-icon::after {
+    content: attr(data-hint);
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 7px);
+    z-index: 1080;
+    width: max-content;
+    max-width: 190px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: var(--ui-ink);
+    color: var(--ui-surface);
+    font-size: 11px;
+    line-height: 1.25;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(3px);
+    transition: opacity .15s ease, transform .15s ease;
+}
+body.ui-native-shell .fer-extra--pesagens .quick-action-icon:is(:hover,:focus-visible)::after { opacity: 1; transform: translateY(0); }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-list { min-width: 0; }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-list h4 {
+    margin: 0 0 13px;
+    color: var(--ui-ink);
+    font-size: 16px;
+    font-weight: 650;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-list hr {
+    margin: 22px 0;
+    border-color: var(--ui-border);
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row {
+    display: grid;
+    grid-template-columns: minmax(210px, 1.5fr) repeat(2, minmax(155px, 1fr)) minmax(130px, .9fr) minmax(125px, .8fr) auto auto;
+    align-items: end;
+    gap: 10px;
+    margin: 0;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row > .form-group {
+    min-width: 0;
+    width: auto;
+    max-width: none;
+    margin: 0 !important;
+    padding: 0;
+    flex: none;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters :is(.form-control,.btn) { height: 40px; min-width: 0; }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters .btn-clear { width: 40px; padding: 0; font-size: 19px; }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-table-scroll {
+    max-height: min(55vh, 540px);
+    overflow: auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-table-scroll > .table-pesagens { width: 100%; margin: 0; font-size: 12px; }
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-table-scroll :is(th,td) {
+    padding: 8px 10px;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+body.ui-native-shell .fer-extra--pesagens .fer-weighing-table-scroll .thead-light th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ui-surface-alt);
+}
+/* A identificação técnica segue no DOM para os scripts, como na tabela original. */
+body.ui-native-shell .fer-extra--pesagens .table-pesagens :is(th,td):nth-child(2) { display: none; }
+body.ui-native-shell .fer-extra--pesagens .table-pesagens td:last-child { min-width: 230px; }
+body.ui-native-shell .fer-extra--pesagens .table-pesagens td:last-child > :is(.btn,.dropdown) { margin: 2px 3px 2px 0; vertical-align: middle; }
+body.ui-native-shell .fer-extra--pesagens .table-pesagens .btn-custom,
+body.ui-native-shell .fer-weighing-ticket-list .btn-custom {
+    min-height: 31px;
+    padding: 5px 8px;
+    font-size: 11px;
+    line-height: 1.25;
+}
+body.ui-native-shell .fer-extra--pesagens .table-pesagens .badge-fixed-width-status,
+body.ui-native-shell .fer-weighing-ticket-list .badge-fixed-width-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 76px;
+    padding: 5px 8px;
+}
+body.ui-native-shell .fer-extra--pesagens .table-pesagens .badge-fixed-width-token {
+    display: inline-block;
+    min-width: 200px;
+    max-width: 290px;
+    padding: 5px 8px;
+    overflow-wrap: anywhere;
+}
+body.ui-native-shell .fer-extra--pesagens .table-pesagens .badge-fixed-width-cli {
+    display: inline-block;
+    max-width: 300px;
+    padding: 5px 8px;
+    white-space: normal;
+    text-align: left;
+}
+body.ui-native-shell .fer-extra--pesagens .table-pesagens .badge-fixed-width-finalidade {
+    display: inline-block;
+    min-width: 60px;
+    padding: 5px 8px;
+    text-align: center;
+}
+body.ui-native-shell .fer-extra--pesagens :is(.imprimir-icon-text,.compra-icon-text,.venda-icon-text) {
+    margin: 0 0 0 3px;
+    color: inherit;
+    font-size: 11px;
+    font-weight: inherit;
+}
+body.ui-native-shell .fer-extra--pesagens .dropdown-menu a { font-size: 12px; }
+body.ui-native-shell .fer-weighing-ticket-list .thead-light th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ui-surface-alt);
+}
+body.ui-native-shell .fer-weighing-ticket-list .datatable-cell { vertical-align: middle; white-space: nowrap; }
+
+/* Campos de pesagem, ações e cadastros rápidos respeitam a mesma superfície. */
+body.ui-native-shell .fer-weighing-modal .pesagem-select-action {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+body.ui-native-shell .fer-weighing-modal .pesagem-select-action .select2-container { width: auto !important; }
+body.ui-native-shell .fer-weighing-modal .pesagem-select-action > .btn { flex: 0 0 40px; }
+body.ui-native-shell .fer-weighing-modal .pesagem-select-action > .clear-button {
+    flex: 0 0 40px;
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+    border: 1px solid var(--ui-border);
+    border-radius: 7px;
+    cursor: pointer;
+}
+body.ui-native-shell .fer-weighing-modal .pesagem-select-action > .clear-button:is(:hover,:focus-visible) {
+    color: var(--ui-ink);
+    background: var(--ui-hover);
+}
+body.ui-native-shell .fer-weighing-modal .modal-body > form > .row > .form-group,
+body.ui-native-shell .fer-weighing-modal .form-group > .row > .form-group { min-width: 0; }
+body.ui-native-shell .fer-weighing-modal .form-group > :is(label, .input-group) + label { margin-top: 10px; }
+body.ui-native-shell .fer-weighing-modal .fer-weighing-actions { padding: 0; }
+body.ui-native-shell .fer-weighing-quick-modal .modal-header {
+    align-items: center;
+    min-height: 58px;
+    color: var(--ui-ink);
+    background: var(--ui-surface-alt);
+    border-bottom-color: var(--ui-border);
+}
+body.ui-native-shell .fer-weighing-quick-modal .modal-header .close { color: var(--ui-muted); text-shadow: none; opacity: 1; }
+body.ui-native-shell .fer-weighing-quick-modal .modal-body > :is(.quick-person,.quick-vehicle,.quick-employee) { row-gap: 2px; }
+body.ui-native-shell .fer-weighing-quick-modal .form-group { min-width: 0; margin-bottom: 12px; }
+body.ui-native-shell .fer-weighing-quick-modal .form-group > label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .fer-weighing-quick-modal .form-control,
+body.ui-native-shell .fer-weighing-quick-modal .select2-selection--single { min-height: 40px; }
+body.ui-native-shell .fer-weighing-quick-modal .input-group > .form-control { min-width: 0; }
+body.ui-native-shell .fer-weighing-quick-modal .modal-footer { gap: 8px; }
+body.ui-native-shell .fer-weighing-quick-modal .modal-footer > .btn { margin: 0; }
+body.ui-native-shell .fer-weighing-attachments { row-gap: 7px; }
+body.ui-native-shell .fer-weighing-attachments p { margin: 0 0 5px; font-size: 12px; font-weight: 600; color: var(--ui-ink); }
+body.ui-native-shell .fer-weighing-attachments .form-group { margin-bottom: 0; }
+body.ui-native-shell .fer-weighing-attachments label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    margin: 0;
+    padding: 9px 11px;
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    color: var(--ui-ink);
+    background: var(--ui-surface-alt);
+    cursor: pointer;
+}
+body.ui-native-shell .fer-weighing-attachments label:has(input:checked) { border-color: var(--ui-accent); background: var(--ui-accent-soft); }
+body.ui-native-shell .fer-weighing-attachments input { flex: 0 0 17px; width: 17px; height: 17px; margin: 0; accent-color: var(--ui-accent); }
+body.ui-native-shell .fer-weighing-attachments label:focus-within { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+
+body.ui-native-shell .fer-weighing-modal .adp-ticket-camera-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 190px;
+    padding: 8px;
+    overflow: auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    background: var(--ui-surface-alt);
+}
+body.ui-native-shell .fer-weighing-modal .adp-ticket-camera-thumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: min(260px, 100%);
+    min-height: 78px;
+    padding: 6px;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+}
+body.ui-native-shell .fer-weighing-modal .adp-ticket-camera-thumb:is(:hover,:focus-visible) {
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 2px var(--ui-focus);
+}
+body.ui-native-shell .fer-weighing-modal .adp-ticket-camera-thumb img {
+    width: 82px;
+    height: 62px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+body.ui-native-shell .fer-weighing-modal .adp-ticket-camera-thumb-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 82px;
+    height: 62px;
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+    border-radius: 6px;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.1;
+}
+body.ui-native-shell .fer-weighing-modal[id^="modalConcluir"] .modal-dialog {
+    max-width: min(600px, calc(100vw - 32px));
+}
+body.ui-native-shell .fer-weighing-modal[id^="modalConcluir"] .modal-body > form > .btn[type="submit"] {
+    display: block;
+    min-height: 40px;
+    margin-left: auto;
+}
+body.ui-native-shell .fer-weighing-message-modal .modal-header {
+    align-items: center;
+    min-height: 58px;
+    color: var(--ui-ink);
+    background: var(--ui-surface-alt);
+}
+body.ui-native-shell .fer-weighing-message-modal .modal-body .row { row-gap: 6px; }
+body.ui-native-shell .fer-weighing-message-modal .modal-body .form-group { min-width: 0; }
+body.ui-native-shell .fer-weighing-message-modal .modal-body .form-group > label.col-form-label {
+    margin: 0 0 6px;
+    padding: 0;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .fer-weighing-message-modal .modal-footer { gap: 8px; }
+body.ui-native-shell .fer-weighing-message-modal .modal-footer > .btn { margin: 0; }
+body.ui-native-shell .fer-weighing-image-modal .modal-content {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+}
+body.ui-native-shell .fer-weighing-image-modal .modal-header {
+    align-items: center;
+    min-height: 56px;
+    background: var(--ui-surface-alt);
+}
+body.ui-native-shell .fer-weighing-image-modal .modal-header .close {
+    color: var(--ui-muted);
+    text-shadow: none;
+    opacity: 1;
+}
+body.ui-native-shell .fer-weighing-image-modal .modal-body { background: var(--ui-surface-alt); }
+
+@media (max-width: 1399px) {
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 991px) {
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row > .form-group:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 650px) {
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-toolbar { align-items: flex-start !important; }
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-toolbar > div:first-child { width: 100%; }
+    body.ui-native-shell .fer-extra--pesagens .quick-actions { justify-content: flex-start !important; }
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row { grid-template-columns: minmax(0, 1fr) 40px; }
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters > .form-row > .form-group:nth-child(-n+5) { grid-column: 1 / -1; }
+    body.ui-native-shell .fer-extra--pesagens .fer-weighing-filters .btn-filter { width: 100%; }
+}

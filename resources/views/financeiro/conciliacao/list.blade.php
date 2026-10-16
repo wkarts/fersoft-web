@@ -290,7 +290,7 @@
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header text-white" style="background-color: #1f9866;">
                         <h5 class="modal-title font-weight-bold"><i class="fas fa-link mr-2"></i> Vincular Títulos Manualmente</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
                         <div class="row alert alert-primary bg-white border-primary mb-3 mx-0">
@@ -369,7 +369,7 @@
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header bg-dark text-white">
                         <h5 class="modal-title font-weight-bold"><i class="fas fa-plus-circle mr-2"></i> Lançar Despesa/Receita</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
                         <div class="alert alert-secondary bg-white mb-3" id="info_extrato_novo"></div>
@@ -480,7 +480,7 @@
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header text-white" style="background-color: #1f9866;">
                         <h5 class="modal-title font-weight-bold"><i class="fas fa-exchange-alt mr-2"></i> Transferência Interna</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
                         <div class="alert bg-white mb-4 shadow-sm" style="border-left: 4px solid #1f9866;" id="info_extrato_transf"></div>
@@ -519,7 +519,7 @@
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header text-white" style="background-color: #1f9866;">
                     <h5 class="modal-title font-weight-bold"><i class="fas fa-book-open mr-2"></i> Manual: Conciliação Bancária Inteligente</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                 </div>
                 <div class="modal-body bg-light" style="max-height: 70vh; overflow-y: auto;">
                     <h5 class="text-primary font-weight-bold">1. Qual o objetivo desta tela?</h5>

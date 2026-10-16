@@ -33,11 +33,15 @@
                             @endif
                         </span>
                         <div>
-                            <label for="foto-perfil">Selecione sua foto</label>
-                            <input id="foto-perfil" type="file" name="foto" accept="image/jpeg,image/png,image/webp"
-                                   required class="form-control @error('foto') is-invalid @enderror">
+                            <span class="ui-user-profile-photo__title">Selecione sua foto</span>
+                            <div class="ui-user-profile-photo__picker">
+                                <input id="foto-perfil" type="file" name="foto" accept="image/jpeg,image/png,image/webp"
+                                       required class="ui-user-profile-photo__input @error('foto') is-invalid @enderror" aria-describedby="foto-perfil-arquivo foto-perfil-ajuda">
+                                <label class="ui-user-profile-photo__pick-button" for="foto-perfil">Selecionar foto</label>
+                                <span class="ui-user-profile-photo__filename" id="foto-perfil-arquivo" aria-live="polite">Nenhum arquivo selecionado</span>
+                            </div>
                             @error('foto')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <small class="text-muted">JPG, PNG ou WebP, até 2 MB.</small>
+                            <small class="text-muted" id="foto-perfil-ajuda">JPG, PNG ou WebP, até 2 MB.</small>
                         </div>
                     </div>
                     <div class="ui-user-profile-photo__buttons">
@@ -49,4 +53,15 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('javascript')
+<script>
+    document.querySelectorAll('.ui-user-profile-photo__input').forEach(function (input) {
+        input.addEventListener('change', function () {
+            const filename = input.closest('.ui-user-profile-photo__picker').querySelector('.ui-user-profile-photo__filename');
+            filename.textContent = input.files.length ? input.files[0].name : 'Nenhum arquivo selecionado';
+        });
+    });
+</script>
 @endsection
