@@ -2018,7 +2018,7 @@ class NFCeService{
 
         $mensagem = "Erro: [704] - " . $motivo . "\n\n";
         $mensagem .= "Horários, cada um em seu campo:\n";
-        $mensagem .= "Registro da venda (created_at no banco, fuso da aplicação " . $timezone . "): " . ($registroVenda ?: 'não disponível') . "\n";
+        $mensagem .= "Registro da venda (created_at bruto no banco; app.timezone=" . $timezone . "): " . ($registroVenda ?: 'não disponível') . "\n";
         $mensagem .= "Campo venda.data_emissao no banco: " . ($dataEmissaoBanco ?: 'NULL/não preenchido') . "\n";
         $mensagem .= "Emissão fiscal do XML (dhEmi): " . $dhEmi . "\n";
         $mensagem .= "Saída/movimentação do XML (dhSaiEnt): " . $dhSaiEnt . "\n";
