@@ -357,9 +357,18 @@ jobs:
             echo "- URL da release: ${{ steps.create_release.outputs.url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  notify-success:
-    if: ${{ needs.create-release.result == 'success' }}
+  apply-release:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.prerelease != true }}
     needs: [prepare-release, create-release]
+    uses: ./.github/workflows/deploy-release-notes.yml
+    with:
+      version: ${{ needs.prepare-release.outputs.version }}
+      ref: ${{ needs.prepare-release.outputs.version }}
+    secrets: inherit
+
+  notify-success:
+    if: ${{ always() && needs.create-release.result == 'success' && (needs.apply-release.result == 'success' || needs.apply-release.result == 'skipped') }}
+    needs: [prepare-release, create-release, apply-release]
     uses: ./.github/workflows/notify.yml
     with:
       status: success
@@ -371,14 +380,14 @@ jobs:
     secrets: inherit
 
   notify-failure:
-    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure') }}
-    needs: [full-validation, prepare-release, create-release]
+    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure' || needs.apply-release.result == 'failure') }}
+    needs: [full-validation, prepare-release, create-release, apply-release]
     uses: ./.github/workflows/notify.yml
     with:
       status: failure
       version: ${{ needs.prepare-release.outputs.version }}
       release_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       commit_sha: ${{ github.sha }}
-      summary: "Falha no pipeline de release. Verificar logs do run ${{ github.run_id }}."
+      summary: "Falha no pipeline de release ou aplicação. Verificar logs do run ${{ github.run_id }}."
       notify_required: false
     secrets: inherit
