@@ -19,21 +19,20 @@
             @php
                 $appVersionValue = trim((string) (optional($appVersionCurrent)->version ?? ''));
                 $appRevisionValue = trim((string) (optional($appVersionCurrent)->commit_hash ?? ''));
+                $appVersionTooltip = 'Versão instalada: ' . ($appVersionValue !== '' ? $appVersionValue : 'N/A');
+                if ($appRevisionValue !== '') {
+                    $appVersionTooltip .= ' · revisão: ' . $appRevisionValue;
+                }
+                $appVersionTooltip .= ' · abrir histórico de versões';
             @endphp
 
             <div class="ui-version app-version-desktop-wrapper">
-                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="Versão instalada e histórico de release notes">
+                <a href="/app-versions" class="btn btn-sm btn-block app-version-desktop-btn" title="{{ $appVersionTooltip }}">
                     <span class="app-version-desktop-head">
-                        <i class="la la-code-branch"></i>
+                        <i class="la la-code-branch" aria-hidden="true"></i>
                         <span class="app-version-desktop-main">
-                            V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}
+                            <span class="app-version-desktop-tag">V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}</span>
                             @include('app_versions.installed_identity')
-
-                            @if($appRevisionValue !== '')
-                                <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
-                                    ({{ $appRevisionValue }})
-                                </span>
-                            @endif
                         </span>
                     </span>
                 </a>

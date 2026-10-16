@@ -10,8 +10,16 @@ body.ui-native-shell .ui-brand img { display:block; width:auto; max-width:145px;
 body.ui-native-shell .ui-icon-button { display:inline-flex; flex:0 0 auto; justify-content:center; align-items:center; width:36px; height:36px; border:1px solid var(--ui-border); border-radius:8px; background:var(--ui-surface); color:var(--ui-muted); font:inherit; font-size:18px; text-decoration:none; cursor:pointer; }
 body.ui-native-shell .ui-icon-button:hover { color:var(--ui-accent); border-color:var(--ui-accent); background:var(--ui-hover); }
 body.ui-native-shell .ui-version { display:flex; align-items:center; min-height:49px; margin:0; padding:0 19px; border-bottom:1px solid var(--ui-border); flex-shrink:0; font-size:10px; }
-body.ui-native-shell .ui-version .app-version-desktop-btn { padding:5px 8px; color:var(--ui-sidebar-ink)!important; border:0!important; background:transparent!important; text-align:left; }
-body.ui-native-shell .app-version-desktop-revision { font-size:9px; opacity:.8; overflow-wrap:anywhere; }
+body.ui-native-shell .ui-version .app-version-desktop-btn { display:flex; align-items:center; width:100%; min-width:0; padding:4px 0; color:var(--ui-sidebar-ink)!important; border:0!important; background:transparent!important; text-align:left; }
+body.ui-native-shell .ui-version .app-version-desktop-head { display:flex; align-items:center; gap:7px; width:100%; min-width:0; }
+body.ui-native-shell .ui-version .app-version-desktop-head > i { flex:0 0 auto; line-height:1; }
+body.ui-native-shell .ui-version .app-version-desktop-main { display:block; min-width:0; width:100%; line-height:1.25; }
+body.ui-native-shell .ui-version .app-version-desktop-tag,
+body.ui-native-shell .ui-version .app-version-desktop-main > small {
+    display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+body.ui-native-shell .ui-version .app-version-desktop-tag { font-size:11px; font-weight:600; }
+body.ui-native-shell .ui-version .app-version-desktop-main > small { margin-top:2px; color:var(--ui-muted); font-size:9px; font-weight:400; line-height:1.2; }
 body.ui-native-shell .ui-navigation { min-height:0; flex:1 1 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:var(--ui-border) transparent; padding:12px 10px; }
 body.ui-native-shell .ui-nav-caption { font-size:10px; letter-spacing:.09em; font-weight:600; padding:7px 11px 13px; margin:0; opacity:.75; color:var(--ui-sidebar-ink); }
 body.ui-native-shell .ui-nav-list, body.ui-native-shell .ui-nav-list ul { list-style:none; padding:0; margin:0; }
@@ -426,6 +434,7 @@ body.ui-native-shell.ui-theme-refined--dark .ui-mobile-brand .brand-logo img.ui-
     body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-btn:is(:hover,:focus-visible) {
         background:var(--ui-nav-active-bg)!important; color:var(--ui-nav-active-text)!important;
     }
+    body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-head { justify-content:center; }
     body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-main { display:none; }
     body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-head i { font-size:19px; margin:0; }
     body.ui-native-shell.ui-nav-collapsed .ui-navigation { padding:9px 9px 20px; }
