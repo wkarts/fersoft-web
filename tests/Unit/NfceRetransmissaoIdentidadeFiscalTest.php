@@ -142,7 +142,7 @@ class NfceRetransmissaoIdentidadeFiscalTest extends TestCase
             $service
         );
         $this->assertStringContainsString(
-            "\$stdIde->dhEmi = \$dhEmiRetransmissao ?? \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
+            "\$stdIde->dhEmi = \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
             $service
         );
         $this->assertStringContainsString(
