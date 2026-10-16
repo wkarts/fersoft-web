@@ -2122,6 +2122,11 @@ class NFCeService{
             $std = $st->toStd($resp);
             $codigo = isset($std->cStat) ? (string) $std->cStat : null;
             $motivo = (string) ($std->xMotivo ?? 'Resposta SEFAZ sem motivo informado.');
+            $contextoRespostaLote = array_merge($contextoTransmissao, [
+                'transmissao_resposta_obtida_em' => $transmissaoRespostaEm,
+                'cStat_lote' => $codigo,
+                'xMotivo_lote' => $motivo,
+            ]);
 
             if ($std->cStat != 103 && $std->cStat != 104) {
                 $this->resultadoUltimaTransmissao = in_array((int)$std->cStat, [105, 656], true)
@@ -2130,12 +2135,12 @@ class NFCeService{
                 $this->concluirLogTransmissao(
                     $logger, $registro,
                     $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'rejeitado' : 'em_processamento',
-                    $codigo, $motivo, $resp
+                    $codigo, $motivo, $resp, $contextoRespostaLote
                 );
                 Log::log(
                     $this->resultadoUltimaTransmissao === 'rejeicao_sefaz' ? 'error' : 'warning',
                     'NFC-e: SEFAZ retornou código de não autorização.', [
-                    ...$contexto,
+                    ...$contextoRespostaLote,
                     'cStat' => $codigo,
                     'xMotivo' => $motivo,
                     'resultado' => $this->resultadoUltimaTransmissao,
@@ -2150,8 +2155,7 @@ class NFCeService{
             $codigoNota = (int) ($protocoloRetorno->cStat ?? 0);
             $motivoNota = (string) ($protocoloRetorno->xMotivo ?? $motivo);
             $dhRecebimentoSefaz = trim((string) ($protocoloRetorno->dhRecbto ?? ''));
-            $contextoResposta = array_merge($contextoTransmissao, [
-                'transmissao_resposta_obtida_em' => $transmissaoRespostaEm,
+            $contextoResposta = array_merge($contextoRespostaLote, [
                 'dhRecbto_sefaz' => $dhRecebimentoSefaz !== '' ? $dhRecebimentoSefaz : null,
                 'segundos_dhEmi_ate_dhRecbto_sefaz' => $this->diferencaTemporalEmSegundos(
                     $diagnosticoXml['dhEmi_xml'] ?? null,
@@ -2199,10 +2203,10 @@ class NFCeService{
                 $this->resultadoUltimaTransmissao = 'autorizada';
                 $this->concluirLogTransmissao(
                     $logger, $registro, 'aprovado',
-                    (string)$codigoAutorizacao, 'Autorização confirmada pela SEFAZ.', $resp
+                    (string)$codigoAutorizacao, 'Autorização confirmada pela SEFAZ.', $resp, $contextoResposta
                 );
                 Log::info('NFC-e: transmissão autorizada.', [
-                    ...$contexto,
+                    ...$contextoResposta,
                     'cStat' => $codigoAutorizacao,
                     'protocolo' => $protocolo,
                 ]);
@@ -2213,7 +2217,7 @@ class NFCeService{
                     $logger, $registro, 'erro_tecnico', $codigo, $e->getMessage(), $resp
                 );
                 Log::error('NFC-e: falha ao processar autorização retornada pela SEFAZ.', [
-                    ...$contexto,
+                    ...$contextoResposta,
                     'cStat' => $codigo,
                     'xMotivo' => $motivo,
                     'exception' => $e,
@@ -2224,7 +2228,8 @@ class NFCeService{
             // SSL timeout e falhas de rede são resultado INDETERMINADO.
             $this->resultadoUltimaTransmissao = 'indeterminado';
             $this->concluirLogTransmissao(
-                $logger, $registro, 'erro_tecnico', null, $e->getMessage()
+                $logger, $registro, 'erro_tecnico', null, $e->getMessage(),
+                null, $contextoTransmissao
             );
             Log::error('NFC-e: falha técnica/comunicação SOAP-SSL.', [
                 ...$contextoTransmissao,
