@@ -106,6 +106,8 @@ class NFCeController extends Controller
         $retransmitindo = $venda->estado === 'REJEITADO';
         $chaveOriginal = (string) $venda->chave;
         $numeroOriginal = (int) $venda->NFcNumero;
+        $ajusteDhEmi704 = null;
+        $hashXmlOriginal704 = null;
 
         if(valida_objeto($venda)){
 
@@ -292,8 +294,85 @@ class NFCeController extends Controller
                     }
                 }
 
+
+                if ($retransmitindo) {
+                    $confirmouAjusteDhEmi704 = filter_var(
+                        $request->input('confirmar_ajuste_dh_emissao_704', false),
+                        FILTER_VALIDATE_BOOLEAN
+                    );
+
+                    try {
+                        $dadosCorrecao704 = $nfe_service->dadosCorrecaoDhEmiNfce704($venda, $config);
+                    } catch (\Throwable $e) {
+                        $this->registrarEventoNfce($venda, 'preparacao_correcao_704_falhou', [
+                            'tipo_erro' => get_class($e),
+                            'mensagem' => $e->getMessage(),
+                        ], 'error');
+                        return response()->json([
+                            'codigo' => 'NFCE_704_AJUSTE_BLOQUEADO',
+                            'message' => 'Não foi possível validar o histórico fiscal da rejeição 704. Nenhuma correção foi aplicada.',
+                        ], 409);
+                    }
+
+                    if ($confirmouAjusteDhEmi704 && $dadosCorrecao704 === null) {
+                        return response()->json([
+                            'codigo' => 'NFCE_704_AJUSTE_BLOQUEADO',
+                            'message' => 'A confirmação da correção 704 expirou ou o último retorno já não é uma rejeição 704. Consulte a situação fiscal novamente.',
+                        ], 409);
+                    }
+
+                    if ($dadosCorrecao704 !== null && !$dadosCorrecao704['permitido']) {
+                        $this->registrarEventoNfce($venda, 'correcao_704_bloqueada', [
+                            'motivo' => $dadosCorrecao704['motivo'],
+                            'dhEmi_original' => $dadosCorrecao704['dhEmi_original'] ?? null,
+                            'tpEmis' => $dadosCorrecao704['tpEmis'] ?? null,
+                        ], 'warning');
+                        return response()->json([
+                            'codigo' => 'NFCE_704_AJUSTE_BLOQUEADO',
+                            'message' => $dadosCorrecao704['motivo'],
+                        ], 409);
+                    }
+
+                    if ($dadosCorrecao704 !== null && !$confirmouAjusteDhEmi704) {
+                        $this->registrarEventoNfce($venda, 'correcao_704_requer_confirmacao', [
+                            'dhEmi_original' => $dadosCorrecao704['dhEmi_original'],
+                            'dhEmi_proposto' => $dadosCorrecao704['dhEmi_proposto'],
+                            'tpEmis' => $dadosCorrecao704['tpEmis'],
+                            'consulta_sefaz_cStat' => 217,
+                        ], 'warning');
+                        return response()->json([
+                            'codigo' => 'NFCE_704_CONFIRMAR_DHEMI',
+                            'message' => 'A tentativa anterior teve rejeição 704 e a consulta atual confirmou cStat 217 (a chave não consta na SEFAZ).' . "\n"
+                                . 'Registro da venda (created_at bruto no banco; app.timezone='
+                                . ($dadosCorrecao704['timezone_aplicacao'] ?? 'não informado') . '): '
+                                . ($dadosCorrecao704['venda_created_at_db'] ?? 'não disponível') . "\n"
+                                . 'Campo venda.data_emissao no banco: '
+                                . ($dadosCorrecao704['venda_data_emissao_db'] ?? 'NULL/não preenchido') . "\n"
+                                . 'dhEmi original (emissão fiscal no XML): '
+                                . $dadosCorrecao704['dhEmi_original'] . "\n"
+                                . 'dhSaiEnt original (saída/movimentação no XML): '
+                                . ($dadosCorrecao704['dhSaiEnt_original'] ?? 'ausente') . "\n"
+                                . 'tpEmis original: 1 (normal)' . "\n\n"
+                                . 'Se confirmar, será assinado outro XML com dhEmi do relógio do servidor no momento da confirmação (agora: '
+                                . $dadosCorrecao704['dhEmi_proposto']
+                                . '; pode variar alguns segundos). dhSaiEnt, chave, série, número, cNF e tpEmis serão preservados.' . "\n\n"
+                                . 'O XML anterior fica preservado na auditoria. Como dhEmi é data de emissão fiscal, confirme somente conforme o procedimento fiscal da empresa.',
+                            'dhEmi_original' => $dadosCorrecao704['dhEmi_original'],
+                            'dhEmi_proposto' => $dadosCorrecao704['dhEmi_proposto'],
+                            'tpEmis' => $dadosCorrecao704['tpEmis'],
+                            'chave_preservada' => $dadosCorrecao704['chave'],
+                            'numero_nfce' => $dadosCorrecao704['nNF'],
+                        ], 409);
+                    }
+
+                    if ($dadosCorrecao704 !== null && $confirmouAjusteDhEmi704) {
+                        $ajusteDhEmi704 = $dadosCorrecao704;
+                        $hashXmlOriginal704 = hash('sha256', (string) $venda->signed_xml);
+                    }
+                }
+
                 try {
-                    $nfce = $nfe_service->gerarNFCe($vendaId);
+                    $nfce = $nfe_service->gerarNFCe($vendaId, $ajusteDhEmi704 !== null);
                 } catch (\Throwable $e) {
                     $this->registrarEventoNfce($venda, 'geracao_exception', [
                         'tipo_erro' => get_class($e),
@@ -370,6 +449,18 @@ class NFCeController extends Controller
                     }
                     $venda->signed_xml = $signed;
                     $venda->save();
+
+                    if ($ajusteDhEmi704 !== null) {
+                        $this->registrarEventoNfce($venda, 'dhEmi_corrigida_apos_704', [
+                            'dhEmi_anterior' => $ajusteDhEmi704['dhEmi_original'],
+                            'dhEmi_nova' => $nfce['dhEmi'] ?? null,
+                            'tpEmis' => $nfce['tpEmis'] ?? null,
+                            'consulta_sefaz_cStat' => 217,
+                            'confirmado_pelo_operador' => true,
+                            'sha256_xml_anterior' => $hashXmlOriginal704,
+                            'sha256_xml_novo' => hash('sha256', (string) $signed),
+                        ], 'warning');
+                    }
 
                     $this->registrarEventoNfce($venda, 'xml_assinado', [
                         'sha256_xml_assinado' => hash('sha256', (string) $signed),

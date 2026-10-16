@@ -44,7 +44,7 @@ class NfceRetransmissaoIdentidadeFiscalTest extends TestCase
     {
         return '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
             . '<infNFe versao="4.00" Id="NFe' . $chave . '">'
-            . '<ide><dhEmi>' . $dhEmi . '</dhEmi></ide>'
+            . '<ide><dhEmi>' . $dhEmi . '</dhEmi><tpEmis>1</tpEmis></ide>'
             . '</infNFe></NFe>';
     }
 
@@ -142,7 +142,7 @@ class NfceRetransmissaoIdentidadeFiscalTest extends TestCase
             $service
         );
         $this->assertStringContainsString(
-            "\$stdIde->dhEmi = \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
+            "\$stdIde->dhEmi = \$dhEmiRetransmissao ?? \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
             $service
         );
         $this->assertStringContainsString(
