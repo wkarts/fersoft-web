@@ -102,6 +102,8 @@ def check_superior_navigation(page, resize=False):
     """The same permission-filtered menu becomes a 47px row below the header."""
     original = navigation_contract(page)
     sidebar = page.locator('#ui-sidebar')
+    brand = sidebar.locator('.ui-brand .brand-logo')
+    version = sidebar.locator('.ui-version a[href="/app-versions"]')
     assert sidebar.evaluate('(e)=>e.previousElementSibling?.matches(".ui-masthead")'), 'Top menu must follow the header.'
     assert sidebar.evaluate('(e)=>e.nextElementSibling?.id==="ui-session"'), 'Session context must follow the top menu.'
     assert abs(sidebar.bounding_box()['height'] - 47) <= 2, 'Top navigation must be 47px high.'
@@ -109,6 +111,15 @@ def check_superior_navigation(page, resize=False):
         + page.locator('.ui-masthead').bounding_box()['height'])) <= 2
     assert page.locator('#ui-navigation').evaluate('(e)=>getComputedStyle(e).overflowX') == 'auto'
     assert page.locator('.ui-nav-list').evaluate('(e)=>getComputedStyle(e).flexWrap') == 'nowrap'
+    assert page.locator('#ui-navigation').evaluate('(e)=>e.nextElementSibling?.classList.contains("ui-version")'), \
+        'Top navigation and keyboard order disagree.'
+    assert brand.is_visible() and brand.get_attribute('href') == '/graficos', 'The original FERSOFT dashboard link is hidden in top layout.'
+    assert version.is_visible() and version.inner_text().strip(), 'The original release notes link is hidden in top layout.'
+    brand_box, nav_box, version_box = (item.bounding_box() for item in
+        (brand, page.locator('#ui-navigation'), version))
+    assert brand_box['x'] + brand_box['width'] <= nav_box['x'] + 2
+    assert nav_box['x'] + nav_box['width'] <= version_box['x'] + 2
+    assert version_box['x'] + version_box['width'] <= page.viewport_size['width'] + 2
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), 'Top row caused page overflow.'
     assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu became visible.'
 
@@ -132,12 +143,95 @@ def check_superior_navigation(page, resize=False):
         assert not submenu.is_visible(), 'Escape must close the top group.'
     assert navigation_contract(page) == original, 'Top layout changed the authorized menu tree.'
 
+    # The real brand and version stay accessible even when company permissions
+    # expose far more groups than fit the horizontal strip.
+    crowded = page.evaluate('''() => {
+        const navigation = document.querySelector('#ui-navigation');
+        const list = navigation.querySelector('.ui-nav-list');
+        const source = list.querySelector(':scope > .menu-item');
+        while (list.querySelectorAll(':scope > .menu-item').length < 36) {
+            const copy = source.cloneNode(true);
+            copy.classList.add('ui-top-density-fixture');
+            list.appendChild(copy);
+        }
+        navigation.scrollLeft = navigation.scrollWidth;
+        return {overflow: navigation.scrollWidth > navigation.clientWidth,
+            atEnd: navigation.scrollLeft > 0};
+    }''')
+    assert crowded['overflow'] and crowded['atEnd'], 'The 36-group strip lost horizontal scrolling.'
+    assert brand.is_visible() and version.is_visible(), 'Pinned existing links disappeared while the groups scrolled.'
+    assert version.bounding_box()['x'] + version.bounding_box()['width'] <= page.viewport_size['width'] + 2
+    page.evaluate('''() => {
+        document.querySelectorAll('.ui-top-density-fixture').forEach(item => item.remove());
+        document.querySelector('#ui-navigation').scrollLeft = 0;
+    }''')
+    assert navigation_contract(page) == original
+
+    # SUPER and other broad roles can place about 29 real routes under one
+    # group. The flyout needs its own vertical scrolling inside the viewport.
+    first.scroll_into_view_if_needed()
+    page.evaluate('''() => {
+        const list = document.querySelector('#ui-navigation .ui-nav-list > .menu-item .menu-subnav');
+        const source = list.querySelector(':scope > .menu-item:not(.menu-item-parent)');
+        while (list.querySelectorAll(':scope > .menu-item:not(.menu-item-parent)').length < 29) {
+            const copy = source.cloneNode(true);
+            copy.classList.add('ui-top-long-flyout-fixture');
+            list.appendChild(copy);
+        }
+    }''')
+    first.click()
+    long_flyout = page.locator('#' + first.get_attribute('aria-controls'))
+    assert long_flyout.is_visible()
+    flyout_state = long_flyout.evaluate('''e => {
+        e.scrollTop = e.scrollHeight;
+        const box = e.getBoundingClientRect();
+        return {scrolls: e.scrollHeight > e.clientHeight && e.scrollTop > 0,
+            bottom: box.bottom, top: box.top};
+    }''')
+    assert flyout_state['scrolls'], 'The long SUPER-style flyout cannot scroll through its routes.'
+    assert flyout_state['top'] >= 0 and flyout_state['bottom'] <= page.viewport_size['height'] + 2, \
+        'The long flyout extends beyond the viewport.'
+    first.press('Escape')
+    page.evaluate('''() => document.querySelectorAll('.ui-top-long-flyout-fixture').forEach(item => item.remove())''')
+    assert navigation_contract(page) == original
+
+    # A long operational view must keep the 47px row usable without covering
+    # the company, unit and user controls in the header while scrolling.
+    page.evaluate('''() => {
+        const spacer = document.createElement('div');
+        spacer.id = 'ui-top-scroll-test';
+        spacer.style.height = '1800px';
+        document.querySelector('.ui-page').appendChild(spacer);
+        window.scrollTo(0, 600);
+    }''')
+    page.wait_for_function('window.scrollY >= 400')
+    positions = page.evaluate('''() => ({
+        header: document.querySelector('.ui-masthead').getBoundingClientRect().toJSON(),
+        menu: document.querySelector('#ui-sidebar').getBoundingClientRect().toJSON()
+    })''')
+    header, menu = positions['header'], positions['menu']
+    assert menu['top'] >= -2 and menu['bottom'] <= page.viewport_size['height'], 'Top menu disappeared while scrolling.'
+    assert (header['bottom'] <= menu['top'] + 2 or header['top'] >= menu['bottom'] - 2), \
+        'Top menu overlaps the header after scrolling.'
+    first.click()
+    submenu = page.locator('#' + first.get_attribute('aria-controls'))
+    assert submenu.is_visible() and submenu.bounding_box()['y'] >= menu['bottom'] - 2, \
+        'The top flyout is inaccessible after scrolling.'
+    first.press('Escape')
+    page.evaluate('''() => {
+        document.querySelector('#ui-top-scroll-test').remove();
+        window.scrollTo(0, 0);
+    }''')
+
     if resize:
         page.set_viewport_size({'width': 768, 'height': 1024})
         assert sidebar.evaluate('(e)=>e.parentElement?.matches(".ui-app")'), 'Top menu did not return to the mobile drawer.'
+        assert sidebar.locator('.ui-brand').evaluate('(e)=>e.nextElementSibling?.classList.contains("ui-version")'), \
+            'The drawer did not restore its original keyboard order.'
         assert sidebar.evaluate('(e)=>e.inert'), 'Closed mobile drawer must not intercept keyboard focus.'
         page.locator('[data-ui-menu-open]').click()
         assert sidebar.get_attribute('aria-modal') == 'true'
+        assert brand.is_visible() and version.is_visible(), 'Existing dashboard or release links disappeared from the mobile drawer.'
         page.keyboard.press('Escape')
         assert sidebar.evaluate('(e)=>e.inert')
         page.set_viewport_size({'width': 1920, 'height': 1032})

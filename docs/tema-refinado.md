@@ -22,6 +22,8 @@ Essas escolhas resultam em 16 combinações persistíveis dos quatro controles b
 
 Temas personalizados dependem de registros publicados em `ui_theme_presets` e de liberação à empresa em `ui_theme_company_settings`. Usuários escolhem entre os temas autorizados; a preferência fica em `ui_theme_user_preferences` por usuário e empresa. Portanto, a ausência de um tema personalizado na tela não prova que o preset visual de fábrica esteja ausente; pode significar que ele não foi publicado ou liberado naquele contexto.
 
+O controle **Tema** do cabeçalho refinado abre o Studio `/ui/temas`, que oferece os três presets de fábrica e temas personalizados publicados e liberados à empresa. O antigo modal `#modal-tema`, com as opções Indigo/Teal/Amber/Light, foi retirado somente do layout refinado porque não tinha gatilho nesse layout. A escolha legada continua no modo clássico para manter a reversão; modais operacionais, como `#modal-pesquisa`, permanecem disponíveis.
+
 ## Operação e validação
 
 As tabelas do Studio (`ui_theme_presets`, `ui_theme_company_settings`, `ui_theme_user_preferences`) e a coluna `menu_mode` são pré-requisitos de migrations já existentes no projeto. Esta correção de navegação e paletas **não cria migration**. Se `/ui/temas` indicar indisponibilidade do catálogo, confira o estado dessas migrations no ambiente antes de atribuir o problema ao CSS.

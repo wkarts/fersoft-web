@@ -226,58 +226,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-tema" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-    <div class="modal-dialog modal-sm" role="document">
-        <form method="get" action="/usuarios/setTema">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">TEMA</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        x
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="form-group validated col-sm-12 col-lg-12 col-12">
-                            <label class="col-form-label" id="">Tema</label>
-                            <select class="form-control custom-select" name="tema">
-                                <option @if($tema == 1) selected @endif value="1">Claro</option>
-                                <option @if($tema == 2) selected @endif value="2">Escuro</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group validated col-sm-12 col-lg-12 col-12">
-                            <label class="col-form-label" id="">Menu lateral</label>
-                            <select class="form-control custom-select" name="tema_menu">
-                                <option @if($tema_menu == 1) selected @endif value="1">Indigo</option>
-                                <option @if($tema_menu == 2) selected @endif value="2">Teal</option>
-                                <option @if($tema_menu == 3) selected @endif value="3">Amber</option>
-                                <option @if($tema_menu == 4) selected @endif value="4">Light</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="form-group validated col-sm-12 col-lg-12 col-12">
-                            <label class="col-form-label" id="">Tipo menu</label>
-                            <select class="form-control custom-select" name="tipo_menu">
-                                <option @if($tipoMenu == 'lateral') selected @endif value="lateral">Lateral</option>
-                                <option @if($tipoMenu == 'superior') selected @endif value="superior">Superior</option>
-                            </select>
-                        </div>
-                    </div>
-
-                </div>
-                <div class="modal-footer">
-                    <button style="width: 100%" id="btn-cpf" type="submit" class="btn btn-success font-weight-bold spinner-white spinner-right">SALVAR</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="modal fade" id="modal-pesquisa" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <form method="get" action="/usuarios/setTema">

@@ -184,13 +184,102 @@ body.ui-native-shell .modal-dialog.modal-lg { max-width: min(95vw, 820px); }
 body.ui-native-shell .modal-dialog.modal-xl { max-width: min(96vw, 1120px); }
 body.ui-native-shell .modal-content { background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 12px; box-shadow: 0 22px 70px rgba(15,40,46,.2); overflow: hidden; }
 body.ui-native-shell .modal-header { display: flex; align-items: center; min-height: 54px; padding: 13px 18px; background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); }
-body.ui-native-shell .modal-title { font-size: 15px; font-weight: 600; margin: 0; }
+body.ui-native-shell .modal-title { color: var(--ui-ink); font: 600 15px/1.4 Poppins, sans-serif; margin: 0; }
 body.ui-native-shell .modal-header .close { opacity: 1; color: var(--ui-muted); font: 500 22px/1 Poppins, sans-serif; text-shadow: none; }
+body.ui-native-shell .modal-header .close:hover { color: var(--ui-ink); background: var(--ui-hover); }
 body.ui-native-shell .modal-body { padding: 18px; background: var(--ui-surface); overflow-y: auto; max-height: min(72vh, 700px); }
 body.ui-native-shell .modal-footer { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; background: var(--ui-surface-alt); border-top: 1px solid var(--ui-border); }
 body.ui-native-shell .modal-footer > * { margin: 0; }
 body.ui-native-shell .modal-backdrop.show { opacity: .45; }
 body.ui-native-shell :is(.alert,.toast,.swal-modal,.swal2-popup) { border-radius: 10px; border: 1px solid var(--ui-border); box-shadow: var(--ui-shadow); }
+
+/* The existing views use both swal(...) and Swal.fire(...). Their vendor skins
+   are separate; scope the same approved palette to both without changing calls. */
+body.ui-native-shell .swal-overlay { background: rgba(17, 37, 44, .48); }
+body.ui-native-shell .swal-overlay .swal-modal {
+  width: min(478px, calc(100vw - 24px)); max-height: calc(100dvh - 24px);
+  overflow-y: auto; background: var(--ui-surface); color: var(--ui-ink);
+  border: 1px solid var(--ui-border); border-radius: 12px;
+  box-shadow: 0 22px 70px rgba(15, 40, 46, .2); font-family: Poppins, sans-serif;
+}
+body.ui-native-shell .swal-overlay :is(.swal-title,.swal-text,.swal-content) { color: var(--ui-ink); font-family: Poppins, sans-serif; }
+body.ui-native-shell .swal-overlay .swal-title { font-size: 17px; line-height: 1.4; font-weight: 600; }
+body.ui-native-shell .swal-overlay .swal-text { color: var(--ui-muted); font-size: 12.5px; line-height: 1.6; }
+body.ui-native-shell .swal-overlay .swal-footer { padding: 15px 18px 18px; }
+body.ui-native-shell .swal-overlay .swal-button {
+  min-height: 36px; padding: 8px 15px; border: 1px solid var(--ui-accent);
+  border-radius: 7px; background: var(--ui-accent); color: var(--ui-on-accent);
+  font: 600 11px/1.35 Poppins, sans-serif;
+}
+body.ui-native-shell .swal-overlay .swal-button:not([disabled]):is(:hover,:active) { background: var(--ui-accent-hover); border-color: var(--ui-accent-hover); }
+body.ui-native-shell .swal-overlay .swal-button--cancel {
+  background: var(--ui-surface-alt); border-color: var(--ui-border); color: var(--ui-ink);
+}
+body.ui-native-shell .swal-overlay .swal-button--cancel:not([disabled]):is(:hover,:active) { background: var(--ui-hover); border-color: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-button--danger { background: var(--ui-danger-text); border-color: var(--ui-danger-text); color: var(--ui-bg); }
+body.ui-native-shell .swal-overlay .swal-button--danger:not([disabled]):is(:hover,:active) { background: var(--ui-danger-text); border-color: var(--ui-danger-text); }
+body.ui-native-shell .swal-overlay .swal-button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ui-focus); }
+body.ui-native-shell .swal-overlay .swal-icon--warning { border-color: var(--ui-warning-border); animation: none; }
+body.ui-native-shell .swal-overlay .swal-icon--warning :is(.swal-icon--warning__body,.swal-icon--warning__dot) { background: var(--ui-warning-text); }
+body.ui-native-shell .swal-overlay .swal-icon--info { border-color: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-icon--info::before,
+body.ui-native-shell .swal-overlay .swal-icon--info::after { background: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-icon--error { border-color: var(--ui-danger-text); }
+body.ui-native-shell .swal-overlay .swal-icon--error .swal-icon--error__line { background: var(--ui-danger-text); }
+body.ui-native-shell .swal-overlay .swal-icon--success { border-color: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-icon--success :is(.swal-icon--success__line,.swal-icon--success__ring) { border-color: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-icon--success .swal-icon--success__line { background: var(--ui-accent); }
+body.ui-native-shell .swal-overlay .swal-icon--success :is(.swal-icon--success__hide-corners,.swal-icon--success__fix),
+body.ui-native-shell .swal-overlay .swal-icon--success::before,
+body.ui-native-shell .swal-overlay .swal-icon--success::after { background: var(--ui-surface); }
+body.ui-native-shell .swal-overlay :is(.swal-content__input,.swal-content__textarea) {
+  background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 7px;
+  color: var(--ui-ink); font: 400 12px/1.5 Poppins, sans-serif;
+}
+body.ui-native-shell .swal-overlay :is(.swal-content__input,.swal-content__textarea):focus { border-color: var(--ui-accent); outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+
+body.ui-native-shell .swal2-container .swal2-popup {
+  background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-border);
+  border-radius: 12px; box-shadow: 0 22px 70px rgba(15, 40, 46, .2);
+  font: 400 12px/1.55 Poppins, sans-serif;
+}
+body.ui-native-shell .swal2-container .swal2-popup:not(.swal2-toast) { max-height: calc(100dvh - 24px); overflow-y: auto; }
+body.ui-native-shell .swal2-container :is(.swal2-title,.swal2-content,.swal2-footer,.swal2-close) { color: var(--ui-ink); font-family: Poppins, sans-serif; }
+body.ui-native-shell .swal2-container .swal2-title { font-size: 17px; line-height: 1.4; font-weight: 600; }
+body.ui-native-shell .swal2-container .swal2-content { color: var(--ui-muted); font-size: 12.5px; line-height: 1.6; }
+body.ui-native-shell .swal2-container .swal2-footer { border-color: var(--ui-border); }
+body.ui-native-shell .swal2-container .swal2-actions:not(.swal2-loading) .swal2-styled {
+  min-height: 36px; padding: 8px 15px; border-radius: 7px;
+  font: 600 11px/1.35 Poppins, sans-serif;
+}
+body.ui-native-shell .swal2-container .swal2-actions:not(.swal2-loading) .swal2-confirm {
+  background: var(--ui-accent)!important; color: var(--ui-on-accent)!important; border: 1px solid var(--ui-accent);
+}
+body.ui-native-shell .swal2-container .swal2-actions:not(.swal2-loading) .swal2-confirm:is(:hover,:active) { background: var(--ui-accent-hover)!important; border-color: var(--ui-accent-hover); }
+body.ui-native-shell .swal2-container .swal2-cancel { background: var(--ui-surface-alt)!important; color: var(--ui-ink)!important; border: 1px solid var(--ui-border); }
+body.ui-native-shell .swal2-container .swal2-cancel:is(:hover,:active) { background: var(--ui-hover)!important; border-color: var(--ui-accent); }
+body.ui-native-shell .swal2-container .swal2-deny { background: var(--ui-danger-text)!important; color: var(--ui-bg)!important; border: 1px solid var(--ui-danger-text); }
+body.ui-native-shell .swal2-container :is(.swal2-styled,.swal2-close):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ui-focus); }
+body.ui-native-shell .swal2-container .swal2-icon.swal2-warning { border-color: var(--ui-warning-border); color: var(--ui-warning-text); }
+body.ui-native-shell .swal2-container :is(.swal2-icon.swal2-info,.swal2-icon.swal2-question,.swal2-icon.swal2-success) { border-color: var(--ui-accent); color: var(--ui-accent); }
+body.ui-native-shell .swal2-container .swal2-icon.swal2-error { border-color: var(--ui-danger-text); color: var(--ui-danger-text); }
+body.ui-native-shell .swal2-container .swal2-error [class^=swal2-x-mark-line] { background: var(--ui-danger-text); }
+body.ui-native-shell .swal2-container .swal2-success [class^=swal2-success-line] { background: var(--ui-accent); }
+body.ui-native-shell .swal2-container .swal2-success [class^=swal2-success-circular-line],
+body.ui-native-shell .swal2-container .swal2-success .swal2-success-fix { background: var(--ui-surface); }
+body.ui-native-shell .swal2-container :is(.swal2-input,.swal2-textarea,.swal2-select,.swal2-radio,.swal2-checkbox) {
+  background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink);
+  font: 400 12px/1.5 Poppins, sans-serif;
+}
+body.ui-native-shell .swal2-container :is(.swal2-input,.swal2-textarea,.swal2-select):focus { border-color: var(--ui-accent); outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: 0 0 0 4px var(--ui-focus); }
+body.ui-native-shell .swal2-container .swal2-input.swal2-inputerror {
+  border-color: var(--ui-danger-text)!important;
+  box-shadow: 0 0 0 2px var(--ui-danger-border)!important;
+}
+body.ui-native-shell .swal2-container .swal2-input.swal2-inputerror:focus {
+  outline: 2px solid var(--ui-danger-text); outline-offset: 2px;
+}
+body.ui-native-shell .swal2-container .swal2-validation-message { background: var(--ui-danger-bg); color: var(--ui-danger-text); }
 body.ui-native-shell .alert-success { background: var(--ui-accent-soft); color: var(--ui-accent-hover); border-color: var(--ui-border); }
 body.ui-native-shell .alert-danger { background: var(--ui-danger-bg); color: var(--ui-danger-text); border-color: var(--ui-danger-border); }
 body.ui-native-shell .alert-warning { background: var(--ui-warning-bg); color: var(--ui-warning-text); border-color: var(--ui-warning-border); }
