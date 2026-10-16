@@ -4,6 +4,8 @@
     const body = document.body;
     const sidebar = document.getElementById('ui-sidebar');
     const navigation = document.getElementById('ui-navigation');
+    const brand = sidebar?.querySelector('.ui-brand');
+    const version = sidebar?.querySelector('.ui-version');
     const workspace = document.getElementById('kt_wrapper');
     const masthead = workspace?.querySelector('.ui-masthead');
     if (!body?.classList.contains('ui-native-shell') || !sidebar || !navigation || !workspace || !masthead) return;
@@ -43,12 +45,17 @@
     function placeNavigation() {
         if (desktop.matches) {
             if (sidebar.previousElementSibling !== masthead) masthead.insertAdjacentElement('afterend', sidebar);
+            // Match the keyboard reading order to the visible strip: brand, modules, version.
+            if (version && navigation.nextElementSibling !== version) navigation.insertAdjacentElement('afterend', version);
         } else if (sidebar.parentElement !== body.querySelector('.ui-app')) {
             workspace.parentElement.insertBefore(sidebar, workspace.parentElement.querySelector('.ui-menu-backdrop'));
             sidebar.querySelectorAll('.ui-nav-list > .menu-item > .menu-submenu').forEach(menu => {
                 menu.style.removeProperty('--ui-flyout-top');
                 menu.style.removeProperty('--ui-flyout-left');
             });
+        }
+        if (!desktop.matches && brand && version && brand.nextElementSibling !== version) {
+            brand.insertAdjacentElement('afterend', version);
         }
         positionFlyouts();
     }

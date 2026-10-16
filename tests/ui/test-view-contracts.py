@@ -65,6 +65,20 @@ def extract_critical_counts(source):
 
 
 class DevelopViewContract(unittest.TestCase):
+    def test_refined_theme_uses_studio_without_legacy_palette_dialog(self):
+        layout = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text(encoding='utf-8')
+        masthead = (ROOT / 'resources/views/themes/refined/partials/masthead.blade.php').read_text(encoding='utf-8')
+
+        self.assertNotIn('id="modal-tema"', layout)
+        self.assertNotIn('name="tema_menu"', layout)
+        self.assertNotIn('name="tipo_menu"', layout)
+        for old_palette in ('>Indigo</option>', '>Teal</option>', '>Amber</option>', '>Light</option>'):
+            self.assertNotIn(old_palette, layout)
+        self.assertIn('route(\'ui.themes.index\')', masthead)
+        # Operational dialogs remain part of the refined layout.
+        self.assertIn('id="modal-pesquisa"', layout)
+        self.assertIn('id="modal-dinamic"', layout)
+
     def test_fields_actions_modal_hooks_and_routes_survive_visual_rebuild(self):
         index = json.loads(BASELINE.read_text(encoding='utf-8'))
         self.assertEqual('supplied develop ZIP', index['source'])
