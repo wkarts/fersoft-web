@@ -465,6 +465,7 @@
                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
                             <a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
                                 Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                                @include('app_versions.installed_identity')
                             </a>
                         </li>
 

@@ -27,6 +27,7 @@
                         <i class="la la-code-branch"></i>
                         <span class="app-version-desktop-main">
                             V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}
+                            @include('app_versions.installed_identity')
 
                             @if($appRevisionValue !== '')
                                 <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
