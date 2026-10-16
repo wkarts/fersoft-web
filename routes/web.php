@@ -352,6 +352,10 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
             Route::post('/arquivos/{asset}/publicar', 'LoginAppearanceController@publishAsset')->name('config.aparencia.assets.publish');
         });
     }
+
+    // Administração exclusiva dos temas do ERP, ao lado da aparência do login.
+    // O controller confirma a permissão de superadmin em todas as requisições.
+    Route::get('/temas', 'UiThemeController@admin')->name('config.themes.index');
 });
 
 // ====================================================

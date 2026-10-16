@@ -69,6 +69,23 @@ body.ui-theme-refined .ui-studio__section {
 }
 body.ui-theme-refined .ui-studio__section-head { margin: 0 0 18px; }
 body.ui-theme-refined .ui-studio__section-head p { max-width: 850px; }
+body.ui-theme-refined .ui-studio__lock {
+    border: 0;
+    margin: 0;
+    min-width: 0;
+    padding: 0;
+}
+body.ui-theme-refined .ui-studio__lock:disabled,
+body.ui-theme-refined .ui-studio__lock[disabled] { opacity: .72; }
+body.ui-theme-refined .ui-studio__head-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+body.ui-theme-refined .ui-studio__publish:disabled,
+body.ui-theme-refined .ui-studio__apply:disabled { opacity: .65; cursor: not-allowed; }
 body.ui-theme-refined .ui-studio__count {
     border: 1px solid var(--ui-border);
     border-radius: 999px;
@@ -192,6 +209,12 @@ body.ui-theme-refined .ui-studio__admin-form label {
     font-size: 12px;
     font-weight: 700;
     margin: 0;
+}
+body.ui-theme-refined .ui-studio__admin-form label small {
+    color: var(--ui-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    font-weight: 400;
 }
 body.ui-theme-refined .ui-studio :is(input, select) {
     border: 1px solid var(--ui-border);

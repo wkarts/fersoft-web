@@ -40,6 +40,21 @@
     </div>
 </div>
 @endif
+@if((bool) data_get(session('user_logged'), 'super', false)
+    && config('ui_theme.active', false)
+    && class_exists(\App\Http\Controllers\UiThemeController::class))
+<div class="container-fluid mb-4">
+    <div class="card card-custom p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap">
+            <div>
+                <strong>Temas da Interface</strong>
+                <p class="text-muted mb-0">Catálogo de temas, publicação e disponibilidade para empresas.</p>
+            </div>
+            <a href="{{ route('config.themes.index') }}" class="btn btn-primary">Administrar temas</a>
+        </div>
+    </div>
+</div>
+@endif
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">

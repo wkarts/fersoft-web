@@ -9,11 +9,15 @@ on:
       - 'app/Support/UiThemePalette.php'
       - 'app/Services/UiThemeService.php'
       - 'app/Http/Controllers/UiThemeController.php'
+      - 'app/Console/Commands/InstallUiThemesCommand.php'
+      - 'routes/web.php'
+      - 'database/migrations/*ui_theme*'
       - 'config/ui_theme.php'
       - 'scripts/ui/**'
       - 'tests/ui/**'
       - 'tests/Unit/UiNativePaletteTest.php'
       - 'tests/Feature/UiPreferencesIntegrationTest.php'
+      - 'tests/Feature/UiThemeInstallationTest.php'
       - '.github/workflows/ui-native-browser.yml'
   workflow_dispatch:
 permissions:
@@ -86,6 +90,8 @@ jobs:
           set -euo pipefail
           php -l app/Support/UiThemePalette.php
           php -l app/Http/Controllers/UiThemeController.php
+          php -l app/Services/UiThemeService.php
+          php -l app/Console/Commands/InstallUiThemesCommand.php
           php -l tests/ui/render-native.php
           node --check public/js/ui-operational.js
           node --check public/js/ui-top-nav.js
@@ -100,7 +106,7 @@ jobs:
           python tests/ui/test-view-contracts.py
           php artisan config:clear
           php artisan view:cache
-          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest'
+          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest|UiThemeInstallationTest'
           php tests/ui/render-native.php
       - name: Testar browser desktop e mobile
         run: |
