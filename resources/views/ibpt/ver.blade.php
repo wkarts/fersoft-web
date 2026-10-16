@@ -1,6 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+<div class="document-fiscal-page document-fiscal-page--ibpt card card-custom gutter-b @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 
 
 	<div class="card-body">

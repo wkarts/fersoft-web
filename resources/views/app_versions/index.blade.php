@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--app-versions">
     <div class="card card-custom gutter-b">
         <div class="card-header py-3">
             <div class="card-title">
@@ -72,7 +77,7 @@
                                             </tr>
 
                                             @if($version->release_notes_current_html)
-                                                <div class="modal fade" id="release-current-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                <div class="modal fade document-fiscal-dialog" id="release-current-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                                     <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
                                                         <div class="modal-content">
                                                             <div class="modal-header">
@@ -86,7 +91,7 @@
                                             @endif
 
                                             @if($version->release_notes_cumulative_html)
-                                                <div class="modal fade" id="release-cumulative-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                                <div class="modal fade document-fiscal-dialog" id="release-cumulative-{{ $version->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                                     <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
                                                         <div class="modal-content">
                                                             <div class="modal-header">
@@ -111,4 +116,5 @@
             </div>
         </div>
     </div>
+</div>
 @endsection

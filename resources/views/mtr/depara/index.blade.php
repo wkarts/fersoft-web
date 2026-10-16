@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
-<div class="container-fluid">
+<div class="document-fiscal-page document-fiscal-page--mtr container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4><i class="fa fa-exchange-alt"></i> De-Para de Resíduos (MTR / SINIR / IEMA)</h4>
         <a href="{{ route('mtr.depara.create') }}" class="btn btn-primary">

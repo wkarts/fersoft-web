@@ -7,6 +7,7 @@ The ZIP is deliberately not needed in CI, which has no access to chat uploads.
 from html.parser import HTMLParser
 from pathlib import Path
 from collections import Counter
+import hashlib
 import json
 import unittest
 
@@ -23,13 +24,16 @@ class ContractParser(HTMLParser):
 
     def add(self, key, value):
         self.contracts.add((key, value))
-        if key in ('name', 'onclick', 'onchange', 'form:action', 'href'):
+        if key in ('name', 'onclick', 'onchange', 'onsubmit', 'oninput',
+                   'onkeyup', 'onkeydown', 'onkeypress', 'form:action', 'href'):
             self.critical_counts[(key, value)] += 1
 
     def handle_starttag(self, tag, attributes):
         attrs = dict(attributes)
-        for key in ('id', 'name', 'onclick', 'onchange', 'data-toggle',
-                    'data-target', 'data-dismiss'):
+        for key in ('id', 'name', 'onclick', 'onchange', 'onsubmit', 'oninput',
+                    'onkeyup', 'onkeydown', 'onkeypress', 'data-toggle',
+                    'data-target', 'data-dismiss', 'data-wizard-type',
+                    'data-wizard-clickable'):
             value = attrs.get(key)
             # kt_content was a duplicated Metronic wrapper, not a page hook.
             if value and not (key == 'id' and value == 'kt_content'):
@@ -62,21 +66,42 @@ def extract_critical_counts(source):
 
 class DevelopViewContract(unittest.TestCase):
     def test_fields_actions_modal_hooks_and_routes_survive_visual_rebuild(self):
-        manifest = json.loads(BASELINE.read_text(encoding='utf-8'))
-        self.assertEqual('supplied develop ZIP', manifest['source'])
-        self.assertGreaterEqual(len(manifest['views']), 200)
-        for path, contract in manifest['views'].items():
-            with self.subTest(view=path):
-                current = ROOT / path
-                self.assertTrue(current.is_file())
-                actual = set(tuple(pair) for pair in extract_contracts(current.read_text(encoding='utf-8')))
-                expected = set(tuple(pair) for pair in contract)
-                missing = expected - actual
-                self.assertFalse(missing, f'{path}: removed functional HTML contracts: {sorted(missing)}')
-                counts = extract_critical_counts(current.read_text(encoding='utf-8'))
-                for key, value, minimum in manifest['duplicate_occurrences'].get(path, []):
-                    self.assertGreaterEqual(counts[(key, value)], minimum,
-                        f'{path}: lost one of the original {key}="{value}" controls')
+        index = json.loads(BASELINE.read_text(encoding='utf-8'))
+        self.assertEqual('supplied develop ZIP', index['source'])
+        self.assertGreaterEqual(index['views_count'], 200)
+        seen = set()
+        totals = Counter()
+        for entry in index['shards']:
+            shard_path = BASELINE.parent / entry['file']
+            self.assertEqual(shard_path.parent, BASELINE.parent / 'contracts')
+            raw = shard_path.read_bytes()
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), entry['sha256'], entry['file'])
+            shard = json.loads(raw)
+            self.assertEqual(len(shard['views']), entry['views'])
+            self.assertEqual(sum(map(len, shard['views'].values())), entry['contracts'])
+            self.assertEqual(sum(map(len, shard['duplicate_occurrences'].values())),
+                             entry['duplicate_occurrences'])
+            totals['views'] += entry['views']
+            totals['contracts'] += entry['contracts']
+            totals['duplicates'] += entry['duplicate_occurrences']
+            for path, contract in shard['views'].items():
+                with self.subTest(view=path):
+                    self.assertNotIn(path, seen, 'View duplicated across contract shards')
+                    seen.add(path)
+                    current = ROOT / path
+                    self.assertTrue(current.is_file())
+                    source = current.read_text(encoding='utf-8')
+                    actual = set(tuple(pair) for pair in extract_contracts(source))
+                    expected = set(tuple(pair) for pair in contract)
+                    missing = expected - actual
+                    self.assertFalse(missing, f'{path}: removed functional HTML contracts: {sorted(missing)}')
+                    counts = extract_critical_counts(source)
+                    for key, value, minimum in shard['duplicate_occurrences'].get(path, []):
+                        self.assertGreaterEqual(counts[(key, value)], minimum,
+                            f'{path}: lost one of the original {key}="{value}" controls')
+        self.assertEqual(totals['views'], index['views_count'])
+        self.assertEqual(totals['contracts'], index['contracts_count'])
+        self.assertEqual(totals['duplicates'], index['duplicate_occurrences_count'])
 
 
 if __name__ == '__main__':

@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Gerar Venda</h1></header>
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
 
 	<form class="card-body" method="post" action="/ordemServico/store_venda">
 		<input type="hidden" name="ordem_id" value="{{ $ordem->id }}">

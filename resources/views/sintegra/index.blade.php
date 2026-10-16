@@ -1,6 +1,9 @@
 @extends('default.layout', ['title' => 'Sintegra'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--sintegra card card-custom gutter-b">
     <div class="card-body">
         <br>
         <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">

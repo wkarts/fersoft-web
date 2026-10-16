@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Alterar Estado da OS</h1></header>
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
 
 	<div class="card-body">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -72,7 +76,7 @@
 </div>
 
 <div class="modal fade" id="modal-conta" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="fer-dialog modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<button type="button" class="close" data-dismiss="modal" aria-label="Close">

@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--support fer-extra--videos card card-custom gutter-b">
 	<div class="card-body">
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
@@ -46,7 +50,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-video" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modal-video" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<form class="modal-content" action="/videos/store" method="post">
 			<div class="modal-header">

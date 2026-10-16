@@ -29,12 +29,12 @@
 					</div>
 					@csrf
 
-					<div id="kt_wizard_v3">
+					<div id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 						<div class="ui-admin-tabs" role="tablist" aria-label="Configuração do emitente fiscal">
-							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-dados" aria-controls="emitente-painel-dados" aria-selected="true">Dados do Emissor</button>
-							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-outros" aria-controls="emitente-painel-outros" aria-selected="false">Outros</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-dados" data-wizard-type="step" data-wizard-state="done" aria-controls="emitente-painel-dados" aria-selected="true">Dados do Emissor</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-outros" data-wizard-type="step" data-wizard-state="current" aria-controls="emitente-painel-outros" aria-selected="false">Outros</button>
 						</div>
-						<div class="pb-5" id="emitente-painel-dados" role="tabpanel" aria-labelledby="emitente-tab-dados">
+						<div class="pb-5" id="emitente-painel-dados" data-wizard-type="step-content" role="tabpanel" aria-labelledby="emitente-tab-dados">
 
 							<div class="row">
 								<div class="col-xl-12">
@@ -607,7 +607,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="pb-5" id="emitente-painel-outros" role="tabpanel" aria-labelledby="emitente-tab-outros" hidden>
+						<div class="pb-5" id="emitente-painel-outros" data-wizard-type="step-content" role="tabpanel" aria-labelledby="emitente-tab-outros" hidden>
 
 							<div class="row">
 								<div class="col-xl-12">

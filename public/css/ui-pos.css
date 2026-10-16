@@ -212,6 +212,7 @@ body.ui-pos-refined .wizard [data-wizard-type="step-content"]:not([data-wizard-s
     body.ui-pos-refined .ui-pos-workarea .card-body[style*="height: 747px"] { height: auto !important; max-height: 470px; }
 }
 @media (max-width: 600px) {
+    body.ui-pos-refined .ui-pos-frame .row { margin-left: 0 !important; margin-right: 0 !important; }
     body.ui-pos-refined .ui-pos-frame { width: 100%; min-height: 100vh; margin: 0; border-radius: 0; border-left: 0; border-right: 0; }
     body.ui-pos-refined .ui-pos-frame > .col-lg-12 { padding: 0 12px 14px; }
     body.ui-pos-refined .ui-pos-toolbar-row { margin: 0 -12px 13px !important; padding: 12px; }

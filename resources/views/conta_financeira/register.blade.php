@@ -1,5 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--conta_financeira">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -93,5 +97,5 @@
 		</div>
 	</div>
 </div>
-
+</div>
 @endsection

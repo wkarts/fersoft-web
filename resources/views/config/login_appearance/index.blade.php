@@ -4,7 +4,11 @@
 <link rel="stylesheet" href="{{ asset('css/login-appearance-admin.css') }}?v={{ filemtime(public_path('css/login-appearance-admin.css')) }}">
 @endsection
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--appearance fer-catalog-config--config">
 @php
     $editorSettings = $editorTemplate['settings'];
     $previewUrl = $editorModel
@@ -326,4 +330,5 @@
     </section>
 </div>
 <script src="{{ asset('js/login-appearance-admin.js') }}?v={{ filemtime(public_path('js/login-appearance-admin.js')) }}" defer></script>
+</div>
 @endsection

@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--super-admin">
 <div class="card card-custom gutter-b">
     <div class="card-header border-0 py-5 d-flex justify-content-between align-items-center flex-wrap">
         <div>
@@ -101,5 +106,6 @@
             <p class="mt-3 mb-0 text-muted">O painel é uma fotografia sob demanda e não grava histórico. O relatório da CLI mede bytes das tuplas INSERT, não o espaço físico do MySQL.</p>
         </div>
     </div>
+</div>
 </div>
 @endsection

@@ -3,7 +3,11 @@
 @endphp
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--list fer-catalog-config--grupo_categorias">
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4><i class="fas fa-layer-group text-primary me-2"></i> Grupos de Categorias Financeiras</h4>
@@ -15,7 +19,7 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fechar aviso"><span aria-hidden="true">&times;</span></button>
         </div>
     @endif
 
@@ -69,5 +73,6 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection

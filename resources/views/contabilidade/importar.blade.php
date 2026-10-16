@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
-<div class="container-fluid mt-4">
+<header class="fer-page__heading"><h1>Importar Plano de Contas Contábil</h1></header>
+<div class="container-fluid mt-4 fer-page fer-operational fer-form fer-import">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Importar Plano de Contas Contábil</h3>
         <a href="{{ route('contabilidade.configuracoes.index') }}" class="btn btn-warning">
@@ -13,7 +17,7 @@
         <div class="alert alert-success">{{ session('sucesso') }}</div>
     @endif
 
-    <div class="card shadow-sm mt-3">
+    <div class="fer-panel card shadow-sm mt-3">
         <div class="card-body">
             <form action="{{ route('contabilidade.plano.importar') }}" method="POST" enctype="multipart/form-data">
                 @csrf
@@ -30,7 +34,7 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mt-4">
+    <div class="fer-panel card shadow-sm mt-4">
         <div class="card-header bg-light">
             <h5 class="card-title mb-0">Contas Cadastradas</h5>
         </div>

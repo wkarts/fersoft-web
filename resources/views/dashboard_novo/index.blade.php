@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
 @if(config('ui_theme.active', false))
@@ -7,14 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
-        .bg-gradient-primary {
-            background: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
-        }
-
-        .bg-gradient-info {
-            background: linear-gradient(180deg, #36b9cc 10%, #258391 100%);
-        }
-
         .display-4 {
             font-size: 2.5rem;
         }
@@ -44,8 +39,8 @@
         }
     </style>
 
-    <div class="container-fluid p-4" style="background: #f8f9fc;">
-        <div class="row mb-4 align-items-center">
+    <div class="container-fluid p-4 fer-page fer-dashboard-executive">
+        <div class="row mb-4 align-items-center fer-page__heading">
             <div class="col-md-5">
                 <h1 class="h4 mb-0 text-gray-800 font-weight-bold">
                     Dashboard Analítico Executivo
@@ -74,7 +69,7 @@
             </div>
 
             <div class="col-md-7 text-right">
-                <form action="{{ route('dashboard.analitico') }}" method="GET" class="form-inline justify-content-end">
+                <form action="{{ route('dashboard.analitico') }}" method="GET" class="form-inline justify-content-end fer-dashboard-controls">
                     <select name="filial_id" class="form-control mr-2 border-0 shadow-sm" onchange="this.form.submit()">
                         <option value="todos" {{ $filial_id == 'todos' ? 'selected' : '' }}>
                             Todas as Unidades (Consolidado)
@@ -113,7 +108,7 @@
 
         <div class="row mb-4">
             <div class="col-md-3">
-                <div class="card card-kpi shadow-sm bg-gradient-primary text-white p-4 h-100">
+                <div class="card card-kpi fer-kpi shadow-sm p-4 h-100">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase small font-weight-bold opacity-75">
@@ -129,7 +124,7 @@
             </div>
 
             <div class="col-md-3">
-                <div class="card card-kpi shadow-sm bg-gradient-info text-white p-4 h-100">
+                <div class="card card-kpi fer-kpi shadow-sm p-4 h-100">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-uppercase small font-weight-bold opacity-75">
@@ -428,7 +423,7 @@
             xaxis: {
                 categories: @json($produtosMaisVendidos->pluck('nome'))
             },
-            colors: ['#4e73df'],
+            colors: ['#1f9866'],
             plotOptions: {
                 bar: {
                     horizontal: true,
@@ -458,7 +453,7 @@
                     }
                 }
             },
-            colors: ['#1cc88a'],
+            colors: ['#70c8a0'],
             plotOptions: {
                 bar: {
                     horizontal: true,

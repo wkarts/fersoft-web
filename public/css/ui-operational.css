@@ -327,3 +327,45 @@ body.ui-native-shell .ui-chart-empty { height:203px; margin:18px 25px; }
 @media(max-width:991px) {
     body.ui-native-shell .ui-masthead { gap:8px; padding:9px 13px; }
 }
+
+/* Keep every existing operational action visible in a compact small-screen masthead. */
+@media(max-width:991px) {
+    body.ui-native-shell .ui-masthead { align-items:center; align-content:start; gap:6px 8px; min-height:0; padding:8px 13px; }
+    body.ui-native-shell .ui-mobile-brand { flex:1 1 0; }
+    body.ui-native-shell .ui-operational-actions { flex:1 1 100%; width:100%; }
+    body.ui-native-shell .ui-actions { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:6px 10px; }
+    body.ui-native-shell .ui-actions > .container-fluid { width:100%; min-width:0; flex:auto; }
+    body.ui-native-shell .ui-actions #ui-actions-menu-wrapper,
+    body.ui-native-shell .ui-actions #ui-actions-menu,
+    body.ui-native-shell .ui-actions .menu-nav { width:100%; }
+    body.ui-native-shell .ui-actions .menu-nav > .menu-nav { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:5px 8px; }
+    body.ui-native-shell .ui-actions .menu-nav > .menu-nav > .menu-item { margin:0!important; flex:0 1 auto; }
+    body.ui-native-shell .ui-actions .ui-header-company { order:1; }
+    body.ui-native-shell .ui-actions .menu-nav > .menu-nav > .d-lg-none { order:2; }
+    body.ui-native-shell .ui-actions .ui-header-environment { order:3; }
+    body.ui-native-shell .ui-actions .ui-header-unit { order:4; }
+    body.ui-native-shell .ui-actions .ui-header-theme { order:5; }
+    body.ui-native-shell .ui-actions .ui-header-whatsapp { order:6; }
+    body.ui-native-shell .ui-actions .ui-header-theme { margin-left:0; }
+    body.ui-native-shell .ui-actions .ui-header-unit { flex-direction:row; align-items:center; gap:6px; min-width:0!important; }
+    body.ui-native-shell .ui-actions .ui-header-unit::before { flex:0 0 auto; }
+    body.ui-native-shell .ui-actions .ui-header-unit .input-group { width:185px!important; max-width:100%; }
+    body.ui-native-shell .ui-actions .ui-header-unit .form-control { min-width:0; max-width:none; width:0; flex:1 1 0; }
+    body.ui-native-shell .ui-actions .ui-header-unit .label { padding:3px; }
+    body.ui-native-shell .ui-actions > .topbar { width:auto; min-width:0; margin:0; justify-content:flex-end; flex-wrap:nowrap; gap:8px; }
+    body.ui-native-shell .ui-actions .topbar { margin-top:0; }
+}
+@media(max-width:699px) {
+    body.ui-native-shell .ui-actions { grid-template-columns:minmax(0,1fr); }
+    body.ui-native-shell .ui-actions .ui-header-unit .input-group { width:175px!important; }
+    body.ui-native-shell .ui-actions > .topbar { width:100%; justify-content:space-between; }
+}
+@media(max-width:375px) {
+    body.ui-native-shell .ui-actions > .topbar { flex-wrap:wrap; justify-content:flex-start; }
+}
+
+/* The approved sidebar reserves its full brand area for the existing logo. */
+body.ui-native-shell[data-ui-layout="lateral"] .ui-sidebar .ui-brand img {
+    max-width:min(195px, 100%);
+    max-height:58px;
+}

@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b">
+    <header class="fer-page__heading"><h1>Exportação Contábil (Prosoft)</h1></header>
+<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="fer-page fer-operational fer-detail card card-custom gutter-b">
             <div class="card-header">
                 <h3 class="card-title d-flex align-items-center">
                     <!-- Ícone do Prosoft -->
@@ -91,7 +95,7 @@
     </div>
 
     <div class="modal fade" id="modalManualContabil" tabindex="-1" role="dialog" aria-labelledby="modalManualContabilTitle" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="fer-dialog modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title" id="modalManualContabilTitle"><i class="fa fa-book"></i> Manual de Operação: Exportação Contábil</h5>

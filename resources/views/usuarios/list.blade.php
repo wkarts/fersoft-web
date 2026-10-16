@@ -29,13 +29,13 @@
 
 				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-					<div id="kt_wizard_v3">
+					<div id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 						<div class="ui-admin-tabs" role="tablist" aria-label="Visualização de usuários">
-							<button class="ui-admin-tab" type="button" role="tab" id="usuarios-tab-tabela" aria-controls="usuarios-painel-tabela" aria-selected="true"><i class="la la-table" aria-hidden="true"></i> Tabela</button>
-							<button class="ui-admin-tab" type="button" role="tab" id="grade" aria-controls="usuarios-painel-grade" aria-selected="false"><i class="la la-tablet" aria-hidden="true"></i> Grade</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="usuarios-tab-tabela" data-wizard-type="step" data-wizard-state="done" aria-controls="usuarios-painel-tabela" aria-selected="true"><i class="la la-table" aria-hidden="true"></i> Tabela</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="grade" data-wizard-type="step" data-wizard-state="current" aria-controls="usuarios-painel-grade" aria-selected="false"><i class="la la-tablet" aria-hidden="true"></i> Grade</button>
 						</div>
 
-						<div class="pb-5" id="usuarios-painel-tabela" role="tabpanel" aria-labelledby="usuarios-tab-tabela">
+						<div class="pb-5" id="usuarios-painel-tabela" data-wizard-type="step-content" role="tabpanel" aria-labelledby="usuarios-tab-tabela">
 							<div class="row">
 								<div class="col-xl-12">
 
@@ -125,7 +125,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="pb-5" id="usuarios-painel-grade" role="tabpanel" aria-labelledby="grade" hidden>
+						<div class="pb-5" id="usuarios-painel-grade" data-wizard-type="step-content" role="tabpanel" aria-labelledby="grade" hidden>
 							<div class="row">
 
 								@foreach($usuarios as $c)

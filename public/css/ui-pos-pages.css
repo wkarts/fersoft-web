@@ -1,0 +1,217 @@
+/* Views auxiliares do PDV: os controles e scripts do domínio seguem no Blade. */
+body.ui-native-shell .ui-page .fer-pos-page { min-width: 0; color: var(--ui-ink); }
+body.ui-native-shell .ui-page .fer-pos-page--canvas.card {
+    margin: 0;
+    padding: 0;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none;
+}
+body.ui-native-shell .ui-page .fer-pos-page--canvas.card > .card-body {
+    padding: 0;
+    background: transparent !important;
+}
+body.ui-native-shell .ui-page .fer-pos-page #kt_user_profile_aside {
+    max-width: 100%;
+    margin: 0 !important;
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.content,.container,.container-fluid) {
+    max-width: none;
+    min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-pos-page > .card-body > :is(h2,h3,h4,h5),
+body.ui-native-shell .ui-page .fer-pos-page #content > :is(h2,h3,h4),
+body.ui-native-shell .ui-page .fer-pos-page #kt_user_profile_aside > h4,
+body.ui-native-shell .ui-page .fer-pos-page form > h3.card-title {
+    margin: 0 0 15px;
+    color: var(--ui-ink);
+    font-size: clamp(17px, 2vw, 21px);
+    font-weight: 600;
+    letter-spacing: -.03em;
+}
+body.ui-native-shell .ui-page .fer-pos-page .card.card-custom {
+    border: 1px solid var(--ui-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-pos-page .card-header {
+    gap: 9px;
+    background: var(--ui-surface) !important;
+    border-bottom: 1px solid var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-pos-page .card-header .card-title {
+    color: var(--ui-ink) !important;
+    font-size: 14px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-pos-page .row { min-width: 0; row-gap: 9px; }
+body.ui-native-shell .ui-page .fer-pos-page :is(.form-group,.input-group) { min-width: 0; }
+body.ui-native-shell .ui-page .fer-pos-page .form-group > label {
+    margin-bottom: 6px;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.form-control,.custom-select,.select2-selection--single) {
+    min-height: 39px;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.form-control,.custom-select):focus {
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-focus);
+}
+body.ui-native-shell .ui-page .fer-pos-page .input-group-text {
+    color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+    border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.datatable,.table-responsive) {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-border) transparent;
+}
+body.ui-native-shell .ui-page .fer-pos-page .datatable-table {
+    width: 100%;
+    min-width: 760px;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    font-variant-numeric: tabular-nums;
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.datatable-table,.table) th {
+    padding: 10px 12px;
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+    border-color: var(--ui-border);
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+body.ui-native-shell .ui-page .fer-pos-page :is(.datatable-table,.table) td {
+    padding: 10px 12px;
+    border-color: var(--ui-border);
+    vertical-align: middle;
+}
+body.ui-native-shell .ui-page .fer-pos-page .label {
+    min-height: 27px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-pos-page--list form[action="/frenteCaixa/filtro"],
+body.ui-native-shell .ui-page .fer-pos-page--devolucao #kt_user_profile_aside > .row:first-child,
+body.ui-native-shell .ui-page .fer-pos-page--troca #kt_user_profile_aside > .row:first-child,
+body.ui-native-shell .ui-page .fer-pos-page--register_nfe form[action="/nferemessa/store"] {
+    margin: 0 0 16px;
+    padding: 18px 20px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-pos-page--devolucao #kt_user_profile_aside > .row:first-child,
+body.ui-native-shell .ui-page .fer-pos-page--troca #kt_user_profile_aside > .row:first-child {
+    align-items: flex-end;
+    padding-bottom: 3px;
+}
+body.ui-native-shell .ui-page .fer-pos-page .wizard {
+    min-width: 0;
+    padding: 0;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-pos-page .wizard-steps {
+    gap: 6px;
+    padding: 9px 13px !important;
+    border-bottom: 1px solid var(--ui-border);
+    border-radius: 12px 12px 0 0;
+}
+body.ui-native-shell .ui-page .fer-pos-page .wizard-step {
+    min-height: 40px;
+    padding: 9px 12px;
+    border-radius: 7px;
+}
+body.ui-native-shell .ui-page .fer-pos-page .wizard [data-wizard-type="step-content"] {
+    min-width: 0;
+    padding: 13px;
+}
+body.ui-native-shell .ui-page .fer-pos-page--config .container { width: 100%; }
+body.ui-native-shell .ui-page .fer-pos-page--config .kt-section__body {
+    padding: 6px 16px 18px;
+}
+body.ui-native-shell .ui-page .fer-pos-page--config form > .row {
+    padding: 4px 14px 18px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 0 0 12px 12px;
+}
+body.ui-native-shell .ui-page .fer-pos-page--config .card.card-custom { margin-bottom: 0; }
+body.ui-native-shell .ui-page .fer-pos-page--config .form-group { margin-bottom: 14px; }
+body.ui-native-shell .ui-page .fer-pos-page--fechar_caixa #content > .row .card,
+body.ui-native-shell .ui-page .fer-pos-page--lista_fecha_caixa #content > .row .card {
+    height: 100%;
+}
+body.ui-native-shell .ui-page .fer-pos-page--fechar_caixa #form-caixa {
+    padding: 17px 19px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+}
+body.ui-native-shell .ui-page .fer-pos-page--register_nfe .search-prod {
+    z-index: 9999;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(33,59,69,.14);
+}
+body.ui-native-shell .ui-page .fer-pos-page--register_nfe .search-prod label {
+    display: block;
+    margin: 0;
+    padding: 8px 11px;
+    color: var(--ui-ink) !important;
+}
+body.ui-native-shell .ui-page .fer-pos-page--register_nfe .search-prod label:hover { background: var(--ui-hover); }
+body.ui-native-shell .fer-pos-modal .modal-content {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 22px 60px rgba(27,56,60,.16);
+}
+body.ui-native-shell .fer-pos-modal .modal-header { padding: 15px 19px; border-bottom: 1px solid var(--ui-border); }
+body.ui-native-shell .fer-pos-modal .modal-title { color: var(--ui-ink); font-size: 15px; font-weight: 600; }
+body.ui-native-shell .fer-pos-modal .modal-body { max-height: calc(100dvh - 185px); overflow-y: auto; padding: 19px; }
+body.ui-native-shell .fer-pos-modal .modal-footer { padding: 12px 19px; background: var(--ui-surface-alt); border-top: 1px solid var(--ui-border); }
+body.ui-native-shell .fer-pos-modal :is(.form-control,.custom-select,.select2-selection--single) {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+}
+@media (max-width: 991px) {
+    body.ui-native-shell .ui-page .fer-pos-page .card-toolbar { flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+    body.ui-native-shell .ui-page .fer-pos-page :is(.card-body,.card-header) { padding: 13px; }
+    body.ui-native-shell .ui-page .fer-pos-page--canvas.card > .card-body { padding: 0; }
+    body.ui-native-shell .ui-page .fer-pos-page :is(.form-control,.custom-select,.select2-selection--single) {
+        min-height: 44px !important;
+    }
+    body.ui-native-shell .ui-page .fer-pos-page .select2-selection__rendered { line-height: 42px !important; }
+    body.ui-native-shell .ui-page .fer-pos-page .select2-selection__arrow { height: 44px !important; }
+    body.ui-native-shell .ui-page .fer-pos-page--list form[action="/frenteCaixa/filtro"],
+    body.ui-native-shell .ui-page .fer-pos-page--register_nfe form[action="/nferemessa/store"] { padding: 13px; }
+    body.ui-native-shell .ui-page .fer-pos-page .wizard-steps { padding: 8px !important; }
+    body.ui-native-shell .ui-page .fer-pos-page .wizard-step { flex: 1 1 120px; }
+    body.ui-native-shell .fer-pos-modal .modal-dialog { max-width: none; width: calc(100% - 16px); margin: 8px; }
+    body.ui-native-shell .fer-pos-modal .modal-body { padding: 13px; }
+}

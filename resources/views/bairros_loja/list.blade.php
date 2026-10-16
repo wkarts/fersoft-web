@@ -1,11 +1,22 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-bairros_loja">
 
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
 
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 			<div class="col-12">
 
@@ -53,12 +64,12 @@
 				@foreach($bairros as $b)
 
 				<div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
-							<h3 class="card-title">{{substr($b->nome, 0, 60)}}
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
+						<div class="ui-admin-panel-head ui-commerce-panel-head">
+							<h3 class="ui-commerce-title">{{substr($b->nome, 0, 60)}}
 							</h3>
 
-							<div class="card-toolbar">
+							<div class="ui-commerce-tools">
 								<div class="dropdown dropdown-inline" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
 									<a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 										<i class="fa fa-ellipsis-h"></i>
@@ -94,7 +105,7 @@
 							</div>
 						</div>
 
-						<div class="card-body">
+						<div class="ui-admin-panel-body ui-commerce-panel-body">
 
 							<div class="kt-widget__info">
 								<span class="kt-widget__label">Valor de entrega:</span>
@@ -135,8 +146,8 @@
 				<div class="row">
 					@foreach($bairrosDoSuper as $b)
 					<div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-						<div class="card card-custom gutter-b example example-compact">
-							<div class="card-header">
+						<div class="ui-admin-panel ui-commerce-panel gutter-b">
+							<div class="ui-admin-panel-head ui-commerce-panel-head">
 								<div class="card-">
 									<h3 style="width: 230px; font-size: 12px; height: 10px;" class="">{{$b->id}} - {{substr($b->nome, 0, 30)}}
 									</h3>
@@ -158,4 +169,5 @@
 		</div>
 	</div>
 
-	@endsection	
+	</div>
+@endsection	

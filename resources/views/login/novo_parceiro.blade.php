@@ -14,9 +14,13 @@
 	<!--begin::Fonts -->
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700|Roboto:300,400,500,600,700">
 
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
+	@endunless
 	<!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
+	@endunless
 
 	<link href="/css/style.css" rel="stylesheet" type="text/css" />
 
@@ -43,19 +47,35 @@
 
 
 	<!--begin::Global Theme Styles(used by all pages) -->
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css" />
+	@endunless
 
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/pricing.css" rel="stylesheet" type="text/css" />
+	@endunless
 	<!--end::Global Theme Styles -->
 
 	<!--begin::Layout Skins(used by all pages) -->
 
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/light.css" rel="stylesheet" type="text/css" />
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/light-menu.css" rel="stylesheet" type="text/css" />
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/dark-brand.css" rel="stylesheet" type="text/css" />
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<link href="/metronic/css/dark-aside.css" rel="stylesheet" type="text/css" />
+	@endunless
 
 	<link rel="stylesheet" href="https://maxst.icons8.com/vue-static/landings/line-awesome/line-awesome/1.3.0/css/line-awesome.min.css">
 
@@ -77,6 +97,9 @@
 			border-right: 4px solid transparent;
 		}
 	</style>
+    @if(config('ui_theme.active', false))
+    <link rel="stylesheet" href="{{ asset('css/ui-auth.css') }}?v={{ filemtime(public_path('css/ui-auth.css')) }}">
+    @endif
 </head>
 
 
@@ -84,7 +107,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading @if(config('ui_theme.active', false)) fer-auth fer-auth--login fer-auth--register @endif">
 
 
 	<div class="d-flex flex-column flex-root">
@@ -146,7 +169,7 @@
 										</span>
 										@endif
 									</div>
-									<div class="form-group col-2 col-lg-4" style="margin-top: 30px;">
+					<div class="form-group col-2 col-lg-4 fer-consult-action" style="margin-top: 30px;">
 										<button id="consulta" style="margin-left: -15px;" id="kt_login_signin_submit" class="btn btn-success font-weight-bolder font-size-h3 px-4 spinner-white spinner-right" type="button">
 											<i class="la la-search"></i>
 										</button>
@@ -318,7 +341,10 @@
 
 		<!--end::Login-->
 	</div>
+	@unless(config('ui_theme.active', false))
 	<script>var HOST_URL = "/metronic/theme/html/tools/preview";</script>
+	@endunless
+@unless(config('ui_theme.active', false))
 	<script>
 		var KTAppSettings = {
 			"breakpoints": {
@@ -379,32 +405,59 @@
 			"font-family": "Poppins"
 		};
 	</script>
+@endunless
 
 
 
 	<!-- end::Global Config -->
 	<!--begin::Global Theme Bundle(used by all pages) -->
 
+@if(config('ui_theme.active', false))
+	<script src="/login3/js/jquery.min.js"></script>
+	<script src="/login3/js/popper.js"></script>
+	<script src="/login3/js/bootstrap.min.js"></script>
+	@endif
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/plugins.bundle.js" type="text/javascript"></script>
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/prismjs.bundle.js" type="text/javascript"></script>
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/scripts.bundle.js" type="text/javascript"></script>
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/fullcalendar.bundle.js" type="text/javascript"></script>
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/file.js" type="text/javascript"></script>
+	@endunless
 
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/wizard.js" type="text/javascript"></script>
+	@endunless
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/user.js" type="text/javascript"></script>
+	@endunless
 
 
 
 	<script type="text/javascript" src="/js/jquery.mask.min.js"></script>
 	<script type="text/javascript" src="/js/mascaras.js"></script>
+	@unless(config('ui_theme.active', false))
 	<script src="/metronic/js/select2.js" type="text/javascript"></script>
+	@endunless
 	<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/7.2.0/sweetalert2.all.min.js"></script> -->
+	@if(config('ui_theme.active', false))
+	<script src="/js/sweetalert.min.js"></script>
+	@else
 	<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+	@endif
 
 
 	<script>
-		jQuery(document).ready(function() {
+		@unless(config('ui_theme.active', false))
+    jQuery(document).ready(function() {
 			KTSelect2.init();
 			$('.select2-selection__arrow').addClass('select2-selection__arroww')
 
@@ -523,6 +576,7 @@
 			});
 
 
+    @endunless
 		</script>
 
 		<script type="text/javascript">

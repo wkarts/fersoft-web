@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <style type="text/css">
+    <header class="fer-page__heading"><h1>Localização</h1></header>
+<style type="text/css">
         .btn-file {
             position: relative;
             overflow: hidden;
@@ -24,7 +28,7 @@
         }
     </style>
     <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+        <div class="fer-page fer-operational fer-form card card-custom gutter-b example example-compact">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
@@ -33,7 +37,7 @@
                             @method('put')
                         @endif
 
-                        <div class="card card-custom gutter-b example example-compact">
+                        <div class="fer-panel card card-custom gutter-b example example-compact">
                             <div class="card-header">
                                 <h3 class="card-title">{{isset($config) ? 'Editar' : 'Nova'}} Localização</h3>
                             </div>

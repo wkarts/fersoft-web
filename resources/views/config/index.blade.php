@@ -20,7 +20,11 @@
 
 </style>
 @endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--config">
 @if((bool) data_get(session('user_logged'), 'super', false)
     && class_exists(\App\Http\Controllers\LoginAppearanceController::class)
     && class_exists(\App\Services\LoginPresentationService::class))
@@ -247,7 +251,7 @@
 </div>
 
 <div class="modal-loading loading-class"></div>
-
+</div>
 @endsection
 
 @section('javascript')

@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--pre-cadastro">
 
 <div class="card card-custom gutter-b">
     <div class="card-header">
@@ -100,7 +105,7 @@
 </div>
 
 <!-- Modal Completo de Detalhes -->
-<div class="modal fade" id="modal-detalhes" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal-detalhes" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -118,7 +123,7 @@
 </div>
 
 <!-- Modal de Rejeição -->
-<div class="modal fade" id="modal-rejeicao" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal-rejeicao" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form id="form-rejeitar" method="POST">
             @csrf
@@ -155,6 +160,7 @@
     <input type="hidden" name="tipo_cadastro" id="input_tipo_cadastro">
 </form>
 
+</div>
 @endsection
 
 @section('javascript')

@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--produto-prateleiras">
     <style type="text/css">
         /* ---------------------------------------------------------- */
         /* 1) BOTÕES DO TOPO: ajustes de padding e fonte menores     */
@@ -309,7 +314,7 @@
     {{-- ======================================================= --}}
     {{-- 6) MODAL: Manual de Orientações                        --}}
     {{-- ======================================================= --}}
-    <div class="modal fade" id="modal-manual" tabindex="-1" role="dialog" aria-labelledby="modalManualLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal-manual" tabindex="-1" role="dialog" aria-labelledby="modalManualLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -422,7 +427,7 @@
     {{-- ======================================================= --}}
     {{-- 7) MODAL: Cadastro / Edição de Prateleira               --}}
     {{-- ======================================================= --}}
-    <div class="modal fade" id="modal-prateleira" tabindex="-1" role="dialog" aria-labelledby="modalPrateleiraLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal-prateleira" tabindex="-1" role="dialog" aria-labelledby="modalPrateleiraLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <form id="form-prateleira" method="POST" action="/produto_prateleiras/save">
                 @csrf
@@ -500,7 +505,7 @@
     {{-- ======================================================= --}}
     {{-- 8) MODAL: Impressão de Etiquetas                       --}}
     {{-- ======================================================= --}}
-    <div class="modal fade" id="modal-etiquetas" tabindex="-1" role="dialog" aria-labelledby="modalEtiquetasLabel" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal-etiquetas" tabindex="-1" role="dialog" aria-labelledby="modalEtiquetasLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document" style="max-width: 90%;">
             <div class="modal-content">
                 <div class="modal-header">
@@ -527,6 +532,7 @@
             </div>
         </div>
     </div>
+</div>
 @endsection
 
 @section('javascript')

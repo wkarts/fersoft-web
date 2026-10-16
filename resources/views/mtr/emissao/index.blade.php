@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
 <style>
@@ -15,7 +18,7 @@
     .td-envolvidos { font-size: 0.85rem; line-height: 1.4; }
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--mtr card card-custom gutter-b">
     <div class="card-header border-0 py-5">
         <h3 class="card-title align-items-start flex-column">
             <span class="card-label font-weight-bolder text-dark">
@@ -218,7 +221,7 @@
 </div>
 
 <!-- MODAL CANCELAR MTR -->
-<div class="modal fade" id="modalCancelarMtr" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalCancelarMtr" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form id="formCancelarMtr" method="POST" action="">
             @csrf
@@ -246,7 +249,7 @@
 </div>
 
 <!-- MODAL ENVIAR WHATSAPP -->
-<div class="modal fade" id="modalWhatsappMtr" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalWhatsappMtr" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form id="formWhatsappMtr">
             @csrf
@@ -277,7 +280,7 @@
 </div>
 
 <!-- MODAL IMPORTAR NF-E -->
-<div class="modal fade" id="modalImportarNfe" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalImportarNfe" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -325,7 +328,7 @@
 </div>
 
 <!-- MODAL IMPORTAR PESAGEM -->
-<div class="modal fade" id="modalImportarPesagem" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalImportarPesagem" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg-warning">

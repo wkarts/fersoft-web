@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
 <style>
@@ -32,7 +35,7 @@
     }
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--mtr card card-custom gutter-b">
     <div class="card-header bg-primary py-3">
         <div class="card-title">
             <h3 class="card-label text-white font-weight-bolder">
@@ -277,7 +280,7 @@
 </div>
 
 <!-- MODAL DE SELEÇÃO IBAMA -->
-<div class="modal fade" id="modalIbama" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalIbama" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">

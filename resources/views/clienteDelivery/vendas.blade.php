@@ -1,8 +1,19 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-clienteDelivery">
 
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 			
 			<h4>Lista de pedidos do cliente: <strong>{{$cliente->nome}}</strong></h4>
@@ -98,5 +109,6 @@
 			</div>
 		</div>
 	</div>
+</div>
 </div>
 @endsection	

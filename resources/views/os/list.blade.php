@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <div class="card card-custom gutter-b">
+    <header class="fer-page__heading"><h1>Lista de Ordens de Serviço</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b">
 
 
         <div class="card-body">
@@ -19,7 +23,7 @@
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 
-                <form method="get" action="/ordemServico/filtro">
+                <form method="get" action="/ordemServico/filtro" class="fer-filter">
                     <div class="row align-items-center">
 
                         <div class="form-group col-12 col-xl-3">
@@ -93,7 +97,7 @@
 
                     <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-                        <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                        <div class="fer-results wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                             <div class="wizard-nav">
 
                                 <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
