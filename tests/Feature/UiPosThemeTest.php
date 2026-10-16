@@ -100,13 +100,13 @@ class UiPosThemeTest extends TestCase
         ])->assertRedirect(route('config.pos-themes.index'));
         $preset = DB::table('ui_pos_theme_presets')->first();
         $this->assertSame('draft', $preset->status);
-        $this->post('/config/temas/pdv/padrao', ['theme_slug' => $preset->slug])->assertStatus(422);
+        $this->postJson('/config/temas/pdv/padrao', ['theme_slug' => $preset->slug])->assertStatus(422);
         $this->post("/config/temas/pdv/modelos/{$preset->id}/publicar")
             ->assertRedirect(route('config.pos-themes.index'));
         $this->post('/config/temas/pdv/padrao', ['theme_slug' => $preset->slug])
             ->assertRedirect(route('config.pos-themes.index'));
         $this->assertSame($preset->slug, app(UiPosThemeService::class)->resolve()['slug']);
-        $this->post("/config/temas/pdv/modelos/{$preset->id}/arquivar")->assertStatus(409);
+        $this->postJson("/config/temas/pdv/modelos/{$preset->id}/arquivar")->assertStatus(409);
     }
 
     public function test_super_permissions_and_routes_are_separate_from_erp_theme_studio(): void
