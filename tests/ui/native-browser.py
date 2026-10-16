@@ -156,8 +156,8 @@ def check_employee_page(page, kind, width):
         assert page.locator('h1').first.inner_text() == 'Funcionários'
         assert page.locator('table.ui-people-table tbody tr').count() == 1
         assert 'Funcionário de teste' in page.locator('table.ui-people-table').inner_text()
-        assert page.locator('a[href="/funcionarios/new"]').count() == 1
-        assert page.locator('a[href="/funcionarios/comissao"]').count() == 1
+        assert page.locator('.ui-people-actions a[href="/funcionarios/new"]').count() == 1
+        assert page.locator('.ui-people-actions a[href="/funcionarios/comissao"]').count() == 1
         page.locator('[data-people-tab="grid"]').click()
         assert page.locator('#ui-people-grid').is_visible()
         assert 'Funcionário de teste' in page.locator('#ui-people-grid').inner_text()
