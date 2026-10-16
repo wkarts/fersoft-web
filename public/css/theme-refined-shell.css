@@ -95,7 +95,7 @@ body.ui-theme-refined #kt_aside .menu-subnav .menu-item.menu-item-active > .menu
 }
 body.ui-theme-refined #kt_aside .menu-nav .menu-item .menu-text,
 body.ui-theme-refined #kt_aside .menu-nav .menu-item .menu-bullet {
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     letter-spacing: -.006em;
 }
 body.ui-theme-refined .app-version-desktop-btn {
@@ -115,7 +115,7 @@ body.ui-theme-refined #kt_header .header-menu {
 }
 body.ui-theme-refined #kt_header .label.label-inline {
     border-radius: 8px;
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-weight: 600;
 }
 body.ui-theme-refined #kt_subheader {
@@ -126,7 +126,7 @@ body.ui-theme-refined #kt_subheader {
 body.ui-theme-refined .btn,
 body.ui-theme-refined .form-control,
 body.ui-theme-refined .custom-select {
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
 }
 body.ui-theme-refined .btn:not(.btn-icon) {
     border-radius: 9px;

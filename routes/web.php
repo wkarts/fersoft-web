@@ -355,7 +355,7 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
 });
 
 // ====================================================
-// CATÁLOGO DO NOVO TEMA — exclusivamente opt-in e sob sessão do ERP.
+// CATÁLOGO DE TEMAS — acessível sob a sessão e as permissões do ERP.
 // Rotas próprias; nenhum grupo/middleware histórico é alterado.
 // ====================================================
 Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], function () {

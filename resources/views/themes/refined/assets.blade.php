@@ -1,9 +1,8 @@
-{{-- Carregado somente no layout autenticado quando APP_UI_THEME=refined.
-     Não depende de PAG_LOGIN=access_4 e nunca altera os estilos do login. --}}
+{{-- Assets exclusivos do tema autenticado. Poppins é o padrão aprovado; a fonte já escolhida em Aparência do Login continua respeitada. --}}
 @php
-    // Mesmos arquivos tipográficos do access_4. Poppins é o fallback seguro.
     $uiFontFiles = [
         400 => 'login2/fonts/poppins/Poppins-Regular.ttf',
+        500 => 'login2/fonts/poppins/Poppins-Medium.ttf',
         600 => 'login2/fonts/poppins/Poppins-SemiBold.ttf',
         700 => 'login2/fonts/poppins/Poppins-Bold.ttf',
     ];
@@ -16,27 +15,32 @@
                 && $uiPresentationService->validFont((string) $uiPublishedModel->font)
                     ? (string) $uiPublishedModel->font
                     : 'poppins';
-            $uiFontFiles = $uiPresentationService->fontFiles($uiSelectedFont);
+            $uiFontFiles = array_replace(
+                $uiFontFiles,
+                $uiPresentationService->fontFiles($uiSelectedFont)
+            );
         } catch (\Throwable $e) {
             // Instalação sem as tabelas opcionais ou banco indisponível:
-            // o novo tema continua funcional com as fontes locais.
+            // o tema continua funcional com os arquivos locais de Poppins.
         }
     }
 @endphp
 <style>
-    @foreach([400, 600, 700] as $weight)
+    @foreach($uiFontFiles as $weight => $fontFile)
+    @if(is_numeric($weight) && is_string($fontFile))
     @font-face {
-        font-family: 'RefinedTypeface';
-        src: url('{{ asset($uiFontFiles[$weight]) }}') format('truetype');
+        font-family: 'Poppins';
+        src: url('{{ asset($fontFile) }}') format('truetype');
         font-weight: {{ $weight }};
         font-style: normal;
         font-display: swap;
     }
+    @endif
     @endforeach
 </style>
 <link rel="stylesheet" href="{{ asset('css/theme-refined.css') }}?v={{ filemtime(public_path('css/theme-refined.css')) }}">
 
-{{-- Os tokens são validados no backend; o ERP clássico jamais carrega este bloco. --}}
+{{-- As cores publicadas continuam sujeitas à validação e ao isolamento multiempresa. --}}
 @php
     $uiResolvedTheme = $uiResolvedTheme
         ?? app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);

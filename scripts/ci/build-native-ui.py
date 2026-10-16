@@ -19,7 +19,7 @@ def add_item_class(markup, marker, class_name):
  if class_name in class_match.group(1).split(): return markup
  updated=opening[:class_match.start(1)]+class_match.group(1)+' '+class_name+opening[class_match.end(1):]
  return markup[:item_at]+updated+markup[tag_end:]
-# Blade directives need a word boundary before @endif. Correct only UI opt-in
+# Blade directives need a word boundary before @endif. Correct only the native UI
 # tokens introduced by the previous theme work, not the classic business markup.
 for p in ['resources/views/default/menu_lateral.blade.php', 'resources/views/default/menu_superior.blade.php', 'resources/views/themes/refined/studio/index.blade.php']:
  s=read(p)
@@ -115,13 +115,6 @@ __VERSION__
             <p class="ui-nav-caption">Áreas da aplicação</p>
 __NAV__
         </nav>
-        @if(config('ui_theme.support_url') || config('ui_theme.support_phone'))
-        <div class="ui-sidebar-footer">
-            <button type="button" class="ui-footer-link ui-support-link" data-ui-support-open>
-                <i class="la la-question-circle" aria-hidden="true"></i><span>Central de suporte</span><span class="ui-support-indicator" aria-hidden="true"></span>
-            </button>
-        </div>
-        @endif
     </aside>
     <div class="ui-menu-backdrop" data-ui-menu-close hidden></div>
     <div id="kt_wrapper" class="ui-workspace">
@@ -150,6 +143,17 @@ __RUNTIME__
 for key,val in dict(HEAD=head,BRAND=brand,MOBILEBRAND=brand,VERSION=version,NAV=nav,ACTIONS=actions,SESSION=session,CONTACT=contact,RUNTIME=runtime).items():
  layout=replace_once(layout,'__'+key+'__',val)
 layout='\n'.join(line.rstrip() for line in layout.splitlines())+'\n'
+# Keep the generated shell in the same reusable Blade partials as the app.
+sidebar_start=layout.index('    <aside id="ui-sidebar"')
+sidebar_end=layout.index('    <div class="ui-menu-backdrop"', sidebar_start)
+sidebar=layout[sidebar_start:sidebar_end].rstrip()+'\n'
+layout=layout[:sidebar_start]+"    @include('themes.refined.partials.sidebar')\n"+layout[sidebar_end:]
+masthead_start=layout.index('        <header class="ui-masthead"')
+masthead_end=layout.index('        </header>', masthead_start)+len('        </header>')
+masthead=layout[masthead_start:masthead_end].rstrip()+'\n'
+layout=layout[:masthead_start]+"        @include('themes.refined.partials.masthead')\n"+layout[masthead_end:]
+write('resources/views/themes/refined/partials/sidebar.blade.php',sidebar)
+write('resources/views/themes/refined/partials/masthead.blade.php',masthead)
 write('resources/views/themes/refined/layout.blade.php',layout)
 for p in ['resources/views/default/layout.blade.php','resources/views/contabilidade/configuracoes.blade.php']:
  s=read(p)
@@ -188,7 +192,7 @@ for path, sha in manifest['source_sha256'].items():
     if sha != expected_sources[path]:
         raise RuntimeError('Legacy source changed without reviewing baseline: ' + path)
 manifest['baseline_commit'] = baseline_commit
-# POS pages own their operational layout; only opt-in presentation is added.
+# POS pages retain their own operational layout and use the approved theme tokens.
 for name in ['main', 'main2', 'main3', 'pdv_assincrono']:
  p='resources/views/frontBox/'+name+'.blade.php'
  s=read(p)

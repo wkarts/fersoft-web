@@ -8,10 +8,12 @@ use Tests\TestCase;
 
 class UiThemeCatalogTest extends TestCase
 {
-    public function test_tema_classico_permanece_padrao_e_inibe_catalogo(): void
+    public function test_tema_aprovado_e_padrao_e_classico_continua_como_rollback(): void
     {
-        // O teste deve funcionar em homologação mesmo se APP_UI_THEME=refined.
-        $this->assertContains(config('ui_theme.name', 'classic'), ['classic', 'refined']);
+        if (!env('APP_UI_THEME')) {
+            $this->assertSame('refined', config('ui_theme.name'));
+            $this->assertTrue(config('ui_theme.active'));
+        }
 
         config()->set('ui_theme.active', false);
         $resolved = app(UiThemeService::class)->resolve();

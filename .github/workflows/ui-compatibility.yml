@@ -138,7 +138,7 @@ jobs:
       - name: Guardas de coexistência e histórico
         run: |
           set -euo pipefail
-          grep -q "APP_UI_THEME=classic" .env.example
+          grep -q "APP_UI_THEME=refined" .env.example
           grep -q "PAG_LOGIN=access" .env.example
           grep -q "default/menu_" resources/views/default/layout.blade.php
           grep -q 'ui-theme-refined' resources/views/default/menu_lateral.blade.php

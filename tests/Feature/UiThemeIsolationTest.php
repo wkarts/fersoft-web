@@ -6,11 +6,11 @@ use Tests\TestCase;
 
 class UiThemeIsolationTest extends TestCase
 {
-    public function test_seletor_de_tema_so_habilita_o_refinado_explicitamente(): void
+    public function test_tema_aprovado_e_padrao_e_classic_e_rollback_explicito(): void
     {
         $source = file_get_contents(config_path('ui_theme.php'));
 
-        $this->assertStringContainsString("env('APP_UI_THEME', 'classic')", $source);
+        $this->assertStringContainsString("env('APP_UI_THEME', 'refined')", $source);
         $this->assertStringContainsString("$" . "mode === 'refined'", $source);
         $this->assertStringContainsString("'active' => $" . "active", $source);
     }

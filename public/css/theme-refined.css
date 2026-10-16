@@ -1,12 +1,13 @@
 /*
- * FERSOFT WEB · Tema refinado (opt-in: APP_UI_THEME=refined)
- * Inspirado na direção visual e tipográfica do login access_4.
+ * FERSOFT WEB · Tema FERSOFT aprovado (APP_UI_THEME=refined)
+ * Tokens baseados na proposta HTML aprovada para o ERP autenticado.
  * Somente body.ui-theme-refined recebe estes estilos.
  *
  * Contrato de compatibilidade:
- * - não altera display/position/overflow de modais, datatables, menus nem plugins;
+ * - não altera abertura, z-index, posição ou handlers de modais, datatables e plugins;
  * - não substitui Bootstrap, Metronic, Select2, FullCalendar ou bibliotecas JS;
  * - preserva tamanhos de colunas/células, atributos de estado e handlers existentes;
+ * - em celular, o corpo do modal rola internamente para manter os controles acessíveis;
  * - modo claro é padrão; --dark acompanha a opção pessoal já existente ($tema=2).
  */
 
@@ -14,23 +15,23 @@
 body.ui-theme-refined {
     color-scheme: light;
     --ui-accent: #1f9866;
-    --ui-accent-hover: #187d55;
-    --ui-accent-soft: #e9f5ee;
+    --ui-accent-hover: #15754f;
+    --ui-accent-soft: #eaf5ef;
     --ui-bg: #f5f7f7;
     --ui-surface: #ffffff;
-    --ui-surface-alt: #f9fbfb;
+    --ui-surface-alt: #fafcfc;
     --ui-aside: #ffffff;
     --ui-ink: #182f36;
-    --ui-muted: #5e7278;
-    --ui-border: #dbe4e6;
-    --ui-hover: #eef5f3;
+    --ui-muted: #62777d;
+    --ui-border: #dce7e7;
+    --ui-hover: #eef4f2;
     --ui-focus: rgba(31, 152, 102, .18);
-    --ui-shadow: 0 10px 32px rgba(20, 47, 51, .045);
-    --ui-shadow-float: 0 18px 48px rgba(19, 43, 51, .12);
+    --ui-shadow: 0 8px 24px rgba(33, 59, 69, .06);
+    --ui-shadow-float: 0 18px 48px rgba(33, 59, 69, .12);
     --ui-radius: 12px;
     background: var(--ui-bg) !important;
     color: var(--ui-ink);
-    font-family: 'RefinedTypeface', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Poppins', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
     font-synthesis: none;
     font-size: 13px;
     font-weight: 400;
@@ -58,7 +59,7 @@ body.ui-theme-refined.ui-theme-refined--dark {
 
 body.ui-theme-refined :is(h1, h2, h3, h4, h5, h6) {
     color: var(--ui-ink);
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     line-height: 1.28;
     letter-spacing: -.025em;
     font-weight: 600;
@@ -102,7 +103,7 @@ body.ui-theme-refined #kt_aside .aside-menu .menu-nav .menu-item > .menu-link {
 }
 body.ui-theme-refined #kt_aside .aside-menu .menu-nav .menu-item > .menu-link .menu-text {
     color: var(--ui-muted);
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-size: 12.5px;
     font-weight: 500;
     letter-spacing: -.005em;
@@ -235,7 +236,7 @@ body.ui-theme-refined .form-label {
     letter-spacing: .005em;
 }
 body.ui-theme-refined :is(.form-control, .custom-select, .form-control-plaintext, .input-group-text) {
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-size: 13px;
 }
 body.ui-theme-refined :is(.form-control, .custom-select, .select2-container--default .select2-selection, .bootstrap-select > .dropdown-toggle) {
@@ -292,7 +293,7 @@ body.ui-theme-refined input[type="radio"] { accent-color: var(--ui-accent); }
 /* 06 · Botões, abas, etiquetas, navegação */
 body.ui-theme-refined .btn {
     border-radius: 8px;
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: -.005em;
     transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
@@ -324,7 +325,7 @@ body.ui-theme-refined :is(.btn-light, .btn-secondary, .btn-outline-secondary):ho
 body.ui-theme-refined .btn:disabled { cursor: not-allowed; }
 body.ui-theme-refined :is(.label, .badge) {
     border-radius: 7px;
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: .003em;
 }
@@ -376,7 +377,7 @@ body.ui-theme-refined .pagination .active .page-link {
 body.ui-theme-refined :is(.table, .datatable-table) {
     background: var(--ui-surface);
     color: var(--ui-ink);
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
 }
 body.ui-theme-refined .table thead th,
 body.ui-theme-refined .datatable .datatable-table .datatable-head .datatable-cell,
@@ -422,7 +423,7 @@ body.ui-theme-refined .modal-header {
 body.ui-theme-refined .modal-header:not([class*="bg-"]) { background: var(--ui-surface); }
 body.ui-theme-refined .modal-header .modal-title {
     color: var(--ui-ink);
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: -.02em;
 }
@@ -443,14 +444,14 @@ body.ui-theme-refined :is(.swal-modal, .swal2-popup) {
 }
 body.ui-theme-refined :is(.swal-title, .swal-text, .swal2-title, .swal2-html-container) {
     color: var(--ui-ink);
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
 }
 body.ui-theme-refined #toast-container > div { border-radius: 10px; box-shadow: var(--ui-shadow-float); }
 
 /* 09 · Mensagens de alerta, validações, wizards, progressos e painéis */
 body.ui-theme-refined .alert {
     border-radius: 10px;
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
 }
 body.ui-theme-refined .alert.alert-light,
 body.ui-theme-refined .alert:not([class*="alert-"]) {
@@ -496,8 +497,7 @@ body.ui-theme-refined--dark .modal-header:is(.bg-primary, .bg-success, .bg-dange
 }
 body.ui-theme-refined--dark .text-white { color: #fff !important; }
 
-/* 11 · Mobile: ajustes somente cosméticos.
-   Metronic segue controlando os toggles/responsividade e overlays. */
+/* 11 · Mobile: shell e Bootstrap mantêm a navegação e a grade operacionais. */
 @media (max-width: 991.98px) {
     body.ui-theme-refined #kt_header_mobile { box-shadow: 0 4px 20px rgba(24, 47, 54, .07); }
     body.ui-theme-refined #kt_aside { box-shadow: var(--ui-shadow-float); }
@@ -514,4 +514,102 @@ body.ui-theme-refined--dark .text-white { color: #fff !important; }
 }
 @media (prefers-reduced-motion: reduce) {
     body.ui-theme-refined :is(.btn, a, .menu-link) { transition-duration: 0s; }
+}
+
+
+/* 12 · Harmonização das views operacionais */
+body.ui-theme-refined :is(.panel, .panel-default) {
+    background: var(--ui-surface);
+    color: var(--ui-ink);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius);
+    box-shadow: var(--ui-shadow);
+}
+body.ui-theme-refined :is(.panel-heading, .panel-footer) {
+    background: var(--ui-surface-alt);
+    color: var(--ui-ink);
+    border-color: var(--ui-border);
+}
+body.ui-theme-refined .panel-heading {
+    border-bottom: 1px solid var(--ui-border);
+    border-top-left-radius: var(--ui-radius);
+    border-top-right-radius: var(--ui-radius);
+    font-weight: 600;
+}
+body.ui-theme-refined .panel-footer {
+    border-top: 1px solid var(--ui-border);
+    border-bottom-left-radius: var(--ui-radius);
+    border-bottom-right-radius: var(--ui-radius);
+}
+body.ui-theme-refined .ui-page {
+    min-width: 0;
+    color: var(--ui-ink);
+    background: var(--ui-bg);
+}
+body.ui-theme-refined .ui-page :is(.form-control, .custom-select, .select2-container, .bootstrap-select) {
+    max-width: 100%;
+}
+body.ui-theme-refined :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--ui-focus);
+    outline-offset: 2px;
+}
+body.ui-theme-refined :is(.table-responsive, .datatable) {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+}
+
+@media (max-width: 991.98px) {
+    body.ui-theme-refined .ui-page > :is(.container, .container-fluid) {
+        max-width: 100%;
+    }
+    body.ui-theme-refined .ui-page .row > [class*="col-"] {
+        min-width: 0;
+    }
+}
+@media (max-width: 767.98px) {
+    body.ui-theme-refined .ui-page :is(.card-header, .panel-heading) {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    body.ui-theme-refined .ui-page :is(.card-title, .card-label, .panel-title) {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    body.ui-theme-refined .ui-page :is(.table-responsive, .datatable) {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+@media (max-width: 575.98px) {
+    body.ui-theme-refined .ui-page > :is(.container, .container-fluid) {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    body.ui-theme-refined .ui-page :is(.form-control, .custom-select, .select2-container, .bootstrap-select) {
+        min-width: 0;
+    }
+    body.ui-theme-refined .modal-dialog {
+        width: calc(100% - 24px);
+        max-width: none;
+        margin: 12px auto;
+    }
+    body.ui-theme-refined .modal-content {
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        display: flex;
+        flex-direction: column;
+    }
+    body.ui-theme-refined .modal-body {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    body.ui-theme-refined .modal-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    body.ui-theme-refined .modal-footer .btn {
+        margin: 0;
+    }
 }
