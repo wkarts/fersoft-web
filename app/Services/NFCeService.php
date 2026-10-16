@@ -721,8 +721,8 @@ class NFCeService{
     }
 
     /**
-     * Remove apenas ds:Signature da tentativa anterior e compara o infNFe
-     * completo por canonicalização antes/depois.
+     * Remove apenas ds:Signature da tentativa anterior e compara todo o XML
+     * fiscal sem assinatura por canonicalização, antes e depois.
      */
     private function removerAssinaturaXmlNfce704(
         string $xmlOriginal,
