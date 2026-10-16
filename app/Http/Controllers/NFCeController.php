@@ -343,7 +343,7 @@ class NFCeController extends Controller
                         return response()->json([
                             'codigo' => 'NFCE_704_CONFIRMAR_DHEMI',
                             'message' => 'A tentativa anterior teve rejeição 704 e a consulta atual confirmou cStat 217 (a chave não consta na SEFAZ).' . "\n"
-                                . 'Registro da venda (created_at no banco, fuso da aplicação '
+                                . 'Registro da venda (created_at bruto no banco; app.timezone='
                                 . ($dadosCorrecao704['timezone_aplicacao'] ?? 'não informado') . '): '
                                 . ($dadosCorrecao704['venda_created_at_db'] ?? 'não disponível') . "\n"
                                 . 'Campo venda.data_emissao no banco: '
