@@ -56,7 +56,16 @@ def check_page(page, theme, layout, density, width):
         assert canvas_color == 'rgb(245, 247, 247)', 'The slate variant keeps the workspace light.'
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
     assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")'), 'The approved Poppins typography is missing.'
-    assert page.evaluate('async()=>{await document.fonts.ready;return document.fonts.check("400 13px Poppins")}'), 'The local Poppins font did not load.'
+    font_state = page.evaluate('''async()=>{
+        await document.fonts.ready;
+        try {
+            const loaded = await document.fonts.load("400 13px Poppins", "FERSOFT");
+            return {loaded: loaded.length, check: document.fonts.check("400 13px Poppins"), faces: [...document.fonts].map(face => ({family: face.family, weight: face.weight, status: face.status}))};
+        } catch (error) {
+            return {error: String(error), faces: [...document.fonts].map(face => ({family: face.family, weight: face.weight, status: face.status}))};
+        }
+    }''')
+    assert font_state.get('loaded', 0) > 0 and font_state.get('check'), f'The local Poppins font did not load: {font_state}'
     page.keyboard.press('Tab')
     focus_style = page.locator(':focus').evaluate('(e)=>{const s=getComputedStyle(e);return {outline:s.outlineStyle,boxShadow:s.boxShadow,visibleSkip:e.matches(".ui-skip")&&e.getBoundingClientRect().top>=0}}')
     assert focus_style['outline'] != 'none' or focus_style['boxShadow'] != 'none' or focus_style['visibleSkip'], f'Keyboard focus must remain visible: {focus_style}'
