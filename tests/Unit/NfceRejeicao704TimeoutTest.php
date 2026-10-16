@@ -145,7 +145,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
         $this->assertStringContainsString('created_at bruto no banco; app.timezone=America/Bahia): 2026-10-15 09:07:30', $mensagem);
         $this->assertStringContainsString('Campo venda.data_emissao no banco: NULL/não preenchido', $mensagem);
         $this->assertStringContainsString('são horários distintos', $mensagem);
-        $this->assertStringContainsString('registro da venda', $mensagem);
+        $this->assertStringContainsString('Registro da venda', $mensagem);
     }
 
     public function test_704_nao_usa_inicio_envio_como_recebimento_sefaz(): void
