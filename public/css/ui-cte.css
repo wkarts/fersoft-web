@@ -1,4 +1,4 @@
-/* CT-e: componentes visuais da proposta FERSOFT. Os IDs, atributos de estado,
+/* CT-e: componentes visuais da proposta aprovada. Os IDs, atributos de estado,
    nomes de campo e eventos fiscais pertencem às views e continuam intactos. */
 .cte-page {
     --cte-canvas: #f5f7f7;
@@ -326,4 +326,113 @@ body.ui-theme-refined--dark .cte-page :is(.btn-success, .btn-primary) { color: #
     .cte-dialog .modal-body { max-height: calc(100dvh - 135px); padding: 14px; }
     .cte-dialog .modal-footer { gap: 8px; justify-content: stretch; }
     .cte-dialog .modal-footer .btn { flex: 1 1 auto; }
+}
+
+/* CT-e list: filters and actions adapt to the actual available width. */
+.cte-page--list .cte-filters { padding: 16px 16px 4px; }
+.cte-page--list .cte-filters > .row { align-items: flex-end !important; margin: 0 -6px; }
+.cte-page--list .cte-filters > .row > * {
+    flex: 1 1 145px;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    margin: 0 0 12px !important;
+    padding: 0 6px;
+}
+.cte-page--list .cte-filters > .row > :nth-child(2) { flex: 2 1 230px; }
+.cte-page--list .cte-filters > .row > .cte-filter-submit { flex: 0 1 135px; }
+.cte-page--list .cte-filters > .row > .cte-filter-submit .btn { width: 100%; min-height: 38px; }
+.cte-page--list .cte-filters > .row > .form-group { margin-bottom: 12px; }
+.cte-page--list .cte-filters > .row > .form-group > .row { margin: 0; }
+.cte-page--list .cte-filters > .row > .form-group > .row > [class*="col-"] { width: 100%; max-width: 100%; padding: 0; }
+.cte-page--list .cte-filters :is(.input-group, .form-control, .custom-select) { min-width: 0; }
+.cte-page--list .cte-list-intro > label { margin-bottom: 12px; }
+.cte-page--list .cte-list-actions { margin: 0 0 10px; }
+.cte-page--list .cte-list-actions .form-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.cte-page--list .cte-list-actions .btn { margin: 0; }
+.cte-page--list #kt_form { min-width: 0; }
+.cte-page--list .cte-table-actions { margin: 0; }
+.cte-page--list .cte-table-actions > span {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    width: auto !important;
+    max-width: 300px;
+}
+.cte-page--list .cte-table-actions .btn { min-width: 32px; min-height: 32px; padding: 5px; }
+.cte-page--list [data-wizard-type="step-content"] .card.card-custom {
+    min-width: 0;
+    height: 100%;
+    border: 1px solid var(--cte-border);
+    border-radius: 10px;
+    box-shadow: var(--cte-shadow);
+    background: var(--cte-surface);
+}
+.cte-page--list [data-wizard-type="step-content"] .card-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 56px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--cte-border);
+    background: var(--cte-soft);
+}
+.cte-page--list [data-wizard-type="step-content"] .card-header .card-title { min-width: 0; }
+.cte-page--list [data-wizard-type="step-content"] .card-header h3.card-title {
+    width: auto !important;
+    height: auto !important;
+    margin: 0;
+    color: var(--cte-ink);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.cte-page--list [data-wizard-type="step-content"] .card.card-custom > .card-body { padding: 16px; }
+.cte-page--list [data-wizard-type="step-content"] .kt-widget__info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 4px 12px;
+    min-width: 0;
+    padding: 5px 0;
+    overflow-wrap: anywhere;
+}
+.cte-page--list [data-wizard-type="step-content"] .card-body > .row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+.cte-page--list [data-wizard-type="step-content"] .card-body > .row > [class*="col-"] {
+    width: auto;
+    max-width: none;
+    padding: 0;
+}
+.cte-page--list [data-wizard-type="step-content"] .card-body > .row .btn { width: 100%; margin: 0 !important; }
+
+/* These six CT-e dialogs share the same field and action rhythm. */
+.cte-dialog .modal-header { display: flex; align-items: center; gap: 12px; }
+.cte-dialog .modal-header .modal-title { min-width: 0; overflow-wrap: anywhere; }
+.cte-dialog .modal-header .close { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; margin: 0 0 0 auto; padding: 0; }
+.cte-dialog .modal-body .row { margin-inline: -6px; }
+.cte-dialog .modal-body .row > [class*="col-"] { min-width: 0; padding-inline: 6px; }
+.cte-dialog .modal-body .form-group { margin-bottom: 12px; }
+.cte-dialog .modal-body .col-form-label { display: block; margin-bottom: 7px; padding: 0; color: #62777d; font: 600 11px/1.45 Poppins, Inter, system-ui, sans-serif; }
+.cte-dialog .modal-body :is(.form-control, .custom-select) { width: 100%; }
+.cte-dialog .modal-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.cte-dialog .modal-footer .btn { margin: 0; padding: 8px 13px; }
+.cte-dialog .modal-footer .btn-light-success { color: #fff !important; background: #1f9866 !important; border-color: #1f9866 !important; }
+.cte-dialog:is(#modal1, #modal1_aux, #modal3) .modal-footer .btn-light-success { color: #fff !important; background: #c94e5d !important; border-color: #c94e5d !important; }
+.cte-dialog .modal-footer .btn-light-danger { color: #62777d !important; background: #fff !important; border-color: #dce7e7 !important; }
+body.ui-theme-refined--dark .cte-dialog .modal-body .col-form-label { color: #b7c8cb; }
+body.ui-theme-refined--dark .cte-dialog .modal-footer .btn-light-danger { color: #eef6f4 !important; background: #1c333b !important; border-color: #38535c !important; }
+
+@media (max-width: 575px) {
+    .cte-page--list .cte-filters > .row > * { flex: 1 1 100%; max-width: 100%; }
+    .cte-page--list .cte-filters > .row > .cte-filter-submit { flex: 1 1 100%; width: 100%; max-width: 100%; }
+    .cte-page--list .cte-list-actions > .form-group { width: 100%; max-width: 100%; padding: 0; }
+    .cte-page--list .cte-list-actions .btn { flex: 1 1 100%; }
+    .cte-page--list [data-wizard-type="step-content"] .card-body > .row { grid-template-columns: minmax(0, 1fr); }
+    .cte-dialog .modal-footer .btn { flex: 1 1 100%; }
 }

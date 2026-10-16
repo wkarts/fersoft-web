@@ -1,4 +1,4 @@
-/* NF-e de remessa, MDF-e e SPED NFC-e: aparência FERSOFT aprovada.
+/* NF-e de remessa, MDF-e e SPED NFC-e: aparência aprovada.
    Os widgets, atributos de estado, URLs e nomes dos campos permanecem nas views. */
 .fiscal-page {
     --fiscal-surface: #fff;
@@ -241,4 +241,92 @@ body.ui-theme-refined--dark .fiscal-page :is(.btn-success, .btn-primary) { color
     .fiscal-dialog .modal-body { max-height: calc(100dvh - 135px); padding: 14px; }
     .fiscal-dialog .modal-footer { gap: 8px; justify-content: stretch; }
     .fiscal-dialog .modal-footer .btn { flex: 1 1 auto; }
+}
+
+/* NF-e remittance: keep dense forms contained without changing fiscal inputs. */
+.fiscal-page--remessa_nfe-register .fiscal-remessa-form { min-width: 0; max-width: 100%; }
+.fiscal-page--remessa_nfe-register .fiscal-remessa-form :is(.form-group, .input-group, .select2-container) { min-width: 0; max-width: 100%; }
+.fiscal-page--remessa_nfe-register .fiscal-remessa-form :is(.form-control, .custom-select, .select2-selection) { max-width: 100%; }
+.fiscal-page--remessa_nfe-register .fiscal-remessa-actions {
+    margin-top: 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--fiscal-border);
+}
+.fiscal-page--remessa_nfe-register .fiscal-remessa-actions .btn { min-height: 40px; }
+.fiscal-page--remessa_nfe-register .search-prod {
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    color: var(--fiscal-ink);
+    background: var(--fiscal-surface);
+    border-color: var(--fiscal-border);
+    box-shadow: 0 12px 24px #213b4520;
+}
+.fiscal-page--remessa_nfe-register .search-prod label {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    color: inherit !important;
+    overflow-wrap: anywhere;
+}
+.fiscal-page--remessa_nfe-register .search-prod label:hover { background: var(--fiscal-soft); }
+
+/* Remittance dialogs preserve their JS hooks and use the same visual tokens. */
+.fiscal-remessa-dialog .modal-header { display: flex; align-items: center; gap: 12px; }
+.fiscal-remessa-dialog .modal-header .modal-title { min-width: 0; overflow-wrap: anywhere; }
+.fiscal-remessa-dialog .modal-header .close { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; margin: 0 0 0 auto; padding: 0; }
+.fiscal-remessa-dialog .modal-dialog.modal-sm { max-width: min(420px, calc(100vw - 28px)); }
+.fiscal-remessa-dialog:is(#modal-pag-outros, #modal-nome-produto) .modal-dialog.modal-lg { max-width: min(520px, calc(100vw - 28px)); }
+.fiscal-remessa-dialog .modal-body .form-group { min-width: 0; margin-bottom: 14px; }
+.fiscal-remessa-dialog .modal-body .fiscal-remessa-lookup { display: flex; align-items: flex-end; }
+.fiscal-remessa-dialog .fiscal-remessa-lookup .btn { min-width: 38px; min-height: 38px; }
+.fiscal-remessa-dialog .modal-body .col-form-label,
+.fiscal-remessa-dialog .modal-body label:not(.radio) {
+    display: block;
+    width: auto;
+    margin-bottom: 7px;
+    padding: 0;
+    color: #62777d;
+    font: 600 11px/1.45 Poppins, Inter, system-ui, sans-serif;
+}
+.fiscal-remessa-dialog .modal-body :is(.form-control, .custom-select, .select2-container) { min-width: 0; max-width: 100%; }
+.fiscal-remessa-dialog .modal-body :is(.form-control, .custom-select) { width: 100%; }
+.fiscal-remessa-dialog .modal-body .radio-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.fiscal-remessa-dialog .modal-body .radio-inline .radio { display: inline-flex; width: auto; margin: 0; padding: 0; }
+.fiscal-remessa-dialog .modal-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.fiscal-remessa-dialog .modal-footer .btn { margin: 0; padding: 8px 14px; }
+.fiscal-remessa-dialog .modal-footer .btn-danger { color: #c94e5d !important; background: #fff0f2 !important; border-color: #f4d5da !important; }
+.fiscal-remessa-dialog .modal-footer .btn-success { color: #fff !important; background: #1f9866 !important; border-color: #1f9866 !important; }
+.fiscal-remessa-dialog .wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 !important;
+    border-bottom: 1px solid #dce7e7;
+}
+.fiscal-remessa-dialog .wizard-step { width: auto; min-width: 126px; min-height: 42px; flex: 0 1 auto; }
+.fiscal-remessa-dialog .wizard-step .wizard-label { display: flex; align-items: center; min-height: 42px; padding: 0 12px; }
+.fiscal-remessa-dialog .wizard-step .wizard-title,
+.fiscal-remessa-dialog .wizard-step .wizard-title span { margin: 0; color: #62777d; font: 600 11px/1.4 Poppins, Inter, system-ui, sans-serif; }
+.fiscal-remessa-dialog .wizard-step[data-wizard-state="current"] .wizard-title,
+.fiscal-remessa-dialog .wizard-step[data-wizard-state="current"] .wizard-title span { color: #15754f; }
+.fiscal-remessa-dialog .wizard-step[data-wizard-state="current"] .wizard-bar { background: #1f9866; }
+.fiscal-remessa-dialog #kt_wizard_v4 .card-body { padding: 16px 0; }
+.fiscal-remessa-dialog .table-dynamic { width: 100%; }
+.fiscal-remessa-dialog .table-dynamic td { min-width: 0; vertical-align: middle; }
+body.ui-theme-refined--dark .fiscal-remessa-dialog .modal-body :is(label, .col-form-label),
+body.ui-theme-refined--dark .fiscal-remessa-dialog .wizard-step .wizard-title,
+body.ui-theme-refined--dark .fiscal-remessa-dialog .wizard-step .wizard-title span { color: #b7c8cb; }
+body.ui-theme-refined--dark .fiscal-remessa-dialog .wizard-steps { border-color: #38535c; }
+body.ui-theme-refined--dark .fiscal-remessa-dialog .wizard-step[data-wizard-state="current"] .wizard-title,
+body.ui-theme-refined--dark .fiscal-remessa-dialog .wizard-step[data-wizard-state="current"] .wizard-title span { color: #8fdab7; }
+
+@media (max-width: 575px) {
+    .fiscal-page--remessa_nfe-register .fiscal-remessa-actions > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+    .fiscal-remessa-dialog .modal-dialog.modal-sm,
+    .fiscal-remessa-dialog:is(#modal-pag-outros, #modal-nome-produto) .modal-dialog.modal-lg { max-width: calc(100vw - 16px); }
+    .fiscal-remessa-dialog .modal-footer .btn { flex: 1 1 100%; }
+    .fiscal-remessa-dialog .wizard-step { flex: 1 1 45%; min-width: 0; }
+    .fiscal-remessa-dialog #kt_wizard_v4 .card-body { padding: 12px 0; }
 }

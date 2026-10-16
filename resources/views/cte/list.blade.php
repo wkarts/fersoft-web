@@ -85,16 +85,15 @@
 					{!! __view_locais_select_filtro("Local", isset($filial_id) ? $filial_id : '') !!}
 					@endif
 
-					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
+					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0 cte-filter-submit">
+						<button class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
 					</div>
 				</div>
 			</form>
-			<br>
 			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-page__title">Lista de CTe</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Registros: <strong class="text-success">{{sizeof($ctes)}}</strong></label>
-			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+			<div class="row cte-list-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 				<div class="form-group col-lg-3 col-md-4 col-sm-6">
 					<a href="/cte/nova" class="btn btn-success">
 						<i class="la la-plus"></i>
@@ -301,8 +300,8 @@
 																</td>
 
 																<td>
-																	<div class="row">
-																		<span style="width: 280px;">
+									<div class="row cte-table-actions">
+										<span style="width: 280px;">
 
 																			@if($c->estado == 'DISPONIVEL' || $c->estado == 'REJEITADO')
 
@@ -739,14 +738,14 @@
 			</div>
 			<div class="modal-body">
 				<div class="row">
-					<div class="form-group validated col-sm-6 col-Numero NF Inicial-6">
-						<label class="col-form-label" id="">Numero CTe Inicial</label>
+					<div class="form-group validated col-sm-6 col-lg-6">
+						<label class="col-form-label" id="">Número CTe Inicial</label>
 						<div class="">
 							<input type="text" id="nInicio" placeholder="" name="nInicio" class="form-control" value="">
 						</div>
 					</div>
 					<div class="form-group validated col-sm-6 col-lg-6">
-						<label class="col-form-label" id="">Numero NF Final</label>
+						<label class="col-form-label" id="">Número CTe Final</label>
 						<div class="">
 							<input type="text" id="nFinal" placeholder="" name="nFinal" class="form-control" value="">
 						</div>

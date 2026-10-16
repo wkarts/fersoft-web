@@ -18,7 +18,9 @@ Entre as **1.039 views próprias**, 671 estendem diretamente `default.layout` e 
 
 O JSON marca arquivos para revisão manual com flags heurísticas (incluindo views de `vendor`): 403 com formulário e dimensão inline, 104 com formulário/modal sob `.ui-admin` que pede revisão de variante de tema, 66 com formulário/modal em outro layout explícito, e 27 com cinco ou mais blocos de modal. Uma flag indica prioridade de inspeção, **não um defeito confirmado**.
 
-## Pontos concretos para a revisão
+## Pontos concretos encontrados no snapshot inicial
+
+As linhas e sintomas abaixo registram a inspeção anterior às correções desta PR. A posição atual dos trechos pode diferir.
 
 1. **Sub-topbar não acompanha rolagem.** `resources/views/themes/refined/layout.blade.php:107-153` põe `#ui-session` como irmão posterior de `.ui-masthead`. `public/css/ui-operational.css:42` torna sticky apenas o masthead; `.ui-session` em `:58` continua no fluxo. No modo de menu superior, `:156` muda o masthead para `position:relative`; em telas pequenas `:166` faz o mesmo. Para fixar as duas faixas em conjunto, cuidar da altura variável do cabeçalho e do deslocamento do conteúdo.
 2. **Unidade sobe em relação aos demais controles.** O pseudo-elemento com a palavra `Unidade` em `public/css/ui-operational.css:278-280` ocupa uma linha antes do select, que fica limitado a 220px. `resources/views/themes/refined/partials/masthead.blade.php:126-133` acrescenta `mt-2` e `min-width:240px` inline; em `ui-operational.css:334-345` o select ainda é limitado a 185/175px em telas menores. A captura de 16/10 às 09:57 mostra o desnível.
@@ -28,6 +30,8 @@ O JSON marca arquivos para revisão manual com flags heurísticas (incluindo vie
 6. **Formulário de produtos continha forms aninhados no arquivo auditado.** Em `resources/views/produtos/register.blade.php:26` abria um `<form>` de persistência, e em `:88` outro `<form id="kt_form">` no interior. HTML não aceita formulários aninhados; o navegador pode reinterpretar fechamento/submissão. A correção desta branch conserva `kt_form`, ação, método, CSRF e campos nos três cadastros de produto; o teste de contrato verifica um só formulário por arquivo.
 7. **CSS da administração fixa cores fora da paleta de temas.** `public/css/ui-admin.css:2-16,24-31,74-80,85-96,125-132` usa cores hexadecimais e fundos brancos, enquanto os temas do shell usam `var(--ui-*)`. Nos formulários/views com `.ui-admin`, a variante escura ou presets customizados podem ter superfícies destoantes. A regra `.ui-admin .row > [class*="col-"]` em `:52` força largura total até os breakpoints seletivos em `:169-203`; grid de coluna sem classe coberta pelo seletor específico pode cair em 100%.
 8. **Muitas áreas não passam pelo shell comum.** PDV (`frontBox/main.blade.php`, `main2.blade.php`, `main3.blade.php`, `pdv_assincrono.blade.php`) tem entre 21 e 32 marcadores de modal por arquivo no inventário; relatórios, ecommerce e delivery têm layouts próprios. Ajustes em `.ui-page` não são validação desses diálogos e páginas. Exemplo pontual: `resources/views/contaReceber/list.blade.php:383` fixa título com `width:230px;height:10px`; `resources/views/vendas/register.blade.php:631` fixa select em `width:80%`.
+
+Nesta PR, a sub-topbar e o controle da sidebar receberam posicionamento responsivo; o seletor de Unidade foi alinhado; a lista e o formulário de usuários, os cadastros de produtos, a pesagem, CT-e, Remessa NF-e e Vendas receberam correções pontuais. `ui-form-harmony.css` e `ui-dialog-navigation.css` alcançam os padrões compartilhados do shell. A contagem integral do catálogo continua sendo um inventário de código, sem comprovar que cada combinação de rota, permissão e dados tenha sido renderizada.
 
 ## Navegação, rotas e contratos
 
