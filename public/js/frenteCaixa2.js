@@ -3409,10 +3409,10 @@ function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
                 detalhesConfirmacao704.style.overflowY = 'auto';
                 detalhesConfirmacao704.style.textAlign = 'left';
                 swal({
-                    title: "Corrigir horário fiscal da NFC-e?",
+                    title: "Reassinar a mesma NFC-e?",
                     content: detalhesConfirmacao704,
                     icon: "warning",
-                    buttons: ["Cancelar", "Confirmar e retransmitir"],
+                    buttons: ["Cancelar", "Reassinar e retransmitir"],
                     dangerMode: true,
                 }).then((confirmar) => {
                     if(confirmar){

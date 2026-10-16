@@ -69,8 +69,11 @@ class NfceRejeicao704TimeoutTest extends TestCase
             dirname(__DIR__, 2) . '/app/Services/NFCeService.php'
         );
 
+        $this->assertStringContainsString('public function prepararReassinaturaNfce704', $service);
+        $this->assertStringContainsString('private function substituirDhEmiNoXmlAssinado704', $service);
+        $this->assertStringContainsString('public function validarXmlReassinadoNfce704', $service);
         $this->assertStringContainsString(
-            "\$dhEmiRetransmissao ?? \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
+            "\$stdIde->dhEmi = \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();",
             $service
         );
         $this->assertStringContainsString('dadosCorrecaoDhEmiNfce704', $service);
@@ -82,9 +85,71 @@ class NfceRejeicao704TimeoutTest extends TestCase
             dirname(__DIR__, 2) . '/app/Http/Controllers/NFCeController.php'
         );
         $this->assertStringContainsString("NFCE_704_CONFIRMAR_DHEMI", $controller);
+        $this->assertStringContainsString('prepararReassinaturaNfce704', $controller);
         $this->assertStringContainsString("consulta_sefaz_cStat' => 217", $controller);
         $this->assertStringContainsString("'dhSaiEnt' => \$dhSaiEnt !== '' ? \$dhSaiEnt : null", $service);
         $this->assertStringContainsString("\$stdIde->dhSaiEnt = \$identidadeOriginal['dhSaiEnt']", $service);
+    }
+
+    public function test_reassinatura_reutiliza_xml_original_e_altera_somente_dhEmi(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $chave = $this->chave();
+        $dhEmiOriginal = '2026-10-15T09:07:37-03:00';
+        $dhEmiNovo = '2026-10-16T01:20:49-03:00';
+        $xmlOriginal = '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
+            . '<infNFe versao="4.00" Id="NFe' . $chave . '"><ide>'
+            . '<dhEmi>' . $dhEmiOriginal . '</dhEmi>'
+            . '<dhSaiEnt>2026-10-15T09:10:00-03:00</dhSaiEnt>'
+            . '<tpEmis>1</tpEmis></ide><det nItem="1"><prod><xProd>Produto A</xProd></prod></det>'
+            . '</infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/>'
+            . '<SignatureValue>AA==</SignatureValue></Signature></NFe>';
+
+        $transform = (new ReflectionMethod(NFCeService::class, 'substituirDhEmiNoXmlAssinado704'))
+            ->invoke($service, $xmlOriginal, $chave, $dhEmiOriginal, $dhEmiNovo);
+
+        $domOriginal = new \DOMDocument('1.0', 'UTF-8');
+        $this->assertTrue(@$domOriginal->loadXML($xmlOriginal, LIBXML_NONET));
+        $xpathOriginal = new \DOMXPath($domOriginal);
+        $xpathOriginal->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $this->assertSame($dhEmiOriginal, $xpathOriginal->evaluate('string(//nfe:ide/nfe:dhEmi)'));
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $this->assertTrue(@$dom->loadXML($transform['xml'], LIBXML_NONET));
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $this->assertSame($dhEmiNovo, $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
+        $this->assertSame('2026-10-15T09:10:00-03:00', $xpath->evaluate('string(//nfe:ide/nfe:dhSaiEnt)'));
+        $this->assertSame('Produto A', $xpath->evaluate('string(//nfe:prod/nfe:xProd)'));
+        $this->assertSame(0, $dom->getElementsByTagNameNS(
+            'http://www.w3.org/2000/09/xmldsig#',
+            'Signature'
+        )->length);
+
+        $dom->documentElement->appendChild(
+            $dom->createElementNS('http://www.w3.org/2000/09/xmldsig#', 'Signature')
+        );
+        $xmlAssinado = $dom->saveXML();
+        $service->validarXmlReassinadoNfce704([
+            'chave' => $chave,
+            'dhEmi' => $dhEmiNovo,
+            'tpEmis' => 1,
+            'fingerprint_infNFe_sem_dhEmi' => $transform['fingerprint_infNFe_sem_dhEmi'],
+        ], $xmlAssinado);
+    }
+
+    public function test_reassinatura_bloqueia_dhEmi_que_altera_mes_da_chave(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $this->expectException(\DomainException::class);
+        (new ReflectionMethod(NFCeService::class, 'substituirDhEmiNoXmlAssinado704'))
+            ->invoke(
+                $service,
+                '<xml/>',
+                $this->chave(),
+                '2026-10-15T09:07:37-03:00',
+                '2026-11-01T00:00:00-03:00'
+            );
     }
 
     public function test_diagnostico_temporal_separa_emissao_saida_e_tipo_de_emissao(): void
@@ -223,11 +288,13 @@ class NfceRejeicao704TimeoutTest extends TestCase
 
         $cpf = strpos($metodo, '$venda->cpf = $request->doc');
         $consulta = strpos($metodo, 'consultarSituacaoDaChave(');
-        $geracao = strpos($metodo, 'gerarNFCe($vendaId,');
+        $geracao = strpos($metodo, 'gerarNFCe($vendaId)');
+        $reassinaturaOriginal = strpos($metodo, 'prepararReassinaturaNfce704($venda, $config,');
 
         $this->assertNotFalse($cpf);
         $this->assertNotFalse($consulta);
         $this->assertNotFalse($geracao);
+        $this->assertNotFalse($reassinaturaOriginal);
         $this->assertLessThan($consulta, $cpf);
         $this->assertLessThan($geracao, $cpf);
         $this->assertSame(1, substr_count($metodo, '$venda->cpf = $request->doc'));

@@ -652,6 +652,223 @@ class NFCeService{
     }
 
     /**
+     * Prepara uma nova assinatura da mesma NFC-e usando o XML exato da tentativa 704.
+     * O conteúdo do infNFe permanece idêntico, exceto pelo valor de dhEmi.
+     */
+    public function prepararReassinaturaNfce704(VendaCaixa $venda, $config, array $correcao): array
+    {
+        if ($venda->estado !== 'REJEITADO'
+            || (int) $venda->empresa_id !== (int) $this->empresa_id) {
+            throw new \DomainException('A NFC-e não está rejeitada na empresa autenticada.');
+        }
+
+        $log = FiscalEmissionLog::where('empresa_id', $this->empresa_id)
+            ->where('document_type', 'NFCe')
+            ->where('document_id', $venda->id)
+            ->orderBy('id', 'desc')
+            ->first(['id', 'status', 'retorno_codigo', 'chave', 'filial_id', 'xml_envio_path']);
+
+        if (!$log
+            || $log->status !== 'rejeitado'
+            || (int) $log->retorno_codigo !== 704
+            || trim((string) $log->chave) !== trim((string) $venda->chave)) {
+            throw new \DomainException('A última tentativa fiscal não corresponde à rejeição 704 desta chave.');
+        }
+
+        if ($log->filial_id !== null
+            && (int) $log->filial_id !== (int) $venda->filial_id) {
+            throw new \DomainException('O XML da rejeição 704 pertence a outra filial.');
+        }
+
+        $path = trim((string) $log->xml_envio_path);
+        if (!preg_match(
+            '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\.xml$~D',
+            $path
+        ) || !Storage::disk('local')->exists($path)) {
+            throw new \DomainException('O XML original da tentativa 704 não está disponível no arquivo fiscal.');
+        }
+
+        $xmlOriginal = (string) Storage::disk('local')->get($path);
+        $identidade = $this->identidadeNfceDeXmlAssinado($venda, $config, $xmlOriginal);
+        $chave = trim((string) ($correcao['chave'] ?? ''));
+        $dhEmiOriginal = trim((string) ($correcao['dhEmi_original'] ?? ''));
+        $dhEmiNovo = trim((string) ($correcao['dhEmi_proposto'] ?? ''));
+
+        if ($chave === ''
+            || !hash_equals($identidade['chave'], $chave)
+            || !hash_equals(trim((string) $venda->chave), $chave)
+            || (int) ($correcao['nNF'] ?? 0) !== (int) $identidade['numero']) {
+            throw new \DomainException('A identidade do XML arquivado diverge da NFC-e confirmada.');
+        }
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
+        $dom->formatOutput = false;
+        if (!@$dom->loadXML($xmlOriginal, LIBXML_NONET)) {
+            throw new \DomainException('O XML original da tentativa 704 não pôde ser interpretado.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $infNFeNodes = $xpath->query('//nfe:infNFe');
+        $dhEmiNodes = $xpath->query('//nfe:infNFe/nfe:ide/nfe:dhEmi');
+        $signatureNodes = $xpath->query('//ds:Signature');
+        if ($infNFeNodes->length !== 1 || $dhEmiNodes->length !== 1 || $signatureNodes->length !== 1) {
+            throw new \DomainException('O XML da tentativa 704 não contém uma NFC-e assinada única.');
+        }
+
+        $infNFe = $infNFeNodes->item(0);
+        $dhEmiNode = $dhEmiNodes->item(0);
+        $dhEmiAtual = trim((string) $dhEmiNode->textContent);
+        $tpEmis = (int) $xpath->evaluate('string(./nfe:ide/nfe:tpEmis)', $infNFe);
+        if ($infNFe->getAttribute('Id') !== 'NFe' . $chave
+            || !hash_equals($dhEmiOriginal, $dhEmiAtual)
+            || $tpEmis !== 1
+            || (int) ($correcao['tpEmis'] ?? 0) !== 1) {
+            throw new \DomainException('O XML arquivado mudou desde a confirmação ou não está em emissão normal.');
+        }
+
+        $xmlSemAssinatura = $this->substituirDhEmiNoXmlAssinado704(
+            $xmlOriginal,
+            $chave,
+            $dhEmiOriginal,
+            $dhEmiNovo
+        );
+
+        return [
+            'xml' => $xmlSemAssinatura['xml'],
+            'chave' => $chave,
+            'nNf' => (int) $identidade['numero'],
+            'modelo' => 65,
+            'dhEmi' => $dhEmiNovo,
+            'tpEmis' => $tpEmis,
+            'sha256_xml_original' => hash('sha256', $xmlOriginal),
+            'fiscal_emission_log_id' => (int) $log->id,
+            'fingerprint_infNFe_sem_dhEmi' => $xmlSemAssinatura['fingerprint_infNFe_sem_dhEmi'],
+        ];
+    }
+
+    /**
+     * Retira a assinatura antiga, altera somente dhEmi e deixa o XML pronto
+     * para uma nova assinatura. Os demais campos de infNFe são comparados
+     * por canonicalização antes/depois.
+     */
+    private function substituirDhEmiNoXmlAssinado704(
+        string $xmlOriginal,
+        string $chave,
+        string $dhEmiOriginal,
+        string $dhEmiNovo
+    ): array {
+        $regexData = '/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D';
+        if (!preg_match($regexData, $dhEmiOriginal)
+            || !preg_match($regexData, $dhEmiNovo)
+            || substr($dhEmiOriginal, 2, 2) . substr($dhEmiOriginal, 5, 2) !== substr($chave, 2, 4)
+            || substr($dhEmiNovo, 2, 2) . substr($dhEmiNovo, 5, 2) !== substr($chave, 2, 4)) {
+            throw new \DomainException('A alteração de dhEmi é inválida ou mudaria o mês/ano da chave NFC-e.');
+        }
+
+        $fingerprintOriginal = $this->fingerprintInfNfeSemDhEmi($xmlOriginal);
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
+        $dom->formatOutput = false;
+        if (!@$dom->loadXML($xmlOriginal, LIBXML_NONET)) {
+            throw new \DomainException('O XML original da tentativa 704 não pôde ser interpretado.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $infNFe = $xpath->query('//nfe:infNFe');
+        $dhEmiNodes = $xpath->query('//nfe:infNFe/nfe:ide/nfe:dhEmi');
+        $assinaturas = $xpath->query('//ds:Signature');
+        if ($infNFe->length !== 1 || $dhEmiNodes->length !== 1 || $assinaturas->length !== 1) {
+            throw new \DomainException('Não é seguro reaproveitar um XML fiscal sem uma única infNFe, dhEmi e assinatura.');
+        }
+
+        $info = $infNFe->item(0);
+        $dhEmi = $dhEmiNodes->item(0);
+        if ($info->getAttribute('Id') !== 'NFe' . $chave
+            || !hash_equals($dhEmiOriginal, trim((string) $dhEmi->textContent))) {
+            throw new \DomainException('A chave ou dhEmi do XML não corresponde à tentativa rejeitada.');
+        }
+
+        $assinatura = $assinaturas->item(0);
+        $assinatura->parentNode?->removeChild($assinatura);
+        $dhEmi->nodeValue = $dhEmiNovo;
+        $xmlAtualizado = $dom->saveXML();
+        if (!is_string($xmlAtualizado) || $xmlAtualizado === '') {
+            throw new \DomainException('Não foi possível preparar o XML original para nova assinatura.');
+        }
+
+        $fingerprintAtualizado = $this->fingerprintInfNfeSemDhEmi($xmlAtualizado);
+        if (!hash_equals($fingerprintOriginal, $fingerprintAtualizado)) {
+            throw new \DomainException('A preparação alterou campos além de dhEmi. Retransmissão bloqueada.');
+        }
+
+        return [
+            'xml' => $xmlAtualizado,
+            'fingerprint_infNFe_sem_dhEmi' => $fingerprintOriginal,
+        ];
+    }
+
+    private function fingerprintInfNfeSemDhEmi(string $xml): string
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
+        $dom->formatOutput = false;
+        if (!@$dom->loadXML($xml, LIBXML_NONET)) {
+            throw new \DomainException('Não foi possível validar a integridade fiscal do XML.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $infNFe = $xpath->query('//nfe:infNFe');
+        $dhEmi = $xpath->query('//nfe:infNFe/nfe:ide/nfe:dhEmi');
+        if ($infNFe->length !== 1 || $dhEmi->length !== 1) {
+            throw new \DomainException('O XML não contém uma única infNFe e dhEmi para comparação.');
+        }
+
+        $dhEmi->item(0)->nodeValue = '__DHEMI_VALIDACAO__';
+        $canonical = $infNFe->item(0)->C14N();
+        if (!is_string($canonical) || $canonical === '') {
+            throw new \DomainException('Não foi possível canonicalizar infNFe para validar a alteração.');
+        }
+
+        return hash('sha256', $canonical);
+    }
+
+    public function validarXmlReassinadoNfce704(array $proposta, string $xmlAssinado): void
+    {
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->preserveWhiteSpace = true;
+        if (!@$dom->loadXML($xmlAssinado, LIBXML_NONET)) {
+            throw new \DomainException('A nova assinatura não produziu um XML legível.');
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $xpath->registerNamespace('ds', 'http://www.w3.org/2000/09/xmldsig#');
+        $infNFe = $xpath->query('//nfe:infNFe');
+        $assinaturas = $xpath->query('//ds:Signature');
+        if ($infNFe->length !== 1 || $assinaturas->length !== 1) {
+            throw new \DomainException('A nova assinatura não contém uma única NFC-e identificável.');
+        }
+
+        $info = $infNFe->item(0);
+        $chave = trim((string) ($proposta['chave'] ?? ''));
+        $dhEmi = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhEmi)', $info));
+        $tpEmis = (int) $xpath->evaluate('string(./nfe:ide/nfe:tpEmis)', $info);
+        $fingerprint = $this->fingerprintInfNfeSemDhEmi($xmlAssinado);
+        if ($info->getAttribute('Id') !== 'NFe' . $chave
+            || !hash_equals((string) ($proposta['dhEmi'] ?? ''), $dhEmi)
+            || $tpEmis !== (int) ($proposta['tpEmis'] ?? 0)
+            || !hash_equals((string) ($proposta['fingerprint_infNFe_sem_dhEmi'] ?? ''), $fingerprint)) {
+            throw new \DomainException('A nova assinatura alterou a chave ou campos da NFC-e além de dhEmi.');
+        }
+    }
+
+    /**
      * Lê uma identidade fiscal somente de XML com assinatura já armazenado.
      * Não gera número, cNF ou chave e não realiza chamada à SEFAZ.
      */
@@ -1035,7 +1252,7 @@ class NFCeService{
         throw new \RuntimeException('Não foi possível montar o XML da NFC-e (getXML/montaNFe/monta indisponíveis ou retornaram vazio).');
     }
 
-    public function gerarNFCe($idVenda, bool $renovarDhEmiApos704 = false){
+    public function gerarNFCe($idVenda){
         $venda = VendaCaixa::
         where('id', $idVenda)
             ->first();
@@ -1057,19 +1274,9 @@ class NFCeService{
         }
 
         $identidadeOriginal = null;
-        $dhEmiRetransmissao = null;
         if ($venda->estado === 'REJEITADO') {
             try {
                 $identidadeOriginal = $this->identidadeOriginalNFCe($venda, $config);
-                if ($renovarDhEmiApos704) {
-                    $dadosCorrecao = $this->dadosCorrecaoDhEmiNfce704($venda, $config);
-                    if ($dadosCorrecao === null || !$dadosCorrecao['permitido']) {
-                        return ['erros_xml' => [
-                            $dadosCorrecao['motivo'] ?? 'Não foi confirmada uma rejeição 704 elegível para atualizar dhEmi.',
-                        ]];
-                    }
-                    $dhEmiRetransmissao = $dadosCorrecao['dhEmi_proposto'];
-                }
             } catch (\DomainException $e) {
                 return ['erros_xml' => [$e->getMessage()]];
             }
@@ -1094,7 +1301,7 @@ class NFCeService{
         $stdIde->mod = 65;
         $stdIde->serie = $identidadeOriginal['serie'] ?? $config->numero_serie_nfce;
         $stdIde->nNF = $identidadeOriginal['nNF'] ?? $this->reservarNumeroNFCe($venda, $config);
-        $stdIde->dhEmi = $dhEmiRetransmissao ?? $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
+        $stdIde->dhEmi = $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
         if ($identidadeOriginal !== null) {
             // Em retransmissões, dhSaiEnt descreve o documento original e
             // não deve avançar junto com o relógio da nova tentativa.
