@@ -642,8 +642,8 @@ class NFCeService{
     }
 
     /**
-     * Reutiliza o XML arquivado e remove apenas a assinatura digital anterior.
-     * O infNFe completo, inclusive dhEmi e dhSaiEnt, deve permanecer idêntico.
+     * Reutiliza o XML arquivado da rejeição 704, altera somente dhEmi para o
+     * horário desta retransmissão e prepara o XML para a assinatura padrão.
      */
     public function prepararReassinaturaNfce704(VendaCaixa $venda, $config, array $dados): array
     {
@@ -676,7 +676,7 @@ class NFCeService{
         if ($path === ''
             || $path !== (string) ($dados['xml_envio_path'] ?? '')
             || !preg_match(
-                '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\\.xml$~D',
+                '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\.xml$~D',
                 $path
             )
             || !Storage::disk('local')->exists($path)) {
@@ -707,10 +707,13 @@ class NFCeService{
             throw new \DomainException('A identidade ou as datas do XML arquivado divergiram da NFC-e rejeitada.');
         }
 
+        $dhEmiTransmissao = FiscalDateHelper::nowXml();
+        $this->validarDhEmiNfce704ParaChave($dhEmiTransmissao, $chave);
         $xmlSemAssinatura = $this->removerAssinaturaXmlNfce704(
             $xmlOriginal,
             $chave,
-            $dhEmiOriginal
+            $dhEmiOriginal,
+            $dhEmiTransmissao
         );
 
         return [
@@ -718,7 +721,9 @@ class NFCeService{
             'chave' => $chave,
             'nNf' => $numeroDoXml,
             'modelo' => 65,
-            'dhEmi' => $dhEmiDoXml,
+            'dhEmi' => $dhEmiTransmissao,
+            'dhEmi_original' => $dhEmiOriginal,
+            'dhEmi_transmissao' => $dhEmiTransmissao,
             'dhSaiEnt' => $dhSaiEntDoXml,
             'tpEmis' => $tpEmisDoXml,
             'sha256_xml_original' => hash('sha256', $xmlOriginal),
@@ -728,13 +733,36 @@ class NFCeService{
     }
 
     /**
-     * Remove apenas ds:Signature da tentativa anterior e compara todo o XML
-     * fiscal sem assinatura por canonicalização, antes e depois.
+     * Confirma que a nova dhEmi cabe na competência que já está embutida na chave.
+     * A chave e todos os dados fiscais da venda permanecem os mesmos.
+     */
+    private function validarDhEmiNfce704ParaChave(string $dhEmi, string $chave): void
+    {
+        try {
+            $dataEmissao = new \DateTimeImmutable($dhEmi);
+        } catch (\Throwable $e) {
+            throw new \DomainException('Não foi possível validar a nova data/hora de emissão da NFC-e.');
+        }
+
+        if ($dataEmissao->format('Y-m-d\TH:i:sP') !== $dhEmi
+            || $dataEmissao->format('ym') !== substr($chave, 2, 4)) {
+            throw new \DomainException(
+                'A data/hora atual pertence a outro mês ou ano da chave da NFC-e. '
+                . 'Para manter a mesma chave, a retransmissão foi interrompida.'
+            );
+        }
+    }
+
+    /**
+     * Remove somente ds:Signature e altera apenas o conteúdo de dhEmi.
+     * A comparação canônica ignora somente o texto de dhEmi para garantir que
+     * dhSaiEnt e todas as demais tags e atributos continuem iguais.
      */
     private function removerAssinaturaXmlNfce704(
         string $xmlOriginal,
         string $chave,
-        string $dhEmiOriginal
+        string $dhEmiOriginal,
+        string $dhEmiTransmissao
     ): array {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = true;
@@ -758,24 +786,27 @@ class NFCeService{
         }
 
         $info = $infNFe->item(0);
-        $dhEmiValor = trim((string) $dhEmi->item(0)->textContent);
+        $dhEmiNode = $dhEmi->item(0);
+        $dhEmiValor = trim((string) $dhEmiNode->textContent);
         if ($info->getAttribute('Id') !== 'NFe' . $chave
             || !hash_equals($dhEmiOriginal, $dhEmiValor)
             || substr($dhEmiValor, 2, 2) . substr($dhEmiValor, 5, 2) !== substr($chave, 2, 4)) {
             throw new \DomainException('A chave ou dhEmi do XML não corresponde à tentativa rejeitada.');
         }
 
-        $fingerprintOriginal = $this->fingerprintXmlFiscalSemAssinatura($xmlOriginal);
+        $this->validarDhEmiNfce704ParaChave($dhEmiTransmissao, $chave);
+        $fingerprintOriginal = $this->fingerprintXmlFiscalSemAssinatura($xmlOriginal, true);
         $assinatura = $assinaturas->item(0);
         $assinatura->parentNode?->removeChild($assinatura);
+        $dhEmiNode->nodeValue = $dhEmiTransmissao;
         $xmlSemAssinatura = $dom->saveXML();
         if (!is_string($xmlSemAssinatura) || $xmlSemAssinatura === '') {
             throw new \DomainException('Não foi possível preparar o XML original para nova assinatura.');
         }
 
-        $fingerprintSemAssinatura = $this->fingerprintXmlFiscalSemAssinatura($xmlSemAssinatura);
+        $fingerprintSemAssinatura = $this->fingerprintXmlFiscalSemAssinatura($xmlSemAssinatura, true);
         if (!hash_equals($fingerprintOriginal, $fingerprintSemAssinatura)) {
-            throw new \DomainException('A remoção da assinatura alterou campos fiscais da NFC-e. Retransmissão bloqueada.');
+            throw new \DomainException('A preparação da retransmissão alterou campos além de dhEmi. Transmissão bloqueada.');
         }
 
         return [
@@ -784,7 +815,7 @@ class NFCeService{
         ];
     }
 
-    private function fingerprintXmlFiscalSemAssinatura(string $xml): string
+    private function fingerprintXmlFiscalSemAssinatura(string $xml, bool $normalizarDhEmi = false): string
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = true;
@@ -798,6 +829,15 @@ class NFCeService{
         $assinaturas = $xpath->query('//ds:Signature');
         foreach ($assinaturas as $assinatura) {
             $assinatura->parentNode?->removeChild($assinatura);
+        }
+
+        if ($normalizarDhEmi) {
+            $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+            $dhEmi = $xpath->query('//nfe:infNFe/nfe:ide/nfe:dhEmi');
+            if ($dhEmi->length !== 1) {
+                throw new \DomainException('Não foi possível confirmar a única tag dhEmi da NFC-e.');
+            }
+            $dhEmi->item(0)->nodeValue = '__DHEMI_NORMALIZADO__';
         }
 
         $raiz = $dom->documentElement;
@@ -832,13 +872,14 @@ class NFCeService{
         $dhSaiEnt = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhSaiEnt)', $info));
         $dhSaiEnt = $dhSaiEnt !== '' ? $dhSaiEnt : null;
         $tpEmis = (int) $xpath->evaluate('string(./nfe:ide/nfe:tpEmis)', $info);
-        $fingerprint = $this->fingerprintXmlFiscalSemAssinatura($xmlAssinado);
+        $fingerprint = $this->fingerprintXmlFiscalSemAssinatura($xmlAssinado, true);
+        $this->validarDhEmiNfce704ParaChave($dhEmi, $chave);
         if ($info->getAttribute('Id') !== 'NFe' . $chave
             || !hash_equals((string) ($proposta['dhEmi'] ?? ''), $dhEmi)
             || $dhSaiEnt !== ($proposta['dhSaiEnt'] ?? null)
             || $tpEmis !== (int) ($proposta['tpEmis'] ?? 0)
             || !hash_equals((string) ($proposta['fingerprint_xml_sem_assinatura'] ?? ''), $fingerprint)) {
-            throw new \DomainException('A nova assinatura alterou a chave ou algum campo fiscal original da NFC-e.');
+            throw new \DomainException('A nova assinatura alterou a chave ou algum campo fiscal além de dhEmi.');
         }
     }
 
@@ -2222,7 +2263,7 @@ class NFCeService{
         }
         $mensagem .= "\nA rejeição 704 valida dhEmi em relação ao recebimento da SEFAZ. Registro da venda, data_emissao no banco, dhSaiEnt e início da transmissão são horários distintos.\n";
         if ((int) $tpEmis === 1) {
-            $mensagem .= "Esta NFC-e está marcada como tpEmis=1 (normal). Uma retransmissão simples preserva dhEmi; eventual correção depende de consulta que confirme cStat=217 e confirmação explícita do operador.";
+            $mensagem .= "Esta NFC-e está marcada como tpEmis=1 (normal). Após a consulta confirmar cStat=217, a retransmissão da mesma NFC-e atualiza somente dhEmi para o horário do novo envio e refaz a assinatura pelo método padrão. Chave, número, cNF, tpEmis, dhSaiEnt, itens, tributos, valores e pagamentos permanecem preservados. Se o novo horário cair em outro mês ou ano da chave, o sistema interrompe o envio para evitar alterar a identidade fiscal.";
         } else {
             $mensagem .= "O XML não está marcado como emissão normal. Confira o tipo de emissão e o procedimento fiscal antes de retransmitir.";
         }
