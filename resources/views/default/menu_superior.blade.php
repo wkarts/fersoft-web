@@ -669,7 +669,7 @@
 
                             <div class="topbar-item user-tour">
                                 <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-                                    @php($avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl())
+                                    <?php $avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl(); ?>
                                     <a href="{{ route('usuarios.profile') }}" aria-label="Minha foto de perfil" title="Minha foto" style="display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; margin-right:8px; border-radius:50%; overflow:hidden; background:#e5f2ec; color:#146242; font-weight:700;">
                                         @if($avatarUrl)
                                             <img src="{{ $avatarUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
@@ -1944,13 +1944,9 @@
                     @endif
 
                     <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-                        {{-- Não usar a diretiva forelse aqui: a compilação das views legadas
-                             não fechava o foreach gerado, gerando ParseError no PHP. --}}
-                        @if(count($appVersionHistoryGrouped ?? []) > 0)
-                            @foreach($appVersionHistoryGrouped as $major => $items)
-                            @php
-                                $majorId = 'top-major-' . $major;
-                            @endphp
+                        <?php if (count($appVersionHistoryGrouped ?? []) > 0): ?>
+                            <?php foreach ($appVersionHistoryGrouped as $major => $items): ?>
+                            <?php $majorId = 'top-major-' . $major; ?>
                             <div class="card">
                                 <div class="card-header" id="head-{{ $majorId }}">
                                     <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
@@ -1961,7 +1957,7 @@
                                 <div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
                                     <div class="card-body p-2">
                                         <ul class="list-group">
-                                            @foreach($items as $item)
+                                            <?php foreach ($items as $item): ?>
                                                 <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
                                                     <div>
                                                         <strong>{{ $item->version }}</strong>
@@ -1977,15 +1973,15 @@
                                                         @endif
                                                     </div>
                                                 </li>
-                                            @endforeach
+                                            <?php endforeach; ?>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
-                            @endforeach
-                        @else
+                            <?php endforeach; ?>
+                        <?php else: ?>
                             <div class="text-center text-muted">Nenhuma versão interna registrada.</div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="modal-footer">
