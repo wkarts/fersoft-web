@@ -40,7 +40,7 @@
             border: 1px dashed #dce7e7;
         }
     </style>
-    <div class="fer-page fer-form  d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="fer-page fer-form ui-contact-register ui-contact-register--client d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
@@ -97,7 +97,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="row">
+                                        <div class="row ui-client-identity-fields">
                                             <div class="form-group validated col-sm-3 col-lg-4">
                                                 <label class="col-form-label" id="lbl_cpf_cnpj">CPF</label>
                                                 <div class="">
@@ -124,8 +124,7 @@
                                             </select>
 
                                         </div> -->
-                                            <div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-                                                <br><br>
+                                            <div class="form-group validated col-lg-2 col-md-2 col-sm-6 ui-contact-lookup">
                                                 <a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 												<span>
 													<i class="fa fa-search"></i>
@@ -133,9 +132,6 @@
                                                 </a>
                                             </div>
 
-                                        </div>
-
-                                        <div class="row">
                                             <div class="form-group validated col-sm-10 col-lg-6">
                                                 <label class="col-form-label">Razao Social/Nome</label>
                                                 <div class="">
@@ -161,7 +157,7 @@
                                         </div>
 
 
-                                        <div class="row">
+                                        <div class="row ui-client-profile-fields">
 
                                             <div class="form-group validated col-sm-3 col-lg-3">
                                                 <label class="col-form-label" id="lbl_i_rg">IE/RG</label>
@@ -269,7 +265,7 @@
                                         </div>
                                         <hr>
                                         <h4 class="section-title"><i class="flaticon2-pin text-primary"></i> Endereço de Faturamento</h4>
-                                        <div class="row">
+                                        <div class="row ui-client-street-fields">
                                             <div class="form-group validated col-sm-8 col-lg-8">
                                                 <label class="col-form-label">Rua</label>
                                                 <div class="">
@@ -294,7 +290,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row">
+                                        <div class="row ui-client-address-fields">
                                             <div class="form-group validated col-sm-8 col-lg-5">
                                                 <label class="col-form-label">Complemento</label>
                                                 <div class="">
@@ -343,8 +339,7 @@
                                                     <input id="longitude" type="text" class="form-control" name="longitude" value="{{{ isset($cliente) ? $cliente->longitude : old('longitude') }}}">
                                                 </div>
                                             </div>
-                                            <div class="form-group validated col-sm-4 col-lg-3">
-                                                <br><br>
+                                            <div class="form-group validated col-sm-4 col-lg-3 ui-contact-lookup ui-client-map-lookup">
                                                 <button type="button" class="btn btn-info btn-sm" onclick="buscarCoordenadaManual()">
                                                     📍 Buscar no Mapa
                                                 </button>
@@ -884,7 +879,7 @@
     </div>
     </div>
 
-    <div class="modal fade" id="modal-foto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade ui-client-dialog" id="modal-foto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -918,7 +913,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-otica" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fade ui-client-dialog" id="modal-otica" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-xl fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">

@@ -194,7 +194,7 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand .ui-brand-symbol,
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand [data-ui-collapse] { display:none; }
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version {
-        display:flex; order:2; flex:0 0 156px; width:156px; height:46px; min-height:46px;
+        display:flex; order:2; flex:0 0 185px; width:185px; height:46px; min-height:46px;
         padding:0 9px; border:0; border-left:1px solid var(--ui-border);
     }
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version .app-version-desktop-btn {

@@ -1,12 +1,13 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-list-refinements.css') }}?v={{ filemtime(public_path('css/ui-list-refinements.css')) }}">
 @endpush
 
 @section('content')
 <header class="fer-page__heading"><h1>Produtos com Grade</h1></header>
 
-<div class="card card-custom gutter-b fer-page fer-list">
+<div class="card card-custom gutter-b fer-page fer-list fer-catalog-list fer-product-list fer-product-grade-list">
 
 
 	<div class="card-body">
@@ -23,7 +24,7 @@
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<br>
-			<h4>Lista de Produtos Grade: <strong class="text-info">{{$produtos[0]->nome}}</strong></h4>
+			<h4>Lista de Produtos Grade: @if(count($produtos)) <strong class="text-info">{{$produtos[0]->nome}}</strong> @endif</h4>
 			<label>Total de registros: <strong>{{count($produtos)}}</strong></label>
 			<div class="row">
 				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -154,17 +155,17 @@
 								</div>
 							</div>
 						</div>
-						<div class="pb-5" data-wizard-type="step-content">
-							<div class="row">
+						<div class="pb-5 fer-catalog-grid-pane" data-wizard-type="step-content">
+							<div class="row fer-catalog-grid">
 
 								@foreach($produtos as $p)
 
 								<div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-									<div class="card card-custom gutter-b example example-compact">
+									<div class="card card-custom gutter-b example example-compact fer-catalog-card">
 										<div class="card-header">
 											<div class="card-title">
 												<div class="flex-shrink-0 mr-4 mt-lg-0 mt-3">
-													<div class="symbol symbol-circle symbol-lg-75">
+													<div class="symbol symbol-circle symbol-lg-75 fer-list-avatar">
 														@if($p->imagem != '')
 														<img src="/imgs_produtos/{{$p->imagem}}" alt="image">
 														@else
@@ -173,7 +174,7 @@
 
 													</div>
 												</div>
-												<h3 style="width: 230px; font-size: 12px; height: 10px;" class="card-title">{{substr($p->nome, 0, 30)}}
+												<h3 class="card-title" title="{{ $p->nome }}">{{substr($p->nome, 0, 30)}}
 												</h3>
 
 												<div class="dropdown dropdown-inline" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
@@ -237,8 +238,9 @@
 
 
 											</div>
+										</div>
 
-											<div class="card-body">
+										<div class="card-body">
 
 												<div class="kt-widget__info">
 													<span class="kt-widget__label">Categoria:</span>
@@ -278,9 +280,7 @@
 														0
 														@endif
 													</a>
-												</div>
-
-											</div>
+										</div>
 
 										</div>
 									</div>

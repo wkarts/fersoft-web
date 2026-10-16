@@ -216,7 +216,7 @@
 													@if(sizeof($p->galeria) > 0)
 													<img src="/ecommerce/produtos/{{$p->galeria[0]->img}}" alt="image">
 													@else
-													<img src="imgs/no_image.png" alt="image">
+											<img src="/imgs/no_image.png" alt="image">
 													@endif
 												</div>
 												<div class="symbol symbol-lg-75 symbol-circle symbol-primary d-none">

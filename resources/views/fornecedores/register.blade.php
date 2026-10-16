@@ -4,7 +4,7 @@
 @endpush
 @section('content')
 <header class="fer-page__heading"><h1>{{ isset($forn) ? 'Editar' : 'Novo' }} Fornecedor</h1></header>
-    <div class="fer-page fer-form  d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="fer-page fer-form ui-contact-register d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
@@ -65,8 +65,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="form-group validated col-lg-1 col-md-2 col-sm-6">
-                                                <br><br>
+                                            <div class="form-group validated col-lg-1 col-md-2 col-sm-6 ui-contact-lookup">
                                                 <a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 												<span>
 													<i class="fa fa-search"></i>

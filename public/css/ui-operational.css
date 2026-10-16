@@ -14,11 +14,13 @@ body.ui-native-shell .ui-version .app-version-desktop-btn { display:flex; align-
 body.ui-native-shell .ui-version .app-version-desktop-head { display:flex; align-items:center; gap:7px; width:100%; min-width:0; }
 body.ui-native-shell .ui-version .app-version-desktop-head > i { flex:0 0 auto; line-height:1; }
 body.ui-native-shell .ui-version .app-version-desktop-main { display:block; min-width:0; width:100%; line-height:1.25; }
+body.ui-native-shell .ui-version .app-version-desktop-version-line { display:flex; align-items:center; justify-content:center; gap:6px; min-width:0; width:100%; }
 body.ui-native-shell .ui-version .app-version-desktop-tag,
 body.ui-native-shell .ui-version .app-version-desktop-main > small {
     display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-body.ui-native-shell .ui-version .app-version-desktop-tag { font-size:11px; font-weight:600; }
+body.ui-native-shell .ui-version .app-version-desktop-tag { flex:0 1 auto; min-width:0; font-size:11px; font-weight:600; }
+body.ui-native-shell .ui-version .app-version-desktop-revision-short { flex:0 0 auto; color:var(--ui-muted); font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:9px; font-weight:500; letter-spacing:0; white-space:nowrap; }
 body.ui-native-shell .ui-version .app-version-desktop-main > small { margin-top:2px; color:var(--ui-muted); font-size:9px; font-weight:400; line-height:1.2; }
 body.ui-native-shell .ui-navigation { min-height:0; flex:1 1 auto; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:var(--ui-border) transparent; padding:12px 10px; }
 body.ui-native-shell .ui-nav-caption { font-size:10px; letter-spacing:.09em; font-weight:600; padding:7px 11px 13px; margin:0; opacity:.75; color:var(--ui-sidebar-ink); }

@@ -27,3 +27,9 @@ A revisão estática percorreu todos os arquivos. Ela não comprova que cada rot
 | `remessa_nfe/register.blade.php` | Formulário e ações finais contidos na superfície, dois botões de consulta alinhados sem `<br>` artificiais, busca de produto e sete modais; modal pequeno de código com largura adequada. | Formulário de gravação/atualização, campos fiscais, JS, modal de produto, referência, pagamento, código, cliente e transportadora, com IDs e ações preservados. |
 
 As regras novas ficam restritas a `.cte-page--list` e `.fiscal-page--remessa_nfe-register` ou aos respectivos modais. A comparação de contratos da ZIP `develop` por `tests/ui/test-view-contracts.py` inclui ambas as views; verificação com dados reais em homologação ainda é necessária.
+
+## Cadastros e formulários do painel
+
+Há 127 arquivos com nomes `register`, `cadastro`, `create`, `edit`, `novo` ou `nova` que estendem literalmente `default.layout`. Eles contêm 135 tags textuais `<form>`, 92 declarações de modal e 941 atributos de estilo inline; vários incluem controles auxiliares. Esse inventário não equivale a 127 telas aprovadas visualmente. O `ui-form-harmony.css` é carregado no shell para alinhamentos repetidos de rótulos, campos, seleção e rodapé, sempre dentro de `body.ui-native-shell .ui-page`.
+
+`clientes/register.blade.php` recebeu revisão dirigida: identificação em uma grade com CPF/consulta e nomes, campos cadastrais agrupados, Latitude/Longitude/Mapa/Email alinhados e modais de foto/receita ótica responsivos. O padrão de consulta foi reutilizado em `fornecedores/register.blade.php` e `transportadora/register.blade.php`. Classes, largura e agrupamento visual foram alterados; `id`, `name`, action, method, máscaras e handlers foram mantidos. Formulários com JS e domínios específicos (fiscal, vendas, PDV, e-commerce) exigem inspeção funcional por tela na homologação.
