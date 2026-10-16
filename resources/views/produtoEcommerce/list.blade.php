@@ -1,8 +1,19 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-produtoEcommerce">
 
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 
 			<div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
@@ -65,42 +76,15 @@
 					<br>
 				</form>
 
-				<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+				<div class="ui-commerce-grid" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 					<!--begin: Wizard Nav-->
 
-					<div class="wizard-nav">
+					<div class="ui-commerce-tabs" role="tablist" aria-label="Visualização de produtos de ecommerce">
+                        <button type="button" role="tab" class="ui-commerce-tab" id="produto-tab-tabela" data-wizard-type="step" data-wizard-state="done" aria-controls="produto-painel-tabela" aria-selected="true"><i class="la la-table" aria-hidden="true"></i> Tabela</button>
+                        <button type="button" role="tab" class="ui-commerce-tab" id="grade" data-wizard-type="step" data-wizard-state="current" aria-controls="produto-painel-grade" aria-selected="false"><i class="la la-tablet" aria-hidden="true"></i> Grade</button>
+                    </div>
 
-						<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-							<!--begin::Wizard Step 1 Nav-->
-							<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-								<div class="wizard-label">
-									<h3 class="wizard-title">
-										<span>
-											<i style="font-size: 40px" class="la la-table"></i>
-											Tabela
-										</span>
-									</h3>
-									<div class="wizard-bar"></div>
-								</div>
-							</div>
-							<!--end::Wizard Step 1 Nav-->
-							<!--begin::Wizard Step 2 Nav-->
-							<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-								<div class="wizard-label" id="grade">
-									<h3 class="wizard-title">
-										<span>
-											<i style="font-size: 40px" class="la la-tablet"></i>
-											Grade
-										</span>
-									</h3>
-									<div class="wizard-bar"></div>
-								</div>
-							</div>
-
-						</div>
-					</div>
-
-					<div class="pb-5" data-wizard-type="step-content">
+					<div class="pb-5" id="produto-painel-tabela" data-wizard-type="step-content" role="tabpanel" aria-labelledby="produto-tab-tabela">
 						<div class="row">
 							<div class="col-xl-12">
 
@@ -203,7 +187,7 @@
 						</div>
 					</div>
 
-					<div class="pb-5" data-wizard-type="step-content">
+					<div class="pb-5" id="produto-painel-grade" data-wizard-type="step-content" role="tabpanel" aria-labelledby="grade" hidden>
 
 						<div class="row">
 
@@ -212,9 +196,9 @@
 
 							<div class="col-xl-4 col-lg-6 col-md-6 col-sm-6">
 								<!--begin::Card-->
-								<div class="card card-custom gutter-b card-stretch">
+								<div class="ui-admin-panel ui-commerce-panel gutter-b">
 									<!--begin::Body-->
-									<div class="card-body pt-4">
+									<div class="ui-admin-panel-body ui-commerce-panel-body pt-4">
 										<!--begin::Toolbar-->
 										<div class="d-flex justify-content-end">
 											<div class="dropdown dropdown-inline" data-toggle="tooltip" title="" data-placement="left" >
@@ -383,8 +367,35 @@
 			</div>
 		</div>
 	</div>
-	@section('javascript')
+	</div>
+@section('javascript')
 	<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('kt_wizard_v3');
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('.ui-commerce-tab'));
+    function selectTab(tab, focus) {
+        tabs.forEach(function (item) {
+            const selected = item === tab;
+            item.setAttribute('aria-selected', String(selected));
+            item.tabIndex = selected ? 0 : -1;
+            document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+        });
+        if (focus) tab.focus();
+    }
+    tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { selectTab(tab, false); });
+        tab.addEventListener('keydown', function (event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+                (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[next], true);
+        });
+    });
+    selectTab(tabs[0], false);
+});
+
 
 		function alterarStatus(id){
 			$.ajax

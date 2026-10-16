@@ -1,6 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
+<header class="fer-page__heading"><h1>Geração de Compra em Lote</h1></header>
     <div class="content-wrapper">
         <section class="content-header">
             <div class="container-fluid">
@@ -35,7 +40,7 @@
                     </div>
                 @endif
 
-                <div class="card card-primary card-outline">
+                <div class="card card-primary card-outline fer-page fer-detail">
                     <form action="{{ route('compras.lote.importar') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         <div class="card-body">

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
     <style>
@@ -6,7 +9,7 @@
         .box-recebimento { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 25px; }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="document-fiscal-page document-fiscal-page--mtr card card-custom gutter-b">
         <div class="card-header border-0 py-5">
             <h3 class="card-title align-items-start flex-column">
             <span class="card-label font-weight-bolder text-dark">
@@ -202,7 +205,7 @@
     </div>
 
     <!-- MODAL DE RECEBIMENTO -->
-    <div class="modal fade" id="modalRecebimentoMtr" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalRecebimentoMtr" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <form id="formRecebimentoMtr">
                 @csrf

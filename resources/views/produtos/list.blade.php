@@ -1,6 +1,10 @@
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Produtos</h1></header>
     <style type="text/css">
         /* ---------------------------------------------------- */
         /* 1) BOTÕES DO TOPO: ajustes de padding e fonte menores */
@@ -92,10 +96,10 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-list">
         <div class="card-body">
             <!-- Top Buttons -->
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+            <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-12">
                     <div class="row">
                         <a href="/produtos/new" class="btn btn-sm btn-success">
@@ -163,7 +167,7 @@
                  id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
                 <!-- Filtros (mantido igual ao original) -->
-                <form method="get" action="/produtos/filtroCategoria">
+                <form method="get" action="/produtos/filtroCategoria" class="fer-filter">
                     <div class="row align-items-center">
                         <div class="form-group col-lg-2 col-xl-2">
                             <label class="col-form-label">Tipo de pesquisa</label>
@@ -255,7 +259,7 @@
                 <div class="row">
                     <div class="col-12">
 
-                        <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                        <div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                             <!--begin: Wizard Nav-->
                             <div class="wizard-nav">
                                 <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
@@ -746,7 +750,7 @@
     {{-- Modal “Endereço Completo da Prateleira”           --}}
     {{-- ================================================ --}}
     <div class="modal fade" id="modalEnderecoPrateleira" tabindex="-1" role="dialog" aria-labelledby="modalEnderecoPrateleiraLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
 
                 {{-- Cabeçalho do Modal --}}
@@ -855,7 +859,7 @@
     {{-- Modais reutilizáveis --}}
     {{-- Modal de confirmação --}}
     <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
@@ -876,7 +880,7 @@
 
     {{-- Modal de mensagens --}}
     <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalMensagemLabel">Mensagem</h5>
@@ -896,7 +900,7 @@
 
     <!-- Modal Atualizar IBS/CBS/IS (TIPI) -->
     <div class="modal fade" id="modalAtualizarIbsCbs" tabindex="-1" role="dialog" aria-hidden="true" style="display:none">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Atualizar IBS/CBS/IS (TIPI)</h5>

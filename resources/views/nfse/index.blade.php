@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('css')
     <style type="text/css">
@@ -67,7 +70,7 @@
 @endsection
 
 @section('content')
-    <div class="card card-custom gutter-b shadow-sm rounded-xl">
+    <div class="document-fiscal-page document-fiscal-page--nfse card card-custom gutter-b shadow-sm rounded-xl">
         <div class="card-body p-6">
             <input type="hidden" id="_token" value="{{ csrf_token() }}">
 
@@ -343,7 +346,7 @@
     </div>
 
     <!-- Modal Cancelar -->
-    <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content rounded-xl shadow-lg border-0">
                 <div class="modal-header bg-danger text-white">
@@ -373,7 +376,7 @@
     </div>
 
     <!-- Modal Enviar Email -->
-    <div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content rounded-xl shadow-lg border-0">
                 <div class="modal-header bg-warning text-white">

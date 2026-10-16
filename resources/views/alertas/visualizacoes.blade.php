@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--support fer-extra--alertas card card-custom gutter-b">
 	<div class="card-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">

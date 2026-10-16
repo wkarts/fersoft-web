@@ -1,12 +1,17 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Pré-requisitos para Venda</h1></header>
 
 <style type="text/css">
 	.btn{
 		margin-left: 5px;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 	<div class="card-body">
 		<h5>Para gerar uma venda é necessario ter cadastrado:</h5>

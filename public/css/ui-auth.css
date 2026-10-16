@@ -1,0 +1,286 @@
+/* Páginas públicas e de erro: apresentação FERSOFT sem depender do layout autenticado. */
+body.fer-auth {
+  --fer-canvas: #f5f7f7;
+  --fer-surface: #fff;
+  --fer-border: #dce7e7;
+  --fer-text: #182f36;
+  --fer-muted: #566c72;
+  --fer-green: #1f9866;
+  --fer-green-hover: #15754f;
+  box-sizing: border-box;
+  min-height: 100vh !important;
+  height: auto !important;
+  margin: 0;
+  background: var(--fer-canvas) !important;
+  color: var(--fer-text);
+  font-family: Poppins, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+body.fer-auth *, body.fer-auth *::before, body.fer-auth *::after { box-sizing: border-box; }
+body.fer-auth a { color: var(--fer-green); text-decoration: none; }
+body.fer-auth a:hover { color: var(--fer-green-hover); text-decoration: underline; }
+body.fer-auth :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #65c7a0;
+  outline-offset: 2px;
+}
+body.fer-auth .d-flex { display: flex; }
+body.fer-auth .flex-column { flex-direction: column; }
+body.fer-auth .justify-content-between { justify-content: space-between; }
+body.fer-auth .justify-content-center, body.fer-auth .flex-center { justify-content: center; }
+body.fer-auth .align-items-center { align-items: center; }
+body.fer-auth .text-center { text-align: center; }
+body.fer-auth .text-danger, body.fer-auth .is-invalid + .text-danger { color: #b34440; }
+body.fer-auth .text-success { color: var(--fer-green); }
+body.fer-auth .text-muted { color: var(--fer-muted); }
+body.fer-auth h1, body.fer-auth h2, body.fer-auth h3, body.fer-auth h4 { color: var(--fer-text); line-height: 1.28; }
+body.fer-auth .form-group { min-width: 0; margin-bottom: 18px; }
+body.fer-auth .form-group label, body.fer-auth .form label { display: inline-block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+body.fer-auth .form-control {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px !important;
+  border: 1px solid var(--fer-border);
+  border-radius: 8px !important;
+  background: var(--fer-surface);
+  color: var(--fer-text);
+  font: inherit;
+}
+body.fer-auth .form-control:focus { border-color: var(--fer-green); outline: 3px solid #1f986629; }
+body.fer-auth .form-control.is-invalid { border-color: #bd524a; }
+body.fer-auth input[type="checkbox"], body.fer-auth input[type="radio"] { accent-color: var(--fer-green); }
+body.fer-auth .checkbox, body.fer-auth .radio-inline { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 18px; }
+body.fer-auth .radio-inline { display: flex; flex-wrap: wrap; column-gap: 22px; }
+body.fer-auth .radio-inline label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+body.fer-auth .radio-inline label > span, body.fer-auth .checkbox > span { display: none; }
+body.fer-auth .btn, body.fer-auth .copy-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 17px !important;
+  border: 1px solid var(--fer-green);
+  border-radius: 8px !important;
+  background: var(--fer-green);
+  color: white;
+  font: 600 13px/1.4 Poppins, Arial, sans-serif;
+  cursor: pointer;
+  text-align: center;
+  transform: none !important;
+  transition: background .15s, border-color .15s;
+}
+body.fer-auth .btn:hover, body.fer-auth .copy-button:hover { background: var(--fer-green-hover); border-color: var(--fer-green-hover); color: white; text-decoration: none; }
+body.fer-auth :is(.btn-outline-success, .btn-outline-danger, .btn-outline-warning, .btn-white, .btn-outline-white) { background: white; color: var(--fer-green); }
+body.fer-auth :is(.btn-outline-success, .btn-outline-danger, .btn-outline-warning, .btn-white, .btn-outline-white):hover { background: #eef8f2; color: var(--fer-green-hover); }
+body.fer-auth .btn-block { display: flex; width: 100%; }
+body.fer-auth :is(.label-light-success, .label-light-danger) { display: block; padding: 10px 12px; border-radius: 7px; margin-bottom: 16px; }
+body.fer-auth .label-light-success { color: #15754f; background: #e9f7ee; }
+body.fer-auth .label-light-danger { color: #a63634; background: #fff0ef; }
+body.fer-auth .row { display: flex; flex-wrap: wrap; gap: 0 16px; }
+body.fer-auth .row > [class*="col-"] { flex: 1 1 220px; min-width: 0; }
+body.fer-auth .row > .col-12 { flex-basis: 100%; }
+body.fer-auth .row > .col-9 { flex: 3 1 220px; }
+body.fer-auth .row > .col-2 { flex: 0 1 75px; }
+body.fer-auth .row > .col-lg-6 { flex-basis: calc(50% - 16px); }
+body.fer-auth #consulta { margin-left: 0 !important; }
+body.fer-auth #kt_login .fer-consult-action { margin-top: 25px !important; }
+
+/* Login e cadastro usam as superfícies claras, larguras e espaçamentos aprovados. */
+body.fer-auth--login > .flex-root { min-height: 100vh; padding: clamp(18px, 4vw, 56px); }
+body.fer-auth--login #kt_login {
+  display: flex !important;
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  width: min(1160px, 100%) !important;
+  height: auto !important;
+  min-height: min(740px, calc(100vh - 112px));
+  margin: 0 auto !important;
+  overflow: hidden;
+  border: 1px solid var(--fer-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 42px #182f360d;
+  background: var(--fer-surface) !important;
+}
+body.fer-auth--login #kt_login > .login-aside {
+  display: flex !important;
+  position: static !important;
+  order: 0;
+  flex: 1 1 52%;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: clamp(24px, 4vw, 58px) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: white !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+body.fer-auth--login #kt_login .login-aside > div { width: 100%; max-width: 540px; margin: auto !important; padding: 0 !important; }
+body.fer-auth--login #kt_login .login-aside > div > div { margin: 0 !important; padding: 0 !important; }
+body.fer-auth--login #kt_login .login-aside img { display: block; max-width: 172px; max-height: 80px; width: auto; height: auto; margin: 0 auto 30px; object-fit: contain; }
+body.fer-auth--login #kt_login .login-form { width: 100% !important; max-width: none; margin: 0 !important; padding: 0 !important; }
+body.fer-auth--login #kt_login .login-form h2 { margin: 0 0 22px; font-size: clamp(22px, 2vw, 28px); font-weight: 700; }
+body.fer-auth--login #kt_login > .content {
+  display: flex !important;
+  position: static !important;
+  order: 1;
+  flex: 1 1 48%;
+  width: auto !important;
+  min-width: 0;
+  padding: clamp(26px, 4vw, 54px) !important;
+  border-left: 1px solid var(--fer-border);
+  background: #eef5f1 !important;
+  color: var(--fer-text);
+  height: auto !important;
+  visibility: visible !important;
+}
+body.fer-auth--login #kt_login > .content > div:first-child { padding: 0 !important; }
+body.fer-auth--login #kt_login > .content h3 { margin: 0 0 10px; font-size: 26px; color: var(--fer-text) !important; }
+body.fer-auth--login #kt_login > .content p { margin: 0; color: var(--fer-muted); }
+body.fer-auth--login #kt_login .content-img { flex: 1 1 260px; min-height: 260px; margin: 22px 0 0 !important; background-position: center !important; background-repeat: no-repeat; background-size: contain; }
+body.fer-auth--login #kt_login .login-forgot { padding-top: 22px !important; }
+body.fer-auth--login #kt_login .login-forgot a { color: var(--fer-muted); }
+body.fer-auth--login #kt_login .login-forgot a:hover { color: var(--fer-green); }
+body.fer-auth--login #kt_login .login-content {
+  display: flex !important;
+  align-items: center;
+  flex: 1 1 52%;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  padding: clamp(24px, 4vw, 58px) !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: white !important;
+}
+body.fer-auth--login #kt_login .login-content::before { display: none; }
+body.fer-auth--login #kt_login .login-content > div:first-child { width: 100%; }
+body.fer-auth--login #kt_login .login-content .login-form { max-width: 430px; margin: 0 auto !important; }
+body.fer-auth--login #kt_login .login-content > div:last-child { margin-top: 30px; }
+body.fer-auth--login #kt_login .login-content > div:last-child a { color: var(--fer-muted); }
+body.fer-auth--login #kt_login .login-content .login-form h3 { font-size: 27px; margin: 0 0 18px; }
+
+body.fer-auth--register #kt_login { width: min(1200px, 100%) !important; }
+body.fer-auth--register #kt_login > .login-aside { flex-basis: 62%; }
+body.fer-auth--register #kt_login > .content { flex-basis: 38%; }
+body.fer-auth--register .login-aside > div { max-width: 660px !important; }
+body.fer-auth--register #kt_login .login-form { max-width: none; }
+body.fer-auth--plans #kt_login { width: min(1240px, 100%) !important; }
+body.fer-auth--plans #kt_login > .login-aside { flex-basis: 100%; }
+body.fer-auth--plans #kt_login .login-aside > div { max-width: 1120px; }
+body.fer-auth--plans .login-form > .row { gap: 18px; }
+body.fer-auth--plans .login-form > .row > div { flex: 1 1 260px; }
+body.fer-auth--plans .card { height: 100%; border: 1px solid var(--fer-border); border-radius: 12px; background: white; }
+body.fer-auth--plans .card-body { height: 100%; padding: 22px; }
+body.fer-auth--plans .card-body > div { height: 100%; display: flex; flex-direction: column; justify-content: space-between; gap: 22px; }
+body.fer-auth--plans .symbol-label img { max-width: 90px; max-height: 90px; object-fit: contain; }
+body.fer-auth--plans .card-title { display: block; margin: 12px 0; text-align: center; }
+body.fer-auth--plans .card-body p { overflow-wrap: anywhere; }
+
+/* Variante legada de login que possui sua própria estrutura e Bootstrap local. */
+body.fer-auth--login .ftco-section { min-height: 100vh; display: grid; place-items: center; padding: 26px; }
+body.fer-auth--login .ftco-section .wrap { overflow: hidden; border: 1px solid var(--fer-border); border-radius: 14px; box-shadow: 0 16px 42px #182f360d; background: white; }
+body.fer-auth--login .ftco-section .text-wrap { background: #eef5f1 !important; color: var(--fer-text); }
+body.fer-auth--login .ftco-section .text-wrap h2, body.fer-auth--login .ftco-section .text-wrap p { color: var(--fer-text); }
+body.fer-auth--login .ftco-section .login-wrap { background: white; }
+body.fer-auth--login .ftco-section .btn { height: auto; }
+
+/* Erros públicos compartilham a mesma superfície e hierarquia do tema. */
+body.fer-auth--error > .flex-root { display: grid; place-items: center; min-height: 100vh; padding: 24px; }
+body.fer-auth--error > .flex-root > .bgi-no-repeat, body.fer-auth--error .fer-error-card {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(720px, 100%);
+  min-height: 0;
+  padding: clamp(30px, 5vw, 60px) !important;
+  margin: auto;
+  border: 1px solid var(--fer-border);
+  border-radius: 14px;
+  background: white !important;
+  box-shadow: 0 16px 42px #182f360d;
+}
+body.fer-auth--error .bgi-no-repeat > h1, body.fer-auth--error .fer-error-card > h1 {
+  margin: 0 0 7px !important;
+  font-size: clamp(38px, 6vw, 72px) !important;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--fer-green) !important;
+}
+body.fer-auth--error .bgi-no-repeat > p { margin: 0; color: var(--fer-muted); font-size: 15px; }
+body.fer-auth--error .bgi-no-repeat > p:first-of-type { color: var(--fer-text); font-size: 19px; font-weight: 600; }
+body.fer-auth--error .bgi-no-repeat :is(.btn-primary, .copy-button) {
+  position: static !important;
+  width: auto !important;
+  max-width: 100%;
+  margin: 8px 0 0 !important;
+  transform: none !important;
+}
+body.fer-auth--error .error-details {
+  width: 100% !important;
+  min-height: 0 !important;
+  max-height: 220px;
+  padding: 14px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--fer-border);
+  border-radius: 8px;
+  background: var(--fer-canvas);
+  color: var(--fer-text);
+}
+body.fer-auth--error .fer-error-card h1 { font-size: 24px !important; line-height: 1.4; }
+body.fer-auth--error .fer-error-card a { display: inline-block; font-size: 15px; }
+.fer-permission.card {
+  border: 1px solid #dce7e7;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 28px #182f360a;
+}
+.fer-permission .card-body { padding: clamp(24px, 4vw, 44px); }
+.fer-permission img { max-width: 100%; max-height: 210px; object-fit: contain; }
+.fer-permission h2 { margin: 0; color: #182f36 !important; font: 600 clamp(20px, 2vw, 27px)/1.4 Poppins, Arial, sans-serif !important; }
+
+/* Modal de OTP gerado pelo helper existente, sem CSS do bundle Metronic. */
+body.fer-auth .modal { display: none; position: fixed; z-index: 1060; inset: 0; overflow: auto; }
+body.fer-auth .modal.show { display: block; }
+body.fer-auth .modal-dialog { width: min(500px, calc(100% - 32px)); margin: min(10vh, 70px) auto; }
+body.fer-auth .modal-content { background: white; border: 1px solid var(--fer-border); border-radius: 12px; box-shadow: 0 20px 60px #182f3633; }
+body.fer-auth .modal-header, body.fer-auth .modal-body, body.fer-auth .modal-footer { padding: 18px 22px; }
+body.fer-auth .modal-header, body.fer-auth .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+body.fer-auth .modal-header { border-bottom: 1px solid var(--fer-border); }
+body.fer-auth .modal-footer { border-top: 1px solid var(--fer-border); }
+body.fer-auth .modal-title { margin: 0; font-size: 18px; }
+body.fer-auth .modal .close { background: none; border: 0; font-size: 24px; cursor: pointer; }
+body.fer-auth .modal-backdrop { background: #182f36; }
+body.fer-auth .modal-backdrop.show { opacity: .45; }
+
+@media (max-width: 820px) {
+  body.fer-auth--login #kt_login { flex-direction: column !important; min-height: 0; }
+  body.fer-auth--login #kt_login > .login-aside,
+  body.fer-auth--login #kt_login > .login-content { order: 0; flex-basis: auto; width: 100% !important; }
+  body.fer-auth--login #kt_login > .content { order: 1; flex-basis: auto; min-height: 160px; border-left: 0; border-top: 1px solid var(--fer-border); }
+  body.fer-auth--login #kt_login > .content .content-img { display: none; }
+  body.fer-auth--login #kt_login .login-aside img { max-height: 64px; margin-bottom: 20px; }
+  body.fer-auth--login .ftco-section .wrap { display: flex; flex-direction: column; }
+  body.fer-auth--login .ftco-section .text-wrap { order: 1; }
+  body.fer-auth--login .ftco-section .login-wrap { order: 0; }
+}
+@media (max-width: 520px) {
+  body.fer-auth--login > .flex-root { padding: 14px; }
+  body.fer-auth--login #kt_login > .login-aside,
+  body.fer-auth--login #kt_login > .login-content,
+  body.fer-auth--login #kt_login > .content { padding: 24px !important; }
+  body.fer-auth--login #kt_login .row > [class*="col-"] { flex-basis: 100%; }
+  body.fer-auth--login #kt_login .row > .col-9 { flex: 3 1 180px; }
+  body.fer-auth--login #kt_login .row > .col-2 { flex: 0 1 60px; }
+  body.fer-auth--login #kt_login .fer-consult-action { margin-top: 25px !important; }
+  body.fer-auth--error > .flex-root { padding: 14px; }
+}

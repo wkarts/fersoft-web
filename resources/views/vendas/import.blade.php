@@ -1,15 +1,20 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Importação de Arquivos</h1></header>
 
     <style>
         /* Resumo superior */
         .card-custom .card-body h4 strong {
-            color: #3699FF;
+            color: #1f9866;
         }
         .summary-badge {
             display: inline-block;
             background: #E3F2FD;
-            color: #3699FF;
+            color: #1f9866;
             padding: .5rem 1rem;
             border-radius: .375rem;
             font-weight: 600;
@@ -54,7 +59,7 @@
         /* Títulos das seções */
         .card-body h3.card-title {
             color: #1F2937;
-            border-left: 3px solid #3699FF;
+            border-left: 3px solid #1f9866;
             padding-left: .75rem;
             margin-bottom: 1rem;
         }
@@ -76,7 +81,7 @@
         }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-detail">
         <div class="card-body">
 
             {{-- Resumo de total importado --}}

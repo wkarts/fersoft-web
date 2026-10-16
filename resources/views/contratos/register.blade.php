@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
 <!-- Estilos para Modernização Visual -->
@@ -56,7 +60,7 @@
         border: 1px solid #007bff !important;
     }
 </style>
-<div class="card shadow-sm">
+<div class="fer-extra fer-extra--contratos fer-extra--canvas card shadow-sm">
     <div class="card-body p-4">
         <h4 class="mb-4 text-primary font-weight-bold">
             <i class="fa fa-file-contract"></i> {{ $title }}

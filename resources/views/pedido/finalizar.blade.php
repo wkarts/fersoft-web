@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="row">
+@section('content')
+<header class="fer-page__heading"><h1>Finalizar Comanda</h1></header>
+
+<div class="row fer-page fer-detail">
 
 
 	<div class="col s12">

@@ -1,32 +1,35 @@
-# FERSOFT — decisão técnica e inventário visual
+# FERSOFT — refatoração visual baseada na proposta aprovada
 
-## Decisão de tecnologia
+## Referência e decisão de arquitetura
 
-A aplicação anexada usa Laravel 11, PHP 8.2, Blade e Vite 4. O Vite publica apenas o ponto de entrada pequeno de `resources/css/app.css` e `resources/js/app.js`; a interface operacional carrega componentes legados de `public/css` e `public/js`. Não há uma SPA Vue existente.
+A referência de aceite é `FERSOFT-PREVIA-FIEL-ANTES-DEPOIS (1)(2).html`, fornecida para esta intervenção. O lado “depois” define o canvas `#F5F7F7`, a sidebar branca de 264 px, o cabeçalho de 74 px, a faixa de sessão de 42 px, as superfícies brancas, a tipografia Poppins, os detalhes verdes `#1F9866` e a hierarquia de cartões e painéis. A captura ilustrativa mostra um rodapé de suporte; a instrução posterior do proprietário o exclui expressamente. A integração Chatwoot que já existia continua acessível pelo launcher original.
 
-A decisão é manter Blade/Laravel e organizar o shell em partials compartilhados. Uma migração para Vue 3 exigiria reimplementar ou integrar novamente 1.119 templates, as rotas server-side e os eventos dos componentes usados pelas telas. Isso elevaria o risco de alterar IDs, nomes de campos, submissões, sessões, permissões e integrações sem ajudar a reproduzir uma referência visual HTML. Não há incompatibilidade concreta que justifique a migração.
+O projeto é Laravel 11, PHP 8.2, Blade e Vite 4. São 1.119 arquivos Blade; aproximadamente 668 views operacionais usam `default.layout`, que seleciona `themes.refined.layout` quando `APP_UI_THEME=refined`. As rotas em `routes/web.php` e `routes/api.php`, autenticação e permissões da sessão, campos, eventos e submissões são server side. Reescrever tudo em Vue 3 + TypeScript exigiria reconstruir esses contratos, sem necessidade para atingir a referência HTML. Esta entrega permanece em Blade, com estilos de componentes próprios e scripts independentes para os widgets necessários.
 
-## Inventário da cópia de `develop`
+## Sistema visual
 
-- 1.119 arquivos Blade em `resources/views`.
-- 668 views de módulos usam `default.layout`; duas views selecionam o layout refinado de forma condicional. Esse layout comum atende os fluxos autenticados de estoque, vendas, compras, fiscal, financeiro, pessoal, administração e demais grupos operacionais.
-- `routes/web.php` contém 4.458 linhas e 2.660 chamadas de definição de rota. `routes/api.php` contém 537 linhas. As rotas e seus contratos não foram alterados.
-- Os menus lateral e superior têm 41 e 12 grupos/submenus, respectivamente, com 58 e 36 links estáticos detectáveis e condições de visibilidade nos templates. O menu lateral contém 154 verificações condicionais relacionadas a visibilidade/permissões; o superior contém 140. A autorização do servidor permanece a fonte de verdade.
-- 917 formulários em 594 templates; 1.056 tabelas em 524 templates; 6.561 ocorrências relacionadas a modais em 182 templates. Os números de modal contam classes/atributos encontrados por busca textual, não diálogos únicos.
-- Quatro layouts de PDV preservam ações, campos, IDs, processamento fiscal e integrações. Select2, KTDatatable, AJAX, scripts de ambiente, WhatsApp, sessão e seleção de empresa permanecem no fluxo existente.
-- A autenticação da aplicação usa os dados da sessão `user_logged`; o layout e os menus consomem esses dados. Os fluxos de login e as views de impressão seguem seus layouts próprios.
+- `public/css/ui-operational.css` mantém as proporções e a disposição do shell, dashboard, sidebar, menus, cabeçalho e responsividade.
+- `public/css/fer-design-system.css` contém os padrões comuns de cartões, tipografia, formulários, botões, filtros, tabelas, estados, abas, wizard e modais, escopados em `body.ui-native-shell`.
+- `public/css/fer-modules.css`, `ui-cte.css`, `ui-fiscal.css`, `ui-operations.css`, `ui-people.css`, `ui-pos.css`, `ui-admin.css` e demais CSS por módulo tratam as estruturas específicas das views. As views mantêm a estrutura funcional, rotas e campos e acrescentam classes de apresentação.
+- `themes.refined.layout` carrega Bootstrap 4 como grade/modal, CSS local dos widgets e o sistema visual FERSOFT. Não carrega `/metronic/css/*`, `/metronic/js/*` nem `ui-legacy-widgets.js` no modo refinado. `public/js/fer-runtime.js` implementa a interação da interface e as pequenas APIs de compatibilidade `KTWizard`, `KTImageInput`, `KTSelect2` e `KTDatatable` exigidas pelas views existentes; as bibliotecas independentes têm versões e licenças em `public/js/vendor/README.md`.
+- Os arquivos `scripts/ci/build-native-ui.py`, `public/css/theme-refined.css`, `public/css/theme-refined-shell.css` e `public/js/ui-legacy-widgets.js` eram um gerador/cópia da apresentação antiga. Foram removidos porque não são consumidos pelo tema refinado e o gerador reintroduzia o shell antigo durante o empacotamento.
 
-## Implementação visual
+O modo clássico permanece como rollback visual explícito para instâncias que usam `APP_UI_THEME=classic`; seus arquivos não são carregados no tema refinado. Os quatro layouts independentes do PDV selecionam os novos assets ao usar o tema refinado. Impressão, PDF, loja pública, recibos térmicos e e-commerce público preservam seus layouts e formatos específicos; a proposta não define uma aparência para eles.
 
-- `APP_UI_THEME=refined` passa a ser o padrão, com o preset claro `fer-light` e a tela `APP_UI_THEME=classic` disponível como rollback visual explícito.
-- O shell usa partials para sidebar e cabeçalho. O conteúdo dos menus e do cabeçalho foi movido mantendo os links, condições, IDs, ações e integrações existentes.
-- A base visual usa os tokens da proposta aprovada: canvas `#F5F7F7`, sidebar e superfícies brancas, acento verde `#1F9866`, borda `#DCE7E7` e tipografia Poppins local. O estilo global cobre cartões, formulários, validação, tabelas, paginação, alertas e modais sem trocar os handlers dos plugins.
-- As views internas herdadas de `default.layout` recebem a mesma camada visual. Relatórios HTML recebem a paleta em `media="screen"`; a apresentação de impressão/PDF e o recibo térmico de 80 mm permanecem fora dessa camada.
-- O atalho de suporte criado no rodapé da sidebar foi removido. A integração Chatwoot original (`layouts.support`) continua incluída e com seu launcher original visível.
-- A navegação móvel continua em drawer acessível. Os testes de navegador cobrem 1920×1032, 1366×768, 768×1024 e 390×844, incluindo foco, submenu, modal, Select2, grid e ausência de overflow horizontal.
+## Inventário funcional e preservação
 
-## Limites da referência
+- O menu lateral contém 41 grupos/submenus e 58 links estáticos detectáveis; o menu superior contém 12 grupos/submenus e 36 links. As condições Blade de visibilidade e autorização permanecem no template.
+- A aplicação tem 917 formulários em 594 templates e 1.056 tabelas em 524 templates. A busca textual encontrou 6.561 ocorrências de markup de modal em 182 templates; essas ocorrências não equivalem a 6.561 diálogos únicos.
+- A sessão `user_logged`, o usuário, a empresa/unidade selecionada, permissões, lançamento fiscal e financeiro, integrações, ações do PDV, notificações e Chatwoot continuam usando os contratos existentes. Nenhuma rota, API, migration, tabela ou regra de negócio foi alterada nesta revisão visual.
+- As 680 views Blade modificadas, incluindo telas operacionais, login e erros, são comparadas ao ZIP original por `tests/ui/test-view-contracts.py`. O índice `tests/ui/develop-view-contracts.json` e seus 15 arquivos menores em `tests/ui/contracts/` preservam 16.511 pares de atributos funcionais e 518 contagens de controles repetidos: IDs, campos, rotas, métodos, ações, eventos de formulário e teclado, modal e wizard. O teste cobre os arquivos realmente editados, sem afirmar que uma fixture representa as 1.119 views.
+- As 15 views de autenticação e erro modificadas usam o CSS local `public/css/ui-auth.css` no tema refinado. Os imports Metronic existentes nessas páginas ficam condicionados ao modo clássico, enquanto campos e ações de autenticação continuam nos templates originais.
 
-A proposta HTML representa o shell autenticado e o dashboard do ERP. As lojas públicas, telas de entrega/e-commerce e comprovantes térmicos têm layouts independentes e não foram convertidos no shell administrativo. Seus fluxos, identidade por empresa e formato de impressão continuam preservados. O novo sistema visual é aplicado às telas internas e aos relatórios visualizados na tela.
+## Validação
 
-Nenhuma API, tabela de negócio ou regra fiscal/financeira foi alterada nesta refatoração.
+O workflow `.github/workflows/ui-native-browser.yml`, acionado por PR para `develop`, faz `php artisan view:cache`, lint do PHP compilado de todas as Blades, PHPUnit para a paleta/runtime, renderização de fixtures com o Blade real e testes de navegador em 1920×1032, 1366×768, 768×1024 e 390×844. São 64 cenários: 48 variações do dashboard e 16 casos de quatro views reais, Funcionários lista/registro, CT-e registro e PDV. Exercita navegação, permissões, modais, Select2, campos, ações locais e overflow sem enviar vendas ou documentos fiscais. O teste estático confere contratos das 680 views editadas; scripts de sintaxe JavaScript também são executados.
+
+O ambiente de edição sem PHP/Composer não comprova compilação Blade nem funcionamento com sessão e dados reais. O CI usa sessão e SQLite isolados em memória. Login, demais módulos e integrações externas não têm fixture de navegador; sua validação autenticada em homologação ainda é necessária. O resultado final do workflow deve constar da PR. Não se deve considerar as quatro fixtures uma prova isolada de cobertura funcional total das 1.119 views.
+
+## Publicação e reversão
+
+Base e destino: `develop`. Branch de trabalho: `feat/ui-operational-redesign-20261015`. Não há migração de banco. Para reverter a interface enquanto se investiga uma regressão, usar `APP_UI_THEME=classic`, limpar cache de configuração/views e repetir os testes operacionais; a reversão definitiva é a reversão do commit visual após avaliação da PR. Não alterar `main` como parte dessa entrega.

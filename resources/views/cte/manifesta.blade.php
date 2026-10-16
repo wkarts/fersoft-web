@@ -1,10 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="cte-page cte-page--manifesta">
 
 
-	<div class="card-body">
+	<div class="cte-page__content card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
@@ -264,7 +267,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<form method="get" action="/cte/manifestar">
 		<div class="modal-dialog modal-lg" role="document">
 			<div class="modal-content">

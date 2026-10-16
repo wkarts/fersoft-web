@@ -1,13 +1,18 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Controle de Comandas</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-list">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form method="get" action="/pedidos/filtroComanda">
+			<form method="get" action="/pedidos/filtroComanda" class="fer-filter">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-3 col-md-4 col-sm-6">
@@ -62,7 +67,7 @@
 				<div class="row">
 					<div class="col-xl-12">
 
-						<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+						<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded fer-results">
 
 							<table class="datatable-table" style="max-width: 100%; overflow: scroll">
 								<thead class="datatable-head">

@@ -36,13 +36,19 @@ final class UiNativePaletteTest extends TestCase
             . file_get_contents($root . '/resources/views/themes/refined/partials/masthead.blade.php');
         preg_match_all('/<script[^>]+src=["\x27]([^"\x27]+)["\x27]/i', $classic, $scripts);
         foreach (array_unique($scripts[1]) as $src) {
-            if ($src === '/metronic/js/scripts.bundle.js') continue;
-            self::assertStringContainsString($src, $native, 'Missing original runtime script: ' . $src);
+            // Business scripts are unchanged; the vendor/runtime bundle is
+            // intentionally replaced by independent libraries in this theme.
+            if (!str_starts_with($src, '/js/')) continue;
+            self::assertStringContainsString($src, $native, 'Missing business script: ' . $src);
         }
         foreach (['global_delivery_alert', 'modal-alerta-sistema', 'modalWhatsAppGlobal', '__view_locais_select_menu_superior', '/login/logoff'] as $marker) {
             if (str_contains($classic, $marker)) self::assertStringContainsString($marker, $native);
         }
-        self::assertStringContainsString('ui-legacy-widgets.js', $native);
+        self::assertStringContainsString('fer-runtime.js', $native);
+        self::assertStringContainsString('bootstrap-4.5.3.js', $native);
+        self::assertStringNotContainsString('/metronic/js/plugins.bundle.js', $native);
+        self::assertStringNotContainsString('/metronic/js/scripts.bundle.js', $native);
+        self::assertStringNotContainsString('/js/ui-legacy-widgets.js', $native);
         self::assertStringContainsString('id="ui-navigation"', $native);
         self::assertStringNotContainsString('id="kt_aside_menu"', $native);
         self::assertStringNotContainsString('id="kt_header_menu"', $native);
@@ -84,13 +90,10 @@ final class UiNativePaletteTest extends TestCase
         self::assertStringContainsString("@php\n                                \$majorId", $superior);
         self::assertStringContainsString('@endforeach', $superior);
 
-        // Vendor files are untouched. The copied adapter is intentionally
-        // separate and is tested by the browser regression workflow.
-        $manifest = json_decode(file_get_contents(
-            $root . '/tests/fixtures/ui/native-contract.json'
-        ), true, 512, JSON_THROW_ON_ERROR);
-        $bundle = 'public/metronic/js/scripts.bundle.js';
-        self::assertSame($manifest['source_sha256'][$bundle], hash_file('sha256', $root . '/' . $bundle));
+        // The approved shell must never re-introduce the Metronic theme or
+        // silently rely on a copy of its runtime for page interactions.
+        self::assertStringNotContainsString('/metronic/css/style.bundle.css', $native);
+        self::assertStringNotContainsString('ui-legacy-widgets.js', $native);
     }
 
 }

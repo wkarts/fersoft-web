@@ -1,14 +1,18 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Pesquisa de Preços</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b">
 
 
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-			<form method="get" action="/listaDePrecos/filtro">
+			<form method="get" action="/listaDePrecos/filtro" class="fer-filter">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-3 col-md-4 col-sm-6">
@@ -47,7 +51,7 @@
 					<div class="row">
 						<div class="col-xl-12">
 
-							<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+							<div id="kt_datatable" class="fer-results datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 								<table class="datatable-table" style="max-width: 100%; overflow: scroll">
 									<thead class="datatable-head">

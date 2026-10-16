@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--nfse-tomadas card card-custom gutter-b">
     <div class="card-header border-0 pt-6">
         <h3 class="card-title font-weight-bolder text-dark">
             <i class="la la-file-import text-success icon-xl mr-2"></i> Finalizar Importação de NFS-e

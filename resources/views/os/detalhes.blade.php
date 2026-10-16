@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <style type="text/css">
+    <header class="fer-page__heading"><h1>Ordem de Serviço</h1></header>
+<style type="text/css">
         .card-os {
             border: none;
             border-radius: 12px;
@@ -58,13 +62,13 @@
         }
     </style>
 
-    <div class="container-fluid p-0">
+    <div class="container-fluid p-0 fer-page fer-operational fer-detail fer-os-detail">
         <input type="hidden" id="filial" value="{{ $ordem->filial_id }}">
         <input type="hidden" id="token" value="{{ csrf_token() }}">
         <input type="hidden" name="ordem_servico_id" class="ordem_servico_id" value="{{$ordem->id}}">
 
         <!-- 1. BARRA SUPERIOR DE RESUMO E AÇÕES RÁPIDAS -->
-        <div class="card card-os p-6">
+        <div class="fer-panel card card-os p-6">
             <div class="row align-items-center">
                 <div class="col-lg-6 col-12 mb-4 mb-lg-0">
                     <div class="d-flex align-items-center gap-3">
@@ -572,7 +576,7 @@
 
     <!-- MODAL VISUALIZAR RELATÓRIO -->
     <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="fer-dialog modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title text-white" id="data"></h5>

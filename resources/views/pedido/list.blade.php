@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<div class="card card-custom gutter-b">
+@section('content')
+<header class="fer-page__heading"><h1>Pedidos</h1></header>
+
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 	<div class="card-body">
 		<div class="row">
@@ -172,7 +177,7 @@
 <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<form method="post" action="/pedidos/abrir">
 		@csrf
-		<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-dialog modal-lg fer-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">ABRIR COMANDA</h5>
@@ -243,7 +248,7 @@
 <div class="modal fade" id="modal2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<form method="post" action="/pedidos/saveCliente">
 		@csrf
-		<div class="modal-dialog modal-xl" role="document">
+		<div class="modal-dialog modal-xl fer-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">Novo Cliente</h5>
@@ -350,7 +355,7 @@
 
 		@csrf
 		<input type="hidden" id="pedido_id" name="pedido_id">
-		<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-dialog modal-lg fer-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">ATRIBUIR COMANDA</h5>
@@ -402,7 +407,7 @@
 
 		<input type="hidden" name="_token" value="{{ csrf_token() }}">
 		<input type="hidden" id="pedido_id_mesa" name="pedido_id">
-		<div class="modal-dialog modal-lg" role="document">
+		<div class="modal-dialog modal-lg fer-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title">SETAR MESA COMANDA</h5>

@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="document-fiscal-page document-fiscal-page--rep content d-flex flex-column flex-column-fluid" id="kt_content">
 
 	<div class="container">
 		<div class="card card-custom gutter-b example example-compact">

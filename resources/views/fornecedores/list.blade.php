@@ -1,9 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Fornecedores</h1></header>
 
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-list">
         <div class="card-body">
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+            <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="row">
                     <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
                         <a href="/fornecedores/new" class="btn btn-lg btn-success mr-2">
@@ -18,7 +22,7 @@
             <br>
 
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
-                <form method="get" action="/fornecedores/pesquisa">
+                <form method="get" action="/fornecedores/pesquisa" class="fer-filter">
                     <div class="row align-items-center">
                         <div class="col-lg-2 col-xl-2">
                             <div class="row align-items-center">
@@ -51,7 +55,7 @@
                 <h4>Lista de Fornecedores</h4>
                 <label>Total de registros: {{ $fornecedores->total() }}</label>
 
-                <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                <div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                     <div class="wizard-nav">
                         <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
                             <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
@@ -245,7 +249,7 @@
 
     <!-- MODAL HISTÓRICO -->
     <div class="modal fade" id="modal_historico" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-xl fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title text-white"><i class="la la-history text-white mr-2"></i> Histórico: <span id="nome_fornecedor_modal"></span></h5>
@@ -276,7 +280,7 @@
     
     <!-- MODAL DADOS BANCÁRIOS -->
     <div class="modal fade" id="modal_dados_bancarios" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog" role="document">
+        <div class="modal-dialog fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
                     <h5 class="modal-title text-white">Dados de Pagamento</h5>

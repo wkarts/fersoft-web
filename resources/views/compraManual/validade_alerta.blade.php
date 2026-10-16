@@ -1,7 +1,12 @@
 @extends('default.layout')
-@section('content')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
-<form class="row" action="/compras/salvarValidade" method="post">
+@section('content')
+<header class="fer-page__heading"><h1>Alerta de Validade</h1></header>
+
+<form class="row fer-page fer-detail" action="/compras/salvarValidade" method="post">
 
 	@csrf
 	<div class="col s12">

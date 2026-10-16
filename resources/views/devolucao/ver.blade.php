@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
+<header class="fer-page__heading"><h1>Visualizando Devolução</h1></header>
 <div class="row" id="anime" style="display: none">
 	<div class="col s8 offset-s2">
 		<lottie-player
@@ -9,7 +13,7 @@
 </div>
 </div>
 
-<div class="card card-custom gutter-b">
+<div class="fer-page fer-operational fer-detail card card-custom gutter-b">
 	<div class="card-body">
 		<div class="card card-custom gutter-b">
 			<div class="card-body">

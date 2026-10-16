@@ -1,6 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+@push('scripts')
+@if(!isset($service))
+<script src="{{ asset('js/service.js') }}?v={{ filemtime(public_path('js/service.js')) }}"></script>
+@endif
+@endpush
+
 @section('content')
-	<div class="row">
+	<div class="fer-extra fer-extra--support fer-extra--services row">
 		<div class="col s12">
 			<h4>Cadastrar Serviço</h4>
 			<form method="post" action="/servicos/save" enctype="multipart/form-data">

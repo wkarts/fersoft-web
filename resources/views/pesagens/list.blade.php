@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
     <style type="text/css">
@@ -110,7 +114,7 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--pesagens fer-extra--canvas card card-custom gutter-b">
         <div class="card-body">
             <!-- Exibe mensagens de sucesso e erro -->
             @if(session('mensagem_sucesso'))
@@ -632,7 +636,7 @@
     </style>
 
     <!-- Modal Unificado para Pesagem -->
-    <div class="modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
@@ -860,7 +864,7 @@
     @foreach($pesagens as $pesagem)
 
         <!-- Modal Tickets -->
-        <div class="modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
+        <div class="modal fer-extra-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
                     <!-- Cabeçalho -->
@@ -1087,7 +1091,7 @@
         </div>
 
         <!-- Modal Concluir -->
-        <div class="modal fade" id="modalConcluir{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalConcluirLabel" aria-hidden="true">
+        <div class="modal fer-extra-modal fade" id="modalConcluir{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalConcluirLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
@@ -1120,7 +1124,7 @@
     @endforeach
 
     <!-- Modal Reutilizável -->
-    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -1144,7 +1148,7 @@
     </div>
 
     <!-- Modal Reutilizável para Alertas e Mensagens -->
-    <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -1167,7 +1171,7 @@
     </div>
 
     <!-- Modal de Envio de WhatsApp -->
-    <div class="modal fade" id="modalWhatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalWhatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <form class="modal-content" method="post" action="/pesagens/enviar-relatorio-whats">
                 @csrf
@@ -1212,7 +1216,7 @@
     </div>
 
     <!-- Modal de validação OTP p/ Reabrir Pesagem -->
-    <div class="modal fade" id="reabrirOtpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="reabrirOtpModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -2369,7 +2373,7 @@
     </style>
 
 
-    <div class="modal fade" id="modalAdpImagemAmplia" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalAdpImagemAmplia" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content" style="background:#0f172a;color:#fff;">
                 <div class="modal-header border-0">

@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom">
+<div class="fer-extra fer-extra--stock card card-custom">
     <div class="card-header">
         <h3 class="card-title">Histórico de Movimentação: <strong>{{ $item->produto->nome }}</strong></h3>
         <div class="card-toolbar">

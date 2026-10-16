@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('css')
 
@@ -53,12 +56,13 @@
 </style>
 @endsection
 @section('content')
+<header class="fer-page__heading"><h1>VENDA BALCÃO</h1></header>
 <style type="text/css">
 	#focus-codigo:hover{
 		cursor: pointer
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="fer-page fer-operational fer-form card card-custom gutter-b">
 
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
@@ -664,7 +668,7 @@
 <div class="modal-loading loading-class"></div>
 
 <div class="modal fade" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="fer-dialog modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Cliente</h5>
@@ -849,7 +853,7 @@
 </div>
 
 <div class="modal fade" id="modal-cartao" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="fer-dialog modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">INFORME OS DADOS DO CARTÃO</h5>
@@ -888,7 +892,7 @@
 </div>
 
 <div class="modal fade" id="modal-pagamentos" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="fer-dialog modal-dialog modal-md" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">PAGAMENTOS</h5>

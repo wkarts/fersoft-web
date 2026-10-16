@@ -1,0 +1,628 @@
+/* Estoque, contratos e ponto. Superfícies da proposta aprovada sobre as views
+   operacionais existentes; formulários, ações e IDs permanecem no Blade. */
+body.ui-native-shell .ui-page .fer-extra {
+    min-width: 0;
+    color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page .fer-extra--canvas.card {
+    margin: 0;
+    padding: 0;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none;
+}
+body.ui-native-shell .ui-page .fer-extra--canvas.card > .card-body {
+    padding: 0;
+    background: transparent !important;
+}
+body.ui-native-shell .ui-page .fer-extra--canvas.card > .card-header {
+    min-height: 55px;
+    margin-bottom: 16px;
+    padding: 0 0 14px;
+    border: 0;
+    border-bottom: 1px solid var(--ui-border);
+    border-radius: 0;
+    background: transparent !important;
+}
+body.ui-native-shell .ui-page .fer-extra .card-header .card-title,
+body.ui-native-shell .ui-page .fer-extra > .card-body > h4 {
+    color: var(--ui-ink) !important;
+    font-size: clamp(17px, 2vw, 21px);
+    font-weight: 600;
+    letter-spacing: -.03em;
+}
+body.ui-native-shell .ui-page .fer-extra .card-header .card-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin-left: auto;
+}
+body.ui-native-shell .ui-page .fer-extra .card-toolbar :is(.btn,.btn-group),
+body.ui-native-shell .ui-page .fer-extra .card-header .card-toolbar > a {
+    margin: 0 !important;
+}
+body.ui-native-shell .ui-page .fer-extra .card.card-custom,
+body.ui-native-shell .ui-page .fer-extra .card.shadow-sm {
+    border-color: var(--ui-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-extra :is(.bg-light,.bg-light-primary,.bg-light-success) {
+    color: var(--ui-ink);
+    background: var(--ui-accent-soft) !important;
+}
+body.ui-native-shell .ui-page .fer-extra .bg-light-danger {
+    background: var(--ui-danger-bg) !important;
+}
+body.ui-native-shell .ui-page .fer-extra .bg-light-warning {
+    background: var(--ui-warning-bg) !important;
+}
+body.ui-native-shell .ui-page .fer-extra :is(form.bg-light,form.border) {
+    margin-bottom: 17px;
+    padding: 16px 18px !important;
+    border: 1px solid var(--ui-border) !important;
+    border-radius: 10px !important;
+    background: var(--ui-surface) !important;
+}
+body.ui-native-shell .ui-page .fer-extra .form-group > label,
+body.ui-native-shell .ui-page .fer-extra label.small {
+    color: var(--ui-muted) !important;
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-extra .form-control,
+body.ui-native-shell .ui-page .fer-extra .custom-select,
+body.ui-native-shell .ui-page .fer-extra .select2-selection--single {
+    min-height: 38px;
+    color: var(--ui-ink) !important;
+    border: 1px solid var(--ui-border) !important;
+    border-radius: 8px !important;
+    background: var(--ui-surface) !important;
+}
+body.ui-native-shell .ui-page .fer-extra :is(.form-control,.custom-select):focus {
+    border-color: var(--ui-accent) !important;
+    box-shadow: 0 0 0 3px var(--ui-focus);
+}
+body.ui-native-shell .ui-page .fer-extra .section-title {
+    margin: 22px 0 15px;
+    padding: 0 0 9px;
+    color: var(--ui-ink) !important;
+    border-bottom: 1px solid var(--ui-border) !important;
+    font-size: 14px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-extra :is(.table-responsive,.datatable) {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ui-border) transparent;
+}
+body.ui-native-shell .ui-page .fer-extra :is(.table,.datatable-table) {
+    width: 100%;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    font-variant-numeric: tabular-nums;
+}
+body.ui-native-shell .ui-page .fer-extra :is(.table,.datatable-table) th {
+    padding: 10px 12px;
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+    border-color: var(--ui-border);
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+body.ui-native-shell .ui-page .fer-extra :is(.table,.datatable-table) td {
+    padding: 10px 12px;
+    border-color: var(--ui-border);
+    vertical-align: middle;
+}
+body.ui-native-shell .ui-page .fer-extra .badge,
+body.ui-native-shell .ui-page .fer-extra .label {
+    min-height: 26px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-extra .search-prod {
+    overflow: auto;
+    max-height: 210px;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(33,59,69,.14);
+}
+body.ui-native-shell .ui-page .fer-extra .search-prod label {
+    display: block;
+    margin: 0;
+    padding: 7px 10px;
+    color: var(--ui-ink) !important;
+}
+body.ui-native-shell .ui-page .fer-extra .search-prod label:hover {
+    background: var(--ui-hover);
+}
+body.ui-native-shell .ui-page .fer-extra--contratos .card.bg-light {
+    background: var(--ui-surface-alt) !important;
+}
+body.ui-native-shell .ui-page .fer-extra--contratos > .card-body > .row,
+body.ui-native-shell .ui-page .fer-extra--ponto > .row {
+    row-gap: 8px;
+}
+body.ui-native-shell .ui-page .fer-extra--ponto > .row > [class*="col-"] > .card,
+body.ui-native-shell .ui-page .fer-extra--contratos .row > [class*="col-"] > .card {
+    height: 100%;
+}
+body.ui-native-shell .ui-page .fer-extra--ponto .card-title.font-size-h2,
+body.ui-native-shell .ui-page .fer-extra--contratos .card h3 {
+    font-size: clamp(20px, 2vw, 27px);
+    font-variant-numeric: tabular-nums;
+}
+body.ui-native-shell .ui-page .fer-extra--stock .navi-text {
+    display: inline-flex;
+    margin: 4px 6px 4px 0;
+    text-decoration: none;
+}
+body.ui-native-shell .ui-page .fer-extra--stock .navi-text:hover .label {
+    border-color: var(--ui-accent);
+}
+/* Apoio operacional: agenda, requisições, representantes, manutenção,
+   portaria, pesagem, locação e alertas usam os mesmos contratos da view. */
+body.ui-native-shell .ui-page .fer-extra--support .container,
+body.ui-native-shell .ui-page .fer-extra--support .container-fluid {
+    max-width: none;
+}
+body.ui-native-shell .ui-page .fer-extra--support .card-body > .row,
+body.ui-native-shell .ui-page .fer-extra--support .container-fluid > .row {
+    row-gap: 12px;
+}
+body.ui-native-shell .ui-page .fer-extra--support .card .card {
+    margin-bottom: 15px;
+    border: 1px solid var(--ui-border) !important;
+    border-radius: 10px !important;
+    background: var(--ui-surface) !important;
+}
+body.ui-native-shell .ui-page .fer-extra--support .nav-tabs {
+    gap: 5px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-extra--support .nav-tabs .nav-link {
+    padding: 8px 11px;
+    color: var(--ui-muted);
+    border-radius: 7px 7px 0 0;
+}
+body.ui-native-shell .ui-page .fer-extra--support .nav-tabs .nav-link.active {
+    color: var(--ui-accent);
+    background: var(--ui-surface);
+    border-color: var(--ui-border) var(--ui-border) var(--ui-surface);
+}
+body.ui-native-shell .ui-page .fer-extra--support .btn-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+body.ui-native-shell .ui-page .fer-extra--support .btn-group > .btn {
+    border-radius: 7px !important;
+}
+body.ui-native-shell .ui-page .fer-extra--support .dropdown-menu {
+    padding: 6px;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 9px;
+    box-shadow: 0 12px 30px rgba(33,59,69,.13);
+}
+body.ui-native-shell .ui-page .fer-extra--support .dropdown-item {
+    padding: 7px 9px;
+    border-radius: 6px;
+    color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page .fer-extra--support .dropdown-item:hover {
+    color: var(--ui-accent);
+    background: var(--ui-hover);
+}
+/* Módulos de apoio: a apresentação é escopada; formulários e ações permanecem no Blade. */
+body.ui-native-shell .ui-page .fer-extra--support > :is(h2,h3,h4),
+body.ui-native-shell .ui-page .fer-extra--services h4 {
+    margin: 0 0 17px;
+    color: var(--ui-ink);
+    font-size: clamp(19px, 2vw, 23px);
+    font-weight: 600;
+    letter-spacing: -.03em;
+}
+body.ui-native-shell .ui-page .fer-extra--visitantes .table img {
+    max-width: 54px;
+    max-height: 54px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+body.ui-native-shell .ui-page .fer-extra--otp {
+    max-width: 590px;
+    padding: clamp(18px, 3vw, 30px);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-surface);
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-extra--otp img { max-width: 100%; height: auto; }
+body.ui-native-shell .ui-page .fer-extra--plano-contas .datatable {
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: var(--ui-surface);
+}
+/* Duas telas legadas de serviço usam classes Materialize sem sua folha global. */
+@font-face {
+    font-family: FerMaterialIcons;
+    src: url('/delivery_mercado/fonts/MaterialIcons-Regular.woff2') format('woff2');
+    font-style: normal;
+    font-weight: normal;
+    font-display: block;
+}
+body.ui-native-shell .ui-page .fer-extra--services .material-icons {
+    display: inline-block;
+    font-family: FerMaterialIcons;
+    font-size: 19px;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
+body.ui-native-shell .ui-page .fer-extra--services > .col { min-width: 0; }
+body.ui-native-shell .ui-page .fer-extra--services form {
+    padding: clamp(17px, 2.5vw, 27px);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--ui-surface);
+}
+body.ui-native-shell .ui-page .fer-extra--services form > .row {
+    gap: 12px;
+    margin-right: 0;
+    margin-left: 0;
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px 8px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > label {
+    order: 0;
+    flex: 1 1 calc(100% - 35px);
+    margin: 0;
+    color: var(--ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > .material-icons.prefix {
+    order: -1;
+    color: var(--ui-accent);
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > :is(input,select,textarea) {
+    order: 1;
+    flex: 1 1 100%;
+    min-height: 38px;
+    padding: 8px 10px;
+    color: var(--ui-ink);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    background: var(--ui-surface);
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > textarea { min-height: 100px; }
+body.ui-native-shell .ui-page .fer-extra--services .input-field > :is(input,select,textarea):focus {
+    outline: 0;
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-focus);
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > .red {
+    order: 2;
+    flex: 1 1 100%;
+    padding: 9px;
+    color: var(--ui-danger-text);
+    background: var(--ui-danger-bg);
+    border-radius: 7px;
+}
+body.ui-native-shell .ui-page .fer-extra--services .input-field > .red .white-text {
+    color: var(--ui-danger-text);
+}
+body.ui-native-shell .ui-page .fer-extra--services .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 8px 0 0;
+    text-decoration: none;
+}
+body.ui-native-shell .ui-page .fer-extra--services .btn:is(.blue,.green) {
+    color: white;
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+}
+body.ui-native-shell .ui-page .fer-extra--services .btn.red {
+    color: var(--ui-danger-text);
+    background: var(--ui-danger-bg);
+    border-color: var(--ui-danger-bg);
+}
+body.ui-native-shell .ui-page .fer-extra--services .red-text { color: var(--ui-danger-text); }
+body.ui-native-shell .ui-page .fer-extra--services table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    color: var(--ui-ink);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    background: var(--ui-surface);
+}
+body.ui-native-shell .ui-page .fer-extra--services table th {
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--ui-border);
+    text-align: left;
+}
+body.ui-native-shell .ui-page .fer-extra--services table thead th {
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+    font-size: 11px;
+    white-space: nowrap;
+}
+body.ui-native-shell .ui-page .fer-extra--services table tbody th { font-weight: 400; }
+body.ui-native-shell .ui-page .fer-extra--services .center-align { text-align: center; }
+body.ui-native-shell .ui-page .fer-extra--services .white-text { color: white; }
+body.ui-native-shell .fer-service-autocomplete {
+    z-index: 1051;
+    max-height: min(300px, 45vh);
+    overflow-y: auto;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(33,59,69,.14);
+    font-family: inherit;
+    font-size: 12px;
+}
+body.ui-native-shell .fer-service-autocomplete .ui-menu-item-wrapper {
+    padding: 8px 11px;
+    border: 0;
+}
+body.ui-native-shell .fer-service-autocomplete .ui-menu-item-wrapper.ui-state-active {
+    margin: 0;
+    color: var(--ui-accent);
+    background: var(--ui-hover);
+    border: 0;
+}
+/* Pessoas, ponto eletrônico e atendimento. */
+body.ui-native-shell .ui-page .fer-extra--people .card-header,
+body.ui-native-shell .ui-page .fer-extra--ponto .card-header {
+    row-gap: 9px;
+}
+body.ui-native-shell .ui-page .fer-extra--people .card-header :is(h3,h4,h5),
+body.ui-native-shell .ui-page .fer-extra--ponto .card-header :is(h3,h4,h5) {
+    margin: 0;
+}
+body.ui-native-shell .ui-page .fer-extra--people .card-body > .row,
+body.ui-native-shell .ui-page .fer-extra--ponto .row {
+    row-gap: 10px;
+}
+body.ui-native-shell .ui-page .fer-extra--people .card.bg-success {
+    color: var(--ui-ink);
+    background: var(--ui-accent-soft) !important;
+}
+body.ui-native-shell .ui-page .fer-extra--people .card.bg-light-success {
+    color: var(--ui-ink);
+    background: var(--ui-surface) !important;
+}
+body.ui-native-shell .ui-page .fer-extra--people .card .alert {
+    border-radius: 8px;
+    border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-extra--traccar #monitor {
+    max-height: 65vh;
+    overflow: auto;
+    color: var(--ui-ink);
+    background: var(--ui-surface) !important;
+    border: 1px solid var(--ui-border) !important;
+    border-radius: 10px !important;
+    font-variant-numeric: tabular-nums;
+}
+/* A.D.P. retains the real device list and actions while sharing the palette. */
+body.ui-native-shell .ui-page .fer-extra--adp .adp-hero {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-extra--adp .adp-hero :is(h3,small) {
+    color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page .fer-extra--adp :is(.adp-stat-card,.adp-section,.adp-download-card) {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border-color: var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-extra--adp :is(.adp-section-header,.adp-download-card) {
+    border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-extra--adp :is(.adp-stat-card .value,.adp-stat-card .label strong,.adp-section-title,.adp-download-card strong) {
+    color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page .fer-extra--adp :is(.adp-stat-card .label,.adp-download-card small) {
+    color: var(--ui-muted);
+}
+body.ui-native-shell .ui-page .fer-extra--adp .adp-config-row:hover {
+    background: var(--ui-hover);
+}
+body.ui-native-shell .ui-page .fer-extra--adp .adp-log {
+    color: var(--ui-ink);
+    background: var(--ui-surface-alt);
+    border: 1px solid var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-extra--adp .adp-pill-ok,
+body.ui-native-shell .ui-page .fer-extra--adp_cameras :is(.status-online,.chip-ok) {
+    color: var(--ui-accent-hover);
+    background: var(--ui-accent-soft);
+}
+body.ui-native-shell .ui-page .fer-extra--adp .adp-pill-off,
+body.ui-native-shell .ui-page .fer-extra--adp_cameras .chip-warn {
+    color: var(--ui-warning-text);
+    background: var(--ui-warning-bg);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras :is(.camera-card,.card) {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras .camera-card-head {
+    border-color: var(--ui-border);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras :is(.page-head h4,.camera-title strong) {
+    color: var(--ui-ink);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras :is(.page-head small,.camera-uuid,.camera-title .meta) {
+    color: var(--ui-muted);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras .camera-log {
+    color: var(--ui-muted);
+    background: var(--ui-surface-alt);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras .chip-info {
+    color: var(--ui-accent);
+    background: var(--ui-accent-soft);
+}
+body.ui-native-shell .ui-page .fer-extra--adp_cameras :is(.status-offline,.status-pendente) {
+    color: var(--ui-danger-text);
+    background: var(--ui-danger-bg);
+}
+body.ui-native-shell .fer-extra-modal .modal-content {
+    overflow: hidden;
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 22px 60px rgba(27,56,60,.16);
+}
+body.ui-native-shell .fer-extra-modal .modal-header {
+    align-items: center;
+    padding: 15px 19px;
+    border-bottom: 1px solid var(--ui-border);
+}
+body.ui-native-shell .fer-extra-modal .modal-title { color: var(--ui-ink); font-size: 15px; font-weight: 600; }
+body.ui-native-shell .fer-extra-modal .modal-body { max-height: calc(100dvh - 185px); overflow-y: auto; padding: 19px; }
+body.ui-native-shell .fer-extra-modal .modal-footer {
+    padding: 12px 19px;
+    background: var(--ui-surface-alt);
+    border-top: 1px solid var(--ui-border);
+}
+body.ui-native-shell .fer-extra-modal .form-control {
+    color: var(--ui-ink);
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+}
+@media (max-width: 991px) {
+    body.ui-native-shell .ui-page .fer-extra .card-header { align-items: flex-start; }
+    body.ui-native-shell .ui-page .fer-extra .card-header .card-toolbar { width: 100%; margin-left: 0; }
+    body.ui-native-shell .ui-page .fer-extra :is(.table-responsive,.datatable) { overflow-x: auto; }
+}
+@media (max-width: 600px) {
+    body.ui-native-shell .ui-page .fer-extra .card-header { padding: 12px 14px; }
+    body.ui-native-shell .ui-page .fer-extra .card-body { padding: 14px; }
+    body.ui-native-shell .ui-page .fer-extra--canvas.card > .card-body { padding: 0; }
+    body.ui-native-shell .ui-page .fer-extra :is(form.bg-light,form.border) { padding: 12px !important; }
+    body.ui-native-shell .ui-page .fer-extra .card-toolbar :is(.btn,.btn-group) { max-width: 100%; }
+    body.ui-native-shell .ui-page .fer-extra :is(.form-control,.custom-select,.select2-selection--single) { min-height: 42px; }
+    body.ui-native-shell .fer-extra-modal .modal-dialog { max-width: none; width: calc(100% - 16px); margin: 8px; }
+    body.ui-native-shell .fer-extra-modal .modal-body { padding: 14px; }
+}
+/* Formulário externo de abastecimento: fluxo de câmera e envio original. */
+@font-face {
+    font-family: FerPoppins;
+    src: url('/login2/fonts/poppins/Poppins-Regular.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: FerPoppins;
+    src: url('/login2/fonts/poppins/Poppins-SemiBold.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 600 800;
+    font-display: swap;
+}
+body.fer-fuel-form {
+    min-height: 100vh;
+    color: #213b45;
+    background: #f5f7f7;
+    font-family: FerPoppins, Arial, sans-serif;
+}
+body.fer-fuel-form .header-bg {
+    margin-bottom: 24px;
+    padding: 22px 16px;
+    color: #213b45;
+    text-align: center;
+    background: #fff;
+    border-bottom: 1px solid #dce7e4;
+}
+body.fer-fuel-form .header-bg .fas { color: #1f9866; }
+body.fer-fuel-form .header-bg h4 { margin: 8px 0; font-size: 20px; font-weight: 600; }
+body.fer-fuel-form .header-bg p { color: #667b7e; font-size: 13px; }
+body.fer-fuel-form .container { max-width: 680px; }
+body.fer-fuel-form .card-custom {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #dce7e4;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045);
+}
+body.fer-fuel-form .card-body { padding: clamp(18px, 4vw, 28px); }
+body.fer-fuel-form .form-group label { color: #526a70 !important; font-size: 12px; font-weight: 600; }
+body.fer-fuel-form .form-control,
+body.fer-fuel-form .custom-file-label {
+    min-height: 43px;
+    padding: 10px 12px;
+    color: #213b45;
+    background: #fff;
+    border: 1px solid #dce7e4;
+    border-radius: 8px;
+    font-size: 14px;
+}
+body.fer-fuel-form .form-control:focus,
+body.fer-fuel-form .custom-file-input:focus ~ .custom-file-label {
+    border-color: #1f9866;
+    box-shadow: 0 0 0 3px rgba(31,152,102,.16);
+}
+body.fer-fuel-form .input-group-text {
+    color: #526a70;
+    background: #f5f7f7;
+    border-color: #dce7e4;
+}
+body.fer-fuel-form .input-group-text.bg-success { color: #1f9866 !important; background: #e8f5ee !important; }
+body.fer-fuel-form .btn-custom {
+    min-height: 45px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+body.fer-fuel-form .btn-primary { color: #fff; background: #1f9866; border-color: #1f9866; }
+body.fer-fuel-form .btn-primary:is(:hover,:focus) { background: #17774f; border-color: #17774f; }
+body.fer-fuel-form .alert-success { color: #17774f; background: #e8f5ee; border-color: #dce7e4; }
+@media (max-width: 600px) {
+    body.fer-fuel-form .header-bg { padding: 18px 14px; }
+    body.fer-fuel-form .container { padding-right: 12px; padding-left: 12px; }
+}

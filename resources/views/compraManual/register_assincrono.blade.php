@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Nova Compra Manual</h1></header>
 <style type="text/css">
 	#focus-codigo:hover{ cursor: pointer }
 	.search-prod{
@@ -26,7 +31,7 @@
 
 <div class="row @if(env('ANIMACAO')) animate__animated @endif animate__bounce" id="content" style="display: block">
 	<div class="d-flex flex-column flex-column-fluid" id="kt_content">
-		<div class="card card-custom gutter-b summary-box">
+		<div class="card card-custom gutter-b summary-box fer-page fer-detail">
 			
             <!-- SEÇÃO DADOS INICIAIS -->
             <div class="card-header d-flex justify-content-between align-items-center border-0 pt-5">
@@ -413,7 +418,7 @@
 
 
 <div class="modal fade" id="modal-fornecedor" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Fornecedor</h5>
@@ -596,7 +601,7 @@
 
 
 <div class="modal fade" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Novo Produto</h5>
@@ -1228,7 +1233,7 @@
 </div>
 
 <div class="modal fade" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Transportadora</h5>
@@ -1346,7 +1351,7 @@
 	</div>
 </div>
 <div class="modal fade" id="modal-ajuda" tabindex="-1" role="dialog" aria-labelledby="modalAjudaLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-lg fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info">
                 <h5 class="modal-title text-white" id="modalAjudaLabel"><i class="la la-info-circle text-white mr-2"></i> Instruções: Compra Manual e Emissão de NF-e</h5>

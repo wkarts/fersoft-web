@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <style>
+    <header class="fer-page__heading"><h1>Coleta / Agendamento</h1></header>
+<style>
         .select2-container .select2-selection--single,
         .select2-container .select2-selection--multiple {
             min-height: 38px !important;
@@ -27,7 +31,7 @@
     </style>
 
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b">
+        <div class="fer-page fer-operational fer-form card card-custom gutter-b">
             <div class="card-header">
                 <div class="card-title">
                     <h3 class="card-label">

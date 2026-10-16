@@ -1,7 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Recebimento Múltiplo de Contas</h1></header>
 <div class="container">
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-detail">
         <div class="card-header border-0 pt-6">
             <h3 class="card-title font-weight-bolder text-dark">Recebimento Múltiplo de Contas</h3>
             <div class="card-toolbar">

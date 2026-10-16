@@ -2,7 +2,7 @@
     $editing = !empty($camera);
     $selectedUsers = $editing ? ($permissoes[$camera->id] ?? []) : [];
 @endphp
-<div class="modal fade" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="{{ $modalId }}" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <form method="POST" action="{{ $editing ? route('adp.cameras.save', $camera->id) : route('adp.cameras.save') }}" class="modal-content">
             @csrf

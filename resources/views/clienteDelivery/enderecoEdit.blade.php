@@ -1,18 +1,29 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-clienteDelivery">
 <div class="content d-flex flex-column flex-column-fluid" id="kt_content">
 
 	<div class="container">
-		<div class="card card-custom gutter-b example example-compact">
+		<div class="ui-admin-panel ui-commerce-panel gutter-b">
 			<div class="col-lg-12">
 				<!--begin::Portlet-->
 
 				<form method="post" action="/clientesDelivery/updateEndereco" enctype="multipart/form-data">
 					<input type="hidden" name="id" value="{{$endereco->id}}">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel ui-commerce-panel gutter-b">
+						<div class="ui-admin-panel-head ui-commerce-panel-head">
 
-							<h4 class="card-title">Editar Endereço <strong>{{$endereco->id}}</strong></h4>
+							<h4 class="ui-commerce-title">Editar Endereço <strong>{{$endereco->id}}</strong></h4>
 
 						</div>
 
@@ -22,8 +33,8 @@
 					<div class="row">
 						<div class="col-xl-2"></div>
 						<div class="col-xl-8">
-							<div class="kt-section kt-section--first">
-								<div class="kt-section__body">
+							<div class="ui-commerce-section">
+								<div class="ui-commerce-section-body">
 
 									<div class="row">
 										<div class="form-group validated col-sm-8 col-lg-8 col-10">
@@ -112,7 +123,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="card-footer">
+					<div class="ui-admin-panel-foot ui-commerce-panel-foot">
 
 						<div class="row">
 							<div class="col-xl-2">
@@ -139,4 +150,5 @@
 	</div>
 </div>
 
+</div>
 @endsection

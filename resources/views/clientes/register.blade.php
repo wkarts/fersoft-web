@@ -1,5 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading">
+    <div>
+        <h1>{{ isset($cliente) ? 'Editar' : 'Novo' }} Cliente</h1>
+        <p>Preencha os dados do cliente para o cadastro no sistema</p>
+    </div>
+</header>
     <style type="text/css">
         .camera{
             height: 200px;
@@ -22,17 +31,17 @@
         }
 
         .optional-section-box {
-            background-color: #F3F6F9;
+            background-color: #fafcfc;
             border-radius: 0.85rem;
             padding: 2rem;
             margin-top: 1rem;
             margin-left: 0;
             margin-right: 0;
-            border: 1px dashed #E4E6EF;
+            border: 1px dashed #dce7e7;
         }
     </style>
-    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+    <div class="fer-page fer-form  d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
@@ -41,19 +50,7 @@
                             <input type="hidden" name="_save_token" value="{{ session('cliente_save_token') }}">
                         @endif
                         <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact shadow-sm">
-                            <div class="card-header py-3">
-                                <div class="card-title">
-                                    <span class="card-icon">
-                                        <i class="flaticon2-user text-primary"></i>
-                                    </span>
-                                    <h3 class="card-label">
-                                        {{isset($cliente) ? 'Editar' : 'Novo'}} Cliente
-                                        <span class="d-block text-muted pt-2 font-size-sm">Preencha os dados do cliente para o cadastro no sistema</span>
-                                    </h3>
-                                </div>
-                            </div>
-                        </div>
+                        
                         @csrf
 
                         @isset($cliente)
@@ -888,7 +885,7 @@
     </div>
 
     <div class="modal fade" id="modal-foto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Tirar Foto</h5>
@@ -922,7 +919,7 @@
     </div>
 
     <div class="modal fade" id="modal-otica" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-dialog modal-xl fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Cadastro de receita ótica</h5>

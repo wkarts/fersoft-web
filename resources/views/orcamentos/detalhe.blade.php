@@ -1,8 +1,13 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Detalhes do Orçamento</h1></header>
 
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 
 	<div class="card-body">
@@ -541,7 +546,7 @@
 </div>
 
 <div class="modal fade" id="modal-pagamentos" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-md" role="document">
+	<div class="modal-dialog modal-md fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">PAGAMENTOS</h5>
@@ -586,7 +591,7 @@
 </div>
 
 <div class="modal fade" id="modal-clientes" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-xl" role="document">
+	<div class="modal-dialog modal-xl fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">ALTERAR CLIENTE</h5>

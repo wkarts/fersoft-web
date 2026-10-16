@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
+<header class="fer-page__heading"><h1>Relatório</h1></header>
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="fer-page fer-operational fer-form card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<!--begin::Portlet-->
@@ -10,7 +14,7 @@
 				<form method="post" action="{{{ isset($relatorio) ? '/ordemServico/updateRelatorio': '/ordemServico/addRelatorio' }}}">
 					<input type="hidden" name="ordemId" value="{{$ordem->id}}">
 					<input type="hidden" name="id" value="{{isset($relatorio) ? $relatorio->id : 0}}">
-					<div class="card card-custom gutter-b example example-compact">
+					<div class="fer-panel card card-custom gutter-b example example-compact">
 						<div class="card-header">
 
 							<h3 class="card-title">{{{ isset($relatorio) ? "Editar": "Cadastrar" }}} Relatório</h3>

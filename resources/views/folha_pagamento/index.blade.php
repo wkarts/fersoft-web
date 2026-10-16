@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="fer-extra fer-extra--people fer-extra--folha_pagamento d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="card card-custom gutter-b shadow-sm border-0">
             <div class="card-header border-0 py-5">
                 <h3 class="card-title align-items-start flex-column">
@@ -100,7 +104,7 @@
     </div>
 
     <!-- Modal de Importação do TXT -->
-    <div class="modal fade" id="modalImportar" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalImportar" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="{{ route('folha.importar') }}" method="POST" enctype="multipart/form-data">

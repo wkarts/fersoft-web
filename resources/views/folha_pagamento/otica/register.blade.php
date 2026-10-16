@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--people fer-extra--folha_pagamento card card-custom gutter-b">
         <div class="card-header border-0 pt-6">
             <h3 class="card-title align-items-start flex-column">
                 <span class="card-label font-weight-bolder font-size-h3 text-dark">{{ $formTitle }}</span>
@@ -156,7 +160,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modalClienteRapido" tabindex="-1" role="dialog">
+    <div class="modal fer-extra-modal fade" id="modalClienteRapido" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header"><h5>Novo Cliente</h5></div>

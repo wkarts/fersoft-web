@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <style>
+    <header class="fer-page__heading"><h1>Agenda de Coletas</h1></header>
+<style>
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -71,7 +75,7 @@
         }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-page fer-operational fer-board card card-custom gutter-b">
         <div class="card-body">
 
             <div class="row mb-5">
@@ -280,7 +284,7 @@
 
     <!-- MODAL DE RESUMO COM AÇÕES RÁPIDAS -->
     <div class="modal fade" id="modalResumoColeta" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="fer-dialog modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-light">
                     <h5 class="modal-title font-weight-bold text-primary">
@@ -395,7 +399,7 @@
     </div>
 
     <div class="modal fade" id="modal_cancelar" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
+        <div class="fer-dialog modal-dialog" role="document">
             <form id="form_cancelar" method="post" action="">
                 @csrf
                 <div class="modal-content">

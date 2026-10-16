@@ -1,5 +1,9 @@
 @extends('default.layout')
 @section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
 <style type="text/css">
 	.img-carousel{
 		height: 140px;
@@ -7,10 +11,15 @@
 	}
 </style>
 @endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-carroselDelivery">
 
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 			<form method="post" action="/carrosselDelivery/save" enctype="multipart/form-data">
 				@csrf
@@ -108,6 +117,7 @@
 	</div>
 </div>
 
+</div>
 @endsection
 
 @section('javascript')

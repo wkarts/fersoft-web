@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-pos-pages.css') }}?v={{ filemtime(public_path('css/ui-pos-pages.css')) }}">
+@endpush
+
 
 @section('css')
 <style type="text/css">
@@ -49,7 +53,7 @@
 @endsection
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fer-pos-page fer-pos-page--list fer-pos-page--canvas card card-custom gutter-b">
 
 	<div class="card-body">
 
@@ -686,7 +690,7 @@
 
 </div>
 
-<div class="modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-pos-modal fade" id="modal-whatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<form class="modal-content" method="post" action="/vendasCaixa/enviar-whats">
 			@csrf
@@ -739,7 +743,7 @@
 
 <div class="modal-loading loading-class"></div>
 
-<div class="modal fade" id="modal-somas" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-pos-modal fade" id="modal-somas" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

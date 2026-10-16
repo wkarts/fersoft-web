@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
     <style type="text/css">
         .btn-file {
@@ -39,7 +42,7 @@
         }
     </style>
 
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="document-fiscal-page document-fiscal-page--ibpt d-flex flex-column flex-column-fluid" id="kt_content">
         <form id="ibpt-form" method="post" enctype="multipart/form-data">
             <div class="card card-custom gutter-b example example-compact">
                 <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">

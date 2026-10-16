@@ -9,7 +9,7 @@ on:
       - 'app/Support/UiThemePalette.php'
       - 'app/Services/UiThemeService.php'
       - 'app/Http/Controllers/UiThemeController.php'
-      - 'scripts/ci/build-native-ui.py'
+      - 'scripts/ui/**'
       - 'tests/ui/**'
       - 'tests/Unit/UiNativePaletteTest.php'
       - '.github/workflows/ui-native-browser.yml'
@@ -32,7 +32,7 @@ jobs:
       CACHE_STORE: array
       CACHE_DRIVER: array
       QUEUE_CONNECTION: sync
-      APP_UI_THEME: classic
+      APP_UI_THEME: refined
       COMPOSER_NO_AUDIT: '1'
     steps:
       - uses: actions/checkout@v4
@@ -79,19 +79,21 @@ jobs:
             passthru(escapeshellarg(PHP_BINARY)." -l ".escapeshellarg($compiled), $status);
             exit($status);
           '
-      - name: Compilar shell a partir dos controles atuais preservados
+      - name: Validar shell versionado e runtime FERSOFT
         run: |
           set -euo pipefail
-          python scripts/ci/build-native-ui.py
           php -l app/Support/UiThemePalette.php
           php -l app/Http/Controllers/UiThemeController.php
           php -l tests/ui/render-native.php
           node --check public/js/ui-operational.js
-          node --check public/js/ui-legacy-widgets.js
-          git diff --stat -- resources/views/themes/refined/layout.blade.php resources/views/default/menu_lateral.blade.php
+          node --check public/js/fer-runtime.js
+          for asset in public/js/vendor/*.js; do node --check "$asset"; done
+          ! grep -Eq 'src="/metronic/js/|href="/metronic/css/|ui-legacy-widgets.js' resources/views/themes/refined/layout.blade.php
+          git diff --exit-code -- resources/views/themes/refined/layout.blade.php
       - name: Testar contratos e compilar Blades reais
         run: |
           set -euo pipefail
+          python tests/ui/test-view-contracts.py
           php artisan config:clear
           php artisan view:cache
           vendor/bin/phpunit --filter UiNativePaletteTest
@@ -112,3 +114,4 @@ jobs:
             storage/logs/laravel.log
           if-no-files-found: warn
           retention-days: 14
+

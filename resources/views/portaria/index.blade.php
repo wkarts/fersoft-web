@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="container-fluid">
+<div class="fer-extra fer-extra--support fer-extra--portaria container-fluid">
     <div class="row mb-4">
         <div class="col-6">
             <h2 class="page-title">Controle de Portaria</h2>
@@ -233,7 +237,7 @@
 </div>
 
 <!-- MODAL DE AGENDAMENTO -->
-<div class="modal fade" id="modalAgendamento" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modalAgendamento" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">

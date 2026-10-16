@@ -1,9 +1,18 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-usuarios">
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel gutter-b">
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body">
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
 
@@ -12,51 +21,21 @@
 				</a>
 			</div>
 		</div>
-		<br>
+		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside">
 
-		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
-			
-			<br>
 			<h4>Lista de Usuários</h4>
 			<label>Total de registros: {{sizeof($usuarios)}}</label>
 			<div class="row">
 
 				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
-					<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-						<div class="wizard-nav">
-
-							<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-								<!--begin::Wizard Step 1 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-									<div class="wizard-label">
-										<h3 class="wizard-title">
-											<span>
-												<i style="font-size: 40px" class="la la-table"></i>
-												Tabela
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
-									</div>
-								</div>
-								<!--end::Wizard Step 1 Nav-->
-								<!--begin::Wizard Step 2 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-									<div class="wizard-label" id="grade">
-										<h3 class="wizard-title">
-											<span>
-												<i style="font-size: 40px" class="la la-tablet"></i>
-												Grade
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
-									</div>
-								</div>
-
-							</div>
+					<div id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+						<div class="ui-admin-tabs" role="tablist" aria-label="Visualização de usuários">
+							<button class="ui-admin-tab" type="button" role="tab" id="usuarios-tab-tabela" data-wizard-type="step" data-wizard-state="done" aria-controls="usuarios-painel-tabela" aria-selected="true"><i class="la la-table" aria-hidden="true"></i> Tabela</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="grade" data-wizard-type="step" data-wizard-state="current" aria-controls="usuarios-painel-grade" aria-selected="false"><i class="la la-tablet" aria-hidden="true"></i> Grade</button>
 						</div>
 
-						<div class="pb-5" data-wizard-type="step-content">
+						<div class="pb-5" id="usuarios-painel-tabela" data-wizard-type="step-content" role="tabpanel" aria-labelledby="usuarios-tab-tabela">
 							<div class="row">
 								<div class="col-xl-12">
 
@@ -123,15 +102,15 @@
 													
 													<td class="datatable-cell">
 														<span class="codigo" style="width: 200px;" id="id">
-															<a class="btn btn-warning btn-sm" onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/usuarios/edit/{{ $u->id }}" }else{return false} })' href="#!">
+															<a class="btn btn-warning btn-sm" aria-label="Editar {{ $u->nome }}" onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/usuarios/edit/{{ $u->id }}" }else{return false} })' href="#!">
 																<i class="la la-edit"></i>	
 															</a>
-															<a class="btn btn-danger btn-sm" onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/usuarios/delete/{{ $u->id }}" }else{return false} })' href="#!">
+															<a class="btn btn-danger btn-sm" aria-label="Remover {{ $u->nome }}" onclick='swal("Atenção!", "Deseja remover este registro?", "warning").then((sim) => {if(sim){ location.href="/usuarios/delete/{{ $u->id }}" }else{return false} })' href="#!">
 																<i class="la la-trash"></i>	
 															</a>
 
 															@if(session('user_logged')['adm'])
-															<a class="btn btn-info btn-sm" href="/usuarios/historico/{{ $u->id }}">
+															<a class="btn btn-info btn-sm" aria-label="Histórico de {{ $u->nome }}" href="/usuarios/historico/{{ $u->id }}">
 																<i class="la la-list"></i>	
 															</a>
 															@endif
@@ -146,23 +125,23 @@
 								</div>
 							</div>
 						</div>
-						<div class="pb-5" data-wizard-type="step-content">
+						<div class="pb-5" id="usuarios-painel-grade" data-wizard-type="step-content" role="tabpanel" aria-labelledby="grade" hidden>
 							<div class="row">
 
 								@foreach($usuarios as $c)
 
 
 								<div class="col-sm-12 col-xl-3 col-lg-4">
-									<div class="card card-custom gutter-b example example-compact">
-										<div class="card-header">
+									<div class="ui-admin-panel gutter-b ">
+										<div class="ui-admin-panel-head">
 											<div class="card-title">
-												<h3 style="width: 230px; font-size: 12px; height: 10px;" class="card-title">{{$c->nome}}
+												<h3 class="card-title ui-admin-card-title">{{$c->nome}}
 												</h3>
 											</div>
 
 											<div class="card-toolbar">
 												<div class="dropdown dropdown-inline" data-toggle="tooltip" title="" data-placement="left" data-original-title="Ações">
-													<a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+															<a href="#" class="btn btn-hover-light-primary btn-sm btn-icon" data-toggle="dropdown" aria-label="Ações de {{ $c->nome }}" aria-haspopup="true" aria-expanded="false">
 														<i class="fa fa-ellipsis-h"></i>
 													</a>
 													<div class="dropdown-menu p-0 m-0 dropdown-menu-md dropdown-menu-right">
@@ -196,7 +175,7 @@
 											</div>
 										</div>
 
-										<div class="card-body">
+										<div class="ui-admin-panel-body">
 
 
 											<div class="kt-widget__info">
@@ -233,4 +212,35 @@
 	</div>
 </div>
 
+</div>
+@endsection
+
+@section('javascript')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('kt_wizard_v3');
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('.ui-admin-tab'));
+    function selectTab(tab, focus) {
+        tabs.forEach(function (item) {
+            const selected = item === tab;
+            item.setAttribute('aria-selected', String(selected));
+            item.tabIndex = selected ? 0 : -1;
+            document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+        });
+        if (focus) tab.focus();
+    }
+    tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { selectTab(tab, false); });
+        tab.addEventListener('keydown', function (event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+                (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[next], true);
+        });
+    });
+    selectTab(root.querySelector('.ui-admin-tab[aria-selected="true"]') || tabs[0], false);
+});
+</script>
 @endsection

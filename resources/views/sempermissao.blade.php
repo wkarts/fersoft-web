@@ -1,7 +1,12 @@
 @extends('default.layout')
+@if(config('ui_theme.active', false))
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-auth.css') }}?v={{ filemtime(public_path('css/ui-auth.css')) }}">
+@endpush
+@endif
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b @if(config('ui_theme.active', false)) fer-permission @endif">
 	<div class="card-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 			<div class="row">

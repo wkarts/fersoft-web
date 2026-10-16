@@ -1,15 +1,18 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="operations-page operations-page--stock-detail">
     <div class="card-header">
-        <h3 class="card-title">Estoque Consolidado - {{ $mes }}/{{ $ano }}</h3>
+        <h3 class="card-title operations-page__title">Estoque Consolidado - {{ $mes }}/{{ $ano }}</h3>
         <div class="card-toolbar">
             <button class="btn btn-light-primary font-weight-bold" onclick="window.print()">
                 <i class="la la-print"></i> Imprimir Relatório
             </button>
         </div>
     </div>
-    <div class="card-body">
+    <div class="operations-page__content card-body">
         <form method="get" class="mb-5">
             <div class="row">
                 <div class="col-md-2">

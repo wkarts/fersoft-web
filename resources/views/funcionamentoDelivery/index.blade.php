@@ -1,9 +1,20 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-commerce.css') }}?v={{ filemtime(public_path('css/ui-commerce.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-commerce ui-commerce-funcionamentoDelivery">
 
-<div class="card card-custom gutter-b">
+<div class="ui-admin-panel ui-commerce-panel gutter-b">
 
-	<div class="card-body">
+	<div class="ui-admin-panel-body ui-commerce-panel-body">
 		<div class="">
 			<div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
 				@isset($funcionamento)
@@ -140,4 +151,5 @@
 </div>
 
 
+</div>
 @endsection	

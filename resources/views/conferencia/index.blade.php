@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
-    <div class="card">
+    <header class="fer-page__heading"><h1>Conferência Fiscal e Financeira</h1></header>
+<div class="fer-page fer-operational fer-list card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="card-title">Conferência Fiscal e Financeira</h3>
             <div>
@@ -22,7 +26,7 @@
             @endif
 
             <!-- Formulário de Filtros -->
-            <form id="form-filtros" method="GET" action="/conferencia" class="mb-4 bg-light p-3 border rounded shadow-sm">
+            <form id="form-filtros" method="GET" action="/conferencia" class="fer-filter mb-4 bg-light p-3 border rounded shadow-sm">
                 <div class="row">
                     <div class="col-md-2">
                         <label>Data Inicial</label>
@@ -232,7 +236,7 @@
 
     <!-- Modal de Drill-Down Simples -->
     <div class="modal fade" id="modalDrill" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
+        <div class="fer-dialog modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header"><h5>Detalhamento do Documento</h5></div>
                 <div class="modal-body" id="modalBody">Carregando dados...</div>

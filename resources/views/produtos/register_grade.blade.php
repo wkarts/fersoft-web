@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>{{ isset($produto) ? 'Editar' : 'Novo' }} Produto com Grade</h1></header>
 
 <style type="text/css">
 	.modal-body-grade{
@@ -9,7 +14,7 @@
 </style>
 
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="card card-custom gutter-b example example-compact fer-page fer-detail">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
@@ -1156,7 +1161,7 @@
 </div>
 
 <div class="modal fade" id="modal-grade1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Escolha as combinações</h5>
@@ -1194,7 +1199,7 @@
 </div>
 
 <div class="modal fade" id="modal-grade2" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Preencha os campos das combinações</h5>
@@ -1222,7 +1227,7 @@
 </div>
 
 <div class="modal fade" id="modal-categoria" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog" role="document">
+	<div class="modal-dialog fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Categoria</h5>
@@ -1258,7 +1263,7 @@
 </div>
 
 <div class="modal fade" id="modal-marca" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog" role="document">
+	<div class="modal-dialog fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Nova Marca</h5>

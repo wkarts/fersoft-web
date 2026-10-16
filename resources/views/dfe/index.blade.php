@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--dfe card card-custom gutter-b">
     <div class="card-body">
         <form method="get" action="/dfe/filtro">
             <div class="row align-items-end">
@@ -289,7 +292,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
     <form method="get" action="/dfe/manifestar">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -331,7 +334,7 @@
 	</form>
 </div>
 
-<div class="modal fade" id="modalManualDfe" tabindex="-1" role="dialog" aria-labelledby="modalManualDfeLabel" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalManualDfe" tabindex="-1" role="dialog" aria-labelledby="modalManualDfeLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">

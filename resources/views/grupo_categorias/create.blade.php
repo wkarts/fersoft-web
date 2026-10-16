@@ -4,7 +4,11 @@
 
 @extends('default.layout')
 
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--grupo_categorias">
 <div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
@@ -99,4 +103,5 @@
         });
     });
 </script>
+</div>
 @endsection

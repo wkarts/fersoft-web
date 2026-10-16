@@ -1,7 +1,16 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-empresas">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="ui-admin-panel gutter-b ">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<!--begin::Portlet-->
@@ -9,8 +18,8 @@
 				<form method="post" action="/empresas/alterarSenha">
 
 					<input type="hidden" name="id" value="{{$empresa->id}}">
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel gutter-b ">
+						<div class="ui-admin-panel-head">
 
 							<h3 class="card-title">Alterar senha dos usuários da empresa: <strong style="margin-left: 2px;">{{$empresa->nome}}</strong></h3>
 						</div>
@@ -31,13 +40,13 @@
 											@foreach($empresa->usuarios as $key => $u)
 											<div class="col-sm-4 col-lg-4 col-md-4 col-12">
 
-												<div class="card card-custom gutter-b">
-													<div class="card-header">
+												<div class="ui-admin-panel gutter-b">
+													<div class="ui-admin-panel-head">
 														<h3 class="card-title">
 															{{$u->nome}}
 														</h3>
 													</div>
-													<div class="card-body" style="height: 150px;">
+													<div class="ui-admin-panel-body" style="height: 150px;">
 
 														<h4>Login: <strong class="text-info">{{$u->login}}</strong></h4>
 														<h4>ADM: 
@@ -81,7 +90,7 @@
 						</div>
 					</div>
 
-					<div class="card-footer">
+					<div class="ui-admin-panel-foot">
 
 						<div class="row">
 							<div class="col-xl-2">
@@ -108,4 +117,5 @@
 	</div>
 </div>
 
+</div>
 @endsection

@@ -1,11 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Contas a Receber</h1></header>
 
-    <div class="card card-custom gutter-b">
+    <div class="card card-custom gutter-b fer-page fer-list">
         <div class="card-body">
 
             {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E IMPORTAÇÃO --}}
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+            <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-12">
                     <div class="row">
                         <a href="/contasReceber/new" class="btn btn-lg btn-success">
@@ -33,7 +37,7 @@
             {{-- (GRUPO) FILTROS: Campos para busca e refinamento da listagem --}}
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
-                <form method="get" action="/contasReceber/filtro">
+                <form method="get" action="/contasReceber/filtro" class="fer-filter">
                     <div class="row align-items-center">
 
                         <div class="form-group col-lg-6 col-xl-5">
@@ -193,7 +197,7 @@
                 <div class="row">
                     <?php $somaValor = 0; $somaPago = 0; $somaPendente = 0; ?>
                     <div class="col-12">
-                        <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+                        <div class="wizard wizard-3 fer-results" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
                             <div class="wizard-nav">
                                 <div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
                                     <div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
@@ -485,7 +489,7 @@
 
     {{-- MODAL DE BAIXA PARCIAL --}}
     <div class="modal fade" id="modal_baixa_parcial" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Baixa Parcial - Conta a Receber</h5>

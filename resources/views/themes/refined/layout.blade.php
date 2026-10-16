@@ -33,33 +33,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="theme-color" content="{{ $uiThemeColor }}">
 
-    <!--begin::Fonts -->
-
-    <link href="/metronic/css/fullcalendar.bundle.css" rel="stylesheet" type="text/css" />
-    <!-- <link href="/metronic/css/uppy.bundle.css" rel="stylesheet" type="text/css" /> -->
-    <link href="/metronic/css/wizard.css" rel="stylesheet" type="text/css" />
-
-    <link href="/css/style.css?v={{ filemtime(public_path('css/style.css')) }}" rel="stylesheet" type="text/css" />
-
-    <!--end::Page Vendors Styles -->
+    {{-- Bootstrap supplies the layout grid and modal behavior. The FERSOFT stylesheet
+         below owns the appearance of every shared component. --}}
+    <link href="/css/bootstrap4_5_1.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/style.css?v={{ filemtime(public_path('css/style.css')) }}" rel="stylesheet" type="text/css">
 
     @if(isset($fullcalendar))
         <link href='/fullcalendar/main.css' rel='stylesheet' />
     @endif
-    <!--begin::Global Theme Styles(used by all pages) -->
-    <link href="/metronic/css/plugins.bundle.css" rel="stylesheet" type="text/css" />
-    <link href="/metronic/css/prismjs.bundle.css" rel="stylesheet" type="text/css" />
-
-    <link href="/metronic/css/pricing.css" rel="stylesheet" type="text/css" />
-    <!--end::Global Theme Styles -->
-
-    <!--begin::Layout Skins(used by all pages) -->
     <link rel="stylesheet" href="/css/whatsapp.css">
-
-    <!-- Tema variaveis -->
-
-    <!-- Fim tema variaveis -->
-    <link href="/metronic/css/style.bundle.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="/css/vendor/select2-4.0.13.css">
+    <link rel="stylesheet" href="/css/vendor/bootstrap-datepicker-1.9.0.css">
+    <link rel="stylesheet" href="/css/vendor/bootstrap-timepicker-and-daterangepicker.css">
+    <link rel="stylesheet" href="/css/vendor/sweetalert2-9.17.2.css">
+    <link rel="stylesheet" href="/ecommerce/assets/css/jquery-ui.min.css">
 
     <link rel="stylesheet" href="/css/line-awesome.min.css">
 
@@ -98,6 +85,7 @@
 
 
     <link rel="stylesheet" href="{{ asset('css/ui-operational.css') }}?v={{ filemtime(public_path('css/ui-operational.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/fer-design-system.css') }}?v={{ filemtime(public_path('css/fer-design-system.css')) }}">
     @stack('styles')
 
 </head>
@@ -547,89 +535,27 @@
     </div>
 </div>
 
-<script>var HOST_URL = "/metronic/theme/html/tools/preview";</script>
-<script>
+{{-- Bibliotecas independentes dos controles utilizados pelas views atuais. --}}
 
-    var KTAppSettings = {
-        "breakpoints": {
-            "sm": 576,
-            "md": 768,
-            "lg": 992,
-            "xl": 1200,
-            "xxl": 1400
-        },
-        "colors": {
-            "theme": {
-                "base": {
-                    "white": "#ffffff",
-                    "primary": "#3699FF",
-                    "secondary": "#E5EAEE",
-                    "success": "#1BC5BD",
-                    "info": "#8950FC",
-                    "warning": "#FFA800",
-                    "danger": "#F64E60",
-                    "light": "#E4E6EF",
-                    "dark": "#181C32"
-                },
-                "light": {
-                    "white": "#ffffff",
-                    "primary": "#E1F0FF",
-                    "secondary": "#EBEDF3",
-                    "success": "#C9F7F5",
-                    "info": "#EEE5FF",
-                    "warning": "#FFF4DE",
-                    "danger": "#FFE2E5",
-                    "light": "#F3F6F9",
-                    "dark": "#D6D6E0"
-                },
-                "inverse": {
-                    "white": "#ffffff",
-                    "primary": "#ffffff",
-                    "secondary": "#3F4254",
-                    "success": "#ffffff",
-                    "info": "#ffffff",
-                    "warning": "#ffffff",
-                    "danger": "#ffffff",
-                    "light": "#464E5F",
-                    "dark": "#ffffff"
-                }
-            },
-            "gray": {
-                "gray-100": "#F3F6F9",
-                "gray-200": "#EBEDF3",
-                "gray-300": "#E4E6EF",
-                "gray-400": "#D1D3E0",
-                "gray-500": "#B5B5C3",
-                "gray-600": "#7E8299",
-                "gray-700": "#5E6278",
-                "gray-800": "#3F4254",
-                "gray-900": "#181C32"
-            }
-        },
-        "font-family": "Poppins"
-    };
-</script>
-
-
-
-<!-- end::Global Config -->
-<!--begin::Global Theme Bundle(used by all pages) -->
-
-<script src="/metronic/js/plugins.bundle.js" type="text/javascript"></script>
-<script src="/metronic/js/prismjs.bundle.js" type="text/javascript"></script>
-<script src="/js/ui-legacy-widgets.js" type="text/javascript"></script>
-<script src="/metronic/js/file.js" type="text/javascript"></script>
-<script src="/metronic/js/fullcalendar.bundle.js" type="text/javascript"></script>
-
-<script src="/metronic/js/wizard.js" type="text/javascript"></script>
-<script src="/metronic/js/user.js" type="text/javascript"></script>
+<script src="/js/vendor/jquery-3.4.1.js"></script>
+<script src="/ecommerce/assets/js/jquery-ui.min.js"></script>
+<script src="/js/vendor/popper-1.16.1.js"></script>
+<script src="/js/vendor/bootstrap-4.5.3.js"></script>
+<script src="/js/vendor/moment-2.29.1.js"></script>
+<script src="/js/vendor/bootstrap-datepicker-1.9.0.js"></script>
+<script src="/js/vendor/bootstrap-timepicker-0.5.2.js"></script>
+<script src="/js/vendor/daterangepicker-3.1.js"></script>
+<script src="/js/vendor/select2-4.0.13.js"></script>
+<script src="/js/vendor/inputmask-4.0.9.js"></script>
+<script src="/js/vendor/apexcharts-3.22.0.js"></script>
+<script src="/js/fer-runtime.js"></script>
+<script src="/js/vendor/sweetalert2-9.17.2.js"></script>
 
 <script type="text/javascript" src="/js/jquery.mask.min.js"></script>
 <script type="text/javascript" src="/js/mascaras.js"></script>
-<script src="/metronic/js/select2.js" type="text/javascript"></script>
-<script src="/metronic/js/timepicker.js" type="text/javascript"></script>
 
 <script src="/js/sweetalert.min.js"></script>
+<script src="/js/toastr.min.js"></script>
 
 <script type="text/javascript">
     function audioSuccess(){
@@ -1104,7 +1030,7 @@
 <script>
 
     jQuery(document).ready(function() {
-        KTSelect2.init();
+        window.FerRuntime.init(document);
         $('.select2-selection__arrow').addClass('select2-selection__arroww')
 
         $('.select2-selection__arrow').removeClass('select2-selection__arrow')
@@ -1448,7 +1374,6 @@
 <!-- tour -->
 
 <script type="text/javascript" src="/js/main.js"></script>
-<script type="text/javascript" src="/js/toastr.min.js"></script>
 
 @yield('modal-alerta-sistema')
 

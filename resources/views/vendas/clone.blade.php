@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Duplicar Venda</h1></header>
 
 
 <div class="row" id="anime" style="display: none">
@@ -9,7 +14,7 @@
 	</div>
 </div>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 
 	<div class="card-body">

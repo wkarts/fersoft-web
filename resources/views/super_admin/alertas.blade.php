@@ -1,4 +1,6 @@
-<div class="table-responsive">
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+<div class="document-fiscal-page admin-page admin-page--super-admin table-responsive">
 	<table class="table">
 		<thead>
 			<tr>

@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 
 @section('content')
-<div class="card card-custom">
+<div class="fer-extra fer-extra--support fer-extra--requisicoes card card-custom">
     <div class="card-header">
         <h3 class="card-title">Detalhes da Requisição #{{ $requisicao->id }}</h3>
         <div class="card-toolbar">

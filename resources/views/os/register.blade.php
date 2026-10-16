@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    <style type="text/css">
+    <header class="fer-page__heading"><h1>Ordem de Serviço</h1></header>
+<style type="text/css">
         .card-modern {
             border: none;
             border-radius: 12px;
@@ -14,7 +18,7 @@
     </style>
 
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+        <div class="fer-page fer-operational fer-form card card-custom gutter-b example example-compact">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
@@ -23,7 +27,7 @@
                         <input type="hidden" name="id" value="{{{ isset($ordem->id) ? $ordem->id : 0 }}}">
                         @csrf
 
-                        <div class="card card-custom gutter-b example example-compact">
+                        <div class="fer-panel card card-custom gutter-b example example-compact">
                             <div class="card-header">
                                 <h3 class="card-title">{{{ isset($ordem) ? "Editar": "Adicionar" }}} Ordem de Serviço</h3>
                             </div>
@@ -163,7 +167,7 @@
 
     <!-- MODAL CADASTRAR NOVO CLIENTE -->
     <div class="modal fade" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+        <div class="fer-dialog modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title text-white"><i class="la la-user-plus"></i> Novo Cliente</h5>
@@ -306,7 +310,7 @@
 
     <!-- MODAL CADASTRAR NOVO VEÍCULO -->
     <div class="modal fade" id="modal-veiculo" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="fer-dialog modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title text-white"><i class="fa fa-car me-2"></i> Cadastrar Novo Veículo</h5>

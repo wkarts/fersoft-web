@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Lista de Pagamentos com Alteração de status</h1></header>
+<div class="fer-page fer-operational fer-list card card-custom gutter-b">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -11,7 +15,7 @@
 			
 			<div class="col-xl-12 @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 
-				<div id="kt_datatable" class="datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
+				<div id="kt_datatable" class="fer-results datatable datatable-bordered datatable-head-custom datatable-default datatable-primary datatable-loaded">
 
 					<table class="datatable-table" style="max-width: 100%; overflow: scroll">
 						<thead class="datatable-head">

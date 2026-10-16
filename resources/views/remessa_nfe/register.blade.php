@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('content')
 <style type="text/css">
 	#focus-codigo:hover{
@@ -32,9 +35,9 @@
 		color: #000 !important;
 	}
 </style>
-<div class="card card-custom gutter-b">
+<div class="fiscal-page fiscal-page--remessa_nfe-register">
 
-	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
+	<div class="fiscal-page__content card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
 
 			<div class="row" id="anime" style="display: none">
@@ -50,7 +53,7 @@
 				@method('put')
 				@endif
 
-				<h3 class="card-title">DADOS INICIAIS</h3>
+				<h3 class="fiscal-section-title">DADOS INICIAIS</h3>
 
 				<input type="hidden" id="_token" value="{{csrf_token()}}" name="_token">
 
@@ -204,7 +207,7 @@
 
 
 				<!-- Wizzard -->
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b fiscal-panel">
 
 
 					<div class="card-body">
@@ -1047,7 +1050,7 @@
 					</div>
 				</div>
 
-				<div class="card card-custom gutter-b">
+				<div class="card card-custom gutter-b fiscal-panel">
 
 					@if(isset($item) && sizeof($item->referencias) > 0)
 
@@ -1146,7 +1149,7 @@
 
 
 
-<div class="modal fade" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1692,7 +1695,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-referencia-nfe" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1766,7 +1769,7 @@
 </div>
 
 
-<div class="modal fade" id="modal-pag-outros" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-pag-outros" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1793,7 +1796,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-nome-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-nome-produto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1818,7 +1821,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-cod-barras" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-cod-barras" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-sm" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -1843,7 +1846,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-cliente" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -2039,7 +2042,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade fiscal-dialog" id="modal-transportadora" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-xl" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
