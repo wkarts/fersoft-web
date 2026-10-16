@@ -13,6 +13,15 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / 'storage/app/ui-browser'
 
 
+def prepare_existing_account(page):
+    """The controlled account has already completed the application's intro tour.
+
+    Production tour.js opens a full-screen backdrop on a first visit, so menu
+    regression must exercise the ordinary returning-user session instead.
+    """
+    page.add_init_script("localStorage.setItem('tour-slym', 'true')")
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
         relative = unquote(urlsplit(path).path).lstrip('/')
@@ -236,6 +245,7 @@ def main():
                             case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
                             errors = []
                             page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                            prepare_existing_account(page)
                             page.set_default_timeout(12000)
                             page.on('pageerror', lambda error: errors.append(str(error)))
                             page.route('https://**/*', lambda route: route.abort())
@@ -263,6 +273,7 @@ def main():
                     case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
                     errors = []
                     page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                    prepare_existing_account(page)
                     page.set_default_timeout(12000)
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.route('https://**/*', lambda route: route.abort())
@@ -289,6 +300,7 @@ def main():
                     case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
                     errors = []
                     page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                    prepare_existing_account(page)
                     page.set_default_timeout(12000)
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.route('https://**/*', lambda route: route.abort())
