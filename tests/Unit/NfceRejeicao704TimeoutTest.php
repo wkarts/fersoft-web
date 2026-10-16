@@ -9,8 +9,8 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 /**
- * Regressão: não inventar data nova nem diagnóstico fiscal para 704/timeout.
- * Não invoca webservice externo nem escreve dados de produção.
+ * Regressão: dhEmi só muda após 704, consulta 217 e confirmação explícita.
+ * Os testes de diagnóstico não invocam webservice nem escrevem em produção.
  */
 class NfceRejeicao704TimeoutTest extends TestCase
 {
@@ -63,19 +63,104 @@ class NfceRejeicao704TimeoutTest extends TestCase
             . $protocolo . '</retConsSitNFe>';
     }
 
-    public function test_data_original_da_nota_nao_e_substituida_por_limiar_arbitrario(): void
+    public function test_dh_emi_original_so_muda_apos_704_confirmado_e_consulta_217(): void
     {
         $service = file_get_contents(
             dirname(__DIR__, 2) . '/app/Services/NFCeService.php'
         );
 
         $this->assertStringContainsString(
-            "\$stdIde->dhEmi = \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
+            "\$dhEmiRetransmissao ?? \$identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml()",
             $service
         );
-        $this->assertStringNotContainsString('horarioRetransmissaoNFCe', $service);
-        $this->assertStringNotContainsString('$diferenca >= 60', $service);
+        $this->assertStringContainsString('dadosCorrecaoDhEmiNfce704', $service);
+        $this->assertStringContainsString("'retorno_codigo'", $service);
+        $this->assertStringContainsString("tpEmis'] !== 1", $service);
         $this->assertStringContainsString("hash_equals(\$identidadeOriginal['chave'], \$chaveGerada)", $service);
+
+        $controller = file_get_contents(
+            dirname(__DIR__, 2) . '/app/Http/Controllers/NFCeController.php'
+        );
+        $this->assertStringContainsString("NFCE_704_CONFIRMAR_DHEMI", $controller);
+        $this->assertStringContainsString("consulta_sefaz_cStat' => 217", $controller);
+        $this->assertStringContainsString("'dhSaiEnt' => \$dhSaiEnt !== '' ? \$dhSaiEnt : null", $service);
+        $this->assertStringContainsString("\$stdIde->dhSaiEnt = \$identidadeOriginal['dhSaiEnt']", $service);
+    }
+
+    public function test_diagnostico_temporal_separa_emissao_saida_e_tipo_de_emissao(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $xml = '<NFe xmlns="http://www.portalfiscal.inf.br/nfe"><infNFe><ide>'
+            . '<dhEmi>2026-10-15T09:07:37-03:00</dhEmi>'
+            . '<dhSaiEnt>2026-10-15T14:11:52-03:00</dhSaiEnt>'
+            . '<tpEmis>1</tpEmis><dhCont></dhCont><xJust></xJust>'
+            . '</ide></infNFe></NFe>';
+
+        $dados = (new ReflectionMethod(NFCeService::class, 'diagnosticoTemporalXmlNfce'))
+            ->invoke($service, $xml);
+
+        $this->assertSame('2026-10-15T09:07:37-03:00', $dados['dhEmi_xml']);
+        $this->assertSame('2026-10-15T14:11:52-03:00', $dados['dhSaiEnt_xml']);
+        $this->assertSame(1, $dados['tpEmis_xml']);
+        $this->assertNull($dados['dhCont_xml']);
+        $this->assertFalse($dados['xJust_contingencia_informado']);
+        $this->assertTrue($dados['xml_temporal_legivel']);
+    }
+
+    public function test_calculo_temporal_considera_os_offsets_do_xml(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+
+        $diferenca = (new ReflectionMethod(NFCeService::class, 'diferencaTemporalEmSegundos'))
+            ->invoke(
+                $service,
+                '2026-10-15T09:07:37-03:00',
+                '2026-10-15T14:11:52-03:00'
+            );
+
+        $this->assertSame(18255, $diferenca);
+    }
+
+    public function test_feedback_704_explica_emissao_e_transmissao_separadamente(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $diagnostico = [
+            'dhEmi_xml' => '2026-10-15T09:07:37-03:00',
+            'dhSaiEnt_xml' => '2026-10-15T14:11:52-03:00',
+            'tpEmis_xml' => 1,
+            'venda_created_at_db' => '2026-10-15 09:07:30',
+            'venda_data_emissao_db' => null,
+            'timezone_aplicacao' => 'America/Bahia',
+            'transmissao_iniciada_em' => '2026-10-15T14:11:53-03:00',
+            'dhRecbto_sefaz' => '2026-10-15T14:11:54-03:00',
+        ];
+
+        $mensagem = (new ReflectionMethod(NFCeService::class, 'mensagemRejeicao704'))
+            ->invoke($service, 'Rejeicao: NFC-e com Data-Hora de emissao atrasada', $diagnostico);
+
+        $this->assertStringContainsString('Emissão fiscal do XML (dhEmi): 2026-10-15T09:07:37-03:00', $mensagem);
+        $this->assertStringContainsString('Início do envio pelo sistema: 2026-10-15T14:11:53-03:00', $mensagem);
+        $this->assertStringContainsString('Recebimento informado pela SEFAZ (dhRecbto): 2026-10-15T14:11:54-03:00', $mensagem);
+        $this->assertStringContainsString('Tipo de emissão no XML (tpEmis): 1 (normal)', $mensagem);
+        $this->assertStringContainsString('created_at bruto no banco; app.timezone=America/Bahia): 2026-10-15 09:07:30', $mensagem);
+        $this->assertStringContainsString('Campo venda.data_emissao no banco: NULL/não preenchido', $mensagem);
+        $this->assertStringContainsString('são horários distintos', $mensagem);
+        $this->assertStringContainsString('Registro da venda', $mensagem);
+    }
+
+    public function test_704_nao_usa_inicio_envio_como_recebimento_sefaz(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $diagnostico = [
+            'dhEmi_xml' => '2026-10-15T09:07:37-03:00',
+            'transmissao_iniciada_em' => '2026-10-15T14:11:53-03:00',
+        ];
+
+        $mensagem = (new ReflectionMethod(NFCeService::class, 'mensagemRejeicao704'))
+            ->invoke($service, 'Rejeicao: NFC-e com Data-Hora de emissao atrasada', $diagnostico);
+
+        $this->assertStringContainsString('dhRecbto não veio no protocolo', $mensagem);
+        $this->assertStringNotContainsString('Diferença de dhEmi até dhRecbto', $mensagem);
     }
 
     public function test_consulta_217_informa_nao_consta_sem_inventar_rejeicao(): void
@@ -138,7 +223,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
 
         $cpf = strpos($metodo, '$venda->cpf = $request->doc');
         $consulta = strpos($metodo, 'consultarSituacaoDaChave(');
-        $geracao = strpos($metodo, 'gerarNFCe($vendaId)');
+        $geracao = strpos($metodo, 'gerarNFCe($vendaId,');
 
         $this->assertNotFalse($cpf);
         $this->assertNotFalse($consulta);

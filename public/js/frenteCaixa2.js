@@ -3246,7 +3246,7 @@ $('#btn-cpf').keypress(function(event) {
     }
 });
 
-function emitirNFCe(vendaId){
+function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
     // $('#modal-venda').modal('close')
     // $('#preloader_'+vendaId).css('display', 'inline-block');
 
@@ -3269,6 +3269,7 @@ function emitirNFCe(vendaId){
         dataType: 'json',
         data: {
             vendaId: vendaId,
+            confirmar_ajuste_dh_emissao_704: confirmarAjusteDhEmi704 ? 1 : 0,
             _token: token
         },
         success: function(e){
@@ -3298,9 +3299,27 @@ function emitirNFCe(vendaId){
                         })
                 }catch{
 
-                    swal("Algo deu errado!", mensagem, "error").then(() => {
-                        sairAposErroFiscalDelivery();
-                    })
+                    const rejeicao704 = /^\s*\[704\]/.test(mensagem);
+                    if(rejeicao704){
+                        const detalhes704 = document.createElement('pre');
+                        detalhes704.textContent = mensagem.trim();
+                        detalhes704.style.whiteSpace = 'pre-wrap';
+                        detalhes704.style.maxHeight = '60vh';
+                        detalhes704.style.overflowY = 'auto';
+                        detalhes704.style.textAlign = 'left';
+                        swal({
+                            title: "NFC-e rejeitada pela SEFAZ (704)",
+                            content: detalhes704,
+                            icon: "error",
+                            buttons: "Entendi"
+                        }).then(() => {
+                            sairAposErroFiscalDelivery();
+                        });
+                    }else{
+                        swal("Algo deu errado!", mensagem.trim(), "error").then(() => {
+                            sairAposErroFiscalDelivery();
+                        });
+                    }
                 }
             }
 
@@ -3382,7 +3401,25 @@ function emitirNFCe(vendaId){
 
 
 
-            if(js.message){
+            if(js && js.codigo === 'NFCE_704_CONFIRMAR_DHEMI'){
+                const detalhesConfirmacao704 = document.createElement('div');
+                detalhesConfirmacao704.textContent = js.message;
+                detalhesConfirmacao704.style.whiteSpace = 'pre-wrap';
+                detalhesConfirmacao704.style.maxHeight = '60vh';
+                detalhesConfirmacao704.style.overflowY = 'auto';
+                detalhesConfirmacao704.style.textAlign = 'left';
+                swal({
+                    title: "Corrigir horário fiscal da NFC-e?",
+                    content: detalhesConfirmacao704,
+                    icon: "warning",
+                    buttons: ["Cancelar", "Confirmar e retransmitir"],
+                    dangerMode: true,
+                }).then((confirmar) => {
+                    if(confirmar){
+                        emitirNFCe(vendaId, true);
+                    }
+                });
+            }else if(js && js.message){
                 swal("Algo errado", js.message, "error")
 
             }else{
