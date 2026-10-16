@@ -407,3 +407,72 @@ body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn[aria-p
   body.ui-native-shell .ui-page .card { box-shadow: none; break-inside: avoid; }
   body.ui-native-shell .ui-page :is(.table-responsive,.datatable) { overflow: visible; }
 }
+
+/* Keep scrollbars easy to see throughout the refreshed shell without changing
+   the classic interface. A 10px track leaves an 8px thumb in Chromium. */
+html:has(> body.ui-native-shell) {
+  scrollbar-color: #75838a #e9eff0;
+  scrollbar-width: auto;
+}
+html:has(> body.ui-native-shell.ui-theme-refined--dark) {
+  scrollbar-color: #a6b3ba #27353d;
+}
+body.ui-native-shell {
+  --ui-scrollbar-thumb: var(--ui-muted, #75838a);
+  --ui-scrollbar-track: var(--ui-surface-alt, #e9eff0);
+  scrollbar-color: var(--ui-scrollbar-thumb) var(--ui-scrollbar-track);
+  scrollbar-width: auto;
+}
+body.ui-native-shell * {
+  scrollbar-color: var(--ui-scrollbar-thumb) var(--ui-scrollbar-track);
+  scrollbar-width: auto;
+}
+body.ui-native-shell .ui-navigation,
+body.ui-native-shell .ui-data-scroll,
+body.ui-native-shell .ui-page :is(.table-responsive,.datatable,.dataTables_wrapper) {
+  scrollbar-color: var(--ui-scrollbar-thumb) var(--ui-scrollbar-track);
+  scrollbar-width: auto;
+}
+html:has(> body.ui-native-shell)::-webkit-scrollbar,
+body.ui-native-shell::-webkit-scrollbar,
+body.ui-native-shell *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html:has(> body.ui-native-shell)::-webkit-scrollbar-track {
+  background: #e9eff0;
+}
+html:has(> body.ui-native-shell.ui-theme-refined--dark)::-webkit-scrollbar-track {
+  background: #27353d;
+}
+html:has(> body.ui-native-shell)::-webkit-scrollbar-thumb {
+  background: #75838a;
+  border: 1px solid #e9eff0;
+  border-radius: 8px;
+}
+html:has(> body.ui-native-shell.ui-theme-refined--dark)::-webkit-scrollbar-thumb {
+  background: #a6b3ba;
+  border-color: #27353d;
+}
+body.ui-native-shell::-webkit-scrollbar-track,
+body.ui-native-shell *::-webkit-scrollbar-track {
+  background: var(--ui-scrollbar-track);
+}
+body.ui-native-shell::-webkit-scrollbar-thumb,
+body.ui-native-shell *::-webkit-scrollbar-thumb {
+  background: var(--ui-scrollbar-thumb);
+  border: 1px solid var(--ui-scrollbar-track);
+  border-radius: 8px;
+}
+body.ui-native-shell::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell *::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-ink);
+}
+body.ui-native-shell .ui-navigation::-webkit-scrollbar { width: 10px; height: 10px; }
+body.ui-native-shell .ui-navigation::-webkit-scrollbar-track { background: var(--ui-scrollbar-track); }
+body.ui-native-shell .ui-navigation::-webkit-scrollbar-thumb {
+  background: var(--ui-scrollbar-thumb);
+  border: 1px solid var(--ui-scrollbar-track);
+  border-radius: 8px;
+}
+body.ui-native-shell .ui-navigation::-webkit-scrollbar-thumb:hover { background: var(--ui-ink); }
