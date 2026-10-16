@@ -9,6 +9,8 @@
     const backdrop = document.querySelector('.ui-menu-backdrop');
     if (!sidebar || !navigation || !workspace || !backdrop) return;
     const desktop = window.matchMedia('(min-width: 992px)');
+    const masthead = workspace.querySelector('.ui-masthead');
+    const sessionBar = workspace.querySelector('.ui-session');
     const key = 'ui:navigation:' + (body.dataset.uiIdentity || 'anonymous');
     const toggles = [];
     let previousFocus = null;
@@ -28,6 +30,23 @@
         const height = Math.min(entry.submenu.scrollHeight, window.innerHeight - 24);
         const top = Math.max(12, Math.min(anchor.top - 8, window.innerHeight - height - 12));
         entry.submenu.style.setProperty('--ui-rail-top', top + 'px');
+    }
+
+    // The operational header can grow when real company or account controls
+    // wrap. Align the sidebar bands with the actual header and session rows.
+    function alignSidebarBands() {
+        if (!desktop.matches || body.dataset.uiLayout !== 'lateral' || !masthead || !sessionBar) {
+            body.style.removeProperty('--ui-sidebar-brand-height');
+            body.style.removeProperty('--ui-sidebar-version-height');
+            return;
+        }
+        body.style.setProperty('--ui-sidebar-brand-height', masthead.getBoundingClientRect().height + 'px');
+        body.style.setProperty('--ui-sidebar-version-height', sessionBar.getBoundingClientRect().height + 'px');
+    }
+    if (window.ResizeObserver && masthead && sessionBar) {
+        const bandObserver = new ResizeObserver(alignSidebarBands);
+        bandObserver.observe(masthead);
+        bandObserver.observe(sessionBar);
     }
 
     function setCollapsed(value) {
@@ -175,13 +194,16 @@
         setCollapsed(store.read());
         // Upper navigation does not start with an open flyout obscuring the page.
         if (desktop.matches && body.dataset.uiLayout === 'superior') toggles.forEach(entry => setGroup(entry, false));
+        alignSidebarBands();
     }
     desktop.addEventListener('change', changeViewport);
     let resizeTick = 0;
     window.addEventListener('resize', () => {
         cancelAnimationFrame(resizeTick);
-        resizeTick = requestAnimationFrame(() => toggles.filter(entry => !entry.submenu.hidden)
-            .forEach(entry => setGroup(entry, true)));
+        resizeTick = requestAnimationFrame(() => {
+            alignSidebarBands();
+            toggles.filter(entry => !entry.submenu.hidden).forEach(entry => setGroup(entry, true));
+        });
     });
     changeViewport();
 })();

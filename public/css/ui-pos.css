@@ -1,4 +1,4 @@
-/* FERSOFT POS: apresentação operacional própria, sem o CSS de tema Metronic. */
+/* PDV: apresentação operacional própria, sem dependência da paleta do ERP. */
 body.ui-pos-refined {
     --pos-bg: var(--ui-bg, #F5F7F7); --pos-surface: var(--ui-surface, #fff);
     --pos-soft: var(--ui-surface-alt, #F7FAF9); --pos-ink: var(--ui-ink, #203840);
@@ -80,12 +80,19 @@ body.ui-pos-refined .select2-dropdown {
     color: var(--pos-ink); background: var(--pos-surface); border-color: var(--pos-border);
     box-shadow: 0 10px 30px rgba(27,61,67,.1);
 }
-body.ui-pos-refined .select2-container--default .select2-results__option--highlighted[aria-selected] { color: #fff; background: var(--pos-green); }
+body.ui-pos-refined .select2-container--default .select2-results__option--highlighted[aria-selected] { color: var(--ui-on-accent, #fff); background: var(--pos-green); }
 body.ui-pos-refined .select2-results__option { font-size: 13px !important; line-height: 1.4; }
 body.ui-pos-refined .search-prod { color: var(--pos-ink); background: var(--pos-surface); border-color: var(--pos-border); box-shadow: 0 10px 24px rgba(27,61,67,.13); }
 body.ui-pos-refined .lbl-prod { color: var(--pos-ink) !important; }
 body.ui-pos-refined .form-control::placeholder { color: #91A2A7; opacity: 1; }
 body.ui-pos-refined .form-control:disabled { color: var(--pos-muted); background: #F4F7F6; }
+body.ui-pos-refined .ui-pos-panel .input-icon { position: relative; }
+body.ui-pos-refined .input-icon > #pesquisa-produto-lateral { padding-right: 40px; }
+body.ui-pos-refined .input-icon > #pesquisa-produto-lateral + span {
+    position: absolute; top: calc(50% + 4px); right: 13px; transform: translateY(-50%);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--pos-muted); pointer-events: none;
+}
 body.ui-pos-refined .btn {
     display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 38px;
     border-radius: 8px !important; font: 600 12px/1.35 Poppins,system-ui,sans-serif; white-space: normal;
@@ -99,7 +106,12 @@ body.ui-pos-refined .btn-success, body.ui-pos-refined .btn-primary {
     color: var(--ui-on-accent, #fff) !important; background: var(--pos-action) !important; border-color: var(--pos-action) !important;
 }
 body.ui-pos-refined .btn-success:hover, body.ui-pos-refined .btn-primary:hover {
-    background: var(--pos-deep) !important; border-color: var(--pos-deep) !important;
+    color: var(--pos-on-hover, #fff) !important; background: var(--pos-deep) !important; border-color: var(--pos-deep) !important;
+}
+body.ui-pos-refined .btn.btn-link-primary,
+body.ui-pos-refined .btn.btn-link-primary:is(:hover, :focus-visible),
+body.ui-pos-refined .btn.btn-link-primary > i {
+    color: var(--pos-deep) !important;
 }
 body.ui-pos-refined .btn-light-success, body.ui-pos-refined .btn-light-primary, body.ui-pos-refined .btn-light-info {
     color: var(--pos-green) !important; background: var(--pos-tint) !important; border: 1px solid #D5ECDF !important;
@@ -183,15 +195,29 @@ body.ui-pos-refined .text-muted { color: var(--pos-muted) !important; }
 body.ui-pos-refined .text-success { color: var(--pos-deep) !important; }
 body.ui-pos-refined .bg-light { background: var(--pos-soft) !important; }
 body.ui-pos-refined .progress { background: #E8EFED; border-radius: 100px; }
-body.ui-pos-refined .progress-bar { background: var(--pos-green); }
+body.ui-pos-refined .progress-bar { color: var(--ui-on-accent, #fff); background: var(--pos-green); }
 body.ui-pos-refined .datepicker, body.ui-pos-refined .bootstrap-timepicker-widget {
     padding: 7px; color: var(--pos-ink); background: var(--pos-surface); border: 1px solid var(--pos-border);
     border-radius: 8px; box-shadow: 0 10px 24px rgba(27,61,67,.13);
 }
 body.ui-pos-refined .datepicker table td, body.ui-pos-refined .datepicker table th { padding: 4px 7px; text-align: center; border: 0; cursor: pointer; }
 body.ui-pos-refined .datepicker table td.active, body.ui-pos-refined .datepicker table td.active:hover {
-    color: #fff; background: var(--pos-green); border-radius: 6px;
+    color: var(--ui-on-accent, #fff); background: var(--pos-green); border-radius: 6px;
 }
+/* Apenas as paletas escuras mudam estados auxiliares; o padrão atual fica intacto. */
+body.ui-pos-refined.ui-theme-refined--dark .form-control::placeholder { color: var(--pos-muted); }
+body.ui-pos-refined.ui-theme-refined--dark .form-control:disabled,
+body.ui-pos-refined.ui-theme-refined--dark .custom-select:disabled { color: var(--pos-muted); background: var(--pos-soft); }
+body.ui-pos-refined.ui-theme-refined--dark .btn-dark { color: var(--pos-ink) !important; background: #3B4857 !important; border-color: #3B4857 !important; }
+body.ui-pos-refined.ui-theme-refined--dark .btn-light-danger,
+body.ui-pos-refined.ui-theme-refined--dark .label-light-danger { color: #FFB8BC !important; background: #492634 !important; border-color: #76404B !important; }
+body.ui-pos-refined.ui-theme-refined--dark .btn-light-warning,
+body.ui-pos-refined.ui-theme-refined--dark .label-light-warning { color: #FFDB96 !important; background: #423522 !important; border-color: #735836 !important; }
+body.ui-pos-refined.ui-theme-refined--dark .label-light-dark,
+body.ui-pos-refined.ui-theme-refined--dark .desativo { color: var(--pos-ink); background: var(--pos-soft); }
+body.ui-pos-refined.ui-theme-refined--dark .ui-pos-toolbar-row .btn.text-dark[href="/frenteCaixa"] { color: #FFB8BC !important; background: #492634 !important; border-color: #76404B !important; }
+body.ui-pos-refined.ui-theme-refined--dark .progress { background: var(--pos-soft); }
+body.ui-pos-refined.ui-theme-refined--dark .modal-loading { background-color: rgba(17, 25, 32, .8); }
 body.ui-pos-refined .wizard .wizard-nav, body.ui-pos-refined .wizard .wizard-steps { display: flex; flex-wrap: wrap; gap: 8px; }
 body.ui-pos-refined .wizard [data-wizard-type="step"] { padding: 8px 12px; border-radius: 8px; background: var(--pos-soft); }
 body.ui-pos-refined .wizard [data-wizard-type="step"][data-wizard-state="current"] { color: var(--pos-deep); background: var(--pos-tint); }

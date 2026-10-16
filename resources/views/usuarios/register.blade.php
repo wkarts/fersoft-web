@@ -2,10 +2,12 @@
 @section('css')
 @unless(config('ui_theme.active', false))
 <link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
 @endunless
 @endsection
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
 @endpush
 @section('content')
 <div class="ui-admin ui-admin-usuarios">
@@ -15,7 +17,7 @@
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
-                    <form method="post" action="/usuarios/{{{ isset($usuario) ? 'update' : 'save' }}}">
+                    <form method="post" action="/usuarios/{{{ isset($usuario) ? 'update' : 'save' }}}" enctype="multipart/form-data">
 
                         <input type="hidden" name="id" value="{{{ isset($usuario) ? $usuario->id : 0 }}}">
                         <div class="ui-admin-panel gutter-b ">
@@ -40,6 +42,23 @@
                                                         </div>
                                                     @endif
                                                 </div>
+                                            </div>
+
+                                            @php($fotoUsuarioUrl = isset($usuario) ? app(\App\Services\UserAvatarService::class)->url($usuario->img) : null)
+                                            <div class="form-group validated col-sm-10 col-lg-3 ui-user-profile-photo">
+                                                <label class="col-form-label" for="foto">Foto do usuário (opcional)</label>
+                                                <div class="ui-user-profile-photo__actions">
+                                                    <span class="ui-user-profile-photo__preview" aria-hidden="true">
+                                                        @if($fotoUsuarioUrl)
+                                                            <img src="{{ $fotoUsuarioUrl }}" alt="">
+                                                        @else
+                                                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) old('nome', $usuario->nome ?? '?'), 0, 1)) }}
+                                                        @endif
+                                                    </span>
+                                                    <input id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="form-control @error('foto') is-invalid @enderror">
+                                                </div>
+                                                @error('foto')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                                <small class="text-muted">JPG, PNG ou WebP, até 2 MB.</small>
                                             </div>
 
                                             @isset($usuario)
@@ -131,7 +150,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">Ativo</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="ativo">Ativo</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-warning">
 													<label>
@@ -145,7 +164,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">ADM</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="adm">ADM</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-primary">
 													<label>
@@ -159,7 +178,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">Somente Fiscal</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="somente_fiscal">Somente Fiscal</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-info">
 													<label>
@@ -174,7 +193,7 @@
 
                                             <!-- NOVO SWITCH: PERMISSÃO DO WHATSAPP -->
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Permissão Emissão WhatsApp</label>
+                                                <label class="col-form-label" for="permissao_nfe_whatsapp">Permissão Emissão WhatsApp</label>
                                                 <button type="button" class="btn btn-light-success btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para permitir que este usuário possa emitir e cancelar notas remotamente usando IA pelo WhatsApp"><i class="la la-info"></i></button>
                                                 <div class="col-6">
                                                 <span class="switch switch-outline switch-success">
@@ -187,7 +206,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Caixa livre</label>
+                                                <label class="col-form-label" for="caixa_livre">Caixa livre</label>
                                                 <button type="button" class="btn btn-light-warning btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para selcionar o vendedor/fúncionário no PDV para comissão"><i class="la la-info"></i></button>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-warning">
@@ -200,7 +219,7 @@
                                                 </div>
                                             </div>
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Permite desconto em vendas</label>
+                                                <label class="col-form-label" for="permite_desconto">Permite desconto em vendas</label>
                                                 <button type="button" class="btn btn-light-danger btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para usuário conceder desconto na venda PDV e pedido"><i class="la la-info"></i></button>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-danger">
@@ -215,7 +234,7 @@
 
                                             @if(session('user_logged')['tipo_representante'] == 1)
                                                 <div class="form-group validated col-sm-6 col-lg-3">
-                                                    <label class="col-form-label">Acesso representante</label>
+                                                    <label class="col-form-label" for="menu_representante">Acesso representante</label>
                                                     <button type="button" class="btn btn-light-dark btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para usuário ter acesso ao menu representante/Contador"><i class="la la-info"></i></button>
                                                     <div class="col-6">
 												<span class="switch switch-outline switch-dark">

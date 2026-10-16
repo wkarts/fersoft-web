@@ -106,6 +106,57 @@ class UiThemeService
         return (array) config('ui_theme.presets', []);
     }
 
+    /** A migração adicional não bloqueia o catálogo e as preferências já instaladas. */
+    public function globalSettingsReady(): bool
+    {
+        try {
+            return Schema::hasTable('ui_theme_system_settings')
+                && !array_diff(['id', 'default_theme_slug', 'created_at', 'updated_at'],
+                    Schema::getColumnListing('ui_theme_system_settings'));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** Padrões disponíveis sem liberação individual para cada empresa. */
+    public function standardThemes(): array
+    {
+        $request = request();
+        $cached = $request->attributes->get('ui_theme.standard');
+        if (is_array($cached)) {
+            return $cached;
+        }
+        $published = $this->publishedThemes();
+        $slugs = array_keys($this->builtinThemes());
+        if ($this->databaseReady()) {
+            try {
+                $slugs = array_merge($slugs, UiThemePreset::query()
+                    ->where('status', 'standard')->pluck('slug')->all());
+            } catch (\Throwable $e) {
+                // Mantém os padrões de fábrica enquanto o catálogo está indisponível.
+            }
+        }
+        $standard = array_intersect_key($published, array_flip($slugs));
+        $request->attributes->set('ui_theme.standard', $standard);
+        return $standard;
+    }
+
+    public function globalDefaultSlug(): string
+    {
+        $fallback = (string) config('ui_theme.default_preset', 'fer-light');
+        if (!$this->globalSettingsReady()) {
+            return $fallback;
+        }
+        try {
+            $slug = DB::table('ui_theme_system_settings')->where('id', 1)
+                ->value('default_theme_slug');
+            return is_string($slug) && isset($this->standardThemes()[$slug])
+                ? $slug : $fallback;
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
+    }
+
     public function publishedThemes(): array
     {
         $request = request();
@@ -122,9 +173,11 @@ class UiThemeService
         }
 
         try {
-            foreach (UiThemePreset::query()->where('status', 'published')->get() as $record) {
-                // Presets de fábrica jamais podem ser sobrescritos pelo catálogo SQL.
-                if (array_key_exists($record->slug, $this->builtinThemes())) {
+            foreach (UiThemePreset::query()->whereIn('status', ['published', 'standard'])->get() as $record) {
+                // Apenas o ajuste explícito de um padrão pelo SUPER pode manter o
+                // slug de fábrica; versões normais não o substituem.
+                if (array_key_exists($record->slug, $this->builtinThemes())
+                    && $record->status !== 'standard') {
                     continue;
                 }
                 $colors = is_array($record->colors) ? $record->colors : [];
@@ -173,10 +226,11 @@ class UiThemeService
             : [];
         $allowed = is_array($allowed) ? $allowed : [];
 
-        // Os três presets de fábrica sempre ficam disponíveis.
+        // Os presets de fábrica e modelos promovidos a padrão são públicos.
+        $standardSlugs = array_keys($this->standardThemes());
         return array_filter(
             $themes,
-            fn ($theme, $slug) => array_key_exists($slug, $this->builtinThemes())
+            fn ($theme, $slug) => in_array($slug, $standardSlugs, true)
                 || in_array($slug, $allowed, true),
             ARRAY_FILTER_USE_BOTH
         );
@@ -242,7 +296,7 @@ class UiThemeService
         $themes = $this->availableForCompany($companyId, $super);
         $settings = $this->companySettings($companyId);
 
-        $fallbackSlug = (string) config('ui_theme.default_preset', 'fer-light');
+        $fallbackSlug = $this->globalDefaultSlug();
         $slug = isset($themes[$settings->default_theme_slug ?? ''])
             ? $settings->default_theme_slug : $fallbackSlug;
         $hasPersonalChoice = false;
@@ -281,7 +335,8 @@ class UiThemeService
         // Uma preferência de modo claro/escuro adapta o conjunto de superfícies,
         // nunca aplica texto escuro sobre fundo escuro nem vice-versa.
         if ($dark !== $themeDark) {
-            $fallbackPalette = $this->builtinThemes()[$dark ? 'fer-night' : 'fer-light'] ?? [];
+            $fallbackPalette = $themes[$dark ? 'fer-night' : 'fer-light']
+                ?? $this->builtinThemes()[$dark ? 'fer-night' : 'fer-light'] ?? [];
             $keys = ['background', 'surface', 'sidebar', 'sidebar_text', 'text', 'border'];
             if (array_key_exists($slug, $this->builtinThemes())) {
                 // Os controles claro/escuro do HTML mudam também acento e

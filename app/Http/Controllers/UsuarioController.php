@@ -10,6 +10,7 @@ use App\Models\BalancaConfig;
 use App\Helpers\Menu;
 use App\Services\LogService;
 use App\Services\OtpService;
+use App\Services\UserAvatarService;
 
 class UsuarioController extends Controller
 {
@@ -287,6 +288,7 @@ class UsuarioController extends Controller
 
         $usuario = Usuario::
         where('id', $id)
+            ->where('empresa_id', $this->empresa_id)
             ->first();
         if(valida_objeto($usuario)){
 
@@ -349,9 +351,8 @@ class UsuarioController extends Controller
 
     public function save(Request $request)
     {
+        $this->_validate($request);
         try {
-            $this->_validate($request);
-
             $permissao = $this->validaPermissao($request);
 
             $locais = $request->local ? json_encode($request->local) : null;
@@ -390,7 +391,22 @@ class UsuarioController extends Controller
             $this->criaConfigCaixa($result);
 
             if ($result) {
-                session()->flash("mensagem_sucesso", "Usuário salvo!");
+                $photoSaved = true;
+                if ($request->hasFile('foto')) {
+                    try {
+                        app(UserAvatarService::class)->store($result, $request->file('foto'));
+                    } catch (\Throwable $photoError) {
+                        $photoSaved = false;
+                        \Log::warning('Usuário salvo sem foto; upload falhou.', [
+                            'usuario_id' => $result->id,
+                            'exception' => get_class($photoError),
+                        ]);
+                    }
+                }
+                session()->flash(
+                    $photoSaved ? 'mensagem_sucesso' : 'mensagem_erro',
+                    $photoSaved ? 'Usuário salvo!' : 'Usuário salvo, mas a foto não pôde ser armazenada. Edite o usuário para tentar novamente.'
+                );
 
                 // 🔹 Obtém a instância correta da model Usuario
                 $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
@@ -501,12 +517,13 @@ class UsuarioController extends Controller
 
     public function update(Request $request)
     {
+        $this->_validate($request, true);
         try {
-            $this->_validate($request, true);
             $permissao = $this->validaPermissao($request);
 
             // 🔹 Busca o usuário antes da atualização para capturar os dados anteriores
-            $usr = Usuario::where('id', $request->id)->firstOrFail();
+            $usr = Usuario::where('id', $request->id)
+                ->where('empresa_id', $this->empresa_id)->firstOrFail();
             $dadosAnteriores = $usr->toArray();
 
             $locais = $request->local ? json_encode($request->local) : null;
@@ -542,9 +559,15 @@ class UsuarioController extends Controller
             $usr->permissao_nfe_whatsapp = $request->permissao_nfe_whatsapp ? true : false;
 
             // 🔹 Salva as alterações
-            $result = $usr->save();
+            $result = $request->hasFile('foto')
+                ? (bool) app(UserAvatarService::class)->store($usr, $request->file('foto'))
+                : $usr->save();
 
             if ($result) {
+                if ((int) session('user_logged.id') === (int) $usr->id) {
+                    session()->put('user_logged.nome', $usr->nome);
+                    session()->put('user_logged.img', $usr->img);
+                }
                 session()->flash("mensagem_sucesso", "Usuário atualizado!");
 
                 // 🔹 Obtém a instância correta da model Usuario
@@ -682,6 +705,7 @@ class UsuarioController extends Controller
             'email' => 'required|email',
             'login' => ['required', \Illuminate\Validation\Rule::unique('usuarios')->ignore($request->id)],
             'senha' => !$update ? 'required' : '',
+            'foto' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ];
 
         $messages = [
@@ -690,10 +714,55 @@ class UsuarioController extends Controller
             'email.email' => 'Email inválido',
             'login.required' => 'O campo login é obrigatório.',
             'senha.required' => 'O campo senha é obrigatório',
-            'login.unique' => 'Usuário já cadastrado no sistema.'
+            'login.unique' => 'Usuário já cadastrado no sistema.',
+            'foto.image' => 'Selecione uma imagem válida.',
+            'foto.mimes' => 'Use uma foto JPG, PNG ou WebP.',
+            'foto.max' => 'A foto deve ter no máximo 2 MB.',
         ];
 
         $this->validate($request, $rules, $messages);
+    }
+
+    public function profile()
+    {
+        $usuario = Usuario::whereKey(session('user_logged.id'))
+            ->where('empresa_id', session('user_logged.empresa'))
+            ->firstOrFail();
+
+        return view('usuarios.profile_photo', [
+            'usuario' => $usuario,
+            'title' => 'Minha foto',
+        ]);
+    }
+
+    public function updateProfilePhoto(Request $request, UserAvatarService $avatars)
+    {
+        $request->validate([
+            'foto' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ], [
+            'foto.required' => 'Selecione uma foto.',
+            'foto.image' => 'Selecione uma imagem válida.',
+            'foto.mimes' => 'Use uma foto JPG, PNG ou WebP.',
+            'foto.max' => 'A foto deve ter no máximo 2 MB.',
+        ]);
+
+        $usuario = Usuario::whereKey(session('user_logged.id'))
+            ->where('empresa_id', session('user_logged.empresa'))
+            ->firstOrFail();
+
+        try {
+            $avatars->store($usuario, $request->file('foto'));
+        } catch (\Throwable $e) {
+            \Log::warning('Falha ao atualizar a foto do perfil.', [
+                'usuario_id' => $usuario->id,
+                'exception' => get_class($e),
+            ]);
+            return redirect()->back()->withErrors([
+                'foto' => 'Não foi possível armazenar a foto. Tente novamente.',
+            ]);
+        }
+        session()->put('user_logged.img', $usuario->img);
+        return redirect()->route('usuarios.profile')->with('mensagem_sucesso', 'Foto atualizada!');
     }
 
     public function setTema(Request $request){

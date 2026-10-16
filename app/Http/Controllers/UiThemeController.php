@@ -71,9 +71,17 @@ class UiThemeController extends Controller
             'catalogStatus' => $catalogStatus,
             'availableThemes' => $this->themes->availableForCompany($company, $super),
             'builtinThemes' => $this->themes->builtinThemes(),
+            'standardThemes' => $this->themes->standardThemes(),
+            'globalSettingsReady' => $this->themes->globalSettingsReady(),
+            'globalDefaultSlug' => $this->themes->globalDefaultSlug(),
+            'factoryOverrides' => $super && $catalogReady
+                ? UiThemePreset::query()->whereIn('slug', array_keys($this->themes->builtinThemes()))
+                    ->where('status', 'standard')->get()->keyBy('slug')
+                : collect(),
             'currentTheme' => $this->themes->resolve(),
             'customThemes' => $super && $catalogReady
-                ? UiThemePreset::query()->orderByDesc('id')->limit(100)->get()
+                ? UiThemePreset::query()->whereNotIn('slug', array_keys($this->themes->builtinThemes()))
+                    ->orderByDesc('id')->limit(100)->get()
                 : collect(),
             'editingTheme' => $super && $catalogReady && request()->filled('edit_theme')
                 ? UiThemePreset::query()->where('status', 'draft')->findOrFail((int) request('edit_theme'))
@@ -136,7 +144,7 @@ class UiThemeController extends Controller
     private function validatedThemeData(Request $request): array
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', 'not_regex:/fersoft/i'],
             'description' => ['nullable', 'string', 'max:400'],
             'accent' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/D'],
             'accent_hover' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/D'],
@@ -277,12 +285,121 @@ class UiThemeController extends Controller
     {
         $this->superOnly();
         $this->requireTables();
-        abort_unless($preset->status === 'published', 422);
+        abort_unless(!array_key_exists($preset->slug, $this->themes->builtinThemes())
+            && in_array($preset->status, ['published', 'standard'], true), 422);
 
         $preset->update(['status' => 'archived']);
 
         return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema arquivado. Usuários passarão a utilizar o fallback autorizado.');
+    }
+
+    /** Ajustes oficiais preservam o identificador do preset e seu original em config. */
+    public function updateFactory(Request $request, string $slug)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless(array_key_exists($slug, $this->themes->builtinThemes()), 404);
+        $data = $this->validatedThemeData($request);
+        $colors = [];
+        foreach (['accent', 'accent_hover', 'background', 'surface', 'sidebar',
+                  'sidebar_text', 'text', 'border'] as $key) {
+            $colors[$key] = strtoupper($data[$key]);
+        }
+
+        DB::transaction(function () use ($slug, $data, $colors): void {
+            $preset = UiThemePreset::query()->where('slug', $slug)->lockForUpdate()->first();
+            abort_unless(!$preset || in_array($preset->status, ['standard', 'archived'], true),
+                409, 'Já existe um registro incompatível com esse padrão.');
+            $attributes = [
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'colors' => $colors,
+                'sidebar_style' => $data['sidebar_style'],
+                'density' => $data['density'],
+                'status' => 'standard',
+                'published_at' => now(),
+            ];
+            if ($preset) {
+                $preset->update($attributes);
+            } else {
+                UiThemePreset::query()->create(array_merge($attributes, [
+                    'slug' => $slug,
+                    'created_by' => (int) $this->context()['id'],
+                ]));
+            }
+        });
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Padrão da aplicação atualizado. Identificador e preferências foram preservados.');
+    }
+
+    public function restoreFactory(Request $request, string $slug)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless(array_key_exists($slug, $this->themes->builtinThemes()), 404);
+        UiThemePreset::query()->where('slug', $slug)->where('status', 'standard')
+            ->update(['status' => 'archived']);
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Cores originais do padrão restauradas.');
+    }
+
+    /** Modelos publicados podem ser promovidos sem duplicar nem liberar empresa por empresa. */
+    public function promote(Request $request, UiThemePreset $preset)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless(!array_key_exists($preset->slug, $this->themes->builtinThemes())
+            && $preset->status === 'published', 422);
+        $preset->update(['status' => 'standard']);
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Tema agora é padrão e está disponível a todas as empresas.');
+    }
+
+    public function demote(Request $request, UiThemePreset $preset)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless(!array_key_exists($preset->slug, $this->themes->builtinThemes())
+            && $preset->status === 'standard', 422);
+        $preset->update(['status' => 'published']);
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Tema restrito às empresas que já têm liberação explícita.');
+    }
+
+    public function setGlobalDefault(Request $request)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless($this->themes->globalSettingsReady(), 503,
+            'Instale a migration aditiva de configurações globais do catálogo.');
+        $data = $request->validate(['theme_slug' => ['required', 'string', 'max:80']]);
+        abort_unless(isset($this->themes->standardThemes()[$data['theme_slug']]), 422,
+            'Escolha um tema padrão disponível a todas as empresas.');
+        DB::table('ui_theme_system_settings')->upsert([[
+            'id' => 1,
+            'default_theme_slug' => $data['theme_slug'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]], ['id'], ['default_theme_slug', 'updated_at']);
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Padrão global atualizado. Padrões de empresas e preferências pessoais foram preservados.');
+    }
+
+    public function restoreGlobalDefault(Request $request)
+    {
+        $this->superOnly();
+        $this->requireTables();
+        abort_unless($this->themes->globalSettingsReady(), 503);
+        DB::table('ui_theme_system_settings')->where('id', 1)->delete();
+
+        return redirect()->route('config.themes.index')
+            ->with('ui_theme_feedback', 'Padrão global original restaurado.');
     }
 
     public function companySearch(Request $request)
@@ -340,7 +457,8 @@ class UiThemeController extends Controller
         $this->superOnly();
         $this->requireTables();
 
-        if ($preset->status !== 'published') {
+        abort_if(array_key_exists($preset->slug, $this->themes->builtinThemes()), 422);
+        if (!in_array($preset->status, ['published', 'standard'], true)) {
             $preset->update(['status' => 'published', 'published_at' => now()]);
         }
 

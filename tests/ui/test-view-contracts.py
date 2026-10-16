@@ -87,8 +87,13 @@ class DevelopViewContract(unittest.TestCase):
             source = (ROOT / 'resources/views' / menu).read_text(encoding='utf-8')
             super_section = source.index('Aparência do Login')
             theme_section = source.index('Temas da Interface')
+            pdv_section = source.index('Temas do PDV')
             self.assertGreater(theme_section, super_section, menu)
+            self.assertGreater(pdv_section, theme_section, menu)
             self.assertIn("route('config.themes.index')", source)
+            self.assertIn("route('config.pos-themes.index')", source)
+            self.assertIn("request()->is('config/temas')", source)
+            self.assertIn("request()->is('config/temas/pdv*')", source)
 
     def test_refined_theme_uses_studio_without_legacy_palette_dialog(self):
         layout = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text(encoding='utf-8')

@@ -199,8 +199,8 @@
 	</style>
 
 @if(config('ui_theme.active', false))
-    @php $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2); @endphp
-    @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
+    @php $uiPosTheme = app(\App\Services\UiPosThemeService::class)->resolve(); @endphp
+    @include('themes.refined.pos-assets', ['uiPosTheme' => $uiPosTheme])
     <link rel="stylesheet" href="{{ asset('css/ui-pos.css') }}?v={{ filemtime(public_path('css/ui-pos.css')) }}">
 @endif
 </head>
@@ -210,7 +210,7 @@
 
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiResolvedTheme['dark'] ?? false)ui-theme-refined--dark @endif @if(($uiResolvedTheme['density'] ?? '') === 'compact')ui-density-compact @endif @endif">
+<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed aside-enabled aside-fixed aside-minimize-hoverable page-loading pdv-minimal @if(config('ui_theme.active', false))ui-theme-refined ui-pos-refined @if($uiPosTheme['dark'] ?? false)ui-theme-refined--dark @endif @endif">
 
 
 	<input type="hidden" id="categorias" value="{{json_encode($categorias)}}" name="">

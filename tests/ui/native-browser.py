@@ -63,7 +63,7 @@ def check_collapsed_navigation(page, persistent=False):
     assert collapse.get_attribute('aria-expanded') == 'false'
     assert collapse.get_attribute('aria-label') == 'Expandir navegação'
     assert abs(page.locator('#ui-sidebar').bounding_box()['width'] - 80) <= 2, 'Collapsed rail must retain an 80px icon column.'
-    assert page.locator('.ui-brand-symbol').is_visible(), 'The original FERSOFT symbol must remain reachable.'
+    assert page.locator('.ui-brand-symbol').is_visible(), 'The application symbol must remain reachable.'
     assert not page.locator('#ui-sidebar .brand-logo').is_visible()
 
     group = page.locator('#ui-navigation .ui-nav-list > .menu-item > .menu-toggle').filter(has_text='Cadastros').first
@@ -113,7 +113,7 @@ def check_superior_navigation(page, resize=False):
     assert page.locator('.ui-nav-list').evaluate('(e)=>getComputedStyle(e).flexWrap') == 'nowrap'
     assert page.locator('#ui-navigation').evaluate('(e)=>e.nextElementSibling?.classList.contains("ui-version")'), \
         'Top navigation and keyboard order disagree.'
-    assert brand.is_visible() and brand.get_attribute('href') == '/graficos', 'The original FERSOFT dashboard link is hidden in top layout.'
+    assert brand.is_visible() and brand.get_attribute('href') == '/graficos', 'The application dashboard link is hidden in top layout.'
     assert version.is_visible() and version.inner_text().strip(), 'The original release notes link is hidden in top layout.'
     brand_box, nav_box, version_box = (item.bounding_box() for item in
         (brand, page.locator('#ui-navigation'), version))
@@ -256,6 +256,7 @@ def check_page(page, theme, layout, density, width):
         assert page.locator(selector).count() == 1, 'Missing/duplicated operational control: ' + selector
     assert page.locator('.ui-finance-link').count() == 4
     assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
+    assert page.locator('.ui-header-pdv a[href="/frenteCaixa"]').count() == 1, 'The existing PDV action is missing.'
     assert page.locator('.ui-masthead-tools').count() == 0, 'Unrequested search/theme shortcuts are visible.'
     assert page.locator('[data-ui-command-open]').count() == 0, 'Unrequested module search is visible.'
     assert page.locator('.ui-sidebar-footer, [data-ui-support-open], #ui-support-dialog').count() == 0, 'An unrequested support footer or dialog was added.'
@@ -291,12 +292,20 @@ def check_page(page, theme, layout, density, width):
         assert tokens == {'accent':'#62D3AB','sidebar':'#172D35','background':'#11252C'}
         assert canvas_color == 'rgb(17, 37, 44)'
         assert sidebar_color == ('rgb(23, 45, 53)' if layout == 'lateral' or width < 992 else 'rgb(28, 51, 59)')
+    if theme == 'fer-mist':
+        assert tokens == {'accent':'#167D5B','sidebar':'#E8F2ED','background':'#F2F7F4'}
+        assert canvas_color == 'rgb(242, 247, 244)'
+        assert sidebar_color == ('rgb(232, 242, 237)' if layout == 'lateral' or width < 992 else 'rgb(255, 255, 255)')
+    if theme == 'fer-graphite':
+        assert tokens == {'accent':'#75D9B6','sidebar':'#111A25','background':'#171C25'}
+        assert canvas_color == 'rgb(23, 28, 37)'
+        assert sidebar_color == ('rgb(17, 26, 37)' if layout == 'lateral' or width < 992 else 'rgb(34, 43, 54)')
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
     assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")'), 'The approved Poppins typography is missing.'
     font_state = page.evaluate('''async()=>{
         await document.fonts.ready;
         try {
-            const loaded = await document.fonts.load("400 13px Poppins", "FERSOFT");
+            const loaded = await document.fonts.load("400 13px Poppins", "Amostra");
             return {loaded: loaded.length, check: document.fonts.check("400 13px Poppins"), faces: [...document.fonts].map(face => ({family: face.family, weight: face.weight, status: face.status}))};
         } catch (error) {
             return {error: String(error), faces: [...document.fonts].map(face => ({family: face.family, weight: face.weight, status: face.status}))};
@@ -314,7 +323,16 @@ def check_page(page, theme, layout, density, width):
     else:
         assert max(metric_rows) - min(metric_rows) < 5, 'Desktop metrics must retain the four-column proposal grid.'
     assert page.locator('body').get_attribute('data-ui-layout') == layout
-    assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme == 'fer-night')
+    if width >= 992 and layout == 'lateral':
+        header = page.locator('.ui-masthead').bounding_box()
+        brand = page.locator('.ui-brand').bounding_box()
+        session = page.locator('.ui-session').bounding_box()
+        version = page.locator('.ui-version').bounding_box()
+        assert abs((header['y'] + header['height']) - (brand['y'] + brand['height'])) <= 2, \
+            'The main header and sidebar brand separator do not align.'
+        assert abs((session['y'] + session['height']) - (version['y'] + version['height'])) <= 2, \
+            'The session strip and sidebar version separator do not align.'
+    assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme in ('fer-night', 'fer-graphite'))
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-density-compact")') == (density == 'compact')
     if width < 992:
         page.locator('[data-ui-menu-open]').click()
@@ -363,6 +381,41 @@ def check_page(page, theme, layout, density, width):
     page.evaluate('document.activeElement?.blur()')
     page.evaluate('window.scrollTo(0,0)')
     return navigation_contract(page)
+
+
+def check_whatsapp_dialog(page, width):
+    """The existing header helper must open a full-width, themed dialog.
+
+    Empty-number validation is local; this test never submits a WhatsApp request.
+    """
+    dialog = page.locator('#modalWhatsAppGlobal')
+    assert dialog.evaluate('(e)=>e.parentElement===document.body'), 'WhatsApp dialog still inherits header layout and stacking.'
+    assert page.locator('#modalConfirmacaoGlobal').evaluate('(e)=>e.parentElement===document.body')
+    assert page.locator('#modalMensagemGlobal').evaluate('(e)=>e.parentElement===document.body')
+    page.locator('#btn-whatsapp-global').click()
+    dialog.wait_for(state='visible')
+    assert dialog.evaluate('''e => getComputedStyle(e.querySelector('.modal-header')).backgroundColor ===
+        getComputedStyle(document.body).getPropertyValue('--ui-surface').trim().replace(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i,
+            (_,r,g,b) => `rgb(${parseInt(r,16)}, ${parseInt(g,16)}, ${parseInt(b,16)})`)'''), \
+        'WhatsApp header ignores the selected surface.'
+    number = dialog.locator('#wh_number_global').bounding_box()
+    caption = dialog.locator('#wh_caption_global').bounding_box()
+    message = dialog.locator('#wh_text_msg_global').bounding_box()
+    assert number['width'] >= (300 if width >= 767 else 270), 'The header constrains the phone field.'
+    assert abs(number['width'] - caption['width']) <= 2, 'The form columns have unequal widths.'
+    assert message['width'] >= number['width'], 'The message field does not use the dialog width.'
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), 'WhatsApp dialog causes horizontal overflow.'
+    assert dialog.locator('.ui-whatsapp-footer-hint').evaluate('(e)=>parseFloat(getComputedStyle(e).fontSize) >= 11')
+    assert dialog.locator('label[for="wh_number_global"]').count() == 1
+    assert dialog.locator('label[for="wh_files_input_global"]').count() == 1
+    dialog.locator('#wh_send_btn_global').click()
+    error_dialog = page.locator('#modalMensagemGlobal')
+    error_dialog.wait_for(state='visible')
+    assert 'Informe o número' in error_dialog.inner_text()
+    error_dialog.locator('[data-dismiss="modal"]').first.click()
+    error_dialog.wait_for(state='hidden')
+    dialog.locator('[data-dismiss="modal"]').first.click()
+    dialog.wait_for(state='hidden')
 
 
 def check_employee_page(page, kind, width):
@@ -461,7 +514,7 @@ def main():
             options = {'executable_path': os.environ['UI_CHROMIUM']} if os.getenv('UI_CHROMIUM') else {}
             browser = playwright.chromium.launch(headless=True, **options)
             expected_menu = None
-            for theme in ['fer-light', 'fer-slate', 'fer-night']:
+            for theme in ['fer-light', 'fer-slate', 'fer-night', 'fer-mist', 'fer-graphite']:
                 for layout in ['lateral', 'superior']:
                     for density in ['comfortable', 'compact']:
                         for width, height in [(1920, 1032), (1366, 768), (768, 1024), (390, 844)]:
@@ -477,6 +530,9 @@ def main():
                                 page.goto(f'http://127.0.0.1:8765/fixtures/{filename}', wait_until='domcontentloaded')
                                 page.wait_for_timeout(300)
                                 rendered_menu = check_page(page, theme, layout, density, width)
+                                if theme in ('fer-light', 'fer-night') and layout == 'lateral' \
+                                        and density == 'comfortable' and width in (1920, 390):
+                                    check_whatsapp_dialog(page, width)
                                 if expected_menu is None:
                                     expected_menu = rendered_menu
                                 else:
@@ -556,8 +612,8 @@ def main():
     finally:
         server.shutdown()
         (FIXTURES / 'browser-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    assert len(report) == 64 and all(row['status'] == 'passed' for row in report)
-    print('64 real Blade/browser scenarios passed with no JavaScript exceptions.')
+    assert len(report) == 96 and all(row['status'] == 'passed' for row in report)
+    print('96 real Blade/browser scenarios passed with no JavaScript exceptions.')
 
 
 if __name__ == '__main__':

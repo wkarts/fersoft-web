@@ -960,7 +960,7 @@ if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
 </button>
 
 <!-- Modal de Confirmação -->
-<div class="modal fade" id="modalConfirmacaoGlobal" tabindex="-1" aria-hidden="true" data-backdrop="false">
+<div class="modal fade" id="modalConfirmacaoGlobal" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoGlobalLabel" aria-hidden="true" data-backdrop="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-hover-dark text-white">
@@ -979,7 +979,7 @@ if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
 </div>
 
 <!-- Modal de Mensagem -->
-<div class="modal fade" id="modalMensagemGlobal" tabindex="-1" aria-hidden="true" data-backdrop="false">
+<div class="modal fade" id="modalMensagemGlobal" tabindex="-1" role="dialog" aria-labelledby="modalMensagemGlobalLabel" aria-hidden="true" data-backdrop="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
@@ -997,38 +997,38 @@ if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
 </div>
 
 <!-- Modal de Envio WhatsApp -->
-<div class="modal fade" id="modalWhatsAppGlobal" tabindex="-1" aria-hidden="true" data-backdrop="false">
+<div class="modal fade" id="modalWhatsAppGlobal" tabindex="-1" role="dialog" aria-labelledby="modalWhatsAppGlobalLabel" aria-hidden="true" data-backdrop="false">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <!-- faixa azul no topo via bg-primary -->
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title">{$modalTitle}</h5>
+        <h5 id="modalWhatsAppGlobalLabel" class="modal-title">{$modalTitle}</h5>
         <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group col-md-6">
-            <label>Telefone (DDI DDD Número)</label>
+            <label for="wh_number_global">Telefone (DDI DDD Número)</label>
             <input type="tel" id="wh_number_global" class="form-control" placeholder="5511999999999">
           </div>
           <div class="form-group col-md-6">
-            <label>Legenda (opcional)</label>
+            <label for="wh_caption_global">Legenda (opcional)</label>
             <input type="text" id="wh_caption_global" class="form-control" placeholder="Legenda para os arquivos">
           </div>
         </div>
         <div class="form-group">
-          <label>Mensagem de Texto (opcional)</label>
+          <label for="wh_text_msg_global">Mensagem de Texto (opcional)</label>
           <textarea id="wh_text_msg_global" class="form-control" rows="3" placeholder="Digite sua mensagem..."></textarea>
         </div>
         <div class="form-group">
-          <label>Selecione Arquivos (opcional)</label>
+          <label for="wh_files_input_global">Selecione Arquivos (opcional)</label>
           <input type="file" id="wh_files_input_global" class="form-control-file" multiple>
           <small class="form-text text-muted">Você pode selecionar várias imagens, PDF etc.</small>
           <ul id="wh_file_list_global" class="list-unstyled mt-2"></ul>
         </div>
       </div>
       <div class="modal-footer">
-        <div class="mr-auto text-left small text-muted" style="max-width: 60%;">
+        <div class="mr-auto text-left small text-muted ui-whatsapp-footer-hint">
             <span class="mr-auto">{$modalHintFooter}</span>
         </div>
         <button class="btn btn-secondary" data-dismiss="modal">Fechar</button>
@@ -1043,6 +1043,15 @@ if (! function_exists('__view_connect_api_whatsapp_modal_button')) {
 <script>
 document.addEventListener("DOMContentLoaded", function(){
   let _whFilesData = [];
+
+  // O cabeçalho refinado tem regras próprias de largura e empilhamento. Os
+  // diálogos devem ser irmãos do shell para não herdarem essas regras.
+  if (document.body.classList.contains('ui-native-shell')) {
+    ['modalWhatsAppGlobal', 'modalConfirmacaoGlobal', 'modalMensagemGlobal'].forEach(id => {
+      const dialog = document.getElementById(id);
+      if (dialog && dialog.parentElement !== document.body) document.body.appendChild(dialog);
+    });
+  }
 
   // 1) Abre modal WhatsApp
   document.getElementById('btn-whatsapp-global').addEventListener('click', function(){
