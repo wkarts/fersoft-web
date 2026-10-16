@@ -170,3 +170,131 @@ body.ui-native-shell .ui-page .ui-admin-usuarios #kt_datatable .datatable-cell:l
   }
   body.ui-native-shell .ui-page form .optional-section-box { padding: 13px; }
 }
+
+/* Contact registers share a comfortable width and a real lookup column. */
+body.ui-native-shell .ui-page .ui-contact-register.fer-form > .fer-panel {
+  width: 100%;
+  max-width: 1320px;
+  margin-inline: auto;
+}
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup > br { display: none; }
+body.ui-native-shell .ui-page .ui-contact-register form .ui-contact-lookup > .btn {
+  min-width: 38px;
+  min-height: 38px;
+  margin: 0;
+}
+
+/* Client identity, status and address follow the reading and tab order. */
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente :is(.ui-client-identity-fields,.ui-client-profile-fields,.ui-client-street-fields,.ui-client-address-fields) {
+  display: grid;
+  min-width: 0;
+  gap: 0 15px;
+  margin-inline: 0;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente :is(.ui-client-identity-fields,.ui-client-profile-fields,.ui-client-street-fields,.ui-client-address-fields) > .form-group {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding-inline: 0;
+  margin-bottom: 15px;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields {
+  grid-template-columns: minmax(170px, 3fr) 40px minmax(0, 4fr) minmax(0, 4fr);
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none) {
+  grid-column: span 2;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo),
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#data_nascimento) {
+  grid-column: span 1;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo) > div {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: none;
+  min-height: 38px;
+  padding: 0;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-street-fields {
+  grid-template-columns: minmax(0, 4fr) minmax(130px, 1fr);
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#complemento),
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_select2_1) {
+  grid-column: span 2;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_image_1) {
+  grid-column: 1 / -1;
+}
+body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-map-lookup > .btn {
+  width: 100%;
+  min-height: 38px;
+  white-space: normal;
+}
+
+/* Photo and optical-prescription dialogs belong to the client register. */
+body.ui-native-shell .ui-client-dialog .modal-dialog { max-width: min(1100px, calc(100vw - 28px)); }
+body.ui-native-shell .ui-client-dialog#modal-foto .modal-dialog { max-width: min(700px, calc(100vw - 28px)); }
+body.ui-native-shell .ui-client-dialog .modal-header { display: flex; align-items: center; gap: 10px; }
+body.ui-native-shell .ui-client-dialog .modal-header .modal-title { min-width: 0; overflow-wrap: anywhere; }
+body.ui-native-shell .ui-client-dialog .modal-header .close { display: flex; align-items: center; justify-content: center; margin: 0 0 0 auto; padding: 0; }
+body.ui-native-shell .ui-client-dialog .modal-body { max-height: calc(100dvh - 175px); overflow: auto; }
+body.ui-native-shell .ui-client-dialog .modal-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+body.ui-native-shell .ui-client-dialog .modal-footer .btn { min-height: 36px; margin: 0; }
+body.ui-native-shell .ui-client-dialog#modal-foto #video { height: auto!important; max-height: min(48dvh, 400px); aspect-ratio: 4 / 3; object-fit: cover; background: #10272b; border-radius: 8px; }
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 12px;
+}
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > [class*="col-"] {
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 9px;
+  background: var(--ui-surface-alt, #fafcfc)!important;
+}
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > .col-lg-12 { grid-column: 1 / -1; }
+body.ui-native-shell .ui-client-dialog#modal-otica .modal-body .row > .form-group { min-width: 0; }
+
+@media (max-width: 1199px) {
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields > .form-group:nth-of-type(n+3) { grid-column: 1 / -1; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#inativo),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:has(#data_nascimento) { grid-column: span 1; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575px) {
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-identity-fields { grid-template-columns: minmax(0, 1fr) 40px; gap: 0 10px; }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields,
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-street-fields,
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields { grid-template-columns: minmax(0, 1fr); }
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-profile-fields > .form-group:not(.d-none),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#complemento),
+  body.ui-native-shell .ui-page .ui-contact-register--client #form-cliente .ui-client-address-fields > .form-group:has(#kt_select2_1) { grid-column: span 1; }
+  body.ui-native-shell .ui-client-dialog .modal-dialog { max-width: calc(100vw - 16px); margin: 8px auto; }
+  body.ui-native-shell .ui-client-dialog .modal-body { max-height: calc(100dvh - 145px); padding: 14px; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body { max-height: calc(100dvh - 205px); }
+  body.ui-native-shell .ui-client-dialog .modal-footer .btn { flex: 1 1 100%; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row { grid-template-columns: minmax(0, 1fr); }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body > .row > [class*="col-"] { padding: 10px; }
+  body.ui-native-shell .ui-client-dialog#modal-otica .modal-body .row > .form-group { flex: 1 1 100px; max-width: 50%; }
+}

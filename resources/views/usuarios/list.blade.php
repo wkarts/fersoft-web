@@ -2,13 +2,16 @@
 @section('css')
 @unless(config('ui_theme.active', false))
 <link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
 @endunless
 @endsection
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
 @endpush
 @section('content')
-<div class="ui-admin ui-admin-usuarios">
+@php($userAvatarService = app(\App\Services\UserAvatarService::class))
+<div class="ui-admin ui-admin-usuarios ui-user-list">
 
 <div class="ui-admin-panel gutter-b">
 
@@ -59,8 +62,14 @@
 											</thead>
 											<tbody id="body" class="datatable-body">
 												@foreach($usuarios as $u)
+												@php($avatarUrl = $userAvatarService->url($u->img))
 												<tr class="datatable-row">
-													<td class="datatable-cell"><span class="codigo" style="width: 150px;" id="id">{{$u->nome}}</span>
+													<td class="datatable-cell"><span class="codigo ui-user-list__identity" style="width: 150px;" id="id">
+														<span class="ui-user-list__avatar" aria-hidden="true">
+															@if($avatarUrl)<img src="{{ $avatarUrl }}" alt="" loading="lazy">@else{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) $u->nome, 0, 1)) ?: '?' }}@endif
+														</span>
+														<span class="ui-user-list__name">{{ $u->nome }}</span>
+													</span>
 													</td>
 													<td class="datatable-cell"><span class="codigo" style="width: 150px;" id="id">{{$u->login}}</span>
 													</td>
@@ -129,13 +138,17 @@
 							<div class="row">
 
 								@foreach($usuarios as $c)
+								@php($avatarUrl = $userAvatarService->url($c->img))
 
 
 								<div class="col-sm-12 col-xl-3 col-lg-4">
 									<div class="ui-admin-panel gutter-b ">
 										<div class="ui-admin-panel-head">
-											<div class="card-title">
-												<h3 class="card-title ui-admin-card-title">{{$c->nome}}
+											<div class="card-title ui-user-list__identity">
+												<span class="ui-user-list__avatar" aria-hidden="true">
+													@if($avatarUrl)<img src="{{ $avatarUrl }}" alt="" loading="lazy">@else{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) $c->nome, 0, 1)) ?: '?' }}@endif
+												</span>
+												<h3 class="card-title ui-admin-card-title ui-user-list__name">{{$c->nome}}
 												</h3>
 											</div>
 

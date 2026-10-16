@@ -153,6 +153,8 @@
                                                 </div>
                                             </div>
 
+                                            <div class="ui-user-options-heading">Configurações do usuário</div>
+
                                             <div class="form-group validated col-sm-6 col-lg-2">
                                                 <label class="col-form-label text-left col-lg-12 col-sm-12" for="ativo">Ativo</label>
                                                 <div class="col-6">
@@ -255,21 +257,23 @@
 
                                         {{-- Botões OTP: mostrar apenas ao EDITAR --}}
                                         @isset($usuario)
-                                            @if($usuario->hasOtp())
-                                                <button
-                                                    type="button"
-                                                    id="btn-change-otp"
-                                                    class="btn btn-sm btn-danger"
-                                                    data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
-                                                >Alterar OTP</button>
-                                            @else
-                                                <button
-                                                    type="button"
-                                                    id="btn-generate-otp"
-                                                    class="btn btn-sm btn-secondary"
-                                                    data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
-                                                >Configurar OTP</button>
-                                            @endif
+                                            <div class="ui-user-security-actions">
+                                                @if($usuario->hasOtp())
+                                                    <button
+                                                        type="button"
+                                                        id="btn-change-otp"
+                                                        class="btn btn-sm btn-danger"
+                                                        data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
+                                                    >Alterar OTP</button>
+                                                @else
+                                                    <button
+                                                        type="button"
+                                                        id="btn-generate-otp"
+                                                        class="btn btn-sm btn-secondary"
+                                                        data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
+                                                    >Configurar OTP</button>
+                                                @endif
+                                            </div>
                                         @endisset
 
                                         <div class="row">

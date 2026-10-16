@@ -458,6 +458,8 @@ Route::group(['prefix' => 'usuarios/perfil', 'middleware' => 'verificaEmpresa'],
 });
 
 Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'])->group(function () {
+    Route::get('/fiscal-classificacoes/list', 'FiscalClassificacaoController@index')
+        ->name('fiscal-classificacoes.list');
     Route::get('/app-versions', 'AppVersionController@index');
     Route::get('/app-versions/{appVersion}/pdf/{type?}', 'AppVersionController@downloadPdf')->where('type', 'current|cumulative');
     Route::get('/app-versions/{appVersion}/html/{type?}', 'AppVersionController@html')->where('type', 'current|cumulative');

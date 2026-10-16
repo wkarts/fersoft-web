@@ -19,6 +19,7 @@
             @php
                 $appVersionValue = trim((string) (optional($appVersionCurrent)->version ?? ''));
                 $appRevisionValue = trim((string) (optional($appVersionCurrent)->commit_hash ?? ''));
+                $appRevisionShort = $appRevisionValue !== '' ? substr($appRevisionValue, 0, 7) : '';
                 $appVersionTooltip = 'Versão instalada: ' . ($appVersionValue !== '' ? $appVersionValue : 'N/A');
                 if ($appRevisionValue !== '') {
                     $appVersionTooltip .= ' · revisão: ' . $appRevisionValue;
@@ -31,7 +32,12 @@
                     <span class="app-version-desktop-head">
                         <i class="la la-code-branch" aria-hidden="true"></i>
                         <span class="app-version-desktop-main">
-                            <span class="app-version-desktop-tag">V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}</span>
+                            <span class="app-version-desktop-version-line">
+                                <span class="app-version-desktop-tag">V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}</span>
+                                @if($appRevisionShort !== '')
+                                    <span class="app-version-desktop-revision-short" aria-label="Revisão {{ $appRevisionShort }}" title="Revisão completa: {{ $appRevisionValue }}">{{ $appRevisionShort }}</span>
+                                @endif
+                            </span>
                             @include('app_versions.installed_identity')
                         </span>
                     </span>
@@ -483,7 +489,11 @@
                                             @foreach($m['subs'] as $i)
 
                                                 @if(!isset($i['rota_ativa']) && $i['rota'] != '')
-                                                    <li class="menu-item menu-item-submenu @if($uri == $i['rota']) menu-item-active @endif" aria-haspopup="true">
+                                                    @php
+                                                        $subPath = trim((string) parse_url($i['rota'], PHP_URL_PATH), '/');
+                                                        $subActive = $uri == $i['rota'] || ($subPath !== '' && (request()->is($subPath) || request()->is($subPath . '/*')));
+                                                    @endphp
+                                                    <li class="menu-item menu-item-submenu @if($subActive) menu-item-active @endif" aria-haspopup="true">
                                                         <a @isset($i['target']) target="_blank" @endisset href="{{$i['rota']}}" class="menu-link menu-">
                                                             <i class="menu-bullet menu-bullet-line">
 													<span>

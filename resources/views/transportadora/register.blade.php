@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
 @endpush
 @section('content')
-<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--transportadora">
+<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--transportadora ui-contact-register">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -67,8 +67,7 @@
 											</select>
 
 										</div> -->
-										<div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-											<br><br>
+										<div class="form-group validated col-lg-2 col-md-2 col-sm-6 ui-contact-lookup">
 											<a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 												<span>
 													<i class="fa fa-search"></i>

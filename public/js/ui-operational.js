@@ -12,6 +12,8 @@
     const masthead = workspace.querySelector('.ui-masthead');
     const sessionBar = workspace.querySelector('.ui-session');
     const key = 'ui:navigation:' + (body.dataset.uiIdentity || 'anonymous');
+    const groupKey = key + ':groups';
+    const scrollKey = key + ':scroll';
     const toggles = [];
     let previousFocus = null;
     let previousInert = false;
@@ -20,6 +22,27 @@
         read() { try { return localStorage.getItem(key) === 'collapsed'; } catch (_) { return false; } },
         write(value) { try { localStorage.setItem(key, value ? 'collapsed' : 'expanded'); } catch (_) { /* Storage is optional. */ } },
     };
+    const lateral = body.dataset.uiLayout === 'lateral';
+    function readExpandedGroups() {
+        if (!lateral) return null;
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(groupKey));
+            return Array.isArray(saved) ? new Set(saved) : null;
+        } catch (_) { return null; }
+    }
+    const rememberedGroups = readExpandedGroups();
+    function rememberNavigation() {
+        if (!lateral) return;
+        try {
+            // Flyouts on the icon rail are temporary; the expanded tree is not.
+            if (!body.classList.contains('ui-nav-collapsed')) {
+                sessionStorage.setItem(groupKey, JSON.stringify(toggles
+                    .filter(entry => !entry.submenu.hidden)
+                    .map(entry => entry.stateKey)));
+            }
+            sessionStorage.setItem(scrollKey, String(navigation.scrollTop));
+        } catch (_) { /* Storage is optional. */ }
+    }
 
     function isRootGroup(entry) {
         return entry.node.parentElement?.classList.contains('ui-nav-list');
@@ -123,8 +146,12 @@
             if (submenu.querySelector('.menu-item-active')) node.classList.add('ui-nav-current');
         }
         const entry = { node, link, submenu };
+        const parentGroup = node.parentElement?.closest('.menu-item-submenu');
+        entry.stateKey = (parentGroup?.dataset.uiGroupKey || '') + '/' + name;
+        node.dataset.uiGroupKey = entry.stateKey;
         toggles.push(entry);
-        setGroup(entry, node.classList.contains('menu-item-open') || !!submenu.querySelector('.menu-item-active'));
+        setGroup(entry, (rememberedGroups?.has(entry.stateKey) ?? false)
+            || node.classList.contains('menu-item-open') || !!submenu.querySelector('.menu-item-active'));
         link.addEventListener('click', event => {
             event.preventDefault();
             const opening = submenu.hidden;
@@ -132,12 +159,14 @@
                 toggles.filter(other => other !== entry && isRootGroup(other))
                     .forEach(other => setGroup(other, false));
                 setGroup(entry, opening);
+                rememberNavigation();
                 return;
             }
             if (desktop.matches && body.dataset.uiLayout === 'superior') {
                 toggles.filter(other => other !== entry && !other.node.contains(node)).forEach(other => setGroup(other, false));
             }
             setGroup(entry, opening);
+            rememberNavigation();
         });
         link.addEventListener('keydown', event => {
             if (event.key === ' ') { event.preventDefault(); link.click(); }
@@ -149,6 +178,12 @@
         link.title = link.textContent.trim();
         if (link.closest('.menu-item-active')) link.setAttribute('aria-current', 'page');
     });
+    // A normal Laravel navigation rebuilds the shell. Keep the selected group
+    // and the sidebar's scroll position while the destination view loads.
+    navigation.addEventListener('click', event => {
+        if (event.target.closest('a[href]:not(.menu-toggle)')) rememberNavigation();
+    });
+    window.addEventListener('pagehide', rememberNavigation);
     document.querySelectorAll('[data-ui-collapse]').forEach(button => button.addEventListener('click', () => {
         const value = !body.classList.contains('ui-nav-collapsed');
         setCollapsed(value); store.write(value);
@@ -207,5 +242,13 @@
         });
     });
     changeViewport();
+    if (lateral) {
+        try {
+            const scrollTop = Number(sessionStorage.getItem(scrollKey));
+            if (Number.isFinite(scrollTop) && scrollTop > 0) {
+                requestAnimationFrame(() => { navigation.scrollTop = scrollTop; });
+            }
+        } catch (_) { /* Storage is optional. */ }
+    }
 })();
 

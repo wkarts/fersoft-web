@@ -1,11 +1,12 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-list-refinements.css') }}?v={{ filemtime(public_path('css/ui-list-refinements.css')) }}">
 @endpush
 @section('content')
 <header class="fer-page__heading"><h1>Fornecedores</h1></header>
 
-    <div class="card card-custom gutter-b fer-page fer-list">
+    <div class="card card-custom gutter-b fer-page fer-list fer-catalog-list fer-supplier-list">
         <div class="card-body">
             <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="row">
@@ -147,11 +148,11 @@
                     </div>
 
                     <!-- ABA 2: GRADE -->
-                    <div class="pb-5" data-wizard-type="step-content">
-                        <div class="row">
+                    <div class="pb-5 fer-catalog-grid-pane" data-wizard-type="step-content">
+                        <div class="row fer-catalog-grid">
                             @foreach($fornecedores as $c)
                                 <div class="col-sm-12 col-lg-6 col-md-6 col-xl-4">
-                                    <div class="card card-custom gutter-b example example-compact {{ isset($c->ativo) && $c->ativo == 0 ? 'bg-light' : '' }}">
+                                    <div class="card card-custom gutter-b example example-compact fer-catalog-card {{ isset($c->ativo) && $c->ativo == 0 ? 'bg-light' : '' }}">
                                         <div class="card-header">
                                             <div class="card-title">
                                                 <h3 style="font-size: 12px;" class="card-title">

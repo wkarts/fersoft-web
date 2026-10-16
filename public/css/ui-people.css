@@ -66,6 +66,11 @@
 .ui-people-table-scroll td { color: var(--people-ink); }
 .ui-people-table-scroll tbody tr:last-child td { border-bottom: 0; }
 .ui-people-table-scroll tbody tr:hover { background: #f7faf9; }
+.ui-people-table-scroll th:first-child { width: 65px; }
+.ui-people-table-scroll td:first-child img,
+.ui-people-table-scroll td:first-child .symbol,
+.ui-people-table-scroll td:first-child .symbol-label { width: 34px !important; height: 34px !important; }
+.ui-people-table-scroll td:first-child .symbol { min-width: 34px; }
 .ui-people-table-scroll .datatable-cell { background: transparent; }
 .ui-people-table-scroll .datatable-cell > span { display: inline-block; width: auto !important; max-width: none !important; }
 .ui-people-table-scroll td:has(.btn) { white-space: nowrap; }
@@ -78,19 +83,21 @@
 .ui-people .label-light-danger, .ui-people .label-danger { background: #fff0f2; color: #a43a4c; }
 .ui-people .label-warning { background: #fff3df; color: #9c6425; }
 .ui-people .text-primary, .ui-people .text-info, .ui-people .text-success { color: var(--people-green-dark) !important; }
-.ui-people-grid-pane > .row, .ui-people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; margin: 0; }
-.ui-people-grid-pane > .row > [class*=col-] { width: auto; flex: none; max-width: 100%; padding: 0; }
+.ui-people-grid-pane > .row, .ui-people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; margin: 0; }
+.ui-people .ui-people-grid-pane > .row > [class*=col-] { width: 100%; flex: none; max-width: none; min-width: 0; padding: 0; }
 .ui-people-grid-pane .ui-people-person, .ui-people-contact-card { height: 100%; margin: 0; padding: 0; border: 1px solid var(--people-line); border-radius: 10px; box-shadow: none; background: #fff; }
 .ui-people-grid-pane .ui-people-person-head { display: flex; align-items: flex-start; justify-content: space-between; background: #fff; border: 0; padding: 16px 16px 8px; min-height: 0; }
 .ui-people-grid-pane .card-title { display: flex; align-items: center; margin: 0; min-width: 0; gap: 9px; }
 .ui-people-grid-pane .card-title .d-flex { min-width: 0; }
+.ui-people-grid-pane .card-title .symbol { width: 42px; min-width: 42px; height: 42px; flex: 0 0 42px; margin: 0 !important; }
 .ui-people-grid-pane .symbol-label, .ui-people-grid-pane .symbol img { width: 42px; height: 42px; object-fit: cover; display: grid; place-items: center; border-radius: 50%; background: #e9f7ef; color: var(--people-green-dark); }
 .ui-people-grid-pane .card-title a { color: var(--people-ink); font-size: 13px; font-weight: 600; text-decoration: none; }
 .ui-people-grid-pane .card-title .text-muted { color: var(--people-muted) !important; font-size: 11px; }
 .ui-people-grid-pane .ui-people-person-body { padding: 11px 16px; font-size: 11px; }
-.ui-people-grid-pane .ui-people-person-body > div { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-.ui-people-grid-pane .ui-people-person-body > div span:last-child { text-align: right; }
+.ui-people-grid-pane .ui-people-person-body > div { display: grid; grid-template-columns: minmax(95px, 38%) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.ui-people-grid-pane .ui-people-person-body > div span:last-child { min-width: 0; overflow-wrap: anywhere; text-align: left; }
 .ui-people-grid-pane .ui-people-person-actions { display: flex; justify-content: flex-end !important; gap: 8px; background: #fafcfc !important; padding: 12px 16px !important; border-top: 1px solid var(--people-line); border-radius: 0 0 10px 10px; }
+.ui-people-grid-pane .ui-people-person-actions .btn { min-width: 0; }
 .ui-people-grid-pane .ui-people-birthday-card { background: #fffdf8; }
 .ui-people-grid-pane .btn-info, .ui-people-grid-pane .btn-secondary { background: #fff; border: 1px solid var(--people-line); color: var(--people-green-dark); }
 .ui-people-form-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-bottom: 19px; border-bottom: 1px solid var(--people-line); }
@@ -193,6 +200,7 @@
   .ui-people-panel { padding: 13px; }
   .ui-people-section-body { padding: 13px; }
   .ui-people-grid-pane .ui-people-person-body > div { align-items: flex-start; }
+  .ui-people-grid-pane > .row { grid-template-columns: minmax(0, 1fr); }
   .ui-people-form-head .card-toolbar, .ui-people-form-head .btn { width: 100%; }
   .ui-people-form .ui-people-submit-actions > .btn {
     flex: 1 1 130px;

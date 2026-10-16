@@ -1,11 +1,12 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-list-refinements.css') }}?v={{ filemtime(public_path('css/ui-list-refinements.css')) }}">
 @endpush
 @section('content')
 <header class="fer-page__heading"><h1>Clientes</h1></header>
 
-<div class="card card-custom gutter-b fer-page fer-list">
+<div class="card card-custom gutter-b fer-page fer-list fer-catalog-list fer-client-list">
 
 	<div class="card-body">
 		<div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
@@ -163,7 +164,18 @@
 											<a title="Documentos" class="btn btn-info btn-sm" href="/clientes/upload/{{ $c->id }}"><i class="la la-paperclip"></i></a>
 										</span>
 									</td>
-									<td class="datatable-cell"><span style="width: 250px;">{{$c->razao_social}}</span></td>
+									<td class="datatable-cell">
+										<span class="fer-client-table-identity" style="width: 250px;">
+											<span class="fer-client-table-avatar">
+												@if($c->imagem != "" && file_exists(public_path('imgs_clientes/').$c->imagem))
+												<img src="/imgs_clientes/{{ $c->imagem }}" alt="">
+												@else
+												<img src="/foto_usuario/user.png" alt="">
+												@endif
+											</span>
+											<span>{{$c->razao_social}}</span>
+										</span>
+									</td>
 									<td class="datatable-cell"><span style="width: 150px;">{{$c->nome_fantasia}}</span></td>
 									<td class="datatable-cell"><span style="width: 150px;">{{$c->cpf_cnpj}}</span></td>
 									<td class="datatable-cell"><span style="width: 100px;">{{$c->ie_rg}}</span></td>
@@ -178,14 +190,14 @@
 					</div>
 				</div>
 
-				<div class="pb-5" data-wizard-type="step-content">
-					<div class="row">
+				<div class="pb-5 fer-catalog-grid-pane" data-wizard-type="step-content">
+					<div class="row fer-catalog-grid">
 						@foreach($clientes as $c)
 						<div class="col-sm-12 col-lg-6 col-md-6 col-xl-6">
-							<div class="card card-custom gutter-b example example-compact">
+							<div class="card card-custom gutter-b example example-compact fer-catalog-card">
 								<div class="card-header">
 									<div class="flex-shrink-0 mr-4 mt-lg-0 mt-3">
-										<div class="symbol symbol-circle symbol-lg-75 mt-4">
+										<div class="symbol symbol-circle symbol-lg-75 fer-list-avatar">
 											@if($c->imagem != "" && file_exists(public_path('imgs_clientes/').$c->imagem))
 											<img src="/imgs_clientes/{{ $c->imagem }}" alt="image">
 											@else
@@ -194,7 +206,7 @@
 										</div>
 									</div>
 									<div class="card-title">
-										<h3 style="width: 230px; font-size: 12px;" class="card-title">{{substr($c->razao_social, 0, 30)}}</h3>
+										<h3 class="card-title" title="{{ $c->razao_social }}">{{substr($c->razao_social, 0, 30)}}</h3>
 									</div>
 									<div class="card-toolbar">
 										<div class="dropdown dropdown-inline">
