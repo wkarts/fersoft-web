@@ -3246,7 +3246,7 @@ $('#btn-cpf').keypress(function(event) {
     }
 });
 
-function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
+function emitirNFCe(vendaId){
     // $('#modal-venda').modal('close')
     // $('#preloader_'+vendaId).css('display', 'inline-block');
 
@@ -3269,7 +3269,6 @@ function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
         dataType: 'json',
         data: {
             vendaId: vendaId,
-            confirmar_ajuste_dh_emissao_704: confirmarAjusteDhEmi704 ? 1 : 0,
             _token: token
         },
         success: function(e){
@@ -3286,7 +3285,9 @@ function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
             $('#btn_envia_grid_'+vendaId).removeClass('disabled')
 
 
-            let recibo = e;
+            let recibo = typeof e === 'string'
+                ? e
+                : (e && typeof e === 'object' ? (e.message || JSON.stringify(e)) : String(e ?? ''));
             let retorno = recibo.substring(0,4);
             let mensagem = recibo.substring(5,recibo.length);
             if(retorno == 'Erro'){
@@ -3401,36 +3402,21 @@ function emitirNFCe(vendaId, confirmarAjusteDhEmi704 = false){
 
 
 
-            if(js && js.codigo === 'NFCE_704_CONFIRMAR_DHEMI'){
-                const detalhesConfirmacao704 = document.createElement('div');
-                detalhesConfirmacao704.textContent = js.message;
-                detalhesConfirmacao704.style.whiteSpace = 'pre-wrap';
-                detalhesConfirmacao704.style.maxHeight = '60vh';
-                detalhesConfirmacao704.style.overflowY = 'auto';
-                detalhesConfirmacao704.style.textAlign = 'left';
-                swal({
-                    title: "Reassinar a mesma NFC-e?",
-                    content: detalhesConfirmacao704,
-                    icon: "warning",
-                    buttons: ["Cancelar", "Reassinar e retransmitir"],
-                    dangerMode: true,
-                }).then((confirmar) => {
-                    if(confirmar){
-                        emitirNFCe(vendaId, true);
-                    }
-                });
-            }else if(js && js.message){
+            if(js && js.message){
                 swal("Algo errado", js.message, "error")
-
             }else{
-                let err = "";
-                js.map((v) => {
-                    err += v + "\n";
-                });
-                // alert(err);
-                swal("Erro", err, "warning")
-
+                let mensagens = Array.isArray(js)
+                    ? js
+                    : (js && typeof js === 'object'
+                        ? Object.values(js.errors || js).flat()
+                        : [typeof js === 'string' ? js : (err.responseText || '')]);
+                const mensagemErro = mensagens
+                    .map((v) => typeof v === 'string' ? v : JSON.stringify(v))
+                    .filter(Boolean)
+                    .join("\n") || "Não foi possível retransmitir a NFC-e. Verifique o retorno e tente novamente.";
+                swal("Erro ao transmitir NFC-e", mensagemErro, "error")
             }
+
             $('#btn-cpf').removeClass('spinner')
 
 
