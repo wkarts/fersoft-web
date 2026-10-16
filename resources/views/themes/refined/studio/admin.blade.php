@@ -16,7 +16,12 @@
             <h1>Temas da interface</h1>
             <p>Gerencie o catálogo visual e a disponibilidade dos temas para as empresas.</p>
         </div>
-        <a class="ui-studio__back" href="{{ route('ui.themes.index') }}"><i class="la la-arrow-left" aria-hidden="true"></i> Minha aparência</a>
+        <div class="ui-studio__head-actions">
+            @if(Route::has('config.pos-themes.index'))
+                <a class="ui-studio__back" href="{{ route('config.pos-themes.index') }}"><i class="la la-cash-register" aria-hidden="true"></i> Temas do PDV</a>
+            @endif
+            <a class="ui-studio__back" href="{{ route('ui.themes.index') }}"><i class="la la-arrow-left" aria-hidden="true"></i> Minha aparência</a>
+        </div>
     </header>
 
     @if(session('ui_theme_feedback'))
@@ -41,6 +46,97 @@
             @endif
         </div>
     @endunless
+        <section class="ui-studio__section" aria-labelledby="ui-studio-standards-title">
+            <div class="ui-studio__section-head">
+                <div>
+                    <p class="ui-studio__eyebrow">Exclusivo do superadministrador</p>
+                    <h2 id="ui-studio-standards-title">Padrões da aplicação</h2>
+                    <p>Defina o tema inicial da aplicação e ajuste os modelos oficiais. Preferências pessoais e padrões específicos das empresas continuam prioritários.</p>
+                </div>
+            </div>
+            <div class="ui-studio__admin-grid">
+                <div class="ui-studio__panel">
+                    <h3>Tema padrão global</h3>
+                    <p>Usado quando a empresa e o usuário ainda não escolheram outro tema.</p>
+                    @unless($globalSettingsReady)
+                        <div class="ui-studio__notice ui-studio__notice--error" role="status">A configuração global requer a migration aditiva. Execute <code>php artisan ui-themes:install --apply</code>. Os temas e padrões por empresa já instalados continuam funcionando.</div>
+                    @endunless
+                    <form method="POST" action="{{ route('ui.themes.global.default') }}" class="ui-studio__admin-form">
+                        @csrf
+                        <label class="ui-studio__full">Tema inicial de todas as empresas sem padrão próprio
+                            <select name="theme_slug" required @disabled(!$catalogReady || !$globalSettingsReady)>
+                                @foreach($standardThemes as $slug => $definition)
+                                    <option value="{{ $slug }}" @selected($globalDefaultSlug === $slug)>{{ $definition['name'] ?? $slug }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <button type="submit" class="ui-studio__apply ui-studio__full" @disabled(!$catalogReady || !$globalSettingsReady)>Salvar padrão global</button>
+                    </form>
+                    @if($globalSettingsReady && $globalDefaultSlug !== config('ui_theme.default_preset'))
+                        <form method="POST" action="{{ route('ui.themes.global.restore') }}" class="ui-studio__restore-form">
+                            @csrf
+                            <button type="submit" class="ui-studio__publish">Restaurar padrão original</button>
+                        </form>
+                    @endif
+                </div>
+                <div class="ui-studio__panel">
+                    <h3>Modelos oficiais</h3>
+                    <p>Altere cores e nome sem mudar o identificador das escolhas já salvas. O botão restaurar recupera a paleta original do projeto.</p>
+                    @foreach($builtinThemes as $slug => $original)
+                        @php
+                            $factoryOverride = $factoryOverrides->get($slug);
+                            $factory = $standardThemes[$slug] ?? $original;
+                            $factoryStyle = $factoryOverride?->sidebar_style
+                                ?? (in_array($slug, ['fer-slate', 'fer-night', 'fer-graphite'], true) ? 'dark' : 'light');
+                            $factorySubmitted = old('_factory_slug') === $slug;
+                            $factoryValue = fn ($field, $fallback) => $factorySubmitted ? old($field, $fallback) : $fallback;
+                        @endphp
+                        <details class="ui-studio__factory" @if($factorySubmitted) open @endif>
+                            <summary><span><strong>{{ $factory['name'] }}</strong><small>{{ $slug }}</small></span><span class="ui-studio__published">{{ $factoryOverride ? 'Personalizado' : 'Original' }}</span></summary>
+                            <form method="POST" action="{{ route('ui.themes.factory.update', $slug) }}" class="ui-studio__admin-form">
+                                @csrf
+                                <input type="hidden" name="_factory_slug" value="{{ $slug }}">
+                                <label class="ui-studio__full">Nome do modelo
+                                    <input type="text" name="name" maxlength="120" value="{{ $factoryValue('name', $factory['name']) }}" required>
+                                </label>
+                                <label class="ui-studio__full">Descrição
+                                    <input type="text" name="description" maxlength="400" value="{{ $factoryValue('description', $factory['description'] ?? '') }}">
+                                </label>
+                                @foreach([
+                                    'accent' => 'Cor principal', 'accent_hover' => 'Cor principal ao passar o mouse',
+                                    'background' => 'Fundo das páginas', 'surface' => 'Cartões e superfícies',
+                                    'sidebar' => 'Menu lateral', 'sidebar_text' => 'Texto do menu',
+                                    'text' => 'Texto principal', 'border' => 'Bordas e divisores',
+                                ] as $field => $label)
+                                    <label class="ui-studio__color-field"><span>{{ $label }}</span>
+                                        <input type="color" name="{{ $field }}" value="{{ $factoryValue($field, $factory[$field] ?? $original[$field]) }}" required>
+                                    </label>
+                                @endforeach
+                                <label>Paleta do menu
+                                    <select name="sidebar_style">
+                                        <option value="light" @selected($factoryValue('sidebar_style', $factoryStyle) === 'light')>Clara</option>
+                                        <option value="dark" @selected($factoryValue('sidebar_style', $factoryStyle) === 'dark')>Escura</option>
+                                    </select>
+                                </label>
+                                <label>Densidade inicial
+                                    <select name="density">
+                                        <option value="comfortable" @selected($factoryValue('density', $factory['density'] ?? 'comfortable') === 'comfortable')>Confortável</option>
+                                        <option value="compact" @selected($factoryValue('density', $factory['density'] ?? 'comfortable') === 'compact')>Compacta</option>
+                                    </select>
+                                </label>
+                                <button type="submit" class="ui-studio__apply ui-studio__full" @disabled(!$catalogReady)>Salvar modelo oficial</button>
+                            </form>
+                            @if($factoryOverride)
+                                <form method="POST" action="{{ route('ui.themes.factory.restore', $slug) }}" class="ui-studio__restore-form">
+                                    @csrf
+                                    <button type="submit" class="ui-studio__publish">Restaurar cores originais</button>
+                                </form>
+                            @endif
+                        </details>
+                    @endforeach
+                </div>
+            </div>
+        </section>
         <section class="ui-studio__section" aria-labelledby="ui-studio-admin-title">
             <div class="ui-studio__section-head">
                 <div>
@@ -53,14 +149,14 @@
             <div class="ui-studio__admin-grid">
                 <div class="ui-studio__panel">
                     <h3>{{ $editingTheme ? 'Editar rascunho' : 'Criar novo tema' }}</h3>
-                    <p>Escolha o nome, o comportamento e as cores. Somente modelos publicados ficam disponíveis para as empresas.</p>
+                    <p>Escolha o nome, o comportamento e as cores. Depois de publicar, libere o modelo às empresas ou promova-o a padrão geral.</p>
                     @if($editingTheme)
                         <a class="ui-studio__back" href="{{ route('config.themes.index') }}">Cancelar edição e criar outro tema</a>
                     @endif
                     <form method="POST" action="{{ $editingTheme ? route('ui.themes.update', $editingTheme->id) : route('ui.themes.store') }}" class="ui-studio__admin-form">
                         @csrf
                         <label class="ui-studio__full">Nome do tema
-                            <input type="text" name="name" maxlength="120" value="{{ old('name', $editingTheme?->name ?? '') }}" required placeholder="Ex.: Corporativo Azul">
+                            <input type="text" name="name" maxlength="120" value="{{ old('name', $editingTheme?->name ?? '') }}" required placeholder="Ex.: Verde corporativo">
                         </label>
                         <label class="ui-studio__full">Descrição
                             <input type="text" name="description" maxlength="400" value="{{ old('description', $editingTheme?->description ?? '') }}" placeholder="Como é este tema">
@@ -112,6 +208,10 @@
                             <div class="ui-studio__model-actions">
                                 @if($model->status === 'published')
                                     <span class="ui-studio__published">Publicado</span>
+                                    <form method="POST" action="{{ route('ui.themes.promote', $model->id) }}">
+                                        @csrf
+                                        <button type="submit" class="ui-studio__publish">Tornar padrão geral</button>
+                                    </form>
                                     <details class="ui-studio__archive">
                                         <summary>Arquivar</summary>
                                         <form method="POST" action="{{ route('ui.themes.archive', $model->id) }}">
@@ -119,6 +219,12 @@
                                             <button type="submit" class="ui-studio__publish">Confirmar arquivamento</button>
                                         </form>
                                     </details>
+                                @elseif($model->status === 'standard')
+                                    <span class="ui-studio__published">Padrão geral</span>
+                                    <form method="POST" action="{{ route('ui.themes.demote', $model->id) }}">
+                                        @csrf
+                                        <button type="submit" class="ui-studio__publish">Restringir às empresas liberadas</button>
+                                    </form>
                                 @elseif($model->status === 'draft')
                                     <a class="ui-studio__publish" href="{{ route('config.themes.index') }}?edit_theme={{ $model->id }}">Editar</a>
                                     <form method="POST" action="{{ route('ui.themes.publish', $model->id) }}">

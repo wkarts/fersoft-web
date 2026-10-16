@@ -1,14 +1,14 @@
 {{-- Navegação original do ERP com os mesmos grupos, links e condições de permissão. --}}
     <aside id="ui-sidebar" class="ui-sidebar" aria-label="Navegação da aplicação">
         <div class="ui-brand">
-                <a href="/graficos" class="brand-logo" aria-label="FERSOFT — ir ao painel">
+                <a href="/graficos" class="brand-logo" aria-label="{{ config('app.name') }} — ir ao painel">
                     @if($logo != "" && env("LOGOCLIENTE") == 1)
                         <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
                     @else
-                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
+                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" @if(($appearanceAssets['menu_logo'] ?? asset('imgs/slym.png')) === asset('imgs/slym.png')) class="ui-brand-default-logo" @endif />
                     @endif
                 </a>
-                <a href="/graficos" class="ui-brand-symbol" aria-label="FERSOFT — ir ao painel">
+                <a href="/graficos" class="ui-brand-symbol" aria-label="{{ config('app.name') }} — ir ao painel">
                     <img src="{{ asset('imgs/favicon.png') }}" alt="" />
                 </a>
 
@@ -77,10 +77,19 @@
                                         @endif
 
                                         @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\UiThemeController::class))
-                                            <li class="menu-item @if(request()->is('config/temas*')) menu-item-active @endif" aria-haspopup="true">
+                                            <li class="menu-item @if(request()->is('config/temas')) menu-item-active @endif" aria-haspopup="true">
                                                 <a href="{{ route('config.themes.index') }}" class="menu-link">
                                                     <i class="menu-bullet menu-bullet-line"><span></span></i>
                                                     <span class="menu-text">Temas da Interface</span>
+                                                </a>
+                                            </li>
+                                        @endif
+
+                                        @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\PosThemeController::class))
+                                            <li class="menu-item @if(request()->is('config/temas/pdv*')) menu-item-active @endif" aria-haspopup="true">
+                                                <a href="{{ route('config.pos-themes.index') }}" class="menu-link">
+                                                    <i class="menu-bullet menu-bullet-line"><span></span></i>
+                                                    <span class="menu-text">Temas do PDV</span>
                                                 </a>
                                             </li>
                                         @endif

@@ -33,7 +33,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="theme-color" content="{{ $uiThemeColor }}">
 
-    {{-- Bootstrap supplies the layout grid and modal behavior. The FERSOFT stylesheet
+    {{-- Bootstrap supplies the layout grid and modal behavior. The application stylesheet
          below owns the appearance of every shared component. --}}
     <link href="/css/bootstrap4_5_1.min.css" rel="stylesheet" type="text/css">
     <link href="/css/style.css?v={{ filemtime(public_path('css/style.css')) }}" rel="stylesheet" type="text/css">

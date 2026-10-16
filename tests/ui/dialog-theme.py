@@ -170,7 +170,7 @@ def check_dialogs(page, theme, width):
 
 def main():
     assert all((FIXTURES / f'{theme}-lateral-comfortable.html').exists()
-               for theme in ['fer-light', 'fer-slate', 'fer-night']), 'Render Blade fixtures first'
+               for theme in ['fer-light', 'fer-slate', 'fer-night', 'fer-mist', 'fer-graphite']), 'Render Blade fixtures first'
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
@@ -178,7 +178,7 @@ def main():
             options = {'executable_path': os.environ['UI_CHROMIUM']} if os.getenv('UI_CHROMIUM') else {}
             browser = playwright.chromium.launch(headless=True, **options)
             try:
-                for theme in ['fer-light', 'fer-slate', 'fer-night']:
+                for theme in ['fer-light', 'fer-slate', 'fer-night', 'fer-mist', 'fer-graphite']:
                     for width, height in [(1366, 768), (768, 1024), (390, 844)]:
                         page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
                         errors = []

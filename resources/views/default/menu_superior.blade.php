@@ -237,9 +237,17 @@
                                             @endif
 
                                             @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\UiThemeController::class))
-                                                <li class="menu-item @if(request()->is('config/temas*')) menu-item-active @endif" aria-haspopup="true">
+                                                <li class="menu-item @if(request()->is('config/temas')) menu-item-active @endif" aria-haspopup="true">
                                                     <a href="{{ route('config.themes.index') }}" class="menu-link">
                                                         <span class="menu-text">Temas da Interface</span>
+                                                    </a>
+                                                </li>
+                                            @endif
+
+                                            @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\PosThemeController::class))
+                                                <li class="menu-item @if(request()->is('config/temas/pdv*')) menu-item-active @endif" aria-haspopup="true">
+                                                    <a href="{{ route('config.pos-themes.index') }}" class="menu-link">
+                                                        <span class="menu-text">Temas do PDV</span>
                                                     </a>
                                                 </li>
                                             @endif

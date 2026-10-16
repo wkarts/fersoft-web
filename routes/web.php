@@ -356,6 +356,17 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
     // Administração exclusiva dos temas do ERP, ao lado da aparência do login.
     // O controller confirma a permissão de superadmin em todas as requisições.
     Route::get('/temas', 'UiThemeController@admin')->name('config.themes.index');
+    // Área SUPER separada: catálogo e padrão do PDV não usam preferências do ERP.
+    Route::group(['prefix' => 'temas/pdv'], function () {
+        Route::get('/', 'PosThemeController@index')->name('config.pos-themes.index');
+        Route::post('/modelos', 'PosThemeController@store')->name('config.pos-themes.store');
+        Route::post('/modelos/{preset}', 'PosThemeController@update')->name('config.pos-themes.update');
+        Route::post('/modelos/{preset}/duplicar', 'PosThemeController@duplicate')->name('config.pos-themes.duplicate');
+        Route::post('/padroes/{slug}/duplicar', 'PosThemeController@duplicateBuiltin')->name('config.pos-themes.duplicate-builtin');
+        Route::post('/modelos/{preset}/publicar', 'PosThemeController@publish')->name('config.pos-themes.publish');
+        Route::post('/modelos/{preset}/arquivar', 'PosThemeController@archive')->name('config.pos-themes.archive');
+        Route::post('/padrao', 'PosThemeController@setDefault')->name('config.pos-themes.default');
+    });
 });
 
 // ====================================================
@@ -371,6 +382,12 @@ Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], functi
     Route::post('/modelos/{preset}/duplicar', 'UiThemeController@duplicate')->name('ui.themes.duplicate');
     Route::post('/modelos/{preset}/publicar', 'UiThemeController@publish')->name('ui.themes.publish');
     Route::post('/modelos/{preset}/arquivar', 'UiThemeController@archive')->name('ui.themes.archive');
+    Route::post('/modelos/{preset}/padrao', 'UiThemeController@promote')->name('ui.themes.promote');
+    Route::post('/modelos/{preset}/restrito', 'UiThemeController@demote')->name('ui.themes.demote');
+    Route::post('/padroes/{slug}', 'UiThemeController@updateFactory')->name('ui.themes.factory.update');
+    Route::post('/padroes/{slug}/restaurar', 'UiThemeController@restoreFactory')->name('ui.themes.factory.restore');
+    Route::post('/padrao-global', 'UiThemeController@setGlobalDefault')->name('ui.themes.global.default');
+    Route::post('/padrao-global/restaurar', 'UiThemeController@restoreGlobalDefault')->name('ui.themes.global.restore');
     Route::get('/empresas/buscar', 'UiThemeController@companySearch')->name('ui.themes.company.search');
     Route::post('/empresas/liberar', 'UiThemeController@grant')->name('ui.themes.grant');
     Route::post('/empresas/padrao', 'UiThemeController@setDefault')->name('ui.themes.company.default');

@@ -6,7 +6,7 @@
                     @if($logo != "" && env("LOGOCLIENTE") == 1)
                         <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
                     @else
-                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
+                        <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" @if(($appearanceAssets['menu_logo'] ?? asset('imgs/slym.png')) === asset('imgs/slym.png')) class="ui-brand-default-logo" @endif />
                     @endif
                 </a>
 
@@ -19,7 +19,6 @@
                     <div id="ui-actions-menu-wrapper" class="header-menu-wrapper header-menu-wrapper-left top-tour">
                         <div id="ui-actions-menu" class="header-menu header-menu-mobile  header-menu-layout-default">
                             <ul class="menu-nav">
-                                <ul class="menu-nav">
 
                                     <!-- <li class="menu-item menu-item-submenu menu-item-rel menu-item-active" data-menu-toggle="click" aria-haspopup="true">
 
@@ -44,7 +43,7 @@
                                             </a>
 
                                             <a href="/configNF" class="label label-xl label-inline @if($tema == 1) label-success @else label-success @endif">
-                                                <span class="ui-company-label">EMPRESA ATIVA</span><strong class="ui-company-name">{{session('user_logged')['empresa_nome']}}</strong>
+                                                <span class="ui-company-label">EMPRESA ATIVA</span><strong class="ui-company-name" title="{{ session('user_logged')['empresa_nome'] }}">{{session('user_logged')['empresa_nome']}}</strong>
                                             </a>
                                         </li>
 
@@ -68,7 +67,7 @@
                                                 <i class="la la-info text-white"></i>
                                             </a> -->
 
-                                            <a data-toggle="modal" href="#!" data-target="#modal-empresa-contador" class="btn btn-success pull-right @if($tema == 1) label-success @else label-success @endif btn-lg">
+                                            <a data-toggle="modal" href="#!" data-target="#modal-empresa-contador" title="Empresa selecionada: {{ session('empresa_selecionada') ? session('empresa_selecionada')['nome'] : '--' }}" class="btn btn-success pull-right @if($tema == 1) label-success @else label-success @endif btn-lg">
                                                 Empresa selecionada: {{ session('empresa_selecionada') ? session('empresa_selecionada')['nome'] : '--' }}
                                             </a>
                                         </li>
@@ -94,6 +93,15 @@
                                     @if(session('tipo_contador'))
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ui-header-theme">
                                             <a href="{{ route('ui.themes.index') }}" class="label label-xl label-inline"><i class="la la-palette" aria-hidden="true"></i><span>Tema</span></a>
+                                        </li>
+                                    @endif
+
+                                    @if(!session('tipo_contador'))
+                                        <li class="menu-item ui-header-pdv">
+                                            <a class="btn btn-success pdv-tour" href="/frenteCaixa">
+                                                <i class="la la-barcode"></i>
+                                                PDV
+                                            </a>
                                         </li>
                                     @endif
 
@@ -139,24 +147,12 @@
                                         <span class="kt-header__topbar-welcome kt-hidden-mobile" style="margin-left: 3px; font-size: 14px;">Endereço do IP: <span style="font-weight: bold;" class="text-success text-left">{{ $ultimoAcesso != null ? $ultimoAcesso->ip_address : '--' }}</span></span>
                                     </li>
 
-                                </ul>
-
                             </ul>
                         </div>
                     </div>
                 </div>
 
                 <div class="topbar div-topo">
-
-                    @if(!session('tipo_contador'))
-                        <div class="topbar-item">
-                            <a class="btn btn-success pdv-tour" href="/frenteCaixa">
-                                <i class="la la-barcode"></i>
-                                PDV
-                            </a>
-                        </div>
-                    @endif
-
 
                     <!--begin: Search -->
                     <div class="dropdown">

@@ -28,6 +28,7 @@ final class UiPreferencesIntegrationTest extends TestCase
             '2026_10_14_230101_create_ui_theme_company_settings_table.php',
             '2026_10_14_230102_create_ui_theme_user_preferences_table.php',
             '2026_10_15_060000_add_menu_mode_to_ui_theme_user_preferences_table.php',
+            '2026_10_16_050000_create_ui_theme_system_settings_table.php',
         ] as $migration) {
             (require database_path('migrations/' . $migration))->up();
         }
@@ -224,6 +225,68 @@ final class UiPreferencesIntegrationTest extends TestCase
         $this->assertSame('classic', $resolved['name']);
         $this->assertSame([], DB::getQueryLog());
         DB::disableQueryLog();
+    }
+
+    public function test_superadmin_updates_factory_palette_without_changing_slug_and_can_restore_it(): void
+    {
+        $colors = config('ui_theme.presets.fer-light');
+        $colors['accent'] = '#176B50';
+        $request = $this->requestFor(1, 1, true, array_merge(array_intersect_key($colors,
+            array_flip(['accent', 'accent_hover', 'background', 'surface', 'sidebar',
+                'sidebar_text', 'text', 'border'])), [
+            'name' => 'Claro operacional', 'description' => 'Paleta oficial ajustada',
+            'sidebar_style' => 'light', 'density' => 'comfortable',
+        ]));
+        app(UiThemeController::class)->updateFactory($request, 'fer-light');
+        $this->assertSame('standard', UiThemePreset::query()->where('slug', 'fer-light')->value('status'));
+        $this->assertSame('Claro operacional', $this->resolved(2, 20)['name']);
+        $this->assertSame('#176B50', $this->resolved(2, 20)['accent']);
+
+        $ordinary = $this->requestFor(1, 11, false, $request->all());
+        $this->forbidden(fn () => app(UiThemeController::class)->restoreFactory($ordinary, 'fer-light'));
+        $super = $this->requestFor(1, 1, true);
+        app(UiThemeController::class)->restoreFactory($super, 'fer-light');
+        $this->assertSame('archived', UiThemePreset::query()->where('slug', 'fer-light')->value('status'));
+        $this->assertSame('Claro', $this->resolved(2, 20)['name']);
+        $this->assertSame('#1F9866', $this->resolved(2, 20)['accent']);
+    }
+
+    public function test_public_standard_and_global_default_respect_company_and_personal_overrides(): void
+    {
+        $preset = $this->custom();
+        $ordinary = $this->requestFor(1, 11);
+        $this->forbidden(fn () => app(UiThemeController::class)->promote($ordinary, $preset));
+        $super = $this->requestFor(1, 1, true);
+        app(UiThemeController::class)->promote($super, $preset);
+        $this->requestFor(2, 22);
+        $this->assertTrue(app(UiThemeService::class)->canSelect(2, $preset->slug));
+
+        $super = $this->requestFor(1, 1, true, ['theme_slug' => $preset->slug]);
+        app(UiThemeController::class)->setGlobalDefault($super);
+        $this->assertSame($preset->slug, $this->resolved(2, 22)['slug']);
+
+        $super = $this->requestFor(1, 1, true, ['company_id' => 1, 'theme_slug' => 'fer-night']);
+        app(UiThemeController::class)->setDefault($super);
+        $this->assertSame('fer-night', $this->resolved(1, 22)['slug']);
+        $this->select(1, 11, 'fer-light');
+        $this->assertSame('fer-light', $this->resolved(1, 11)['slug']);
+
+        $super = $this->requestFor(1, 1, true);
+        app(UiThemeController::class)->demote($super, $preset);
+        $this->assertFalse(app(UiThemeService::class)->canSelect(2, $preset->slug));
+        $this->assertSame('fer-light', $this->resolved(2, 22)['slug']);
+        $this->assertSame('fer-night', $this->resolved(1, 22)['slug']);
+        $this->assertSame('fer-light', $this->resolved(1, 11)['slug']);
+    }
+
+    public function test_missing_optional_global_table_does_not_disable_installed_catalog(): void
+    {
+        Schema::drop('ui_theme_system_settings');
+        $this->requestFor(1, 11);
+        $service = app(UiThemeService::class);
+        $this->assertTrue($service->catalogStatus()['ready']);
+        $this->assertSame('fer-light', $service->resolve()['slug']);
+        $this->assertFalse($service->globalSettingsReady());
     }
 }
 

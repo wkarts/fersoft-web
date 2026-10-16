@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\UiThemeService;
+use App\Services\UiPosThemeService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -15,13 +16,16 @@ class InstallUiThemesCommand extends Command
         {--apply : Executa somente as migrations pendentes do catálogo visual}
         {--repair-recorded : Com --apply, reexecuta o up idempotente quando o registro existe mas a tabela/coluna falta}';
 
-    protected $description = 'Diagnostica e, se solicitado, instala as migrations aditivas dos temas da interface';
+    protected $description = 'Diagnostica e instala as migrations aditivas de temas da interface e do PDV';
 
     private const MIGRATIONS = [
         '2026_10_14_230100_create_ui_theme_presets_table' => 'ui_theme_presets',
         '2026_10_14_230101_create_ui_theme_company_settings_table' => 'ui_theme_company_settings',
         '2026_10_14_230102_create_ui_theme_user_preferences_table' => 'ui_theme_user_preferences',
         '2026_10_15_060000_add_menu_mode_to_ui_theme_user_preferences_table' => ['ui_theme_user_preferences', ['menu_mode']],
+        '2026_10_16_050000_create_ui_theme_system_settings_table' => ['ui_theme_system_settings', ['id', 'default_theme_slug', 'created_at', 'updated_at']],
+        '2026_10_16_090000_create_ui_pos_theme_presets_table' => 'ui_pos_theme_presets',
+        '2026_10_16_090001_create_ui_pos_theme_settings_table' => 'ui_pos_theme_settings',
     ];
 
     public function handle(): int
@@ -69,7 +73,7 @@ class InstallUiThemesCommand extends Command
                         return self::FAILURE;
                     }
 
-                    // Os quatro up() são aditivos; um esquema parcial incompatível
+                    // Os up() são aditivos; um esquema parcial incompatível
                     // lança erro e interrompe a instalação sem apagar nenhum dado.
                     (require $path)->up();
                     $this->info("Esquema recuperado: {$migration}");
@@ -133,7 +137,8 @@ class InstallUiThemesCommand extends Command
             return $target;
         }
 
-        $columns = UiThemeService::REQUIRED_COLUMNS[$target];
+        $columns = UiThemeService::REQUIRED_COLUMNS[$target]
+            ?? UiPosThemeService::REQUIRED_COLUMNS[$target];
         if ($migration === '2026_10_14_230102_create_ui_theme_user_preferences_table') {
             $columns = array_values(array_diff($columns, ['menu_mode']));
         }
@@ -144,7 +149,8 @@ class InstallUiThemesCommand extends Command
     private function missingUniqueIndexes(string $table): array
     {
         $missing = [];
-        foreach (UiThemeService::REQUIRED_UNIQUE_INDEXES[$table] as $columns) {
+        foreach (UiThemeService::REQUIRED_UNIQUE_INDEXES[$table]
+            ?? UiPosThemeService::REQUIRED_UNIQUE_INDEXES[$table] ?? [] as $columns) {
             if (!Schema::hasIndex($table, $columns, 'unique')) {
                 $missing[] = implode(', ', $columns);
             }

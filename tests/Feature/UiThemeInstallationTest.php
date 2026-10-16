@@ -68,7 +68,11 @@ class UiThemeInstallationTest extends TestCase
         $this->assertTrue(Schema::hasTable('ui_theme_presets'));
         $this->assertTrue(Schema::hasTable('ui_theme_company_settings'));
         $this->assertTrue(Schema::hasColumn('ui_theme_user_preferences', 'menu_mode'));
-        $this->assertSame(4, DB::table('migrations')->where('migration', 'like', '%ui_theme%')->count());
+        $this->assertTrue(Schema::hasTable('ui_theme_system_settings'));
+        $this->assertSame(5, DB::table('migrations')->where('migration', 'like', '%ui_theme%')->count());
+        $this->assertSame(2, DB::table('migrations')->where('migration', 'like', '%ui_pos_theme%')->count());
+        $this->assertTrue(Schema::hasTable('ui_pos_theme_presets'));
+        $this->assertTrue(Schema::hasTable('ui_pos_theme_settings'));
 
         // A inspeção completa é distinta do atalho de renderização normal.
         $this->assertTrue(app(UiThemeService::class)->catalogStatus()['ready']);

@@ -67,12 +67,12 @@ $target = storage_path('app/ui-browser');
 if (!is_dir($target)) mkdir($target, 0775, true);
 // Prove every render exists; the legacy exception handler can exit CLI with zero.
 register_shutdown_function(static function () use ($target): void {
-    if (count(glob($target . '/fer-*.html')) !== 12
+    if (count(glob($target . '/fer-*.html')) !== 20
         || !is_file($target . '/operational-funcionarios-list.html')
         || !is_file($target . '/operational-funcionarios-register.html')
         || !is_file($target . '/operational-cte-register.html')
         || !is_file($target . '/operational-pdv.html')) {
-        fwrite(STDERR, 'Rendering incomplete: expected 12 dashboard and 4 operational Blade fixtures.' . PHP_EOL);
+        fwrite(STDERR, 'Rendering incomplete: expected 20 dashboard and 4 operational Blade fixtures.' . PHP_EOL);
         exit(1);
     }
 });
@@ -167,4 +167,4 @@ $pdvData = array_merge($base, [
 $app['view']->flushSections();
 $pdvSource = file_get_contents(resource_path('views/frontBox/pdv_assincrono.blade.php'));
 file_put_contents($target . '/operational-pdv.html', \Illuminate\Support\Facades\Blade::render($pdvSource, $pdvData));
-echo 'Rendered 12 dashboard and 4 operational Blade fixtures into '.$target.PHP_EOL;
+echo 'Rendered 20 dashboard and 4 operational Blade fixtures into '.$target.PHP_EOL;

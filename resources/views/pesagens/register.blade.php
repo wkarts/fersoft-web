@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-weighing.css') }}?v={{ filemtime(public_path('css/ui-weighing.css')) }}">
 @endpush
 
 
@@ -132,12 +133,12 @@
                                     </tr>
 
                                     <!-- Modal Tickets -->
-                                    <div class="modal fer-extra-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
+                                    <div class="modal fer-extra-modal fer-weighing-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
-                                                <div class="modal-header bg-primary text-white">
+                                                <div class="modal-header">
                                                     <h5 class="modal-title" id="modalTicketsLabel">Tickets - Pesagem #{{ $pesagem->id }}</h5>
-                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
                                                 </div>

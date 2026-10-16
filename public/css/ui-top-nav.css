@@ -1,16 +1,42 @@
-/* The approved header keeps company context at the start and actions at the end. */
-body.ui-native-shell .ui-operational-actions { width:100%; }
-body.ui-native-shell .ui-masthead .ui-actions { display:flex; flex-wrap:nowrap; align-items:center; width:100%; min-width:0; }
-body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { flex:1 1 auto; width:0; min-width:0; }
+/* The real operational links are laid out as one list, with company and unit
+   context on the left and the existing controls on the right. */
+body.ui-native-shell .ui-operational-actions { width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px;
+    align-items:center; width:100%; min-width:0;
+}
+body.ui-native-shell .ui-masthead .ui-actions > .container-fluid {
+    display:block; width:100%; min-width:0; padding:0;
+}
 body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu-wrapper,
-body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu,
-body.ui-native-shell .ui-masthead .ui-actions .menu-nav { width:100%; min-width:0; }
-body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; }
-body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp) { order:4; }
-body.ui-native-shell .ui-masthead .ui-actions .ui-header-theme { order:10; margin-left:auto; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu { width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav {
+    display:flex; align-items:center; flex-wrap:nowrap; width:100%;
+    min-width:0; gap:8px; margin:0; padding:0;
+}
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item {
+    flex:0 0 auto; min-width:0; margin:0!important; align-self:center;
+}
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-company { order:1; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-environment { order:2; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit { order:3; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-theme {
+    order:10; margin-left:auto!important;
+}
 body.ui-native-shell .ui-masthead .ui-actions .ui-header-whatsapp { order:11; }
-body.ui-native-shell .ui-masthead .ui-actions > .topbar { flex:0 0 auto; margin-left:0; flex-wrap:nowrap; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-pdv { order:12; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp):not(.ui-header-pdv):not(.d-lg-none) { order:4; }
+body.ui-native-shell .ui-masthead .ui-actions > .topbar {
+    display:flex; align-items:center; width:auto; min-width:0; margin:0;
+    gap:8px; flex-wrap:nowrap;
+}
 body.ui-native-shell .ui-masthead .ui-header-unit { min-width:0!important; margin:0!important; }
+body.ui-native-shell .ui-masthead .ui-company-name {
+    display:block; max-width:180px; overflow:hidden; text-overflow:ellipsis;
+}
+body.ui-native-shell .ui-masthead [data-target="#modal-empresa-contador"] {
+    display:block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
 body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex,
 body.ui-native-shell .ui-masthead .ui-header-unit .label { width:auto!important; min-width:0; padding:0; border:0; background:transparent!important; }
 body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:auto!important; max-width:none; flex-wrap:nowrap; }
@@ -39,27 +65,93 @@ body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
 }
 body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"]:is(:hover,:focus-visible) { background:var(--ui-hover)!important; border-color:var(--ui-accent)!important; }
 body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] i { font-size:14px; }
-
-@media (min-width:992px) and (max-width:1250px) {
-    body.ui-native-shell .ui-masthead { padding-block:8px; }
-    body.ui-native-shell .ui-masthead .ui-actions { flex-wrap:wrap; row-gap:8px; }
-    body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { flex:1 1 100%; width:100%; }
-    body.ui-native-shell .ui-masthead .ui-actions > .topbar { margin-left:auto; }
+body.ui-native-shell .ui-masthead .ui-header-pdv > a {
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    min-height:36px; padding:7px 10px; white-space:nowrap;
+}
+body.ui-native-shell .ui-session {
+    min-height:42px; padding:0 22px; gap:4px 16px;
+    align-content:center; line-height:1.25;
+}
+body.ui-native-shell .ui-session .topbar-item {
+    display:flex; align-items:center; min-width:0; min-height:30px;
+}
+body.ui-native-shell .ui-session .topbar-item > .btn {
+    display:inline-flex; align-items:center; min-width:0; min-height:0;
+    white-space:nowrap;
 }
 
-/* On phones the existing controls stay available and wrap in their original groups. */
+@media (min-width:992px) and (max-width:1600px) {
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { flex-wrap:wrap; }
+}
+@media (min-width:992px) and (max-width:1240px) {
+    body.ui-native-shell .ui-masthead { padding-block:8px; }
+    body.ui-native-shell .ui-masthead .ui-actions { grid-template-columns:minmax(0,1fr); row-gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { flex-wrap:wrap; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { justify-self:end; }
+}
+
+/* The first mobile row contains navigation, brand and account. Context and
+   operational actions form aligned rows below it, without hidden controls. */
 @media (max-width:991px) {
-    body.ui-native-shell .ui-masthead .ui-actions { display:grid; width:100%; }
+    body.ui-native-shell .ui-masthead {
+        display:grid; grid-template-columns:36px minmax(0,1fr);
+        grid-template-rows:38px auto; align-items:center; gap:7px 8px;
+        position:relative; padding:8px 13px;
+    }
+    body.ui-native-shell .ui-masthead .ui-mobile-trigger { grid-column:1; grid-row:1; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand {
+        grid-column:2; grid-row:1; min-width:0; padding-right:215px;
+    }
+    body.ui-native-shell .ui-masthead .ui-operational-actions {
+        grid-column:1 / -1; grid-row:2; width:100%; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions { display:block; }
     body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { width:100%; }
-    body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { flex-wrap:wrap; }
-    body.ui-native-shell .ui-masthead .ui-actions .ui-header-theme { margin-left:0; }
-    body.ui-native-shell .ui-masthead .ui-actions > .topbar { margin:0; width:auto; }
-    body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:140px; max-width:140px; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav {
+        flex-wrap:wrap; justify-content:flex-start; gap:6px 8px;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .d-lg-none { order:3; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-unit { order:4; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-theme { order:5; margin-left:0!important; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-whatsapp { order:6; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-pdv { order:7; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp):not(.ui-header-pdv):not(.d-lg-none) { order:8; }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit {
+        flex-direction:row; align-items:center; gap:6px;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit::before { flex:0 0 auto; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:185px!important; max-width:100%; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .form-control {
+        flex:1 1 0; width:0; max-width:none; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar {
+        position:absolute!important; top:8px; right:13px; width:auto; margin:0!important;
+        justify-content:flex-end;
+    }
+    body.ui-native-shell .ui-masthead .ui-user-details { max-width:80px; }
+    body.ui-native-shell .ui-session { padding:6px 13px; gap:3px 12px; }
+    body.ui-native-shell .ui-session .topbar-item { min-height:0; }
 }
 @media (max-width:699px) {
-    body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { gap:5px; }
-    body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:120px; max-width:120px; }
-    body.ui-native-shell .ui-masthead .ui-actions > .topbar { width:100%; justify-content:space-between; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 7px; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:175px!important; }
+    body.ui-native-shell .ui-session { gap:3px 10px; }
+}
+@media (max-width:420px) {
+    body.ui-native-shell .ui-masthead { grid-template-rows:38px 42px auto; row-gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand { padding-right:0; }
+    body.ui-native-shell .ui-masthead .ui-operational-actions { grid-row:3; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { top:51px; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand img { max-width:95px; }
+    body.ui-native-shell .ui-masthead .ui-company-name { max-width:132px; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 5px; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:115px!important; }
+    body.ui-native-shell .ui-masthead .ui-user-details { max-width:53px; }
+    body.ui-native-shell .ui-masthead .ui-user-controls { gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
+        margin-left:0!important; padding-inline:8px;
+    }
 }
 
 /* The optional superior menu is a separate 47px strip below the real header.
@@ -75,7 +167,7 @@ body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] i 
         overflow:visible; border-right:0; border-bottom:1px solid var(--ui-border);
         background:var(--ui-surface); z-index:1030;
     }
-    body.ui-native-shell[data-ui-layout="superior"]:is([data-ui-theme="fer-light"],[data-ui-theme="fer-slate"],[data-ui-theme="fer-night"]:not(.ui-theme-refined--dark)) .ui-sidebar {
+    body.ui-native-shell[data-ui-layout="superior"]:not(.ui-theme-refined--dark) .ui-sidebar {
         --ui-nav-active-text:var(--ui-accent-hover);
     }
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-nav-caption { display:none; }

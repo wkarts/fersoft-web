@@ -23,8 +23,18 @@ body.ui-native-shell .ui-nav-list .menu-item-active > .menu-link .menu-text {fon
 body.ui-native-shell .ui-nav-list .menu-icon { flex:0 0 18px; width:18px; margin:0!important; color:inherit!important; }
 body.ui-native-shell .ui-nav-list .menu-icon svg { width:18px; height:18px; }
 body.ui-native-shell .ui-nav-list .svg-icon svg [fill="#000000"], body.ui-native-shell .ui-nav-list .svg-icon svg [fill="#000"] { fill:currentColor!important; }
-body.ui-native-shell .ui-nav-list .menu-toggle::after { content:'⌄'; margin-left:auto; font-size:15px; opacity:.75; }
-body.ui-native-shell .ui-nav-list .ui-nav-expanded > .menu-toggle::after { transform:rotate(180deg); }
+/* A small chevron belongs to the menu row; avoid the detached text glyph
+   that looked like a second column next to the scrollbar. */
+body.ui-native-shell .ui-nav-list .menu-toggle::after {
+    content:''; display:block; box-sizing:border-box; flex:0 0 7px;
+    width:7px; height:7px; margin:-3px 5px 0 7px;
+    border:solid currentColor; border-width:0 1.5px 1.5px 0;
+    transform:rotate(45deg); opacity:.65;
+    transition:transform .15s ease,opacity .15s ease;
+}
+body.ui-native-shell .ui-nav-list .ui-nav-expanded > .menu-toggle::after {
+    transform:translateY(3px) rotate(225deg); opacity:.95;
+}
 body.ui-native-shell .ui-nav-list .menu-submenu { position:static; width:auto; margin:3px 7px 7px 21px; padding:2px 0 2px 8px; border-left:1px solid var(--ui-border); background:transparent!important; box-shadow:none; }
 body.ui-native-shell .ui-nav-list .menu-submenu .menu-link { font-size:11.5px; min-height:33px; padding:7px 10px; }
 body.ui-native-shell .ui-nav-list .menu-bullet, body.ui-native-shell .ui-nav-list .menu-arrow, body.ui-native-shell .ui-nav-list .menu-subnav > .menu-item-parent { display:none; }
@@ -337,9 +347,42 @@ body.ui-native-shell[data-ui-layout="lateral"] .ui-sidebar .ui-brand img {
     max-width:min(195px, 100%);
     max-height:58px;
 }
+/* Same quiet circular control in both rail states, centered on the brand row. */
+@media(min-width:992px) {
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand {
+        box-sizing:border-box;
+        height:var(--ui-sidebar-brand-height, var(--ui-top-height));
+        min-height:var(--ui-sidebar-brand-height, var(--ui-top-height));
+    }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-version {
+        box-sizing:border-box;
+        height:var(--ui-sidebar-version-height, 42px);
+        min-height:var(--ui-sidebar-version-height, 42px);
+    }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand [data-ui-collapse] {
+        width:28px; height:28px; border-radius:50%;
+        font-size:14px; line-height:1; color:var(--ui-muted);
+        background:var(--ui-surface); border-color:var(--ui-border);
+    }
+}
+body.ui-native-shell .ui-navigation {
+    overscroll-behavior:contain;
+    scrollbar-color:var(--ui-border) transparent;
+}
+body.ui-native-shell .ui-navigation::-webkit-scrollbar { width:5px; }
+body.ui-native-shell .ui-navigation::-webkit-scrollbar-track { background:transparent; }
+body.ui-native-shell .ui-navigation::-webkit-scrollbar-thumb {
+    border-radius:6px; background:var(--ui-border);
+}
 
-/* ARGWS Monitor-like icon rail, using the FERSOFT logo and the ERP's real menu tree. */
+/* Collapsed icon rail using the existing logo and the ERP's real menu tree. */
 body.ui-native-shell .ui-brand .ui-brand-symbol { display:none; }
+/* The bundled dark ink logo needs a light backing on dark themes. Published
+   customer logos keep their own background and sizing. */
+body.ui-native-shell.ui-theme-refined--dark .ui-brand .brand-logo img.ui-brand-default-logo,
+body.ui-native-shell.ui-theme-refined--dark .ui-mobile-brand .brand-logo img.ui-brand-default-logo {
+    padding:4px 7px; border-radius:7px; background:#fff;
+}
 @media(min-width:992px) {
     body.ui-native-shell.ui-nav-collapsed[data-ui-layout="lateral"] { --ui-sidebar-width:80px; }
     body.ui-native-shell.ui-nav-collapsed .ui-sidebar { overflow:visible; }
@@ -359,10 +402,10 @@ body.ui-native-shell .ui-brand .ui-brand-symbol { display:none; }
         background:#fff;
     }
     body.ui-native-shell.ui-nav-collapsed .ui-brand [data-ui-collapse] {
-        position:absolute; right:-15px; top:50px; z-index:3;
-        width:30px; height:30px; border-radius:50%;
-        background:var(--ui-surface); box-shadow:0 2px 9px rgba(22,44,51,.08);
-        font-size:15px; line-height:1;
+        position:absolute; right:-13px; top:50%; transform:translateY(-50%); z-index:3;
+        width:26px; height:26px; border-radius:50%;
+        background:var(--ui-surface); box-shadow:0 2px 7px rgba(22,44,51,.07);
+        font-size:13px; line-height:1;
     }
     body.ui-native-shell.ui-nav-collapsed .ui-nav-caption { display:none; }
     body.ui-native-shell.ui-nav-collapsed .ui-version {

@@ -191,6 +191,33 @@ body.ui-native-shell .modal-body { padding: 18px; background: var(--ui-surface);
 body.ui-native-shell .modal-footer { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; background: var(--ui-surface-alt); border-top: 1px solid var(--ui-border); }
 body.ui-native-shell .modal-footer > * { margin: 0; }
 body.ui-native-shell .modal-backdrop.show { opacity: .45; }
+/* The header helper emits the WhatsApp dialogs inside the action list. In the
+   refined shell they are moved to body, where the whole form can use its grid. */
+body.ui-native-shell :is(#modalWhatsAppGlobal,#modalConfirmacaoGlobal,#modalMensagemGlobal) .modal-header {
+  background: var(--ui-surface)!important; color: var(--ui-ink)!important;
+}
+body.ui-native-shell :is(#modalWhatsAppGlobal,#modalConfirmacaoGlobal,#modalMensagemGlobal) .modal-header .close {
+  color: var(--ui-muted)!important;
+}
+body.ui-native-shell #modalMensagemGlobal .modal-header .modal-title.text-white { color: var(--ui-ink)!important; }
+body.ui-native-shell #modalMensagemGlobal .modal-header.bg-success { background: var(--ui-accent-soft)!important; }
+body.ui-native-shell #modalMensagemGlobal .modal-header.bg-danger { background: var(--ui-danger-bg)!important; }
+body.ui-native-shell #modalWhatsAppGlobal .modal-dialog { width: min(820px, calc(100vw - 24px)); }
+body.ui-native-shell #modalWhatsAppGlobal .modal-body .form-row { width: 100%; }
+body.ui-native-shell #modalWhatsAppGlobal .modal-body .form-control {
+  display: block; width: 100%; max-width: none; min-width: 0;
+}
+body.ui-native-shell #modalWhatsAppGlobal .modal-body .form-control-file {
+  display: block; max-width: 100%; color: var(--ui-ink);
+}
+body.ui-native-shell #modalWhatsAppGlobal .modal-body .form-text,
+body.ui-native-shell #modalWhatsAppGlobal .ui-whatsapp-footer-hint {
+  color: var(--ui-muted)!important; font-size: 11px; line-height: 1.55;
+}
+body.ui-native-shell #modalWhatsAppGlobal .ui-whatsapp-footer-hint {
+  flex: 1 1 330px; max-width: none; min-width: 0;
+}
+body.ui-native-shell #modalWhatsAppGlobal .modal-footer > .btn { flex: 0 0 auto; }
 body.ui-native-shell :is(.alert,.toast,.swal-modal,.swal2-popup) { border-radius: 10px; border: 1px solid var(--ui-border); box-shadow: var(--ui-shadow); }
 
 /* The existing views use both swal(...) and Swal.fire(...). Their vendor skins
