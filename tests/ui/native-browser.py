@@ -612,8 +612,8 @@ def main():
     finally:
         server.shutdown()
         (FIXTURES / 'browser-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    assert len(report) == 64 and all(row['status'] == 'passed' for row in report)
-    print('64 real Blade/browser scenarios passed with no JavaScript exceptions.')
+    assert len(report) == 96 and all(row['status'] == 'passed' for row in report)
+    print('96 real Blade/browser scenarios passed with no JavaScript exceptions.')
 
 
 if __name__ == '__main__':

@@ -347,6 +347,7 @@ class UserController extends Controller
             $session = [
                 'id' => $usr->id,
                 'nome' => $usr->nome,
+                'img' => $usr->img,
                 'adm' => $usr->adm,
                 'ambiente' => $ambiente,
                 'empresa' => $usr->empresa_id,
@@ -946,6 +947,7 @@ class UserController extends Controller
         $session = [
             'id' => $usr->id,
             'nome' => $usr->nome,
+            'img' => $usr->img,
             'adm' => $usr->adm,
             'ambiente' => $ambiente,
             'empresa' => $usr->empresa_id,

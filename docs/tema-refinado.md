@@ -36,6 +36,12 @@ O superusuário administra `/config/temas/pdv`: escolhe um padrão único para o
 
 ## Operação e validação
 
+### Foto do usuário e formulários
+
+O cadastro e a edição de usuário aceitam foto JPG, PNG ou WebP de até 2 MB. A área **Minha foto** em `/usuarios/perfil` permite ao usuário autenticado trocar apenas a própria imagem. O avatar aparece ao lado do nome no cabeçalho, com a inicial como fallback. O recurso reutiliza a coluna `usuarios.img` e `public/foto_usuario`, já existentes e consumidos pelo app fiscal; não há migration de foto. O endpoint de perfil vincula o usuário e a empresa à sessão, sem abrir edição de permissões.
+
+O formulário de usuário recebeu grade e controles de permissão responsivos e um rodapé de ações com botões separados. O CSS compartilhado também trata toolbars, campos Select2, ações e grupos de botões em views existentes. Essas regras não substituem uma inspeção funcional individual das demais views; as capturas locais foram feitas com fixtures e o código novo precisa ser validado após implantação com as permissões e os dados reais de homologação.
+
 As tabelas do Studio (`ui_theme_presets`, `ui_theme_company_settings`, `ui_theme_user_preferences`) e a coluna `menu_mode` são pré-requisitos das escolhas pessoais e do catálogo. A nova tabela aditiva `ui_theme_system_settings` guarda somente o padrão global; sua ausência desabilita apenas esse controle no SUPER e mantém os temas e preferências já instalados funcionando. Se `/ui/temas` indicar indisponibilidade do catálogo básico, confira o estado das migrations anteriores antes de atribuir o problema ao CSS.
 
 ### Instalação do catálogo em uma instalação existente

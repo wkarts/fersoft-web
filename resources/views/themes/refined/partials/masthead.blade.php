@@ -366,7 +366,14 @@
 
                     <div class="topbar-item user-tour">
                         <div class="ui-user-controls">
-                            <span class="ui-user-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}</span>
+                            @php($avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl())
+                            <a class="ui-user-avatar ui-user-avatar-link" href="{{ route('usuarios.profile') }}" aria-label="Minha foto de perfil" title="Minha foto">
+                                @if($avatarUrl)
+                                    <img src="{{ $avatarUrl }}" alt="">
+                                @else
+                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}
+                                @endif
+                            </a>
                             <span class="ui-user-details">
                                 <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
                                 <strong class="kt-header__topbar-username kt-hidden-mobile text-info text-left">{{session('user_logged')['nome']}}</strong>

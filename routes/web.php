@@ -450,6 +450,11 @@ Route::group(['prefix' => '/payment', 'middleware' => 'verificaEmpresa'], functi
     Route::get('/consulta/{code}', 'PaymentController@consultaPagamento');
 });
 
+Route::group(['prefix' => 'usuarios/perfil', 'middleware' => 'verificaEmpresa'], function () {
+    Route::get('/', 'UsuarioController@profile')->name('usuarios.profile');
+    Route::post('/foto', 'UsuarioController@updateProfilePhoto')->name('usuarios.profile.photo');
+});
+
 Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'])->group(function () {
     Route::get('/app-versions', 'AppVersionController@index');
     Route::get('/app-versions/{appVersion}/pdf/{type?}', 'AppVersionController@downloadPdf')->where('type', 'current|cumulative');

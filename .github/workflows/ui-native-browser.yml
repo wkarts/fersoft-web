@@ -9,8 +9,11 @@ on:
       - 'app/Support/UiThemePalette.php'
       - 'app/Services/UiThemeService.php'
       - 'app/Services/UiPosThemeService.php'
+      - 'app/Services/UserAvatarService.php'
       - 'app/Http/Controllers/UiThemeController.php'
       - 'app/Http/Controllers/PosThemeController.php'
+      - 'app/Http/Controllers/UsuarioController.php'
+      - 'app/Http/Controllers/UserController.php'
       - 'app/Console/Commands/InstallUiThemesCommand.php'
       - 'routes/web.php'
       - 'database/migrations/*ui_theme*'
@@ -23,6 +26,7 @@ on:
       - 'tests/Feature/UiPreferencesIntegrationTest.php'
       - 'tests/Feature/UiThemeInstallationTest.php'
       - 'tests/Feature/UiPosThemeTest.php'
+      - 'tests/Feature/UserAvatarTest.php'
       - '.github/workflows/ui-native-browser.yml'
   workflow_dispatch:
 permissions:
@@ -98,6 +102,8 @@ jobs:
           php -l app/Services/UiThemeService.php
           php -l app/Services/UiPosThemeService.php
           php -l app/Http/Controllers/PosThemeController.php
+          php -l app/Http/Controllers/UsuarioController.php
+          php -l app/Services/UserAvatarService.php
           php -l config/ui_pos_theme.php
           php -l app/Console/Commands/InstallUiThemesCommand.php
           php -l tests/ui/render-native.php
@@ -114,7 +120,7 @@ jobs:
           python tests/ui/test-view-contracts.py
           php artisan config:clear
           php artisan view:cache
-          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest|UiThemeInstallationTest|UiPosThemeTest'
+          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest|UiThemeInstallationTest|UiPosThemeTest|UserAvatarTest'
           php tests/ui/render-native.php
       - name: Testar browser desktop e mobile
         run: |

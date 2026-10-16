@@ -94,9 +94,17 @@ body.ui-native-shell :is(.btn-light-primary,.btn-light-success,.btn-light-info,.
   color: var(--ui-accent)!important; background: var(--ui-accent-soft)!important; border-color: var(--ui-border)!important;
 }
 body.ui-native-shell :is(.btn-light-primary,.btn-light-success,.btn-light-info,.btn-outline-primary,.btn-outline-success,.btn-outline-info,.btn-secondary,.btn-light,.btn-default,.btn-clean):is(:hover,:focus) { background: var(--ui-hover)!important; border-color: var(--ui-accent)!important; }
+body.ui-native-shell :is(.btn-dark,.btn-outline-dark) {
+  color: var(--ui-ink)!important; background: var(--ui-surface-alt)!important; border-color: var(--ui-border)!important;
+}
+body.ui-native-shell :is(.btn-dark,.btn-outline-dark):is(:hover,:focus) { background: var(--ui-hover)!important; border-color: var(--ui-accent)!important; }
 body.ui-native-shell :is(.btn-danger,.btn-light-danger) { color: var(--ui-danger-text)!important; background: var(--ui-danger-bg)!important; border-color: var(--ui-danger-border)!important; }
 body.ui-native-shell :is(.btn-danger,.btn-light-danger):hover { border-color: var(--ui-danger-text)!important; }
 body.ui-native-shell :is(.btn-warning,.btn-light-warning) { color: var(--ui-warning-text)!important; background: var(--ui-warning-bg)!important; border-color: var(--ui-warning-border)!important; }
+body.ui-native-shell .btn-outline-danger { color: var(--ui-danger-text)!important; background: transparent!important; border-color: var(--ui-danger-border)!important; }
+body.ui-native-shell .btn-outline-danger:is(:hover,:focus) { background: var(--ui-danger-bg)!important; border-color: var(--ui-danger-text)!important; }
+body.ui-native-shell .btn-outline-warning { color: var(--ui-warning-text)!important; background: transparent!important; border-color: var(--ui-warning-border)!important; }
+body.ui-native-shell .btn-outline-warning:is(:hover,:focus) { background: var(--ui-warning-bg)!important; border-color: var(--ui-warning-text)!important; }
 body.ui-native-shell .btn-link { border: 0; background: transparent; color: var(--ui-accent); }
 body.ui-native-shell .btn:disabled, body.ui-native-shell .btn.disabled { opacity: .48; cursor: not-allowed; }
 body.ui-native-shell .ui-actions :is(.btn,.label) { min-height: 30px; font-size: 10px; }
@@ -320,6 +328,59 @@ body.ui-native-shell .symbol-label { display: inline-flex; align-items: center; 
 body.ui-native-shell .progress { background: var(--ui-border); border-radius: 99px; }
 body.ui-native-shell .progress-bar { background: var(--ui-accent); }
 
+/* Repeated Blade structures: keep headers, filters and actions aligned without
+   changing any of the forms, routes or table markup owned by each module. */
+body.ui-native-shell .ui-page .card > .card-header > :is(.card-title,.card-toolbar) { min-width: 0; }
+body.ui-native-shell .ui-page .card > .card-header > .card-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: auto;
+}
+body.ui-native-shell .ui-page .card > .card-header > .card-toolbar > :is(a,button,.dropdown) { margin: 0!important; }
+body.ui-native-shell .ui-page .card > .card-header :is(.card-title,h3) { overflow-wrap: anywhere; }
+body.ui-native-shell .ui-page .card > :is(.container,.container-fluid),
+body.ui-native-shell .ui-page .card > .card-body > :is(.container,.container-fluid) {
+  width: 100%; max-width: none;
+}
+body.ui-native-shell .ui-page .card > :is(.container,.container-fluid) > .col-lg-12 {
+  max-width: 100%; padding-inline: 0;
+}
+body.ui-native-shell .ui-page .fer-list .fer-actions > .col-12.d-flex { flex-wrap: wrap; gap: 8px; }
+body.ui-native-shell :is(.ui-page,.modal-body) .form-group .input-group { min-width: 0; }
+body.ui-native-shell :is(.ui-page,.modal-body) .form-group .input-group > :is(.form-control,.custom-select) {
+  min-width: 0;
+}
+body.ui-native-shell :is(.ui-page,.modal-body) .input-group > .select2-container {
+  flex: 1 1 0; width: auto!important; min-width: 0;
+}
+body.ui-native-shell :is(.ui-page,.modal-body) .input-group > .invalid-feedback { flex-basis: 100%; }
+body.ui-native-shell .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  min-height: 36px; padding: 4px 7px!important; line-height: 1.4!important;
+}
+body.ui-native-shell .select2-container--default .select2-selection--multiple .select2-selection__choice {
+  max-width: 100%; margin: 0; padding: 3px 7px;
+  color: var(--ui-ink); background: var(--ui-accent-soft); border: 1px solid var(--ui-border);
+  border-radius: 5px; white-space: normal; overflow-wrap: anywhere;
+}
+body.ui-native-shell .select2-container--default .select2-selection--multiple .select2-search--inline {
+  flex: 1 1 90px; min-width: 80px;
+}
+body.ui-native-shell .select2-container--default .select2-selection--multiple .select2-search__field {
+  width: 100%!important; height: 26px; margin: 0; color: var(--ui-ink);
+}
+body.ui-native-shell .modal-body :is(.row,[class*="col-"]) { min-width: 0; }
+body.ui-native-shell .modal-body :is(.container,.container-fluid) { max-width: 100%; }
+body.ui-native-shell .modal-header .close { flex: 0 0 auto; margin-left: auto; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] { display: inline-flex; max-width: 100%; vertical-align: middle; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn { min-width: 0; margin: 0; border-radius: 0; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn:first-child { border-radius: 7px 0 0 7px; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn:last-child { border-radius: 0 7px 7px 0; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn:only-child { border-radius: 7px; }
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn.active,
+body.ui-native-shell :is(.ui-page,.modal) .btn-group[role="group"] > .btn[aria-pressed="true"] {
+  position: relative; z-index: 1; color: var(--ui-on-accent)!important;
+  background: var(--ui-accent)!important; border-color: var(--ui-accent)!important;
+}
+
 @media (max-width: 1199px) {
   body.ui-native-shell .ui-masthead { padding-inline: 15px; }
   body.ui-native-shell .ui-page { padding-inline: 16px; }
@@ -335,7 +396,9 @@ body.ui-native-shell .progress-bar { background: var(--ui-accent); }
   body.ui-native-shell .modal-dialog, body.ui-native-shell .modal-dialog.modal-lg, body.ui-native-shell .modal-dialog.modal-xl { max-width: calc(100vw - 16px); margin: 8px auto; }
   body.ui-native-shell .modal-body { max-height: 70dvh; padding: 13px; }
   body.ui-native-shell .modal-footer { justify-content: stretch; }
-  body.ui-native-shell .modal-footer > :is(.btn,button,a) { flex: 1 1 auto; }
+  body.ui-native-shell .modal-footer > :is(.btn,button,a) { flex: 1 1 130px; }
+  body.ui-native-shell .ui-page .card > .card-header > .card-toolbar { width: 100%; margin-left: 0; }
+  body.ui-native-shell .ui-page .card > :is(.container,.container-fluid) { padding-inline: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
   body.ui-native-shell :is(a,button,input,select,textarea) { transition: none; }
