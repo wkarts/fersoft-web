@@ -427,6 +427,15 @@ body.ui-native-shell * {
   scrollbar-color: var(--ui-scrollbar-thumb) var(--ui-scrollbar-track);
   scrollbar-width: auto;
 }
+body.ui-native-shell #kt_wrapper,
+body.ui-native-shell #kt_wrapper *,
+body.ui-native-shell > .modal,
+body.ui-native-shell > .modal *,
+body.ui-native-shell > .swal2-container,
+body.ui-native-shell > .swal2-container * {
+  scrollbar-color: var(--ui-scrollbar-thumb) var(--ui-scrollbar-track);
+  scrollbar-width: auto;
+}
 body.ui-native-shell .ui-navigation,
 body.ui-native-shell .ui-data-scroll,
 body.ui-native-shell .ui-page :is(.table-responsive,.datatable,.dataTables_wrapper) {
@@ -435,7 +444,13 @@ body.ui-native-shell .ui-page :is(.table-responsive,.datatable,.dataTables_wrapp
 }
 html:has(> body.ui-native-shell)::-webkit-scrollbar,
 body.ui-native-shell::-webkit-scrollbar,
-body.ui-native-shell *::-webkit-scrollbar {
+body.ui-native-shell *::-webkit-scrollbar,
+body.ui-native-shell #kt_wrapper::-webkit-scrollbar,
+body.ui-native-shell #kt_wrapper *::-webkit-scrollbar,
+body.ui-native-shell > .modal::-webkit-scrollbar,
+body.ui-native-shell > .modal *::-webkit-scrollbar,
+body.ui-native-shell > .swal2-container::-webkit-scrollbar,
+body.ui-native-shell > .swal2-container *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
@@ -455,17 +470,35 @@ html:has(> body.ui-native-shell.ui-theme-refined--dark)::-webkit-scrollbar-thumb
   border-color: #27353d;
 }
 body.ui-native-shell::-webkit-scrollbar-track,
-body.ui-native-shell *::-webkit-scrollbar-track {
+body.ui-native-shell *::-webkit-scrollbar-track,
+body.ui-native-shell #kt_wrapper::-webkit-scrollbar-track,
+body.ui-native-shell #kt_wrapper *::-webkit-scrollbar-track,
+body.ui-native-shell > .modal::-webkit-scrollbar-track,
+body.ui-native-shell > .modal *::-webkit-scrollbar-track,
+body.ui-native-shell > .swal2-container::-webkit-scrollbar-track,
+body.ui-native-shell > .swal2-container *::-webkit-scrollbar-track {
   background: var(--ui-scrollbar-track);
 }
 body.ui-native-shell::-webkit-scrollbar-thumb,
-body.ui-native-shell *::-webkit-scrollbar-thumb {
+body.ui-native-shell *::-webkit-scrollbar-thumb,
+body.ui-native-shell #kt_wrapper::-webkit-scrollbar-thumb,
+body.ui-native-shell #kt_wrapper *::-webkit-scrollbar-thumb,
+body.ui-native-shell > .modal::-webkit-scrollbar-thumb,
+body.ui-native-shell > .modal *::-webkit-scrollbar-thumb,
+body.ui-native-shell > .swal2-container::-webkit-scrollbar-thumb,
+body.ui-native-shell > .swal2-container *::-webkit-scrollbar-thumb {
   background: var(--ui-scrollbar-thumb);
   border: 1px solid var(--ui-scrollbar-track);
   border-radius: 8px;
 }
 body.ui-native-shell::-webkit-scrollbar-thumb:hover,
-body.ui-native-shell *::-webkit-scrollbar-thumb:hover {
+body.ui-native-shell *::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell #kt_wrapper::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell #kt_wrapper *::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell > .modal::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell > .modal *::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell > .swal2-container::-webkit-scrollbar-thumb:hover,
+body.ui-native-shell > .swal2-container *::-webkit-scrollbar-thumb:hover {
   background: var(--ui-ink);
 }
 body.ui-native-shell .ui-navigation::-webkit-scrollbar { width: 10px; height: 10px; }
