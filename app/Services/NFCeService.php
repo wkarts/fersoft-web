@@ -2214,7 +2214,7 @@ class NFCeService{
             } catch (\Throwable $e) {
                 $this->resultadoUltimaTransmissao = 'indeterminado';
                 $this->concluirLogTransmissao(
-                    $logger, $registro, 'erro_tecnico', $codigo, $e->getMessage(), $resp
+                    $logger, $registro, 'erro_tecnico', $codigo, $e->getMessage(), $resp, $contextoResposta
                 );
                 Log::error('NFC-e: falha ao processar autorização retornada pela SEFAZ.', [
                     ...$contextoResposta,
