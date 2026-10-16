@@ -52,8 +52,22 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
+      - name: Preparar notas da release para o registro local
+        id: notes
+        shell: bash
+        env:
+          RELEASE_BODY: ${{ github.event.release.body || '' }}
+          MANUAL_VERSION: ${{ inputs.version || '' }}
+        run: |
+          set -euo pipefail
+          body="${RELEASE_BODY:-Release ${MANUAL_VERSION:-manual} aplicada pelo fluxo de release.}"
+          notes_b64="$(printf '%s' "$body" | base64 -w 0)"
+          echo "notes_b64=$notes_b64" >> "$GITHUB_OUTPUT"
+
       - name: Deploy remoto (idempotente)
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          RELEASE_NOTES_B64: ${{ steps.notes.outputs.notes_b64 }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -61,6 +75,7 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script_stop: true
           command_timeout: 30m
+          envs: RELEASE_NOTES_B64
           script: |
             set -euo pipefail
             APP_DIR="${{ secrets.DEPLOY_APP_DIR }}"
@@ -78,6 +93,32 @@ jobs:
               composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
               export RELEASE_VERSION="$VERSION"
+
+              php <<'PHP'
+              <?php
+              $encoded = getenv('RELEASE_NOTES_B64') ?: '';
+              $notes = base64_decode($encoded, true);
+              if ($notes === false) {
+                  fwrite(STDERR, "Notas da release inválidas.\n");
+                  exit(1);
+              }
+
+              $version = getenv('RELEASE_VERSION') ?: '';
+              $safeTitle = htmlspecialchars('Release '.$version, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+              $safeNotes = htmlspecialchars($notes, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+              $html = '<!doctype html><html><head><meta charset="utf-8"></head><body><h1>'
+                  .$safeTitle.'</h1><pre>'.$safeNotes.'</pre></body></html>';
+              $notesPath = 'storage/app/releases/'.$version.'/current.html';
+              $notesDirectory = dirname($notesPath);
+              if (!is_dir($notesDirectory) && !mkdir($notesDirectory, 0775, true) && !is_dir($notesDirectory)) {
+                  fwrite(STDERR, "Não foi possível criar o diretório das notas.\n");
+                  exit(1);
+              }
+              if (file_put_contents($notesPath, $html) === false) {
+                  fwrite(STDERR, "Não foi possível gravar as notas HTML.\n");
+                  exit(1);
+              }
+              PHP
 
               php artisan app-version:apply-release "$VERSION" \
                 --manifest=storage/app/releases/manifest.json \
