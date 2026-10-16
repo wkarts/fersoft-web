@@ -33,6 +33,120 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def navigation_contract(page):
+    """Capture the authorized menu tree, including child links and duplicate routes.
+
+    The fixture uses the real Menu helper and a restricted in-memory company.
+    Compare the rendered tree across layouts and presets rather than asserting a
+    hard-coded copy of the production menu that would go stale as modules grow.
+    """
+    return page.locator('#ui-navigation .ui-nav-list').evaluate('''list =>
+        Array.from(list.children).filter(item => item.matches('.menu-item')).map(item => {
+            const link = Array.from(item.children).find(child => child.matches('a.menu-link'));
+            return {
+                label: link?.querySelector('.menu-text')?.textContent.trim() || '',
+                href: link?.getAttribute('href') || '',
+                children: Array.from(item.querySelectorAll('.menu-submenu a.menu-link'))
+                    .map(child => [child.querySelector('.menu-text')?.textContent.trim() || '',
+                        child.getAttribute('href') || ''])
+            };
+        })''')
+
+
+def check_collapsed_navigation(page, persistent=False):
+    original = navigation_contract(page)
+    active = page.locator('#ui-navigation .ui-nav-list > .menu-item.menu-item-open > .menu-toggle').first
+    active_id = active.get_attribute('aria-controls') if active.count() else None
+    collapse = page.locator('[data-ui-collapse]')
+    collapse.click()
+    assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
+    assert collapse.get_attribute('aria-expanded') == 'false'
+    assert collapse.get_attribute('aria-label') == 'Expandir navegação'
+    assert abs(page.locator('#ui-sidebar').bounding_box()['width'] - 80) <= 2, 'Collapsed rail must retain an 80px icon column.'
+    assert page.locator('.ui-brand-symbol').is_visible(), 'The original FERSOFT symbol must remain reachable.'
+    assert not page.locator('#ui-sidebar .brand-logo').is_visible()
+
+    group = page.locator('#ui-navigation .ui-nav-list > .menu-item > .menu-toggle').filter(has_text='Cadastros').first
+    assert group.get_attribute('title') == 'Cadastros', 'An icon-only group needs an accessible name.'
+    group.click()
+    submenu = page.locator('#' + group.get_attribute('aria-controls'))
+    assert group.get_attribute('aria-expanded') == 'true' and submenu.is_visible()
+    box = submenu.bounding_box()
+    assert box['x'] >= 80 and box['x'] + box['width'] <= page.viewport_size['width'] + 2, 'Rail flyout is clipped.'
+    assert submenu.locator('a[href="/produtos"]').is_visible(), 'The original product route disappeared from the flyout.'
+    assert submenu.locator('a[href="/clientes"]').is_visible(), 'The original customer route disappeared from the flyout.'
+    assert navigation_contract(page) == original, 'Collapsing changed the authorized menu tree.'
+    page.keyboard.press('Escape')
+    assert group.get_attribute('aria-expanded') == 'false' and not submenu.is_visible()
+    assert group.evaluate('(e)=>document.activeElement===e'), 'Escape must return focus to the group icon.'
+
+    group.press('ArrowRight')
+    assert submenu.is_visible(), 'Keyboard users must be able to open the rail flyout.'
+    page.mouse.click(page.viewport_size['width'] - 15, page.viewport_size['height'] - 15)
+    assert not submenu.is_visible(), 'A click outside the rail should close the flyout.'
+    assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
+    if persistent:
+        page.reload(wait_until='domcontentloaded')
+        assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")'), 'Rail preference was not restored.'
+        assert navigation_contract(page) == original
+        collapse = page.locator('[data-ui-collapse]')
+    collapse.click()
+    assert not page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
+    assert collapse.get_attribute('aria-expanded') == 'true'
+    if active_id:
+        assert page.locator('#' + active_id).is_visible(), 'The current section must be restored after expanding.'
+    assert navigation_contract(page) == original, 'Expanding changed authorized routes.'
+
+
+def check_superior_navigation(page, resize=False):
+    """The same permission-filtered menu becomes a 47px row below the header."""
+    original = navigation_contract(page)
+    sidebar = page.locator('#ui-sidebar')
+    assert sidebar.evaluate('(e)=>e.previousElementSibling?.matches(".ui-masthead")'), 'Top menu must follow the header.'
+    assert sidebar.evaluate('(e)=>e.nextElementSibling?.id==="ui-session"'), 'Session context must follow the top menu.'
+    assert abs(sidebar.bounding_box()['height'] - 47) <= 2, 'Top navigation must be 47px high.'
+    assert abs(sidebar.bounding_box()['y'] - (page.locator('.ui-masthead').bounding_box()['y']
+        + page.locator('.ui-masthead').bounding_box()['height'])) <= 2
+    assert page.locator('#ui-navigation').evaluate('(e)=>getComputedStyle(e).overflowX') == 'auto'
+    assert page.locator('.ui-nav-list').evaluate('(e)=>getComputedStyle(e).flexWrap') == 'nowrap'
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), 'Top row caused page overflow.'
+    assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu became visible.'
+
+    first = page.locator('#ui-navigation .ui-nav-list > .menu-item > .menu-toggle').filter(has_text='Cadastros').first
+    last = page.locator('#ui-navigation .ui-nav-list > .menu-item > .menu-toggle').last
+    for group in (first, last):
+        group.scroll_into_view_if_needed()
+        group.click()
+        submenu = page.locator('#' + group.get_attribute('aria-controls'))
+        assert group.get_attribute('aria-expanded') == 'true' and submenu.is_visible()
+        box = submenu.bounding_box()
+        anchor = group.bounding_box()
+        assert box['x'] >= 10 and box['x'] + box['width'] <= page.viewport_size['width'] + 2
+        assert box['y'] >= anchor['y'] + anchor['height'] - 2, 'Top flyout is detached from its trigger.'
+        assert submenu.locator('a[href]:not([href^="#"])').count() > 0, 'Top group lost its operational links.'
+        group.press('ArrowLeft')
+        assert not submenu.is_visible(), 'ArrowLeft must close the focused top group.'
+        group.press('ArrowRight')
+        assert submenu.is_visible(), 'ArrowRight must reopen the focused top group.'
+        group.press('Escape')
+        assert not submenu.is_visible(), 'Escape must close the top group.'
+    assert navigation_contract(page) == original, 'Top layout changed the authorized menu tree.'
+
+    if resize:
+        page.set_viewport_size({'width': 768, 'height': 1024})
+        assert sidebar.evaluate('(e)=>e.parentElement?.matches(".ui-app")'), 'Top menu did not return to the mobile drawer.'
+        assert sidebar.evaluate('(e)=>e.inert'), 'Closed mobile drawer must not intercept keyboard focus.'
+        page.locator('[data-ui-menu-open]').click()
+        assert sidebar.get_attribute('aria-modal') == 'true'
+        page.keyboard.press('Escape')
+        assert sidebar.evaluate('(e)=>e.inert')
+        page.set_viewport_size({'width': 1920, 'height': 1032})
+        assert sidebar.evaluate('(e)=>e.previousElementSibling?.matches(".ui-masthead")')
+        assert abs(sidebar.bounding_box()['height'] - 47) <= 2
+        assert navigation_contract(page) == original
+        assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2')
+
+
 def check_page(page, theme, layout, density, width):
     assert page.locator('h1').first.inner_text() == 'Dashboard Analítico Executivo'
     assert '6.479.876,12' in page.locator('.ui-metrics').inner_text()
@@ -40,6 +154,10 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('.ui-chart-empty').first.evaluate('(e)=>e.getBoundingClientRect().height <= 205'), 'Empty charts do not match the proposal height.'
     assert page.locator('.ui-metric').first.evaluate('(e)=>e.getBoundingClientRect().height <= 128'), 'Metric cards exceed the proposal height.'
     assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu was exposed.'
+    assert page.locator('#ui-navigation a[href="/produtos"]').count() == 1
+    assert page.locator('#ui-navigation a[href="/clientes"]').count() == 1
+    assert page.locator('#ui-navigation a[href="/funcionarios"]').count() >= 1
+    assert len(navigation_contract(page)) >= 8, 'The permission-filtered menu lost groups.'
     for selector in ['a[href="/login/logoff"]', '#set-location-top', '#btn-whatsapp-global', '#dataHoraClock']:
         assert page.locator(selector).count() == 1, 'Missing/duplicated operational control: ' + selector
     assert page.locator('.ui-finance-link').count() == 4
@@ -57,12 +175,28 @@ def check_page(page, theme, layout, density, width):
     session_info = page.locator('.ui-session .text-info').first
     if session_info.count():
         assert session_info.evaluate('(e)=>getComputedStyle(e).color') == body_text_color, 'Session details must use the proposal text color.'
+    tokens = page.locator('body').evaluate('''e => {
+        const s = getComputedStyle(e);
+        return {accent: s.getPropertyValue('--ui-accent').trim().toUpperCase(),
+            sidebar: s.getPropertyValue('--ui-aside').trim().toUpperCase(),
+            background: s.getPropertyValue('--ui-bg').trim().toUpperCase()};
+    }''')
+    assert page.locator('body').get_attribute('data-ui-theme') == theme
     if theme == 'fer-light':
+        assert tokens == {'accent':'#1F9866','sidebar':'#FFFFFF','background':'#F5F7F7'}
         assert sidebar_color == 'rgb(255, 255, 255)', 'The approved default uses a light sidebar.'
         assert canvas_color == 'rgb(245, 247, 247)', 'The approved default uses the proposal canvas.'
     if theme == 'fer-slate':
-        assert sidebar_color == 'rgb(29, 38, 57)', 'The optional slate variant uses the proposal dark-sidebar color.'
+        assert tokens == {'accent':'#1F9866','sidebar':'#1D2639','background':'#F5F7F7'}
+        if layout == 'lateral' or width < 992:
+            assert sidebar_color == 'rgb(29, 38, 57)', 'The optional slate sidebar uses the approved dark color.'
+        else:
+            assert sidebar_color == 'rgb(255, 255, 255)', 'The 47px top strip uses the light workspace surface.'
         assert canvas_color == 'rgb(245, 247, 247)', 'The slate variant keeps the workspace light.'
+    if theme == 'fer-night':
+        assert tokens == {'accent':'#62D3AB','sidebar':'#172D35','background':'#11252C'}
+        assert canvas_color == 'rgb(17, 37, 44)'
+        assert sidebar_color == ('rgb(23, 45, 53)' if layout == 'lateral' or width < 992 else 'rgb(28, 51, 59)')
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
     assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")'), 'The approved Poppins typography is missing.'
     font_state = page.evaluate('''async()=>{
@@ -106,15 +240,9 @@ def check_page(page, theme, layout, density, width):
             theme_action = page.locator('.ui-header-theme')
             if unit.count() and theme_action.count():
                 assert unit.bounding_box()['x'] < theme_action.bounding_box()['x'], 'Unit selection must precede theme actions in the header.'
-            page.locator('[data-ui-collapse]').click()
-            assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-nav-collapsed")')
-            page.locator('[data-ui-collapse]').click()
+            check_collapsed_navigation(page, persistent=(theme == 'fer-light' and density == 'comfortable' and width == 1920))
         else:
-            last_group = page.locator('#ui-navigation .ui-nav-list > .menu-item > .menu-toggle').last
-            last_group.click()
-            submenu_id = last_group.get_attribute('aria-controls')
-            assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
-            page.keyboard.press('Escape')
+            check_superior_navigation(page, resize=(theme == 'fer-light' and density == 'comfortable' and width == 1920))
     page.locator('[data-target="#fixture-modal"]').click()
     page.locator('#fixture-modal').wait_for(state='visible')
     assert page.locator('#fixture-name').input_value() == 'Preservado'
@@ -140,6 +268,7 @@ def check_page(page, theme, layout, density, width):
     assert 'Produto de teste' in table.inner_text(), 'Datagrid did not recover after a filter.'
     page.evaluate('document.activeElement?.blur()')
     page.evaluate('window.scrollTo(0,0)')
+    return navigation_contract(page)
 
 
 def check_employee_page(page, kind, width):
@@ -237,6 +366,7 @@ def main():
         with sync_playwright() as playwright:
             options = {'executable_path': os.environ['UI_CHROMIUM']} if os.getenv('UI_CHROMIUM') else {}
             browser = playwright.chromium.launch(headless=True, **options)
+            expected_menu = None
             for theme in ['fer-light', 'fer-slate', 'fer-night']:
                 for layout in ['lateral', 'superior']:
                     for density in ['comfortable', 'compact']:
@@ -252,7 +382,11 @@ def main():
                             try:
                                 page.goto(f'http://127.0.0.1:8765/fixtures/{filename}', wait_until='domcontentloaded')
                                 page.wait_for_timeout(300)
-                                check_page(page, theme, layout, density, width)
+                                rendered_menu = check_page(page, theme, layout, density, width)
+                                if expected_menu is None:
+                                    expected_menu = rendered_menu
+                                else:
+                                    assert rendered_menu == expected_menu, 'Theme, layout or viewport changed the authorized groups, names or routes.'
                                 assert not errors, 'Unexpected JavaScript exception: ' + '; '.join(errors)
                                 if density == 'comfortable':
                                     page.screenshot(path=str(FIXTURES / f'{theme}-{layout}-{width}.png'), full_page=True)

@@ -100,6 +100,41 @@ final class UiPreferencesIntegrationTest extends TestCase
         );
     }
 
+    public function test_approved_sidebar_color_density_and_navigation_combinations_are_saved_without_new_schema(): void
+    {
+        foreach (['light', 'dark'] as $color) {
+            foreach (['light', 'dark'] as $sidebar) {
+                foreach (['comfortable', 'compact'] as $density) {
+                    foreach (['lateral', 'superior'] as $navigation) {
+                        $request = $this->requestFor(1, 11, false, [
+                            'theme_slug' => 'fer-light',
+                            'color_mode' => $color,
+                            'sidebar_mode' => $sidebar,
+                            'density' => $density,
+                            'menu_mode' => $navigation,
+                        ]);
+                        app(UiThemeController::class)->select($request);
+
+                        $resolved = $this->resolved(1, 11);
+                        $tokens = UiThemePalette::tokens($resolved);
+                        $this->assertSame($sidebar === 'dark' ? 'fer-slate' : 'fer-light', $resolved['slug']);
+                        $this->assertSame($color === 'dark', $resolved['dark']);
+                        $this->assertSame($density, $resolved['density']);
+                        $this->assertSame($navigation, $resolved['menu_mode']);
+                        $this->assertSame($color === 'dark' ? '#11252C' : '#F5F7F7', $tokens['--ui-bg']);
+                        $this->assertSame(
+                            $color === 'dark' ? '#172D35' : ($sidebar === 'dark' ? '#1D2639' : '#FFFFFF'),
+                            $tokens['--ui-aside']
+                        );
+                        $this->assertSame($color === 'dark' ? '#62D3AB' : '#1F9866', $tokens['--ui-accent']);
+                    }
+                }
+            }
+        }
+
+        $this->assertSame(1, DB::table('ui_theme_user_preferences')->count());
+    }
+
     public function test_personal_preferences_are_scoped_to_company_and_user(): void
     {
         $this->select(1, 11, 'fer-night', 'superior');

@@ -369,12 +369,14 @@
                     </div>
 
                     <div class="topbar-item user-tour">
-                        <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-                            <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span><span class="ui-user-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}</span>
-                            <span style="margin-left: 3px; width: 100" class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
-
-                            <a style="margin-left: 10px;" href="/login/logoff" class="btn btn-danger">
-                                <i class="la la-user"></i>
+                        <div class="ui-user-controls">
+                            <span class="ui-user-avatar" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}</span>
+                            <span class="ui-user-details">
+                                <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
+                                <strong class="kt-header__topbar-username kt-hidden-mobile text-info text-left">{{session('user_logged')['nome']}}</strong>
+                            </span>
+                            <a href="/login/logoff" class="btn btn-danger">
+                                <i class="la la-sign-out-alt" aria-hidden="true"></i>
                                 Logoff
                             </a>
                         </div>

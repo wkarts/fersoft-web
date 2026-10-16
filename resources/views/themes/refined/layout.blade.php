@@ -86,6 +86,7 @@
 
     <link rel="stylesheet" href="{{ asset('css/ui-operational.css') }}?v={{ filemtime(public_path('css/ui-operational.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/fer-design-system.css') }}?v={{ filemtime(public_path('css/fer-design-system.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-top-nav.css') }}?v={{ filemtime(public_path('css/ui-top-nav.css')) }}">
     @stack('styles')
 
 </head>
@@ -1540,5 +1541,6 @@
 
 @stack('scripts')
 <script src="{{ asset('js/ui-operational.js') }}?v={{ filemtime(public_path('js/ui-operational.js')) }}" defer></script>
+<script src="{{ asset('js/ui-top-nav.js') }}?v={{ filemtime(public_path('js/ui-top-nav.js')) }}" defer></script>
 </body>
 </html>

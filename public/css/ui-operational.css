@@ -3,6 +3,7 @@
 body.ui-native-shell { margin:0; --ui-sidebar-width:264px; --ui-top-height:74px; background:var(--ui-bg); color:var(--ui-ink); }
 body.ui-native-shell .ui-app { display:flex; min-height:100vh; min-height:100dvh; }
 body.ui-native-shell .ui-sidebar { position:fixed; inset:0 auto 0 0; width:var(--ui-sidebar-width); display:flex; flex-direction:column; background:var(--ui-aside); color:var(--ui-sidebar-ink); border-right:1px solid var(--ui-border); z-index:1025; }
+body.ui-native-shell[data-ui-layout="lateral"][data-ui-theme="fer-slate"] .ui-sidebar { --ui-border:#36435A; }
 body.ui-native-shell .ui-brand { display:flex; align-items:center; gap:8px; padding:8px 10px 8px 15px; min-height:74px; background:var(--ui-surface); flex-shrink:0; border-bottom:1px solid var(--ui-border); }
 body.ui-native-shell .ui-brand .brand-logo { flex:1; min-width:0; }
 body.ui-native-shell .ui-brand img { display:block; width:auto; max-width:145px; height:auto; max-height:45px; object-fit:contain; }
@@ -57,12 +58,6 @@ body.ui-native-shell .ui-skip { position:fixed; transform:translateY(-140%); pad
 body.ui-native-shell .ui-skip:focus { transform:translateY(0); outline:2px solid var(--ui-accent)!important; outline-offset:2px; }
 body.ui-native-shell .ui-menu-backdrop[hidden], body.ui-native-shell .ui-nav-list [hidden] { display:none!important; }
 body.ui-native-shell .ui-mobile-trigger, body.ui-native-shell .ui-mobile-close { display:none; }
-body.ui-native-shell.ui-nav-collapsed { --ui-sidebar-width:70px; }
-body.ui-native-shell.ui-nav-collapsed .ui-brand { padding:8px 7px; flex-wrap:wrap; justify-content:center; }
-body.ui-native-shell.ui-nav-collapsed .ui-brand .brand-logo { display:none; }
-body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-text, body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-toggle::after, body.ui-native-shell.ui-nav-collapsed .ui-version, body.ui-native-shell.ui-nav-collapsed .ui-nav-caption { display:none; }
-body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-link { justify-content:center; padding:12px 8px; }
-body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-submenu { display:none!important; }
 body.ui-native-shell.ui-density-compact .ui-page { padding:14px 16px 22px; }
 body.ui-native-shell.ui-density-compact .ui-nav-list .menu-link { min-height:34px; padding-top:8px; padding-bottom:8px; }
 body.ui-native-shell.ui-density-compact .ui-nav-list .menu-submenu .menu-link { min-height:29px; padding-top:5px; padding-bottom:5px; }
@@ -226,36 +221,9 @@ body.ui-native-shell .ui-mobile-brand {display:none;}
  body.ui-native-shell .ui-session {gap:5px 10px;}
 }
 
-/* Exact palette and hierarchy from the approved FERSOFT HTML proposal. */
-body.ui-native-shell[data-ui-theme="fer-light"] {
-    --ui-accent:#1f9866!important;
-    --ui-accent-hover:#15754f!important;
-    --ui-accent-soft:#eaf5ef!important;
-    --ui-bg:#f5f7f7!important;
-    --ui-surface:#fff!important;
-    --ui-surface-alt:#fafcfc!important;
-    --ui-aside:#fff!important;
-    --ui-ink:#182f36!important;
-    --ui-muted:#62777d!important;
-    --ui-border:#dce7e7!important;
-    --ui-sidebar-ink:#566c72!important;
-    --ui-nav-active-bg:#eaf5ef!important;
-    --ui-nav-active-text:#1f9866!important;
-}
-body.ui-native-shell[data-ui-theme="fer-slate"] {
-    --ui-accent:#1f9866!important;
-    --ui-accent-hover:#15754f!important;
-    --ui-bg:#f5f7f7!important;
-    --ui-surface:#fff!important;
-    --ui-surface-alt:#fafcfc!important;
-    --ui-aside:#1d2639!important;
-    --ui-ink:#182f36!important;
-    --ui-muted:#62777d!important;
-    --ui-border:#dce7e7!important;
-    --ui-sidebar-ink:#b9c7d8!important;
-    --ui-nav-active-bg:#20463d!important;
-    --ui-nav-active-text:#79d6ab!important;
-}
+/* As cores do preset e as variantes escolhidas no Studio são geradas em
+   themes.refined.assets por UiThemePalette. Não repetir tokens aqui: regras
+   por slug anulam as preferências claro/escuro e os modelos personalizados. */
 body.ui-native-shell .ui-brand { background:var(--ui-surface); }
 body.ui-native-shell .ui-actions { flex-wrap:nowrap; }
 body.ui-native-shell .ui-actions > .container-fluid { flex:1 1 auto; min-width:0; }
@@ -368,4 +336,81 @@ body.ui-native-shell .ui-chart-empty { height:203px; margin:18px 25px; }
 body.ui-native-shell[data-ui-layout="lateral"] .ui-sidebar .ui-brand img {
     max-width:min(195px, 100%);
     max-height:58px;
+}
+
+/* ARGWS Monitor-like icon rail, using the FERSOFT logo and the ERP's real menu tree. */
+body.ui-native-shell .ui-brand .ui-brand-symbol { display:none; }
+@media(min-width:992px) {
+    body.ui-native-shell.ui-nav-collapsed[data-ui-layout="lateral"] { --ui-sidebar-width:80px; }
+    body.ui-native-shell.ui-nav-collapsed .ui-sidebar { overflow:visible; }
+    body.ui-native-shell.ui-nav-collapsed .ui-brand {
+        position:relative; min-height:74px; padding:7px 10px;
+        justify-content:center; flex-wrap:nowrap;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-brand .brand-logo { display:none; }
+    body.ui-native-shell.ui-nav-collapsed .ui-brand .ui-brand-symbol {
+        display:flex; width:52px; height:58px; align-items:center;
+        justify-content:center; border-radius:8px;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-brand .ui-brand-symbol img {
+        width:48px; height:auto; max-width:none; max-height:none; flex:none;
+    }
+    body.ui-native-shell.ui-nav-collapsed.ui-theme-refined--dark .ui-brand .ui-brand-symbol {
+        background:#fff;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-brand [data-ui-collapse] {
+        position:absolute; right:-15px; top:50px; z-index:3;
+        width:30px; height:30px; border-radius:50%;
+        background:var(--ui-surface); box-shadow:0 2px 9px rgba(22,44,51,.08);
+        font-size:15px; line-height:1;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-caption { display:none; }
+    body.ui-native-shell.ui-nav-collapsed .ui-version {
+        display:flex; min-height:40px; padding:0 9px; justify-content:center;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-btn {
+        display:flex; align-items:center; justify-content:center;
+        width:52px; min-height:35px; padding:0; border-radius:9px;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-btn:is(:hover,:focus-visible) {
+        background:var(--ui-nav-active-bg)!important; color:var(--ui-nav-active-text)!important;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-main { display:none; }
+    body.ui-native-shell.ui-nav-collapsed .ui-version .app-version-desktop-head i { font-size:19px; margin:0; }
+    body.ui-native-shell.ui-nav-collapsed .ui-navigation { padding:9px 9px 20px; }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item { margin:0 0 2px; }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link {
+        width:52px; min-height:46px; margin:0 auto; padding:10px;
+        justify-content:center; border-radius:11px; background:transparent!important;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link .menu-icon {
+        display:inline-flex; align-items:center; justify-content:center;
+        width:20px; flex-basis:20px; margin:0!important; font-size:19px;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link .menu-icon svg {
+        width:20px; height:20px;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link .menu-text,
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link.menu-toggle::after { display:none; }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-link:is(:hover,:focus-visible),
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item:is(.menu-item-active,.ui-nav-current,.ui-nav-expanded) > .menu-link {
+        color:var(--ui-nav-active-text); background:var(--ui-nav-active-bg)!important;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-submenu:not([hidden]) {
+        display:block!important; position:fixed; left:calc(var(--ui-sidebar-width) + 8px);
+        top:var(--ui-rail-top, 12px); width:min(310px, calc(100vw - 102px));
+        max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain;
+        margin:0; padding:9px 12px 12px; border:1px solid var(--ui-border);
+        border-radius:11px; background:var(--ui-aside)!important;
+        box-shadow:0 14px 36px rgba(15,39,50,.17); z-index:1060;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-submenu:not([hidden])::before {
+        content:attr(data-ui-group-label); display:block; padding:6px 7px 10px;
+        color:var(--ui-sidebar-ink); font-size:11px; font-weight:700;
+        border-bottom:1px solid var(--ui-border); margin-bottom:6px;
+    }
+    body.ui-native-shell.ui-nav-collapsed .ui-nav-list > .menu-item > .menu-submenu .menu-link {
+        width:auto; min-height:34px; justify-content:flex-start;
+        padding:7px 10px; text-align:left;
+    }
 }

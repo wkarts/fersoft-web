@@ -79,7 +79,16 @@ class UiThemeController extends Controller
             'color_mode' => ['required', Rule::in(['follow', 'light', 'dark'])],
             'density' => ['required', Rule::in(['comfortable', 'compact'])],
             'menu_mode' => ['sometimes', Rule::in(['follow', 'lateral', 'superior'])],
+            'sidebar_mode' => ['sometimes', Rule::in(['light', 'dark'])],
         ]);
+
+        // A proposta combina sidebar clara/escura com tema, densidade e
+        // navegação. Os dois presets claros já codificam essa escolha; não é
+        // necessário criar coluna nem persistir CSS solto no navegador.
+        if (in_array($data['theme_slug'], ['fer-light', 'fer-slate'], true)
+            && isset($data['sidebar_mode'])) {
+            $data['theme_slug'] = $data['sidebar_mode'] === 'dark' ? 'fer-slate' : 'fer-light';
+        }
 
         $context = $this->context();
         $company = (int) $context['empresa'];

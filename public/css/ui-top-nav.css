@@ -1,0 +1,116 @@
+/* The approved header keeps company context at the start and actions at the end. */
+body.ui-native-shell .ui-operational-actions { width:100%; }
+body.ui-native-shell .ui-masthead .ui-actions { display:flex; flex-wrap:nowrap; align-items:center; width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { flex:1 1 auto; width:0; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu-wrapper,
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu,
+body.ui-native-shell .ui-masthead .ui-actions .menu-nav { width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { display:flex; align-items:center; flex-wrap:nowrap; gap:8px; }
+body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp) { order:4; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-theme { order:10; margin-left:auto; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-whatsapp { order:11; }
+body.ui-native-shell .ui-masthead .ui-actions > .topbar { flex:0 0 auto; margin-left:0; flex-wrap:nowrap; }
+body.ui-native-shell .ui-masthead .ui-header-unit { min-width:0!important; margin:0!important; }
+body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex,
+body.ui-native-shell .ui-masthead .ui-header-unit .label { width:auto!important; min-width:0; padding:0; border:0; background:transparent!important; }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:auto!important; max-width:none; flex-wrap:nowrap; }
+body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:190px; min-width:0; max-width:190px; height:36px; background:var(--ui-surface-alt); }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append { margin-left:8px; }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append .btn {
+    min-width:36px; min-height:36px; padding:7px; border:1px solid var(--ui-border)!important;
+    border-radius:8px!important; color:var(--ui-accent)!important; background:var(--ui-surface)!important;
+}
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append .btn:is(:hover,:focus-visible) { border-color:var(--ui-accent)!important; background:var(--ui-accent-soft)!important; }
+body.ui-native-shell .ui-masthead .ui-header-whatsapp > :is(a,button) {
+    width:36px!important; height:36px!important; padding:8px!important;
+    color:var(--ui-accent)!important; background:var(--ui-surface)!important; border-color:var(--ui-border)!important;
+}
+body.ui-native-shell .ui-masthead .ui-header-whatsapp > :is(a,button):is(:hover,:focus-visible) {
+    background:var(--ui-accent-soft)!important; border-color:var(--ui-accent)!important;
+}
+body.ui-native-shell .ui-masthead .ui-user-controls { display:flex; align-items:center; gap:8px; min-height:38px; }
+body.ui-native-shell .ui-masthead .ui-user-controls .ui-user-avatar { margin:0; width:36px; height:36px; flex-basis:36px; }
+body.ui-native-shell .ui-masthead .ui-user-details { display:flex; flex-direction:column; min-width:0; max-width:150px; line-height:1.3; }
+body.ui-native-shell .ui-masthead .ui-user-details .kt-header__topbar-welcome { display:block; color:var(--ui-muted); font-size:10px; }
+body.ui-native-shell .ui-masthead .ui-user-details .kt-header__topbar-username { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ui-ink)!important; font-size:11px; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] { margin-left:5px!important; min-height:38px; padding:7px 12px; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
+    color:var(--ui-ink)!important; background:var(--ui-surface)!important; border-color:var(--ui-border)!important;
+}
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"]:is(:hover,:focus-visible) { background:var(--ui-hover)!important; border-color:var(--ui-accent)!important; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] i { font-size:14px; }
+
+@media (min-width:992px) and (max-width:1250px) {
+    body.ui-native-shell .ui-masthead { padding-block:8px; }
+    body.ui-native-shell .ui-masthead .ui-actions { flex-wrap:wrap; row-gap:8px; }
+    body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { flex:1 1 100%; width:100%; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { margin-left:auto; }
+}
+
+/* On phones the existing controls stay available and wrap in their original groups. */
+@media (max-width:991px) {
+    body.ui-native-shell .ui-masthead .ui-actions { display:grid; width:100%; }
+    body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { width:100%; }
+    body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { flex-wrap:wrap; }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-theme { margin-left:0; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { margin:0; width:auto; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:140px; max-width:140px; }
+}
+@media (max-width:699px) {
+    body.ui-native-shell .ui-masthead .ui-actions .menu-nav > .menu-nav { gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:120px; max-width:120px; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { width:100%; justify-content:space-between; }
+}
+
+/* The optional superior menu is a separate 47px strip below the real header.
+   JS moves the existing aside into this position; Blade permissions and links stay intact. */
+@media (min-width:992px) {
+    body.ui-native-shell[data-ui-layout="superior"] .ui-app { display:block; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-workspace { width:100%; margin-left:0; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar {
+        --ui-sidebar-ink:var(--ui-muted); --ui-nav-active-bg:var(--ui-accent-soft);
+        --ui-nav-active-text:var(--ui-ink);
+        position:sticky; inset:auto; top:0; display:block; width:100%; height:47px; min-height:47px;
+        overflow:visible; border-right:0; border-bottom:1px solid var(--ui-border);
+        background:var(--ui-surface); z-index:1030;
+    }
+    body.ui-native-shell[data-ui-layout="superior"]:is([data-ui-theme="fer-light"],[data-ui-theme="fer-slate"],[data-ui-theme="fer-night"]:not(.ui-theme-refined--dark)) .ui-sidebar {
+        --ui-nav-active-text:var(--ui-accent-hover);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand,
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version,
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-nav-caption { display:none; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-navigation {
+        display:block; width:100%; height:46px; min-height:46px; padding:5px 24px;
+        overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; scrollbar-color:var(--ui-border) transparent;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list {
+        display:flex; width:max-content; min-width:100%; flex-wrap:nowrap; align-items:center; gap:8px;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item { flex:0 0 auto; margin:0; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link {
+        display:flex; gap:5px; align-items:center; width:auto; height:36px; min-height:36px;
+        padding:0 10px; border-radius:8px; color:var(--ui-muted); font-size:10.5px; font-weight:600;
+        white-space:nowrap;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link:is(:hover,:focus-visible),
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item:is(.menu-item-active,.ui-nav-expanded) > .menu-link {
+        color:var(--ui-nav-active-text); background:var(--ui-nav-active-bg);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link .menu-icon { width:14px; flex-basis:14px; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link .menu-icon svg { width:14px; height:14px; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-submenu {
+        position:fixed!important; top:var(--ui-flyout-top, 121px)!important;
+        left:var(--ui-flyout-left, 24px)!important; width:min(320px, calc(100vw - 24px));
+        min-width:min(245px, calc(100vw - 24px)); max-width:calc(100vw - 24px);
+        max-height:min(70vh, calc(100dvh - var(--ui-flyout-top, 121px) - 12px));
+        overflow-y:auto; overflow-x:hidden; margin:0; padding:8px; border:1px solid var(--ui-border);
+        border-radius:9px; background:var(--ui-surface)!important; box-shadow:0 12px 30px #0002;
+        transform:none!important; z-index:1040;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-submenu[hidden] { display:none!important; }
+}
+
+@media print {
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar { display:none!important; }
+}

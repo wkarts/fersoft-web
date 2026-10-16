@@ -48,29 +48,36 @@ final class UiThemePalette
     public static function tokens(array $theme): array
     {
         $dark = (bool) ($theme['dark'] ?? false);
-        $surface = self::hex($theme['surface'] ?? null, $dark ? '#1A2B3A' : '#FFFFFF');
-        $ink = self::hex($theme['text'] ?? null, $dark ? '#EDF4FC' : '#1C2A40');
+        $surface = self::hex($theme['surface'] ?? null, $dark ? '#1C333B' : '#FFFFFF');
+        $ink = self::hex($theme['text'] ?? null, $dark ? '#EEF6F4' : '#182F36');
         if (self::contrast($surface, $ink) < 4.5) $ink = self::foreground($surface);
-        $accent = self::hex($theme['accent'] ?? null, '#168F81');
-        $aside = self::hex($theme['sidebar'] ?? null, '#FFFFFF');
-        $asideInk = self::hex($theme['sidebar_text'] ?? null, '#24334E');
+        $accent = self::hex($theme['accent'] ?? null, $dark ? '#62D3AB' : '#1F9866');
+        $aside = self::hex($theme['sidebar'] ?? null, $dark ? '#172D35' : '#FFFFFF');
+        $asideInk = self::hex($theme['sidebar_text'] ?? null, $dark ? '#BECFCE' : '#566C72');
         if (self::contrast($aside, $asideInk) < 4.5) $asideInk = self::foreground($aside);
-        $navActive = self::mix($aside, $accent, .16);
-        $navInk = self::contrast($navActive, $accent) >= 4.5 ? $accent : $asideInk;
+        $navActive = self::hex($theme['nav_active_bg'] ?? null, self::mix($aside, $accent, .16));
+        $navInk = self::hex($theme['nav_active_text'] ?? null, $accent);
+        if (self::contrast($navActive, $navInk) < 4.5) {
+            $navInk = self::hex($theme['accent_hover'] ?? null, $asideInk);
+        }
+        if (self::contrast($navActive, $navInk) < 4.5) {
+            $navInk = self::contrast($navActive, $asideInk) >= 4.5
+                ? $asideInk : self::foreground($navActive);
+        }
         return [
             '--ui-accent' => $accent,
-            '--ui-accent-hover' => self::hex($theme['accent_hover'] ?? null, '#11786D'),
+            '--ui-accent-hover' => self::hex($theme['accent_hover'] ?? null, $dark ? '#8FDAB7' : '#15754F'),
             '--ui-on-accent' => self::foreground($accent),
-            '--ui-accent-soft' => self::mix($surface, $accent, .09),
-            '--ui-bg' => self::hex($theme['background'] ?? null, $dark ? '#111C2A' : '#F5F7FB'),
+            '--ui-accent-soft' => self::hex($theme['accent_soft'] ?? null, self::mix($surface, $accent, .09)),
+            '--ui-bg' => self::hex($theme['background'] ?? null, $dark ? '#11252C' : '#F5F7F7'),
             '--ui-surface' => $surface,
-            '--ui-surface-alt' => self::mix($surface, $ink, .025),
+            '--ui-surface-alt' => self::hex($theme['surface_alt'] ?? null, self::mix($surface, $ink, .025)),
             '--ui-aside' => $aside,
             '--ui-sidebar-ink' => $asideInk,
             '--ui-ink' => $ink,
-            '--ui-muted' => self::mix($surface, $ink, .70),
-            '--ui-border' => self::hex($theme['border'] ?? null, $dark ? '#33475C' : '#DEE5EF'),
-            '--ui-hover' => self::mix($surface, $accent, .06),
+            '--ui-muted' => self::hex($theme['muted'] ?? null, self::mix($surface, $ink, .70)),
+            '--ui-border' => self::hex($theme['border'] ?? null, $dark ? '#38535C' : '#DCE7E7'),
+            '--ui-hover' => self::hex($theme['hover'] ?? null, self::mix($surface, $accent, .06)),
             '--ui-focus' => self::mix($surface, $accent, .28),
             '--ui-nav-active-bg' => $navActive,
             '--ui-nav-active-text' => $navInk,

@@ -31,7 +31,7 @@ body.ui-native-shell .ui-brand img { max-width: 147px; }
 body.ui-native-shell .ui-version { min-height: 42px; padding-inline: 13px; }
 body.ui-native-shell .ui-version .app-version-desktop-btn { color: var(--ui-sidebar-ink)!important; font-size: 10px; }
 body.ui-native-shell .ui-navigation { padding: 10px 9px 22px; }
-body.ui-native-shell .ui-nav-caption { padding: 8px 10px 12px; letter-spacing: .075em; color: var(--ui-muted); }
+body.ui-native-shell .ui-nav-caption { padding: 8px 10px 12px; letter-spacing: .075em; color: var(--ui-sidebar-ink); }
 body.ui-native-shell .ui-nav-list .menu-link { min-height: 38px; padding: 8px 10px; font-size: 11px; border-radius: 7px; }
 body.ui-native-shell .ui-nav-list .menu-icon { width: 16px; flex-basis: 16px; }
 body.ui-native-shell .ui-nav-list .menu-icon svg { width: 16px; height: 16px; }
