@@ -323,13 +323,6 @@ class NFCeController extends Controller
 
                     if ($dadosReassinatura704 !== null) {
                         $reassinatura704 = $dadosReassinatura704;
-                        $this->registrarEventoNfce($venda, 'reassinatura_704_iniciada', [
-                            'dhEmi_preservada' => $dadosReassinatura704['dhEmi_original'],
-                            'dhSaiEnt_preservada' => $dadosReassinatura704['dhSaiEnt_original'],
-                            'tpEmis' => $dadosReassinatura704['tpEmis'],
-                            'consulta_sefaz_cStat' => 217,
-                            'fiscal_emission_log_id_original' => $dadosReassinatura704['fiscal_emission_log_id'],
-                        ], 'warning');
                     }
                 }
 
@@ -337,6 +330,14 @@ class NFCeController extends Controller
                     if ($reassinatura704 !== null) {
                         $nfce = $nfe_service->prepararReassinaturaNfce704($venda, $config, $reassinatura704);
                         $hashXmlOriginal704 = $nfce['sha256_xml_original'] ?? null;
+                        $this->registrarEventoNfce($venda, 'reassinatura_704_iniciada', [
+                            'dhEmi_original' => $nfce['dhEmi_original'],
+                            'dhEmi_transmissao' => $nfce['dhEmi_transmissao'],
+                            'dhSaiEnt_preservada' => $nfce['dhSaiEnt'],
+                            'tpEmis' => $nfce['tpEmis'],
+                            'consulta_sefaz_cStat' => 217,
+                            'fiscal_emission_log_id_original' => $nfce['fiscal_emission_log_id'],
+                        ], 'warning');
                     } else {
                         $nfce = $nfe_service->gerarNFCe($vendaId);
                     }
@@ -427,7 +428,8 @@ class NFCeController extends Controller
 
                     if ($reassinatura704 !== null) {
                         $this->registrarEventoNfce($venda, 'xml_reassinado_apos_704', [
-                            'dhEmi_preservada' => $nfce['dhEmi'] ?? null,
+                            'dhEmi_original' => $nfce['dhEmi_original'] ?? null,
+                            'dhEmi_transmissao' => $nfce['dhEmi'] ?? null,
                             'dhSaiEnt_preservada' => $nfce['dhSaiEnt'] ?? null,
                             'tpEmis' => $nfce['tpEmis'] ?? null,
                             'consulta_sefaz_cStat' => 217,
@@ -441,7 +443,7 @@ class NFCeController extends Controller
                         'sha256_xml_assinado' => hash('sha256', (string) $signed),
                         'retransmissao' => $retransmitindo,
                         'reassinatura_704' => $reassinatura704 !== null,
-                        'dhEmi_preservada' => $reassinatura704 !== null ? ($nfce['dhEmi'] ?? null) : null,
+                        'dhEmi_transmissao' => $reassinatura704 !== null ? ($nfce['dhEmi'] ?? null) : null,
                         'dhSaiEnt_preservada' => $reassinatura704 !== null ? ($nfce['dhSaiEnt'] ?? null) : null,
                     ]);
 
