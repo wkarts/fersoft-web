@@ -355,7 +355,7 @@ class NFCeController extends Controller
                                 . 'tpEmis original: 1 (normal)' . "\n\n"
                                 . 'Se confirmar, a mesma NFC-e será retransmitida com uma nova assinatura. O XML arquivado da tentativa rejeitada será reutilizado; somente dhEmi será atualizado para '
                                 . $dadosCorrecao704['dhEmi_proposto']
-                                . ', e a assinatura digital será refeita. Nenhuma nova NFC-e será criada. Chave, série, número, cNF, tpEmis, dhSaiEnt, itens, tributos, valores e pagamentos serão preservados.' . "\\n\\n"
+                                . ', e a assinatura digital será refeita. Nenhuma nova NFC-e será criada. Chave, série, número, cNF, tpEmis, dhSaiEnt, itens, tributos, valores e pagamentos serão preservados.' . "\n\n"
                                 . 'O XML anterior fica preservado na auditoria. Como dhEmi é data de emissão fiscal, confirme somente conforme o procedimento fiscal da empresa.',
                             'dhEmi_original' => $dadosCorrecao704['dhEmi_original'],
                             'dhEmi_proposto' => $dadosCorrecao704['dhEmi_proposto'],
