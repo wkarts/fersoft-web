@@ -3285,9 +3285,25 @@ function emitirNFCe(vendaId){
             $('#btn_envia_grid_'+vendaId).removeClass('disabled')
 
 
-            let recibo = typeof e === 'string'
-                ? e
-                : (e && typeof e === 'object' ? (e.message || JSON.stringify(e)) : String(e ?? ''));
+            let recibo;
+            if (typeof e === 'string') {
+                recibo = e;
+            } else if (Array.isArray(e)) {
+                recibo = 'Erro: ' + e.map((v) => typeof v === 'string' ? v : JSON.stringify(v)).join("\\n");
+            } else if (e && typeof e === 'object') {
+                const infProt = e.protNFe?.infProt || e.retEnviNFe?.protNFe?.infProt || {};
+                const codigo = infProt.cStat ?? e.cStat;
+                const motivo = infProt.xMotivo || e.xMotivo || e.message;
+                if (codigo !== undefined && codigo !== null && codigo !== '') {
+                    recibo = [100, 150].includes(Number(codigo))
+                        ? 'Apro'
+                        : 'Erro: [' + codigo + '] - ' + (motivo || 'A SEFAZ não autorizou a NFC-e.');
+                } else {
+                    recibo = 'Erro: ' + (e.message || JSON.stringify(e));
+                }
+            } else {
+                recibo = String(e ?? '');
+            }
             let retorno = recibo.substring(0,4);
             let mensagem = recibo.substring(5,recibo.length);
             if(retorno == 'Erro'){
