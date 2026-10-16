@@ -9,8 +9,8 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 /**
- * Regressão: dhEmi só muda após 704, consulta 217 e confirmação explícita.
- * Os testes de diagnóstico não invocam webservice nem escrevem em produção.
+ * Regressão: após rejeição 704 e consulta 217, só dhEmi muda antes da
+ * assinatura padrão; os testes não invocam webservice nem escrevem em produção.
  */
 class NfceRejeicao704TimeoutTest extends TestCase
 {
@@ -63,7 +63,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
             . $protocolo . '</retConsSitNFe>';
     }
 
-    public function test_rejeicao_704_reassina_sem_confirmacao_e_sem_alterar_datas(): void
+    public function test_rejeicao_704_reassina_sem_confirmacao_alterando_somente_dhEmi(): void
     {
         $service = file_get_contents(
             dirname(__DIR__, 2) . '/app/Services/NFCeService.php'
@@ -80,11 +80,14 @@ class NfceRejeicao704TimeoutTest extends TestCase
         $this->assertStringNotContainsString('confirmar_ajuste_dh_emissao_704', $controller);
         $this->assertStringContainsString('$reassinatura704 = $dadosReassinatura704;', $controller);
         $this->assertStringContainsString("'consulta_sefaz_cStat' => 217", $controller);
-        $this->assertStringContainsString("'dhEmi' => \$identidade['dhEmi']", $service);
-        $this->assertStringContainsString("'dhSaiEnt' => \$identidade['dhSaiEnt']", $service);
+        $this->assertStringContainsString("'dhEmi_transmissao' => \$dhEmiTransmissao", $service);
+        $this->assertStringContainsString("FiscalDateHelper::nowXml()", $service);
+        $this->assertStringContainsString("'dhSaiEnt' => \$dhSaiEntDoXml", $service);
+        $this->assertStringContainsString("'dhEmi_transmissao' => \$nfce['dhEmi_transmissao']", $controller);
+        $this->assertStringNotContainsString('dhEmi_preservada', $controller);
     }
 
-    public function test_reassinatura_reutiliza_xml_original_e_preserva_dhEmi_dhSaiEnt_e_identidade(): void
+    public function test_reassinatura_reutiliza_xml_original_e_altera_somente_dhEmi(): void
     {
         $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
         $chave = $this->chave();
@@ -98,14 +101,15 @@ class NfceRejeicao704TimeoutTest extends TestCase
             . '</infNFe><Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/>'
             . '<SignatureValue>AA==</SignatureValue></Signature></NFe>';
 
+        $dhEmiTransmissao = '2026-10-16T02:40:50-03:00';
         $transform = (new ReflectionMethod(NFCeService::class, 'removerAssinaturaXmlNfce704'))
-            ->invoke($service, $xmlOriginal, $chave, $dhEmiOriginal);
+            ->invoke($service, $xmlOriginal, $chave, $dhEmiOriginal, $dhEmiTransmissao);
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $this->assertTrue(@$dom->loadXML($transform['xml'], LIBXML_NONET));
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
-        $this->assertSame($dhEmiOriginal, $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
+        $this->assertSame($dhEmiTransmissao, $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
         $this->assertSame($dhSaiEntOriginal, $xpath->evaluate('string(//nfe:ide/nfe:dhSaiEnt)'));
         $this->assertSame('Produto A', $xpath->evaluate('string(//nfe:prod/nfe:xProd)'));
         $this->assertSame(0, $dom->getElementsByTagNameNS(
@@ -119,7 +123,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
         $xmlAssinado = $dom->saveXML();
         $service->validarXmlReassinadoNfce704([
             'chave' => $chave,
-            'dhEmi' => $dhEmiOriginal,
+            'dhEmi' => $dhEmiTransmissao,
             'dhSaiEnt' => $dhSaiEntOriginal,
             'tpEmis' => 1,
             'fingerprint_xml_sem_assinatura' => $transform['fingerprint_xml_sem_assinatura'],
@@ -137,18 +141,37 @@ class NfceRejeicao704TimeoutTest extends TestCase
             . '<det nItem="1"><prod><xProd>Produto A</xProd></prod></det></infNFe>'
             . '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/></Signature></NFe>';
 
+        $dhEmiTransmissao = '2026-10-16T02:40:50-03:00';
         $transform = (new ReflectionMethod(NFCeService::class, 'removerAssinaturaXmlNfce704'))
-            ->invoke($service, $xml, $chave, $dhEmi);
+            ->invoke($service, $xml, $chave, $dhEmi, $dhEmiTransmissao);
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $this->assertTrue(@$dom->loadXML($transform['xml'], LIBXML_NONET));
         $xpath = new \DOMXPath($dom);
         $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
         $this->assertSame(0, $xpath->query('//nfe:ide/nfe:dhSaiEnt')->length);
-        $this->assertSame($dhEmi, $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
+        $this->assertSame($dhEmiTransmissao, $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
         $this->assertSame($transform['fingerprint_xml_sem_assinatura'], (new ReflectionMethod(
             NFCeService::class,
             'fingerprintXmlFiscalSemAssinatura'
-        ))->invoke($service, $xml));
+        ))->invoke($service, $xml, true));
+    }
+
+    public function test_retransmissao_bloqueia_dhEmi_de_mes_diferente_da_chave(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $chave = $this->chave();
+        $dhEmiOriginal = '2026-10-15T09:07:37-03:00';
+        $xml = '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
+            . '<infNFe versao="4.00" Id="NFe' . $chave . '"><ide>'
+            . '<dhEmi>' . $dhEmiOriginal . '</dhEmi><tpEmis>1</tpEmis></ide>'
+            . '<det nItem="1"><prod><xProd>Produto A</xProd></prod></det></infNFe>'
+            . '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/></Signature></NFe>';
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('outro mês ou ano da chave');
+
+        (new ReflectionMethod(NFCeService::class, 'removerAssinaturaXmlNfce704'))
+            ->invoke($service, $xml, $chave, $dhEmiOriginal, '2026-11-01T00:00:00-03:00');
     }
 
     public function test_diagnostico_temporal_separa_emissao_saida_e_tipo_de_emissao(): void
