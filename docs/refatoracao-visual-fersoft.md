@@ -8,7 +8,7 @@ O projeto é Laravel 11, PHP 8.2, Blade e Vite 4. São 1.119 arquivos Blade; apr
 
 ## Sistema visual
 
-- `public/css/ui-operational.css` mantém as proporções e a disposição do shell, dashboard, sidebar, menus, cabeçalho e responsividade.
+- `public/css/ui-operational.css` mantém as proporções e a disposição do shell, dashboard, sidebar, menus, cabeçalho e responsividade. `public/css/ui-top-nav.css` posiciona o menu superior real em faixa separada sob o cabeçalho; `public/js/ui-top-nav.js` move a mesma árvore autorizada, sem duplicar links.
 - `public/css/fer-design-system.css` contém os padrões comuns de cartões, tipografia, formulários, botões, filtros, tabelas, estados, abas, wizard e modais, escopados em `body.ui-native-shell`.
 - `public/css/fer-modules.css`, `ui-cte.css`, `ui-fiscal.css`, `ui-operations.css`, `ui-people.css`, `ui-pos.css`, `ui-admin.css` e demais CSS por módulo tratam as estruturas específicas das views. As views mantêm a estrutura funcional, rotas e campos e acrescentam classes de apresentação.
 - `themes.refined.layout` carrega Bootstrap 4 como grade/modal, CSS local dos widgets e o sistema visual FERSOFT. Não carrega `/metronic/css/*`, `/metronic/js/*` nem `ui-legacy-widgets.js` no modo refinado. `public/js/fer-runtime.js` implementa a interação da interface e as pequenas APIs de compatibilidade `KTWizard`, `KTImageInput`, `KTSelect2` e `KTDatatable` exigidas pelas views existentes; as bibliotecas independentes têm versões e licenças em `public/js/vendor/README.md`.
@@ -32,4 +32,4 @@ O ambiente de edição sem PHP/Composer não comprova compilação Blade nem fun
 
 ## Publicação e reversão
 
-Base e destino: `develop`. Branch de trabalho: `feat/ui-operational-redesign-20261015`. Não há migração de banco. Para reverter a interface enquanto se investiga uma regressão, usar `APP_UI_THEME=classic`, limpar cache de configuração/views e repetir os testes operacionais; a reversão definitiva é a reversão do commit visual após avaliação da PR. Não alterar `main` como parte dessa entrega.
+Base e destino: `develop`. Branch de trabalho: `feat/ui-operational-redesign-20261015`. O catálogo do Studio já depende das migrations `2026_10_14_230100`, `2026_10_14_230101`, `2026_10_14_230102` e `2026_10_15_060000`; esta correção dos presets não adiciona migration. Sem essas tabelas, o tema padrão continua renderizando, mas `/ui/temas` informa que falta instalar o catálogo. Para reverter a interface enquanto se investiga uma regressão, usar `APP_UI_THEME=classic`, limpar cache de configuração/views e repetir os testes operacionais; a reversão definitiva é a reversão do commit visual após avaliação da PR. Não alterar `main` como parte dessa entrega.

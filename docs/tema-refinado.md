@@ -1,84 +1,31 @@
-# Tema refinado do ERP — levantamento e implementação opt-in
+# Temas da interface FERSOFT
 
-## Objetivo
+## Referência e ativação
 
-Introduzir um tema visual profissional, coerente com o login `access_4`, sem alterar regras de negócio, rotas, controllers, permissões, estrutura Blade ou comportamento de componentes JavaScript.
+O HTML aprovado `FERSOFT-PREVIA-FIEL-ANTES-DEPOIS (1)(2).html` define o visual da interface autenticada. O projeto usa Laravel/Blade; `APP_UI_THEME=refined` é o padrão em `config/ui_theme.php`. `APP_UI_THEME=classic` mantém o layout anterior como opção de reversão. Depois de alterar o `.env` em uma instalação com cache, atualize o cache de configuração e de views.
 
-A alteração no `.env` é única:
+O tema refinado usa CSS e JavaScript próprios em `resources/views/themes/refined/layout.blade.php`. O layout refinado não importa os bundles `/metronic/css/*` nem `/metronic/js/*`. As APIs de widgets ainda consumidas por views operacionais são atendidas por `public/js/fer-runtime.js` e bibliotecas locais, sem reescrever os contratos de formulários, rotas ou permissões. Alguns layouts especializados de impressão e conteúdo público mantêm sua apresentação apropriada; o modo clássico segue disponível para reversão.
 
-```dotenv
-APP_UI_THEME=classic  # padrão legado, inalterado
-APP_UI_THEME=refined  # novo tema do ERP autenticado
-```
+## Catálogo e variantes da proposta
 
-O seletor é independente de `PAG_LOGIN`. Valores ausentes ou desconhecidos voltam para `classic`; `config:cache` é suportado. No deploy com cache de configuração, execute `php artisan config:cache` após modificar o `.env`.
-
-## Levantamento efetivo no repositório (main, 14/10/2026)
-
-| Superfície | Arquivos/padrões observados | Risco e decisão |
+| Escolha | Implementação | Resultado visual |
 |---|---|---|
-| Layout de negócio | `resources/views/default/layout.blade.php` (612 linhas) | Mantido integralmente; contém alertas e monitoramento de pedidos, inclusive modais prioritários |
-| Menu lateral | `resources/views/default/menu_lateral.blade.php` (~2.800 linhas) | Preservados `#kt_aside`, `#kt_aside_toggle`, árvore de menu e permissões; apenas classe no body, link condicional de CSS e regra de dark legado |
-| Menu superior | `resources/views/default/menu_superior.blade.php` (~2.144 linhas) | Preservados `#kt_header`, menus dinâmicos, notificações, filtros e ações |
-| Tipografia do login | `LoginPresentationService::fontFiles()`, `access_4.blade.php` | Reaproveitados os arquivos locais Poppins/Montserrat e a seleção publicada; fallback Poppins |
-| CSS global legado | `public/metronic/css/*`, `public/css/extend.css`, `public/css/style.css`, `public/css/escuro.css` | Tema novo restrito a `body.ui-theme-refined`; prioridade sobre cores `!important` somente nesse modo |
-| Listas e grids | `produtos/list.blade.php`, `clientes/list.blade.php`, `contaPagar/list.blade.php` | Metronic Datatable, células com tamanhos e alturas fixos; não alterar altura, display, posicionamento ou scrolling |
-| Cadastros | `produtos/register.blade.php` e formulários de clientes/financeiro | Wizards, validações, Select2 e formulários aninhados mantidos; alterar só pele |
-| Modal de fluxos fiscais | `mtr/emissao/index.blade.php` | Preservados IDs, `data-toggle`, `data-target`, ordem de eventos, select e z-index |
-| Novas funcionalidades | `contratos/list.blade.php`, `dashboard_novo/index.blade.php` | Cards e tabelas coexistem com classes e estilos inline específicos; não forçar tema sobre cores semânticas |
-| Login público e aplicativos públicos | `login/*`, `delivery/*`, `ecommerce/*` | Fora do escopo do seletor do ERP; não devem receber `ui-theme-refined` |
-| Modo escuro histórico | variável `$tema`, `/css/escuro.css` | `classic`: idêntico ao atual. `refined`: variante `ui-theme-refined--dark` sem importar `escuro.css` global |
+| FERSOFT Claro (`fer-light`) | Preset em `config/ui_theme.php` | Canvas `#F5F7F7`, sidebar branca, acento verde `#1F9866` |
+| FERSOFT Slate (`fer-slate`) | Preset em `config/ui_theme.php` | Página clara, sidebar `#1D2639` |
+| FERSOFT Noturno (`fer-night`) | Preset em `config/ui_theme.php` | Canvas `#11252C`, superfície `#1C333B`, sidebar `#172D35`, acento `#62D3AB` |
+| Claro/Escuro | `color_mode` da preferência | Adapta a paleta completa do preset oficial; no modo escuro, a proposta usa a mesma sidebar noturna para ambas as escolhas do controle de sidebar |
+| Sidebar Clara/Escura | Campo `sidebar_mode` nos presets claros, convertido em `fer-light` ou `fer-slate` | Escolha independente para a página clara, sem coluna nova |
+| Confortável/Compacta | `density` | Espaçamento dos componentes e menu |
+| Lateral/Superior | `menu_mode` | Árvore real de menus e permissões na lateral ou na faixa horizontal de 47 px abaixo do cabeçalho |
 
-## Inventário da árvore Git auditada
+Essas escolhas resultam em 16 combinações persistíveis dos quatro controles binários da proposta. O menu lateral recolhido ocupa 80 px e abre o submenu real ao lado do trilho; o modo superior usa a mesma árvore autorizada, com rolagem horizontal e flyouts. A preferência de recolhimento é local ao navegador e identificada por usuário. Não foi acrescentado suporte no rodapé da sidebar.
 
-A árvore completa do commit-base (`f99056d`) foi inventariada: **5.144 entradas rastreadas**, das quais **1.111 arquivos Blade**, distribuídos por **231 diretórios/grupos de views**. Há **135 arquivos JavaScript em `public/js`** e **28 CSS em `public/css`** (sem contar as bibliotecas Metronic fora dessa pasta). Os grupos mais populosos incluem `vendor` (86), `relatorios` (65), `delivery` (22), `frontBox` (22), `ecommerce` (21), `compraManual` (18), `empresas` (16), `produtos` (15), `vendas` (15), `cte` (14) e `mtr` (10).
+Temas personalizados dependem de registros publicados em `ui_theme_presets` e de liberação à empresa em `ui_theme_company_settings`. Usuários escolhem entre os temas autorizados; a preferência fica em `ui_theme_user_preferences` por usuário e empresa. Portanto, a ausência de um tema personalizado na tela não prova que o preset visual de fábrica esteja ausente; pode significar que ele não foi publicado ou liberado naquele contexto.
 
-A árvore dá uma contagem **de abrangência**, não uma prova de compatibilidade visual: páginas podem ter CSS inline, bibliotecas e modais particulares. Para produzir o levantamento linha a linha de todas as views do checkout, foi criado `scripts/auditar-tema.php`. O comando é não destrutivo e identifica, por arquivo e módulo, `@extends` do shell, modais, formulários, tabelas, DataTables, Select2, wizard, abas, calendários, estilos/scripts inline, `!important`, `z-index` e `overflow`.
+## Operação e validação
 
-```bash
-php scripts/auditar-tema.php
-php scripts/auditar-tema.php --out=storage/app/tema-inventario.json
-```
+As tabelas do Studio (`ui_theme_presets`, `ui_theme_company_settings`, `ui_theme_user_preferences`) e a coluna `menu_mode` são pré-requisitos de migrations já existentes no projeto. Esta correção de navegação e paletas **não cria migration**. Se `/ui/temas` indicar indisponibilidade do catálogo, confira o estado dessas migrations no ambiente antes de atribuir o problema ao CSS.
 
-Esse inventário serve de base para a homologação progressiva dos componentes especiais sem reescrever rotinas existentes.
+`tests/Feature/UiPreferencesIntegrationTest.php` cobre persistência, isolamento por empresa/usuário, permissões do catálogo e as 16 combinações da proposta. `tests/ui/native-browser.py` verifica o menu autorizado em modos e resoluções diferentes, incluindo flyouts, foco e retorno do layout móvel. `tests/ui/test-view-contracts.py` confere os atributos funcionais das views modificadas contra a versão original de `develop`. A CI compila Blade e executa esses testes; o resultado de cada execução deve ser confirmado na PR.
 
-## Arquitetura
-
-1. `config/ui_theme.php`: normaliza o valor do `.env` e expõe `active`.
-2. Layouts `default/menu_lateral` e `default/menu_superior`: adicionam classe `ui-theme-refined` **somente** com `active=true` e carregam `themes.refined.assets` ao final do `head`.
-3. `resources/views/themes/refined/assets.blade.php`: seleciona a mesma família tipográfica publicada no login `access_4`, com fallback local e nenhuma dependência de front-end nova.
-4. `public/css/fer-design-system.css`: componentes próprios sobre os tokens validados por empresa, incluindo cards, formulários, tabelas, modais, estados e responsividade. `public/css/ui-operational.css` define o shell.
-5. Não foi adicionado JavaScript: controles existentes continuam sob responsabilidade do Metronic, Bootstrap, jQuery e código de cada rotina.
-
-## Regras de compatibilidade
-
-- **Nenhuma alteração** nos nomes e nos parâmetros de rotas, controllers, models, queries, migrations, sessão, RBAC ou permissões de menu.
-- O CSS legado continua sendo carregado; no modo `classic` não é injetado nenhum CSS do novo tema.
-- O refinamento **não** altera `display`, `overflow`, `position`, `z-index` ou largura/altura de datatables e modais. Essas propriedades são controladas pelo código em produção.
-- Recursos do WhatsApp, alertas críticos, diálogos bloqueantes, impressão, exportação e PWA continuam independentes do tema.
-- O tema novo tem modo claro como padrão e acompanha `$tema=2` com uma variante escura própria, sem importar `escuro.css`, cujas regras genéricas vazam para todos os componentes.
-
-## Matriz de homologação necessária antes de habilitar globalmente
-
-| Área | Cenários |
-|---|---|
-| Shell desktop | menu lateral expandido/compacto, menu superior, SUPER, empresa/filial, relógio, notificações, dropdowns |
-| Shell mobile | 320, 375, 768, 1024 px; ambos os layouts, teclado aberto, abrir/fechar menus, sem rolagem horizontal indevida |
-| Produtos | cadastro e edição, grid após salvar, wizard, Select2, filtros, grade, modais e atualização Ajax |
-| Clientes | listagem, cadastro, filtros, ações e paginação |
-| Financeiro | contas a pagar/receber, conciliação, validações, datas, campos monetários e modais |
-| MTR | emissão, importar NF-e/pesagem, cancelar, WhatsApp, status, modais e notificações |
-| Engenharia | contratos, medições, botões e dropdowns em modais |
-| Dashboard | KPIs, gráficos, cores de status e cartões responsivos |
-| Sistema | tarefas obrigatórias, pedidos delivery, SweetAlert, Toastr, carregamento, sobreposição e backdrop |
-| Regressão | tema clássico claro/escuro, tema refinado claro/escuro, `PAG_LOGIN` antigo e `access_4` em combinações |
-
-### Critério de conclusão
-
-O tema pode ser habilitado globalmente apenas após testes reais de navegação, acessibilidade, screenshot e fluxos funcionais nos principais módulos em ambiente de homologação. Uma revisão estática de CSS/Blade **não equivale** à homologação visual/funcional integral de todas as views.
-
-### Rollback
-
-1. Alterar `APP_UI_THEME=classic` no `.env`.
-2. Atualizar o cache de configuração, se estiver em uso: `php artisan config:cache`.
-3. Recarregar as páginas. Nenhuma migração de banco, modificação de sessão ou reversão de código é necessária.
+As fixtures de CI não substituem a navegação autenticada com dados, empresas e permissões de homologação. Antes do merge, confira na instância de homologação os menus acessíveis no perfil real, alternância do tema, formulários, modais, filtros e integrações relevantes. Para reversão visual, use `APP_UI_THEME=classic`, limpe os caches de configuração/views e recarregue a aplicação.

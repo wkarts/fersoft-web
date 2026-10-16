@@ -11,6 +11,7 @@
     $uiCurrentMode = (string) ($currentTheme['color_mode'] ?? 'follow');
     $uiCurrentMenu = (string) ($currentTheme['menu_mode'] ?? 'follow');
     $uiCurrentDensity = (string) ($currentTheme['density'] ?? 'comfortable');
+    $uiCurrentSidebar = $uiCurrentSlug === 'fer-slate' ? 'dark' : 'light';
     $uiEditColors = is_array($editingTheme?->colors ?? null) ? $editingTheme->colors : [];
 @endphp
 <div class="ui-studio" id="ui-theme-studio">
@@ -52,9 +53,29 @@
                 @php
                     $selected = $uiCurrentSlug === (string) $slug;
                     $themeName = (string) ($definition['name'] ?? $slug);
+                    $builtinSidebarChoice = in_array((string) $slug, ['fer-light', 'fer-slate'], true);
+                    $sidebarChoice = $selected ? $uiCurrentSidebar : ($slug === 'fer-slate' ? 'dark' : 'light');
                 @endphp
                 <article class="ui-studio__theme @if($selected)ui-studio__theme--selected @endif">
-                    <div class="ui-studio__theme-preview"
+                    <div class="ui-studio__theme-preview" data-ui-theme-preview
+                         data-ui-sample-is-builtin="{{ isset($builtinThemes[$slug]) ? '1' : '0' }}"
+                         data-ui-sample-default-dark="{{ !empty($definition['dark']) ? '1' : '0' }}"
+                         data-ui-sample-default-page="{{ $definition['background'] ?? '#F5F7F7' }}"
+                         data-ui-sample-default-surface="{{ $definition['surface'] ?? '#FFFFFF' }}"
+                         data-ui-sample-default-ink="{{ $definition['text'] ?? '#182F36' }}"
+                         data-ui-sample-default-sidebar="{{ $definition['sidebar'] ?? '#FFFFFF' }}"
+                         data-ui-sample-default-accent="{{ $definition['accent'] ?? '#1F9866' }}"
+                         data-ui-sample-light-page="{{ $builtinThemes['fer-light']['background'] ?? '#F5F7F7' }}"
+                         data-ui-sample-light-surface="{{ $builtinThemes['fer-light']['surface'] ?? '#FFFFFF' }}"
+                         data-ui-sample-light-ink="{{ $builtinThemes['fer-light']['text'] ?? '#182F36' }}"
+                         data-ui-sample-light-sidebar="{{ $builtinThemes['fer-light']['sidebar'] ?? '#FFFFFF' }}"
+                         data-ui-sample-light-accent="{{ $builtinThemes['fer-light']['accent'] ?? '#1F9866' }}"
+                         data-ui-sample-slate-sidebar="{{ $builtinThemes['fer-slate']['sidebar'] ?? '#1D2639' }}"
+                         data-ui-sample-dark-page="{{ $builtinThemes['fer-night']['background'] ?? '#11252C' }}"
+                         data-ui-sample-dark-surface="{{ $builtinThemes['fer-night']['surface'] ?? '#1C333B' }}"
+                         data-ui-sample-dark-ink="{{ $builtinThemes['fer-night']['text'] ?? '#EEF6F4' }}"
+                         data-ui-sample-dark-sidebar="{{ $builtinThemes['fer-night']['sidebar'] ?? '#172D35' }}"
+                         data-ui-sample-dark-accent="{{ $builtinThemes['fer-night']['accent'] ?? '#62D3AB' }}"
                          style="--sample-sidebar: {{ $definition['sidebar'] ?? '#fff' }};
                                 --sample-page: {{ $definition['background'] ?? '#f5f7fb' }};
                                 --sample-surface: {{ $definition['surface'] ?? '#fff' }};
@@ -90,6 +111,15 @@
                                     <option value="dark" @if($selected && $uiCurrentMode === 'dark') selected @endif>Escuro</option>
                                 </select>
                             </label>
+                            @if($builtinSidebarChoice)
+                                <label>
+                                    <span>Sidebar</span>
+                                    <select name="sidebar_mode">
+                                        <option value="light" @selected($sidebarChoice === 'light')>Clara</option>
+                                        <option value="dark" @selected($sidebarChoice === 'dark')>Escura</option>
+                                    </select>
+                                </label>
+                            @endif
                             <label>
                                 <span>Densidade</span>
                                 <select name="density">
@@ -135,24 +165,24 @@
                             <input type="text" name="description" maxlength="400" value="{{ old('description', $editingTheme?->description ?? '') }}" placeholder="Como é este tema">
                         </label>
                         @foreach([
-                            'accent' => ['Cor principal', '#168F81'],
-                            'accent_hover' => ['Cor principal ao passar o mouse', '#11786D'],
-                            'background' => ['Fundo das páginas', '#F5F7FB'],
+                            'accent' => ['Cor principal', '#1F9866'],
+                            'accent_hover' => ['Cor principal ao passar o mouse', '#15754F'],
+                            'background' => ['Fundo das páginas', '#F5F7F7'],
                             'surface' => ['Cartões e superfícies', '#FFFFFF'],
-                            'sidebar' => ['Menu lateral', '#1C2030'],
-                            'sidebar_text' => ['Texto do menu', '#D9E2F2'],
-                            'text' => ['Texto principal', '#202B40'],
-                            'border' => ['Bordas e divisores', '#DEE5EF'],
+                            'sidebar' => ['Menu lateral', '#FFFFFF'],
+                            'sidebar_text' => ['Texto do menu', '#566C72'],
+                            'text' => ['Texto principal', '#182F36'],
+                            'border' => ['Bordas e divisores', '#DCE7E7'],
                         ] as $field => $color)
                             <label class="ui-studio__color-field">
                                 <span>{{ $color[0] }}</span>
-                                <input type="color" name="{{ $field }}" value="{{ old($field, $uiEditColors[$field] ?? $color[1]) }}" required>
+                                <input type="color" name="{{ $field }}" value="{{ old($field, $uiEditColors[$field] ?? $builtinThemes['fer-light'][$field] ?? $color[1]) }}" required>
                             </label>
                         @endforeach
                         <label>Menu predominante
                             <select name="sidebar_style">
-                                <option value="light" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'dark') === 'light') selected @endif>Claro</option>
-                                <option value="dark" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'dark') === 'dark') selected @endif>Escuro</option>
+                                <option value="light" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'light') === 'light') selected @endif>Claro</option>
+                                <option value="dark" @if(old('sidebar_style', $editingTheme?->sidebar_style ?? 'light') === 'dark') selected @endif>Escuro</option>
                             </select>
                         </label>
                         <label>Densidade inicial

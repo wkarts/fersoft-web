@@ -52,6 +52,8 @@ class UiThemeCatalogTest extends TestCase
         $this->assertSame('#F5F7F7', strtoupper($tokens['background']));
         $this->assertSame('#ABCDEF', $tokens['surface']);
         $this->assertArrayNotHasKey('custom', $tokens);
+        $this->assertArrayNotHasKey('nav_active_bg', $tokens);
+        $this->assertArrayNotHasKey('surface_alt', $tokens);
         $this->assertSame('comfortable', $tokens['density']);
     }
 

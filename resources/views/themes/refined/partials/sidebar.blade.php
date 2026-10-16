@@ -1,12 +1,15 @@
 {{-- Navegação original do ERP com os mesmos grupos, links e condições de permissão. --}}
     <aside id="ui-sidebar" class="ui-sidebar" aria-label="Navegação da aplicação">
         <div class="ui-brand">
-                <a href="/graficos" class="brand-logo">
+                <a href="/graficos" class="brand-logo" aria-label="FERSOFT — ir ao painel">
                     @if($logo != "" && env("LOGOCLIENTE") == 1)
                         <img width="120" height="45" alt="Logo" src="/logos/{{$logo}}" />
                     @else
                         <img width="100" alt="Logo" src="{{ $appearanceAssets['menu_logo'] ?? asset('imgs/slym.png') }}" />
                     @endif
+                </a>
+                <a href="/graficos" class="ui-brand-symbol" aria-label="FERSOFT — ir ao painel">
+                    <img src="{{ asset('imgs/favicon.png') }}" alt="" />
                 </a>
 
 
@@ -389,7 +392,7 @@
 
                         @if(session('user_logged')['tipo_representante'] == 1)
                             <li class="menu-item menu-item-submenu menu-item" aria-haspopup="true">
-                                <a style="background: #F3933D" href="javascript:;" class="menu-link menu-toggle">
+                                <a href="javascript:;" class="menu-link menu-toggle">
 									<span class="svg-icon menu-icon">
 										<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
 											<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">

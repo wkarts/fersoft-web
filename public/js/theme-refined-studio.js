@@ -2,6 +2,41 @@
 (function () {
     'use strict';
 
+    // Os controles da proposta são combináveis. A amostra acompanha a
+    // preferência escolhida antes de salvar, inclusive o modo escuro.
+    document.querySelectorAll('.ui-studio__theme').forEach(card => {
+        const preview = card.querySelector('[data-ui-theme-preview]');
+        const form = card.querySelector('.ui-studio__theme-form');
+        if (!preview || !form) return;
+
+        const mode = form.querySelector('[name="color_mode"]');
+        const sidebar = form.querySelector('[name="sidebar_mode"]');
+
+        function refreshPreview() {
+            const colors = preview.dataset;
+            const defaultDark = colors.uiSampleDefaultDark === '1';
+            const dark = mode?.value === 'dark' || (mode?.value !== 'light' && defaultDark);
+            const palette = dark === defaultDark ? 'Default' : (dark ? 'Dark' : 'Light');
+
+            for (const key of ['Page', 'Surface', 'Ink']) {
+                preview.style.setProperty('--sample-' + key.toLowerCase(), colors['uiSample' + palette + key]);
+            }
+            const accentPalette = colors.uiSampleIsBuiltin === '1' ? palette : 'Default';
+            preview.style.setProperty('--sample-accent', colors['uiSample' + accentPalette + 'Accent']);
+
+            let sidebarColor = colors['uiSample' + palette + 'Sidebar'];
+            if (!dark && sidebar) {
+                sidebarColor = sidebar.value === 'dark'
+                    ? colors.uiSampleSlateSidebar : colors.uiSampleLightSidebar;
+            }
+            preview.style.setProperty('--sample-sidebar', sidebarColor);
+        }
+
+        mode?.addEventListener('change', refreshPreview);
+        sidebar?.addEventListener('change', refreshPreview);
+        refreshPreview();
+    });
+
     document.querySelectorAll('[data-ui-company-chooser]').forEach(chooser => {
         const input = chooser.querySelector('[data-ui-company-search]');
         const hidden = chooser.querySelector('[data-ui-company-id]');

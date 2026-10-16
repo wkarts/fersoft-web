@@ -19,9 +19,25 @@
         write(value) { try { localStorage.setItem(key, value ? 'collapsed' : 'expanded'); } catch (_) { /* Storage is optional. */ } },
     };
 
+    function isRootGroup(entry) {
+        return entry.node.parentElement?.classList.contains('ui-nav-list');
+    }
+    function positionRailFlyout(entry) {
+        if (!body.classList.contains('ui-nav-collapsed') || !isRootGroup(entry) || entry.submenu.hidden) return;
+        const anchor = entry.link.getBoundingClientRect();
+        const height = Math.min(entry.submenu.scrollHeight, window.innerHeight - 24);
+        const top = Math.max(12, Math.min(anchor.top - 8, window.innerHeight - height - 12));
+        entry.submenu.style.setProperty('--ui-rail-top', top + 'px');
+    }
+
     function setCollapsed(value) {
         const collapse = desktop.matches && body.dataset.uiLayout !== 'superior' && value;
+        const wasCollapsed = body.classList.contains('ui-nav-collapsed');
         body.classList.toggle('ui-nav-collapsed', collapse);
+        if (collapse && !wasCollapsed) toggles.filter(isRootGroup).forEach(entry => setGroup(entry, false));
+        if (!collapse && wasCollapsed) toggles.filter(entry => isRootGroup(entry) &&
+            (entry.node.classList.contains('menu-item-open') || entry.node.querySelector('.menu-item-active')))
+            .forEach(entry => setGroup(entry, true));
         document.querySelectorAll('[data-ui-collapse]').forEach(button => {
             button.setAttribute('aria-expanded', String(!collapse));
             button.setAttribute('aria-label', collapse ? 'Expandir navegação' : 'Recolher navegação');
@@ -60,6 +76,8 @@
         entry.submenu.hidden = !expanded;
         entry.link.setAttribute('aria-expanded', String(expanded));
         entry.submenu.style.removeProperty('transform');
+        if (expanded && isRootGroup(entry) && body.classList.contains('ui-nav-collapsed')) positionRailFlyout(entry);
+        else if (!expanded) entry.submenu.style.removeProperty('--ui-rail-top');
         if (expanded && desktop.matches && body.dataset.uiLayout === 'superior') {
             const rect = entry.submenu.getBoundingClientRect();
             let offset = Math.min(0, window.innerWidth - 12 - rect.right);
@@ -77,16 +95,25 @@
         link.setAttribute('href', '#ui-group-' + index);
         submenu.id = 'ui-group-' + index;
         link.setAttribute('aria-controls', submenu.id);
+        if (node.parentElement?.classList.contains('ui-nav-list')) {
+            submenu.dataset.uiGroupLabel = name;
+            submenu.setAttribute('aria-label', name);
+            submenu.setAttribute('role', 'group');
+            link.setAttribute('aria-label', name);
+            if (submenu.querySelector('.menu-item-active')) node.classList.add('ui-nav-current');
+        }
         const entry = { node, link, submenu };
         toggles.push(entry);
         setGroup(entry, node.classList.contains('menu-item-open') || !!submenu.querySelector('.menu-item-active'));
         link.addEventListener('click', event => {
             event.preventDefault();
-            if (body.classList.contains('ui-nav-collapsed')) {
-                setCollapsed(false);
-                store.write(false);
-            }
             const opening = submenu.hidden;
+            if (body.classList.contains('ui-nav-collapsed') && isRootGroup(entry)) {
+                toggles.filter(other => other !== entry && isRootGroup(other))
+                    .forEach(other => setGroup(other, false));
+                setGroup(entry, opening);
+                return;
+            }
             if (desktop.matches && body.dataset.uiLayout === 'superior') {
                 toggles.filter(other => other !== entry && !other.node.contains(node)).forEach(other => setGroup(other, false));
             }
@@ -111,7 +138,12 @@
     sidebar.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
             if (!desktop.matches) { event.preventDefault(); closeMobile(); }
-            else toggles.forEach(entry => setGroup(entry, false));
+            else {
+                const openRail = body.classList.contains('ui-nav-collapsed')
+                    ? toggles.find(entry => isRootGroup(entry) && !entry.submenu.hidden) : null;
+                toggles.forEach(entry => setGroup(entry, false));
+                if (openRail) { event.preventDefault(); openRail.link.focus(); }
+            }
         }
         if (event.key === 'Tab' && body.classList.contains('ui-nav-mobile-open')) {
             const items = Array.from(sidebar.querySelectorAll('a[href],button:not([disabled]),input,select,[tabindex="0"]'))
@@ -122,9 +154,20 @@
         }
     });
     document.addEventListener('pointerdown', event => {
+        if (body.classList.contains('ui-nav-collapsed') && !sidebar.contains(event.target)) {
+            toggles.filter(isRootGroup).forEach(entry => setGroup(entry, false));
+        }
         if (desktop.matches && body.dataset.uiLayout === 'superior' && !navigation.contains(event.target)) {
             toggles.forEach(entry => setGroup(entry, false));
         }
+    });
+    navigation.addEventListener('scroll', () => {
+        if (!body.classList.contains('ui-nav-collapsed')) return;
+        toggles.filter(entry => isRootGroup(entry) && !entry.submenu.hidden).forEach(entry => {
+            const anchor = entry.link.getBoundingClientRect();
+            if (anchor.bottom < 0 || anchor.top > window.innerHeight) setGroup(entry, false);
+            else positionRailFlyout(entry);
+        });
     });
     function changeViewport() {
         closeMobile(false);

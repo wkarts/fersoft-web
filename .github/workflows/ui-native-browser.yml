@@ -9,9 +9,11 @@ on:
       - 'app/Support/UiThemePalette.php'
       - 'app/Services/UiThemeService.php'
       - 'app/Http/Controllers/UiThemeController.php'
+      - 'config/ui_theme.php'
       - 'scripts/ui/**'
       - 'tests/ui/**'
       - 'tests/Unit/UiNativePaletteTest.php'
+      - 'tests/Feature/UiPreferencesIntegrationTest.php'
       - '.github/workflows/ui-native-browser.yml'
   workflow_dispatch:
 permissions:
@@ -86,6 +88,8 @@ jobs:
           php -l app/Http/Controllers/UiThemeController.php
           php -l tests/ui/render-native.php
           node --check public/js/ui-operational.js
+          node --check public/js/ui-top-nav.js
+          node --check public/js/theme-refined-studio.js
           node --check public/js/fer-runtime.js
           for asset in public/js/vendor/*.js; do node --check "$asset"; done
           ! grep -Eq 'src="/metronic/js/|href="/metronic/css/|ui-legacy-widgets.js' resources/views/themes/refined/layout.blade.php
@@ -96,7 +100,7 @@ jobs:
           python tests/ui/test-view-contracts.py
           php artisan config:clear
           php artisan view:cache
-          vendor/bin/phpunit --filter UiNativePaletteTest
+          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest'
           php tests/ui/render-native.php
       - name: Testar browser desktop e mobile
         run: |

@@ -119,6 +119,12 @@ class UiThemeService
     public function safeDefinition(array $colors, array $metadata = []): array
     {
         $base = $this->builtinThemes()['fer-light'] ?? [];
+        // Tokens auxiliares fixos pertencem apenas aos presets oficiais.
+        // Presets criados no Studio derivam essas cores de sua própria paleta.
+        foreach (['surface_alt', 'muted', 'accent_soft', 'hover',
+                  'nav_active_bg', 'nav_active_text'] as $key) {
+            unset($base[$key]);
+        }
         $definition = array_merge($base, $metadata);
 
         foreach (self::COLOR_KEYS as $key) {
@@ -210,7 +216,16 @@ class UiThemeService
         // nunca aplica texto escuro sobre fundo escuro nem vice-versa.
         if ($dark !== $themeDark) {
             $fallbackPalette = $this->builtinThemes()[$dark ? 'fer-night' : 'fer-light'] ?? [];
-            foreach (['background', 'surface', 'sidebar', 'sidebar_text', 'text', 'border'] as $key) {
+            $keys = ['background', 'surface', 'sidebar', 'sidebar_text', 'text', 'border'];
+            if (array_key_exists($slug, $this->builtinThemes())) {
+                // Os controles claro/escuro do HTML mudam também acento e
+                // tokens de componentes nos presets de fábrica.
+                $keys = array_merge($keys, [
+                    'accent', 'accent_hover', 'surface_alt', 'muted',
+                    'accent_soft', 'hover', 'nav_active_bg', 'nav_active_text',
+                ]);
+            }
+            foreach ($keys as $key) {
                 $definition[$key] = $fallbackPalette[$key] ?? $definition[$key] ?? '';
             }
         }
