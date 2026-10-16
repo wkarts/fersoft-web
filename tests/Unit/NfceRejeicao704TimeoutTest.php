@@ -141,7 +141,7 @@ class NfceRejeicao704TimeoutTest extends TestCase
     public function test_reassinatura_bloqueia_dhEmi_que_altera_mes_da_chave(): void
     {
         $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
-        $this->expectException(\\DomainException::class);
+        $this->expectException(\DomainException::class);
         (new ReflectionMethod(NFCeService::class, 'substituirDhEmiNoXmlAssinado704'))
             ->invoke(
                 $service,
