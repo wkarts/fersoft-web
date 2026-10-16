@@ -65,6 +65,31 @@ def extract_critical_counts(source):
 
 
 class DevelopViewContract(unittest.TestCase):
+    def test_theme_management_keeps_separate_authorized_area_and_existing_actions(self):
+        personal = (ROOT / 'resources/views/themes/refined/studio/index.blade.php').read_text(encoding='utf-8')
+        admin = (ROOT / 'resources/views/themes/refined/studio/admin.blade.php').read_text(encoding='utf-8')
+        route_actions = (
+            'ui.themes.store', 'ui.themes.update', 'ui.themes.duplicate',
+            'ui.themes.publish', 'ui.themes.archive', 'ui.themes.grant',
+            'ui.themes.company.default', 'ui.themes.company.search',
+        )
+        self.assertIn("route('ui.themes.select')", personal)
+        self.assertIn("route('ui.themes.reset')", personal)
+        self.assertIn("route('config.themes.index')", personal)
+        for action in route_actions:
+            self.assertIn("route('" + action + "'", admin)
+            self.assertNotIn("route('" + action + "'", personal)
+        self.assertIn("route('config.themes.index') }}?edit_theme=", admin)
+        self.assertIn('@disabled(!$catalogReady)', personal)
+        self.assertIn('@disabled(!$catalogReady)', admin)
+        for menu in ('themes/refined/partials/sidebar.blade.php',
+                     'default/menu_lateral.blade.php', 'default/menu_superior.blade.php'):
+            source = (ROOT / 'resources/views' / menu).read_text(encoding='utf-8')
+            super_section = source.index('Aparência do Login')
+            theme_section = source.index('Temas da Interface')
+            self.assertGreater(theme_section, super_section, menu)
+            self.assertIn("route('config.themes.index')", source)
+
     def test_refined_theme_uses_studio_without_legacy_palette_dialog(self):
         layout = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text(encoding='utf-8')
         masthead = (ROOT / 'resources/views/themes/refined/partials/masthead.blade.php').read_text(encoding='utf-8')

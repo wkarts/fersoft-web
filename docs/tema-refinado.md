@@ -28,6 +28,32 @@ O controle **Tema** do cabeçalho refinado abre o Studio `/ui/temas`, que oferec
 
 As tabelas do Studio (`ui_theme_presets`, `ui_theme_company_settings`, `ui_theme_user_preferences`) e a coluna `menu_mode` são pré-requisitos de migrations já existentes no projeto. Esta correção de navegação e paletas **não cria migration**. Se `/ui/temas` indicar indisponibilidade do catálogo, confira o estado dessas migrations no ambiente antes de atribuir o problema ao CSS.
 
+### Instalação do catálogo em uma instalação existente
+
+O botão **Tema** abre `/ui/temas` para a escolha pessoal. O grupo **SUPER** possui a área separada **Temas da Interface** em `/config/temas` para criar, publicar e liberar temas às empresas, com autorização no servidor. As três opções oficiais estão em `config/ui_theme.php`; temas personalizados e preferências persistem nas tabelas acima. A apresentação dos presets sem banco não significa que a escolha esteja gravável.
+
+No servidor da instalação, usando o mesmo código e `.env` do ERP, faça primeiro uma inspeção somente leitura:
+
+```bash
+php artisan ui-themes:install
+```
+
+O comando distingue as quatro migrations do catálogo (`2026_10_14_230100`, `230101`, `230102` e `2026_10_15_060000`), seus registros na tabela `migrations`, as tabelas/coluna físicas e falhas de conexão. O registro `pending:[]` de `updater:migrate` **não comprova** que as migrations da aplicação foram executadas. Confirme banco/conexão e backup antes de aplicar mudanças em homologação ou produção.
+
+Se houver migrations pendentes, execute o instalador restrito aos quatro arquivos do catálogo:
+
+```bash
+php artisan ui-themes:install --apply
+```
+
+Se o diagnóstico mostrar uma migration registrada como executada, mas tabela ou coluna correspondente ausente, use `--repair-recorded` somente após conferir essa divergência e o backup. O reparo executa os `up()` idempotentes e aditivos desses arquivos; não apaga tema, preferência ou tabela legada:
+
+```bash
+php artisan ui-themes:install --apply --repair-recorded
+```
+
+Um esquema preexistente parcial ou sem os índices únicos esperados exige correção específica após inspeção dos dados; o instalador não cria índices em tabelas divergentes automaticamente. Repita o diagnóstico sem opções, limpe os caches de configuração/views se a implantação exigir e abra `/ui/temas` e `/config/temas` com perfis autorizados. Se o diagnóstico mostrar falha de conexão, corrija a conexão do ERP antes de tentar instalação; o comando não deve mascarar esse erro. O rollback do código preserva as tabelas e preferências do catálogo, pois os `down()` existentes são conservadores.
+
 `tests/Feature/UiPreferencesIntegrationTest.php` cobre persistência, isolamento por empresa/usuário, permissões do catálogo e as 16 combinações da proposta. `tests/ui/native-browser.py` verifica o menu autorizado em modos e resoluções diferentes, incluindo flyouts, foco e retorno do layout móvel. `tests/ui/test-view-contracts.py` confere os atributos funcionais das views modificadas contra a versão original de `develop`. A CI compila Blade e executa esses testes; o resultado de cada execução deve ser confirmado na PR.
 
 As fixtures de CI não substituem a navegação autenticada com dados, empresas e permissões de homologação. Antes do merge, confira na instância de homologação os menus acessíveis no perfil real, alternância do tema, formulários, modais, filtros e integrações relevantes. Para reversão visual, use `APP_UI_THEME=classic`, limpe os caches de configuração/views e recarregue a aplicação.

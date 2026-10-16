@@ -76,6 +76,15 @@
                                             </li>
                                         @endif
 
+                                        @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\UiThemeController::class))
+                                            <li class="menu-item @if(request()->is('config/temas*')) menu-item-active @endif" aria-haspopup="true">
+                                                <a href="{{ route('config.themes.index') }}" class="menu-link">
+                                                    <i class="menu-bullet menu-bullet-line"><span></span></i>
+                                                    <span class="menu-text">Temas da Interface</span>
+                                                </a>
+                                            </li>
+                                        @endif
+
                                         <li class="menu-item menu-item-submenu" aria-haspopup="true">
                                             <a href="/empresas" class="menu-link menu-">
                                                 <i class="menu-bullet menu-bullet-line">

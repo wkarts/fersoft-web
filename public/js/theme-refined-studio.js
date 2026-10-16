@@ -37,6 +37,24 @@
         refreshPreview();
     });
 
+    // O preset do menu é um atalho para preencher as cores efetivamente
+    // renderizadas. Não sobrescrever cores personalizadas ao abrir um rascunho
+    // nem depois de o usuário ajustar manualmente os dois campos.
+    document.querySelectorAll('[data-ui-sidebar-preset]').forEach(preset => {
+        const form = preset.closest('form');
+        const sidebarColor = form?.querySelector('[name="sidebar"]');
+        const textColor = form?.querySelector('[name="sidebar_text"]');
+        if (!sidebarColor || !textColor) return;
+
+        preset.addEventListener('change', () => {
+            const suffix = preset.value === 'dark' ? 'Dark' : 'Light';
+            sidebarColor.value = preset.dataset['uiSidebar' + suffix];
+            textColor.value = preset.dataset['uiSidebarText' + suffix];
+            sidebarColor.dispatchEvent(new Event('input', { bubbles: true }));
+            textColor.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+
     document.querySelectorAll('[data-ui-company-chooser]').forEach(chooser => {
         const input = chooser.querySelector('[data-ui-company-search]');
         const hidden = chooser.querySelector('[data-ui-company-id]');

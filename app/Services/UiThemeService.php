@@ -8,6 +8,26 @@ use Illuminate\Support\Facades\Schema;
 
 class UiThemeService
 {
+    public const REQUIRED_COLUMNS = [
+        'ui_theme_presets' => [
+            'id', 'slug', 'name', 'description', 'colors', 'sidebar_style',
+            'density', 'status', 'created_by', 'published_at', 'created_at', 'updated_at',
+        ],
+        'ui_theme_company_settings' => [
+            'id', 'company_id', 'default_theme_slug', 'allowed_theme_slugs', 'created_at', 'updated_at',
+        ],
+        'ui_theme_user_preferences' => [
+            'id', 'company_id', 'user_id', 'theme_slug', 'color_mode',
+            'density', 'menu_mode', 'created_at', 'updated_at',
+        ],
+    ];
+
+    public const REQUIRED_UNIQUE_INDEXES = [
+        'ui_theme_presets' => [['slug']],
+        'ui_theme_company_settings' => [['company_id']],
+        'ui_theme_user_preferences' => [['company_id', 'user_id']],
+    ];
+
     private const COLOR_KEYS = [
         'accent', 'accent_hover', 'background', 'surface',
         'sidebar', 'sidebar_text', 'text', 'border',
@@ -26,13 +46,59 @@ class UiThemeService
                 && Schema::hasTable('ui_theme_company_settings')
                 && Schema::hasTable('ui_theme_user_preferences');
         } catch (\Throwable $e) {
-            // O tema em si não pode derrubar o ERP se o banco estiver indisponível.
             $ready = false;
         }
 
-        // Cache somente na requisição, nunca globalmente entre empresas.
         $request->attributes->set('ui_theme.schema.ready', $ready);
         return $ready;
+    }
+
+    /**
+     * Diagnóstico completo somente nas rotas do Studio; as páginas usuais do ERP
+     * continuam usando a verificação curta e cacheada de databaseReady().
+     */
+    public function catalogStatus(): array
+    {
+        $request = request();
+        $cached = $request->attributes->get('ui_theme.schema.status');
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $tables = [];
+        $error = false;
+        try {
+            foreach (self::REQUIRED_COLUMNS as $table => $columns) {
+                $exists = Schema::hasTable($table);
+                $missing = $exists ? array_values(array_diff($columns, Schema::getColumnListing($table))) : $columns;
+                $missingIndexes = [];
+                if ($exists) {
+                    foreach (self::REQUIRED_UNIQUE_INDEXES[$table] as $indexColumns) {
+                        if (!Schema::hasIndex($table, $indexColumns, 'unique')) {
+                            $missingIndexes[] = $indexColumns;
+                        }
+                    }
+                }
+                $tables[$table] = [
+                    'exists' => $exists,
+                    'missing_columns' => $missing,
+                    'missing_unique_indexes' => $missingIndexes,
+                ];
+            }
+        } catch (\Throwable $e) {
+            // A tela pública continua com os presets de fábrica durante falhas de banco.
+            $error = true;
+        }
+
+        $status = [
+            'ready' => !$error && count($tables) === count(self::REQUIRED_COLUMNS)
+                && !array_filter($tables, fn (array $table) => !$table['exists']
+                    || $table['missing_columns'] || $table['missing_unique_indexes']),
+            'tables' => $tables,
+            'connection_error' => $error,
+        ];
+        $request->attributes->set('ui_theme.schema.status', $status);
+        return $status;
     }
 
     public function builtinThemes(): array

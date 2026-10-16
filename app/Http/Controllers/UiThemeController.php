@@ -39,36 +39,50 @@ class UiThemeController extends Controller
 
     private function requireTables(): void
     {
-        abort_unless(
-            $this->themes->databaseReady(),
-            503,
-            'O catálogo visual ainda não foi instalado. Execute as migrations aditivas.'
-        );
+        $status = $this->themes->catalogStatus();
+        abort_unless($status['ready'], 503, $status['connection_error']
+            ? 'Não foi possível verificar o banco de dados do catálogo visual.'
+            : 'O catálogo visual está incompleto. Verifique as migrations aditivas.');
     }
 
     public function index()
     {
-        $this->requireTables();
+        return view('themes.refined.studio.index', $this->viewData());
+    }
+
+    public function admin()
+    {
+        $this->superOnly();
+
+        return view('themes.refined.studio.admin', $this->viewData());
+    }
+
+    private function viewData(): array
+    {
         $context = $this->context();
         $company = (int) $context['empresa'];
         $super = (bool) ($context['super'] ?? false);
+        $catalogStatus = $this->themes->catalogStatus();
+        $catalogReady = $catalogStatus['ready'];
 
-        return view('themes.refined.studio.index', [
+        return [
             'title' => 'Temas da interface',
+            'catalogReady' => $catalogReady,
+            'catalogStatus' => $catalogStatus,
             'availableThemes' => $this->themes->availableForCompany($company, $super),
             'builtinThemes' => $this->themes->builtinThemes(),
             'currentTheme' => $this->themes->resolve(),
-            'customThemes' => $super
+            'customThemes' => $super && $catalogReady
                 ? UiThemePreset::query()->orderByDesc('id')->limit(100)->get()
                 : collect(),
-            'editingTheme' => $super && request()->filled('edit_theme')
+            'editingTheme' => $super && $catalogReady && request()->filled('edit_theme')
                 ? UiThemePreset::query()->where('status', 'draft')->findOrFail((int) request('edit_theme'))
                 : null,
             // Empresas são pesquisadas sob demanda, sem carregar centenas na tela.
             'companies' => collect(),
             'companySettings' => $this->themes->companySettings($company),
             'isSuperadmin' => $super,
-        ]);
+        ];
     }
 
     public function select(Request $request)
@@ -211,7 +225,7 @@ class UiThemeController extends Controller
             'created_by' => (int) $this->context()['id'],
         ]);
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema criado como rascunho. Publique quando estiver pronto.');
     }
 
@@ -236,7 +250,7 @@ class UiThemeController extends Controller
         ]);
         abort_unless($changed === 1 || UiThemePreset::query()->whereKey($preset->id)->where('status', 'draft')->exists(), 409, 'O estado do tema mudou. Recarregue a página.');
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Rascunho atualizado sem modificar temas já publicados.');
     }
 
@@ -255,7 +269,7 @@ class UiThemeController extends Controller
             'status' => 'draft',
             'created_by' => (int) $this->context()['id'],
         ]);
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Nova versão em rascunho criada a partir do tema escolhido.');
     }
 
@@ -267,7 +281,7 @@ class UiThemeController extends Controller
 
         $preset->update(['status' => 'archived']);
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema arquivado. Usuários passarão a utilizar o fallback autorizado.');
     }
 
@@ -317,7 +331,7 @@ class UiThemeController extends Controller
             ['default_theme_slug' => $data['theme_slug'], 'updated_at' => now()]
         );
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema padrão da empresa atualizado. Preferências individuais foram preservadas.');
     }
 
@@ -330,7 +344,7 @@ class UiThemeController extends Controller
             $preset->update(['status' => 'published', 'published_at' => now()]);
         }
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema publicado. Agora você pode liberá-lo às empresas.');
     }
 
@@ -361,7 +375,7 @@ class UiThemeController extends Controller
             ]
         );
 
-        return redirect()->route('ui.themes.index')
+        return redirect()->route('config.themes.index')
             ->with('ui_theme_feedback', 'Tema disponibilizado à empresa selecionada.');
     }
 }
