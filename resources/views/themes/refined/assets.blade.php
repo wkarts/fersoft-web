@@ -27,6 +27,7 @@
 @endphp
 <style>
     @foreach($uiFontFiles as $weight => $fontFile)
+    @if(is_numeric($weight) && is_string($fontFile))
     @font-face {
         font-family: 'Poppins';
         src: url('{{ asset($fontFile) }}') format('truetype');
@@ -34,6 +35,7 @@
         font-style: normal;
         font-display: swap;
     }
+    @endif
     @endforeach
 </style>
 <link rel="stylesheet" href="{{ asset('css/theme-refined.css') }}?v={{ filemtime(public_path('css/theme-refined.css')) }}">
