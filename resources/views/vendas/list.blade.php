@@ -126,7 +126,7 @@
 					@endif
 
 					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
+						<button type="submit" style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
 					</div>
 				</div>
 			</form>
