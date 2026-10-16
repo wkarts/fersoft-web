@@ -16,7 +16,7 @@ use App\Support\UiThemePalette;
 
 // Remove database-bound production view composers ONLY in this testing process.
 $app['events']->forget('composing: *');
-config(['app.url' => 'http://127.0.0.1:8765', 'app.name' => 'ERP de teste', 'ui_theme.active' => true, 'ui_theme.name' => 'refined', 'login_presentation.page' => 'access', 'ui_theme.support_url' => '', 'ui_theme.support_phone' => '5575999999999']);
+config(['app.url' => 'http://127.0.0.1:8765', 'app.name' => 'ERP de teste', 'ui_theme.active' => true, 'ui_theme.name' => 'refined', 'login_presentation.page' => 'access']);
 URL::forceRootUrl('http://127.0.0.1:8765');
 $app['session']->start();
 $app['request']->setLaravelSession($app['session']->driver());

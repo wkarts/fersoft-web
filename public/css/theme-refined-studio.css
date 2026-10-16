@@ -2,7 +2,7 @@
 body.ui-theme-refined .ui-studio {
     color: var(--ui-ink);
     padding: 16px 26px 54px;
-    font-family: 'RefinedTypeface', system-ui, sans-serif;
+    font-family: 'Poppins', Inter, system-ui, sans-serif;
     max-width: 1540px;
     margin: 0 auto;
 }

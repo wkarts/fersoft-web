@@ -37,10 +37,8 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('.ui-header-theme').count() == 1, 'Theme action is missing or duplicated.'
     assert page.locator('.ui-masthead-tools').count() == 0, 'Unrequested search/theme shortcuts are visible.'
     assert page.locator('[data-ui-command-open]').count() == 0, 'Unrequested module search is visible.'
-    support_action = page.locator('.ui-sidebar-footer .ui-footer-link')
-    assert support_action.count() <= 1, 'The proposal has at most one sidebar support action.'
-    if support_action.count():
-        assert support_action.inner_text().strip() == 'Central de suporte'
+    assert page.locator('.ui-sidebar-footer, [data-ui-support-open], #ui-support-dialog').count() == 0, 'An unrequested support footer or dialog was added.'
+    assert page.evaluate('window.hubSettings && window.hubSettings.hideMessageBubble === false'), 'The original support launcher must remain available.'
     assert page.locator('.ui-sidebar-footer a[href*="/ui/temas"]').count() == 0, 'Theme choice must stay in the header.'
     sidebar_color = page.locator('#ui-sidebar').evaluate('(e)=>getComputedStyle(e).backgroundColor')
     canvas_color = page.locator('body').evaluate('(e)=>getComputedStyle(e).backgroundColor')
@@ -57,6 +55,18 @@ def check_page(page, theme, layout, density, width):
         assert sidebar_color == 'rgb(29, 38, 57)', 'The optional slate variant uses the proposal dark-sidebar color.'
         assert canvas_color == 'rgb(245, 247, 247)', 'The slate variant keeps the workspace light.'
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), 'Horizontal page overflow'
+    assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")'), 'The approved Poppins typography is missing.'
+    assert page.evaluate('async()=>{await document.fonts.ready;return document.fonts.check("400 13px Poppins")}'), 'The local Poppins font did not load.'
+    page.keyboard.press('Tab')
+    focus_style = page.locator(':focus').evaluate('(e)=>getComputedStyle(e).outlineStyle')
+    assert focus_style != 'none', 'Keyboard focus must remain visible.'
+    page.locator(':focus').evaluate('(e)=>e.blur()')
+    metric_rows = page.locator('.ui-metric').evaluate_all('(items)=>items.map(e=>e.getBoundingClientRect().top)')
+    assert abs(metric_rows[0] - metric_rows[1]) < 5, 'Metric cards must reflow into a usable grid.'
+    if width < 1300:
+        assert metric_rows[2] > metric_rows[0] + 5, 'Tablet and mobile metrics must wrap instead of shrinking the desktop grid.'
+    else:
+        assert max(metric_rows) - min(metric_rows) < 5, 'Desktop metrics must retain the four-column proposal grid.'
     assert page.locator('body').get_attribute('data-ui-layout') == layout
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-theme-refined--dark")') == (theme == 'fer-night')
     assert page.locator('body').evaluate('(e)=>e.classList.contains("ui-density-compact")') == (density == 'compact')
@@ -87,14 +97,6 @@ def check_page(page, theme, layout, density, width):
             submenu_id = last_group.get_attribute('aria-controls')
             assert page.locator('#' + submenu_id).evaluate('(e)=>{const r=e.getBoundingClientRect();return r.left>=0 && r.right<=innerWidth+1}')
             page.keyboard.press('Escape')
-    if support_action.count() and support_action.is_visible():
-        if width < 992:
-            page.locator('[data-ui-menu-open]').click()
-        page.evaluate('window.__supportOpens = []; window.$hub = {toggle: (mode) => window.__supportOpens.push(mode)}')
-        page.locator('[data-ui-support-open]').click()
-        assert page.evaluate('window.__supportOpens') == ['open'], 'Sidebar support must open the existing support integration.'
-        if width < 992:
-            page.locator('#ui-sidebar [data-ui-menu-close]').click()
     page.locator('[data-target="#fixture-modal"]').click()
     page.locator('#fixture-modal').wait_for(state='visible')
     assert page.locator('#fixture-name').input_value() == 'Preservado'
@@ -123,6 +125,11 @@ def check_page(page, theme, layout, density, width):
 
 
 def main():
+    layout_source = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text()
+    support_source = (ROOT / 'resources/views/layouts/support.blade.php').read_text()
+    assert "@include('layouts.support')" in layout_source, 'The existing support integration was removed.'
+    assert 'ui-sidebar-footer' not in layout_source and 'data-ui-support-open' not in layout_source, 'A new support footer must not be added.'
+    assert '"hideMessageBubble": false' in support_source, 'The original support launcher must remain visible.'
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 8765), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     report = []
@@ -133,9 +140,9 @@ def main():
             for theme in ['fer-light', 'fer-slate', 'fer-night']:
                 for layout in ['lateral', 'superior']:
                     for density in ['comfortable', 'compact']:
-                        for width, height in [(1440, 1000), (390, 844)]:
+                        for width, height in [(1920, 1032), (1366, 768), (768, 1024), (390, 844)]:
                             filename = f'{theme}-{layout}-{density}.html'
-                            case = {'fixture': filename, 'viewport': width, 'status': 'running'}
+                            case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
                             errors = []
                             page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
                             page.set_default_timeout(12000)
@@ -158,13 +165,13 @@ def main():
                                 case['javascript_errors'] = errors
                                 report.append(case)
                                 page.close()
-                            print(filename, width, 'passed', flush=True)
+                            print(filename, f'{width}x{height}', 'passed', flush=True)
             browser.close()
     finally:
         server.shutdown()
         (FIXTURES / 'browser-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    assert len(report) == 24 and all(row['status'] == 'passed' for row in report)
-    print('24 real Blade/browser scenarios passed with no JavaScript exceptions.')
+    assert len(report) == 48 and all(row['status'] == 'passed' for row in report)
+    print('48 real Blade/browser scenarios passed with no JavaScript exceptions.')
 
 
 if __name__ == '__main__':

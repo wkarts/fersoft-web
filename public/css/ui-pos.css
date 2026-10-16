@@ -1,5 +1,5 @@
 /* Standalone POS presentation adapter. No change to payment, fiscal, scanner or shortcut contracts. */
-body.ui-pos-refined { background:var(--ui-bg)!important;color:var(--ui-ink);font-family:'RefinedTypeface',system-ui,sans-serif; }
+body.ui-pos-refined { background:var(--ui-bg)!important;color:var(--ui-ink);font-family:'Poppins', Inter,system-ui,sans-serif; }
 body.ui-pos-refined .pdv-header {align-items:center;gap:8px 0;}
 body.ui-pos-refined .card.card-custom {background:var(--ui-surface);border:1px solid var(--ui-border)!important;border-radius:12px!important;box-shadow:0 4px 18px #15384c0c;}
 body.ui-pos-refined .card-header {border-bottom:1px solid var(--ui-border);background:var(--ui-surface)!important;color:var(--ui-ink);}

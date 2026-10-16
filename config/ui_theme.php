@@ -1,8 +1,8 @@
 <?php
 
-// Uma única chave escolhe a arquitetura visual. Nenhuma preferência do banco
-// pode impor o tema experimental quando APP_UI_THEME não é refined.
-$mode = strtolower(trim((string) env('APP_UI_THEME', 'classic')));
+// O tema aprovado é o padrão. APP_UI_THEME=classic mantém o rollback visual.
+// Preferências do banco ajustam apenas as opções autorizadas por empresa/usuário.
+$mode = strtolower(trim((string) env('APP_UI_THEME', 'refined')));
 $active = $mode === 'refined';
 
 return [

@@ -31,7 +31,9 @@ final class UiNativePaletteTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
         $classic = file_get_contents($root . '/resources/views/default/menu_lateral.blade.php');
-        $native = file_get_contents($root . '/resources/views/themes/refined/layout.blade.php');
+        $native = file_get_contents($root . '/resources/views/themes/refined/layout.blade.php')
+            . file_get_contents($root . '/resources/views/themes/refined/partials/sidebar.blade.php')
+            . file_get_contents($root . '/resources/views/themes/refined/partials/masthead.blade.php');
         preg_match_all('/<script[^>]+src=["\x27]([^"\x27]+)["\x27]/i', $classic, $scripts);
         foreach (array_unique($scripts[1]) as $src) {
             if ($src === '/metronic/js/scripts.bundle.js') continue;
@@ -51,7 +53,9 @@ final class UiNativePaletteTest extends TestCase
         $root = dirname(__DIR__, 2);
         $classic = file_get_contents($root . '/resources/views/default/menu_lateral.blade.php');
         $superior = file_get_contents($root . '/resources/views/default/menu_superior.blade.php');
-        $native = file_get_contents($root . '/resources/views/themes/refined/layout.blade.php');
+        $native = file_get_contents($root . '/resources/views/themes/refined/layout.blade.php')
+            . file_get_contents($root . '/resources/views/themes/refined/partials/sidebar.blade.php')
+            . file_get_contents($root . '/resources/views/themes/refined/partials/masthead.blade.php');
 
         foreach ([$classic, $superior] as $layout) {
             self::assertSame(1, substr_count($layout, '<body id="kt_body" @class(['));

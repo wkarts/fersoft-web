@@ -1,5 +1,5 @@
-/* Native operational layout. Bootstrap/KT remain ONLY as adapters for legacy widgets.
-   All selectors are confined to the opt-in interface. The classic layout is untouched. */
+/* Approved operational layout. Bootstrap/KT remain adapters for legacy widgets.
+   APP_UI_THEME=classic keeps the previous layout available as a rollback. */
 body.ui-native-shell { margin:0; --ui-sidebar-width:264px; --ui-top-height:74px; background:var(--ui-bg); color:var(--ui-ink); }
 body.ui-native-shell .ui-app { display:flex; min-height:100vh; min-height:100dvh; }
 body.ui-native-shell .ui-sidebar { position:fixed; inset:0 auto 0 0; width:var(--ui-sidebar-width); display:flex; flex-direction:column; background:var(--ui-aside); color:var(--ui-sidebar-ink); border-right:1px solid var(--ui-border); z-index:1025; }
@@ -27,9 +27,6 @@ body.ui-native-shell .ui-nav-list .ui-nav-expanded > .menu-toggle::after { trans
 body.ui-native-shell .ui-nav-list .menu-submenu { position:static; width:auto; margin:3px 7px 7px 21px; padding:2px 0 2px 8px; border-left:1px solid var(--ui-border); background:transparent!important; box-shadow:none; }
 body.ui-native-shell .ui-nav-list .menu-submenu .menu-link { font-size:11.5px; min-height:33px; padding:7px 10px; }
 body.ui-native-shell .ui-nav-list .menu-bullet, body.ui-native-shell .ui-nav-list .menu-arrow, body.ui-native-shell .ui-nav-list .menu-subnav > .menu-item-parent { display:none; }
-body.ui-native-shell .ui-sidebar-footer { height:70px; display:flex; align-items:center; border-top:1px solid var(--ui-border); padding:12px; flex:0 0 auto; background:var(--ui-aside); }
-body.ui-native-shell .ui-footer-link { display:flex; align-items:center; width:100%; gap:11px; height:40px; border:1px solid #c6e5d7; border-radius:10px; padding:0 12px; margin:0; background:#eff9f3; color:#21845f; text-decoration:none; font:inherit; font-size:11px; font-weight:600; cursor:pointer; }
-body.ui-native-shell .ui-footer-link:hover { color:#21845f; background:#e4f5eb; text-decoration:none; }
 body.ui-native-shell .ui-workspace { min-width:0; width:calc(100% - var(--ui-sidebar-width)); margin-left:var(--ui-sidebar-width); padding:0!important; background:var(--ui-bg); }
 body.ui-native-shell .ui-masthead { position:sticky; top:0; z-index:1020; display:flex; align-items:center; gap:10px; padding:0 24px; min-height:var(--ui-top-height); border-bottom:1px solid var(--ui-border); background:var(--ui-surface); }
 body.ui-native-shell .ui-operational-actions { min-width:0; flex:1; }
@@ -63,10 +60,9 @@ body.ui-native-shell .ui-mobile-trigger, body.ui-native-shell .ui-mobile-close {
 body.ui-native-shell.ui-nav-collapsed { --ui-sidebar-width:70px; }
 body.ui-native-shell.ui-nav-collapsed .ui-brand { padding:8px 7px; flex-wrap:wrap; justify-content:center; }
 body.ui-native-shell.ui-nav-collapsed .ui-brand .brand-logo { display:none; }
-body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-text, body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-toggle::after, body.ui-native-shell.ui-nav-collapsed .ui-version, body.ui-native-shell.ui-nav-collapsed .ui-nav-caption, body.ui-native-shell.ui-nav-collapsed .ui-footer-link span { display:none; }
+body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-text, body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-toggle::after, body.ui-native-shell.ui-nav-collapsed .ui-version, body.ui-native-shell.ui-nav-collapsed .ui-nav-caption { display:none; }
 body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-link { justify-content:center; padding:12px 8px; }
 body.ui-native-shell.ui-nav-collapsed .ui-nav-list .menu-submenu { display:none!important; }
-body.ui-native-shell.ui-nav-collapsed .ui-footer-link { justify-content:center; }
 body.ui-native-shell.ui-density-compact .ui-page { padding:14px 16px 22px; }
 body.ui-native-shell.ui-density-compact .ui-nav-list .menu-link { min-height:34px; padding-top:8px; padding-bottom:8px; }
 body.ui-native-shell.ui-density-compact .ui-nav-list .menu-submenu .menu-link { min-height:29px; padding-top:5px; padding-bottom:5px; }
@@ -151,7 +147,6 @@ body.ui-native-shell .ui-finance-link strong {font-size:17px;white-space:nowrap;
  body.ui-native-shell[data-ui-layout=superior] .ui-nav-list {display:flex;flex-wrap:wrap;gap:4px;}
  body.ui-native-shell[data-ui-layout=superior] .ui-nav-list > .menu-item > .menu-link {font-size:11px;padding:9px;}
  body.ui-native-shell[data-ui-layout=superior] .ui-nav-list > .menu-item > .menu-submenu {position:absolute;min-width:245px;max-width:320px;max-height:70vh;overflow:auto;left:0;top:100%;margin:0;padding:8px;background:var(--ui-aside)!important;border:1px solid var(--ui-border);box-shadow:0 12px 30px #0002;border-radius:9px;z-index:1040;}
- body.ui-native-shell[data-ui-layout=superior] .ui-sidebar-footer {display:none;}
  body.ui-native-shell[data-ui-layout=superior] .ui-workspace {width:100%;margin:0;}
  body.ui-native-shell[data-ui-layout=superior] .ui-masthead {position:relative;}
 }
@@ -208,7 +203,7 @@ body.ui-native-shell .ui-actions .menu-nav .menu-item.ml-1 {min-width:0!importan
 body.ui-native-shell .ui-actions {display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;width:100%;}
 body.ui-native-shell .ui-actions > .container-fluid {width:auto;flex:1 1 560px;min-width:0;}
 body.ui-native-shell .ui-actions > .topbar {flex:0 0 auto;margin-left:auto;}
-body.ui-native-shell .ui-widget-icon i,body.ui-native-shell .ui-footer-link i,body.ui-native-shell .ui-icon-button i {color:inherit;font-size:inherit;}
+body.ui-native-shell .ui-widget-icon i,body.ui-native-shell .ui-icon-button i {color:inherit;font-size:inherit;}
 body.ui-native-shell .ui-session-extra i {color:inherit!important;}
 body.ui-native-shell .ui-session-extra {font-size:10px!important;}
 body.ui-native-shell .ui-actions .menu-nav > .menu-item a[href*="/ui/temas"] {color:var(--ui-muted)!important;background:var(--ui-surface)!important;border:1px solid var(--ui-border);}
@@ -262,7 +257,6 @@ body.ui-native-shell[data-ui-theme="fer-slate"] {
     --ui-nav-active-text:#79d6ab!important;
 }
 body.ui-native-shell .ui-brand { background:var(--ui-surface); }
-body.ui-native-shell .ui-footer-link .ui-support-indicator { margin-left:auto; width:7px; height:7px; border-radius:50%; background:#22bf8d; }
 body.ui-native-shell .ui-actions { flex-wrap:nowrap; }
 body.ui-native-shell .ui-actions > .container-fluid { flex:1 1 auto; min-width:0; }
 body.ui-native-shell .ui-actions .menu-nav { width:100%; flex-wrap:nowrap; gap:8px; }
