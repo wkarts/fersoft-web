@@ -54,7 +54,7 @@ body.ui-native-shell .ui-page > .container { max-width:none; padding-left:0; pad
 body.ui-native-shell .ui-page > .container-fluid { padding:0; }
 body.ui-native-shell .ui-page > .row { margin-left:0; margin-right:0; }
 body.ui-native-shell .ui-skip { position:fixed; transform:translateY(-140%); padding:10px 15px; background:var(--ui-surface); color:var(--ui-ink); z-index:10001; }
-body.ui-native-shell .ui-skip:focus { transform:translateY(0); outline:2px solid var(--ui-accent); outline-offset:2px; }
+body.ui-native-shell .ui-skip:focus { transform:translateY(0); outline:2px solid var(--ui-accent)!important; outline-offset:2px; }
 body.ui-native-shell .ui-menu-backdrop[hidden], body.ui-native-shell .ui-nav-list [hidden] { display:none!important; }
 body.ui-native-shell .ui-mobile-trigger, body.ui-native-shell .ui-mobile-close { display:none; }
 body.ui-native-shell.ui-nav-collapsed { --ui-sidebar-width:70px; }

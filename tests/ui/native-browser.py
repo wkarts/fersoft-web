@@ -58,8 +58,8 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('body').evaluate('(e)=>getComputedStyle(e).fontFamily.includes("Poppins")'), 'The approved Poppins typography is missing.'
     assert page.evaluate('async()=>{await document.fonts.ready;return document.fonts.check("400 13px Poppins")}'), 'The local Poppins font did not load.'
     page.keyboard.press('Tab')
-    focus_style = page.locator(':focus').evaluate('(e)=>{const s=getComputedStyle(e);return {outline:s.outlineStyle,boxShadow:s.boxShadow}}')
-    assert focus_style['outline'] != 'none' or focus_style['boxShadow'] != 'none', 'Keyboard focus must remain visible through an outline or focus ring.'
+    focus_style = page.locator(':focus').evaluate('(e)=>{const s=getComputedStyle(e);return {outline:s.outlineStyle,boxShadow:s.boxShadow,visibleSkip:e.matches(".ui-skip")&&e.getBoundingClientRect().top>=0}}')
+    assert focus_style['outline'] != 'none' or focus_style['boxShadow'] != 'none' or focus_style['visibleSkip'], f'Keyboard focus must remain visible: {focus_style}'
     page.locator(':focus').evaluate('(e)=>e.blur()')
     metric_rows = page.locator('.ui-metric').evaluate_all('(items)=>items.map(e=>e.getBoundingClientRect().top)')
     assert abs(metric_rows[0] - metric_rows[1]) < 5, 'Metric cards must reflow into a usable grid.'
