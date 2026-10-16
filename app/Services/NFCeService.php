@@ -688,14 +688,21 @@ class NFCeService{
         $chave = trim((string) ($dados['chave'] ?? ''));
         $dhEmiOriginal = trim((string) ($dados['dhEmi_original'] ?? ''));
         $dhSaiEntOriginal = $dados['dhSaiEnt_original'] ?? null;
+        $chaveDoXml = trim((string) ($identidade['chave'] ?? ''));
+        $numeroDoXml = (int) ($identidade['numero'] ?? 0);
+        $dhEmiDoXml = trim((string) ($identidade['dhEmi'] ?? ''));
+        $dhSaiEntDoXml = $identidade['dhSaiEnt'] ?? null;
+        $tpEmisDoXml = (int) ($identidade['tpEmis'] ?? 0);
 
         if ($chave === ''
-            || !hash_equals($identidade['chave'], $chave)
+            || $chaveDoXml === ''
+            || !hash_equals($chaveDoXml, $chave)
             || !hash_equals(trim((string) $venda->chave), $chave)
-            || (int) ($dados['nNF'] ?? 0) !== (int) $identidade['numero']
-            || !hash_equals($identidade['dhEmi'], $dhEmiOriginal)
-            || ($identidade['dhSaiEnt'] ?? null) !== $dhSaiEntOriginal
-            || (int) $identidade['tpEmis'] !== 1
+            || (int) ($dados['nNF'] ?? 0) !== $numeroDoXml
+            || $dhEmiDoXml === ''
+            || !hash_equals($dhEmiDoXml, $dhEmiOriginal)
+            || $dhSaiEntDoXml !== $dhSaiEntOriginal
+            || $tpEmisDoXml !== 1
             || (int) ($dados['tpEmis'] ?? 0) !== 1) {
             throw new \DomainException('A identidade ou as datas do XML arquivado divergiram da NFC-e rejeitada.');
         }
@@ -709,11 +716,11 @@ class NFCeService{
         return [
             'xml' => $xmlSemAssinatura['xml'],
             'chave' => $chave,
-            'nNf' => (int) $identidade['numero'],
+            'nNf' => $numeroDoXml,
             'modelo' => 65,
-            'dhEmi' => $identidade['dhEmi'],
-            'dhSaiEnt' => $identidade['dhSaiEnt'],
-            'tpEmis' => $identidade['tpEmis'],
+            'dhEmi' => $dhEmiDoXml,
+            'dhSaiEnt' => $dhSaiEntDoXml,
+            'tpEmis' => $tpEmisDoXml,
             'sha256_xml_original' => hash('sha256', $xmlOriginal),
             'fiscal_emission_log_id' => (int) $log->id,
             'fingerprint_xml_sem_assinatura' => $xmlSemAssinatura['fingerprint_xml_sem_assinatura'],
@@ -910,7 +917,14 @@ class NFCeService{
 
         return [
             'chave' => $identidade['chave'],
+            'cUF' => $identidade['cUF'],
+            'cNF' => $identidade['cNF'],
+            'serie' => $identidade['serie'],
             'numero' => $numero,
+            'nNF' => $identidade['nNF'],
+            'tpEmis' => $identidade['tpEmis'],
+            'dhEmi' => $identidade['dhEmi'],
+            'dhSaiEnt' => $identidade['dhSaiEnt'],
             'signed_xml' => $xml,
         ];
     }
