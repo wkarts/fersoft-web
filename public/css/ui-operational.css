@@ -275,8 +275,11 @@ body.ui-native-shell .ui-actions .ui-header-theme > a { width:76px; color:var(--
 body.ui-native-shell .ui-actions .ui-header-theme > a i { color:var(--ui-accent)!important; }
 body.ui-native-shell .ui-actions .ui-header-whatsapp > a,
 body.ui-native-shell .ui-actions .ui-header-whatsapp > button { width:36px; padding:8px; }
-body.ui-native-shell .ui-actions .ui-header-unit { display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
-body.ui-native-shell .ui-actions .ui-header-unit::before { content:"Unidade"; color:var(--ui-muted); font-size:9px; font-weight:600; }
+body.ui-native-shell .ui-actions .ui-header-unit { display:flex; flex-direction:row; align-items:center; gap:8px; }
+body.ui-native-shell .ui-actions .ui-header-unit .ui-unit-caption {
+    flex:0 0 auto; margin:0; color:var(--ui-muted); font-size:9px;
+    font-weight:500; line-height:1; white-space:nowrap; opacity:.8;
+}
 body.ui-native-shell .ui-actions .ui-header-unit .form-control { min-width:190px; max-width:220px; height:34px; }
 body.ui-native-shell .ui-actions .ui-header-unit .btn { min-width:36px; min-height:34px; border-radius:8px; }
 body.ui-native-shell .ui-actions > .topbar { align-items:center; gap:8px; }
@@ -332,7 +335,6 @@ body.ui-native-shell .ui-chart-empty { height:203px; margin:18px 25px; }
     body.ui-native-shell .ui-actions .ui-header-whatsapp { order:6; }
     body.ui-native-shell .ui-actions .ui-header-theme { margin-left:0; }
     body.ui-native-shell .ui-actions .ui-header-unit { flex-direction:row; align-items:center; gap:6px; min-width:0!important; }
-    body.ui-native-shell .ui-actions .ui-header-unit::before { flex:0 0 auto; }
     body.ui-native-shell .ui-actions .ui-header-unit .input-group { width:185px!important; max-width:100%; }
     body.ui-native-shell .ui-actions .ui-header-unit .form-control { min-width:0; max-width:none; width:0; flex:1 1 0; }
     body.ui-native-shell .ui-actions .ui-header-unit .label { padding:3px; }

@@ -23,7 +23,7 @@
             <div class=" @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
-                    <form method="post" action="{{{ (isset($produto) && !isset($duplicando)) ? '/produtos/update': '/produtos/save' }}}" enctype="multipart/form-data">
+                    <form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form" method="post" action="{{{ (isset($produto) && !isset($duplicando)) ? '/produtos/update': '/produtos/save' }}}" enctype="multipart/form-data">
 
 
                         <input type="hidden" name="id" value="{{{ (isset($produto) && !isset($duplicando)) ? $produto->id : 0 }}}">
@@ -85,7 +85,6 @@
                                 <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 
                                     <!--begin: Wizard Form-->
-                                    <form class="form fv-plugins-bootstrap fv-plugins-framework" id="kt_form">
                                         <!--begin: Wizard Step 1-->
                                         <p class="kt-widget__data text-danger">Campos com (*) obrigatório</p>
 
@@ -2046,7 +2045,6 @@
                                 </div>
                             </div>
 
-                    </form>
                 </div>
             </div>
             <input type="hidden" id="sub_id" value="@if(isset($produto)) {{$produto->sub_categoria_id}} @else 0 @endif" name="">

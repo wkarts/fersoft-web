@@ -15,8 +15,9 @@
         .btn-acessar { background-color: #0f766e; color: white; width: 100%; padding: 10px; font-weight: bold; }
         .btn-acessar:hover { background-color: #115e59; color: white; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-portal-access">
 
 <div class="login-box">
 
@@ -44,12 +45,12 @@
     <form action="/portal-cliente/{{ $slug }}/autenticar" method="POST">
         @csrf
         <div class="mb-3">
-            <label class="form-label font-weight-bold">CPF ou CNPJ</label>
+            <label class="form-label font-weight-bold" for="cpf_cnpj">CPF ou CNPJ</label>
             <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="form-control" required placeholder="Digite seu documento">
         </div>
         <div class="mb-4">
-            <label class="form-label font-weight-bold">Senha de Acesso</label>
-            <input type="password" name="senha" class="form-control" required placeholder="Senha (6 dígitos)">
+            <label class="form-label font-weight-bold" for="senha">Senha de Acesso</label>
+            <input type="password" name="senha" id="senha" class="form-control" required placeholder="Senha (6 dígitos)">
         </div>
         <div class="mb-4 text-end">
             <a href="/portal-cliente/{{ $slug }}/esqueci-senha" style="color: #0f766e; text-decoration: none; font-size: 0.9em;">Esqueceu sua senha?</a>

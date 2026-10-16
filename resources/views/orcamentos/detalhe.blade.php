@@ -134,9 +134,9 @@
 						<div class="col-xl-12">
 							<div class="row align-items-center">
 								<div class="form-group validated col-sm-6 col-lg-5 col-12">
-									<label class="col-form-label" id="">Produto</label><br>
+									<label class="col-form-label" id="">Produto</label>
 									<input type="hidden" name="orcamento_id" value="{{$orcamento->id}}">
-									<select class="form-control select2 produto-search select-search" style="width: 90%" id="kt_select2_1" name="produto">
+									<select class="form-control select2 produto-search select-search" style="width: 100%" id="kt_select2_1" name="produto">
 										<option value="">Digite para buscar o produto</option>
 									</select>
 								</div>

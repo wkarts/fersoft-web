@@ -32,7 +32,7 @@
                                 <div class="kt-section kt-section--first">
                                     <div class="kt-section__body">
                                         <div class="row">
-                                            <div class="form-group validated col-sm-10 col-lg-3">
+                                            <div class="form-group validated col-sm-10 col-lg-3 ui-user-name-field">
                                                 <label class="col-form-label">Nome</label>
                                                 <div class="">
                                                     <input id="nome" type="text" class="form-control @if($errors->has('nome')) is-invalid @endif" name="nome" value="{{{ isset($usuario) ? $usuario->nome : old('nome') }}}">
@@ -46,7 +46,7 @@
 
                                             @php($fotoUsuarioUrl = isset($usuario) ? app(\App\Services\UserAvatarService::class)->url($usuario->img) : null)
                                             <div class="form-group validated col-sm-10 col-lg-3 ui-user-profile-photo">
-                                                <label class="col-form-label" for="foto">Foto do usuário (opcional)</label>
+                                                <span class="col-form-label">Foto do usuário (opcional)</span>
                                                 <div class="ui-user-profile-photo__actions">
                                                     <span class="ui-user-profile-photo__preview" aria-hidden="true">
                                                         @if($fotoUsuarioUrl)
@@ -55,10 +55,14 @@
                                                             {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) old('nome', $usuario->nome ?? '?'), 0, 1)) }}
                                                         @endif
                                                     </span>
-                                                    <input id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="form-control @error('foto') is-invalid @enderror">
+                                                    <div class="ui-user-profile-photo__picker">
+                                                        <input id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="ui-user-profile-photo__input @error('foto') is-invalid @enderror" aria-describedby="foto-arquivo foto-ajuda">
+                                                        <label class="ui-user-profile-photo__pick-button" for="foto">Selecionar foto</label>
+                                                        <span class="ui-user-profile-photo__filename" id="foto-arquivo" aria-live="polite">Nenhum arquivo selecionado</span>
+                                                    </div>
                                                 </div>
                                                 @error('foto')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                                <small class="text-muted">JPG, PNG ou WebP, até 2 MB.</small>
+                                                <small class="text-muted" id="foto-ajuda">JPG, PNG ou WebP, até 2 MB.</small>
                                             </div>
 
                                             @isset($usuario)
@@ -304,7 +308,6 @@
                                 </div>
                             </div>
                         </div>
-                </div>
                 <div class="ui-admin-panel-foot">
 
                     <div class="row">
@@ -329,6 +332,7 @@
                 </form>
             </div>
         </div>
+    </div>
     </div>
 
     {{-- ========== Modais OTP: renderizar apenas ao EDITAR ========== --}}
@@ -437,6 +441,14 @@
 @endsection
 
 @section('javascript')
+    <script>
+        document.querySelectorAll('.ui-user-profile-photo__input').forEach(function (input) {
+            input.addEventListener('change', function () {
+                const filename = input.closest('.ui-user-profile-photo__picker').querySelector('.ui-user-profile-photo__filename');
+                filename.textContent = input.files.length ? input.files[0].name : 'Nenhum arquivo selecionado';
+            });
+        });
+    </script>
     <script type="text/javascript">
         $('[data-toggle="popover"]').popover()
     </script>

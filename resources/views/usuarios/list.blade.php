@@ -201,13 +201,13 @@
 
 			</div>
 
-			<div class="d-flex justify-content-between align-items-center flex-wrap">
-				<div class="d-flex flex-wrap py-2 mr-3">
-					@if(isset($links))
-					{{$veiculos->links()}}
-					@endif
+			@if(method_exists($usuarios, 'links'))
+				<div class="d-flex justify-content-between align-items-center flex-wrap">
+					<div class="d-flex flex-wrap py-2 mr-3">
+						{{ $usuarios->links() }}
+					</div>
 				</div>
-			</div>
+			@endif
 		</div>
 	</div>
 </div>

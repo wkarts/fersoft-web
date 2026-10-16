@@ -368,7 +368,7 @@
                         </div>
 
                         <!-- BOTÕES DE AÇÃO FIXOS/CENTRALIZADOS -->
-                        <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                        <div class="d-flex justify-content-between align-items-center pt-4 border-top ui-people-submit-actions">
                             <a class="btn btn-outline-danger font-weight-bold px-5" href="/funcionarios">
                                 <i class="la la-times"></i> Cancelar
                             </a>

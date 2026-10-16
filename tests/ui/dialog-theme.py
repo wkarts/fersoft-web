@@ -167,6 +167,36 @@ def check_dialogs(page, theme, width):
     modal.locator('[data-dismiss="modal"]').click()
     modal.wait_for(state='hidden')
 
+    # Several real ERP views still contain inline green headers and bg-white
+    # footers. The refined shell must make them readable in every preset while
+    # leaving the original Bootstrap dismissal and form controls untouched.
+    page.locator('#fixture-legacy-modal-trigger').click()
+    legacy = page.locator('#fixture-legacy-modal')
+    legacy.wait_for(state='visible')
+    contained(page, '#fixture-legacy-modal .modal-dialog')
+    assert legacy.locator('.modal-header').evaluate('(e)=>getComputedStyle(e).backgroundColor') == surface_rgb
+    assert legacy.locator('.modal-title').evaluate('(e)=>getComputedStyle(e).color') == palette['ink']
+    assert legacy.locator('.close').evaluate('(e)=>getComputedStyle(e).color') == palette['ink']
+    assert legacy.locator('.modal-body').evaluate('(e)=>getComputedStyle(e).backgroundColor') == surface_rgb
+    assert legacy.locator('#fixture-legacy-input').input_value() == 'Preservado'
+    legacy.locator('.modal-header').evaluate('(e)=>e.classList.add("bg-danger")')
+    danger_background = page.locator('body').evaluate('''body => {
+        const sample = document.createElement('span');
+        sample.style.background = 'var(--ui-danger-bg)';
+        body.append(sample);
+        const result = getComputedStyle(sample).backgroundColor;
+        sample.remove();
+        return result;
+    }''')
+    assert legacy.locator('.modal-header').evaluate('(e)=>getComputedStyle(e).backgroundColor') == danger_background
+    footer_buttons = legacy.locator('.modal-footer .btn')
+    first, second = footer_buttons.nth(0).bounding_box(), footer_buttons.nth(1).bounding_box()
+    assert first is not None and second is not None
+    assert first['x'] + first['width'] <= second['x'] + 1 or first['y'] + first['height'] <= second['y'] + 1, 'Modal actions overlap'
+    contained(page, '#fixture-legacy-modal .modal-footer')
+    legacy.locator('.modal-header [data-dismiss="modal"]').click()
+    legacy.wait_for(state='hidden')
+
 
 def main():
     assert all((FIXTURES / f'{theme}-lateral-comfortable.html').exists()

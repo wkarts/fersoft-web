@@ -39,8 +39,9 @@ body.ui-native-shell .ui-masthead [data-target="#modal-empresa-contador"] {
 }
 body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex,
 body.ui-native-shell .ui-masthead .ui-header-unit .label { width:auto!important; min-width:0; padding:0; border:0; background:transparent!important; }
-body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:auto!important; max-width:none; flex-wrap:nowrap; }
-body.ui-native-shell .ui-masthead .ui-header-unit .form-control { width:190px; min-width:0; max-width:190px; height:36px; background:var(--ui-surface-alt); }
+body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex { flex:1 1 auto; }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:clamp(190px, 17vw, 310px)!important; max-width:100%; flex-wrap:nowrap; }
+body.ui-native-shell .ui-masthead .ui-header-unit .form-control { flex:1 1 0; width:0; min-width:0; max-width:none; height:36px; background:var(--ui-surface-alt); }
 body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append { margin-left:8px; }
 body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append .btn {
     min-width:36px; min-height:36px; padding:7px; border:1px solid var(--ui-border)!important;
@@ -83,6 +84,9 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
 
 @media (min-width:992px) and (max-width:1600px) {
     body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { flex-wrap:wrap; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a { width:36px; min-width:36px; padding-inline:7px; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a span { display:none; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a i { font-size:17px; }
 }
 @media (min-width:992px) and (max-width:1240px) {
     body.ui-native-shell .ui-masthead { padding-block:8px; }
@@ -120,8 +124,16 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
     body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit {
         flex-direction:row; align-items:center; gap:6px;
     }
-    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit::before { flex:0 0 auto; }
-    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:185px!important; max-width:100%; }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit {
+        flex:1 1 100%; width:100%; max-width:100%; min-width:0; justify-content:flex-start;
+    }
+    body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex {
+        flex:0 1 310px; width:min(310px, calc(100% - 52px))!important; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-header-unit .label { flex:1 1 auto; width:100%!important; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group {
+        width:100%!important; max-width:100%;
+    }
     body.ui-native-shell .ui-masthead .ui-header-unit .form-control {
         flex:1 1 0; width:0; max-width:none; min-width:0;
     }
@@ -135,7 +147,7 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
 }
 @media (max-width:699px) {
     body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 7px; }
-    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:175px!important; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:100%!important; }
     body.ui-native-shell .ui-session { gap:3px 10px; }
 }
 @media (max-width:420px) {
@@ -146,7 +158,7 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
     body.ui-native-shell .ui-masthead .ui-mobile-brand img { max-width:95px; }
     body.ui-native-shell .ui-masthead .ui-company-name { max-width:132px; }
     body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 5px; }
-    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:115px!important; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:100%!important; }
     body.ui-native-shell .ui-masthead .ui-user-details { max-width:53px; }
     body.ui-native-shell .ui-masthead .ui-user-controls { gap:5px; }
     body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
@@ -162,7 +174,7 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
     body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar {
         --ui-sidebar-ink:var(--ui-muted); --ui-nav-active-bg:var(--ui-accent-soft);
         --ui-nav-active-text:var(--ui-ink);
-        position:sticky; inset:auto; top:0; display:flex; flex-direction:row; align-items:stretch;
+        position:sticky; inset:auto; top:var(--ui-masthead-height, 74px); display:flex; flex-direction:row; align-items:stretch;
         width:100%; height:47px; min-height:47px;
         overflow:visible; border-right:0; border-bottom:1px solid var(--ui-border);
         background:var(--ui-surface); z-index:1030;
@@ -225,6 +237,41 @@ body.ui-native-shell .ui-session .topbar-item > .btn {
         transform:none!important; z-index:1040;
     }
     body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-submenu[hidden] { display:none!important; }
+}
+
+/* Keep the existing operational and session rows together on long pages.
+   The header height comes from its real rendered content, including wrapping. */
+body.ui-native-shell .ui-masthead { position:sticky; top:0; z-index:1033; }
+body.ui-native-shell .ui-session {
+    position:sticky; top:var(--ui-masthead-height, 74px); z-index:1022;
+}
+@media (min-width:992px) {
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-sidebar { z-index:1034; }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand { position:relative; }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand [data-ui-collapse],
+    body.ui-native-shell.ui-nav-collapsed[data-ui-layout="lateral"] .ui-brand [data-ui-collapse] {
+        position:absolute; left:auto; right:-14px; top:50%; transform:translateY(-50%);
+        display:inline-flex; align-items:center; justify-content:center;
+        width:28px; height:28px; border-radius:50%; z-index:2;
+        background:var(--ui-surface); border:1px solid var(--ui-border);
+        color:var(--ui-muted); box-shadow:0 2px 7px rgba(22,44,51,.09);
+        font-size:13px; line-height:1;
+    }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand [data-ui-collapse]:is(:hover,:focus-visible) {
+        color:var(--ui-accent); background:var(--ui-hover); border-color:var(--ui-accent);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-session {
+        top:calc(var(--ui-masthead-height, 74px) + 47px);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-masthead {
+        position:sticky; top:0; z-index:1033;
+    }
+}
+@media (max-width:991px) {
+    /* The mobile header remains available at the top of a page; the session
+       row can stick alone without occupying the small viewport twice. */
+    body.ui-native-shell .ui-masthead { position:relative; }
+    body.ui-native-shell .ui-session { top:0; }
 }
 
 @media print {
