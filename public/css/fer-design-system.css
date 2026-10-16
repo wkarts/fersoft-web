@@ -132,6 +132,18 @@ body.ui-native-shell .select2-dropdown { color: var(--ui-ink); background: var(-
 body.ui-native-shell .select2-results__option--highlighted[aria-selected] { color: var(--ui-on-accent)!important; background: var(--ui-accent)!important; }
 body.ui-native-shell :is(.datepicker,.daterangepicker,.bootstrap-timepicker-widget) { color: var(--ui-ink); background: var(--ui-surface); border-color: var(--ui-border); }
 
+/* Shared action menus and record summaries used throughout the server views. */
+body.ui-native-shell .dropdown-menu { max-width: min(92vw, 340px); padding: 6px; color: var(--ui-ink); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 9px; box-shadow: 0 12px 30px rgba(33,59,69,.13); }
+body.ui-native-shell .dropdown-menu :is(.navi,.nav) { list-style: none; margin: 0; padding: 0; }
+body.ui-native-shell .dropdown-menu .navi-item { list-style: none; }
+body.ui-native-shell .dropdown-menu :is(.navi-link,.dropdown-item) { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 6px; color: var(--ui-ink); text-decoration: none; }
+body.ui-native-shell .dropdown-menu :is(.navi-link,.dropdown-item):hover { color: var(--ui-accent); background: var(--ui-hover); }
+body.ui-native-shell .dropdown-menu .navi-header { padding: 8px 9px; color: var(--ui-muted); font-size: 10px; }
+body.ui-native-shell .dropdown-menu .navi-separator { height: 1px; background: var(--ui-border); }
+body.ui-native-shell .ui-page .kt-widget__info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; min-width: 0; }
+body.ui-native-shell .ui-page .kt-widget__label { color: var(--ui-muted); font-size: 10px; }
+body.ui-native-shell .ui-page .kt-widget__data { color: var(--ui-ink); font-weight: 600; overflow-wrap: anywhere; }
+
 /* Data tables, legacy datatable markup, pagination and empty/loading states. */
 body.ui-native-shell .ui-page :is(.table-responsive,.datatable,.dataTables_wrapper) { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
 body.ui-native-shell .ui-page :is(table,.table,.datatable-table) { width: 100%; border-collapse: collapse; color: var(--ui-ink); background: var(--ui-surface); font-variant-numeric: tabular-nums; }

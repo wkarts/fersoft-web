@@ -555,6 +555,7 @@
 <script type="text/javascript" src="/js/mascaras.js"></script>
 
 <script src="/js/sweetalert.min.js"></script>
+<script src="/js/toastr.min.js"></script>
 
 <script type="text/javascript">
     function audioSuccess(){
@@ -1373,7 +1374,6 @@
 <!-- tour -->
 
 <script type="text/javascript" src="/js/main.js"></script>
-<script type="text/javascript" src="/js/toastr.min.js"></script>
 
 @yield('modal-alerta-sistema')
 
