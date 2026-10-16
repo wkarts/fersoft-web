@@ -353,9 +353,9 @@ class NFCeController extends Controller
                                 . 'dhSaiEnt original (saída/movimentação no XML): '
                                 . ($dadosCorrecao704['dhSaiEnt_original'] ?? 'ausente') . "\n"
                                 . 'tpEmis original: 1 (normal)' . "\n\n"
-                                . 'Se confirmar, será assinado outro XML com dhEmi do relógio do servidor no momento da confirmação (agora: '
+                                . 'Se confirmar, a mesma NFC-e será retransmitida com uma nova assinatura. O XML arquivado da tentativa rejeitada será reutilizado; somente dhEmi será atualizado para '
                                 . $dadosCorrecao704['dhEmi_proposto']
-                                . '; pode variar alguns segundos). dhSaiEnt, chave, série, número, cNF e tpEmis serão preservados.' . "\n\n"
+                                . ', e a assinatura digital será refeita. Nenhuma nova NFC-e será criada. Chave, série, número, cNF, tpEmis, dhSaiEnt, itens, tributos, valores e pagamentos serão preservados.' . "\\n\\n"
                                 . 'O XML anterior fica preservado na auditoria. Como dhEmi é data de emissão fiscal, confirme somente conforme o procedimento fiscal da empresa.',
                             'dhEmi_original' => $dadosCorrecao704['dhEmi_original'],
                             'dhEmi_proposto' => $dadosCorrecao704['dhEmi_proposto'],
@@ -367,12 +367,16 @@ class NFCeController extends Controller
 
                     if ($dadosCorrecao704 !== null && $confirmouAjusteDhEmi704) {
                         $ajusteDhEmi704 = $dadosCorrecao704;
-                        $hashXmlOriginal704 = hash('sha256', (string) $venda->signed_xml);
                     }
                 }
 
                 try {
-                    $nfce = $nfe_service->gerarNFCe($vendaId, $ajusteDhEmi704 !== null);
+                    if ($ajusteDhEmi704 !== null) {
+                        $nfce = $nfe_service->prepararReassinaturaNfce704($venda, $config, $ajusteDhEmi704);
+                        $hashXmlOriginal704 = $nfce['sha256_xml_original'] ?? null;
+                    } else {
+                        $nfce = $nfe_service->gerarNFCe($vendaId);
+                    }
                 } catch (\Throwable $e) {
                     $this->registrarEventoNfce($venda, 'geracao_exception', [
                         'tipo_erro' => get_class($e),
@@ -403,6 +407,9 @@ class NFCeController extends Controller
                     $public = env('SERVIDOR_WEB') ? 'public/' : '';
                     try {
                         $signed = $nfe_service->sign($nfce['xml']);
+                        if ($ajusteDhEmi704 !== null) {
+                            $nfe_service->validarXmlReassinadoNfce704($nfce, (string) $signed);
+                        }
                     } catch (\Throwable $e) {
                         $this->registrarEventoNfce($venda, 'assinatura_exception', [
                             'tipo_erro' => get_class($e),
@@ -457,6 +464,7 @@ class NFCeController extends Controller
                             'tpEmis' => $nfce['tpEmis'] ?? null,
                             'consulta_sefaz_cStat' => 217,
                             'confirmado_pelo_operador' => true,
+                            'fiscal_emission_log_id_original' => $nfce['fiscal_emission_log_id'] ?? null,
                             'sha256_xml_anterior' => $hashXmlOriginal704,
                             'sha256_xml_novo' => hash('sha256', (string) $signed),
                         ], 'warning');
