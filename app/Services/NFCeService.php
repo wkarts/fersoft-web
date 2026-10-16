@@ -550,6 +550,19 @@ class NFCeService{
             throw new \DomainException('Data original da NFC-e incompatível com a chave. Não será gerada outra identificação.');
         }
 
+        $dhSaiEnt = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhSaiEnt)', $infNFe));
+        if ($dhSaiEnt !== '' && !preg_match(
+            '/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D',
+            $dhSaiEnt
+        )) {
+            throw new \DomainException('Data original de saída/movimentação inválida. Retransmissão bloqueada para não trocar o horário do documento.');
+        }
+
+        $tpEmisXml = (int) $xpath->evaluate('string(./nfe:ide/nfe:tpEmis)', $infNFe);
+        if ($tpEmisXml !== (int) $chave[34]) {
+            throw new \DomainException('Tipo de emissão do XML diverge da chave original. Retransmissão bloqueada.');
+        }
+
         return [
             'chave' => $chave,
             'cUF' => (int) substr($chave, 0, 2),
@@ -558,6 +571,83 @@ class NFCeService{
             'nNF' => $numero,
             'tpEmis' => (int) substr($chave, 34, 1),
             'dhEmi' => $dhEmi,
+            'dhSaiEnt' => $dhSaiEnt !== '' ? $dhSaiEnt : null,
+        ];
+    }
+
+
+    /**
+     * Prepara a correção explícita da rejeição 704. Só é oferecida depois
+     * de uma rejeição 704 registrada para esta mesma chave; o controlador
+     * também exige nova consulta 217 e confirmação do operador.
+     */
+    public function dadosCorrecaoDhEmiNfce704(VendaCaixa $venda, $config): ?array
+    {
+        if ($venda->estado !== 'REJEITADO'
+            || (int) $venda->empresa_id !== (int) $this->empresa_id) {
+            return null;
+        }
+
+        $ultimoLog = FiscalEmissionLog::where('empresa_id', $this->empresa_id)
+            ->where('document_type', 'NFCe')
+            ->where('document_id', $venda->id)
+            ->orderBy('id', 'desc')
+            ->first(['status', 'retorno_codigo', 'chave', 'filial_id', 'xml_envio_path']);
+
+        if (!$ultimoLog
+            || $ultimoLog->status !== 'rejeitado'
+            || (int) $ultimoLog->retorno_codigo !== 704
+            || trim((string) $ultimoLog->chave) !== trim((string) $venda->chave)) {
+            return null;
+        }
+
+        if ($ultimoLog->filial_id !== null
+            && (int) $ultimoLog->filial_id !== (int) $venda->filial_id) {
+            return [
+                'permitido' => false,
+                'motivo' => 'A rejeição 704 registrada pertence a outra filial. Correção automática bloqueada.',
+            ];
+        }
+
+        $pathXmlAnterior = trim((string) $ultimoLog->xml_envio_path);
+        if (!preg_match(
+            '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\\.xml$~D',
+            $pathXmlAnterior
+        ) || !Storage::disk('local')->exists($pathXmlAnterior)) {
+            return [
+                'permitido' => false,
+                'motivo' => 'O XML da tentativa 704 não está preservado no histórico fiscal. Correção bloqueada para não sobrescrever a única cópia disponível.',
+            ];
+        }
+
+        $identidade = $this->identidadeOriginalNFCe($venda, $config);
+        $agora = FiscalDateHelper::nowXml();
+        $permitido = true;
+        $motivo = null;
+
+        if ((int) $identidade['tpEmis'] !== 1) {
+            $permitido = false;
+            $motivo = 'Esta NFC-e não está marcada como emissão normal (tpEmis=1). O horário original será preservado; confira o fluxo de contingência com o responsável fiscal.';
+        }
+
+        $aammAtual = substr($agora, 2, 2) . substr($agora, 5, 2);
+        if ($permitido && $aammAtual !== substr($identidade['chave'], 2, 4)) {
+            $permitido = false;
+            $motivo = 'A NFC-e pertence a outro mês/ano. Atualizar dhEmi alteraria a chave de acesso; a correção automática foi bloqueada para tratamento fiscal específico.';
+        }
+
+        return [
+            'permitido' => $permitido,
+            'motivo' => $motivo,
+            'chave' => $identidade['chave'],
+            'nNF' => $identidade['nNF'],
+            'tpEmis' => $identidade['tpEmis'],
+            'dhEmi_original' => $identidade['dhEmi'],
+            'dhSaiEnt_original' => $identidade['dhSaiEnt'],
+            'venda_created_at_db' => trim((string) ($venda->created_at ?? '')) ?: null,
+            'venda_data_emissao_db' => trim((string) ($venda->data_emissao ?? '')) ?: null,
+            'timezone_aplicacao' => FiscalDateHelper::timezone(),
+            'dhEmi_proposto' => $permitido ? $agora : null,
         ];
     }
 
@@ -945,7 +1035,7 @@ class NFCeService{
         throw new \RuntimeException('Não foi possível montar o XML da NFC-e (getXML/montaNFe/monta indisponíveis ou retornaram vazio).');
     }
 
-    public function gerarNFCe($idVenda){
+    public function gerarNFCe($idVenda, bool $renovarDhEmiApos704 = false){
         $venda = VendaCaixa::
         where('id', $idVenda)
             ->first();
@@ -967,9 +1057,19 @@ class NFCeService{
         }
 
         $identidadeOriginal = null;
+        $dhEmiRetransmissao = null;
         if ($venda->estado === 'REJEITADO') {
             try {
                 $identidadeOriginal = $this->identidadeOriginalNFCe($venda, $config);
+                if ($renovarDhEmiApos704) {
+                    $dadosCorrecao = $this->dadosCorrecaoDhEmiNfce704($venda, $config);
+                    if ($dadosCorrecao === null || !$dadosCorrecao['permitido']) {
+                        return ['erros_xml' => [
+                            $dadosCorrecao['motivo'] ?? 'Não foi confirmada uma rejeição 704 elegível para atualizar dhEmi.',
+                        ]];
+                    }
+                    $dhEmiRetransmissao = $dadosCorrecao['dhEmi_proposto'];
+                }
             } catch (\DomainException $e) {
                 return ['erros_xml' => [$e->getMessage()]];
             }
@@ -994,8 +1094,16 @@ class NFCeService{
         $stdIde->mod = 65;
         $stdIde->serie = $identidadeOriginal['serie'] ?? $config->numero_serie_nfce;
         $stdIde->nNF = $identidadeOriginal['nNF'] ?? $this->reservarNumeroNFCe($venda, $config);
-        $stdIde->dhEmi = $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
-        $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
+        $stdIde->dhEmi = $dhEmiRetransmissao ?? $identidadeOriginal['dhEmi'] ?? FiscalDateHelper::nowXml();
+        if ($identidadeOriginal !== null) {
+            // Em retransmissões, dhSaiEnt descreve o documento original e
+            // não deve avançar junto com o relógio da nova tentativa.
+            if ($identidadeOriginal['dhSaiEnt'] !== null) {
+                $stdIde->dhSaiEnt = $identidadeOriginal['dhSaiEnt'];
+            }
+        } else {
+            $stdIde->dhSaiEnt = FiscalDateHelper::nowXml();
+        }
         $stdIde->tpNF = 1;
         $stdIde->idDest = 1;
         $stdIde->cMunFG = $config->codMun;
@@ -1717,7 +1825,9 @@ class NFCeService{
                 'chave' => $chaveGerada,
                 'xml' => $xmlFinal,
                 'nNf' => $stdIde->nNF,
-                'modelo' => $nfe->getModelo()
+                'modelo' => $nfe->getModelo(),
+                'dhEmi' => $stdIde->dhEmi,
+                'tpEmis' => (int) $stdIde->tpEmis
             ];
             return $arr;
         }catch(\Throwable $e){
@@ -1794,7 +1904,8 @@ class NFCeService{
         string $status,
         ?string $codigo,
         string $mensagem,
-        ?string $retorno = null
+        ?string $retorno = null,
+        array $diagnostico = []
     ): void {
         if (!$logger || !$registro) {
             return;
@@ -1805,10 +1916,10 @@ class NFCeService{
                 'status' => $status,
                 'retorno_codigo' => $codigo,
                 'retorno_mensagem' => $mensagem,
-            ], $retorno, [
+            ], $retorno, array_merge([
                 'cStat' => $codigo,
                 'xMotivo' => $mensagem,
-            ]);
+            ], $diagnostico));
         } catch (\Throwable $e) {
             Log::error('NFC-e: falha ao finalizar auditoria da transmissão.', [
                 'empresa_id' => $this->empresa_id,
@@ -1818,6 +1929,119 @@ class NFCeService{
         }
     }
 
+
+    private function diagnosticoTemporalXmlNfce(string $xml): array
+    {
+        $dados = [
+            'dhEmi_xml' => null,
+            'dhSaiEnt_xml' => null,
+            'tpEmis_xml' => null,
+            'dhCont_xml' => null,
+            'xJust_contingencia_informado' => false,
+            'xml_temporal_legivel' => false,
+        ];
+
+        if ($xml === '' || strlen($xml) > 5 * 1024 * 1024) {
+            return $dados;
+        }
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        if (!@$dom->loadXML($xml, LIBXML_NONET)) {
+            return $dados;
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
+        $dhEmi = trim((string) $xpath->evaluate('string(//nfe:ide/nfe:dhEmi)'));
+        $dhSaiEnt = trim((string) $xpath->evaluate('string(//nfe:ide/nfe:dhSaiEnt)'));
+        $tpEmis = trim((string) $xpath->evaluate('string(//nfe:ide/nfe:tpEmis)'));
+        $dhCont = trim((string) $xpath->evaluate('string(//nfe:ide/nfe:dhCont)'));
+        $xJust = trim((string) $xpath->evaluate('string(//nfe:ide/nfe:xJust)'));
+
+        return [
+            'dhEmi_xml' => $dhEmi !== '' ? $dhEmi : null,
+            'dhSaiEnt_xml' => $dhSaiEnt !== '' ? $dhSaiEnt : null,
+            'tpEmis_xml' => $tpEmis !== '' ? (int) $tpEmis : null,
+            'dhCont_xml' => $dhCont !== '' ? $dhCont : null,
+            'xJust_contingencia_informado' => $xJust !== '',
+            'xml_temporal_legivel' => true,
+        ];
+    }
+
+    private function diferencaTemporalEmSegundos(?string $inicio, ?string $fim): ?int
+    {
+        if (!$inicio || !$fim) {
+            return null;
+        }
+
+        try {
+            return (new \DateTimeImmutable($fim))->getTimestamp()
+                - (new \DateTimeImmutable($inicio))->getTimestamp();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function duracaoLegivel(?int $segundos): ?string
+    {
+        if ($segundos === null) {
+            return null;
+        }
+
+        $sinal = $segundos < 0 ? '-' : '';
+        $valor = abs($segundos);
+        $horas = intdiv($valor, 3600);
+        $minutos = intdiv($valor % 3600, 60);
+        $restoSegundos = $valor % 60;
+
+        return $sinal . $horas . 'h ' . $minutos . 'min ' . $restoSegundos . 's';
+    }
+
+    private function mensagemRejeicao704(string $motivo, array $diagnostico): string
+    {
+        $dhEmi = $diagnostico['dhEmi_xml'] ?? 'não disponível no XML';
+        $dhSaiEnt = $diagnostico['dhSaiEnt_xml'] ?? 'não disponível no XML';
+        $tpEmis = $diagnostico['tpEmis_xml'] ?? 'não disponível';
+        $registroVenda = $diagnostico['venda_created_at_db'] ?? null;
+        $dataEmissaoBanco = $diagnostico['venda_data_emissao_db'] ?? null;
+        $timezone = $diagnostico['timezone_aplicacao'] ?? 'não informado';
+        $inicioEnvio = $diagnostico['transmissao_iniciada_em'] ?? 'não registrado';
+        $dhRecebimento = $diagnostico['dhRecbto_sefaz'] ?? null;
+        // Só compara dhEmi com o recebimento efetivamente informado pela SEFAZ.
+        // O início do envio é um instante local diferente e não substitui dhRecbto.
+        $atraso = $dhRecebimento
+            ? $this->diferencaTemporalEmSegundos($dhEmi, $dhRecebimento)
+            : null;
+        $tipoEmissao = (int) $tpEmis === 1
+            ? '1 (normal)'
+            : ((int) $tpEmis === 9 ? '9 (contingência offline)' : (string) $tpEmis);
+
+        $mensagem = "Erro: [704] - " . $motivo . "\n\n";
+        $mensagem .= "Horários, cada um em seu campo:\n";
+        $mensagem .= "Registro da venda (created_at no banco, fuso da aplicação " . $timezone . "): " . ($registroVenda ?: 'não disponível') . "\n";
+        $mensagem .= "Campo venda.data_emissao no banco: " . ($dataEmissaoBanco ?: 'NULL/não preenchido') . "\n";
+        $mensagem .= "Emissão fiscal do XML (dhEmi): " . $dhEmi . "\n";
+        $mensagem .= "Saída/movimentação do XML (dhSaiEnt): " . $dhSaiEnt . "\n";
+        $mensagem .= "Tipo de emissão no XML (tpEmis): " . $tipoEmissao . "\n";
+        $mensagem .= "Início do envio pelo sistema: " . $inicioEnvio . "\n";
+        if ($dhRecebimento) {
+            $mensagem .= "Recebimento informado pela SEFAZ (dhRecbto): " . $dhRecebimento . "\n";
+            if ($atraso !== null) {
+                $mensagem .= "Diferença de dhEmi até dhRecbto: " . $this->duracaoLegivel($atraso) . "\n";
+            }
+        } else {
+            $mensagem .= "dhRecbto não veio no protocolo; não usei o início do envio como se fosse o recebimento da SEFAZ.\n";
+        }
+        $mensagem .= "\nA rejeição 704 valida dhEmi em relação ao recebimento da SEFAZ. Registro da venda, data_emissao no banco, dhSaiEnt e início da transmissão são horários distintos.\n";
+        if ((int) $tpEmis === 1) {
+            $mensagem .= "Esta NFC-e está marcada como tpEmis=1 (normal). Uma retransmissão simples preserva dhEmi; eventual correção depende de consulta que confirme cStat=217 e confirmação explícita do operador.";
+        } else {
+            $mensagem .= "O XML não está marcado como emissão normal. Confira o tipo de emissão e o procedimento fiscal antes de retransmitir.";
+        }
+
+        return $mensagem;
+    }
+
     public function transmitirNfce($signXml, $chave, $venda_id = null){
         $this->resultadoUltimaTransmissao = 'indeterminado';
 
@@ -1825,13 +2049,21 @@ class NFCeService{
             ? VendaCaixa::where('empresa_id', $this->empresa_id)->find($venda_id)
             : null;
 
+        $diagnosticoXml = $this->diagnosticoTemporalXmlNfce((string) $signXml);
         $contexto = [
             'empresa_id' => $this->empresa_id,
             'filial_id' => $venda?->filial_id,
             'venda_id' => $venda_id,
             'numero_nfce' => $venda?->NFcNumero,
             'chave' => $chave,
+            ...$diagnosticoXml,
+            'sha256_xml_assinado' => hash('sha256', (string) $signXml),
+            'timezone_aplicacao' => (string) config('app.timezone'),
+            'venda_created_at_db' => $venda ? trim((string) ($venda->created_at ?? '')) ?: null : null,
+            'venda_data_emissao_db' => $venda ? trim((string) ($venda->data_emissao ?? '')) ?: null : null,
         ];
+        $contextoTransmissao = $contexto;
+        $transmissaoRespostaEm = null;
 
         $logger = null;
         $registro = null;
@@ -1854,7 +2086,9 @@ class NFCeService{
             ]);
         }
 
-        Log::info('NFC-e: tentativa de transmissão iniciada.', $contexto);
+        Log::info('NFC-e: solicitação de emissão iniciada.', array_merge($contexto, [
+            'solicitacao_iniciada_em' => FiscalDateHelper::nowXml(),
+        ]));
 
         try {
             $idLote = str_pad(100, 15, '0', STR_PAD_LEFT);
@@ -1871,7 +2105,18 @@ class NFCeService{
                 return null;
             }
 
+            $transmissaoIniciadaEm = FiscalDateHelper::nowXml();
+            $contextoTransmissao = array_merge($contexto, [
+                'transmissao_iniciada_em' => $transmissaoIniciadaEm,
+                'segundos_dhEmi_ate_inicio_transmissao' => $this->diferencaTemporalEmSegundos(
+                    $diagnosticoXml['dhEmi_xml'] ?? null,
+                    $transmissaoIniciadaEm
+                ),
+            ]);
+            Log::info('NFC-e: envio ao autorizador iniciado.', $contextoTransmissao);
+
             $resp = $this->tools->sefazEnviaLote([$signXml], $idLote, 1);
+            $transmissaoRespostaEm = FiscalDateHelper::nowXml();
             sleep(7);
             $st = new Standardize();
             $std = $st->toStd($resp);
@@ -1904,19 +2149,31 @@ class NFCeService{
             $protocoloRetorno = $std->protNFe->infProt ?? null;
             $codigoNota = (int) ($protocoloRetorno->cStat ?? 0);
             $motivoNota = (string) ($protocoloRetorno->xMotivo ?? $motivo);
+            $dhRecebimentoSefaz = trim((string) ($protocoloRetorno->dhRecbto ?? ''));
+            $contextoResposta = array_merge($contextoTransmissao, [
+                'transmissao_resposta_obtida_em' => $transmissaoRespostaEm,
+                'dhRecbto_sefaz' => $dhRecebimentoSefaz !== '' ? $dhRecebimentoSefaz : null,
+                'segundos_dhEmi_ate_dhRecbto_sefaz' => $this->diferencaTemporalEmSegundos(
+                    $diagnosticoXml['dhEmi_xml'] ?? null,
+                    $dhRecebimentoSefaz !== '' ? $dhRecebimentoSefaz : null
+                ),
+            ]);
 
             if ($codigoNota > 0 && !in_array($codigoNota, [100, 150], true)) {
                 $this->resultadoUltimaTransmissao = 'rejeicao_sefaz';
                 $this->concluirLogTransmissao(
                     $logger, $registro, 'rejeitado',
-                    (string) $codigoNota, $motivoNota, $resp
+                    (string) $codigoNota, $motivoNota, $resp, $contextoResposta
                 );
                 Log::error('NFC-e: rejeição de documento informada pela SEFAZ.', [
-                    ...$contexto,
+                    ...$contextoResposta,
                     'cStat_lote' => $codigo,
                     'cStat' => $codigoNota,
                     'xMotivo' => $motivoNota,
                 ]);
+                if ($codigoNota === 704) {
+                    return $this->mensagemRejeicao704($motivoNota, $contextoResposta);
+                }
                 return "Erro: [$codigoNota] - $motivoNota";
             }
 
@@ -1970,7 +2227,7 @@ class NFCeService{
                 $logger, $registro, 'erro_tecnico', null, $e->getMessage()
             );
             Log::error('NFC-e: falha técnica/comunicação SOAP-SSL.', [
-                ...$contexto,
+                ...$contextoTransmissao,
                 'exception' => $e,
             ]);
             return "Erro: " . $e->getMessage();
