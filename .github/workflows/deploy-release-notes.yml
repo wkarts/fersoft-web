@@ -99,7 +99,7 @@ jobs:
               $encoded = getenv('RELEASE_NOTES_B64') ?: '';
               $notes = base64_decode($encoded, true);
               if ($notes === false) {
-                  fwrite(STDERR, "Notas da release inválidas.\\n");
+                  fwrite(STDERR, "Notas da release inválidas.\n");
                   exit(1);
               }
 
@@ -111,11 +111,11 @@ jobs:
               $notesPath = 'storage/app/releases/'.$version.'/current.html';
               $notesDirectory = dirname($notesPath);
               if (!is_dir($notesDirectory) && !mkdir($notesDirectory, 0775, true) && !is_dir($notesDirectory)) {
-                  fwrite(STDERR, "Não foi possível criar o diretório das notas.\\n");
+                  fwrite(STDERR, "Não foi possível criar o diretório das notas.\n");
                   exit(1);
               }
               if (file_put_contents($notesPath, $html) === false) {
-                  fwrite(STDERR, "Não foi possível gravar as notas HTML.\\n");
+                  fwrite(STDERR, "Não foi possível gravar as notas HTML.\n");
                   exit(1);
               }
               PHP
