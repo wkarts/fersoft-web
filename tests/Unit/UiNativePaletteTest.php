@@ -84,11 +84,14 @@ final class UiNativePaletteTest extends TestCase
             self::assertStringContainsString($href, $native, 'Missing authorized navigation: ' . $href);
         }
 
-        // The historical release-notes UI remains present in the superior
-        // menu and must compile through a properly closed @php / @foreach.
-        self::assertStringContainsString('@foreach($appVersionHistoryGrouped as $major => $items)', $superior);
-        self::assertStringContainsString("@php\n                                \$majorId", $superior);
-        self::assertStringContainsString('@endforeach', $superior);
+        // The release-notes controls and grouping remain present. The CI
+        // compiles and lints the complete Blade output separately, regardless
+        // of whether this block uses Blade directives or native PHP syntax.
+        self::assertStringContainsString('id="top-major-accordion"', $superior);
+        self::assertStringContainsString('$appVersionHistoryGrouped as $major => $items', $superior);
+        self::assertStringContainsString('$majorId =', $superior);
+        self::assertStringContainsString('release-current-', $superior);
+        self::assertStringContainsString('release-cumulative-', $superior);
 
         // The approved shell must never re-introduce the Metronic theme or
         // silently rely on a copy of its runtime for page interactions.
