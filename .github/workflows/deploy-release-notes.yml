@@ -3,6 +3,16 @@ name: Deploy Release Notes
 on:
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      version:
+        description: 'Versão semântica (ex: 1.4.2 ou v1.4.2)'
+        required: true
+        type: string
+      ref:
+        description: 'Tag/branch para checkout no servidor (opcional)'
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
       version:
