@@ -350,7 +350,12 @@ class NFCeController extends Controller
                         'venda_id' => $vendaId,
                         'exception' => $e,
                     ]);
-                    return response()->json(['Não foi possível gerar o XML da NFC-e. Consulte o log técnico.'], 500);
+                    $mensagemErro = $e instanceof \DomainException
+                        ? $e->getMessage()
+                        : 'Falha técnica ao preparar o XML da NFC-e.';
+                    $mensagemErro .= ' A transmissão foi interrompida; nenhum XML foi enviado à SEFAZ. Tente novamente; se o problema persistir, informe a chave da NFC-e ao suporte.';
+
+                    return response()->json([$mensagemErro], 500);
                 }
                 if(!isset($nfce['erros_xml'])){
                     // Não assinar, transmitir nem salvar se o serviço alterar

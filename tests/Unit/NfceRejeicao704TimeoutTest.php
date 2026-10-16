@@ -299,6 +299,19 @@ class NfceRejeicao704TimeoutTest extends TestCase
         $this->assertSame(1, substr_count($metodo, '$venda->cpf = $request->doc'));
     }
 
+    public function test_falha_na_preparacao_mantem_feedback_visivel_e_informa_que_nao_enviou(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents($root . '/app/Http/Controllers/NFCeController.php');
+        $frontend = file_get_contents($root . '/public/js/frenteCaixa2.js');
+
+        $this->assertStringContainsString('return response()->json([$mensagemErro], 500);', $controller);
+        $this->assertStringContainsString('A transmissão foi interrompida; nenhum XML foi enviado à SEFAZ.', $controller);
+        $this->assertStringContainsString("'geracao_exception'", $controller);
+        $this->assertStringContainsString('let mensagens = Array.isArray(js)', $frontend);
+        $this->assertStringContainsString('swal("Erro ao transmitir NFC-e", mensagemErro, "error")', $frontend);
+    }
+
     public function test_fluxo_registra_diagnosticos_internos_e_no_laravel(): void
     {
         $root = dirname(__DIR__, 2);

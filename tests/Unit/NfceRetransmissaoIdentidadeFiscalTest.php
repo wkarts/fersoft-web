@@ -48,6 +48,22 @@ class NfceRetransmissaoIdentidadeFiscalTest extends TestCase
             . '</infNFe></NFe>';
     }
 
+    private function xmlFiscalAssinadoCompleto(
+        string $chave,
+        string $dhEmi = '2026-10-10T15:39:00-03:00',
+        ?string $dhSaiEnt = null
+    ): string {
+        $dhSaiEntTag = $dhSaiEnt === null ? '' : '<dhSaiEnt>' . $dhSaiEnt . '</dhSaiEnt>';
+
+        return '<NFe xmlns="http://www.portalfiscal.inf.br/nfe">'
+            . '<infNFe versao="4.00" Id="NFe' . $chave . '"><ide>'
+            . '<cUF>29</cUF><cNF>00041234</cNF><mod>65</mod><serie>012</serie><nNF>347</nNF>'
+            . '<dhEmi>' . $dhEmi . '</dhEmi>' . $dhSaiEntTag . '<tpEmis>1</tpEmis>'
+            . '</ide><emit><CNPJ>12345678000195</CNPJ></emit></infNFe>'
+            . '<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo/>'
+            . '<SignatureValue>AA==</SignatureValue></Signature></NFe>';
+    }
+
     private function identificar(VendaCaixa $venda, ?object $config = null): array
     {
         $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
@@ -69,6 +85,28 @@ class NfceRetransmissaoIdentidadeFiscalTest extends TestCase
         $this->assertSame('00041234', $identidade['cNF']);
         $this->assertSame('2026-10-10T15:39:00-03:00', $identidade['dhEmi']);
         $this->assertSame(29, $identidade['cUF']);
+        $this->assertSame(1, $identidade['tpEmis']);
+    }
+
+    public function test_xml_assinado_retorna_dhEmi_dhSaiEnt_e_tpEmis_para_reassinatura(): void
+    {
+        $service = (new ReflectionClass(NFCeService::class))->newInstanceWithoutConstructor();
+        $chave = $this->chaveOriginal();
+        $dhEmi = '2026-10-10T15:39:00-03:00';
+        $dhSaiEnt = null;
+        $xml = $this->xmlFiscalAssinadoCompleto($chave, $dhEmi, $dhSaiEnt);
+        $config = (object) [
+            'cnpj' => '12.345.678/0001-95',
+            'cUF' => 29,
+        ];
+
+        $identidade = (new ReflectionMethod(NFCeService::class, 'identidadeNfceDeXmlAssinado'))
+            ->invoke($service, $this->vendaRejeitada($xml), $config, $xml);
+
+        $this->assertSame($chave, $identidade['chave']);
+        $this->assertSame(347, $identidade['numero']);
+        $this->assertSame($dhEmi, $identidade['dhEmi']);
+        $this->assertNull($identidade['dhSaiEnt']);
         $this->assertSame(1, $identidade['tpEmis']);
     }
 
