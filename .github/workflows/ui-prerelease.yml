@@ -55,6 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python tests/ui/test-release-identity.py
           git fetch --tags --force origin main
           # Escolher apenas tags estáveis vX.Y.Z alcançáveis pela main.
           stable="$(git tag --merged origin/main --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1p' || true)"
@@ -125,6 +126,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UI_BETA_VERSION: ${{ steps.beta.outputs.version }}
+          UI_BETA_BASE: ${{ steps.beta.outputs.stable }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin main develop
@@ -133,8 +136,8 @@ jobs:
             exit 0
           fi
           tag='ui-continuous'
-          beta_version="${{ steps.beta.outputs.version }}"
-          stable_base="${{ steps.beta.outputs.stable }}"
+          beta_version="$UI_BETA_VERSION"
+          stable_base="$UI_BETA_BASE"
           test -n "$beta_version"
           test -n "$stable_base"
           if gh release view "$tag" --json isPrerelease --jq '.isPrerelease' > "$RUNNER_TEMP/previous-release.txt" 2>/dev/null; then
@@ -154,7 +157,10 @@ jobs:
           # Não alterar tags semânticas vX.Y.Z nem a main.
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -f "$tag" "$GITHUB_SHA"
+          # O checkout Git recebe a mesma identidade do ZIP, sem importar tags
+          # semânticas locais nem depender de consultas ao provedor da release.
+          python scripts/ui/release-identity.py > "$RUNNER_TEMP/ui-release-identity.json"
+          git tag -a -f --cleanup=verbatim -F "$RUNNER_TEMP/ui-release-identity.json" "$tag" "$GITHUB_SHA"
           git push --force origin "refs/tags/$tag"
 
           cat > "$RUNNER_TEMP/ui-release-notes.md" <<EOF

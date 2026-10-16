@@ -66,6 +66,7 @@ jobs:
           bash -n scripts/ui/beta-version.sh
           bash -n scripts/ui/build-vite.sh
           python -m py_compile scripts/ui/build-preview.py
+          python tests/ui/test-release-identity.py
           test "$(bash scripts/ui/beta-version.sh v5.0.225 1)" = "v5.0.226-beta.1"
           test "$(bash scripts/ui/beta-version.sh v5.0.225 16)" = "v5.0.226-beta.16"
           test "$(bash scripts/ui/beta-version.sh v0.0.0 1)" = "v0.0.1-beta.1"

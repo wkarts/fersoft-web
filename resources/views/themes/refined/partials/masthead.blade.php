@@ -56,6 +56,7 @@
                                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active d-lg-none" data-menu-toggle="click" aria-haspopup="true">
                                             <a href="/app-versions" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif">
                                                 Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                                                @include('app_versions.installed_identity')
                                             </a>
                                         </li>
                                     @endif

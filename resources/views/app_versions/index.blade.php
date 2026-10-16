@@ -18,6 +18,8 @@
                 <h5 class="mb-3">Versão atualmente instalada</h5>
                 @if($currentVersion)
                     <div><strong>Versão:</strong> {{ $currentVersion->version }}</div>
+                    @include('app_versions.installed_identity', ['appVersionCurrent' => $currentVersion])
+                    <div><strong>Revisão:</strong> {{ $currentVersion->commit_hash ?: '-' }}</div>
                     <div><strong>SemVer:</strong> {{ $currentVersion->version_major }}.{{ $currentVersion->version_minor }}.{{ $currentVersion->version_patch }}</div>
                     <div><strong>Título:</strong> {{ $currentVersion->title ?: '-' }}</div>
                     <div><strong>Release:</strong> {{ optional($currentVersion->released_at)->format('d/m/Y H:i') ?: '-' }}</div>

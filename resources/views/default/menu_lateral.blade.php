@@ -435,6 +435,7 @@
                         <i class="la la-code-branch"></i>
                         <span class="app-version-desktop-main">
                             V. {{ $appVersionValue !== '' ? $appVersionValue : 'N/A' }}
+                            @include('app_versions.installed_identity')
 
                             @if($appRevisionValue !== '')
                                 <span class="app-version-desktop-revision" title="{{ $appRevisionValue }}">
@@ -1270,7 +1271,9 @@
 
                     <div class="topbar-item user-tour">
                         <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
-                            @php($avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl())
+                            @php
+                                $avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl();
+                            @endphp
                             <a href="{{ route('usuarios.profile') }}" aria-label="Minha foto de perfil" title="Minha foto" style="display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; margin-right:8px; border-radius:50%; overflow:hidden; background:#e5f2ec; color:#146242; font-weight:700;">
                                 @if($avatarUrl)
                                     <img src="{{ $avatarUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
