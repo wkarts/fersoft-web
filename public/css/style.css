@@ -145,7 +145,7 @@
   background: #E3E6E8 !important;
 }
 
-/* Rolagem discreta da área de conteúdo (sidebar intocada) */
+/* Rolagem confortável das áreas de conteúdo (sidebar intocada) */
 /*
  * Escopo: página, conteúdo do ERP e diálogos fora do wrapper.
  * Não selecionar a sidebar (#kt_aside), seus menus ou sua rolagem.
@@ -153,12 +153,12 @@
  */
 /*
  * Firefox usa as propriedades padronizadas. No Chromium, deixamos a largura
- * sob controle dos seletores ::-webkit-scrollbar para manter 4 px reais.
+ * sob controle dos seletores ::-webkit-scrollbar para manter 8 px reais.
  */
 @supports (-moz-appearance: none) {
     html {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
+        scrollbar-width: auto;
+        scrollbar-color: rgba(82, 99, 121, 0.56) rgba(82, 99, 121, 0.10);
     }
 
     #kt_wrapper,
@@ -167,8 +167,8 @@
     body > .modal *,
     body > .swal2-container,
     body > .swal2-container * {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(82, 99, 121, 0.13) transparent;
+        scrollbar-width: auto;
+        scrollbar-color: rgba(82, 99, 121, 0.56) rgba(82, 99, 121, 0.10);
     }
 }
 
@@ -180,8 +180,8 @@ body > .modal::-webkit-scrollbar,
 body > .modal *::-webkit-scrollbar,
 body > .swal2-container::-webkit-scrollbar,
 body > .swal2-container *::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 8px;
+    height: 8px;
 }
 
 html::-webkit-scrollbar-track,
@@ -192,7 +192,7 @@ body > .modal::-webkit-scrollbar-track,
 body > .modal *::-webkit-scrollbar-track,
 body > .swal2-container::-webkit-scrollbar-track,
 body > .swal2-container *::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(82, 99, 121, 0.10);
 }
 
 html::-webkit-scrollbar-thumb,
@@ -203,7 +203,7 @@ body > .modal::-webkit-scrollbar-thumb,
 body > .modal *::-webkit-scrollbar-thumb,
 body > .swal2-container::-webkit-scrollbar-thumb,
 body > .swal2-container *::-webkit-scrollbar-thumb {
-    background-color: rgba(82, 99, 121, 0.13);
+    background-color: rgba(82, 99, 121, 0.56);
     border-radius: 999px;
 }
 
@@ -215,7 +215,7 @@ body > .modal::-webkit-scrollbar-thumb:hover,
 body > .modal *::-webkit-scrollbar-thumb:hover,
 body > .swal2-container::-webkit-scrollbar-thumb:hover,
 body > .swal2-container *::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(82, 99, 121, 0.28);
+    background-color: rgba(82, 99, 121, 0.76);
 }
 
 html::-webkit-scrollbar-corner,
@@ -233,19 +233,19 @@ body::-webkit-scrollbar-corner,
 
 #kt_wrapper .ps__thumb-x,
 #kt_wrapper .ps__thumb-y {
-    background-color: rgba(82, 99, 121, 0.13) !important;
+    background-color: rgba(82, 99, 121, 0.56) !important;
     border-radius: 999px;
 }
 
 #kt_wrapper .ps__thumb-x {
-    height: 4px !important;
+    height: 8px !important;
 }
 
 #kt_wrapper .ps__thumb-y {
-    width: 4px !important;
+    width: 8px !important;
 }
 
 #kt_wrapper .ps__rail-x:hover .ps__thumb-x,
 #kt_wrapper .ps__rail-y:hover .ps__thumb-y {
-    background-color: rgba(82, 99, 121, 0.28) !important;
+    background-color: rgba(82, 99, 121, 0.76) !important;
 }
