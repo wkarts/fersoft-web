@@ -221,6 +221,11 @@
                         @endif
                     </div>
 
+                    <div class="col-md-2 form-group mb-0">
+                        <label class="font-weight-bolder text-warning">Desconto (R$)</label>
+                        <input type="text" id="desconto" name="desconto" class="form-control money text-right" value="{{ number_format($item->desconto ?? 0, 2, ',', '.') }}">
+                    </div>
+
                     <div class="col-md-4 form-group mb-0">
                         <label class="font-weight-bolder text-danger font-size-h5">TOTAL (R$)</label>
                         <input type="text" id="total_os" name="total_os" class="form-control form-control-solid font-weight-bolder text-danger font-size-h3 bg-light-danger text-right" readonly value="0,00">
@@ -371,8 +376,17 @@
             function somarTotalOS() {
                 let vArma = parseFloat($('#valor_armacao').val().replace(/\./g, '').replace(',', '.') || 0);
                 let vLente = parseFloat($('#valor_lente').val().replace(/\./g, '').replace(',', '.') || 0);
-                $('#total_os').val((vArma + vLente).toFixed(2).replace('.', ','));
+                let vDesc = parseFloat($('#desconto').val().replace(/\./g, '').replace(',', '.') || 0);
+
+                let total = (vArma + vLente) - vDesc;
+                if (total < 0) total = 0; // Evita total negativo
+
+                $('#total_os').val(total.toFixed(2).replace('.', ','));
             }
+
+            // Adicione este gatilho para atualizar quando digitar o desconto
+            $('#desconto').on('change keyup', somarTotalOS);
+
             setTimeout(somarTotalOS, 800);
         });
 
