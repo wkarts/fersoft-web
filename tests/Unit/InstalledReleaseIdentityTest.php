@@ -227,6 +227,39 @@ class InstalledReleaseIdentityTest extends TestCase
         self::assertSame('5.0.237', (new InstalledReleaseIdentity($this->root))->resolve()['version']);
     }
 
+    public function testCanonicalIdentityFollowsZipOverlaysInBothChannelDirectionsWithoutGit(): void
+    {
+        $reader = new InstalledReleaseIdentity($this->root);
+        $this->writeMetadata($this->stableMetadata(str_repeat('a', 40)), 'release-build-info.json');
+        self::assertSame('5.0.237', $reader->resolve()['version']);
+
+        $beta = $this->metadata(str_repeat('b', 40));
+        $beta['version'] = 'v5.0.238-beta.57';
+        $beta['base_stable_tag'] = 'v5.0.237';
+        $beta['build_number'] = '57';
+        $beta['tag'] = 'ui-continuous';
+        $this->writeMetadata($beta, 'release-build-info.json');
+        $this->writeMetadata($beta, 'public/release-build-info.json');
+        $this->writeMetadata($beta);
+        $this->writeMetadata($beta, 'public/ui-build-info.json');
+        $identity = $reader->resolve();
+        self::assertSame('5.0.238-beta.57', $identity['version']);
+        self::assertSame('beta-continuous', $identity['release_channel']);
+        self::assertSame('v5.0.237', $identity['base_stable_tag']);
+        self::assertSame(str_repeat('b', 40), $identity['git_commit_sha']);
+
+        $stable = $this->stableMetadata(str_repeat('c', 40));
+        $stable['version'] = 'v5.0.238';
+        $stable['tag'] = 'v5.0.238';
+        $this->writeMetadata($stable, 'release-build-info.json');
+        // Old beta public/legacy files can remain after extracting a stable ZIP.
+        $identity = $reader->resolve();
+        self::assertSame('5.0.238', $identity['version']);
+        self::assertSame('stable', $identity['release_channel']);
+        self::assertSame('v5.0.238', $identity['tag']);
+        self::assertSame(str_repeat('c', 40), $identity['git_commit_sha']);
+    }
+
     public function testStableManifestTagMustMatchVersion(): void
     {
         foreach ([

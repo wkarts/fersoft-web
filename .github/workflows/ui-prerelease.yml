@@ -15,8 +15,12 @@ jobs:
   compatibility:
     uses: ./.github/workflows/ui-compatibility.yml
 
+  release-identity:
+    uses: ./.github/workflows/release-identity.yml
+    secrets: inherit
+
   preview-package:
-    needs: compatibility
+    needs: [compatibility, release-identity]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -22,7 +22,7 @@ jobs:
   import-main:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,7 +57,16 @@ jobs:
             echo "- Nenhum arquivo da camada visual/contratos foi alterado." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Incorporar main SEM alterar main
+      - name: Preservar o integrador aprovado da main
+        if: steps.impact.outputs.needs_sync == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sync_dir="$RUNNER_TEMP/main-version-identity"
+          mkdir -p "$sync_dir"
+          cp scripts/ui/merge-main-version-identity.sh scripts/ui/version-identity-backport.json "$sync_dir/"
+
+      - name: Preparar integracao local da main SEM publicar
         id: merge
         if: steps.impact.outputs.needs_sync == 'true'
         shell: bash
@@ -69,26 +78,100 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git checkout -B "$UI_BRANCH" "origin/$UI_BRANCH"
 
-          if ! git merge --no-ff --no-edit -m "chore(ui-sync): import main $(git rev-parse --short origin/main)" origin/main; then
+          if ! bash "$RUNNER_TEMP/main-version-identity/merge-main-version-identity.sh" \
+            origin/main "chore(ui-sync): import main $(git rev-parse --short origin/main)" \
+            2>&1 | tee "$RUNNER_TEMP/main-version-identity-merge.log"; then
             conflicts="$(git diff --name-only --diff-filter=U)"
-            git merge --abort || true
+            if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+              git merge --abort || true
+            fi
             echo "::error::Conflito main → $UI_BRANCH. Sem push; alterações preservadas."
             {
               echo "## Sincronização BLOQUEADA por conflitos"
-              echo "$conflicts" | sed 's/^/- `/;s/$/`/'
+              if [ -n "$conflicts" ]; then
+                echo "$conflicts" | sed 's/^/- `/;s/$/`/'
+              else
+                echo '- Candidato recusado pelo integrador; consulte o log do merge.'
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
 
             title="[UI-SYNC] Conflitos na importação da main"
             existing="$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[UI-SYNC] Conflitos na importação da main") | .number' | head -1 || true)"
-            body="Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.\n\nArquivos:\n$conflicts"
+            body_file="$RUNNER_TEMP/main-version-identity-conflicts.md"
+            {
+              echo "Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH."
+              echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              echo
+              echo 'Candidato local recusado; nenhum push foi executado.'
+              echo
+              echo '```text'
+              tail -80 "$RUNNER_TEMP/main-version-identity-merge.log"
+              echo '```'
+            } > "$body_file"
             if [ -n "$existing" ]; then
-              gh issue comment "$existing" --body "$body" || true
+              gh issue comment "$existing" --body-file "$body_file" || true
             else
-              gh issue create --title "$title" --body "$body" || true
+              gh issue create --title "$title" --body-file "$body_file" || true
             fi
             exit 1
           fi
 
+      - name: Setup PHP para validar o candidato combinado
+        if: steps.impact.outputs.needs_sync == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_sqlite, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, bcmath, soap
+          coverage: none
+
+      - name: Cache Composer
+        if: steps.impact.outputs.needs_sync == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: ${{ runner.os }}-release-identity-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-release-identity-
+
+      - name: Instalar dependencias sem scripts da aplicacao
+        if: steps.impact.outputs.needs_sync == 'true'
+        env:
+          PHPCLASSES_TOKEN: ${{ secrets.PHPCLASSES_TOKEN }}
+          COMPOSER_NO_INTERACTION: '1'
+          COMPOSER_NO_AUDIT: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${PHPCLASSES_TOKEN:-}" ]; then
+            export COMPOSER_AUTH="$(python3 - <<'PY'
+          import json, os
+          credentials = {"username": "wkarts", "password": os.environ["PHPCLASSES_TOKEN"]}
+          print(json.dumps({"http-basic": {host: credentials for host in ["www.phpclasses.org", "phpclasses.org"]}}))
+          PY
+          )"
+          fi
+          composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Validar contratos estavel e beta antes de qualquer push
+        if: steps.impact.outputs.needs_sync == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./vendor/bin/phpunit tests/Unit/InstalledReleaseIdentityTest.php tests/Unit/AppVersionServiceIdentityTest.php
+          python3 -m unittest discover -s tests/release -p 'test_*.py' -v
+          if [ -f tests/ui/test-release-identity.py ]; then
+            python3 tests/ui/test-release-identity.py
+          fi
+          python3 tests/ui/test-main-version-identity-sync.py
+
+      - name: Publicar somente o candidato validado na branch visual
+        id: push
+        if: steps.impact.outputs.needs_sync == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
           # Único destino autorizado: branch visual; NUNCA 'main'.
           if ! git push origin "HEAD:refs/heads/$UI_BRANCH"; then
             echo "::error::Push para develop rejeitado; sincronização não concluída e nenhum histórico forçado."
@@ -99,7 +182,7 @@ jobs:
           echo "Main integrada a $UI_BRANCH sem alterar a main." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Acionar validação e pré-release na branch visual
-        if: steps.merge.outputs.synced == 'true'
+        if: steps.push.outputs.synced == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

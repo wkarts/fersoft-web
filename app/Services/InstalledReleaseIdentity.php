@@ -51,7 +51,8 @@ class InstalledReleaseIdentity
                 continue;
             }
             if (str_ends_with($relativePath, 'release-build-info.json')
-                && (($metadata['schema_version'] ?? null) !== 1 || ($metadata['release_channel'] ?? null) !== 'stable')) {
+                && (($metadata['schema_version'] ?? null) !== 1
+                    || !in_array($metadata['release_channel'] ?? null, ['stable', 'beta-continuous'], true))) {
                 continue;
             }
             $identity = $this->fromMetadata($metadata, $head, 'build-info');

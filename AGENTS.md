@@ -11,8 +11,10 @@ agentes de IA.
 - Tags/refs do Updater só identificam uma instalação Git quando apontam exatamente
   para HEAD; manifestos só são aceitos se seu SHA corresponder ao HEAD. Não use a
   maior tag global, uma tag ancestral ou consulta remota como versão instalada.
-- ZIP estável deve incluir `release-build-info.json`, com versão, tag e SHA
-  conferidos antes da publicação. Não fixe a versão atual no código-fonte.
+- ZIP dos canais estável e beta deve incluir `release-build-info.json`, com
+  versão, canal e SHA conferidos. Ambos substituem esse mesmo marcador na
+  instalação; a beta mantém os arquivos legados `ui-build-info.json`. Não fixe a
+  versão atual no código-fonte.
 - Preserve commits, notas e datas do histórico ao reconciliar a versão instalada.
 - Execute os dois testes PHP de identidade e `tests/release` antes de propor uma
   alteração nessa lógica. Não remova, pule ou enfraqueça o workflow
@@ -20,3 +22,9 @@ agentes de IA.
   uma alteração passar. Atualize os testes quando o contrato evoluir.
 - `main` publica o canal estável; `develop` mantém a nova interface e seu canal
   beta. Uma correção de identidade não autoriza promover a interface de develop.
+- Antes de integrar uma alteração na main, valide também o resultado da fusão
+  com a develop atual pelo check `Compatibilidade main para develop`. O autosync
+  deve executar os contratos antes do push e a pré-release deve depender deles.
+- A resolução transitória em `scripts/ui/merge-main-version-identity.sh` usa a
+  origem histórica documentada e apenas quatro arquivos de identidade. Não
+  amplie essa lista nem use `ours`/`theirs` global para esconder novos conflitos.
