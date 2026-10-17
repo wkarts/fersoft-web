@@ -6,9 +6,53 @@ namespace Tests\Unit;
 
 use App\Services\ConnectApi\ConnectApiWebhookNormalizer;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ConnectApiWebhookNormalizerTest extends TestCase
 {
+    #[DataProvider('directionValues')]
+    public function testPreservesDirectionWithoutPhpStringTruthiness(mixed $value, bool $expected): void
+    {
+        $normalizer = new ConnectApiWebhookNormalizer();
+        $normalized = $normalizer->normalize([
+            'event' => 'messages.upsert',
+            'data' => ['key' => ['fromMe' => $value]],
+        ]);
+
+        $this->assertSame($expected, $normalized['from_me']);
+        $this->assertSame($expected, ConnectApiWebhookNormalizer::isFromMe(['from_me' => $value]));
+    }
+
+    public static function directionValues(): array
+    {
+        return [
+            'boolean true' => [true, true],
+            'integer one' => [1, true],
+            'string true' => ['true', true],
+            'string one' => ['1', true],
+            'case and whitespace' => [' TRUE ', true],
+            'boolean false' => [false, false],
+            'integer zero' => [0, false],
+            'string false' => ['false', false],
+            'string zero' => ['0', false],
+            'false with whitespace' => [' FALSE ', false],
+            'null' => [null, false],
+            'empty string' => ['', false],
+            'unknown string' => ['not-a-boolean', false],
+            'unknown number' => [2, false],
+            'array' => [[true], false],
+            'object' => [(object) ['value' => true], false],
+        ];
+    }
+
+    public function testMissingDirectionKeepsLegacyInboundBehavior(): void
+    {
+        $normalized = (new ConnectApiWebhookNormalizer())->normalize([]);
+
+        $this->assertFalse($normalized['from_me']);
+        $this->assertFalse(ConnectApiWebhookNormalizer::isFromMe([]));
+    }
+
     public function testNormalizesMessagesUpsertWithoutTrustingEmpresaId(): void
     {
         $normalizer = new ConnectApiWebhookNormalizer();

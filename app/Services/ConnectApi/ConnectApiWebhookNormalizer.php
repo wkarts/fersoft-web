@@ -50,6 +50,7 @@ class ConnectApiWebhookNormalizer
             'event' => str_replace(['_', '.'], '-', $event),
             'instance_name' => $instanceName,
             'message_id' => $messageId,
+            'from_me' => self::isFromMe($payload),
             'remote_jid' => $remoteJid,
             'from' => preg_replace('/\D+/', '', explode('@', $remoteJid)[0] ?? ''),
             'lid' => str_contains($remoteJid, '@lid') ? explode('@', $remoteJid)[0] : null,
@@ -59,5 +60,24 @@ class ConnectApiWebhookNormalizer
             'longitude' => is_array($location) ? ($location['degreesLongitude'] ?? null) : null,
             'timestamp' => data_get($payload, 'data.messageTimestamp') ?? now()->timestamp,
         ];
+    }
+
+    /**
+     * Aceita o envelope do provedor e o evento já normalizado.
+     * Não converter strings com (bool): "false" não é uma mensagem própria.
+     */
+    public static function isFromMe(array $payload): bool
+    {
+        foreach ([$payload['from_me'] ?? null, data_get($payload, 'data.key.fromMe')] as $value) {
+            if (is_string($value)) {
+                $value = strtolower(trim($value));
+            }
+
+            if (in_array($value, [true, 1, 'true', '1'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
