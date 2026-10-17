@@ -481,7 +481,8 @@ class Menu {
                 'subs' => [
                     [
                         'nome' => 'Contratos',
-                        'rota' => '/contratos'
+                        'rota' => '/contratos',
+                        'url' => '/contratos/list'
                     ],
                     [
                         'nome' => 'Medições',
