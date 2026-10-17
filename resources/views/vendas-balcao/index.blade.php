@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 @section('css')
 <style type="text/css">
@@ -27,7 +28,7 @@
 @endsection
 @section('content')
 <header class="fer-page__heading"><h1>Lista de Vendas Balcão</h1></header>
-<div class="fer-page fer-operational fer-list card card-custom gutter-b">
+<div class="fer-page fer-operational fer-list fer-balcao-list card card-custom gutter-b">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -180,7 +181,7 @@
 
 													<tbody id="body" class="datatable-body">
 														<?php $total = 0; ?>
-														@foreach($vendas as $v)
+                                                @foreach($vendas as $v)
 
 														<tr class="datatable-row row-table" @if(!$v->estado) ondblclick="modalFinalizar('{{$v->id}}')" @endif>
 															<td class="datatable-cell">
@@ -217,6 +218,13 @@
 															</td>
 															<td class="datatable-cell"><span class="codigo" style="width: 100px;">{{ \Carbon\Carbon::parse($v->created_at)->format('d/m/Y H:i:s')}}</span>
 															</td>
+															@if(empresaComFilial())
+															<td class="datatable-cell">
+																<span class="codigo" style="width: 150px;">
+																	{{ $v->filial_id ? $v->filial->descricao : 'Matriz' }}
+																</span>
+															</td>
+															@endif
 															<td class="datatable-cell">
 																<span class="codigo" style="width: 100px;">
 
@@ -229,13 +237,6 @@
 
 																</span>
 															</td>
-															@if(empresaComFilial())
-															<td class="datatable-cell">
-																<span class="codigo" style="width: 150px;">
-																	{{ $v->filial_id ? $v->filial->descricao : 'Matriz' }}
-																</span>
-															</td>
-															@endif
 															<td class="datatable-cell">
 																<span class="codigo" style="width: 100px;" id="">
 
@@ -264,7 +265,7 @@
 														<?php 
 														$total += $v->valor_total;
 														?>
-														@endforeach
+                                                @endforeach
 
 													</tbody>
 												</table>

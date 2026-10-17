@@ -1,17 +1,72 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<style>
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-heading {
+	font-size: 14px;
+	margin: 0 0 9px;
+	color: var(--ui-ink, #182f36);
+}
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-filter .row { align-items: end !important; }
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-filter .form-group { margin-bottom: 12px; }
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-filter button { margin: 0 0 12px !important; min-height: 38px; }
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-results { margin-top: 14px; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table { width: 100%; min-width: 1100px; table-layout: auto; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table th > span,
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table td > .codigo { width: auto !important; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table th:last-child { min-width: 155px; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table td > .row { margin: 0; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table td > .row > span {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+	width: auto !important;
+}
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table td > .row .btn { margin: 0 !important; }
+body.ui-native-shell .ui-page .fer-devolucao-list .datatable-table #checkbox p { width: auto !important; margin: 0; }
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 10px 0 0 !important;
+}
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-toolbar > [class*="col-"] {
+	flex: 0 1 auto;
+	width: auto;
+	max-width: none;
+	padding: 0;
+}
+body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-toolbar .btn {
+	width: auto !important;
+	min-height: 36px;
+	margin: 0 !important;
+	padding: 8px 13px;
+}
+body.ui-native-shell .ui-page .fer-devolucao-list [data-wizard-type="step-content"] > .col-sm-12 { padding: 0 14px; }
+body.ui-native-shell .ui-page .fer-devolucao-list .card-header .card-title h3 {
+	width: auto !important;
+	height: auto !important;
+	min-width: 0;
+	margin: 0;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+	body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-toolbar > [class*="col-"] { flex: 1 1 calc(50% - 8px); }
+	body.ui-native-shell .ui-page .fer-devolucao-list .fer-devolucao-toolbar .btn { width: 100% !important; }
+}
+</style>
 @endpush
 @section('content')
 
 <header class="fer-page__heading"><h1>Lista de Devoluções</h1></header>
-<div class="fer-page fer-operational fer-list card card-custom gutter-b">
+<div class="fer-page fer-operational fer-list fer-devolucao-list card card-custom gutter-b">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/devolucao/filtro">
+			<form class="fer-filter fer-devolucao-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/devolucao/filtro">
 				<div class="row align-items-center">
 
 					<div class="form-group col-lg-3 col-md-4 col-sm-6">
@@ -53,12 +108,12 @@
 
 
 					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Pesquisa</button>
+						<button class="btn btn-light-primary px-6 font-weight-bold">Pesquisa</button>
 					</div>
 				</div>
 			</form>
 			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de Devoluções</h4>
+			<h4 class="fer-devolucao-heading @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de Devoluções</h4>
 
 			<a href="/devolucao/nova" class="btn btn-light-danger @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 				<i class="la la-plus"></i>
@@ -254,7 +309,7 @@
 										</div>
 
 										<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-											<div class="row" style="margin-top: 5px;">
+											<div class="row fer-devolucao-toolbar">
 
 												<div class="col-sm-4 col-lg-4 col-md-4 col-xl-2 col-6">
 													<a id="btn-enviar" onclick="enviar()" style="width: 100%" class="btn btn-success spinner-white spinner-right" href="#!">Enviar</a>
@@ -282,7 +337,7 @@
 												</div>
 											</div>
 
-											<div class="row" style="margin-top: 5px;">
+											<div class="row fer-devolucao-toolbar">
 
 												<div class="col-sm-4 col-lg-4 col-md-4 col-xl-2 col-6">
 													<a id="btn-imprimir-cancela" onclick="imprimirCancela()" style="width: 100%" class="btn btn-danger" href="#!">Imprimir Cancela</a>

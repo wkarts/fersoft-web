@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
 @endpush
 
 @section('css')
@@ -70,12 +71,13 @@
 @endsection
 
 @section('content')
-    <div class="document-fiscal-page document-fiscal-page--nfse card card-custom gutter-b shadow-sm rounded-xl">
+    <div class="document-fiscal-page document-fiscal-page--nfse ui-op-refine card card-custom gutter-b shadow-sm rounded-xl">
         <div class="card-body p-6">
             <input type="hidden" id="_token" value="{{ csrf_token() }}">
+            <div class="ui-op-heading"><h3>NFS-e</h3></div>
 
             <!-- Topo: Filtros de Busca -->
-            <form class="@if(env('ANIMACAO')) animate__animated @endif animate__fadeIn" method="get" action="/nfse/filtro">
+            <form class="ui-op-form-filters @if(env('ANIMACAO')) animate__animated @endif animate__fadeIn" method="get" action="/nfse/filtro">
                 <div class="row align-items-end g-3">
                     <div class="form-group col-lg-4 col-md-12 mb-3">
                         <label class="form-label font-weight-bolder text-dark">Cliente (Tomador)</label>
@@ -129,11 +131,11 @@
                 </div>
             </form>
 
-            <hr class="my-5 border-light-dark">
+            <hr class="ui-op-separator">
 
             <!-- Métricas Rápidas & Ação Principal -->
-            <div class="row align-items-center mb-4">
-                <div class="col-md-4 col-12 mb-3 mb-md-0">
+            <div class="row align-items-center ui-op-metrics mb-4">
+                <div class="col-md-4 col-12 mb-3 mb-md-0 ui-op-metric">
                     <div class="d-flex align-items-center">
                         <div class="symbol symbol-50 symbol-light-primary mr-4">
                         <span class="symbol-label font-size-h4 font-weight-boldest text-primary">
@@ -147,7 +149,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-4 col-12 mb-3 mb-md-0">
+                <div class="col-md-4 col-12 mb-3 mb-md-0 ui-op-metric">
                     <div class="d-flex align-items-center">
                         <div class="symbol symbol-50 symbol-light-success mr-4">
                         <span class="symbol-label font-size-h4 font-weight-boldest text-success">
@@ -163,7 +165,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-4 col-12 text-md-right">
+                <div class="col-md-4 col-12 text-md-right ui-op-main-action">
                     <a href="/nfse/create" class="btn btn-success font-weight-bolder px-5 py-3 rounded-lg shadow-sm">
                         <i class="la la-plus-circle font-size-h5"></i> Nova NFS-e
                     </a>
@@ -172,7 +174,7 @@
 
             <!-- Tabela Listagem -->
             <div class="table-responsive">
-                <table class="table table-head-custom table-vertical-center table-nfse">
+                <table class="table table-head-custom table-vertical-center table-nfse ui-op-table">
                     <thead>
                     <tr class="text-uppercase text-secondary font-weight-bold">
                         <th style="width: 40px;" class="text-center">#</th>
@@ -304,28 +306,28 @@
             <!-- Barra Inferior de Lote -->
             @if($certificado != null)
                 <div class="card bg-light border-0 rounded-xl p-4 mt-4">
-                    <div class="row g-2 justify-content-center">
-                        <div class="col-lg-2 col-md-4 col-6">
+                    <div class="row g-2 ui-op-batch">
+                        <div class="col-lg-2 col-md-4 col-6 ui-op-batch-action">
                             <button type="button" id="btn-enviar" onclick="enviar()" class="btn btn-success btn-block font-weight-bold shadow-sm">
                                 <i class="la la-paper-plane mr-1"></i> Transmitir
                             </button>
                         </div>
-                        <div class="col-lg-2 col-md-4 col-6">
+                        <div class="col-lg-2 col-md-4 col-6 ui-op-batch-action">
                             <button type="button" id="btn-imprimir" onclick="imprimir()" class="btn btn-info btn-block font-weight-bold shadow-sm">
                                 <i class="la la-print mr-1"></i> Imprimir Lote
                             </button>
                         </div>
-                        <div class="col-lg-2 col-md-4 col-6">
+                        <div class="col-lg-2 col-md-4 col-6 ui-op-batch-action">
                             <button type="button" id="btn-consultar" onclick="consultar()" class="btn btn-secondary btn-block font-weight-bold">
                                 <i class="la la-sync mr-1"></i> Consultar
                             </button>
                         </div>
-                        <div class="col-lg-2 col-md-4 col-6">
+                        <div class="col-lg-2 col-md-4 col-6 ui-op-batch-action">
                             <button type="button" id="btn-cancelar" data-toggle="modal" data-target="#modal1" onclick="setarNumero()" class="btn btn-danger btn-block font-weight-bold shadow-sm">
                                 <i class="la la-times-circle mr-1"></i> Cancelar
                             </button>
                         </div>
-                        <div class="col-lg-2 col-md-4 col-6">
+                        <div class="col-lg-2 col-md-4 col-6 ui-op-batch-action">
                             <button type="button" id="btn-xml" onclick="setarNumero(true)" class="btn btn-warning btn-block font-weight-bold shadow-sm" data-toggle="modal" data-target="#modal5">
                                 <i class="la la-envelope mr-1"></i> Enviar XML
                             </button>

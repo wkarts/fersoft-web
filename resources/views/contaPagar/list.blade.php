@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 @section('content')
 <header class="fer-page__heading"><h1>Contas a Pagar</h1></header>
@@ -10,7 +11,7 @@
     $somaValor = 0; $somaPago = 0; $somaPendente = 0; 
 ?>
 
-<div class="card card-custom gutter-b fer-page fer-list">
+<div class="card card-custom gutter-b fer-page fer-list fer-finance-list-ui fer-payables-ui">
     <div class="card-body">
         
         {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E RETENÇÕES --}}
@@ -128,7 +129,7 @@
             </form>
 
             {{-- (GRUPO) BARRA DE FERRAMENTAS: Funções extras como Seleção múltipla e Exportação --}}
-            <div class="row mt-8 mb-4">
+            <div class="row mt-8 mb-4 fer-finance-list-ui__toolbar">
                 <div class="col-12 d-flex align-items-center flex-wrap">
                     <button id="btn_seleciona_varios" class="btn btn-light-info font-weight-bold mr-2">
                         <i class="la la-list"></i> Selecionar Vários
@@ -139,11 +140,11 @@
                     </button>
 
                     <a href="{{ url('/contasPagar/syncNotaFiscal') }}" class="btn btn-light font-weight-bold mr-2">
-                        <i class="fa fa-sync text-info"></i> Sincronizar NF das Compras
+                        <i class="la la-sync text-info"></i> Sincronizar NF das Compras
                     </a>
 
                     <a href="/contasPagar/export?{{ http_build_query(request()->all()) }}" class="btn btn-light font-weight-bold">
-                        <i class="fa fa-file-excel text-success"></i> Exportar para Excel
+                        <i class="la la-file-excel text-success"></i> Exportar para Excel
                     </a>
                 </div>
             </div>
@@ -345,7 +346,7 @@
                 </table>
             </div>
 
-            <div class="card card-custom gutter-b mt-5">
+            <div class="card card-custom gutter-b mt-5 fer-finance-list-ui__totals">
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3">

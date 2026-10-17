@@ -1,24 +1,25 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 
 
 @section('content')
 <header class="fer-page__heading"><h1>Conciliação Financeira</h1></header>
-    <div class="container-fluid mt-5 pt-3 fer-page fer-finance">
+    <div class="container-fluid mt-5 pt-3 fer-page fer-finance fer-conciliation-ui">
 
         @if(session('mensagem_sucesso'))
-            <div class="alert alert-success shadow-sm"><i class="fas fa-check-circle"></i> {{ session('mensagem_sucesso') }}</div>
+            <div class="alert alert-success shadow-sm"><i class="la la-check-circle"></i> {{ session('mensagem_sucesso') }}</div>
         @endif
         @if(session('mensagem_erro'))
-            <div class="alert alert-danger shadow-sm"><i class="fas fa-exclamation-triangle"></i> {{ session('mensagem_erro') }}</div>
+            <div class="alert alert-danger shadow-sm"><i class="la la-exclamation-triangle"></i> {{ session('mensagem_erro') }}</div>
         @endif
 
         {{-- CARD DE FILTROS --}}
         <div class="card shadow-sm mb-4" style="border: none;">
             <div class="card-header text-white" style="background-color: #1f9866; border-radius: 5px 5px 0 0;">
-                <h5 class="mb-0 font-weight-bold"><i class="fas fa-filter mr-2"></i> Filtrar Lançamentos</h5>
+                <h5 class="mb-0 font-weight-bold"><i class="la la-filter mr-2"></i> Filtrar Lançamentos</h5>
             </div>
             <div class="card-body">
                 <form action="{{ url('financeiro/conciliacao/list') }}" method="GET">
@@ -59,7 +60,7 @@
         {{-- CARD DE IMPORTAÇÃO --}}
         <div class="card shadow-sm mb-4" style="border: none;">
             <div class="card-body">
-                <h5 class="card-title text-secondary font-weight-bold mb-3"><i class="fas fa-upload mr-2"></i> Importar OFX</h5>
+                <h5 class="card-title text-secondary font-weight-bold mb-3"><i class="la la-upload mr-2"></i> Importar OFX</h5>
                 <form action="{{ url('financeiro/conciliacao/importar') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="row align-items-end">
@@ -89,14 +90,14 @@
             <div class="row mb-4 px-3">
                 <div class="col-12 bg-white rounded shadow-sm border p-0 overflow-hidden">
                     <div class="bg-dark text-white px-4 py-2 d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 font-weight-bold"><i class="fas fa-balance-scale mr-2"></i> Auditoria de Caixa (Período Filtrado)</h6>
+                        <h6 class="mb-0 font-weight-bold"><i class="la la-balance-scale mr-2"></i> Auditoria de Caixa (Período Filtrado)</h6>
                         <small>Conta Bancária Selecionada vs. Financeiro do ERP</small>
                     </div>
 
                     <div class="row m-0 text-center">
                         {{-- BLOCO DE ENTRADAS --}}
                         <div class="col-md-6 p-4 border-right">
-                            <h6 class="text-success font-weight-bold mb-3"><i class="fas fa-arrow-circle-down"></i> RECEBIMENTOS (ENTRADAS)</h6>
+                            <h6 class="text-success font-weight-bold mb-3"><i class="la la-arrow-circle-down"></i> RECEBIMENTOS (ENTRADAS)</h6>
                             <div class="d-flex justify-content-around">
                                 <div>
                                     <small class="text-muted d-block">Lido no Banco (OFX)</small>
@@ -109,17 +110,17 @@
                             </div>
                             <hr>
                             @if(abs($resumo['dif_in']) < 0.01)
-                                <span class="badge badge-success px-3 py-2"><i class="fas fa-check-circle"></i> Entradas 100% Conciliadas</span>
+                                <span class="badge badge-success px-3 py-2"><i class="la la-check-circle"></i> Entradas 100% Conciliadas</span>
                             @else
                                 <span class="badge badge-warning text-dark px-3 py-2">
-                            <i class="fas fa-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_in']), 2, ',', '.') }}
+                            <i class="la la-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_in']), 2, ',', '.') }}
                         </span>
                             @endif
                         </div>
 
                         {{-- BLOCO DE SAÍDAS --}}
                         <div class="col-md-6 p-4">
-                            <h6 class="text-danger font-weight-bold mb-3"><i class="fas fa-arrow-circle-up"></i> PAGAMENTOS (SAÍDAS)</h6>
+                            <h6 class="text-danger font-weight-bold mb-3"><i class="la la-arrow-circle-up"></i> PAGAMENTOS (SAÍDAS)</h6>
                             <div class="d-flex justify-content-around">
                                 <div>
                                     <small class="text-muted d-block">Lido no Banco (OFX)</small>
@@ -132,10 +133,10 @@
                             </div>
                             <hr>
                             @if(abs($resumo['dif_out']) < 0.01)
-                                <span class="badge badge-success px-3 py-2"><i class="fas fa-check-circle"></i> Saídas 100% Conciliadas</span>
+                                <span class="badge badge-success px-3 py-2"><i class="la la-check-circle"></i> Saídas 100% Conciliadas</span>
                             @else
                                 <span class="badge badge-warning text-dark px-3 py-2">
-                            <i class="fas fa-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_out']), 2, ',', '.') }}
+                            <i class="la la-exclamation-triangle"></i> Falta conciliar: R$ {{ number_format(abs($resumo['dif_out']), 2, ',', '.') }}
                         </span>
                             @endif
                         </div>
@@ -144,7 +145,7 @@
             </div>
         @else
             <div class="alert alert-light border-left-info shadow-sm mb-4 mx-3">
-                <i class="fas fa-info-circle text-info mr-2"></i> <strong>Dica de Auditoria:</strong> Filtre a tela por <b>Conta Bancária</b>, <b>Data Inicial</b> e <b>Data Final</b> para visualizar o Painel de Confronto de Saldos automaticamente.
+                <i class="la la-info-circle text-info mr-2"></i> <strong>Dica de Auditoria:</strong> Filtre a tela por <b>Conta Bancária</b>, <b>Data Inicial</b> e <b>Data Final</b> para visualizar o Painel de Confronto de Saldos automaticamente.
             </div>
         @endif
 
@@ -155,17 +156,17 @@
             <div class="col-xl-8 col-lg-7 mb-4">
                 <div class="card shadow-sm" style="border: none;">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                        <h5 class="mb-0 text-secondary font-weight-bold"><i class="fas fa-list-ul mr-2"></i> Extrato</h5>
+                        <h5 class="mb-0 text-secondary font-weight-bold"><i class="la la-list-ul mr-2"></i> Extrato</h5>
 
                         <div class="d-flex">
                             <button type="button" class="btn btn-sm btn-info font-weight-bold shadow-sm mr-2" data-toggle="modal" data-target="#modalManualConciliacao">
-                                <i class="fas fa-question-circle mr-1"></i> Como Funciona
+                                <i class="la la-question-circle mr-1"></i> Como Funciona
                             </button>
 
                             <form action="{{ url('financeiro/conciliacao/processar-automaticos') }}" method="POST" class="mr-2">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-success font-weight-bold shadow-sm" title="Rodar regras memorizadas">
-                                    <i class="fas fa-robot mr-1"></i> Rodar Automação
+                                    <i class="la la-robot mr-1"></i> Rodar Automação
                                 </button>
                             </form>
 
@@ -179,11 +180,11 @@
                     <div class="mb-3 d-flex justify-content-between align-items-center pl-3 pr-3 bg-white p-3 rounded shadow-sm border mx-3 mt-3">
                         <div>
                             <button type="button" class="btn btn-warning shadow-sm font-weight-bold mr-2 text-dark" onclick="selecionarAtencao()">
-                                <i class="fas fa-exclamation-triangle"></i> Marcar "Atenção"
+                                <i class="la la-exclamation-triangle"></i> Marcar "Atenção"
                             </button>
                         </div>
                         <button type="button" class="btn btn-success shadow-sm font-weight-bold px-4" onclick="confirmarLote()">
-                            <i class="fas fa-check-double"></i> Confirmar Selecionados
+                            <i class="la la-check-double"></i> Confirmar Selecionados
                         </button>
                     </div>
 
@@ -216,21 +217,21 @@
                                         <td class="align-middle">{{ date('d/m/Y', strtotime($l->data_transacao)) }}</td>
                                         <td class="align-middle">
                                             @if($l->status == 'reconciled')
-                                                <i class="fas fa-check-circle text-success mr-1"></i>
+                                                <i class="la la-check-circle text-success mr-1"></i>
                                             @endif
                                             <span class="{{ $l->status == 'reconciled' ? 'font-weight-normal' : 'font-weight-bold text-dark' }}">{{ $l->descricao }}</span>
 
                                             <br>
                                             <small class="badge badge-info shadow-sm mt-1" style="font-size: 0.7rem; opacity: 0.9;">
-                                                <i class="fas fa-university mr-1"></i> {{ $l->contaBancaria->nome ?? 'ID Bancário: ' . $l->conta_bancaria_id }}
+                                                <i class="la la-university mr-1"></i> {{ $l->contaBancaria->nome ?? 'ID Bancário: ' . $l->conta_bancaria_id }}
                                             </small>
 
                                             @if($l->status == 'pending')
                                                 <div class="mt-1">
                                                     @if($l->achou_pago)
-                                                        <span class="badge badge-warning text-dark px-2 py-1"><i class="fas fa-exclamation-triangle"></i> Atenção: Consta PAGO no ERP</span>
+                                                        <span class="badge badge-warning text-dark px-2 py-1"><i class="la la-exclamation-triangle"></i> Atenção: Consta PAGO no ERP</span>
                                                     @elseif($l->achou_pendente)
-                                                        <span class="badge badge-info px-2 py-1"><i class="fas fa-magic"></i> Encontrado (Pendente no ERP)</span>
+                                                        <span class="badge badge-info px-2 py-1"><i class="la la-magic"></i> Encontrado (Pendente no ERP)</span>
                                                     @endif
                                                 </div>
                                             @endif
@@ -245,11 +246,11 @@
                                                     <button type="button" class="btn btn-sm btn-outline-dark font-weight-bold mb-1" onclick="abrirModalNovo({{ json_encode($l) }})">+ Novo</button>
                                                     <button type="button" class="btn btn-sm text-white font-weight-bold mb-1" style="background-color: #1f9866;" onclick="abrirModalTransferir({{ json_encode($l) }})">Transf.</button>
                                                     <button type="button" class="btn btn-sm btn-light border-secondary font-weight-bold mb-1" title="Apenas arquivar e tirar da tela" onclick="confirmarOKIndividual({{ $l->id }})">
-                                                        <i class="fas fa-check-double text-success"></i> OK
+                                                        <i class="la la-check-double text-success"></i> OK
                                                     </button>
                                                 </div>
                                             @else
-                                                <span class="badge badge-success px-3 py-2 font-weight-bold"><i class="fas fa-lock mr-1"></i> CONCILIADO</span>
+                                                <span class="badge badge-success px-3 py-2 font-weight-bold"><i class="la la-lock mr-1"></i> CONCILIADO</span>
                                             @endif
                                         </td>
                                     </tr>
@@ -267,7 +268,7 @@
             <div class="col-xl-4 col-lg-5">
                 <div class="card shadow-sm" style="position: sticky; top: 20px; min-height: 50vh;" id="painel_sugestoes">
                     <div class="card-body text-center d-flex flex-column justify-content-center align-items-center" style="min-height: 50vh; background: #f8f9fa; border: 2px dashed #dee2e6;">
-                        <i class="fas fa-mouse-pointer fa-4x text-muted mb-3" style="opacity: 0.5;"></i>
+                        <i class="la la-mouse-pointer fa-4x text-muted mb-3" style="opacity: 0.5;"></i>
                         <h5 class="text-muted font-weight-bold">Painel Inteligente</h5>
                         <p class="text-muted small px-3">Clique em uma linha pendente do extrato ao lado para que o sistema busque o título correto automaticamente.</p>
                     </div>
@@ -289,7 +290,7 @@
                 <input type="hidden" name="extrato_id" id="vincular_extrato_id">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header text-white" style="background-color: #1f9866;">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-link mr-2"></i> Vincular Títulos Manualmente</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="la la-link mr-2"></i> Vincular Títulos Manualmente</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
@@ -313,15 +314,15 @@
                                 </select>
 
                                 <div class="mt-4 p-3 bg-white border rounded">
-                                    <label class="font-weight-bold text-danger small"><i class="fas fa-plus-circle"></i> Juros / Multa</label>
+                                    <label class="font-weight-bold text-danger small"><i class="la la-plus-circle"></i> Juros / Multa</label>
                                     <input type="number" step="0.01" min="0" name="acrescimo" id="vincular_acrescimo" class="form-control mb-3" value="0" onkeyup="recalcularSoma()" onchange="recalcularSoma()">
 
-                                    <label class="font-weight-bold text-success small"><i class="fas fa-minus-circle"></i> Desconto</label>
+                                    <label class="font-weight-bold text-success small"><i class="la la-minus-circle"></i> Desconto</label>
                                     <input type="number" step="0.01" min="0" name="desconto" id="vincular_desconto" class="form-control" value="0" onkeyup="recalcularSoma()" onchange="recalcularSoma()">
                                 </div>
                                 {{-- Adicione este bloco dentro do modalVincular --}}
                                 <div class="mt-4 p-3 bg-white border rounded">
-                                    <label class="font-weight-bold text-dark small"><i class="fas fa-file-alt"></i> Tipo de Documento</label>
+                                    <label class="font-weight-bold text-dark small"><i class="la la-file-alt"></i> Tipo de Documento</label>
                                     <select name="tipo_documento" class="form-control" required>
                                         <option value="Conciliação">Conciliação</option>
                                         <option value="Depósito">Depósito</option>
@@ -339,7 +340,7 @@
 
                                     <div class="input-group input-group-sm w-50">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text bg-white"><i class="fas fa-search text-primary"></i></span>
+                                            <span class="input-group-text bg-white"><i class="la la-search text-primary"></i></span>
                                         </div>
                                         <input type="text" id="busca_vinculo" class="form-control" placeholder="Pesquisar nome ou valor..." onkeyup="filtrarSugestoes()">
                                     </div>
@@ -368,7 +369,7 @@
                 <input type="hidden" name="extrato_id" id="novo_extrato_id">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header bg-dark text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-plus-circle mr-2"></i> Lançar Despesa/Receita</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="la la-plus-circle mr-2"></i> Lançar Despesa/Receita</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
@@ -479,7 +480,7 @@
                 <input type="hidden" name="extrato_id" id="transf_extrato_id">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header text-white" style="background-color: #1f9866;">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-exchange-alt mr-2"></i> Transferência Interna</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="la la-exchange-alt mr-2"></i> Transferência Interna</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                     </div>
                     <div class="modal-body bg-light">
@@ -518,7 +519,7 @@
         <div class="modal-dialog modal-xl fer-dialog">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header text-white" style="background-color: #1f9866;">
-                    <h5 class="modal-title font-weight-bold"><i class="fas fa-book-open mr-2"></i> Manual: Conciliação Bancária Inteligente</h5>
+                    <h5 class="modal-title font-weight-bold"><i class="la la-book-open mr-2"></i> Manual: Conciliação Bancária Inteligente</h5>
                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar">&times;</button>
                 </div>
                 <div class="modal-body bg-light" style="max-height: 70vh; overflow-y: auto;">
@@ -556,7 +557,7 @@
 
                 painel.html(`
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-magic"></i> Painel Inteligente</span>
+                <span><i class="la la-magic"></i> Painel Inteligente</span>
                 <span class="badge badge-${corCarga}">R$ ${parseFloat(data.valor_banco).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
             </div>
             <div class="card-body p-3 bg-light" id="lista_sugestoes"></div>
@@ -578,7 +579,7 @@
                 // 2. Títulos JÁ PAGOS (Elizabete)
                 if (data.sugestoes_pagas && data.sugestoes_pagas.length > 0) {
                     temResultados = true;
-                    lista.append(`<h6 class="text-warning mt-3 mb-3 font-weight-bold text-uppercase small"><i class="fas fa-exclamation-triangle"></i> Encontrado como PAGO no ERP:</h6>`);
+                    lista.append(`<h6 class="text-warning mt-3 mb-3 font-weight-bold text-uppercase small"><i class="la la-exclamation-triangle"></i> Encontrado como PAGO no ERP:</h6>`);
                     data.sugestoes_pagas.forEach(item => {
                         let nome = item.fornecedor ? item.fornecedor.razao_social : (item.cliente ? item.cliente.razao_social : 'Sem Nome');
                         lista.append(gerarCardPago(item, nome, extrato_id));
@@ -588,7 +589,7 @@
                 // 3. Combos (Soma de 2)
                 if (data.combos && data.combos.length > 0) {
                     temResultados = true;
-                    lista.append(`<h6 class="text-success mt-4 mb-3 font-weight-bold text-uppercase small"><i class="fas fa-boxes"></i> Combinação Exata (Soma de 2):</h6>`);
+                    lista.append(`<h6 class="text-success mt-4 mb-3 font-weight-bold text-uppercase small"><i class="la la-boxes"></i> Combinação Exata (Soma de 2):</h6>`);
                     data.combos.forEach(combo => {
                         let nome = combo[0].fornecedor ? combo[0].fornecedor.razao_social : (combo[0].cliente ? combo[0].cliente.razao_social : 'Sem Nome');
                         lista.append(gerarCardCombo(combo, nome, corCarga, extrato_id, data.tipo_conta));
@@ -598,7 +599,7 @@
                 // 4. Outras Opções (Supergasbras com valores diferentes)
                 if (!temResultados && data.outras_opcoes && data.outras_opcoes.length > 0) {
                     temResultados = true;
-                    lista.append(`<div class="alert alert-warning shadow-sm"><i class="fas fa-filter"></i> Valor exato não encontrado, mas achamos este parceiro próximo a esta data:</div>`);
+                    lista.append(`<div class="alert alert-warning shadow-sm"><i class="la la-filter"></i> Valor exato não encontrado, mas achamos este parceiro próximo a esta data:</div>`);
                     data.outras_opcoes.forEach(item => {
                         let nome = item.fornecedor ? item.fornecedor.razao_social : (item.cliente ? item.cliente.razao_social : 'Sem Nome');
                         lista.append(gerarCardUnico(item, nome, corCarga, extrato_id, data.tipo_conta));
@@ -608,7 +609,7 @@
                 if (!temResultados) {
                     lista.html(`
                 <div class="alert alert-warning shadow-sm border-warning">
-                    <i class="fas fa-exclamation-triangle"></i> Nada encontrado.<br><br>
+                    <i class="la la-exclamation-triangle"></i> Nada encontrado.<br><br>
                     Utilize o botão <strong>"+ Novo"</strong> na tabela ao lado para gerar o lançamento.
                 </div>
             `);
@@ -629,10 +630,10 @@
                 <div class="d-flex justify-content-between align-items-end">
                     <div>
                         <small class="d-block text-muted"><i class="far fa-calendar-alt"></i> Vencimento: ${venc}</small>
-                        <small class="d-block text-muted"><i class="fas fa-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
+                        <small class="d-block text-muted"><i class="la la-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
                     </div>
                     <button class="btn btn-sm btn-primary font-weight-bold px-3 shadow-sm" onclick='conciliarAgora([${item.id}], ${extrato_id}, "${tipo_conta}")'>
-                        <i class="fas fa-link"></i> Bater Valor
+                        <i class="la la-link"></i> Bater Valor
                     </button>
                 </div>
             </div>
@@ -654,10 +655,10 @@
                 <div class="d-flex justify-content-between align-items-end">
                     <div>
                         <span class="badge badge-warning text-dark mb-1">Pago em: ${pgto}</span><br>
-                        <small class="text-muted"><i class="fas fa-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
+                        <small class="text-muted"><i class="la la-file-invoice"></i> Ref: ${item.referencia || item.id}</small>
                     </div>
                     <button class="btn btn-sm btn-outline-secondary font-weight-bold px-3 shadow-sm" title="Remove este aviso da tela do banco" onclick='confirmarOKIndividual(${extrato_id})'>
-                        <i class="fas fa-check-double"></i> Apenas Arquivar Banco
+                        <i class="la la-check-double"></i> Apenas Arquivar Banco
                     </button>
                 </div>
             </div>
@@ -676,12 +677,12 @@
                     <strong class="text-${cor} h5 mb-0">R$ ${valorTotal}</strong>
                 </div>
                 <div class="mb-2">
-                    <small class="d-block text-muted"><i class="fas fa-plus"></i> R$ ${parseFloat(combo[0].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[0].data_vencimento.split('-').reverse().join('/')})</small>
-                    <small class="d-block text-muted"><i class="fas fa-plus"></i> R$ ${parseFloat(combo[1].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[1].data_vencimento.split('-').reverse().join('/')})</small>
+                    <small class="d-block text-muted"><i class="la la-plus"></i> R$ ${parseFloat(combo[0].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[0].data_vencimento.split('-').reverse().join('/')})</small>
+                    <small class="d-block text-muted"><i class="la la-plus"></i> R$ ${parseFloat(combo[1].valor_integral).toLocaleString('pt-BR', {minimumFractionDigits: 2})} (Venc: ${combo[1].data_vencimento.split('-').reverse().join('/')})</small>
                 </div>
                 <div class="text-right">
                     <button class="btn btn-sm btn-success font-weight-bold px-3 shadow-sm" onclick='conciliarAgora(${ids}, ${extrato_id}, "${tipo_conta}")'>
-                        <i class="fas fa-link"></i> Conciliar Ambos
+                        <i class="la la-link"></i> Conciliar Ambos
                     </button>
                 </div>
             </div>
@@ -847,12 +848,12 @@
             let btnSubmit = document.getElementById('btnConfirmarVincular');
 
             if (Math.abs(diferenca) < 0.01 && somaFinal > 0) {
-                difEl.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> R$ 0,00 (Fechou!)</span>`;
+                difEl.innerHTML = `<span class="text-success"><i class="la la-check-circle"></i> R$ 0,00 (Fechou!)</span>`;
                 btnSubmit.disabled = false;
                 btnSubmit.innerText = "Confirmar Conciliação";
                 btnSubmit.className = "btn btn-success font-weight-bold px-4";
             } else {
-                let btnAuto = soma > 0 ? `<button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 mt-1 d-block w-100 font-weight-bold" onclick="aplicarDiferencaAuto()"><i class="fas fa-magic"></i> Lançar Diferença</button>` : '';
+                let btnAuto = soma > 0 ? `<button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 mt-1 d-block w-100 font-weight-bold" onclick="aplicarDiferencaAuto()"><i class="la la-magic"></i> Lançar Diferença</button>` : '';
                 difEl.innerHTML = `<span class="text-danger">R$ ${Math.abs(diferenca).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span> ${btnAuto}`;
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "Aguardando Fechamento...";
@@ -935,7 +936,7 @@
             itensOrdenados.sort((a, b) => b.score - a.score);
 
             if (itensOrdenados.length === 0) {
-                divCheckboxes.innerHTML = '<div class="p-3 text-muted text-center font-weight-bold"><i class="fas fa-search-minus fa-2x mb-2 d-block"></i> Nenhum título corresponde à pesquisa.</div>';
+                divCheckboxes.innerHTML = '<div class="p-3 text-muted text-center font-weight-bold"><i class="la la-search-minus fa-2x mb-2 d-block"></i> Nenhum título corresponde à pesquisa.</div>';
                 msg.innerHTML = '';
                 recalcularSoma();
                 return;
@@ -974,16 +975,16 @@
 
             if (termoBusca === '') {
                 if (itensOrdenados[0].score >= 10000) {
-                    msg.innerHTML = `<i class="fas fa-boxes text-success"></i> Combo Inteligente: Múltiplos títulos exatos!`;
+                    msg.innerHTML = `<i class="la la-boxes text-success"></i> Combo Inteligente: Múltiplos títulos exatos!`;
                 } else if (itensOrdenados[0].score >= 6000) {
-                    msg.innerHTML = `<i class="fas fa-bullseye text-success"></i> Combinação exata de título único!`;
+                    msg.innerHTML = `<i class="la la-bullseye text-success"></i> Combinação exata de título único!`;
                 } else if (itensOrdenados[0].score >= 2000) {
-                    msg.innerHTML = `<i class="fas fa-search text-primary"></i> Nomes parecidos encontrados.`;
+                    msg.innerHTML = `<i class="la la-search text-primary"></i> Nomes parecidos encontrados.`;
                 } else {
-                    msg.innerHTML = `<i class="fas fa-info-circle text-info"></i> Selecione os títulos manualmente.`;
+                    msg.innerHTML = `<i class="la la-info-circle text-info"></i> Selecione os títulos manualmente.`;
                 }
             } else {
-                msg.innerHTML = `<i class="fas fa-filter text-primary"></i> Mostrando resultados para: "${termoBusca}"`;
+                msg.innerHTML = `<i class="la la-filter text-primary"></i> Mostrando resultados para: "${termoBusca}"`;
             }
         }
 

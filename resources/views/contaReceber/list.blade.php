@@ -1,11 +1,12 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 @section('content')
 <header class="fer-page__heading"><h1>Contas a Receber</h1></header>
 
-    <div class="card card-custom gutter-b fer-page fer-list">
+    <div class="card card-custom gutter-b fer-page fer-list fer-finance-list-ui fer-receivables-ui">
         <div class="card-body">
 
             {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E IMPORTAÇÃO --}}
@@ -169,7 +170,7 @@
                 <label>Total de registros: {{sizeof($contas)}}</label>
 
                 {{-- (GRUPO) BARRA DE FERRAMENTAS: Seleção múltipla, Boletos e Excel --}}
-                <div class="row">
+                <div class="row fer-finance-list-ui__toolbar">
                     <div class="col-12">
                         <button id="btn_seleciona_varios" class="btn btn-light font-weight-bold">
                             <i class="la la-list"></i> Selecionar Varios
@@ -184,7 +185,7 @@
                         </button>
 
                         <a href="{{ url('/contasReceber/syncNotaFiscal') }}" class="btn btn-light font-weight-bold">
-                            <i class="fa fa-sync text-info"></i> Sincronizar NF das Vendas
+                            <i class="la la-sync text-info"></i> Sincronizar NF das Vendas
                         </a>
 
                         <a href="/contasReceber/export?{{ http_build_query(request()->all()) }}" class="btn btn-light font-weight-bold">
@@ -380,7 +381,7 @@
                                                                 <span></span>
                                                             </label>
                                                         @endif
-                                                        <h3 style="width: 230px; font-size: 20px; height: 10px;" class="card-title">
+                                                        <h3 class="card-title fer-finance-card__amount">
                                                             R$ {{number_format($c->valor_integral, $casasDecimais ?? 2, ',', '.')}}
                                                         </h3>
                                                     </div>
@@ -461,7 +462,7 @@
                     </div>
 
                     {{-- (GRUPO) RODAPÉ: Resumo financeiro e soma dos valores selecionados --}}
-                    <div class="card-body">
+                    <div class="card-body fer-finance-list-ui__totals">
                         <div class="row">
                             <div class="col-12">
                                 <div class="card card-custom gutter-b example example-compact">

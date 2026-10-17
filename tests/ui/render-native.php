@@ -68,11 +68,12 @@ if (!is_dir($target)) mkdir($target, 0775, true);
 // Prove every render exists; the legacy exception handler can exit CLI with zero.
 register_shutdown_function(static function () use ($target): void {
     if (count(glob($target . '/fer-*.html')) !== 20
+        || count(glob($target . '/alerts-*.html')) !== 4
         || !is_file($target . '/operational-funcionarios-list.html')
         || !is_file($target . '/operational-funcionarios-register.html')
         || !is_file($target . '/operational-cte-register.html')
         || !is_file($target . '/operational-pdv.html')) {
-        fwrite(STDERR, 'Rendering incomplete: expected 20 dashboard and 4 operational Blade fixtures.' . PHP_EOL);
+        fwrite(STDERR, 'Rendering incomplete: expected 20 dashboard, 4 alert and 4 operational Blade fixtures.' . PHP_EOL);
         exit(1);
     }
 });
@@ -98,6 +99,27 @@ foreach ($palettes as $slug=>$definition) {
             $html=str_replace('</body>', $clock . '<script>window.addEventListener("DOMContentLoaded",function(){jQuery("#fixture-select").select2({width:"100%"});jQuery("#fixture-grid").KTDatatable({data:{saveState:false},layout:{scroll:false,footer:false}});});</script></body>', $html);
             file_put_contents($target.'/'.$slug.'-'.$mode.'-'.$density.'.html',$html);
         }
+    }
+}
+
+// Render the real alert dropdown with the same payload and links supplied by
+// AppServiceProvider. No application route or customer database is involved.
+$fixtureAlerts = [
+    ['titulo' => 'Alerta validade', 'msg' => 'Existe itens em estoque sem cadastro de data de validade!', 'link' => '/compras/produtosSemValidade'],
+    ['titulo' => 'Validade próxima', 'msg' => 'Existe Produtos com validade próxima!', 'link' => '/compras/validadeAlerta'],
+    ['titulo' => 'Alerta contas', 'msg' => 'Contas a pagar R$122,35', 'link' => '/contasPagar/filtro?fornecedor=&data_inicial=01/10/2026&data_final=31/10/2026&status=todos'],
+];
+foreach (['fer-light', 'fer-night'] as $slug) {
+    foreach (['lateral', 'superior'] as $mode) {
+        $definition = $palettes[$slug];
+        $theme = array_merge($definition, ['slug' => $slug, 'active' => true, 'density' => 'comfortable', 'color_mode' => 'follow']);
+        $app['request']->attributes->set('fersoft.ui_theme.1:1:0:light', $theme);
+        $data = array_merge($base, ['alertas' => $fixtureAlerts, 'tipoMenu' => $mode]);
+        $factory->flushSections();
+        $content = $factory->make('themes.refined.dashboard', $data)->render();
+        $factory->startSection('content', new \Illuminate\Support\HtmlString($content));
+        $html = $factory->make('themes.refined.layout', $data)->render();
+        file_put_contents($target . '/alerts-' . $slug . '-' . $mode . '.html', $html);
     }
 }
 
@@ -171,4 +193,4 @@ $pdvData = array_merge($base, [
 $app['view']->flushSections();
 $pdvSource = file_get_contents(resource_path('views/frontBox/pdv_assincrono.blade.php'));
 file_put_contents($target . '/operational-pdv.html', \Illuminate\Support\Facades\Blade::render($pdvSource, $pdvData));
-echo 'Rendered 20 dashboard and 4 operational Blade fixtures into '.$target.PHP_EOL;
+echo 'Rendered 20 dashboard, 4 alert and 4 operational Blade fixtures into '.$target.PHP_EOL;

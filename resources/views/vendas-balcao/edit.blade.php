@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 
 @section('css')
@@ -62,7 +63,7 @@
 		cursor: pointer
 	}
 </style>
-<div class="fer-page fer-operational fer-form card card-custom gutter-b">
+<div class="fer-page fer-operational fer-form fer-balcao-form card card-custom gutter-b">
 
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInRight">
 		<div class="content d-flex flex-column flex-column-fluid" id="kt_content" >
@@ -432,9 +433,9 @@
 																<div class="row">
 																	<div class="col-xl-12">
 
-																		<div class="row">
+																				<div class="row fer-balcao-payment">
 
-																			<div class="col-lg-4 col-md-4 col-sm-5 col-12">
+																	<div class="col-lg-4 col-md-5 col-sm-12 fer-balcao-payment__fields">
 																				<h3>Pagamento</h3>
 
 
@@ -524,7 +525,7 @@
 																				</div>
 																			</div>
 
-																			<div class="offset-lg-1 col-lg-7 col-md-7 col-sm-6 col-12">
+																				<div class="col-lg-8 col-md-7 col-sm-12 fer-balcao-payment__schedule">
 																				<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
 																					<div class="row">
 																						<div class="col-xl-12">

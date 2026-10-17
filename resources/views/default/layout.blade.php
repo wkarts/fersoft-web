@@ -3,6 +3,9 @@
         display: none
     }
 </style>
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/ui-alert-panels.css') }}?v={{ filemtime(public_path('css/ui-alert-panels.css')) }}">
+@endpush
 
 @php
     use Carbon\Carbon;
@@ -106,8 +109,8 @@
 
 {{-- 2. ALERTA DE TAREFAS NO TOPO DA TELA --}}
 @if($alertaTarefa)
-    <div class="container-fluid pt-3 px-4">
-        <div class="alert alert-{{ $tipoAlerta }} d-flex justify-content-between align-items-center shadow-sm border-0 border-start border-4 {{$tipoAlerta == 'danger' ? 'border-danger' : 'border-info' }} mb-0" role="alert">
+    <div class="container-fluid pt-3 px-4 ui-task-banner-wrap">
+        <div class="alert alert-{{ $tipoAlerta }} d-flex justify-content-between align-items-center shadow-sm border-0 border-start border-4 {{$tipoAlerta == 'danger' ? 'border-danger' : 'border-info' }} mb-0 ui-task-banner" role="alert">
             <div class="d-flex align-items-center">
                 <span class="fs-5 me-3">
                     {!! $tipoAlerta == 'danger' ? '⚠️' : '🔔' !!}
@@ -355,14 +358,14 @@
     {{-- Complementos renderizados na mesma seção já usada pelos menus da base. --}}
     <!-- 1. MODAL OBRIGATÓRIO DE TAREFAS ATRASADAS / PENDENTES -->
     @if(($totalAtrasadasAlerta > 0 || $totalNaoIniciadasAlerta > 0) && !session('alerta_tarefas_visto'))
-        <div class="modal fade" id="modalAlertaTarefasEquipe" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 10500;">
+        <div class="modal fade ui-task-alert-modal {{ $totalAtrasadasAlerta > 0 ? 'ui-task-alert--danger' : 'ui-task-alert--warning' }}" id="modalAlertaTarefasEquipe" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true" aria-labelledby="tituloAlertaTarefasEquipe" style="z-index: 10500;">
             <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header {{ $totalAtrasadasAlerta > 0 ? 'bg-danger' : 'bg-warning' }} text-white py-4 px-5">
                         <div class="d-flex align-items-center">
                             <i class="la la-bell fs-1 text-white mr-3"></i>
                             <div>
-                                <h4 class="modal-title font-weight-bolder text-white mb-0">
+                                <h4 id="tituloAlertaTarefasEquipe" class="modal-title font-weight-bolder text-white mb-0">
                                     {{ $isAdmAlertas ? 'Painel de Alerta: Tarefas da Equipe' : 'Atenção: Suas Tarefas Pendentes' }}
                                 </h4>
                                 <small class="text-white opacity-90">
@@ -374,9 +377,9 @@
 
                     <div class="modal-body p-5">
                         <!-- CARDS DE RESUMO -->
-                        <div class="row g-3 mb-4">
+                        <div class="row g-3 mb-4 ui-task-alert-summary">
                             <div class="col-md-6 col-12 mb-2">
-                                <div class="p-3 rounded border d-flex align-items-center bg-light-danger">
+                                <div class="p-3 rounded border d-flex align-items-center bg-light-danger ui-task-alert-stat ui-task-alert-stat--danger">
                             <span class="btn btn-danger btn-icon mr-3 font-weight-bolder fs-4" style="width: 45px; height: 45px;">
                                 {{ $totalAtrasadasAlerta }}
                             </span>
@@ -387,7 +390,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6 col-12 mb-2">
-                                <div class="p-3 rounded border d-flex align-items-center bg-light-warning">
+                                <div class="p-3 rounded border d-flex align-items-center bg-light-warning ui-task-alert-stat ui-task-alert-stat--warning">
                             <span class="btn btn-warning btn-icon mr-3 font-weight-bolder fs-4" style="width: 45px; height: 45px;">
                                 {{ $totalNaoIniciadasAlerta }}
                             </span>
@@ -400,9 +403,9 @@
                         </div>
 
                         <!-- LISTA DE TAREFAS -->
-                        <h6 class="font-weight-bold text-dark mb-3"><i class="la la-list-alt text-primary mr-1"></i> Principais atividades que requerem atenção:</h6>
-                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                            <table class="table table-bordered table-sm align-middle mb-0">
+                        <h6 class="font-weight-bold text-dark mb-3 ui-task-alert-section"><i class="la la-list-alt text-primary mr-1"></i> Principais atividades que requerem atenção:</h6>
+                        <div class="table-responsive ui-task-alert-scroll" tabindex="0" role="region" aria-label="Tarefas que requerem atenção">
+                            <table class="table table-bordered table-sm align-middle mb-0 ui-task-alert-table">
                                 <thead class="bg-light">
                                 <tr>
                                     <th>#ID</th>
@@ -416,19 +419,19 @@
                                 <tbody>
                                 @foreach($listaTarefasCriticas as $tc)
                                     <tr>
-                                        <td class="font-weight-bold text-muted">#{{ $tc->id }}</td>
-                                        <td class="font-weight-bold text-dark">{{ $tc->titulo }}</td>
+                                        <td data-label="ID" class="font-weight-bold text-muted">#{{ $tc->id }}</td>
+                                        <td data-label="Tarefa" class="font-weight-bold text-dark">{{ $tc->titulo }}</td>
                                         @if($isAdmAlertas)
-                                            <td><span class="badge badge-light-primary">{{ $tc->funcionario->nome ?? 'Não atribuído' }}</span></td>
+                                            <td data-label="Responsável"><span class="badge badge-light-primary">{{ $tc->funcionario->nome ?? 'Não atribuído' }}</span></td>
                                         @endif
-                                        <td>
+                                        <td data-label="Situação">
                                             @if($tc->tipo_aviso === 'atrasada')
                                                 <span class="badge badge-danger">⚠️ Vencida</span>
                                             @else
                                                 <span class="badge badge-warning text-dark">⏱ Não Iniciada</span>
                                             @endif
                                         </td>
-                                        <td class="{{ $tc->tipo_aviso === 'atrasada' ? 'text-danger font-weight-bolder' : 'text-dark' }}">
+                                        <td data-label="Prazo Limite" class="{{ $tc->tipo_aviso === 'atrasada' ? 'text-danger font-weight-bolder' : 'text-dark' }}">
                                             @if(!empty($tc->data_limite))
                                                 {{ \Carbon\Carbon::parse($tc->data_limite)->format('d/m/Y') }}
                                                 {{ $tc->hora_limite ? ' às ' . substr($tc->hora_limite, 0, 5) : '' }}
@@ -436,7 +439,7 @@
                                                 <span class="text-muted">Sem prazo definido</span>
                                             @endif
                                         </td>
-                                        <td>
+                                        <td data-label="Prioridade">
                                     <span class="badge {{ $tc->prioridade == 'Urgente' ? 'badge-danger' : ($tc->prioridade == 'Alta' ? 'badge-warning text-dark' : 'badge-primary') }}">
                                         {{ $tc->prioridade }}
                                     </span>
@@ -448,11 +451,11 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer bg-light py-3 px-5 d-flex justify-content-between">
+                    <div class="modal-footer bg-light py-3 px-5 d-flex justify-content-between ui-task-alert-footer">
                         <button type="button" class="btn btn-secondary font-weight-bold" id="btnEstouCienteTarefas">
                             <i class="la la-check"></i> Estou Ciente / Fechar
                         </button>
-                        <div>
+                        <div class="ui-task-alert-footer-actions">
                             <a href="/tarefas/painel" class="btn btn-primary font-weight-bold shadow-sm mr-2">
                                 <i class="la la-columns"></i> Abrir Painel Kanban
                             </a>
@@ -489,7 +492,7 @@
     @endif
 
     <!-- 2. MODAL DE AVISO POPUP GERAL DO SISTEMA (ORIGINAL) -->
-    <div class="modal fade" id="modalAvisoPopUp" tabindex="-1" role="dialog" aria-labelledby="modalAvisoTitulo" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal fade ui-system-notice-modal" id="modalAvisoPopUp" tabindex="-1" role="dialog" aria-labelledby="modalAvisoTitulo" aria-hidden="true" data-backdrop="static" data-keyboard="false">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-primary text-white py-4" id="modalAvisoHeader">
@@ -498,7 +501,7 @@
                     </h5>
                     <span class="badge badge-light font-weight-bold ml-3" id="avisoBadgePrioridade">NORMAL</span>
                 </div>
-                <div class="modal-body py-6" style="max-height: 65vh; overflow-y: auto;">
+                <div class="modal-body py-6 ui-system-notice-body">
                     <div class="text-muted small mb-3">
                         Publicado em: <strong id="avisoDataTexto">--/--/----</strong>
                     </div>
