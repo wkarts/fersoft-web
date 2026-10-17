@@ -915,8 +915,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // ROTAS DE CONTRATOS  - LOCAÇÃO - MÃO-DE-OBRA
     // ==============================================================================
     Route::group(['prefix' => 'contratos'], function(){
-        Route::get('/', 'ContratoEngenhariaController@list')->name('contratos.index');
-        Route::get('/list', 'ContratoEngenhariaController@list');
+        Route::get('/', 'ContratoEngenhariaController@list');
+        Route::get('/list', 'ContratoEngenhariaController@list')->name('contratos.index');
         Route::post('/list', 'ContratoEngenhariaController@filtro');
         Route::get('/new', 'ContratoEngenhariaController@register');
         Route::get('/detalhes/{id}', 'ContratoEngenhariaController@detalhes')->name('contratos.detalhes');
