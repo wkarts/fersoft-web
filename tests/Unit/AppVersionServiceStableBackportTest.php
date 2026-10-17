@@ -120,7 +120,7 @@ final class AppVersionServiceStableBackportTest extends TestCase
 
         // Compare persisted rows, including database defaults absent after insert.
         $attributes = $current->fresh()->getAttributes();
-        self::assertSame($attributes, $service->currentOrFallback()->getAttributes());
+        self::assertSame($attributes, $service->currentOrFallback()->fresh()->getAttributes());
         self::assertSame(2, AppVersion::query()->count());
         self::assertSame(1, AppVersion::query()->where('is_current', true)->count());
     }
