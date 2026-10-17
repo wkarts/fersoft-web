@@ -253,6 +253,9 @@ return [
         'url' => env('UPDATER_HEALTHCHECK_URL', env('APP_URL', 'http://localhost')),
         'timeout' => (int) env('UPDATER_HEALTHCHECK_TIMEOUT', 5),
         'skip_localhost' => (bool) env('UPDATER_HEALTHCHECK_SKIP_LOCALHOST', true),
+        // Readiness já verifica o boot HTTP; consulta de banco é opt-in.
+        'check_database' => (bool) env('UPDATER_HEALTHCHECK_CHECK_DATABASE', false),
+        'retry_route_cache_on_404' => (bool) env('UPDATER_HEALTHCHECK_RETRY_ROUTE_CACHE_ON_404', true),
     ],
 
 
@@ -350,7 +353,9 @@ return [
         'default_message' => env('UPDATER_MAINTENANCE_MESSAGE', "Estamos realizando uma atualização programada em nosso sistema para aprimorar desempenho, segurança e estabilidade.\n\nDurante este período, o acesso poderá ficar temporariamente indisponível.\nNossa equipe técnica está trabalhando para concluir o processo o mais breve possível.\n\nPedimos que retorne em alguns minutos."),
         'default_footer' => env('UPDATER_MAINTENANCE_FOOTER', "Agradecemos sua compreensão e confiança.\nSeguimos comprometidos em oferecer uma plataforma cada vez mais eficiente e segura para você."),
         'logo_url' => env('UPDATER_MAINTENANCE_LOGO_URL', env('UPDATER_BRAND_LOGO_URL', '')),
-        'enter_on_update_start' => (bool) env('UPDATER_MAINTENANCE_ENTER_ON_UPDATE_START', true),
+        // Padrão: atualização sem manutenção. O Manager pode habilitar explicitamente.
+        // Mantém a variável legada somente como fallback quando ainda configurada.
+        'enter_on_update_start' => filter_var(env('UPDATER_MAINTENANCE_ENTER_ON_UPDATE_START', false), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false,
 
         // Rotas que nunca devem ser bloqueadas pelo maintenance mode.
         // Por padrão protege o prefixo da UI do updater.

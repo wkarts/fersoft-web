@@ -7,11 +7,13 @@
     <div class="update-status-grid">
         <p><strong>Revisão atual:</strong> {{ $statusCheck['current_revision'] ?? '-' }}</p>
         <p><strong>Revisão remota:</strong> {{ $statusCheck['remote'] ?? '-' }}</p>
-        <p><strong>Commits pendentes:</strong> {{ (int) ($statusCheck['behind_by_commits'] ?? 0) }}</p>
+        <p><strong>Commits pendentes:</strong> {{ !empty($statusCheck['status_unavailable']) ? '-' : (int) ($statusCheck['behind_by_commits'] ?? 0) }}</p>
         <p><strong>Última tag remota:</strong> {{ $statusCheck['latest_tag'] ?? '-' }}</p>
     </div>
     <p><strong>Update disponível:</strong>
-        @if((bool) ($statusCheck['has_updates'] ?? false) || (bool) ($statusCheck['has_update_by_tag'] ?? false))
+        @if(!empty($statusCheck['status_unavailable']))
+            <span style="color:#b45309;font-weight:700;">INDETERMINADO</span>
+        @elseif((bool) ($statusCheck['has_updates'] ?? false) || (bool) ($statusCheck['has_update_by_tag'] ?? false))
             <span style="color:#16a34a;font-weight:700;">SIM</span>
         @else
             <span style="color:#64748b;font-weight:700;">NÃO</span>
@@ -84,6 +86,12 @@
         </div>
 
         <div>
+            <label for="target_branch">Branch alvo (opcional)</label>
+            <input id="target_branch" name="target_branch" type="text" value="{{ old('target_branch', '') }}" maxlength="255" placeholder="{{ $activeSource['branch'] ?? 'main' }}" autocomplete="off">
+            <p class="muted">Deixe em branco para usar a branch configurada na fonte selecionada. Informe outra branch para esta execução.</p>
+        </div>
+
+        <div>
             <label for="update_mode">Modo de atualização</label>
             <select id="update_mode" name="update_mode" required onchange="document.getElementById('tag-wrapper').style.display = this.value === 'tag' ? 'block' : 'none';">
                 <option value="merge" @selected(old('update_mode', $defaultUpdateMode ?? 'merge') === 'merge')>merge (prioridade)</option>
@@ -95,14 +103,15 @@
             </select>
         </div>
 
-        <div id="tag-wrapper" style="display:{{ old('update_mode') === 'tag' ? 'block' : 'none' }};">
+        <div id="tag-wrapper" style="display:{{ old('update_mode', $defaultUpdateMode ?? 'merge') === 'tag' ? 'block' : 'none' }};">
             <label for="target_tag">Tag alvo</label>
-            <select id="target_tag" name="target_tag">
-                <option value="">Selecione uma tag</option>
+            <input id="target_tag" name="target_tag" type="text" list="available-tags" value="{{ old('target_tag', '') }}" maxlength="120" placeholder="Ex.: v1.2.3-rc.1" autocomplete="off">
+            <datalist id="available-tags">
                 @foreach($availableTags as $tag)
-                    <option value="{{ $tag }}" @selected(old('target_tag') === $tag)>{{ $tag }}</option>
+                    <option value="{{ $tag }}"></option>
                 @endforeach
-            </select>
+            </datalist>
+            <p class="muted">Use a tag exata da release, inclusive sufixos como <code>-alpha.1</code>, <code>-beta.2</code> ou <code>-rc.1</code>. Você também pode digitá-la quando não aparecer nas sugestões.</p>
         </div>
 
         <div>
@@ -132,6 +141,9 @@
     <h3>Progresso da atualização/rollback</h3>
     <div class="progress-track"><div class="progress-fill" id="update-progress-fill" style="width:0%"></div></div>
     <p id="update-progress-message" class="muted">Aguardando execução.</p>
+    @if(\Illuminate\Support\Facades\Route::has('updater.runs.show'))
+        <a id="update-progress-details" class="btn btn-action-sm" href="{{ route('updater.runs.show', ['id' => 0]) }}" hidden>Ver diagnóstico da execução</a>
+    @endif
     <ul id="update-progress-logs" class="muted update-progress-logs" style="margin:0; padding-left:18px;"></ul>
 </div>
 @endsection

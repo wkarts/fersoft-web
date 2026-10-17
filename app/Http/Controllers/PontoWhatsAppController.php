@@ -60,25 +60,33 @@ class PontoWhatsAppController extends Controller
             : $numLimpoOrigemFiscal;
 
         // =========================================================================
-        // 🚀 PRIORIDADE MÁXIMA: DESVIO IMEDIATO PARA O MÓDULO FISCAL (NFE / XML / DEVOLUÇÕES)
+        // 🚀 PRIORIDADE MÁXIMA: DESVIO IMEDIATO PARA O MÓDULO FISCAL
         // =========================================================================
         $estadoNfeId = 'wa_nfe_estado_' . $numeroDestinoEnvioFiscal;
         $temEstadoFiscalAtivo = \Illuminate\Support\Facades\Cache::has($estadoNfeId);
 
-        // Deteta se é um ficheiro XML
-        $fileName = $payload['data']['message']['documentMessage']['fileName'] ?? $payload['data']['message']['documentWithCaptionMessage']['message']['documentMessage']['fileName'] ?? '';
-        $documentUrl = $payload['data']['message']['documentMessage']['mediaUrl'] ?? $payload['data']['message']['documentMessage']['url'] ?? '';
+        $fileName = $payload['data']['message']['documentMessage']['fileName'] ?? '';
+        $documentUrl = $payload['data']['message']['documentMessage']['mediaUrl'] ?? '';
         $extensaoArq = pathinfo($fileName, PATHINFO_EXTENSION);
-
         $ehXmlDevolucao = ($messageType === 'documentMessage' || strtolower($extensaoArq) === 'xml' || str_contains(strtolower($documentUrl), '.xml'));
 
+        $textoLimpo = strtoupper($texto);
         $iniciouNfe = false;
 
-        if ($temEstadoFiscalAtivo || $ehXmlDevolucao || strtoupper($texto) === 'CANCELAR' || preg_match('/^(?:IMPRIMIR\s+)?(?:DANFE|PDF|XML|NOTA|NFE|NF-E|EMITIR NOTA|FATURAR)/i', $texto) || $messageType === 'audioMessage' || !empty($audioUrl)) {
+        if (
+            $temEstadoFiscalAtivo ||
+            $ehXmlDevolucao ||
+            $messageType === 'audioMessage' ||
+            !empty($audioUrl) ||
+            $textoLimpo === 'CANCELAR' ||
+            preg_match('/^(NOTA|NFE|NF|EMITIR|FATURAR|CONSULTAR|IMPRIMIR|DANFE|PDF|XML)/i', $textoLimpo)
+        ) {
             $iniciouNfe = true;
         }
 
         if ($iniciouNfe) {
+            Log::info("Desvio Fiscal Ativado para: {$numeroDestinoEnvioFiscal}");
+
             $ultimos8Fiscal = strlen($numLimpoOrigemFiscal) >= 8 ? substr($numLimpoOrigemFiscal, -8) : $numLimpoOrigemFiscal;
             $funcionarioFiscal = Funcionario::where(function($q) use ($remoteJid, $ultimos8Fiscal) {
                 $q->where('whatsapp_id', $remoteJid)

@@ -196,6 +196,8 @@ class OticaController extends BaseController
             if (!empty($dados['valor_armacao'])) $dados['valor_armacao'] = str_replace(['.', ','], ['', '.'], $dados['valor_armacao']);
             if (!empty($dados['valor_lente'])) $dados['valor_lente'] = str_replace(['.', ','], ['', '.'], $dados['valor_lente']);
 
+            $dados['desconto'] = !empty($dados['desconto']) ? str_replace(['.', ','], ['', '.'], $dados['desconto']) : 0;
+
             // Nomes dos produtos
             if (!empty($dados['armacao_id'])) {
                 $prod = \App\Models\Produto::find($dados['armacao_id']);
@@ -312,7 +314,6 @@ class OticaController extends BaseController
     }
 
     // --- FATURAMENTO (GERAÇÃO DE VENDA PARA O ERP) ---
-    // --- FATURAMENTO (GERAÇÃO DE VENDA PARA O ERP) ---
     public function faturar(Request $request, $id)
     {
         $tipo = $request->get('tipo', 'nfe');
@@ -344,7 +345,7 @@ class OticaController extends BaseController
                     throw new \RuntimeException('Configuração de Natureza de Operação não encontrada.');
                 }
 
-                $valorTotal = ($os->valor_lente ?? 0) + ($os->valor_armacao ?? 0);
+                $valorTotal = (($os->valor_lente ?? 0) + ($os->valor_armacao ?? 0)) - ($os->desconto ?? 0);
 
                 if ($tipo === 'pdv') {
                     $preVenda = \App\Models\VendaCaixaPreVenda::create([
@@ -354,6 +355,7 @@ class OticaController extends BaseController
                         'cliente_id' => $os->cliente_id,
                         'natureza_id' => $naturezaId,
                         'valor_total' => $valorTotal,
+                        'desconto' => $os->desconto ?? 0,
                         'estado' => 'DISPONIVEL',
                         'prevenda_nivel' => 2,
                         'observacao' => 'Origem OS Ótica #' . $os->id,
@@ -393,6 +395,7 @@ class OticaController extends BaseController
                     'cliente_id' => $os->cliente_id,
                     'natureza_id' => $naturezaId,
                     'valor_total' => $valorTotal,
+                    'desconto' => $os->desconto ?? 0,
                     'estado' => 'DISPONIVEL',
                     'observacao' => 'Origem OS Ótica #' . $os->id,
                 ]);

@@ -99,8 +99,15 @@
         <p style="margin-top: 15px;"><strong>Forma de Pagamento:</strong> {{ $os->forma_pagamento ?? 'A Combinar / Balcão' }}</p>
     </div>
 
+    <!-- ADICIONADO: Mostrar apenas se houver desconto -->
+    @if($os->desconto > 0)
+        <div style="text-align: right; padding-right: 15px; margin-bottom: 10px; font-size: 16px;">
+            Desconto Aplicado: <strong style="color: #d32f2f;">- R$ {{ number_format($os->desconto, 2, ',', '.') }}</strong>
+        </div>
+    @endif
+
     <div class="total-box">
-        TOTAL GERAL: R$ {{ number_format(($os->valor_armacao ?? 0) + ($os->valor_lente ?? 0), 2, ',', '.') }}
+        TOTAL GERAL: R$ {{ number_format((($os->valor_armacao ?? 0) + ($os->valor_lente ?? 0)) - ($os->desconto ?? 0), 2, ',', '.') }}
     </div>
 
     <div class="assinatura">
