@@ -14,6 +14,11 @@ use Symfony\Component\Process\Process;
 
 class AppVersionService
 {
+    public function installedReleaseIdentity(): ?array
+    {
+        return (new InstalledReleaseIdentity())->resolve();
+    }
+
     public function current(): ?AppVersion
     {
         return AppVersion::query()
@@ -83,21 +88,49 @@ class AppVersionService
 
     public function currentOrFallback(): AppVersion
     {
-        $current = $this->current();
-        if ($current) {
-            if (empty(trim((string) $current->commit_hash))) {
-                $current->commit_hash = $this->resolveInstalledRevision();
+        $identity = $this->installedReleaseIdentity();
+        if ($identity !== null) {
+            $current = $this->current();
+            $needsHistoryImport = $current === null
+                || $current->version !== $identity['version']
+                || !$this->revisionMatches($current->commit_hash, $identity['git_commit_sha'])
+                || !$this->sameReleaseIdentity(Arr::get((array) $current->metadata, 'installed_release'), $identity);
+            if ($needsHistoryImport) {
+                // Import notes/history once per identity transition, not on every page.
+                $this->syncFromManifest();
+                $this->syncFromArtifacts($identity['version']);
             }
+
+            return $this->reconcileInstalledRelease($identity);
+        }
+
+        $current = $this->current();
+        $revision = $this->detectGitCommitHash();
+        if ($revision !== null && (!$current || !$this->revisionMatches($current->commit_hash, $revision))) {
+            return new AppVersion([
+                'version' => 'N/A',
+                'title' => 'Versão não identificada para a revisão instalada',
+                'commit_hash' => $revision,
+                'metadata' => ['identity_status' => 'unverified'],
+                'is_current' => true,
+            ]);
+        }
+        if ($current) {
+            if ($revision === null && $current->version !== $this->resolveInstalledVersion()) {
+                $this->syncFromManifest();
+                $this->syncFromArtifacts();
+                $current = $this->current();
+            }
+        }
+        if ($current) {
             return $current;
         }
 
+        $this->syncFromManifest();
         $this->syncFromArtifacts();
 
         $current = $this->current();
         if ($current) {
-            if (empty(trim((string) $current->commit_hash))) {
-                $current->commit_hash = $this->resolveInstalledRevision();
-            }
             return $current;
         }
 
@@ -111,12 +144,79 @@ class AppVersionService
             'version_patch' => $patch,
             'title' => 'Versão instalada (fallback)',
             'is_current' => true,
-            'commit_hash' => $this->resolveInstalledRevision(),
+            // Sem identidade vinculada ao commit, não atribuir o HEAD a uma versão antiga.
+            'commit_hash' => null,
         ]);
+    }
+
+    private function reconcileInstalledRelease(array $identity): AppVersion
+    {
+        return DB::transaction(function () use ($identity) {
+            // createOrFirst trata a disputa pelo índice único em duas requisições.
+            $record = AppVersion::query()->firstOrCreate(['version' => $identity['version']], [
+                'title' => 'Release '.$identity['version'],
+                'installed_at' => now(),
+            ]);
+            [$major, $minor, $patch] = $this->splitVersion($identity['version']);
+            $metadata = (array) ($record->metadata ?? []);
+            if (!$this->sameReleaseIdentity(Arr::get($metadata, 'installed_release'), $identity)) {
+                $metadata['installed_release'] = $identity;
+            }
+            $changed = $record->wasRecentlyCreated || !$record->is_current
+                || $record->commit_hash !== $identity['git_commit_sha'];
+
+            $record->fill([
+                'version_major' => $major,
+                'version_minor' => $minor,
+                'version_patch' => $patch,
+                'is_current' => true,
+                'commit_hash' => $identity['git_commit_sha'],
+                'release_channel' => $identity['release_channel'],
+                'metadata' => $metadata,
+            ]);
+            if (isset($identity['build_number'])) {
+                $record->build_number = $identity['build_number'];
+            }
+            if ($changed) {
+                $record->installed_at = now();
+            }
+
+            AppVersion::query()->where('is_current', true)
+                ->where('version', '!=', $identity['version'])->update(['is_current' => false]);
+            if ($record->isDirty()) {
+                $record->save();
+            }
+
+            return $record;
+        }, 3);
+    }
+
+    private function revisionMatches(?string $recorded, string $installed): bool
+    {
+        $recorded = trim((string) $recorded);
+        return preg_match('/^[0-9a-f]{7,64}$/iD', $recorded) === 1
+            && str_starts_with(strtolower($installed), strtolower($recorded));
+    }
+
+    private function sameReleaseIdentity($recorded, array $identity): bool
+    {
+        if (!is_array($recorded)) {
+            return false;
+        }
+        // MySQL JSON may reorder object keys while keeping their values/types.
+        ksort($recorded);
+        ksort($identity);
+
+        return $recorded === $identity;
     }
 
     public function resolveInstalledVersion(): string
     {
+        $identity = $this->installedReleaseIdentity();
+        if ($identity !== null) {
+            return $identity['version'];
+        }
+
         $composerPath = base_path('composer.json');
         if (is_file($composerPath)) {
             $raw = safe_file_get_contents($composerPath);
@@ -147,6 +247,15 @@ class AppVersionService
 
     public function resolveInstalledRevision(): ?string
     {
+        $gitRevision = $this->detectGitCommitHash();
+        if ($gitRevision !== null) {
+            return $gitRevision;
+        }
+        $identity = $this->installedReleaseIdentity();
+        if ($identity !== null) {
+            return $identity['git_commit_sha'];
+        }
+
         $envRevision = $this->normalizeRevision((string) (
         env('APPREVISION')
             ?: env('APP_REVISION')
@@ -166,18 +275,15 @@ class AppVersionService
             return $manifestRevision;
         }
 
-        $gitRevision = $this->detectGitCommitHash();
-        if ($gitRevision !== null) {
-            return $gitRevision;
-        }
-
         return null;
     }
 
     public function syncFromArtifacts(?string $installedVersion = null): int
     {
         $installedVersion = $installedVersion ?: $this->resolveInstalledVersion();
-        $installedRevision = $this->resolveInstalledRevision();
+        $identity = $this->installedReleaseIdentity();
+        $installedRevision = $identity !== null && $identity['version'] === $installedVersion
+            ? $identity['git_commit_sha'] : null;
 
         $versions = $this->artifactVersions();
         $upserts = 0;
@@ -215,33 +321,54 @@ class AppVersionService
                 $payload['commit_hash'] = $installedRevision;
             }
 
-            $record = AppVersion::query()->updateOrCreate(
-                ['version' => $version],
-                $payload
-            );
+            $record = $this->importReleaseHistory($version, $payload);
 
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
-        if ($installedVersion !== '') {
+        if ($identity === null && $installedVersion !== '') {
             AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
             AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
+        }
 
-            if ($installedRevision !== null) {
-                AppVersion::query()
-                    ->where('version', $installedVersion)
-                    ->update(['commit_hash' => $installedRevision]);
-            }
+        if ($identity !== null) {
+            $record = $this->reconcileInstalledRelease($identity);
+            $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
         return $upserts;
+    }
+
+    /** Import missing release details without replacing installation history. */
+    private function importReleaseHistory(string $version, array $payload): AppVersion
+    {
+        $record = AppVersion::query()->firstOrCreate(['version' => $version], $payload);
+        if (!$record->wasRecentlyCreated) {
+            foreach ($payload as $field => $value) {
+                if ($field === 'is_current' || $value === null || $value === '' || $value === []) {
+                    continue;
+                }
+                $stored = $record->getAttribute($field);
+                $missing = $stored === null || $stored === ''
+                    || ($field === 'metadata' && $stored === [])
+                    || ($field === 'release_notes_format' && $stored === 'none');
+                if ($missing) {
+                    $record->setAttribute($field, $value);
+                }
+            }
+            if ($record->isDirty()) {
+                $record->save();
+            }
+        }
+
+        return $record;
     }
 
     private function artifactVersions(): Collection
     {
         $dirs = collect(Storage::disk('local')->directories('releases'))
             ->map(fn (string $dir) => basename($dir))
-            ->filter(fn (string $version) => preg_match('/^v?\d+\.\d+\.\d+$/', $version))
+            ->filter(fn (string $version) => $this->isSemanticVersion($version))
             ->map(fn (string $version) => ltrim($version, 'vV'));
 
         return $dirs
@@ -264,7 +391,6 @@ class AppVersionService
 
         $commands = [
             ['git', 'describe', '--tags', '--exact-match'],
-            ['git', 'tag', '--list', 'v[0-9]*.[0-9]*.[0-9]*', '--sort=-version:refname'],
         ];
 
         foreach ($commands as $command) {
@@ -293,13 +419,13 @@ class AppVersionService
 
     private function detectGitCommitHash(): ?string
     {
-        if (!is_dir(base_path('.git'))) {
+        if (!file_exists(base_path('.git'))) {
             return null;
         }
 
         $commands = [
-            ['git', 'rev-parse', '--short', 'HEAD'],
             ['git', 'rev-parse', 'HEAD'],
+            ['git', 'rev-parse', '--short', 'HEAD'],
         ];
 
         foreach ($commands as $command) {
@@ -397,8 +523,8 @@ class AppVersionService
 
             [$major, $minor, $patch] = $this->splitVersion($version);
 
-            $record = AppVersion::query()->updateOrCreate(
-                ['version' => $version],
+            $record = $this->importReleaseHistory(
+                $version,
                 [
                     'version_major' => $major,
                     'version_minor' => $minor,
@@ -428,7 +554,11 @@ class AppVersionService
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
-        if ($currentVersion !== '') {
+        $identity = $this->installedReleaseIdentity();
+        if ($identity !== null) {
+            $record = $this->reconcileInstalledRelease($identity);
+            $upserts += $record->wasRecentlyCreated ? 1 : 0;
+        } elseif ($currentVersion !== '') {
             AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
             AppVersion::query()->where('version', $currentVersion)->update(['is_current' => true]);
         }
@@ -548,9 +678,12 @@ class AppVersionService
 
     private function normalizeSemanticVersion(string $version): ?string
     {
-        $normalized = ltrim(trim($version), 'vV');
+        $normalized = preg_replace('/^[vV]/', '', trim($version));
 
-        if ($normalized === '' || !preg_match('/^\d+\.\d+\.\d+$/', $normalized)) {
+        $number = '(?:0|[1-9][0-9]*)';
+        $pre = '(?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)';
+        if (strlen($normalized) > 30 || !preg_match('/^'.$number.'\.'.$number.'\.'.$number
+            .'(?:-'.$pre.'(?:\.'.$pre.')*)?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/D', $normalized)) {
             return null;
         }
 

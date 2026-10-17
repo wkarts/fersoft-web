@@ -1,0 +1,62 @@
+name: Release - Identidade instalada
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  release-identity:
+    name: Contrato da versao instalada
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Provar contrato do pacote e incremento estavel
+        run: python3 -m unittest discover -s tests/release -p 'test_*.py' -v
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_sqlite, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, bcmath, soap
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: ${{ runner.os }}-release-identity-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-release-identity-
+
+      - name: Instalar dependencias para testes isolados
+        env:
+          PHPCLASSES_TOKEN: ${{ secrets.PHPCLASSES_TOKEN }}
+          COMPOSER_NO_INTERACTION: '1'
+          COMPOSER_NO_AUDIT: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${PHPCLASSES_TOKEN:-}" ]; then
+            export COMPOSER_AUTH="$(python3 - <<'PY'
+          import json, os
+          credentials = {"username": "wkarts", "password": os.environ["PHPCLASSES_TOKEN"]}
+          print(json.dumps({"http-basic": {host: credentials for host in ["www.phpclasses.org", "phpclasses.org"]}}))
+          PY
+          )"
+          fi
+          composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Provar identidade instalada, banco e rollback
+        run: |
+          set -euo pipefail
+          ./vendor/bin/phpunit tests/Unit/InstalledReleaseIdentityTest.php tests/Unit/AppVersionServiceIdentityTest.php
