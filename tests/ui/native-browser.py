@@ -238,6 +238,8 @@ def check_superior_navigation(page, resize=False):
 
     if resize:
         page.set_viewport_size({'width': 768, 'height': 1024})
+        page.wait_for_function('''() => !matchMedia('(min-width: 992px)').matches &&
+            document.querySelector('#ui-sidebar')?.parentElement?.matches('.ui-app')''')
         assert sidebar.evaluate('(e)=>e.parentElement?.matches(".ui-app")'), 'Top menu did not return to the mobile drawer.'
         assert sidebar.locator('.ui-brand').evaluate('(e)=>e.nextElementSibling?.classList.contains("ui-version")'), \
             'The drawer did not restore its original keyboard order.'
@@ -248,6 +250,8 @@ def check_superior_navigation(page, resize=False):
         page.keyboard.press('Escape')
         assert sidebar.evaluate('(e)=>e.inert')
         page.set_viewport_size({'width': 1920, 'height': 1032})
+        page.wait_for_function('''() => matchMedia('(min-width: 992px)').matches &&
+            document.querySelector('#ui-sidebar')?.previousElementSibling?.matches('.ui-masthead')''')
         assert sidebar.evaluate('(e)=>e.previousElementSibling?.matches(".ui-masthead")')
         assert abs(sidebar.bounding_box()['height'] - 47) <= 2
         assert navigation_contract(page) == original
