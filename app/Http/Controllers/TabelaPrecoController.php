@@ -24,20 +24,16 @@ class TabelaPrecoController extends BaseController
     protected function rules(): array { return ['descricao' => 'required']; }
     protected function messages(): array { return ['descricao.required' => 'O nome da tabela é obrigatório.']; }
 
-    private function getEmpresaId() {
-        return $this->empresa_id ?? session('user_logged')['empresa'] ?? session('user_logged')['empresa_id'] ?? 1;
-    }
-
     public function list(Request $request)
     {
-        $empresaId = $this->getEmpresaId();
+        $empresaId = $this->empresa_id;
         $records = TabelaPreco::where('empresa_id', $empresaId)->get();
         return view($this->listView, ['records' => $records, 'title' => 'Tabelas de Preços']);
     }
 
     public function register($id = null)
     {
-        $empresaId = $this->getEmpresaId();
+        $empresaId = $this->empresa_id;
         
         $data = $id ? TabelaPreco::with('itens.produto')->where('empresa_id', $empresaId)->findOrFail($id) : null;
         $title = $id ? "Editar Tabela de Preços" : "Nova Tabela de Preços";
@@ -51,7 +47,7 @@ class TabelaPrecoController extends BaseController
 
         DB::beginTransaction();
         try {
-            $empresaId = $this->getEmpresaId();
+            $empresaId = $this->empresa_id;
 
             $tabelaData = [
                 'empresa_id' => $empresaId,
@@ -59,7 +55,7 @@ class TabelaPrecoController extends BaseController
             ];
 
             if ($request->id) {
-                $tabela = TabelaPreco::findOrFail($request->id);
+                $tabela = TabelaPreco::where('empresa_id', $empresaId)->findOrFail($request->id);
                 $tabela->update($tabelaData);
                 TabelaPrecoItem::where('tabela_preco_id', $tabela->id)->delete();
                 $mensagem = "Tabela atualizada com sucesso!";
@@ -100,7 +96,7 @@ class TabelaPrecoController extends BaseController
     {
         try {
             $term = $request->get('term', '');
-            $empresaId = $this->getEmpresaId();
+            $empresaId = $this->empresa_id;
 
             $produtos = Produto::where('empresa_id', $empresaId)
                 ->where('controla_pesagem', 1) 
