@@ -118,7 +118,8 @@ final class AppVersionServiceStableBackportTest extends TestCase
         self::assertSame('2026-10-16 12:00:00', $old->installed_at->format('Y-m-d H:i:s'));
         self::assertSame(['retained' => true], $old->metadata);
 
-        $attributes = $current->getAttributes();
+        // Compare persisted rows, including database defaults absent after insert.
+        $attributes = $current->fresh()->getAttributes();
         self::assertSame($attributes, $service->currentOrFallback()->getAttributes());
         self::assertSame(2, AppVersion::query()->count());
         self::assertSame(1, AppVersion::query()->where('is_current', true)->count());
