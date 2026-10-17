@@ -1,5 +1,10 @@
 @extends('default.layout', ['title' => isset($item) ? 'Editar' : 'Nova' . ' Conta'])
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--conta-empresa">
 <div class="card card-custom gutter-b">
     <div class="container">
         <form method="post" action="{{ isset($item) ? route('contas-empresa.update', [$item->id]) : route('contas-empresa.store') }}">
@@ -105,5 +110,6 @@
     </div>
         </form>
     </div>
+</div>
 </div>
 @endsection

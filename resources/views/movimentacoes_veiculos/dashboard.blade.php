@@ -1,10 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="container mt-5">
+    <header class="fer-page__heading"><h1>{{ $title }}</h1></header>
+<div class="d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="container mt-5 fer-page fer-operational fer-board fer-dashboard">
 
-            <div class="card card-custom mb-5 shadow-sm" style="border-radius: 10px;">
+            <div class="fer-panel card card-custom mb-5 shadow-sm" style="border-radius: 10px;">
                 <div class="card-body py-4 d-flex justify-content-between align-items-center flex-wrap">
                     <h3 class="text-dark font-weight-bold m-0 mb-3 mb-md-0">
                         <i class="fas fa-tachometer-alt text-primary mr-2"></i> {{ $title }}

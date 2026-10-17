@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="row">
+<div class="fer-extra fer-extra--ponto fer-extra--ponto_jornada row">
   <div class="col-md-4">
     <div class="card card-custom mb-4"><div class="card-header"><h3 class="card-title">Nova Jornada</h3></div><div class="card-body">
       <form method="post" action="/ponto/jornadas/save">@csrf

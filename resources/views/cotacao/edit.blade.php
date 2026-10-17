@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="row">
+<header class="fer-page__heading"><h1>Cotação: {{$cotacao->id}}</h1></header>
+<div class="row fer-page fer-operational fer-form fer-legacy-grid">
 	<div class="col s12">
 		@if(session()->has('message'))
 		<div class="row">
@@ -10,7 +14,7 @@
 			</div>
 		</div>
 		@endif
-		<div class="card">
+		<div class="fer-panel card">
 
 			<div class="row">
 				<form class="col s12" method="post" action="/cotacao/saveItem">

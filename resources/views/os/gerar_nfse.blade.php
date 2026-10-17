@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    @section('css')
+    <header class="fer-page__heading"><h1>Gerar NFS-e da Ordem de Serviço</h1></header>
+@section('css')
         <style type="text/css">
             .card-modern {
                 border: none;
@@ -45,7 +49,7 @@
         </style>
     @endsection
 
-    <div class="content d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="fer-page fer-operational fer-form content d-flex flex-column flex-column-fluid" id="kt_content">
 
         <!-- Header com Infos da OS -->
         <div class="card card-modern mb-5">

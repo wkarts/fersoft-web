@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
 <style>
@@ -13,9 +16,110 @@
     /* Ajustes da tabela */
     .table-head-custom thead th { background-color: #f3f6f9; font-weight: 700; color: #3f4254; }
     .td-envolvidos { font-size: 0.85rem; line-height: 1.4; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-header .card-title {
+        display: flex !important;
+        flex: 1 1 360px;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        min-width: 0;
+        margin: 0;
+        line-height: 1.4;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-header .card-title .card-label { font-size: 18px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-header .card-title .text-muted { font-size: 11px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        margin-left: auto;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-toolbar .btn { margin: 0 !important; min-height: 38px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-create,
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-import-nfe {
+        background: var(--ui-accent, #1f9866) !important;
+        border-color: var(--ui-accent, #1f9866) !important;
+        color: #fff !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-import-pesagem {
+        background: var(--ui-warning-bg, #fff6e8) !important;
+        border: 1px solid var(--ui-warning-border, #f2d7a7) !important;
+        color: var(--ui-warning-text, #8a5d0c) !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-toolbar .btn i { color: inherit !important; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .filter-box > .row { align-items: end; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .filter-box .form-group { margin-bottom: 0; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .filter-box .form-control { min-height: 38px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .filter-box .btn { min-height: 38px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr > .card-body > .table-responsive { max-width: 100%; overflow-x: auto; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr > .card-body > .table-responsive table { min-width: 1260px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .td-envolvidos {
+        min-width: 180px;
+        overflow-wrap: anywhere;
+        line-height: 1.45;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .badge-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 27px;
+        white-space: nowrap;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .badge-status i { color: inherit !important; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .bg-rascunho {
+        background: var(--ui-warning-bg, #fff6e8) !important;
+        color: var(--ui-warning-text, #8a5d0c) !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr :is(.bg-emitido,.bg-recebido) {
+        background: var(--ui-accent-soft, #eaf6ef) !important;
+        color: var(--ui-accent, #1f9866) !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .bg-cancelado {
+        background: var(--ui-danger-bg, #fff0f2) !important;
+        color: var(--ui-danger-text, #c94e5d) !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        min-width: 205px;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions :is(.btn,.btn-group) { margin: 0 !important; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions .btn-icon {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0 !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions .btn-group { display: inline-flex; gap: 5px; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions .btn-group .btn { border-radius: 8px !important; }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions a[title="Baixar CDF"] {
+        background: var(--ui-surface-alt, #f7faf9) !important;
+        border: 1px solid var(--ui-border, #dce7e7) !important;
+        color: var(--ui-ink, #182f36) !important;
+    }
+    body.ui-native-shell .ui-page .document-fiscal-page--mtr .fer-mtr-row-actions .btn-secondary {
+        border: 1px solid var(--ui-border, #dce7e7) !important;
+        color: var(--ui-ink, #182f36) !important;
+    }
+    @media (max-width: 767px) {
+        body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-header { padding: 14px !important; }
+        body.ui-native-shell .ui-page .document-fiscal-page--mtr .card-toolbar { width: 100%; margin-left: 0; }
+        body.ui-native-shell .ui-page .document-fiscal-page--mtr .filter-box .form-group { margin-bottom: 10px; }
+    }
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--mtr card card-custom gutter-b">
     <div class="card-header border-0 py-5">
         <h3 class="card-title align-items-start flex-column">
             <span class="card-label font-weight-bolder text-dark">
@@ -24,15 +128,15 @@
             <span class="text-muted mt-1 font-size-sm">Gerenciamento, emissão e consulta ao vivo de manifestos de resíduos</span>
         </h3>
         <div class="card-toolbar d-flex align-items-center">
-            <a href="{{ route('mtr.emissao.create.avulso') }}" class="btn font-weight-bolder mr-2" style="background-color: #1bc5bd; color: white;">
+            <a href="{{ route('mtr.emissao.create.avulso') }}" class="btn font-weight-bolder mr-2 fer-mtr-create">
                 <i class="fa fa-plus text-white"></i> Novo MTR Avulso
             </a>
 
-            <button type="button" class="btn font-weight-bolder mr-2" data-toggle="modal" data-target="#modalImportarNfe" style="background-color: #3699ff; color: white;">
+            <button type="button" class="btn font-weight-bolder mr-2 fer-mtr-import-nfe" data-toggle="modal" data-target="#modalImportarNfe">
                 <i class="fa fa-file-invoice text-white"></i> Importar de NF-e
             </button>
 
-            <button type="button" class="btn font-weight-bolder text-dark" data-toggle="modal" data-target="#modalImportarPesagem" style="background-color: #ffb822;">
+            <button type="button" class="btn font-weight-bolder text-dark fer-mtr-import-pesagem" data-toggle="modal" data-target="#modalImportarPesagem">
                 <i class="fa fa-balance-scale text-dark"></i> Importar da Pesagem
             </button>
         </div>
@@ -149,24 +253,25 @@
                                     <span class="badge-status bg-rejeitado">{{ strtoupper($m->status) }}</span>
                                 @endif
                             </td>
-                            <td class="text-center align-middle text-nowrap">
+                            <td class="text-center align-middle">
+                                <div class="fer-mtr-row-actions">
                                 @if($m->status === 'rascunho')
                                     <!-- Ações para Rascunho -->
                                     <form action="{{ route('mtr.emissao.transmitir', $m->id) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-icon btn-success" title="Transmitir MTR">
+                                        <button type="submit" class="btn btn-sm btn-icon btn-success" title="Transmitir MTR" aria-label="Transmitir MTR">
                                             <i class="fa fa-paper-plane"></i>
                                         </button>
                                     </form>
 
-                                    <a href="{{ route('mtr.emissao.edit', $m->id) }}" class="btn btn-sm btn-icon btn-warning text-dark" title="Editar Rascunho">
+                                    <a href="{{ route('mtr.emissao.edit', $m->id) }}" class="btn btn-sm btn-icon btn-warning text-dark" title="Editar Rascunho" aria-label="Editar rascunho">
                                         <i class="fa fa-edit"></i>
                                     </a>
 
                                     <form action="{{ route('mtr.emissao.destroy', $m->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-icon btn-danger" onclick="return confirm('Excluir este rascunho?')" title="Excluir">
+                                        <button type="submit" class="btn btn-sm btn-icon btn-danger" onclick="return confirm('Excluir este rascunho?')" title="Excluir" aria-label="Excluir rascunho">
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     </form>
@@ -184,19 +289,20 @@
                                         <i class="fa fa-certificate"></i> CDF
                                     </a>
 
-                                    <button type="button" class="btn btn-sm btn-icon btn-success ml-1" onclick="abrirModalWhatsapp({{ $m->id }}, '{{ $m->numero_mtr }}')" title="Enviar MTR via WhatsApp">
+                                    <button type="button" class="btn btn-sm btn-icon btn-success ml-1" onclick="abrirModalWhatsapp({{ $m->id }}, '{{ $m->numero_mtr }}')" title="Enviar MTR via WhatsApp" aria-label="Enviar MTR via WhatsApp">
                                         <i class="fab fa-whatsapp"></i>
                                     </button>
 
                                     <div class="btn-group ml-1">
-                                        <button type="button" class="btn btn-sm btn-icon btn-secondary" onclick="consultarSinir({{ $m->id }})" title="Consultar Situação Oficial">
+                                        <button type="button" class="btn btn-sm btn-icon btn-secondary" onclick="consultarSinir({{ $m->id }})" title="Consultar Situação Oficial" aria-label="Consultar situação oficial">
                                             <i class="fa fa-sync"></i>
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-icon btn-danger" onclick="abrirModalCancelar({{ $m->id }}, '{{ $m->numero_mtr }}')" title="Cancelar MTR no SINIR">
+                                        <button type="button" class="btn btn-sm btn-icon btn-danger" onclick="abrirModalCancelar({{ $m->id }}, '{{ $m->numero_mtr }}')" title="Cancelar MTR no SINIR" aria-label="Cancelar MTR no SINIR">
                                             <i class="fa fa-times"></i>
                                         </button>
                                     </div>
                                 @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -218,7 +324,7 @@
 </div>
 
 <!-- MODAL CANCELAR MTR -->
-<div class="modal fade" id="modalCancelarMtr" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalCancelarMtr" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form id="formCancelarMtr" method="POST" action="">
             @csrf
@@ -246,7 +352,7 @@
 </div>
 
 <!-- MODAL ENVIAR WHATSAPP -->
-<div class="modal fade" id="modalWhatsappMtr" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalWhatsappMtr" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <form id="formWhatsappMtr">
             @csrf
@@ -277,7 +383,7 @@
 </div>
 
 <!-- MODAL IMPORTAR NF-E -->
-<div class="modal fade" id="modalImportarNfe" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalImportarNfe" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
@@ -325,7 +431,7 @@
 </div>
 
 <!-- MODAL IMPORTAR PESAGEM -->
-<div class="modal fade" id="modalImportarPesagem" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade document-fiscal-dialog" id="modalImportarPesagem" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header bg-warning">

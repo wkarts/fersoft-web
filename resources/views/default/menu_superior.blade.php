@@ -124,7 +124,7 @@
     </style>
 
 
-    @if($tema == 2)
+    @if($tema == 2 && !config('ui_theme.active', false))
         <link href="/css/escuro.css" rel="stylesheet" type="text/css" />
     @endif
 
@@ -138,11 +138,33 @@
         }*/
 
     </style>
+    {{-- Apenas o shell refinado habilita CSS das páginas no menu superior.
+         O tema clássico conserva exatamente o comportamento anterior. --}}
+    @if(config('ui_theme.active', false))
+        @yield('css')
+    @endif
+
+    {{-- Tema opt-in: calcular no layout pai para disponibilizar dark/density ao body. --}}
+    @if(config('ui_theme.active', false))
+        @php
+            $uiResolvedTheme = app(\App\Services\UiThemeService::class)->resolve(($tema ?? 1) == 2);
+        @endphp
+        @include('themes.refined.assets', ['uiResolvedTheme' => $uiResolvedTheme])
+    @endif
+
 </head>
 <!-- end::Head -->
 <!-- begin::Body -->
 
-<body id="kt_body" class="header-fixed header-mobile-fixed subheader-enabled subheader-fixed">
+<body id="kt_body" @class([
+        'header-fixed',
+        'header-mobile-fixed',
+        'subheader-enabled',
+        'subheader-fixed',
+        'ui-theme-refined' => config('ui_theme.active', false),
+        'ui-theme-refined--dark' => config('ui_theme.active', false) && ($uiResolvedTheme['dark'] ?? false),
+        'ui-density-compact' => config('ui_theme.active', false) && (($uiResolvedTheme['density'] ?? '') === 'compact'),
+    ])>
 <div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 
 
@@ -210,6 +232,22 @@
                                                 <li class="menu-item @if(request()->is('config/aparencia*')) menu-item-active @endif" aria-haspopup="true">
                                                     <a href="{{ url('/config/aparencia') }}" class="menu-link">
                                                         <span class="menu-text">Aparência do Login</span>
+                                                    </a>
+                                                </li>
+                                            @endif
+
+                                            @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\UiThemeController::class))
+                                                <li class="menu-item @if(request()->is('config/temas')) menu-item-active @endif" aria-haspopup="true">
+                                                    <a href="{{ route('config.themes.index') }}" class="menu-link">
+                                                        <span class="menu-text">Temas da Interface</span>
+                                                    </a>
+                                                </li>
+                                            @endif
+
+                                            @if(config('ui_theme.active', false) && class_exists(\App\Http\Controllers\PosThemeController::class))
+                                                <li class="menu-item @if(request()->is('config/temas/pdv*')) menu-item-active @endif" aria-haspopup="true">
+                                                    <a href="{{ route('config.pos-themes.index') }}" class="menu-link">
+                                                        <span class="menu-text">Temas do PDV</span>
                                                     </a>
                                                 </li>
                                             @endif
@@ -363,6 +401,10 @@
             </div>
 
             <div id="kt_content" class="content d-flex flex-column flex-column-fluid">
+                {{-- Shell adicional apenas no visual refinado. Menus, ações e modais legados permanecem operacionais. --}}
+                @if(config('ui_theme.active', false))
+                    @include('themes.refined.workbench')
+                @endif
                 <div style="list-style-type: none;" id="kt_subheader" class="subheader py-2 py-lg-4 subheader-solid w-100">
 
                     <div class="row w-75 ml-2">
@@ -423,6 +465,7 @@
                         <li class="menu-item menu-item-submenu menu-item-rel menu-item-active ml-1 mt-2" data-menu-toggle="click" aria-haspopup="true">
                             <a data-toggle="modal" href="#!" data-target="#modal-release-notes" class="label label-xl label-inline @if($tema == 1) label-light-dark @else label-dark @endif" title="Release Notes da Aplicação">
                                 Versão: {{ optional($appVersionCurrent)->version ?? 'N/A' }}
+                                @include('app_versions.installed_identity')
                             </a>
                         </li>
 
@@ -627,6 +670,14 @@
 
                             <div class="topbar-item user-tour">
                                 <div class="btn btn-icon w-auto btn-clean d-flex align-items-center btn-lg px-2">
+                                    <?php $avatarUrl = app(\App\Services\UserAvatarService::class)->currentUserUrl(); ?>
+                                    <a href="{{ route('usuarios.profile') }}" aria-label="Minha foto de perfil" title="Minha foto" style="display:inline-flex; align-items:center; justify-content:center; flex:none; width:34px; height:34px; margin-right:8px; border-radius:50%; overflow:hidden; background:#e5f2ec; color:#146242; font-weight:700;">
+                                        @if($avatarUrl)
+                                            <img src="{{ $avatarUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
+                                        @else
+                                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) session('user_logged.nome', '?'), 0, 1)) }}
+                                        @endif
+                                    </a>
                                     <span class="kt-header__topbar-welcome kt-hidden-mobile">Olá,</span>
                                     <span style="margin-left: 3px; " class="kt-header__topbar-username kt-hidden-mobile"> <span style="font-weight: bold;" class="text-info text-left">{{session('user_logged')['nome']}}</span></span>
 
@@ -1894,8 +1945,9 @@
                     @endif
 
                     <div class="accordion accordion-toggle-arrow" id="top-major-accordion">
-                        @forelse($appVersionHistoryGrouped as $major => $items)
-                            @php($majorId = 'top-major-'.$major)
+                        <?php if (count($appVersionHistoryGrouped ?? []) > 0): ?>
+                            <?php foreach ($appVersionHistoryGrouped as $major => $items): ?>
+                            <?php $majorId = 'top-major-' . $major; ?>
                             <div class="card">
                                 <div class="card-header" id="head-{{ $majorId }}">
                                     <div class="card-title collapsed" data-toggle="collapse" data-target="#collapse-{{ $majorId }}">
@@ -1906,7 +1958,7 @@
                                 <div id="collapse-{{ $majorId }}" class="collapse" data-parent="#top-major-accordion">
                                     <div class="card-body p-2">
                                         <ul class="list-group">
-                                            @foreach($items as $item)
+                                            <?php foreach ($items as $item): ?>
                                                 <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
                                                     <div>
                                                         <strong>{{ $item->version }}</strong>
@@ -1922,14 +1974,15 @@
                                                         @endif
                                                     </div>
                                                 </li>
-                                            @endforeach
+                                            <?php endforeach; ?>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
-                        @empty
+                            <?php endforeach; ?>
+                        <?php else: ?>
                             <div class="text-center text-muted">Nenhuma versão interna registrada.</div>
-                        @endforelse
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="modal-footer">

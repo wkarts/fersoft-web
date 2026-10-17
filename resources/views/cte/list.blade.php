@@ -1,12 +1,15 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-cte.css') }}?v={{ filemtime(public_path('css/ui-cte.css')) }}">
+@endpush
 @section('content')
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="cte-page cte-page--list">
+	<div class="cte-page__content card-body">
 
-		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+		<div class="cte-list-intro" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 
 			<input type="hidden" id="_token" value="{{ csrf_token() }}">
-			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="/cte/filtro">
+			<form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-filters" method="get" action="/cte/filtro">
 				<div class="row align-items-center">
 					<div class="form-group col-lg-2 col-xl-2">
 						<div class="row">
@@ -82,16 +85,15 @@
 					{!! __view_locais_select_filtro("Local", isset($filial_id) ? $filial_id : '') !!}
 					@endif
 
-					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0">
-						<button style="margin-top: 15px;" class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
+					<div class="col-lg-2 col-xl-2 mt-2 mt-lg-0 cte-filter-submit">
+						<button class="btn btn-light-primary px-6 font-weight-bold">Filtrar</button>
 					</div>
 				</div>
 			</form>
-			<br>
-			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Lista de CTe</h4>
+			<h4 class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft cte-page__title">Lista de CTe</h4>
 
 			<label class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">Registros: <strong class="text-success">{{sizeof($ctes)}}</strong></label>
-			<div class="row @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
+			<div class="row cte-list-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 				<div class="form-group col-lg-3 col-md-4 col-sm-6">
 					<a href="/cte/nova" class="btn btn-success">
 						<i class="la la-plus"></i>
@@ -298,8 +300,8 @@
 																</td>
 
 																<td>
-																	<div class="row">
-																		<span style="width: 280px;">
+									<div class="row cte-table-actions">
+										<span style="width: 280px;">
 
 																			@if($c->estado == 'DISPONIVEL' || $c->estado == 'REJEITADO')
 
@@ -667,7 +669,7 @@
 </div>
 
 
-<div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -696,7 +698,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal1_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -725,7 +727,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal3" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -736,14 +738,14 @@
 			</div>
 			<div class="modal-body">
 				<div class="row">
-					<div class="form-group validated col-sm-6 col-Numero NF Inicial-6">
-						<label class="col-form-label" id="">Numero CTe Inicial</label>
+					<div class="form-group validated col-sm-6 col-lg-6">
+						<label class="col-form-label" id="">Número CTe Inicial</label>
 						<div class="">
 							<input type="text" id="nInicio" placeholder="" name="nInicio" class="form-control" value="">
 						</div>
 					</div>
 					<div class="form-group validated col-sm-6 col-lg-6">
-						<label class="col-form-label" id="">Numero NF Final</label>
+						<label class="col-form-label" id="">Número CTe Final</label>
 						<div class="">
 							<input type="text" id="nFinal" placeholder="" name="nFinal" class="form-control" value="">
 						</div>
@@ -765,7 +767,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal4" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -811,7 +813,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal4_aux" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
@@ -859,7 +861,7 @@
 </div>
 
 
-<div class="modal fade" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fade cte-dialog" id="modal5" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<div class="modal-content">
 			<div class="modal-header">

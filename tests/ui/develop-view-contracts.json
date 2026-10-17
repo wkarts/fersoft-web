@@ -1,0 +1,114 @@
+{
+  "source": "supplied develop ZIP",
+  "source_sha256": "79bc797c874e96f361f1c54fad55d1c9a8aa5be292d40bef18f54494a8e0e9a1",
+  "views_count": 680,
+  "contracts_count": 16511,
+  "duplicate_occurrences_count": 518,
+  "shards": [
+    {
+      "file": "contracts/part-001.json",
+      "sha256": "c061df886c1bf869d9e560a1a0338cb4c267a05bff7360600a1933750842affb",
+      "views": 89,
+      "contracts": 1049,
+      "duplicate_occurrences": 20
+    },
+    {
+      "file": "contracts/part-002.json",
+      "sha256": "95db3ea755d1672823aa0ef2a77be44ba978c919c3452c4d88d9978844db95f2",
+      "views": 35,
+      "contracts": 1086,
+      "duplicate_occurrences": 12
+    },
+    {
+      "file": "contracts/part-003.json",
+      "sha256": "5c31c9d38599d7af49c5a2e68e73512fb72f8ee06bcbc130b1d674ec505267cb",
+      "views": 38,
+      "contracts": 1144,
+      "duplicate_occurrences": 37
+    },
+    {
+      "file": "contracts/part-004.json",
+      "sha256": "70e5009d52f1a6bfbcb8944bb7b49587be5c397a493a46c3b2503c2bea5d37a8",
+      "views": 51,
+      "contracts": 1111,
+      "duplicate_occurrences": 38
+    },
+    {
+      "file": "contracts/part-005.json",
+      "sha256": "e9f1de7c784db4c75fd391162803f6db560eea28f7568ea5fcc36995c9996c02",
+      "views": 41,
+      "contracts": 1144,
+      "duplicate_occurrences": 35
+    },
+    {
+      "file": "contracts/part-006.json",
+      "sha256": "bb9409789f703ad55609deb0816fd3996d1e9b1df0ce5f4de187640a6e52fe64",
+      "views": 53,
+      "contracts": 1036,
+      "duplicate_occurrences": 31
+    },
+    {
+      "file": "contracts/part-007.json",
+      "sha256": "72fed8c13af96ab453012244809ab562239ce68430357cbcbdebea544bef6591",
+      "views": 12,
+      "contracts": 1192,
+      "duplicate_occurrences": 55
+    },
+    {
+      "file": "contracts/part-008.json",
+      "sha256": "8e9b32de126b20570857337670fa7548cce1b8fa9df121d67c5545f7535a7be3",
+      "views": 57,
+      "contracts": 1127,
+      "duplicate_occurrences": 29
+    },
+    {
+      "file": "contracts/part-009.json",
+      "sha256": "52e166bf151cdff0221d7e3e0c36674146410ab72fcc9bcf54a64a5262cdce61",
+      "views": 53,
+      "contracts": 953,
+      "duplicate_occurrences": 15
+    },
+    {
+      "file": "contracts/part-010.json",
+      "sha256": "7a859210a5e2a6e698498d02bbf302d99061ffeba24513175909a150ade5b2ad",
+      "views": 38,
+      "contracts": 1165,
+      "duplicate_occurrences": 43
+    },
+    {
+      "file": "contracts/part-011.json",
+      "sha256": "01dae2ad2f131615b36d3291152cb7c0edc05cdb3e9dd0d944eabff05634550e",
+      "views": 62,
+      "contracts": 1025,
+      "duplicate_occurrences": 35
+    },
+    {
+      "file": "contracts/part-012.json",
+      "sha256": "26480f4f2e7fe9e90a891fd1e190650f46ac6b4bda98447f772682287e3379e7",
+      "views": 28,
+      "contracts": 1036,
+      "duplicate_occurrences": 36
+    },
+    {
+      "file": "contracts/part-013.json",
+      "sha256": "92950e983538c88fb18fd1615f8e00e35ed72272be22b4637ffc9a85117d3580",
+      "views": 34,
+      "contracts": 1132,
+      "duplicate_occurrences": 89
+    },
+    {
+      "file": "contracts/part-014.json",
+      "sha256": "916de904913db06249544401ac13301660aa90b2b52e68a8e2763ad88b963802",
+      "views": 77,
+      "contracts": 1050,
+      "duplicate_occurrences": 21
+    },
+    {
+      "file": "contracts/part-015.json",
+      "sha256": "15338de32c6dbfa7bee1d6c1178a4bbf3664761dff502a56c25897b29c0966f6",
+      "views": 12,
+      "contracts": 1261,
+      "duplicate_occurrences": 22
+    }
+  ]
+}

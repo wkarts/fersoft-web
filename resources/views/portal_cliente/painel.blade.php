@@ -116,8 +116,9 @@
             color: white;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-portal-panel">
 
 <!-- TOPO / HEADER -->
 <div class="header-portal">
@@ -270,16 +271,16 @@
                         <tbody>
                             @forelse($coletas as $c)
                                 <tr>
-                                    <td>{{ date('d/m/Y H:i', strtotime($c->created_at)) }}</td>
-                                    <td class="fw-bold text-dark">{{ $c->material }}</td>
-                                    <td>
+                                    <td data-label="Data">{{ date('d/m/Y H:i', strtotime($c->created_at)) }}</td>
+                                    <td data-label="Material" class="fw-bold text-dark">{{ $c->material }}</td>
+                                    <td data-label="Data agendada">
                                         @if($c->data_agendada)
                                             {{ date('d/m/Y H:i', strtotime($c->data_agendada)) }}
                                         @else
                                             <span class="text-muted fst-italic" style="font-size: 0.85rem;">Aguardando...</span>
                                         @endif
                                     </td>
-                                    <td class="text-center">
+                                    <td data-label="Status" class="text-center">
                                         @if($c->status == 'pendente')
                                             <span class="badge-status badge-pendente">Em Análise</span>
                                         @elseif($c->status == 'agendado')

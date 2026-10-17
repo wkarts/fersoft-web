@@ -8,15 +8,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
     <!-- FontAwesome (Ícones) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card-custom { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: none; }
-        .btn-custom { border-radius: 8px; font-weight: bold; padding: 12px; font-size: 16px; }
-        .form-control { border-radius: 8px; padding: 22px 12px; font-size: 16px; }
-        .header-bg { background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 20px; border-radius: 0 0 20px 20px; text-align: center; margin-bottom: 20px; }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-fuel-form fer-standalone-form">
 
 <div class="header-bg">
     <i class="fas fa-gas-pump fa-3x mb-2"></i>

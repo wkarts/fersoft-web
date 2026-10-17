@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist de Pré-Viagem - Fersoft ERP</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/min.css">
+    <title>Checklist de Pré-Viagem - {{ config('app.name') }}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
@@ -73,7 +73,10 @@
             transition: all 0.2s ease;
         }
         .radio-option input {
-            display: none;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
         }
         .radio-option.active-ok {
             border-color: #28a745;
@@ -86,8 +89,9 @@
             color: #721c24;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-checklist-form">
 
 <div class="main-header text-center">
     <h4 class="mb-1 font-weight-bold"><i class="fas fa-clipboard-check"></i> Check-list Veicular</h4>
@@ -189,18 +193,18 @@
                         <div class="section-title">2. Evidências Fotográficas</div>
 
                         <div class="form-group">
-                            <label class="font-weight-bold text-dark small mb-1"><i class="fas fa-camera text-primary mr-1"></i> Foto da Frente (Placa Visível)</label>
-                            <input type="file" class="form-control-file border p-2 rounded bg-light small" name="fotos[frente]" accept="image/*" capture="environment" required>
+                            <label class="font-weight-bold text-dark small mb-1" for="foto-frente"><i class="fas fa-camera text-primary mr-1"></i> Foto da Frente (Placa Visível)</label>
+                            <input type="file" class="form-control-file border p-2 rounded bg-light small" id="foto-frente" name="fotos[frente]" accept="image/*" capture="environment" required>
                         </div>
 
                         <div class="form-group">
-                            <label class="font-weight-bold text-dark small mb-1"><i class="fas fa-tachometer-alt text-primary mr-1"></i> Foto do Painel (KM e Combustível)</label>
-                            <input type="file" class="form-control-file border p-2 rounded bg-light small" name="fotos[painel]" accept="image/*" capture="environment" required>
+                            <label class="font-weight-bold text-dark small mb-1" for="foto-painel"><i class="fas fa-tachometer-alt text-primary mr-1"></i> Foto do Painel (KM e Combustível)</label>
+                            <input type="file" class="form-control-file border p-2 rounded bg-light small" id="foto-painel" name="fotos[painel]" accept="image/*" capture="environment" required>
                         </div>
 
                         <div class="form-group mb-0">
-                            <label class="font-weight-bold text-dark small mb-1"><i class="fas fa-comment-alt text-primary mr-1"></i> Observações / Avarias Anteriores</label>
-                            <textarea class="form-control bg-light" name="observacoes" rows="2" placeholder="Descreva se o veículo já possui algum arranhão..."></textarea>
+                            <label class="font-weight-bold text-dark small mb-1" for="observacoes"><i class="fas fa-comment-alt text-primary mr-1"></i> Observações / Avarias Anteriores</label>
+                            <textarea class="form-control bg-light" id="observacoes" name="observacoes" rows="2" placeholder="Descreva se o veículo já possui algum arranhão..."></textarea>
                         </div>
                     </div>
 
@@ -227,6 +231,11 @@
         }
         label.querySelector('input').checked = true;
     }
+    document.querySelectorAll('.fer-checklist-form .radio-option input').forEach(input => {
+        input.addEventListener('change', () => {
+            if (input.checked) selectOpt(input.closest('.radio-option'), input.value === 'ok' ? 'ok' : 'bad');
+        });
+    });
 </script>
 </body>
 </html>

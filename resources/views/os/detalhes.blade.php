@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-    <style type="text/css">
+    <header class="fer-page__heading"><h1>Ordem de Serviço</h1></header>
+<style type="text/css">
         .card-os {
             border: none;
             border-radius: 12px;
@@ -56,15 +60,52 @@
             align-items: center;
             gap: 8px;
         }
+        body.ui-native-shell .ui-page .fer-os-detail .card-os {
+            margin-bottom: 16px;
+            padding: 18px 20px !important;
+            border: 1px solid var(--ui-border, #dce7e7);
+            background: var(--ui-surface, #fff);
+            box-shadow: 0 4px 18px rgba(33,59,69,.045);
+        }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .separator {
+            margin: 16px 0 !important;
+            border-color: var(--ui-border, #dce7e7);
+        }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .stat-box {
+            height: 100%;
+            min-width: 0;
+            padding: 12px 15px;
+            background: var(--ui-surface-alt, #f7faf9);
+            border-left-color: var(--ui-accent, #1f9866);
+        }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .stat-label { color: var(--ui-muted, #62777d); }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .stat-value {
+            color: var(--ui-ink, #182f36);
+            overflow-wrap: anywhere;
+        }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-service-entry {
+            margin-bottom: 14px !important;
+            padding: 14px !important;
+            border: 1px solid var(--ui-border, #dce7e7);
+            background: var(--ui-surface-alt, #f7faf9) !important;
+        }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-service-entry .form-group { min-width: 0; }
+        body.ui-native-shell .ui-page .fer-os-detail .fer-os-service-entry .btn { min-height: 38px; }
+        @media (max-width: 767px) {
+            body.ui-native-shell .ui-page .fer-os-detail .card-os { padding: 15px !important; }
+            body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .row > [class*="col-"] { margin-bottom: 10px; }
+            body.ui-native-shell .ui-page .fer-os-detail .fer-os-summary .stat-box { height: 100%; }
+            body.ui-native-shell .ui-page .fer-os-detail .fer-os-service-entry { margin-inline: 0; }
+        }
     </style>
 
-    <div class="container-fluid p-0">
+    <div class="container-fluid p-0 fer-page fer-operational fer-detail fer-os-detail">
         <input type="hidden" id="filial" value="{{ $ordem->filial_id }}">
         <input type="hidden" id="token" value="{{ csrf_token() }}">
         <input type="hidden" name="ordem_servico_id" class="ordem_servico_id" value="{{$ordem->id}}">
 
         <!-- 1. BARRA SUPERIOR DE RESUMO E AÇÕES RÁPIDAS -->
-        <div class="card card-os p-6">
+        <div class="fer-panel card card-os p-6 fer-os-summary">
             <div class="row align-items-center">
                 <div class="col-lg-6 col-12 mb-4 mb-lg-0">
                     <div class="d-flex align-items-center gap-3">
@@ -217,7 +258,7 @@
                 <input type="hidden" id="_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="ordem_servico_id" value="{{$ordem->id}}">
 
-                <div class="row align-items-end mb-4 bg-light p-4 rounded">
+                <div class="row align-items-end mb-4 bg-light p-4 rounded fer-os-service-entry">
                     <div class="form-group validated col-md-5 col-12 mb-2 mb-md-0">
                         <label class="form-label font-weight-bold">Serviço</label>
                         <select style="width: 100%" required class="form-control select2 servico" id="kt_select2_1" name="servico">
@@ -572,7 +613,7 @@
 
     <!-- MODAL VISUALIZAR RELATÓRIO -->
     <div class="modal fade" id="modal1" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="fer-dialog modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title text-white" id="data"></h5>

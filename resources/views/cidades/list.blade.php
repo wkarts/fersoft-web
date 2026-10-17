@@ -1,5 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--list fer-catalog-config--cidades">
 <div class="card card-custom gutter-b">
 	<div class="card-body">
 
@@ -108,5 +112,5 @@
 		</div>
 	</div>
 </div>
-
+</div>
 @endsection	

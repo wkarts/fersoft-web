@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('css')
 <style type="text/css">
 	.btn-sm{
@@ -10,7 +14,7 @@
 </style>
 @endsection
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--support fer-extra--plano-contas card card-custom gutter-b">
 	<div class="card-body">
 
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -71,7 +75,7 @@
 	</div>
 </div>
 
-<div class="modal fade" id="modal-form" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+<div class="modal fer-extra-modal fade" id="modal-form" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
 	<div class="modal-dialog modal-lg" role="document">
 		<form class="modal-content" method="post" action="{{ route('plano-contas.store') }}">
 			@csrf

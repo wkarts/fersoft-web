@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
+@endpush
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="document-fiscal-page document-fiscal-page--mtr ui-op-refine">
+    <div class="ui-op-heading">
         <h4><i class="fa fa-exchange-alt"></i> De-Para de Resíduos (MTR / SINIR / IEMA)</h4>
         <a href="{{ route('mtr.depara.create') }}" class="btn btn-primary">
             <i class="fa fa-plus"></i> Novo Vínculo De-Para
@@ -10,16 +14,16 @@
     </div>
 
     @if(session('sucesso'))
-        <div class="alert alert-success">{{ session('sucesso') }}</div>
+        <div class="alert alert-success ui-op-alert" role="status"><i class="fa fa-check-circle" aria-hidden="true"></i><span>{{ session('sucesso') }}</span></div>
     @endif
     @if(session('erro'))
-        <div class="alert alert-danger">{{ session('erro') }}</div>
+        <div class="alert alert-danger ui-op-alert" role="alert"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i><span>{{ session('erro') }}</span></div>
     @endif
 
-    <div class="card shadow-sm">
+    <div class="card ui-op-panel">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
+                <table class="table table-striped table-hover align-middle ui-op-table">
                     <thead class="table-light">
                         <tr>
                             <th>Órgão</th>
@@ -66,12 +70,14 @@
                                 <td>{{ $unidadeTexto }}</td>
                                 <td>{{ number_format($d->fator_conversao, 4, ',', '.') }}</td>
                                 <td class="text-center">
-                                    <a href="{{ route('mtr.depara.edit', $d->id) }}" class="btn btn-sm btn-warning">
+                                    <div class="ui-op-actions">
+                                    <a href="{{ route('mtr.depara.edit', $d->id) }}" class="btn btn-sm btn-warning" title="Editar vínculo" aria-label="Editar vínculo">
                                         <i class="fa fa-edit"></i>
                                     </a>
-                                    <a href="{{ route('mtr.depara.destroy', $d->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Deseja realmente remover este vínculo?')">
+                                    <a href="{{ route('mtr.depara.destroy', $d->id) }}" class="btn btn-sm btn-danger" title="Remover vínculo" aria-label="Remover vínculo" onclick="return confirm('Deseja realmente remover este vínculo?')">
                                         <i class="fa fa-trash"></i>
                                     </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty

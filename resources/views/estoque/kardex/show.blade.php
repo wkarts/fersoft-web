@@ -1,11 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-operations.css') }}?v={{ filemtime(public_path('css/ui-operations.css')) }}">
+@endpush
 
 @section('content')
-<div class="card card-custom gutter-b">
+<div class="operations-page operations-page--stock-detail">
     <div class="card-header">
-        <h3 class="card-title">Kardex Analítico - {{ $produto->nome }}</h3>
+        <h3 class="card-title operations-page__title">Kardex Analítico - {{ $produto->nome }}</h3>
     </div>
-    <div class="card-body">
+    <div class="operations-page__content card-body">
         <form method="get" class="form mb-4">
             <div class="form-row">
                 <div class="form-group col-md-2">

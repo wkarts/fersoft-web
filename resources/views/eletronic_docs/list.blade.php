@@ -1,7 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
-    <div class="container mt-4">
+    <div class="document-fiscal-page document-fiscal-page--eletronic-docs container mt-4">
         <h3 class="mb-4">Consulta de Documentos Eletrônicos</h3>
 
         <!-- Alerta de erro -->
@@ -20,7 +23,7 @@
         </form>
 
         <!-- Modal para exibir os links -->
-        <div class="modal fade" id="modalDownloadLinks" tabindex="-1" role="dialog">
+        <div class="modal fade document-fiscal-dialog" id="modalDownloadLinks" tabindex="-1" role="dialog">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
@@ -36,7 +39,7 @@
         </div>
 
         <!-- Modal de carregamento -->
-        <div class="modal fade" id="loadingModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal fade document-fiscal-dialog" id="loadingModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-body text-center">
@@ -50,7 +53,7 @@
         </div>
 
         <!-- Modal Reutilizável para Alertas e Mensagens -->
-        <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+        <div class="modal fade document-fiscal-dialog" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <!-- Cabeçalho -->

@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal.css') }}?v={{ filemtime(public_path('css/ui-fiscal.css')) }}">
+@endpush
 @section('css')
 <style type="text/css">
 	textarea{
@@ -9,8 +12,8 @@
 @endsection
 @section('content')
 
-<div class="card card-custom gutter-b">
-	<div class="card-body">
+<div class="fiscal-page fiscal-page--remessa_nfe-edit_xml">
+	<div class="fiscal-page__content card-body">
 
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__bounce" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 

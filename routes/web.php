@@ -352,6 +352,45 @@ Route::group(['prefix' => 'config', 'middleware' => 'verificaEmpresa'], function
             Route::post('/arquivos/{asset}/publicar', 'LoginAppearanceController@publishAsset')->name('config.aparencia.assets.publish');
         });
     }
+
+    // Administração exclusiva dos temas do ERP, ao lado da aparência do login.
+    // O controller confirma a permissão de superadmin em todas as requisições.
+    Route::get('/temas', 'UiThemeController@admin')->name('config.themes.index');
+    // Área SUPER separada: catálogo e padrão do PDV não usam preferências do ERP.
+    Route::group(['prefix' => 'temas/pdv'], function () {
+        Route::get('/', 'PosThemeController@index')->name('config.pos-themes.index');
+        Route::post('/modelos', 'PosThemeController@store')->name('config.pos-themes.store');
+        Route::post('/modelos/{preset}', 'PosThemeController@update')->name('config.pos-themes.update');
+        Route::post('/modelos/{preset}/duplicar', 'PosThemeController@duplicate')->name('config.pos-themes.duplicate');
+        Route::post('/padroes/{slug}/duplicar', 'PosThemeController@duplicateBuiltin')->name('config.pos-themes.duplicate-builtin');
+        Route::post('/modelos/{preset}/publicar', 'PosThemeController@publish')->name('config.pos-themes.publish');
+        Route::post('/modelos/{preset}/arquivar', 'PosThemeController@archive')->name('config.pos-themes.archive');
+        Route::post('/padrao', 'PosThemeController@setDefault')->name('config.pos-themes.default');
+    });
+});
+
+// ====================================================
+// CATÁLOGO DE TEMAS — acessível sob a sessão e as permissões do ERP.
+// Rotas próprias; nenhum grupo/middleware histórico é alterado.
+// ====================================================
+Route::group(['prefix' => 'ui/temas', 'middleware' => 'verificaEmpresa'], function () {
+    Route::get('/', 'UiThemeController@index')->name('ui.themes.index');
+    Route::post('/preferencia', 'UiThemeController@select')->name('ui.themes.select');
+    Route::post('/preferencia/padrao', 'UiThemeController@reset')->name('ui.themes.reset');
+    Route::post('/modelos', 'UiThemeController@store')->name('ui.themes.store');
+    Route::post('/modelos/{preset}', 'UiThemeController@update')->name('ui.themes.update');
+    Route::post('/modelos/{preset}/duplicar', 'UiThemeController@duplicate')->name('ui.themes.duplicate');
+    Route::post('/modelos/{preset}/publicar', 'UiThemeController@publish')->name('ui.themes.publish');
+    Route::post('/modelos/{preset}/arquivar', 'UiThemeController@archive')->name('ui.themes.archive');
+    Route::post('/modelos/{preset}/padrao', 'UiThemeController@promote')->name('ui.themes.promote');
+    Route::post('/modelos/{preset}/restrito', 'UiThemeController@demote')->name('ui.themes.demote');
+    Route::post('/padroes/{slug}', 'UiThemeController@updateFactory')->name('ui.themes.factory.update');
+    Route::post('/padroes/{slug}/restaurar', 'UiThemeController@restoreFactory')->name('ui.themes.factory.restore');
+    Route::post('/padrao-global', 'UiThemeController@setGlobalDefault')->name('ui.themes.global.default');
+    Route::post('/padrao-global/restaurar', 'UiThemeController@restoreGlobalDefault')->name('ui.themes.global.restore');
+    Route::get('/empresas/buscar', 'UiThemeController@companySearch')->name('ui.themes.company.search');
+    Route::post('/empresas/liberar', 'UiThemeController@grant')->name('ui.themes.grant');
+    Route::post('/empresas/padrao', 'UiThemeController@setDefault')->name('ui.themes.company.default');
 });
 
 Route::group(['prefix' => 'videos', 'middleware' => 'verificaEmpresa'], function(){
@@ -411,7 +450,16 @@ Route::group(['prefix' => '/payment', 'middleware' => 'verificaEmpresa'], functi
     Route::get('/consulta/{code}', 'PaymentController@consultaPagamento');
 });
 
+Route::group(['prefix' => 'usuarios/perfil', 'middleware' => 'verificaEmpresa'], function () {
+    Route::get('/', 'UsuarioController@profile')->name('usuarios.profile');
+    Route::post('/foto', 'UsuarioController@updateProfilePhoto')
+        ->middleware(['verificaContratoAssinado', 'limiteArmazenamento'])
+        ->name('usuarios.profile.photo');
+});
+
 Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'])->group(function () {
+    Route::get('/fiscal-classificacoes/list', 'FiscalClassificacaoController@index')
+        ->name('fiscal-classificacoes.list');
     Route::get('/app-versions', 'AppVersionController@index');
     Route::get('/app-versions/{appVersion}/pdf/{type?}', 'AppVersionController@downloadPdf')->where('type', 'current|cumulative');
     Route::get('/app-versions/{appVersion}/html/{type?}', 'AppVersionController@html')->where('type', 'current|cumulative');

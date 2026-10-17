@@ -1,0 +1,279 @@
+/* The real operational links are laid out as one list, with company and unit
+   context on the left and the existing controls on the right. */
+body.ui-native-shell .ui-operational-actions { width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px;
+    align-items:center; width:100%; min-width:0;
+}
+body.ui-native-shell .ui-masthead .ui-actions > .container-fluid {
+    display:block; width:100%; min-width:0; padding:0;
+}
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu-wrapper,
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu { width:100%; min-width:0; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav {
+    display:flex; align-items:center; flex-wrap:nowrap; width:100%;
+    min-width:0; gap:8px; margin:0; padding:0;
+}
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item {
+    flex:0 0 auto; min-width:0; margin:0!important; align-self:center;
+}
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-company { order:1; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-environment { order:2; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit { order:3; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-theme {
+    order:10; margin-left:auto!important;
+}
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-whatsapp { order:11; }
+body.ui-native-shell .ui-masthead .ui-actions .ui-header-pdv { order:12; }
+body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp):not(.ui-header-pdv):not(.d-lg-none) { order:4; }
+body.ui-native-shell .ui-masthead .ui-actions > .topbar {
+    display:flex; align-items:center; width:auto; min-width:0; margin:0;
+    gap:8px; flex-wrap:nowrap;
+}
+body.ui-native-shell .ui-masthead .ui-header-unit { min-width:0!important; margin:0!important; }
+body.ui-native-shell .ui-masthead .ui-company-name {
+    display:block; max-width:180px; overflow:hidden; text-overflow:ellipsis;
+}
+body.ui-native-shell .ui-masthead [data-target="#modal-empresa-contador"] {
+    display:block; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex,
+body.ui-native-shell .ui-masthead .ui-header-unit .label { width:auto!important; min-width:0; padding:0; border:0; background:transparent!important; }
+body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex { flex:1 1 auto; }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:clamp(190px, 17vw, 310px)!important; max-width:100%; flex-wrap:nowrap; }
+body.ui-native-shell .ui-masthead .ui-header-unit .form-control { flex:1 1 0; width:0; min-width:0; max-width:none; height:36px; background:var(--ui-surface-alt); }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append { margin-left:8px; }
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append .btn {
+    min-width:36px; min-height:36px; padding:7px; border:1px solid var(--ui-border)!important;
+    border-radius:8px!important; color:var(--ui-accent)!important; background:var(--ui-surface)!important;
+}
+body.ui-native-shell .ui-masthead .ui-header-unit .input-group-append .btn:is(:hover,:focus-visible) { border-color:var(--ui-accent)!important; background:var(--ui-accent-soft)!important; }
+body.ui-native-shell .ui-masthead .ui-header-whatsapp > :is(a,button) {
+    width:36px!important; height:36px!important; padding:8px!important;
+    color:var(--ui-accent)!important; background:var(--ui-surface)!important; border-color:var(--ui-border)!important;
+}
+body.ui-native-shell .ui-masthead .ui-header-whatsapp > :is(a,button):is(:hover,:focus-visible) {
+    background:var(--ui-accent-soft)!important; border-color:var(--ui-accent)!important;
+}
+body.ui-native-shell .ui-masthead .ui-user-controls { display:flex; align-items:center; gap:8px; min-height:38px; }
+body.ui-native-shell .ui-masthead .ui-user-controls .ui-user-avatar { margin:0; width:36px; height:36px; flex-basis:36px; }
+body.ui-native-shell .ui-masthead .ui-user-details { display:flex; flex-direction:column; min-width:0; max-width:150px; line-height:1.3; }
+body.ui-native-shell .ui-masthead .ui-user-details .kt-header__topbar-welcome { display:block; color:var(--ui-muted); font-size:10px; }
+body.ui-native-shell .ui-masthead .ui-user-details .kt-header__topbar-username { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ui-ink)!important; font-size:11px; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] { margin-left:5px!important; min-height:38px; padding:7px 12px; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
+    color:var(--ui-ink)!important; background:var(--ui-surface)!important; border-color:var(--ui-border)!important;
+}
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"]:is(:hover,:focus-visible) { background:var(--ui-hover)!important; border-color:var(--ui-accent)!important; }
+body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] i { font-size:14px; }
+body.ui-native-shell .ui-masthead .ui-header-pdv > a {
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    min-height:36px; padding:7px 10px; white-space:nowrap;
+}
+body.ui-native-shell .ui-session {
+    min-height:42px; padding:0 22px; gap:4px 16px;
+    align-content:center; line-height:1.25;
+}
+body.ui-native-shell .ui-session .topbar-item {
+    display:flex; align-items:center; min-width:0; min-height:30px;
+}
+body.ui-native-shell .ui-session .topbar-item > .btn {
+    display:inline-flex; align-items:center; min-width:0; min-height:0;
+    white-space:nowrap;
+}
+
+@media (min-width:992px) and (max-width:1600px) {
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { flex-wrap:wrap; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a { width:36px; min-width:36px; padding-inline:7px; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a span { display:none; }
+    body.ui-native-shell .ui-masthead .ui-header-theme > a i { font-size:17px; }
+}
+@media (min-width:992px) and (max-width:1240px) {
+    body.ui-native-shell .ui-masthead { padding-block:8px; }
+    body.ui-native-shell .ui-masthead .ui-actions { grid-template-columns:minmax(0,1fr); row-gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { flex-wrap:wrap; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { justify-self:end; }
+}
+
+/* The first mobile row contains navigation, brand and account. Context and
+   operational actions form aligned rows below it, without hidden controls. */
+@media (max-width:991px) {
+    body.ui-native-shell .ui-masthead {
+        display:grid; grid-template-columns:36px minmax(0,1fr);
+        grid-template-rows:38px auto; align-items:center; gap:7px 8px;
+        position:relative; padding:8px 13px;
+    }
+    body.ui-native-shell .ui-masthead .ui-mobile-trigger { grid-column:1; grid-row:1; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand {
+        grid-column:2; grid-row:1; min-width:0; padding-right:215px;
+    }
+    body.ui-native-shell .ui-masthead .ui-operational-actions {
+        grid-column:1 / -1; grid-row:2; width:100%; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions { display:block; }
+    body.ui-native-shell .ui-masthead .ui-actions > .container-fluid { width:100%; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav {
+        flex-wrap:wrap; justify-content:flex-start; gap:6px 8px;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .d-lg-none { order:3; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-unit { order:4; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-theme { order:5; margin-left:0!important; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-whatsapp { order:6; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .ui-header-pdv { order:7; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav > .menu-item:not(.ui-header-company):not(.ui-header-environment):not(.ui-header-unit):not(.ui-header-theme):not(.ui-header-whatsapp):not(.ui-header-pdv):not(.d-lg-none) { order:8; }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit {
+        flex-direction:row; align-items:center; gap:6px;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions .ui-header-unit {
+        flex:1 1 100%; width:100%; max-width:100%; min-width:0; justify-content:flex-start;
+    }
+    body.ui-native-shell .ui-masthead .ui-header-unit > .d-flex {
+        flex:0 1 310px; width:min(310px, calc(100% - 52px))!important; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-header-unit .label { flex:1 1 auto; width:100%!important; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group {
+        width:100%!important; max-width:100%;
+    }
+    body.ui-native-shell .ui-masthead .ui-header-unit .form-control {
+        flex:1 1 0; width:0; max-width:none; min-width:0;
+    }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar {
+        position:absolute!important; top:8px; right:13px; width:auto; margin:0!important;
+        justify-content:flex-end;
+    }
+    body.ui-native-shell .ui-masthead .ui-user-details { max-width:80px; }
+    body.ui-native-shell .ui-session { padding:6px 13px; gap:3px 12px; }
+    body.ui-native-shell .ui-session .topbar-item { min-height:0; }
+}
+@media (max-width:699px) {
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 7px; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:100%!important; }
+    body.ui-native-shell .ui-session { gap:3px 10px; }
+}
+@media (max-width:420px) {
+    body.ui-native-shell .ui-masthead { grid-template-rows:38px 42px auto; row-gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand { padding-right:0; }
+    body.ui-native-shell .ui-masthead .ui-operational-actions { grid-row:3; }
+    body.ui-native-shell .ui-masthead .ui-actions > .topbar { top:51px; }
+    body.ui-native-shell .ui-masthead .ui-mobile-brand img { max-width:95px; }
+    body.ui-native-shell .ui-masthead .ui-company-name { max-width:132px; }
+    body.ui-native-shell .ui-masthead .ui-actions #ui-actions-menu > .menu-nav { gap:6px 5px; }
+    body.ui-native-shell .ui-masthead .ui-header-unit .input-group { width:100%!important; }
+    body.ui-native-shell .ui-masthead .ui-user-details { max-width:53px; }
+    body.ui-native-shell .ui-masthead .ui-user-controls { gap:5px; }
+    body.ui-native-shell .ui-masthead .ui-user-controls > a[href="/login/logoff"] {
+        margin-left:0!important; padding-inline:8px;
+    }
+}
+
+/* The optional superior menu is a separate 47px strip below the real header.
+   JS moves the existing aside into this position; Blade permissions and links stay intact. */
+@media (min-width:992px) {
+    body.ui-native-shell[data-ui-layout="superior"] .ui-app { display:block; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-workspace { width:100%; margin-left:0; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar {
+        --ui-sidebar-ink:var(--ui-muted); --ui-nav-active-bg:var(--ui-accent-soft);
+        --ui-nav-active-text:var(--ui-ink);
+        position:sticky; inset:auto; top:var(--ui-masthead-height, 74px); display:flex; flex-direction:row; align-items:stretch;
+        width:100%; height:47px; min-height:47px;
+        overflow:visible; border-right:0; border-bottom:1px solid var(--ui-border);
+        background:var(--ui-surface); z-index:1030;
+    }
+    body.ui-native-shell[data-ui-layout="superior"]:not(.ui-theme-refined--dark) .ui-sidebar {
+        --ui-nav-active-text:var(--ui-accent-hover);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-nav-caption { display:none; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand {
+        display:flex; order:0; flex:0 0 144px; width:144px; height:46px; min-height:46px;
+        padding:3px 12px; border:0; border-right:1px solid var(--ui-border);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand .brand-logo { display:block; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand .brand-logo img {
+        max-width:118px; max-height:36px;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand .ui-brand-symbol,
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-brand [data-ui-collapse] { display:none; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version {
+        display:flex; order:2; flex:0 0 185px; width:185px; height:46px; min-height:46px;
+        padding:0 9px; border:0; border-left:1px solid var(--ui-border);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version .app-version-desktop-btn {
+        display:block; width:100%; min-width:0; padding:6px 2px; overflow:hidden;
+        white-space:nowrap; text-overflow:ellipsis;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version .app-version-desktop-head {
+        display:flex; align-items:center; gap:5px; min-width:0;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar .ui-version .app-version-desktop-main {
+        display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-navigation {
+        display:block; order:1; flex:1 1 auto; width:auto; min-width:0;
+        height:46px; min-height:46px; padding:5px 12px;
+        overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; scrollbar-color:var(--ui-border) transparent;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list {
+        display:flex; width:max-content; min-width:100%; flex-wrap:nowrap; align-items:center; gap:8px;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item { flex:0 0 auto; margin:0; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link {
+        display:flex; gap:5px; align-items:center; width:auto; height:36px; min-height:36px;
+        padding:0 10px; border-radius:8px; color:var(--ui-muted); font-size:10.5px; font-weight:600;
+        white-space:nowrap;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link:is(:hover,:focus-visible),
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item:is(.menu-item-active,.ui-nav-expanded) > .menu-link {
+        color:var(--ui-nav-active-text); background:var(--ui-nav-active-bg);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link .menu-icon { width:14px; flex-basis:14px; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-link .menu-icon svg { width:14px; height:14px; }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-submenu {
+        position:fixed!important; top:var(--ui-flyout-top, 121px)!important;
+        left:var(--ui-flyout-left, 24px)!important; width:min(320px, calc(100vw - 24px));
+        min-width:min(245px, calc(100vw - 24px)); max-width:calc(100vw - 24px);
+        max-height:min(70vh, calc(100dvh - var(--ui-flyout-top, 121px) - 12px));
+        overflow-y:auto; overflow-x:hidden; margin:0; padding:8px; border:1px solid var(--ui-border);
+        border-radius:9px; background:var(--ui-surface)!important; box-shadow:0 12px 30px #0002;
+        transform:none!important; z-index:1040;
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-nav-list > .menu-item > .menu-submenu[hidden] { display:none!important; }
+}
+
+/* Keep the existing operational and session rows together on long pages.
+   The header height comes from its real rendered content, including wrapping. */
+body.ui-native-shell .ui-masthead { position:sticky; top:0; z-index:1033; }
+body.ui-native-shell .ui-session {
+    position:sticky; top:var(--ui-masthead-height, 74px); z-index:1022;
+}
+@media (min-width:992px) {
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-sidebar { z-index:1034; }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand { position:relative; }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand [data-ui-collapse],
+    body.ui-native-shell.ui-nav-collapsed[data-ui-layout="lateral"] .ui-brand [data-ui-collapse] {
+        position:absolute; left:auto; right:-14px; top:50%; transform:translateY(-50%);
+        display:inline-flex; align-items:center; justify-content:center;
+        width:28px; height:28px; border-radius:50%; z-index:2;
+        background:var(--ui-surface); border:1px solid var(--ui-border);
+        color:var(--ui-muted); box-shadow:0 2px 7px rgba(22,44,51,.09);
+        font-size:13px; line-height:1;
+    }
+    body.ui-native-shell[data-ui-layout="lateral"] .ui-brand [data-ui-collapse]:is(:hover,:focus-visible) {
+        color:var(--ui-accent); background:var(--ui-hover); border-color:var(--ui-accent);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-session {
+        top:calc(var(--ui-masthead-height, 74px) + 47px);
+    }
+    body.ui-native-shell[data-ui-layout="superior"] .ui-masthead {
+        position:sticky; top:0; z-index:1033;
+    }
+}
+@media (max-width:991px) {
+    /* The mobile header remains available at the top of a page; the session
+       row can stick alone without occupying the small viewport twice. */
+    body.ui-native-shell .ui-masthead { position:relative; }
+    body.ui-native-shell .ui-session { top:0; }
+}
+
+@media print {
+    body.ui-native-shell[data-ui-layout="superior"] .ui-sidebar { display:none!important; }
+}

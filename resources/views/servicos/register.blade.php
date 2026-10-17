@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>{{ isset($servico) ? 'Editar' : 'Novo' }} Serviço</h1></header>
     <div class="d-flex flex-column flex-column-fluid" id="kt_content">
         <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 
@@ -8,7 +13,7 @@
                 <input type="hidden" name="id" value="{{ isset($servico) ? $servico->id : 0 }}">
 
                 <!-- CARD PRINCIPAL -->
-                <div class="card card-custom gutter-b shadow-sm border-0">
+                <div class="card card-custom gutter-b shadow-sm border-0 fer-page fer-detail">
                     <!-- Cabeçalho Principal -->
                     <div class="card-header border-0 py-5 bg-light-primary rounded-top">
                         <div class="card-title">

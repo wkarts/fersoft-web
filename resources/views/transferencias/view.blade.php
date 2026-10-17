@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('css')
 <style type="text/css">
@@ -22,9 +26,10 @@
 @endsection
 
 @section('content')
+<header class="fer-page__heading"><h1>Detalhes da Transferência</h1></header>
 <input type="hidden" id="_token" value="{{ csrf_token() }}">
 <input type="hidden" id="transferencia_id" value="{{ $item->id }}">
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 	<input type="hidden" id="pass" value="{{ $config->senha_remover ?? '' }}">
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 		<div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
@@ -267,7 +272,7 @@
 
 
 <div class="modal fade" id="modal-cancelar" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CANCELAR NFe <strong class="text-danger">{{ $item->numero_nfe }}</strong></h5>
@@ -296,7 +301,7 @@
 </div>
 
 <div class="modal fade" id="modal-corrigir" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-	<div class="modal-dialog modal-lg" role="document">
+	<div class="modal-dialog modal-lg fer-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">CARTA DE CORREÇÃO NFe <strong class="text-danger">{{ $item->numero_nfe }}</strong></h5>
@@ -327,7 +332,7 @@
 
 <!-- Modal Mensagem (Avisos e Erros) -->
 <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalMensagemLabel">Mensagem</h5>
@@ -347,7 +352,7 @@
 
 <!-- Modal de Confirmação -->
 <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
@@ -409,7 +414,7 @@
     }
 </script>
 <div class="modal fade" id="modal-manual-transferencia" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    <div class="modal-dialog modal-xl fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-light">
                 <h5 class="modal-title text-info font-weight-bold">

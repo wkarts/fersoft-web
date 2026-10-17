@@ -1,4 +1,7 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+@endpush
 
 @section('content')
 <style>
@@ -12,7 +15,7 @@
     .bg-light-warning { background-color: #fff8dd !important; }
 </style>
 
-<div class="card card-custom gutter-b">
+<div class="document-fiscal-page document-fiscal-page--mtr card card-custom gutter-b">
     <div class="card-header bg-warning py-3">
         <div class="card-title">
             <h3 class="card-label text-dark font-weight-bolder">

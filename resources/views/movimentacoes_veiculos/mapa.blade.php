@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 
 @section('content')
 
-    <!-- CSS do Leaflet, Cluster e Animações -->
+    <header class="fer-page__heading"><h1>Mapa de Veículos</h1></header>
+<!-- CSS do Leaflet, Cluster e Animações -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -107,7 +111,7 @@
         }
     </style>
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-page fer-operational fer-board card card-custom gutter-b">
         <div class="card-header border-0 pt-5">
             <h3 class="card-title align-items-start flex-column">
             <span class="card-label font-weight-bolder text-dark">

@@ -1,13 +1,16 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
+@endpush
 
 @section('content')
     <style>
-        .section-title { font-size: 1.1rem; font-weight: bold; color: #1e1e2d; border-left: 4px solid #0bb783; padding-left: 10px; margin-bottom: 15px; }
-        .box-recebimento { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 25px; }
+        .document-fiscal-page--mtr .section-title { border-left: 4px solid var(--df-green); padding-left: 10px; }
     </style>
 
-    <div class="card card-custom gutter-b">
-        <div class="card-header border-0 py-5">
+    <div class="document-fiscal-page document-fiscal-page--mtr ui-op-refine card card-custom gutter-b">
+        <div class="card-header py-5">
             <h3 class="card-title align-items-start flex-column">
             <span class="card-label font-weight-bolder text-dark">
                 <i class="fa fa-clipboard-list text-success mr-2"></i> Recepção e Transporte de MTR (Portal SINIR)
@@ -18,23 +21,23 @@
 
         <div class="card-body">
             @if(session('sucesso'))
-                <div class="alert alert-custom alert-light-success fade show mb-4">
+                <div class="alert alert-custom alert-light-success ui-op-alert fade show" role="status">
                     <div class="alert-icon"><i class="fa fa-check-circle"></i></div>
                     <div class="alert-text font-weight-bold">{{ session('sucesso') }}</div>
                 </div>
             @endif
 
             @if(session('erro'))
-                <div class="alert alert-custom alert-light-danger fade show mb-4">
+                <div class="alert alert-custom alert-light-danger ui-op-alert fade show" role="alert">
                     <div class="alert-icon"><i class="fa fa-exclamation-triangle"></i></div>
                     <div class="alert-text font-weight-bold">{{ session('erro') }}</div>
                 </div>
             @endif
 
-            <div class="mb-5">
+            <section class="ui-op-section">
                 <div class="section-title">Meus MTRs como Transportador</div>
 
-                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento">
+                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento ui-op-filter">
                     <div class="row align-items-end">
                         <div class="col-md-3 form-group mb-0">
                             <label class="font-weight-bold">Data Inicial:</label>
@@ -57,7 +60,7 @@
                 </form>
 
                 <div class="table-responsive">
-                    <table class="table table-bordered table-head-custom">
+                    <table class="table table-bordered table-head-custom ui-op-table">
                         <thead class="thead-light">
                         <tr>
                             <th>MTR Nº</th>
@@ -78,7 +81,7 @@
                                     <td>{{ $t['destinadorNome'] ?? '--' }}</td>
                                     <td><span class="badge badge-light-success font-weight-bold">{{ $t['situacao'] ?? 'Ativo' }}</span></td>
                                     <td class="text-center">
-                                        <a href="#" class="btn btn-xs btn-primary" title="Imprimir"><i class="fa fa-print"></i></a>
+                                        <a href="#" class="btn btn-xs btn-primary" title="Imprimir" aria-label="Imprimir MTR"><i class="fa fa-print"></i></a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -90,16 +93,14 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            <hr class="my-6">
+            <section class="ui-op-section">
+                <div class="section-title">Meus MTRs como Destinador</div>
 
-            <div>
-                <div class="section-title" style="border-left-color: #3699ff;">Meus MTRs como Destinador</div>
-
-                <div class="row">
+                <div class="row ui-op-intake-grid">
                     <div class="col-md-6">
-                        <div class="box-recebimento bg-white">
+                        <div class="box-recebimento ui-op-intake">
                             <h6 class="text-primary font-weight-bold mb-3"><i class="fa fa-check-circle mr-1"></i> Receber MTR Oficial</h6>
                             <div class="form-group mb-0">
                                 <label class="font-weight-bold">Número do MTR:</label>
@@ -117,7 +118,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <div class="box-recebimento bg-white">
+                        <div class="box-recebimento ui-op-intake">
                             <h6 class="text-info font-weight-bold mb-3"><i class="fa fa-file-alt mr-1"></i> Receber MTR Provisório</h6>
                             <form action="{{ route('mtr.recepcao.provisorio') }}" method="POST">
                                 @csrf
@@ -139,7 +140,7 @@
                     </div>
                 </div>
 
-                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento">
+                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento ui-op-filter mt-4">
                     <div class="row align-items-end">
                         <div class="col-md-3 form-group mb-0">
                             <label class="font-weight-bold">Data Inicial:</label>
@@ -162,7 +163,7 @@
                 </form>
 
                 <div class="table-responsive">
-                    <table class="table table-bordered table-head-custom">
+                    <table class="table table-bordered table-head-custom ui-op-table">
                         <thead class="thead-light">
                         <tr>
                             <th>MTR Nº</th>
@@ -197,12 +198,12 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
     <!-- MODAL DE RECEBIMENTO -->
-    <div class="modal fade" id="modalRecebimentoMtr" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fade document-fiscal-dialog" id="modalRecebimentoMtr" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <form id="formRecebimentoMtr">
                 @csrf

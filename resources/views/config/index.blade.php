@@ -20,7 +20,11 @@
 
 </style>
 @endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-catalog-config.css') }}?v={{ filemtime(public_path('css/fer-catalog-config.css')) }}">
+@endpush
 @section('content')
+<div class="fer-catalog-config fer-catalog-config--form fer-catalog-config--config">
 @if((bool) data_get(session('user_logged'), 'super', false)
     && class_exists(\App\Http\Controllers\LoginAppearanceController::class)
     && class_exists(\App\Services\LoginPresentationService::class))
@@ -32,6 +36,21 @@
                 <p class="text-muted mb-0">Modelos do login, fontes, frases, posts, logos e favicon.</p>
             </div>
             <a href="{{ url('/config/aparencia') }}" class="btn btn-primary">Administrar a apresentação</a>
+        </div>
+    </div>
+</div>
+@endif
+@if((bool) data_get(session('user_logged'), 'super', false)
+    && config('ui_theme.active', false)
+    && class_exists(\App\Http\Controllers\UiThemeController::class))
+<div class="container-fluid mb-4">
+    <div class="card card-custom p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap">
+            <div>
+                <strong>Temas da Interface</strong>
+                <p class="text-muted mb-0">Catálogo de temas, publicação e disponibilidade para empresas.</p>
+            </div>
+            <a href="{{ route('config.themes.index') }}" class="btn btn-primary">Administrar temas</a>
         </div>
     </div>
 </div>
@@ -247,7 +266,7 @@
 </div>
 
 <div class="modal-loading loading-class"></div>
-
+</div>
 @endsection
 
 @section('javascript')

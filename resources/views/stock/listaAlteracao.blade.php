@@ -1,9 +1,13 @@
 
 
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--stock card card-custom gutter-b">
 	
 	<div class="card-body">
 

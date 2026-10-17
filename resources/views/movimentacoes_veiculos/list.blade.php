@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    <style>
+    <header class="fer-page__heading"><h1>{{ $title }}</h1></header>
+<style>
         /* Estilização moderna e limpa para tabelas corporativas */
         .table-hover tbody tr:hover {
             background-color: rgba(0, 123, 255, 0.04);
@@ -14,7 +18,7 @@
         }
     </style>
 
-    <div class="card card-custom gutter-b border-0 shadow-sm">
+    <div class="fer-page fer-operational fer-list card card-custom gutter-b border-0 shadow-sm">
         <div class="card-body">
             <div class="mb-5" id="kt_user_profile_aside">
                 <input type="hidden" id="_token" value="{{ csrf_token() }}">
@@ -43,7 +47,7 @@
                 @endphp
 
                 <div class="card bg-light border-0 p-4 mb-5">
-                    <form class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="{{ $filterUrl }}">
+                    <form class="fer-filter @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" method="get" action="{{ $filterUrl }}">
                         <div class="row align-items-end">
 
                             <!-- Filtro por Veículo -->

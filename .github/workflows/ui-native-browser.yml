@@ -1,0 +1,142 @@
+name: UI - Navegacao nativa e widgets reais
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'resources/views/**'
+      - 'public/css/**'
+      - 'public/js/**'
+      - 'app/Support/UiThemePalette.php'
+      - 'app/Services/UiThemeService.php'
+      - 'app/Services/UiPosThemeService.php'
+      - 'app/Services/UserAvatarService.php'
+      - 'app/Http/Controllers/UiThemeController.php'
+      - 'app/Http/Controllers/PosThemeController.php'
+      - 'app/Http/Controllers/UsuarioController.php'
+      - 'app/Http/Controllers/UserController.php'
+      - 'app/Console/Commands/InstallUiThemesCommand.php'
+      - 'routes/web.php'
+      - 'database/migrations/*ui_theme*'
+      - 'database/migrations/*ui_pos_theme*'
+      - 'config/ui_theme.php'
+      - 'config/ui_pos_theme.php'
+      - 'scripts/ui/**'
+      - 'tests/ui/**'
+      - 'tests/Unit/UiNativePaletteTest.php'
+      - 'tests/Feature/UiPreferencesIntegrationTest.php'
+      - 'tests/Feature/UiThemeInstallationTest.php'
+      - 'tests/Feature/UiPosThemeTest.php'
+      - 'tests/Feature/UserAvatarTest.php'
+      - '.github/workflows/ui-native-browser.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-native-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      APP_DEBUG: 'true'
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      CACHE_DRIVER: array
+      QUEUE_CONNECTION: sync
+      APP_UI_THEME: refined
+      COMPOSER_NO_AUDIT: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+          extensions: pdo_sqlite, pdo_mysql, mbstring, intl, json, openssl, curl, dom, gd, fileinfo, zip, bcmath
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar ambiente de teste sem banco de cliente
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/{views,cache,sessions} storage/logs storage/app/ui-browser
+          cp .env.example .env
+          echo "APP_KEY=$(php -r 'echo "base64:".base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+      - name: Instalar dependencias existentes do ERP
+        run: composer install --prefer-dist --no-interaction --no-progress --quiet
+      - name: Validar TODAS as Blades versionadas antes de gerar arquivos
+        run: |
+          set -euo pipefail
+          php artisan config:clear
+          php artisan view:clear
+          php artisan view:cache
+          test -d storage/framework/views
+          php -l scripts/ci/lint-blade-cache.php
+          # Diferente de view:cache, testa a sintaxe do PHP realmente compilado.
+          # Em erro mostra arquivo Blade original e linhas geradas.
+          php scripts/ci/lint-blade-cache.php | tee storage/app/ui-browser/compiled-php-lint.txt
+          # A linha abaixo também valida a view cujo hash foi reportado no homolog3.
+          php -r '
+            require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
+            $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+            $source = resource_path("views/default/menu_lateral.blade.php");
+            $compiled = app("blade.compiler")->getCompiledPath($source);
+            if (!is_file($compiled)) { throw new RuntimeException("Blade não compilado: ".$source); }
+            echo "menu_lateral compilado: ".$compiled.PHP_EOL;
+            passthru(escapeshellarg(PHP_BINARY)." -l ".escapeshellarg($compiled), $status);
+            exit($status);
+          '
+      - name: Validar shell versionado e runtime FERSOFT
+        run: |
+          set -euo pipefail
+          php -l app/Support/UiThemePalette.php
+          php -l app/Http/Controllers/UiThemeController.php
+          php -l app/Services/UiThemeService.php
+          php -l app/Services/UiPosThemeService.php
+          php -l app/Http/Controllers/PosThemeController.php
+          php -l app/Http/Controllers/UsuarioController.php
+          php -l app/Services/UserAvatarService.php
+          php -l config/ui_pos_theme.php
+          php -l app/Console/Commands/InstallUiThemesCommand.php
+          php -l tests/ui/render-native.php
+          node --check public/js/ui-operational.js
+          node --check public/js/ui-top-nav.js
+          node --check public/js/theme-refined-studio.js
+          node --check public/js/fer-runtime.js
+          for asset in public/js/vendor/*.js; do node --check "$asset"; done
+          ! grep -Eq 'src="/metronic/js/|href="/metronic/css/|ui-legacy-widgets.js' resources/views/themes/refined/layout.blade.php
+          git diff --exit-code -- resources/views/themes/refined/layout.blade.php
+      - name: Testar contratos e compilar Blades reais
+        run: |
+          set -euo pipefail
+          python tests/ui/test-view-contracts.py
+          php artisan config:clear
+          php artisan view:cache
+          vendor/bin/phpunit --filter 'UiNativePaletteTest|UiPreferencesIntegrationTest|UiThemeInstallationTest|UiPosThemeTest|UserAvatarTest'
+          php tests/ui/render-native.php
+      - name: Testar browser desktop e mobile
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet playwright==1.51.0
+          python -m playwright install --with-deps chromium
+          python tests/ui/native-browser.py
+          python tests/ui/dialog-theme.py
+      - name: Publicar capturas e resultados de componentes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-native-browser-${{ github.run_id }}
+          path: |
+            storage/app/ui-browser/
+            storage/logs/laravel.log
+          if-no-files-found: warn
+          retention-days: 14
+

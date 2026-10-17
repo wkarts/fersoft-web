@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 @section('content')
+<header class="fer-page__heading"><h1>Controle de Pedidos da Mesa</h1></header>
 @section('css')
 <style type="text/css">
 	.spinner-track{
@@ -9,7 +14,7 @@
 </style>
 @endsection
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-detail">
 
 	<div class="card-body">
 		<h4>Itens pendentes <b class="spinner spinner-track spinner-info spinner-lg d-none"></b></h4>

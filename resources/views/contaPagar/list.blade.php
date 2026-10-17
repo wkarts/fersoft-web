@@ -1,16 +1,21 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading"><h1>Contas a Pagar</h1></header>
 
 {{-- Inicialização de somas --}}
 <?php 
     $somaValor = 0; $somaPago = 0; $somaPendente = 0; 
 ?>
 
-<div class="card card-custom gutter-b">
+<div class="card card-custom gutter-b fer-page fer-list fer-finance-list-ui fer-payables-ui">
     <div class="card-body">
         
         {{-- (GRUPO) TOPO: BOTÕES DE CADASTRO E RETENÇÕES --}}
-        <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft mb-5">
+        <div class="fer-actions @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft mb-5">
             <div class="col-12 d-flex justify-content-between align-items-center p-0">
                 <a href="/contasPagar/new" class="btn btn-lg btn-success font-weight-bold">
                     <i class="fa fa-plus"></i> Nova Conta a Pagar
@@ -25,7 +30,7 @@
 
         {{-- (GRUPO) FILTROS DE BUSCA: Onde o usuário define o que quer ver na tela --}}
         <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside">
-            <form method="get" action="/contasPagar/filtro">
+            <form method="get" action="/contasPagar/filtro" class="fer-filter">
                 <div class="row align-items-center">
                     <div class="form-group col-lg-4">
                         <label class="col-form-label font-weight-bold">Fornecedor</label>
@@ -124,7 +129,7 @@
             </form>
 
             {{-- (GRUPO) BARRA DE FERRAMENTAS: Funções extras como Seleção múltipla e Exportação --}}
-            <div class="row mt-8 mb-4">
+            <div class="row mt-8 mb-4 fer-finance-list-ui__toolbar">
                 <div class="col-12 d-flex align-items-center flex-wrap">
                     <button id="btn_seleciona_varios" class="btn btn-light-info font-weight-bold mr-2">
                         <i class="la la-list"></i> Selecionar Vários
@@ -135,11 +140,11 @@
                     </button>
 
                     <a href="{{ url('/contasPagar/syncNotaFiscal') }}" class="btn btn-light font-weight-bold mr-2">
-                        <i class="fa fa-sync text-info"></i> Sincronizar NF das Compras
+                        <i class="la la-sync text-info"></i> Sincronizar NF das Compras
                     </a>
 
                     <a href="/contasPagar/export?{{ http_build_query(request()->all()) }}" class="btn btn-light font-weight-bold">
-                        <i class="fa fa-file-excel text-success"></i> Exportar para Excel
+                        <i class="la la-file-excel text-success"></i> Exportar para Excel
                     </a>
                 </div>
             </div>
@@ -148,7 +153,7 @@
             <label>Total de registros: {{ sizeof($contas) }}</label>
 
             {{-- (GRUPO) TABELA PRINCIPAL: Exibição dos dados das contas --}}
-            <div class="datatable datatable-bordered datatable-default datatable-primary datatable-loaded mt-4">
+            <div class="datatable datatable-bordered datatable-default datatable-primary datatable-loaded mt-4 fer-results">
                 <table class="datatable-table" style="max-width: 100%; overflow: scroll">
                     <thead class="datatable-head">
                         <tr class="datatable-row">
@@ -341,7 +346,7 @@
                 </table>
             </div>
 
-            <div class="card card-custom gutter-b mt-5">
+            <div class="card card-custom gutter-b mt-5 fer-finance-list-ui__totals">
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3">
@@ -363,7 +368,7 @@
         </div> </div> </div> {{-- (GRUPO) MODAIS: Janelas que abrem por cima da tela (Ex: Vincular Veículo) --}}
 @foreach($contas as $c)
 <div class="modal fade" id="modal_veiculo_{{$c->id}}" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog fer-dialog" role="document">
         <div class="modal-content">
             <form method="post" action="{{ route('contasPagar.setVeiculo', [$c->id]) }}">
                 @csrf
@@ -388,7 +393,7 @@
 
 {{-- MODAL DE BAIXA PARCIAL --}}
 <div class="modal fade" id="modal-baixa-parcial" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog fer-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title font-weight-bold">Baixa Parcial de Conta</h5>

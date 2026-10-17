@@ -1,5 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-admin-modules.css') }}?v={{ filemtime(public_path('css/ui-admin-modules.css')) }}">
+@endpush
 @section('content')
+<div class="document-fiscal-page admin-page admin-page--acessor">
 
 <div class="card card-custom gutter-b">
 
@@ -234,4 +239,5 @@
 	</div>
 </div>
 
+</div>
 @endsection

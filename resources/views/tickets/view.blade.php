@@ -1,7 +1,11 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 
-<div class="card card-custom gutter-b">
+<div class="fer-extra fer-extra--people fer-extra--tickets fer-extra--canvas card card-custom gutter-b">
 	<div class="card-body">
 		<div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-12">

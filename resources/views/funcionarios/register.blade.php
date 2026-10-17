@@ -1,9 +1,17 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-people.css') }}?v={{ filemtime(public_path('css/ui-people.css')) }}">
+@endpush
 @section('content')
 
-    <div class="d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b shadow-sm border-0">
-            <div class="card-header border-0 pt-6 pb-2">
+    <div class="ui-people ui-people-form">
+        <div class="ui-people-panel">
+            <div class="ui-people-form-head">
                 <h3 class="card-title font-weight-bolder text-dark">
                     <i class="la la-user-tie text-primary mr-2 font-size-h3"></i> {{ isset($funcionario) ? 'Editar' : 'Novo' }} Colaborador
                 </h3>
@@ -14,14 +22,14 @@
                 </div>
             </div>
 
-            <div class="card-body pt-2">
+            <div class="ui-people-form-body">
                 <form method="post" action="/funcionarios/{{{ isset($funcionario) ? 'update' : 'save' }}}" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="id" value="{{{ isset($funcionario) ? $funcionario->id : 0 }}}">
 
                     <!-- 1. DADOS PESSOAIS & FOTO -->
-                    <div class="card card-custom bg-light-secondary card-stretch mb-5 border-0">
-                        <div class="card-body p-5">
+                    <div class="ui-people-section">
+                        <div class="ui-people-section-body">
                             <h6 class="font-weight-bolder text-dark mb-4">
                                 <i class="la la-id-card text-primary mr-1"></i> Dados Cadastrais Principais
                             </h6>
@@ -107,13 +115,13 @@
                     </div>
 
                     <!-- 2. ENDEREÇO E CONTATO -->
-                    <div class="card card-custom border mb-5">
-                        <div class="card-header border-0 py-3 min-h-40px bg-light-light">
+                    <div class="ui-people-section">
+                        <div class="ui-people-section-head">
                             <h6 class="card-title font-weight-bolder text-dark mb-0">
                                 <i class="la la-home text-primary mr-2 font-size-lg"></i> Localização & Comunicação
                             </h6>
                         </div>
-                        <div class="card-body py-4">
+                        <div class="ui-people-section-body">
                             <div class="row">
                                 <div class="form-group validated col-lg-2 col-md-4">
                                     <label class="font-weight-bold">CEP</label>
@@ -151,13 +159,13 @@
                     </div>
 
                     <!-- 3. FUNÇÃO, ESCALA E REMUNERAÇÃO -->
-                    <div class="card card-custom border mb-5">
-                        <div class="card-header border-0 py-3 min-h-40px bg-light-light">
+                    <div class="ui-people-section">
+                        <div class="ui-people-section-head">
                             <h6 class="card-title font-weight-bolder text-dark mb-0">
                                 <i class="la la-briefcase text-primary mr-2 font-size-lg"></i> Cargo, Jornada e Remuneração
                             </h6>
                         </div>
-                        <div class="card-body py-4">
+                        <div class="ui-people-section-body">
                             <div class="row">
                                 <!-- Função com Botão + Integrado -->
                                 <div class="form-group validated col-lg-4 col-md-6">
@@ -290,16 +298,17 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
                         <!-- 4. SEÇÃO DINÂMICA DE MOTORISTA (EXIBIDA SE A FUNÇÃO FOR MOTORISTA) -->
                         <div id="secao_motorista" style="display: none;">
-                            <div class="card card-custom border border-primary mb-5">
-                                <div class="card-header border-0 py-3 min-h-40px bg-light-primary">
+                            <div class="ui-people-section">
+                                <div class="ui-people-section-head">
                                     <h6 class="card-title font-weight-bolder text-primary mb-0">
                                         <i class="la la-truck text-primary mr-2 font-size-lg"></i> Dados do Motorista & Geolocalização
                                     </h6>
                                 </div>
-                                <div class="card-body py-4">
+                                <div class="ui-people-section-body">
                                     <div class="row">
                                         <div class="form-group col-lg-3 col-md-6">
                                             <label class="font-weight-bold">Número da CNH</label>
@@ -359,7 +368,7 @@
                         </div>
 
                         <!-- BOTÕES DE AÇÃO FIXOS/CENTRALIZADOS -->
-                        <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                        <div class="d-flex justify-content-between align-items-center pt-4 border-top ui-people-submit-actions">
                             <a class="btn btn-outline-danger font-weight-bold px-5" href="/funcionarios">
                                 <i class="la la-times"></i> Cancelar
                             </a>
@@ -375,13 +384,13 @@
     <x-image-modal :image-url="isset($funcionario->foto_funcionario) ? '/imgs_funcionarios/'.$funcionario->foto_funcionario : '/imgs/no_image.png'" title="Foto Funcionário" />
 
     <!-- MODAL NOVA FUNÇÃO -->
-    <div class="modal fade" id="modal_funcao" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="false">
+    <div class="modal fade ui-people-modal" id="modal_funcao" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="false">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header">
                     <h5 class="modal-title font-weight-bold">Cadastrar Nova Função</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <i aria-hidden="true" class="ki ki-close"></i>
+                        &times;
                     </button>
                 </div>
                 <div class="modal-body">

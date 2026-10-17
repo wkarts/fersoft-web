@@ -1,116 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-weighing.css') }}?v={{ filemtime(public_path('css/ui-weighing.css')) }}">
+@endpush
+
 
 @section('content')
-    <style type="text/css">
-        /* ----- GRID GERAL ----- */
-
-        /* Altura fixa para todas as linhas */
-        .datatable-row, .datatable-cell {
-            height: 35px !important; /* Altura uniforme */
-            vertical-align: middle !important; /* Alinhamento vertical */
-        }
-
-        /* Células - Alinhamento e Responsividade */
-        .datatable-cell {
-            text-align: center !important; /* Alinhamento horizontal */
-            padding: 5px !important; /* Espaçamento interno */
-            white-space: nowrap !important; /* Evita quebra de texto */
-        }
-
-        /* Cabeçalho fixo e responsivo */
-        .thead-light {
-            position: sticky !important;
-            top: -1 !important; /* Fixação no topo */
-            z-index: 1 !important; /* Prioridade sobre outros elementos */
-            background-color: white !important; /* Fundo branco */
-        }
-
-        /* Botões - Estilo padrão */
-        .btn-custom {
-            padding: 3px 8px !important; /* Proporções */
-            font-size: 12px !important; /* Texto menor */
-            line-height: 1.2 !important; /* Altura ajustada */
-        }
-
-        /* Ajuste de ícones nos botões */
-        .btn-custom i {
-            vertical-align: middle !important; /* Centraliza ícones */
-        }
-
-        /* Badges - Largura fixa */
-        .badge-fixed-width-status {
-            width: 100px !important; /* Largura padrão */
-            display: inline-block !important;
-            text-align: center !important;
-            padding: 6px !important;
-        }
-
-        /* Responsividade e scroll */
-        .table-responsive {
-            overflow-x: auto !important; /* Rolagem horizontal */
-            overflow-y: auto !important; /* Rolagem vertical */
-        }
-
-        /* ----- GRID DE PESAGENS ----- */
-
-        .table-pesagens {
-            font-size: 12px !important; /* Tamanho menor para fontes */
-            max-height: 350px !important; /* Altura máxima com scroll */
-        }
-
-        /* Ajuste específico para colunas */
-        .table-pesagens th,
-        .table-pesagens td {
-            white-space: nowrap !important; /* Impede quebra de texto */
-        }
-
-        /* Oculta sem remover a coluna de Token/UUID (2ª coluna) */
-        .table-pesagens th:nth-child(2),
-        .table-pesagens td:nth-child(2) {
-            display: none !important;
-        }
-
-        /* ----- GRID DE TICKETS ----- */
-
-        .table-tickets {
-            font-size: 12px !important; /* Fonte menor para tickets */
-            max-height: 200px !important; /* Altura específica */
-        }
-
-        /* Altura e alinhamento ajustados */
-        .table-tickets .datatable-cell {
-            padding: 3px !important; /* Menor espaçamento */
-            font-size: 10px !important; /* Tamanho reduzido */
-        }
-
-        /* Cabeçalho fixo para tickets */
-        .table-tickets .thead-light {
-            top: -1 !important; /* Fixação no topo */
-            height: 30px !important; /* Altura menor */
-        }
-
-        /* Ajuste específico para botões */
-        .table-tickets .btn-custom {
-            padding: 2px 6px !important; /* Tamanho compacto */
-            font-size: 10px !important; /* Texto menor */
-        }
-
-        /* Responsividade específica */
-        .table-tickets .table-responsive {
-            max-height: 200px !important; /* Altura máxima */
-        }
-
-        /* Badge para tickets */
-        .table-tickets .badge-fixed-width-status {
-            width: 80px !important; /* Badge menor */
-            padding: 4px !important; /* Ajuste interno */
-        }
-
-    </style>
-
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--pesagens fer-extra--canvas card card-custom gutter-b">
         <div class="card-body">
             <!-- Exibe mensagens de sucesso e erro -->
             @if(session('mensagem_sucesso'))
@@ -130,22 +28,20 @@
                     </button>
                 </div>
             @endif
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft d-flex flex-wrap align-items-center justify-content-between mb-3">
+            <div class="fer-weighing-toolbar @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft d-flex flex-wrap align-items-center justify-content-between">
                 <div>
                     <!-- Botão para abrir o modal de nova pesagem -->
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
-                    @include('pesagens.partials.cadastros-rapidos-acoes')
                 </div>
                 @include('pesagens.partials.cadastros-rapidos-acoes')
             </div>
-            <br>
 
-            <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
+            <div class="fer-weighing-list @if(env('ANIMACAO')) animate__animated @endif animate__backInRight" id="kt_user_profile_aside">
 
                 <h4>Filtros</h4>
-                <form method="get" action="{{ route('pesagens.list') }}">
+                <form class="fer-weighing-filters" method="get" action="{{ route('pesagens.list') }}">
                     <div class="form-row align-items-end">
                         <!-- Pesquisar (fixo) -->
                         <div class="form-group col-lg-3 col-md-6 mb-0">
@@ -223,6 +119,7 @@
                                 type="button"
                                 class="btn btn-danger btn-clear"
                                 title="Limpar filtros"
+                                aria-label="Limpar filtros"
                             >&times;</button>
                         </div>
                     </div>
@@ -278,7 +175,7 @@
                 </div>
                 <div class="row">
                     <div class="col-sm-12 col-lg-12 col-md-12 col-xl-12">
-                        <div class="table-responsive mt-3" style="max-height: 350px; overflow-y: auto; overflow-x: auto;">
+                        <div class="table-responsive mt-3 fer-weighing-table-scroll">
                             <table class="table table-bordered table-hover table-pesagens">
                                 <thead class="thead-light" style="position: sticky; top: -1; z-index: 1;">
                                 <tr class="datatable-row" style="left: 0px;">
@@ -303,14 +200,6 @@
                                             <span class="badge badge-fixed-width-token {{ $pesagem->status == 'concluído' ? 'badge-success' : 'badge-warning' }}" style="font-size: 11px;">
                                             {{ ucfirst($pesagem->token) }}
                                             </span>
-                                            <style>
-                                                .badge-fixed-width-token {
-                                                    width: 240px;
-                                                    display: inline-block;
-                                                    text-align: center;
-                                                    padding: 5px;
-                                                }
-                                            </style>
                                         </td>
 
                                         <td class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">
@@ -320,14 +209,6 @@
                                                 : ($pesagem->cliente->razao_social   ?? '–')
                                             }}
                                             </span>
-                                            <style>
-                                                .badge-fixed-width-cli {
-                                                    width: 300px;
-                                                    display: inline-block;
-                                                    text-align: center;
-                                                    padding: 5px;
-                                                }
-                                            </style>
 
                                         </td>
 
@@ -335,14 +216,6 @@
                                             <span class="badge badge-fixed-width-finalidade {{ $pesagem->status == 'concluído' ? 'badge-success' : 'badge-warning' }}">
                                             {{ ucfirst($pesagem->tipo) }}
                                             </span>
-                                            <style>
-                                                .badge-fixed-width-finalidade {
-                                                    width: 60px;
-                                                    display: inline-block;
-                                                    text-align: center;
-                                                    padding: 5px;
-                                                }
-                                            </style>
                                         </td>
                                         <td class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">{{ \Carbon\Carbon::parse($pesagem->created_at)->format('d/m/Y H:i') }}</td>
 
@@ -435,35 +308,27 @@
                                             <span class="badge badge-fixed-width-status {{ $pesagem->status == 'concluído' ? 'badge-success' : 'badge-warning' }}">
                                                 {{ ucfirst($pesagem->status) }}
                                             </span>
-                                            <style>
-                                                .badge-fixed-width-status {
-                                                    width: 100px;
-                                                    display: inline-block;
-                                                    text-align: center;
-                                                    padding: 5px;
-                                                }
-                                            </style>
                                         </td>
                                         <td class="datatable-cell text-center" style="white-space: nowrap;">
                                             @if($pesagem->status == 'em andamento')
 
                                                 <!-- Botão para abrir o modal de tickets -->
-                                                <button type="button" class="btn btn-info btn-sm btn-custom" data-toggle="modal" data-target="#modalTickets{{ $pesagem->id }}">
+                                                <button type="button" class="btn btn-info btn-sm btn-custom" data-toggle="modal" data-target="#modalTickets{{ $pesagem->id }}" aria-label="Tickets da pesagem {{ $pesagem->id }}" title="Tickets da pesagem">
                                                     <i class="fa fa-ticket"></i> |  <i class="fa fa-balance-scale"></i>
                                                 </button>
 
                                                 <!-- Botão para abrir o modal de concluir -->
-                                                <button type="button" class="btn btn-success btn-sm btn-custom btn-concluir-pesagem" data-id="{{ $pesagem->id }}">
+                                                <button type="button" class="btn btn-success btn-sm btn-custom btn-concluir-pesagem" data-id="{{ $pesagem->id }}" aria-label="Concluir pesagem {{ $pesagem->id }}" title="Concluir pesagem">
                                                     <i class="fa fa-check-circle"></i>
                                                 </button>
 
                                                 <!-- Botão para editar a pesagem -->
-                                                <button type="button" class="btn btn-warning btn-sm btn-custom btn-edit-pesagem" data-id="{{ $pesagem->id }}">
+                                                <button type="button" class="btn btn-warning btn-sm btn-custom btn-edit-pesagem" data-id="{{ $pesagem->id }}" aria-label="Editar pesagem {{ $pesagem->id }}" title="Editar pesagem">
                                                     <i class="la la-edit"></i>
                                                 </button>
 
                                                 <!-- Botão para excluir a pesagem -->
-                                                <button type="button" class="btn btn-danger btn-sm btn-custom btn-delete-pesagem" data-id="{{ $pesagem->id }}">
+                                                <button type="button" class="btn btn-danger btn-sm btn-custom btn-delete-pesagem" data-id="{{ $pesagem->id }}" aria-label="Excluir pesagem {{ $pesagem->id }}" title="Excluir pesagem">
                                                     <i class="la la-trash"></i>
                                                 </button>
                                             @endif
@@ -486,27 +351,6 @@
                                                     </a>
                                                 </div>
                                             </div>
-                                            <style>
-                                                .btn-custom {
-                                                    padding: 3px 8px; /* Define altura e largura proporcional */
-                                                    font-size: 12px; /* Diminui o tamanho do texto */
-                                                    line-height: 1.2; /* Ajusta a altura da linha para melhorar o alinhamento */
-                                                }
-
-                                                .imprimir-icon-text,
-                                                .compra-icon-text,
-                                                .venda-icon-text {
-                                                    font-weight: normal;
-                                                    font-size: 12px;
-                                                    margin-left: -5px;
-                                                    color: #FFFFFF;
-                                                }
-
-                                                .dropdown-menu a {
-                                                    font-size: 12px;
-                                                }
-                                            </style>
-
                                             @if($pesagem->status == 'concluído')
 
                                                 @if(
@@ -580,7 +424,8 @@
                                                     data-id="{{ $pesagem->id }}"
                                                     data-token="{{ $pesagem->token }}"
                                                     data-connect-status="{{ $connectApiWhatsAppStatus ?? 'not_provisioned' }}"
-                                                    data-disabled="{{ ($connectApiWhatsAppReady ?? false) ? 'false' : 'true' }}">
+                                                    data-disabled="{{ ($connectApiWhatsAppReady ?? false) ? 'false' : 'true' }}"
+                                                    aria-label="Enviar pesagem {{ $pesagem->id }} pelo WhatsApp" title="Enviar pelo WhatsApp">
                                                 <i class="fa fa-whatsapp"></i>
                                             </button>
 
@@ -589,7 +434,9 @@
                                                     class="btn btn-{{ $pesagem->view_public == 1 ? 'success' : 'secondary' }} btn-sm btn-custom btn-toggle-publicacao"
                                                     data-id="{{ $pesagem->id }}"
                                                     data-token="{{ $pesagem->token }}"
-                                                    data-view-public="{{ $pesagem->view_public }}">
+                                                    data-view-public="{{ $pesagem->view_public }}"
+                                                    aria-label="{{ $pesagem->view_public == 1 ? 'Despublicar' : 'Publicar' }} pesagem {{ $pesagem->id }}"
+                                                    title="{{ $pesagem->view_public == 1 ? 'Despublicar' : 'Publicar' }} pesagem">
                                                 <i class="la la-eye{{ $pesagem->view_public == 1 ? '' : '-slash' }}"></i>
                                                 {{ $pesagem->view_public == 1 ? '' : '' }}
                                             </button>
@@ -611,50 +458,23 @@
         </div>
     </div>
 
-    <style>
-        #modalPesagem .pesagem-select-action {
-            display: flex;
-            align-items: center;
-            gap: .35rem;
-            width: 100%;
-        }
-
-        #modalPesagem .pesagem-select-action .select2-container {
-            flex: 1 1 auto;
-            min-width: 0;
-            width: auto !important;
-        }
-
-        #modalPesagem .pesagem-select-action .quick-open,
-        #modalPesagem .pesagem-select-action .clear-button {
-            flex: 0 0 auto;
-        }
-    </style>
-
     <!-- Modal Unificado para Pesagem -->
-    <div class="modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fer-weighing-modal fade" id="modalPesagem" tabindex="-1" role="dialog" aria-labelledby="modalPesagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title" id="modalPesagemLabel">Nova Pesagem</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
                     <span class="badge badge-fixed-width-status" id="statusPesagem" style="width: 150px; height: 30px; padding: 6px 25px; font-size: 11px; display: inline-block; text-align: center; line-height: 18px;">
                     Status
                     </span>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <div class="row" style="margin: 5px 0; padding: 5px;">
-                    <div style="font-size: 14px; line-height: 1.5; padding-left: 15px;">
-                        <label style="font-weight: bold; margin-bottom: 2px;">Peso Líquido Total:</label>
-                        <span id="pesoBrutoFinal" style="font-weight: normal;">0,00 kg</span>
-
-                        <label style="font-weight: bold; margin-bottom: 2px;">Peso Inicial:</label>
-                        <span id="pesoLiquidoBruto" style="font-weight: normal;">0,00 kg</span>
-
-                        <label style="font-weight: bold; margin-bottom: 2px;">Peso Final:</label>
-                        <span id="pesoFinal" style="font-weight: normal;">0,00 kg</span>
-                    </div>
+                <div class="fer-weighing-summary" aria-label="Resumo dos pesos">
+                    <div><span>Peso Líquido Total</span><strong id="pesoBrutoFinal">0,00 kg</strong></div>
+                    <div><span>Peso Inicial</span><strong id="pesoLiquidoBruto">0,00 kg</strong></div>
+                    <div><span>Peso Final</span><strong id="pesoFinal">0,00 kg</strong></div>
                 </div>
                 <div class="modal-body">
                     <form id="formPesagem" method="POST" action="/pesagens/save">
@@ -768,7 +588,7 @@
                         </div>
 
                         <!-- Campos adicionais -->
-                        <div class="row" style="margin: 0; padding: 0;">
+                        <div class="row fer-weighing-quality" style="margin: 0; padding: 0;">
                             <!-- Umidade -->
                             <div class="form-group col-md-1 col-sm-4 col-6" style="padding: 5px;">
                                 <label for="umidade_desconto">Umid (%)</label>
@@ -784,7 +604,7 @@
                                 <label for="danificado_desconto">Danificado (%)</label>
                                 <div class="input-group">
                                     <input type="number" id="danificado_desconto" name="danificado_desconto" step="0.01" class="form-control" value="0.00">
-                                    <div class="input-group-append">
+                    <div class="input-group-append">
                                         <span class="input-group-text">
                                             <input type="checkbox" id="danificado" name="danificado">
                                         </span>
@@ -860,22 +680,18 @@
     @foreach($pesagens as $pesagem)
 
         <!-- Modal Tickets -->
-        <div class="modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
+        <div class="modal fer-extra-modal fer-weighing-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
                     <!-- Cabeçalho -->
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header">
                         <h5 class="modal-title" id="modalTicketsLabel">Tickets - Pesagem #{{ $pesagem->id }}</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <!-- Novo botão FECHAR -->
                         <button
                             type="button"
-                            class="btn btn-secondary btn-sm btn-close-ticket ml-2"
+                            class="btn btn-secondary btn-sm btn-close-ticket"
                             title="Fechar"
                             data-dismiss="modal">
-                            <i class="fa fa-times"></i>Fechar
+                            <i class="fa fa-times" aria-hidden="true"></i> Fechar
                         </button>
                     </div>
 
@@ -901,7 +717,7 @@
                             <div class="row">
                                 <div class="form-group col-lg-6">
                                     <label for="balanca-select">Balança:</label>
-                                    <div class="input-group">
+                                    <div class="input-group fer-weighing-scale-control">
                                         <!-- Select de balanças -->
                                         <select id="balanca-select" class="form-control">
                                             <option value="">Selecione</option>
@@ -928,12 +744,11 @@
 
                                 </div>
                                 <div class="form-group col-lg-6">
-                                    <div class="mt-2">
-                                        <label >Pesagem / Estabilidade:</label> <span>   </span> <strong><span id="pesoEstabilidade"></span></strong>
-                                        <br>
-                                        <strong>Peso Bruto:</strong> <span id="pesoBruto">----</span> kg
-                                        <span>   </span> <strong>Tara:</strong> <span id="pesoTara">----</span> kg
-                                        <span>   </span> <strong>Peso Líquido:</strong> <span id="pesoLiquido">----</span> kg
+                                    <div class="fer-weighing-readout">
+                                        <span class="fer-weighing-readout__stability"><span>Pesagem / Estabilidade</span><strong id="pesoEstabilidade"></strong></span>
+                                        <span><span>Peso Bruto</span><strong><span id="pesoBruto">----</span> kg</strong></span>
+                                        <span><span>Tara</span><strong><span id="pesoTara">----</span> kg</strong></span>
+                                        <span><span>Peso Líquido</span><strong><span id="pesoLiquido">----</span> kg</strong></span>
                                     </div>
                                 </div>
                                 <div class="form-group col-lg-12 adp-camera-preview-area" style="display:none;">
@@ -944,7 +759,7 @@
                                 <!-- Dentro de cada modalTickets... -->
                                 <div class="form-group col-lg-6">
                                     <label for="produto_id">Produto:</label>
-                                    <div class="input-group" style="width:100%;">
+                                    <div class="input-group fer-weighing-product-control" style="width:100%;">
                                         <select name="produto_id" id="produto_id" class="form-control">
                                             <option value="">Selecione</option>
                                             @foreach($produtos as $produto)
@@ -955,7 +770,7 @@
                                             <button type="button" class="btn btn-danger btn-sm btn-clear-produto" title="Limpar seleção">
                                                 <i class="fa fa-times"></i>
                                             </button>
-                                            <button type="button" class="btn btn-secondary btn-sm btn-fixar-produto" title="Fixar produto">
+                                            <button type="button" class="btn btn-secondary btn-sm btn-fixar-produto" title="Fixar produto" aria-label="Fixar produto" aria-pressed="false">
                                                 <i class="fa fa-thumb-tack"></i>
                                             </button>
                                         </div>
@@ -1017,7 +832,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-group col-lg-12 text-right">
+                            <div class="form-group col-lg-12 text-right fer-weighing-actions">
                                 <button type="button" class="btn btn-secondary" id="btnCancelarTicket">Cancelar</button>
                                 <button type="submit" class="btn btn-primary btn-salvar-ticket">Salvar Ticket</button>
                             </div>
@@ -1026,7 +841,7 @@
 
                         <!-- Lista de Tickets Existentes -->
                         <hr>
-                        <div class="table-responsive mt-3" style="max-height: 200px; overflow-y: auto; overflow-x: auto;">
+                        <div class="table-responsive mt-3 fer-weighing-ticket-list" style="overflow-y: auto; overflow-x: auto;">
                             <table class="table table-bordered table-striped table-hover table-tickets">
                                 <thead class="thead-light" style="position: sticky; top: 0; z-index: 1;">
                                 <tr>
@@ -1064,11 +879,11 @@
                                         <td id="fim-{{ $ticket->id }}" class="datatable-cell">{{ $ticket->fim ? \Carbon\Carbon::parse($ticket->fim)->format('d/m/Y H:i') : 'N/A' }}</td>
                                         <td class="datatable-cell text-center">
                                             <!-- Botão Editar -->
-                                            <button type="button" class="btn btn-warning btn-sm btn-custom edit-ticket" data-id="{{ $ticket->id }}">
+                                            <button type="button" class="btn btn-warning btn-sm btn-custom edit-ticket" data-id="{{ $ticket->id }}" aria-label="Editar ticket {{ $ticket->id }}" title="Editar ticket">
                                                 <i class="la la-edit"></i>
                                             </button>
                                             <!-- Botão Excluir -->
-                                            <button type="button" class="btn btn-danger btn-sm btn-custom delete-ticket" data-id="{{ $ticket->id }}">
+                                            <button type="button" class="btn btn-danger btn-sm btn-custom delete-ticket" data-id="{{ $ticket->id }}" aria-label="Excluir ticket {{ $ticket->id }}" title="Excluir ticket">
                                                 <i class="la la-trash"></i>
                                             </button>
                                         </td>
@@ -1087,12 +902,12 @@
         </div>
 
         <!-- Modal Concluir -->
-        <div class="modal fade" id="modalConcluir{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalConcluirLabel" aria-hidden="true">
+        <div class="modal fer-extra-modal fer-weighing-modal fade" id="modalConcluir{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalConcluirLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header">
                         <h5 class="modal-title" id="modalConcluirLabel">Concluir Pesagem #{{ $pesagem->id }}</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
@@ -1120,7 +935,7 @@
     @endforeach
 
     <!-- Modal Reutilizável -->
-    <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -1144,7 +959,7 @@
     </div>
 
     <!-- Modal Reutilizável para Alertas e Mensagens -->
-    <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
                 <!-- Cabeçalho -->
@@ -1167,7 +982,7 @@
     </div>
 
     <!-- Modal de Envio de WhatsApp -->
-    <div class="modal fade" id="modalWhatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+    <div class="modal fer-extra-modal fer-weighing-message-modal fade" id="modalWhatsApp" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="modalWhatsAppLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <form class="modal-content" method="post" action="/pesagens/enviar-relatorio-whats">
                 @csrf
@@ -1188,18 +1003,18 @@
                             <textarea id="texto" name="texto" class="form-control" rows="3" placeholder="Texto adicional para WhatsApp"></textarea>
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row fer-weighing-attachments">
                         <div class="col-12">
                             <p>Selecionar anexos para envio:</p>
                         </div>
                         <div class="form-group col-lg-4 col-md-6">
-                            <input type="checkbox" name="mensagem_padrao" checked> Detalhamento da Pesagem
+                            <label><input type="checkbox" name="mensagem_padrao" checked> <span>Detalhamento da Pesagem</span></label>
                         </div>
                         <div class="form-group col-lg-4 col-md-6">
-                            <input type="checkbox" name="relatorio_80mm" checked> Ticket 80mm
+                            <label><input type="checkbox" name="relatorio_80mm" checked> <span>Ticket 80mm</span></label>
                         </div>
                         <div class="form-group col-lg-4 col-md-6">
-                            <input type="checkbox" name="relatorio_a4"> Ticket A4
+                            <label><input type="checkbox" name="relatorio_a4"> <span>Ticket A4</span></label>
                         </div>
                     </div>
                 </div>
@@ -1212,7 +1027,7 @@
     </div>
 
     <!-- Modal de validação OTP p/ Reabrir Pesagem -->
-    <div class="modal fade" id="reabrirOtpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="reabrirOtpModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
@@ -1683,28 +1498,11 @@
 
         //Selects de Pesagens
         $(document).ready(function () {
-            // CSS para o botão de limpeza acoplado
-            const clearButtonCSS = `
-                                        <style>
-                                            .clear-button {
-                                                background-color: white;
-                                                color: black;
-                                                border: none;
-                                                font-size: 14px;
-                                                padding: 5px 5px;
-                                                cursor: pointer;
-                                                margin-left: 0px;
-                                                border-radius: 0px;
-                                            }
-                                        </style>
-                                    `;
-            $('head').append(clearButtonCSS);
-
             // Função para adicionar o botão de limpeza
             function addClearButton(selectId, clearFunction) {
                 const $selectContainer = $(`${selectId}`).next('.select2-container');
                 $selectContainer.after(`
-                                          <button type="button" class="clear-button" data-select="${selectId}">✖</button>
+                                          <button type="button" class="clear-button" data-select="${selectId}" title="Limpar seleção" aria-label="Limpar seleção">✖</button>
                                       `);
 
                 $(document).on('click', `.clear-button[data-select="${selectId}"]`, function () {
@@ -1984,48 +1782,51 @@
             // 3) Eventos de Limpar / Fixar
             //    - Limpar só se não estiver fixado
             $clear.off('click').on('click', () => {
-                if ($modal.find('.input-group').data('fixado') !== true) {
+                if ($select.closest('.fer-weighing-product-control').data('fixado') !== true) {
                     $select.val(null).trigger('change');
                 }
             });
 
             //    - Fixar / Desfixar
             $fix.off('click').on('click', () => {
-                const $group = $modal.find('.input-group');
+                const $group = $select.closest('.fer-weighing-product-control');
                 const novo   = !$group.data('fixado');
                 $group.data('fixado', novo);
                 $fix
                     .toggleClass('btn-secondary btn-success', novo)
-                    .attr('title', novo ? 'Produto fixado' : 'Fixar produto');
+                    .attr('title', novo ? 'Produto fixado' : 'Fixar produto')
+                    .attr('aria-pressed', novo ? 'true' : 'false');
                 $flag.val(novo ? '1' : '0');
             });
 
             // 4) Antes de enviar, garante que o flag seja atualizado
             $form.off('submit').on('submit', () => {
-                const fixado = $modal.find('.input-group').data('fixado') === true;
+                const fixado = $select.closest('.fer-weighing-product-control').data('fixado') === true;
                 $flag.val(fixado ? '1' : '0');
             });
 
             // 5) Ao fechar sem editar (#ticket_id vazio), “desfixa”
             $modal.off('hidden.bs.modal.reset').on('hidden.bs.modal.reset', () => {
                 if ($form.find('#ticket_id').val() === '') {
-                    const $group = $modal.find('.input-group');
+                    const $group = $select.closest('.fer-weighing-product-control');
                     $group.data('fixado', false);
                     $fix
                         .removeClass('btn-success')
                         .addClass('btn-secondary')
-                        .attr('title', 'Fixar produto');
+                        .attr('title', 'Fixar produto')
+                        .attr('aria-pressed', 'false');
                     $flag.val('0');
                 }
             });
 
             // 6) Toda vez que abrir, restaura o fixado vindo do hidden
             const fixVal = ($flag.val() === '1');
-            const $group = $modal.find('.input-group');
+            const $group = $select.closest('.fer-weighing-product-control');
             $group.data('fixado', fixVal);
             $fix
                 .toggleClass('btn-secondary btn-success', fixVal)
-                .attr('title', fixVal ? 'Produto fixado' : 'Fixar produto');
+                .attr('title', fixVal ? 'Produto fixado' : 'Fixar produto')
+                .attr('aria-pressed', fixVal ? 'true' : 'false');
         });
 
         // — suas funções de template —
@@ -2360,21 +2161,12 @@
     </script>
 
 
-    <style>
-        .adp-ticket-camera-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 190px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; background: #f8fafc; }
-        .adp-ticket-camera-thumb { display: flex; gap: 8px; align-items: center; width: 260px; min-height: 78px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 6px; cursor: pointer; text-align: left; }
-        .adp-ticket-camera-thumb:hover { border-color: #3699ff; box-shadow: 0 0 0 2px rgba(54,153,255,.12); }
-        .adp-ticket-camera-thumb img { width: 82px; height: 62px; object-fit: cover; border-radius: 6px; background: #0f172a; }
-        .adp-ticket-camera-thumb-empty { width: 82px; height: 62px; border-radius: 6px; background:#f59e0b; color:#fff; display:flex; align-items:center; justify-content:center; font-size:10px; text-align:center; line-height:1.1; }
-    </style>
-
-
-    <div class="modal fade" id="modalAdpImagemAmplia" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fer-weighing-image-modal fade" id="modalAdpImagemAmplia" tabindex="-1" role="dialog" aria-labelledby="modalAdpImagemAmpliaLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
-            <div class="modal-content" style="background:#0f172a;color:#fff;">
+            <div class="modal-content">
                 <div class="modal-header border-0">
-                    <h5 class="modal-title">Imagem da pesagem</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                    <h5 class="modal-title" id="modalAdpImagemAmpliaLabel">Imagem da pesagem</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body d-flex align-items-center justify-content-center" style="min-height:70vh;">
                     <img id="adpImagemAmpliaImg" src="" alt="Imagem da pesagem" style="max-width:100%;max-height:72vh;object-fit:contain;border-radius:8px;">
@@ -2618,7 +2410,8 @@
                 $group.find('.btn-fixar-produto')
                     .removeClass('btn-success')
                     .addClass('btn-secondary')
-                    .attr('title', 'Fixar produto');
+                    .attr('title', 'Fixar produto')
+                    .attr('aria-pressed', 'false');
             }
         }
 
@@ -2922,12 +2715,12 @@
             ['#inicio','#fim'].forEach(function(sel){
                 var $inp = $modal.find(sel);
                 if (!$inp.parent().hasClass('input-group')) {
-                    $inp.wrap('<div class="input-group"></div>');
+                    $inp.wrap('<div class="input-group fer-weighing-date-control"></div>');
                     $inp.after('\
                     <div class="input-group-append">\
-                      <button type="button" class="btn btn-sm btn-secondary btn-clear-date" data-target="'+sel+'" title="Limpar"><i class="fa fa-times"></i></button>\
-                      <button type="button" class="btn btn-sm btn-secondary btn-pin-date"   data-target="'+sel+'" title="Fixar"><i class="fa fa-thumb-tack"></i></button>\
-                      <button type="button" class="btn btn-sm btn-secondary btn-now-date"   data-target="'+sel+'" title="Agora"><i class="fa fa-clock"></i></button>\
+                      <button type="button" class="btn btn-sm btn-secondary btn-clear-date" data-target="'+sel+'" title="Limpar" aria-label="Limpar data"><i class="fa fa-times"></i></button>\
+                      <button type="button" class="btn btn-sm btn-secondary btn-pin-date"   data-target="'+sel+'" title="Fixar" aria-label="Fixar data" aria-pressed="false"><i class="fa fa-thumb-tack"></i></button>\
+                      <button type="button" class="btn btn-sm btn-secondary btn-now-date"   data-target="'+sel+'" title="Agora" aria-label="Data atual"><i class="fa fa-clock"></i></button>\
                     </div>');
                 }
             });
@@ -2937,7 +2730,7 @@
                 var $grp = $modal.find(sel).closest('.input-group');
                 $grp.data('pinned', on);
                 $form.find('#pin_'+sel.replace('#','')+'_flag').val(on? '1':'0');
-                $grp.find('.btn-pin-date').toggleClass('btn-secondary btn-success', on);
+                $grp.find('.btn-pin-date').toggleClass('btn-secondary btn-success', on).attr('aria-pressed', on ? 'true' : 'false');
             }
             // 3) restaura pins
             setPin('#inicio', $form.find('#pin_inicio_flag').val()==='1');
@@ -3019,7 +2812,7 @@
             _origReset($modal);
             // limpa flags e UI de pins
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
-            $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
+            $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary').attr('aria-pressed', 'false');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
             $modal.modal('hide');
         });
@@ -3036,7 +2829,7 @@
             $modal.find('#pesoEstabilidade').text('-');
             $modal.find('#peso_origem').val('manual');
             $modal.find('#pin_inicio_flag, #pin_fim_flag').val('0');
-            $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary');
+            $modal.find('.btn-pin-date').removeClass('btn-success').addClass('btn-secondary').attr('aria-pressed', 'false');
             $modal.find('.input-group').each(function(){ $(this).data('pinned', false); });
             if (window._balancaAutoCtrl) {
                 delete window._balancaAutoCtrl['#' + $modal.attr('id')];

@@ -1,19 +1,17 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
-    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+<header class="fer-page__heading"><h1>{{ isset($conta) ? "Editar" : "Cadastrar" }} Conta a Pagar</h1></header>
+    <div class="fer-page fer-form  d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
                     <form method="post" action="{{{ isset($conta) ? '/contasPagar/update': '/contasPagar/save' }}}" enctype="multipart/form-data" id="form-register">
                         <input type="hidden" name="id" value="{{{ isset($conta) ? $conta->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact">
-                            <div class="card-header">
-
-                                <h3 class="card-title">{{{ isset($conta) ? "Editar": "Cadastrar" }}} Conta a Pagar</h3>
-                            </div>
-
-                        </div>
+                        
                         @csrf
 
                         <div class="row">
@@ -360,7 +358,7 @@
         <input type="hidden" id="_token" value="{{ csrf_token() }}">
 
         <div class="modal fade" id="modal-fornecedor" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-            <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-dialog modal-xl fer-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Novo Fornecedor</h5>

@@ -1,8 +1,12 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
+@endpush
 
 @section('content')
-<div class="card card-custom gutter-b">
-    <div class="card-header flex-wrap border-0 pt-6 pb-0">
+<div class="document-fiscal-page document-fiscal-page--mtr ui-op-refine card card-custom gutter-b">
+    <div class="card-header flex-wrap ui-op-heading">
         <div class="card-title">
             <h3 class="card-label">
                 <i class="fa fa-key text-primary"></i> Unidades e Credenciais MTR (SINIR / IEMA)
@@ -17,20 +21,20 @@
 
     <div class="card-body">
         @if(session('sucesso'))
-            <div class="alert alert-custom alert-light-success fade show mb-5" role="alert">
+            <div class="alert alert-custom alert-light-success ui-op-alert fade show" role="status">
                 <div class="alert-icon"><i class="flaticon-outline-check font-size-h2"></i></div>
                 <div class="alert-text">{{ session('sucesso') }}</div>
             </div>
         @endif
         @if(session('erro'))
-            <div class="alert alert-custom alert-light-danger fade show mb-5" role="alert">
+            <div class="alert alert-custom alert-light-danger ui-op-alert fade show" role="alert">
                 <div class="alert-icon"><i class="flaticon-warning font-size-h2"></i></div>
                 <div class="alert-text">{{ session('erro') }}</div>
             </div>
         @endif
 
         <div class="table-responsive">
-            <table class="table table-head-custom table-vertical-center" id="kt_advance_table_widget_1">
+            <table class="table table-head-custom table-vertical-center ui-op-table" id="kt_advance_table_widget_1">
                 <thead>
                     <tr class="text-left">
                         <th>Órgão</th>
@@ -66,12 +70,14 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                <a href="{{ route('mtr.unidades.edit', $u->id) }}" class="btn btn-icon btn-light btn-hover-primary btn-sm mx-1">
+                                <div class="ui-op-actions">
+                                <a href="{{ route('mtr.unidades.edit', $u->id) }}" class="btn btn-icon btn-light btn-hover-primary btn-sm mx-1" title="Editar credencial" aria-label="Editar credencial">
                                     <i class="fa fa-edit"></i>
                                 </a>
-                                <a href="{{ route('mtr.unidades.destroy', $u->id) }}" class="btn btn-icon btn-light btn-hover-danger btn-sm mx-1" onclick="return confirm('Deseja remover estas credenciais?')">
+                                <a href="{{ route('mtr.unidades.destroy', $u->id) }}" class="btn btn-icon btn-light btn-hover-danger btn-sm mx-1" title="Remover credencial" aria-label="Remover credencial" onclick="return confirm('Deseja remover estas credenciais?')">
                                     <i class="fa fa-trash"></i>
                                 </a>
+                                </div>
                             </td>
                         </tr>
                     @empty

@@ -1,4 +1,8 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
 <style type="text/css">
 	#calendar{
@@ -18,7 +22,7 @@
 		margin-left: 5px;
 	}
 </style>
-<div class="card card-custom gutter-b @if(env('ANIMACAO')) animate__animated @endif animate__bounce">
+<div class="fer-extra fer-extra--support fer-extra--agendamentos fer-extra--canvas card card-custom gutter-b @if(env('ANIMACAO')) animate__animated @endif animate__bounce">
 	<div class="card-body">
 		<div class="" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
 

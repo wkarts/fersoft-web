@@ -9,8 +9,9 @@
         body { background-color: #f3f4f6; display: flex; align-items: center; justify-content: center; height: 100vh; }
         .login-box { background: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/ui-standalone-forms.css') }}?v={{ filemtime(public_path('css/ui-standalone-forms.css')) }}">
 </head>
-<body>
+<body class="fer-standalone-form fer-portal-access">
 
 <div class="login-box">
     <div class="text-center mb-4">
@@ -26,7 +27,7 @@
     <form action="/portal-cliente/{{ $slug }}/recuperar-senha" method="POST">
         @csrf
         <div class="mb-4">
-            <label class="form-label font-weight-bold">CPF ou CNPJ</label>
+            <label class="form-label font-weight-bold" for="cpf_cnpj">CPF ou CNPJ</label>
             <input type="text" name="cpf_cnpj" id="cpf_cnpj" class="form-control" required placeholder="Digite seu documento">
         </div>
         <button type="submit" class="btn w-100 mb-3" style="background-color: #0f766e; color: white; font-weight: bold;">Enviar Nova Senha</button>

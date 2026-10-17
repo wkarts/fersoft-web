@@ -1,0 +1,433 @@
+/* Local refinements for the operational screens that share the approved UI shell.
+   Each rule stays behind a page class so business modules keep their own behavior. */
+body.ui-native-shell .ui-page :is(.fer-balcao-form,.fer-balcao-list,.fer-finance-list-ui,.fer-conciliation-ui,.fer-pesagem-pay-ui) {
+  color: var(--ui-ink, #182f36);
+}
+body.ui-native-shell .ui-page :is(.fer-balcao-form,.fer-balcao-list,.fer-finance-list-ui,.fer-conciliation-ui,.fer-pesagem-pay-ui) :is(.form-control,.custom-select,.select2-selection) {
+  color: var(--ui-ink, #182f36);
+  background-color: var(--ui-surface, #fff);
+  border-color: var(--ui-border, #dce7e7);
+  min-height: 39px;
+}
+body.ui-native-shell .ui-page :is(.fer-balcao-form,.fer-balcao-list,.fer-finance-list-ui,.fer-conciliation-ui,.fer-pesagem-pay-ui) :is(input,select,button,a):focus-visible {
+  outline: 2px solid var(--ui-accent, #1f9866);
+  outline-offset: 2px;
+}
+body.ui-native-shell .ui-page :is(.fer-balcao-form,.fer-balcao-list,.fer-finance-list-ui,.fer-conciliation-ui,.fer-pesagem-pay-ui) .form-group > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ui-muted, #62777d);
+  font-size: 12px;
+  font-weight: 600;
+}
+body.ui-native-shell .ui-page :is(.fer-balcao-form,.fer-balcao-list,.fer-finance-list-ui,.fer-conciliation-ui,.fer-pesagem-pay-ui) :is(.btn,.form-control,.custom-select) {
+  font-size: 12px;
+}
+
+/* Sale entry: one compact, balanced payment form next to its real installment list. */
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment {
+  align-items: stretch;
+  margin: 0 -8px;
+  row-gap: 14px;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment > [class*="col-"] {
+  min-width: 0;
+  padding: 0 8px;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields,
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__schedule {
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 10px;
+  background: var(--ui-surface-alt, #fafcfc);
+  padding: 16px!important;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields h3 {
+  color: var(--ui-ink, #182f36);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 13px;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields > .row,
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields > .row > .row {
+  width: 100%;
+  margin: 0;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields > .row > .row > [class*="col-"] {
+  padding: 0;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields .form-group {
+  margin-bottom: 11px;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__fields .form-group > br:first-child {
+  display: none;
+}
+body.ui-native-shell .ui-page .fer-balcao-form #btn-modal-pagamentos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 39px;
+  margin-top: 27px!important;
+}
+body.ui-native-shell .ui-page .fer-balcao-form #add-pag {
+  min-height: 39px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__schedule > [class*="col-"] {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__schedule .row {
+  margin: 0;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__schedule :is(.datatable,#fatura) {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment__schedule #delete-parcelas {
+  margin-top: 12px!important;
+}
+body.ui-native-shell .ui-page .fer-balcao-form :is(#desconto,#acrescimo,#valor_parcela,#qtdParcelas) {
+  min-width: 0;
+}
+
+/* Sale list: retain every original column and action. */
+body.ui-native-shell .ui-page .fer-balcao-list #kt_user_profile_aside {
+  margin-inline: 0!important;
+}
+body.ui-native-shell .ui-page .fer-balcao-list .fer-filter button[type="submit"] {
+  margin-top: 25px!important;
+  min-height: 39px;
+}
+body.ui-native-shell .ui-page .fer-balcao-list .fer-results .datatable {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Accounts payable and receivable keep their existing filters, actions and modes. */
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions > .col-12 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: auto;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions .float-right {
+  float: none!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions .btn {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui #kt_user_profile_aside {
+  margin-inline: 0!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-filter .row {
+  align-items: flex-end!important;
+  row-gap: 2px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-filter .form-group {
+  margin-bottom: 12px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-filter button[type="submit"] {
+  min-height: 39px;
+  margin-top: 0!important;
+  margin-bottom: 12px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__toolbar {
+  margin: 2px -7px 12px!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__toolbar > .col-12 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__toolbar .btn {
+  margin: 0!important;
+  min-height: 37px;
+  padding: 8px 12px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results {
+  max-width: 100%;
+  overflow-x: auto;
+  margin-top: 9px!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results .datatable-table {
+  min-width: max-content;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results .datatable-table :is(th,td) {
+  vertical-align: middle;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results .wizard-steps {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results .wizard-step {
+  width: auto;
+  min-height: 39px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui .fer-results .wizard-title i {
+  font-size: 16px!important;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__totals {
+  padding: 13px 16px!important;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 10px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__totals .row {
+  row-gap: 10px;
+}
+body.ui-native-shell .ui-page .fer-finance-list-ui__totals :is(h3,h5) {
+  margin: 0;
+  font-size: 14px!important;
+  line-height: 1.5;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-finance-list-ui__totals .example {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-finance-list-ui__totals .example .card-body {
+  padding: 0;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results [data-wizard-type="step-content"] > .row {
+  row-gap: 12px;
+  margin: 0;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results [data-wizard-type="step-content"] > .row > [class*="col-"] {
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .card.example {
+  height: 100%;
+  margin: 0;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 10px;
+  box-shadow: none;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .card.example > .card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 12px 14px;
+  background: var(--ui-surface, #fff);
+  border-bottom: 1px solid var(--ui-border, #dce7e7);
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .fer-finance-card__amount {
+  width: auto;
+  height: auto;
+  margin: 0;
+  color: var(--ui-ink, #182f36);
+  font-size: 16px;
+  line-height: 1.4;
+  white-space: normal;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .card.example > .card-body {
+  padding: 13px 14px;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .kt-widget__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--ui-border, #dce7e7);
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .kt-widget__info:last-child {
+  border-bottom: 0;
+}
+body.ui-native-shell .ui-page .fer-receivables-ui .fer-results .kt-widget__data {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ui-ink, #182f36)!important;
+}
+
+/* Bank reconciliation: use the theme tokens and the bundled icon font. */
+body.ui-native-shell .ui-page .fer-conciliation-ui {
+  width: 100%;
+  max-width: none;
+  margin-top: 0!important;
+  padding: 0!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui > .card,
+body.ui-native-shell .ui-page .fer-conciliation-ui #painel_sugestoes,
+body.ui-native-shell .ui-page .fer-conciliation-ui .col-xl-8 > .card {
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7)!important;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui > .card .card-header,
+body.ui-native-shell .ui-page .fer-conciliation-ui .col-xl-8 > .card .card-header {
+  color: var(--ui-ink, #182f36)!important;
+  background: var(--ui-surface, #fff)!important;
+  border-bottom: 1px solid var(--ui-border, #dce7e7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .card-header :is(h5,i) {
+  color: var(--ui-ink, #182f36)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .card-header .d-flex {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .card-header :is(form,.btn) {
+  margin: 0!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .card-body > form .row {
+  row-gap: 12px;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .card-body > form .row > [class*="col-"] {
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .btn[style*="background-color: #1f9866"] {
+  color: var(--ui-on-accent, #fff)!important;
+  background: var(--ui-accent, #1f9866)!important;
+  border-color: var(--ui-accent, #1f9866)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .btn[style*="background-color: #1f9866"]:is(:hover,:focus) {
+  background: var(--ui-accent-hover, #177e55)!important;
+  border-color: var(--ui-accent-hover, #177e55)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui :is(.alert,.badge) {
+  border-radius: 8px;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui #form_lote {
+  max-width: 100%;
+  overflow-x: auto;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui #form_lote table {
+  min-width: 680px;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui #painel_sugestoes,
+body.ui-native-shell .ui-page .fer-conciliation-ui #painel_sugestoes > .card-body {
+  min-height: 250px!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui #painel_sugestoes > .card-body {
+  color: var(--ui-muted, #62777d);
+  background: var(--ui-surface-alt, #fafcfc)!important;
+  border-color: var(--ui-border, #dce7e7)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .modal-header[style*="background-color"] {
+  background: var(--ui-surface, #fff)!important;
+  color: var(--ui-ink, #182f36)!important;
+}
+body.ui-native-shell .ui-page .fer-conciliation-ui .modal-header[style*="background-color"] :is(h5,.close,i) {
+  color: var(--ui-ink, #182f36)!important;
+}
+
+/* Weighing payment batch: compact filters and actions; full data table remains scrollable. */
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui {
+  width: 100%;
+  max-width: none;
+  color: var(--ui-ink, #182f36);
+  background: transparent!important;
+  border: 0!important;
+  box-shadow: none!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui > .card-header {
+  color: var(--ui-ink, #182f36)!important;
+  background: transparent!important;
+  padding: 0 0 12px!important;
+  border-bottom: 1px solid var(--ui-border, #dce7e7);
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui > .card-body {
+  padding: 16px 0 0!important;
+  background: transparent!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .card.shadow-sm {
+  background: var(--ui-surface, #fff)!important;
+  border: 1px solid var(--ui-border, #dce7e7)!important;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(33,59,69,.045)!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .card.shadow-sm .card-body {
+  padding: 16px!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .card.shadow-sm .row {
+  row-gap: 12px;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .card.shadow-sm .row > [class*="col-"] {
+  min-width: 0;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui #formLote > .d-flex {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 13px!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui #btnGerar {
+  margin-left: auto;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .datatable {
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--ui-surface, #fff);
+  border: 1px solid var(--ui-border, #dce7e7);
+  border-radius: 12px;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .datatable table {
+  min-width: 900px;
+  margin: 0;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .datatable :is(th,td) {
+  border-color: var(--ui-border, #dce7e7);
+  vertical-align: middle;
+  padding: 11px 13px!important;
+}
+body.ui-native-shell .ui-page .fer-pesagem-pay-ui .datatable th {
+  background: var(--ui-surface-alt, #fafcfc)!important;
+  color: var(--ui-muted, #62777d);
+  font-size: 11px;
+}
+@media (max-width: 767px) {
+  body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment {
+    margin: 0;
+  }
+  body.ui-native-shell .ui-page .fer-balcao-form .fer-balcao-payment > [class*="col-"] {
+    padding: 0;
+  }
+  body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions > .col-12,
+  body.ui-native-shell .ui-page .fer-finance-list-ui__toolbar > .col-12 {
+    align-items: stretch;
+  }
+  body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions .row {
+    width: 100%;
+  }
+  body.ui-native-shell .ui-page .fer-finance-list-ui .fer-actions .btn,
+  body.ui-native-shell .ui-page .fer-finance-list-ui__toolbar .btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+  body.ui-native-shell .ui-page .fer-finance-list-ui__totals .row > [class*="col-"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  body.ui-native-shell .ui-page .fer-conciliation-ui .card-header .d-flex,
+  body.ui-native-shell .ui-page .fer-conciliation-ui .card-header .d-flex .btn {
+    width: 100%;
+  }
+  body.ui-native-shell .ui-page .fer-pesagem-pay-ui #btnGerar {
+    width: 100%;
+    margin-left: 0;
+  }
+}

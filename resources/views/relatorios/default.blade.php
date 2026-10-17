@@ -4,6 +4,21 @@
 <head>
 	<meta charset="UTF-8">
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	@if(config('ui_theme.active', false))
+	{{-- Relatórios em tela acompanham a proposta; a folha de impressão/PDF fica intacta. --}}
+	<style media="screen">
+		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-Regular.ttf') }}') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-Medium.ttf') }}') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
+		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-SemiBold.ttf') }}') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
+		@font-face { font-family: 'Poppins'; src: url('{{ asset('login2/fonts/poppins/Poppins-Bold.ttf') }}') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+		body.ui-theme-refined { background: #F5F7F7; color: #182F36; font-family: 'Poppins', Inter, system-ui, sans-serif; }
+		body.ui-theme-refined main { background: #fff; border: 1px solid #DCE7E7; border-radius: 12px; padding: 20px; }
+		body.ui-theme-refined :is(table, .table) { background: #fff; color: #182F36; font-family: inherit; }
+		body.ui-theme-refined :is(th, td) { border-color: #DCE7E7; }
+		body.ui-theme-refined th { background: #FAFCFC; color: #62777D; }
+	</style>
+	@endif
 
 	<style type="text/css">
 
@@ -630,7 +645,7 @@
     </style>
 </head>
 
-<body>
+<body class="{{ config('ui_theme.active', false) ? 'ui-theme-refined' : '' }}">
 <header>
 	<div class="headReport" style="display:flex; justify-content: padding-top:1rem">
 

@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--locacao card card-custom gutter-b">
         <div class="card-body">
             <br>
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft" id="kt_user_profile_aside" style="margin-left: 10px; margin-right: 10px;">
@@ -252,7 +256,7 @@
     </div>
 
     <!-- MODAL DE AGENDAMENTO DE TRANSPORTE (ENTREGA / RETIRADA) -->
-    <div class="modal fade" id="modalAgendamentoTransporte" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal fer-extra-modal fade" id="modalAgendamentoTransporte" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-md" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">

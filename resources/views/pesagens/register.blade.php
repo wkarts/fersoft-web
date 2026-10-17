@@ -1,4 +1,9 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-weighing.css') }}?v={{ filemtime(public_path('css/ui-weighing.css')) }}">
+@endpush
+
 
 @section('content')
     <style type="text/css">
@@ -33,7 +38,7 @@
             color: #000 !important;
         }
     </style>
-    <div class="card card-custom gutter-b">
+    <div class="fer-extra fer-extra--support fer-extra--pesagens card card-custom gutter-b">
         <div class="card-body">
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-sm-12 col-lg-4 col-md-6 col-xl-4">
@@ -128,12 +133,12 @@
                                     </tr>
 
                                     <!-- Modal Tickets -->
-                                    <div class="modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
+                                    <div class="modal fer-extra-modal fer-weighing-modal fade" id="modalTickets{{ $pesagem->id }}" tabindex="-1" role="dialog" aria-labelledby="modalTicketsLabel" aria-hidden="true">
                                         <div class="modal-dialog modal-lg" role="document">
                                             <div class="modal-content">
-                                                <div class="modal-header bg-primary text-white">
+                                                <div class="modal-header">
                                                     <h5 class="modal-title" id="modalTicketsLabel">Tickets - Pesagem #{{ $pesagem->id }}</h5>
-                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
                                                 </div>

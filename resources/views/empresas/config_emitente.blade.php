@@ -1,7 +1,16 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-empresas">
 <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-	<div class="card card-custom gutter-b example example-compact">
+	<div class="ui-admin-panel gutter-b ">
 		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 			<div class="col-lg-12">
 				<br>
@@ -11,8 +20,8 @@
 
 					<input type="hidden" name="empresaId" value="{{$empresa->id}}">
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
+					<div class="ui-admin-panel gutter-b ">
+						<div class="ui-admin-panel-head">
 
 							<h3 class="card-title">{{{ isset($config) ? "Editar": "Cadastrar" }}} Emitente Fiscal <strong style="margin-left: 3px;" class="text-danger">{{$empresa->nome}}</strong></h3>
 						</div>
@@ -20,37 +29,12 @@
 					</div>
 					@csrf
 
-					<div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
-
-						<div class="wizard-nav">
-
-							<div class="wizard-steps px-8 py-8 px-lg-15 py-lg-3">
-								<!--begin::Wizard Step 1 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="done">
-									<div class="wizard-label">
-										<h3 class="wizard-title">
-											<span>
-												DADOS DO EMISSOR
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
-									</div>
-								</div>
-								<!--end::Wizard Step 1 Nav-->
-								<!--begin::Wizard Step 2 Nav-->
-								<div class="wizard-step" data-wizard-type="step" data-wizard-state="current">
-									<div class="wizard-label">
-										<h3 class="wizard-title">
-											<span>
-												OUTROS
-											</span>
-										</h3>
-										<div class="wizard-bar"></div>
-									</div>
-								</div>
-							</div>
+					<div id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
+						<div class="ui-admin-tabs" role="tablist" aria-label="Configuração do emitente fiscal">
+							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-dados" data-wizard-type="step" data-wizard-state="done" aria-controls="emitente-painel-dados" aria-selected="true">Dados do Emissor</button>
+							<button class="ui-admin-tab" type="button" role="tab" id="emitente-tab-outros" data-wizard-type="step" data-wizard-state="current" aria-controls="emitente-painel-outros" aria-selected="false">Outros</button>
 						</div>
-						<div class="pb-5" data-wizard-type="step-content">
+						<div class="pb-5" id="emitente-painel-dados" data-wizard-type="step-content" role="tabpanel" aria-labelledby="emitente-tab-dados">
 
 							<div class="row">
 								<div class="col-xl-12">
@@ -84,8 +68,8 @@
 
 												</div>
 
-												<div class="card card-custom gutter-b mt-2">
-													<div class="card-body">
+												<div class="ui-admin-panel gutter-b mt-2">
+													<div class="ui-admin-panel-body">
 														<div class="card-content">
 
 															<h6>Serial Certificado: <strong class="green-text">{{$infoCertificado['serial']}}</strong></h6>
@@ -623,7 +607,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="pb-5" data-wizard-type="step-content">
+						<div class="pb-5" id="emitente-painel-outros" data-wizard-type="step-content" role="tabpanel" aria-labelledby="emitente-tab-outros" hidden>
 
 							<div class="row">
 								<div class="col-xl-12">
@@ -960,7 +944,7 @@
 						</div>
 					</div>
 
-					<div class="card-footer">
+					<div class="ui-admin-panel-foot">
 
 						<div class="row">
 							<div class="col-xl-2">
@@ -987,4 +971,38 @@
 	</div>
 </div>
 
+</div>
+@endsection
+
+@section('javascript')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const root = document.getElementById('kt_wizard_v3');
+    if (!root) return;
+    const tabs = Array.from(root.querySelectorAll('.ui-admin-tab'));
+    function selectTab(tab, focus) {
+        tabs.forEach(function (item) {
+            const selected = item === tab;
+            item.setAttribute('aria-selected', String(selected));
+            item.tabIndex = selected ? 0 : -1;
+            document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+        });
+        if (focus) tab.focus();
+    }
+    tabs.forEach(function (tab, index) {
+        tab.addEventListener('click', function () { selectTab(tab, false); });
+        tab.addEventListener('keydown', function (event) {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+                (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[next], true);
+        });
+    });
+    const firstError = root.querySelector('.is-invalid');
+    const errorPanel = firstError && firstError.closest('[role="tabpanel"]');
+    const selected = errorPanel && root.querySelector('.ui-admin-tab[aria-controls="' + errorPanel.id + '"]');
+    selectTab(selected || tabs[0], false);
+});
+</script>
 @endsection

@@ -1,6 +1,10 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+@endpush
+
 @section('content')
-<div class="card card-custom mb-4">
+<div class="fer-extra fer-extra--ponto fer-extra--ponto_marcacao card card-custom mb-4">
   <div class="card-header"><h3 class="card-title">{{ $title }}</h3></div>
   <div class="card-body">
     <form method="post" action="/ponto/marcacoes/tratar">@csrf

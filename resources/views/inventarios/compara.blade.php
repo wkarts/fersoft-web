@@ -1,9 +1,13 @@
 
 
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
 
-<div class="card card-custom gutter-b">
+<header class="fer-page__heading"><h1>Itens do inventário: {{$inventario->referencia}}</h1></header>
+<div class="fer-page fer-operational fer-detail card card-custom gutter-b">
 	
 	<div class="card-body @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
 

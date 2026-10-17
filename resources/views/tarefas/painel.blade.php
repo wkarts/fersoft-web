@@ -1,49 +1,15 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+@endpush
 @section('content')
-    <style>
-        body { background-color: #f4f7f6; }
-
-        .kanban-col {
-            background-color: #e2e4e6;
-            border-radius: 8px;
-            padding: 10px;
-            min-height: 80vh;
-            border: 1px solid #d1d4d7;
-        }
-
-        .kanban-header {
-            font-weight: 700;
-            font-size: 1.1rem;
-            padding: 8px 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            color: #fff;
-        }
-        .head-pendente { background: linear-gradient(45deg, #6c757d, #a3abb1); }
-        .head-andamento { background: linear-gradient(45deg, #0dcaf0, #67e1f9); }
-        .head-atrasada { background: linear-gradient(45deg, #dc3545, #f16876); }
-        .head-concluida { background: linear-gradient(45deg, #198754, #40c082); }
-
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
-        }
-        .timer-pulse {
-            border-radius: 50%;
-            animation: pulse-blue 2s infinite;
-            padding: 3px;
-        }
-
-        /* Estilo para a foto de perfil do Colaborador no topo do painel */
-        .user-panel-avatar {
-            width: 45px;
-            height: 45px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 2px solid #fff;
-        }
-    </style>
+<div class="ui-admin ui-admin-tarefas">
+    
 
     <div class="container-fluid px-4">
         <div class="d-flex justify-content-between align-items-center mb-4 mt-4">
@@ -278,4 +244,5 @@
             });
         });
     </script>
+</div>
 @endsection

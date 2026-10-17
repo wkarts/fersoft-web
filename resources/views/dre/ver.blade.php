@@ -1,8 +1,13 @@
 {{-- resources/views/dre/ver.blade.php --}}
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
+
 
 @section('content')
-    <div class="container-fluid py-4">
+<header class="fer-page__heading"><h1>DRE</h1></header>
+    <div class="container-fluid py-4 fer-page fer-finance">
         {{-- cabeçalho das datas e imposto --}}
         <div class="row mb-4">
             <div class="col-12 col-md-4 mb-2">
@@ -125,7 +130,7 @@
 
     {{-- Modal de edição --}}
     <div class="modal fade" id="modal-edit" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-dialog modal-sm fer-dialog" role="document">
             <form method="post" action="/dre/updatelancamento">
                 @csrf
                 <div class="modal-content">
@@ -156,7 +161,7 @@
 
     {{-- Modal de novo lançamento --}}
     <div class="modal fade" id="modal-new" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-dialog modal-sm fer-dialog" role="document">
             <form method="post" action="/dre/novolancamento">
                 @csrf
                 <div class="modal-content">

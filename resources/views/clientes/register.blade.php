@@ -1,5 +1,14 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/fer-modules.css') }}?v={{ filemtime(public_path('css/fer-modules.css')) }}">
+@endpush
 @section('content')
+<header class="fer-page__heading">
+    <div>
+        <h1>{{ isset($cliente) ? 'Editar' : 'Novo' }} Cliente</h1>
+        <p>Preencha os dados do cliente para o cadastro no sistema</p>
+    </div>
+</header>
     <style type="text/css">
         .camera{
             height: 200px;
@@ -22,17 +31,17 @@
         }
 
         .optional-section-box {
-            background-color: #F3F6F9;
+            background-color: #fafcfc;
             border-radius: 0.85rem;
             padding: 2rem;
             margin-top: 1rem;
             margin-left: 0;
             margin-right: 0;
-            border: 1px dashed #E4E6EF;
+            border: 1px dashed #dce7e7;
         }
     </style>
-    <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+    <div class="fer-page fer-form ui-contact-register ui-contact-register--client d-flex flex-column flex-column-fluid" id="kt_content">
+        <div class="card card-custom gutter-b example example-compact fer-panel">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
@@ -41,19 +50,7 @@
                             <input type="hidden" name="_save_token" value="{{ session('cliente_save_token') }}">
                         @endif
                         <input type="hidden" name="id" value="{{{ isset($cliente) ? $cliente->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact shadow-sm">
-                            <div class="card-header py-3">
-                                <div class="card-title">
-                                    <span class="card-icon">
-                                        <i class="flaticon2-user text-primary"></i>
-                                    </span>
-                                    <h3 class="card-label">
-                                        {{isset($cliente) ? 'Editar' : 'Novo'}} Cliente
-                                        <span class="d-block text-muted pt-2 font-size-sm">Preencha os dados do cliente para o cadastro no sistema</span>
-                                    </h3>
-                                </div>
-                            </div>
-                        </div>
+                        
                         @csrf
 
                         @isset($cliente)
@@ -100,7 +97,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="row">
+                                        <div class="row ui-client-identity-fields">
                                             <div class="form-group validated col-sm-3 col-lg-4">
                                                 <label class="col-form-label" id="lbl_cpf_cnpj">CPF</label>
                                                 <div class="">
@@ -127,8 +124,7 @@
                                             </select>
 
                                         </div> -->
-                                            <div class="form-group validated col-lg-2 col-md-2 col-sm-6">
-                                                <br><br>
+                                            <div class="form-group validated col-lg-2 col-md-2 col-sm-6 ui-contact-lookup">
                                                 <a type="button" id="btn-consulta-cadastro" onclick="consultaCadastro()" class="btn btn-success spinner-white spinner-right">
 												<span>
 													<i class="fa fa-search"></i>
@@ -136,9 +132,6 @@
                                                 </a>
                                             </div>
 
-                                        </div>
-
-                                        <div class="row">
                                             <div class="form-group validated col-sm-10 col-lg-6">
                                                 <label class="col-form-label">Razao Social/Nome</label>
                                                 <div class="">
@@ -164,7 +157,7 @@
                                         </div>
 
 
-                                        <div class="row">
+                                        <div class="row ui-client-profile-fields">
 
                                             <div class="form-group validated col-sm-3 col-lg-3">
                                                 <label class="col-form-label" id="lbl_i_rg">IE/RG</label>
@@ -272,7 +265,7 @@
                                         </div>
                                         <hr>
                                         <h4 class="section-title"><i class="flaticon2-pin text-primary"></i> Endereço de Faturamento</h4>
-                                        <div class="row">
+                                        <div class="row ui-client-street-fields">
                                             <div class="form-group validated col-sm-8 col-lg-8">
                                                 <label class="col-form-label">Rua</label>
                                                 <div class="">
@@ -297,7 +290,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="row">
+                                        <div class="row ui-client-address-fields">
                                             <div class="form-group validated col-sm-8 col-lg-5">
                                                 <label class="col-form-label">Complemento</label>
                                                 <div class="">
@@ -346,8 +339,7 @@
                                                     <input id="longitude" type="text" class="form-control" name="longitude" value="{{{ isset($cliente) ? $cliente->longitude : old('longitude') }}}">
                                                 </div>
                                             </div>
-                                            <div class="form-group validated col-sm-4 col-lg-3">
-                                                <br><br>
+                                            <div class="form-group validated col-sm-4 col-lg-3 ui-contact-lookup ui-client-map-lookup">
                                                 <button type="button" class="btn btn-info btn-sm" onclick="buscarCoordenadaManual()">
                                                     📍 Buscar no Mapa
                                                 </button>
@@ -887,8 +879,8 @@
     </div>
     </div>
 
-    <div class="modal fade" id="modal-foto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+    <div class="modal fade ui-client-dialog" id="modal-foto" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-lg fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Tirar Foto</h5>
@@ -921,8 +913,8 @@
         </div>
     </div>
 
-    <div class="modal fade" id="modal-otica" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
-        <div class="modal-dialog modal-xl" role="document">
+    <div class="modal fade ui-client-dialog" id="modal-otica" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="staticBackdrop" aria-hidden="true">
+        <div class="modal-dialog modal-xl fer-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Cadastro de receita ótica</h5>

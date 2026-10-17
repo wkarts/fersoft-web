@@ -1,16 +1,27 @@
 @extends('default.layout')
+@section('css')
+@unless(config('ui_theme.active', false))
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
+@endunless
+@endsection
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-admin.css') }}?v={{ filemtime(public_path('css/ui-admin.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-user-form.css') }}?v={{ filemtime(public_path('css/ui-user-form.css')) }}">
+@endpush
 @section('content')
+<div class="ui-admin ui-admin-usuarios">
 
     <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
-        <div class="card card-custom gutter-b example example-compact">
+        <div class="ui-admin-panel gutter-b ">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
-                    <form method="post" action="/usuarios/{{{ isset($usuario) ? 'update' : 'save' }}}">
+                    <form method="post" action="/usuarios/{{{ isset($usuario) ? 'update' : 'save' }}}" enctype="multipart/form-data">
 
                         <input type="hidden" name="id" value="{{{ isset($usuario) ? $usuario->id : 0 }}}">
-                        <div class="card card-custom gutter-b example example-compact">
-                            <div class="card-header">
+                        <div class="ui-admin-panel gutter-b ">
+                            <div class="ui-admin-panel-head">
                                 <h3 class="card-title">{{isset($usuario) ? 'Editar' : 'Novo'}} Usuário</h3>
                             </div>
                         </div>
@@ -21,7 +32,7 @@
                                 <div class="kt-section kt-section--first">
                                     <div class="kt-section__body">
                                         <div class="row">
-                                            <div class="form-group validated col-sm-10 col-lg-3">
+                                            <div class="form-group validated col-sm-10 col-lg-3 ui-user-name-field">
                                                 <label class="col-form-label">Nome</label>
                                                 <div class="">
                                                     <input id="nome" type="text" class="form-control @if($errors->has('nome')) is-invalid @endif" name="nome" value="{{{ isset($usuario) ? $usuario->nome : old('nome') }}}">
@@ -31,6 +42,27 @@
                                                         </div>
                                                     @endif
                                                 </div>
+                                            </div>
+
+                                            @php($fotoUsuarioUrl = isset($usuario) ? app(\App\Services\UserAvatarService::class)->url($usuario->img) : null)
+                                            <div class="form-group validated col-sm-10 col-lg-3 ui-user-profile-photo">
+                                                <span class="col-form-label">Foto do usuário (opcional)</span>
+                                                <div class="ui-user-profile-photo__actions">
+                                                    <span class="ui-user-profile-photo__preview" aria-hidden="true">
+                                                        @if($fotoUsuarioUrl)
+                                                            <img src="{{ $fotoUsuarioUrl }}" alt="">
+                                                        @else
+                                                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr((string) old('nome', $usuario->nome ?? '?'), 0, 1)) }}
+                                                        @endif
+                                                    </span>
+                                                    <div class="ui-user-profile-photo__picker">
+                                                        <input id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="ui-user-profile-photo__input @error('foto') is-invalid @enderror" aria-describedby="foto-arquivo foto-ajuda">
+                                                        <label class="ui-user-profile-photo__pick-button" for="foto">Selecionar foto</label>
+                                                        <span class="ui-user-profile-photo__filename" id="foto-arquivo" aria-live="polite">Nenhum arquivo selecionado</span>
+                                                    </div>
+                                                </div>
+                                                @error('foto')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                                <small class="text-muted" id="foto-ajuda">JPG, PNG ou WebP, até 2 MB.</small>
                                             </div>
 
                                             @isset($usuario)
@@ -121,8 +153,10 @@
                                                 </div>
                                             </div>
 
+                                            <div class="ui-user-options-heading">Configurações do usuário</div>
+
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">Ativo</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="ativo">Ativo</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-warning">
 													<label>
@@ -136,7 +170,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">ADM</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="adm">ADM</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-primary">
 													<label>
@@ -150,7 +184,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-2">
-                                                <label class="col-form-label text-left col-lg-12 col-sm-12">Somente Fiscal</label>
+                                                <label class="col-form-label text-left col-lg-12 col-sm-12" for="somente_fiscal">Somente Fiscal</label>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-info">
 													<label>
@@ -165,7 +199,7 @@
 
                                             <!-- NOVO SWITCH: PERMISSÃO DO WHATSAPP -->
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Permissão Emissão WhatsApp</label>
+                                                <label class="col-form-label" for="permissao_nfe_whatsapp">Permissão Emissão WhatsApp</label>
                                                 <button type="button" class="btn btn-light-success btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para permitir que este usuário possa emitir e cancelar notas remotamente usando IA pelo WhatsApp"><i class="la la-info"></i></button>
                                                 <div class="col-6">
                                                 <span class="switch switch-outline switch-success">
@@ -178,7 +212,7 @@
                                             </div>
 
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Caixa livre</label>
+                                                <label class="col-form-label" for="caixa_livre">Caixa livre</label>
                                                 <button type="button" class="btn btn-light-warning btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para selcionar o vendedor/fúncionário no PDV para comissão"><i class="la la-info"></i></button>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-warning">
@@ -191,7 +225,7 @@
                                                 </div>
                                             </div>
                                             <div class="form-group validated col-sm-6 col-lg-3">
-                                                <label class="col-form-label">Permite desconto em vendas</label>
+                                                <label class="col-form-label" for="permite_desconto">Permite desconto em vendas</label>
                                                 <button type="button" class="btn btn-light-danger btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para usuário conceder desconto na venda PDV e pedido"><i class="la la-info"></i></button>
                                                 <div class="col-6">
 												<span class="switch switch-outline switch-danger">
@@ -206,7 +240,7 @@
 
                                             @if(session('user_logged')['tipo_representante'] == 1)
                                                 <div class="form-group validated col-sm-6 col-lg-3">
-                                                    <label class="col-form-label">Acesso representante</label>
+                                                    <label class="col-form-label" for="menu_representante">Acesso representante</label>
                                                     <button type="button" class="btn btn-light-dark btn-sm btn-icon col-lg-6 col-sm-6" data-toggle="popover" data-trigger="click" data-content="Marcar para usuário ter acesso ao menu representante/Contador"><i class="la la-info"></i></button>
                                                     <div class="col-6">
 												<span class="switch switch-outline switch-dark">
@@ -223,21 +257,23 @@
 
                                         {{-- Botões OTP: mostrar apenas ao EDITAR --}}
                                         @isset($usuario)
-                                            @if($usuario->hasOtp())
-                                                <button
-                                                    type="button"
-                                                    id="btn-change-otp"
-                                                    class="btn btn-sm btn-danger"
-                                                    data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
-                                                >Alterar OTP</button>
-                                            @else
-                                                <button
-                                                    type="button"
-                                                    id="btn-generate-otp"
-                                                    class="btn btn-sm btn-secondary"
-                                                    data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
-                                                >Configurar OTP</button>
-                                            @endif
+                                            <div class="ui-user-security-actions">
+                                                @if($usuario->hasOtp())
+                                                    <button
+                                                        type="button"
+                                                        id="btn-change-otp"
+                                                        class="btn btn-sm btn-danger"
+                                                        data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
+                                                    >Alterar OTP</button>
+                                                @else
+                                                    <button
+                                                        type="button"
+                                                        id="btn-generate-otp"
+                                                        class="btn btn-sm btn-secondary"
+                                                        data-preview-url="{{ route('usuarios.preview-otp', $usuario->id) }}"
+                                                    >Configurar OTP</button>
+                                                @endif
+                                            </div>
                                         @endisset
 
                                         <div class="row">
@@ -276,8 +312,7 @@
                                 </div>
                             </div>
                         </div>
-                </div>
-                <div class="card-footer">
+                <div class="ui-admin-panel-foot">
 
                     <div class="row">
                         <div class="col-xl-2">
@@ -301,6 +336,7 @@
                 </form>
             </div>
         </div>
+    </div>
     </div>
 
     {{-- ========== Modais OTP: renderizar apenas ao EDITAR ========== --}}
@@ -405,9 +441,18 @@
         </div>
     </div>
 
+</div>
 @endsection
 
 @section('javascript')
+    <script>
+        document.querySelectorAll('.ui-user-profile-photo__input').forEach(function (input) {
+            input.addEventListener('change', function () {
+                const filename = input.closest('.ui-user-profile-photo__picker').querySelector('.ui-user-profile-photo__filename');
+                filename.textContent = input.files.length ? input.files[0].name : 'Nenhum arquivo selecionado';
+            });
+        });
+    </script>
     <script type="text/javascript">
         $('[data-toggle="popover"]').popover()
     </script>

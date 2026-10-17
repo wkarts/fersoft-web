@@ -1,14 +1,77 @@
 @extends('default.layout')
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+<style>
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 17px !important;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-header h4 {
+    color: var(--ui-ink, #182f36) !important;
+    font-size: 20px;
+    line-height: 1.35;
+    letter-spacing: -.025em;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-controls .btn { margin: 0 !important; min-height: 38px; }
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0 0 18px;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis > [class*="col-"] {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    padding: 0;
+    margin: 0 !important;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis .card {
+    min-height: 100px;
+    justify-content: center;
+    padding: 15px !important;
+    border: 1px solid var(--ui-border, #dce7e7) !important;
+    background: var(--ui-surface, #fff) !important;
+    box-shadow: 0 4px 18px rgba(33,59,69,.045) !important;
+}
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis :is(h3,h4) { overflow-wrap: anywhere; line-height: 1.2; }
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-chart { height: 245px; position: relative; }
+body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-table table { min-width: 850px; }
+@media (max-width: 1199px) {
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-header h4 { font-size: 18px; }
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-controls { width: 100%; margin-left: 0; }
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-chart { height: 210px; }
+}
+@media (max-width: 420px) {
+    body.ui-native-shell .ui-page .fer-dre-dashboard .fer-dre-kpis { grid-template-columns: 1fr; }
+}
+</style>
+@endpush
+
 @section('content')
 
-<div class="card shadow-sm border-0 mb-4">
+<div class="fer-extra fer-extra--contratos fer-extra--canvas fer-dre-dashboard card shadow-sm border-0 mb-4">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 fer-dre-header">
             <h4 class="text-primary font-weight-bold m-0">
                 <i class="fa fa-chart-pie"></i> {{ $title }}
             </h4>
             
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center fer-dre-controls">
                 <!-- Botão Exportar Excel -->
                 <a href="{{ route('contratos.dashboard-dre.excel', ['status' => $statusFiltro]) }}" class="btn btn-sm btn-success font-weight-bold mr-3">
                     <i class="fa fa-file-excel"></i> Exportar Excel
@@ -26,7 +89,7 @@
         </div>
 
         <!-- Cards de Indicadores (KPIs) -->
-        <div class="row mb-4">
+        <div class="row mb-4 fer-dre-kpis">
             <div class="col-md-2 col-6 mb-2">
                 <div class="card bg-light border-0 shadow-sm p-3 text-center">
                     <span class="text-muted small font-weight-bold">OBRAS ATIVAS</span>
@@ -71,13 +134,13 @@
         <!-- Bloco de Gráfico Comparativo -->
         <div class="card border rounded mb-4 bg-white p-3 shadow-sm">
             <h5 class="font-weight-bold text-dark mb-3"><i class="fa fa-chart-bar text-primary"></i> Comparativo de Receitas x Custos por Obra</h5>
-            <div style="height: 280px; position: relative;">
+            <div class="fer-dre-chart">
                 <canvas id="graficoDreObras"></canvas>
             </div>
         </div>
 
         <!-- Tabela de Resultado por Contrato -->
-        <div class="table-responsive">
+        <div class="table-responsive fer-dre-table">
             <table class="table table-hover table-striped table-bordered align-middle">
                 <thead class="bg-dark text-white">
                     <tr>

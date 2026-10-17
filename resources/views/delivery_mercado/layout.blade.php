@@ -591,7 +591,7 @@
                   <p>Join our email newsletter for news and tips.</p>
                   <form class="rd-form rd-mailform" data-form-output="form-output-global" data-form-type="subscribe" method="post" action="bat/rd-mailform.php">
                     <div class="form-wrap">
-                      <input class="form-input" id="subscribe-form-5-email" type="email" name="email" data-constraints="@Email @Required">
+                      <input class="form-input" id="subscribe-form-5-email" type="email" name="email" data-constraints="@Email @@Required">
                       <label class="form-label" for="subscribe-form-5-email">Enter Your E-mail</label>
                     </div>
                     <button class="button button-block button-white" type="submit">Subscribe</button>
