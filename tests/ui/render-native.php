@@ -116,9 +116,13 @@ foreach (['fer-light', 'fer-night'] as $slug) {
         $app['request']->attributes->set('fersoft.ui_theme.1:1:0:light', $theme);
         $data = array_merge($base, ['alertas' => $fixtureAlerts, 'tipoMenu' => $mode]);
         $factory->flushSections();
+        // This isolated fixture renders the refined shell directly; production
+        // pushes this same stylesheet from default.layout after its DB queries.
+        $factory->startPush('styles', '<link rel="stylesheet" href="'.asset('css/ui-alert-panels.css').'?v='.filemtime(public_path('css/ui-alert-panels.css')).'">');
         $content = $factory->make('themes.refined.dashboard', $data)->render();
         $factory->startSection('content', new \Illuminate\Support\HtmlString($content));
         $html = $factory->make('themes.refined.layout', $data)->render();
+        $factory->flushStacks();
         file_put_contents($target . '/alerts-' . $slug . '-' . $mode . '.html', $html);
     }
 }

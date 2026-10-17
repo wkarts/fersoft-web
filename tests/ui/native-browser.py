@@ -542,6 +542,8 @@ def check_alert_panel(page, theme, layout, width):
     """Exercise the real masthead with nonempty alert data and original links."""
     assert page.locator('body').get_attribute('data-ui-theme') == theme
     assert page.locator('body').get_attribute('data-ui-layout') == layout
+    assert page.locator('link[href*="/css/ui-alert-panels.css"]').count() == 1, \
+        'The production alert stylesheet is missing from the fixture.'
     trigger = page.locator('[data-ui-alerts-trigger]')
     panel = page.locator('[data-ui-alerts-panel]')
     assert trigger.count() == 1 and trigger.is_visible(), 'Existing alerts have no usable trigger.'
@@ -563,6 +565,8 @@ def check_alert_panel(page, theme, layout, width):
             f'Alert {title} lost its original action: {href}'
     assert 'Existe Produtos com validade próxima!' in panel.inner_text(), 'Alert descriptions disappeared.'
     box = panel.bounding_box()
+    assert box and box['width'] >= min(340, width - 40), \
+        f'Alert panel is too narrow at {width}px: {box}'
     assert box and box['x'] >= -2 and box['x'] + box['width'] <= width + 2, \
         f'Alert panel clips horizontally at {width}px: {box}'
     assert box['y'] >= -2 and box['y'] + box['height'] <= page.viewport_size['height'] + 2, \
