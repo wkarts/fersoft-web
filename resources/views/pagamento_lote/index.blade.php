@@ -1,14 +1,15 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-extras.css') }}?v={{ filemtime(public_path('css/ui-extras.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-operational-refinements.css') }}?v={{ filemtime(public_path('css/ui-operational-refinements.css')) }}">
 @endpush
 
 @section('content')
 
-<div class="fer-extra fer-extra--support fer-extra--pagamento_lote fer-extra--canvas card card-custom gutter-b">
+<div class="fer-extra fer-extra--support fer-extra--pagamento_lote fer-extra--canvas fer-pesagem-pay-ui card card-custom gutter-b">
     <div class="card-header bg-white py-3">
         <h5 class="mb-0 text-dark font-weight-bold">
-            <i class="fas fa-file-invoice-dollar text-success mr-2"></i> Lote de Pagamento de Pesagens
+            <i class="la la-file-invoice-dollar text-success mr-2"></i> Lote de Pagamento de Pesagens
         </h5>
     </div>
     
@@ -29,7 +30,7 @@
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary w-100 font-weight-bold">
-                                <i class="fas fa-search"></i> Filtrar
+                                <i class="la la-search"></i> Filtrar
                             </button>
                         </div>
                     </div>
@@ -44,7 +45,7 @@
                     <i class="la la-list"></i> Selecionar / Desmarcar Todos
                 </button>
                 <button type="submit" class="btn btn-success font-weight-bold shadow-sm" id="btnGerar" disabled>
-                    <i class="fas fa-check"></i> Gerar Arquivo P/ Banco (PIX)
+                    <i class="la la-check"></i> Gerar Arquivo P/ Banco (PIX)
                 </button>
             </div>
 
@@ -74,7 +75,7 @@
                                                 <span></span>
                                             </label>
                                         @else
-                                            <i class="fas fa-exclamation-triangle text-warning mt-2" title="Verifique o PIX, Preços do Fornecedor ou se o Peso Líquido está zerado"></i>
+                                            <i class="la la-exclamation-triangle text-warning mt-2" title="Verifique o PIX, Preços do Fornecedor ou se o Peso Líquido está zerado"></i>
                                         @endif
                                     </span>
                                 </td>

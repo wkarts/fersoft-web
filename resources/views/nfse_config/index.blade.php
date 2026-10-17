@@ -1,6 +1,7 @@
 @extends('default.layout', ['title' => 'Configuração da NFSe'])
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
 @endpush
 @section('content')
 
@@ -25,23 +26,19 @@
 		cursor: pointer;
 	}
 </style>
-<div class="document-fiscal-page document-fiscal-page--nfse-config  d-flex flex-column flex-column-fluid" id="kt_content">
+<div class="document-fiscal-page document-fiscal-page--nfse-config ui-op-refine d-flex flex-column flex-column-fluid" id="kt_content">
 	<div class="card card-custom gutter-b example example-compact">
-		<div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
-			<div class="col-lg-12">
-				<br>
-				<form method="post" action="{{ $item != null ? route('nfse-config.update', [$item->id]) : route('nfse-config.store') }}" enctype="multipart/form-data">
+		<form method="post" action="{{ $item != null ? route('nfse-config.update', [$item->id]) : route('nfse-config.store') }}" enctype="multipart/form-data">
 					@csrf
 					@if($item != null)
 					@method('put')
 					@endif
 
-					<div class="card card-custom gutter-b example example-compact">
-						<div class="card-header">
-							<h3 class="card-title">{{{ $item != null ? "Editar": "Cadastrar" }}} Configuração NFSe</h3>
-						</div>
+					<div class="card-header">
+						<h3 class="card-title">{{{ $item != null ? "Editar": "Cadastrar" }}} Configuração NFSe</h3>
 					</div>
 
+					<div class="card-body">
 					<div class="row">
 						<div class="col-xl-12">
 							<div class="kt-section kt-section--first">
@@ -222,23 +219,23 @@
 										</div>
 
 
-										<div class="form-group validated col-sm-4 col-lg-4 col-6">
-											<label class="col-xl-12 col-lg-12 col-form-label text-left">Logo</label>
-											<div class="col-lg-10 col-xl-6">
+										<div class="form-group validated col-sm-6 col-lg-4 col-12 ui-op-config-logo">
+											<label class="col-form-label d-block">Logo</label>
+											<div>
 
 												<div class="image-input image-input-outline" id="kt_image_1">
 													<div class="image-input-wrapper" @if(isset($item) && $item->logo != null)style="background-image: url(/logos/{{$item->logo}})" @else style="background-image: url(/imgs/logo.png)" @endif ></div>
-													<label class="btn btn-xs btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" data-toggle="tooltip" title="" data-original-title="Change avatar">
+													<label class="btn btn-xs btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="change" data-toggle="tooltip" title="Alterar logo" data-original-title="Alterar logo">
 														<i class="fa fa-pencil icon-sm text-muted"></i>
 														<input type="file" name="file" accept=".jpg,.png">
 														<input type="hidden" name="profile_avatar_remove">
 													</label>
-													<span class="btn btn-xs btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="cancel" data-toggle="tooltip" title="" data-original-title="Cancel avatar">
+													<span class="btn btn-xs btn-icon btn-circle btn-white btn-hover-text-primary btn-shadow" data-action="cancel" data-toggle="tooltip" title="Cancelar alteração da logo" data-original-title="Cancelar alteração da logo">
 														<i class="fa fa-close icon-xs text-muted"></i>
 													</span>
 												</div>
 
-												<span class="form-text text-muted">.jpg</span>
+												<span class="form-text text-muted">.jpg ou .png</span>
 												@if($errors->has('logo'))
 												<div class="invalid-feedback">
 													{{ $errors->first('logo') }}
@@ -260,7 +257,7 @@
 
 										@if($item != null && $item->token != null)
 										<div class="col-lg-3 col-12 mb-2">
-											<a href="{{ route('nfse-config.certificado') }}" class="btn btn-danger btn-sm">
+											<a href="{{ route('nfse-config.certificado') }}" class="btn btn-info btn-sm">
 												<i class="la la-file"></i>
 												Upload de certificado
 											</a>
@@ -276,7 +273,7 @@
 										</div> -->
 
 										@if($tokenNfse == null)
-										<h5 class="text-danger col-12 mt-2">Nenhum token configurado para NFSe</h5>
+										<div class="alert alert-warning ui-op-alert col-12 mt-2" role="status"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i><span>Nenhum token configurado para NFSe</span></div>
 										@endif
 									</div>
 								</div>
@@ -284,29 +281,20 @@
 						</div>
 
 					</div>
+					</div>
 					<div class="card-footer">
-						<div class="row">
-							<div class="col-xl-2">
-
-							</div>
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<a style="width: 100%" class="btn btn-danger" href="{{ route('nfse-config.index') }}">
+						<div class="ui-op-config-actions">
+								<a class="btn btn-secondary" href="{{ route('nfse-config.index') }}">
 									<i class="la la-close"></i>
 									<span class="">Cancelar</span>
 								</a>
-							</div>
-							<div class="col-lg-3 col-sm-6 col-md-4">
-								<button style="width: 100%" type="submit" class="btn btn-success">
+								<button type="submit" class="btn btn-success">
 									<i class="la la-check"></i>
 									<span class="">Salvar</span>
 								</button>
-							</div>
-
 						</div>
 					</div>
-				</form>
-			</div>
-		</div>
+		</form>
 	</div>
 </div>
 

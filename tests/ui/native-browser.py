@@ -238,6 +238,8 @@ def check_superior_navigation(page, resize=False):
 
     if resize:
         page.set_viewport_size({'width': 768, 'height': 1024})
+        page.wait_for_function('''() => !matchMedia('(min-width: 992px)').matches &&
+            document.querySelector('#ui-sidebar')?.parentElement?.matches('.ui-app')''')
         assert sidebar.evaluate('(e)=>e.parentElement?.matches(".ui-app")'), 'Top menu did not return to the mobile drawer.'
         assert sidebar.locator('.ui-brand').evaluate('(e)=>e.nextElementSibling?.classList.contains("ui-version")'), \
             'The drawer did not restore its original keyboard order.'
@@ -248,6 +250,8 @@ def check_superior_navigation(page, resize=False):
         page.keyboard.press('Escape')
         assert sidebar.evaluate('(e)=>e.inert')
         page.set_viewport_size({'width': 1920, 'height': 1032})
+        page.wait_for_function('''() => matchMedia('(min-width: 992px)').matches &&
+            document.querySelector('#ui-sidebar')?.previousElementSibling?.matches('.ui-masthead')''')
         assert sidebar.evaluate('(e)=>e.previousElementSibling?.matches(".ui-masthead")')
         assert abs(sidebar.bounding_box()['height'] - 47) <= 2
         assert navigation_contract(page) == original
@@ -534,6 +538,41 @@ def check_critical_flow(page, kind, width):
         page.locator('#modal2').wait_for(state='hidden')
 
 
+def check_alert_panel(page, theme, layout, width):
+    """Exercise the real masthead with nonempty alert data and original links."""
+    assert page.locator('body').get_attribute('data-ui-theme') == theme
+    assert page.locator('body').get_attribute('data-ui-layout') == layout
+    assert page.locator('link[href*="/css/ui-alert-panels.css"]').count() == 1, \
+        'The production alert stylesheet is missing from the fixture.'
+    trigger = page.locator('[data-ui-alerts-trigger]')
+    panel = page.locator('[data-ui-alerts-panel]')
+    assert trigger.count() == 1 and trigger.is_visible(), 'Existing alerts have no usable trigger.'
+    assert trigger.get_attribute('aria-label') == 'Alertas', 'The alert control has no accessible name.'
+    assert trigger.locator('.ui-notification-count').inner_text().strip() == '3', 'Unread badge lost the real alert count.'
+    assert panel.count() == 1, 'Expected exactly one alert panel.'
+    assert not panel.is_visible(), 'The alert panel should start closed.'
+    trigger.click()
+    panel.wait_for(state='visible')
+    assert '3 novas' in panel.inner_text(), 'The alert counter did not reflect the rendered alerts.'
+    expected = {
+        '/compras/produtosSemValidade': 'Alerta validade',
+        '/compras/validadeAlerta': 'Validade próxima',
+        '/contasPagar/filtro?fornecedor=&data_inicial=01/10/2026&data_final=31/10/2026&status=todos': 'Alerta contas',
+    }
+    for href, title in expected.items():
+        links = panel.locator('a[href]').filter(has_text=title)
+        assert links.count() == 1 and links.first.get_attribute('href') == href, \
+            f'Alert {title} lost its original action: {href}'
+    assert 'Existe Produtos com validade próxima!' in panel.inner_text(), 'Alert descriptions disappeared.'
+    box = panel.bounding_box()
+    assert box and box['width'] >= min(340, width - 40), \
+        f'Alert panel is too narrow at {width}px: {box}'
+    assert box and box['x'] >= -2 and box['x'] + box['width'] <= width + 2, \
+        f'Alert panel clips horizontally at {width}px: {box}'
+    assert box['y'] >= -2 and box['y'] + box['height'] <= page.viewport_size['height'] + 2, \
+        f'Alert panel clips vertically at {width}px: {box}'
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2'), \
+        f'Alert dropdown causes horizontal page overflow at {width}px.'
 def main():
     layout_source = (ROOT / 'resources/views/themes/refined/layout.blade.php').read_text()
     support_source = (ROOT / 'resources/views/layouts/support.blade.php').read_text()
@@ -585,6 +624,35 @@ def main():
                                 report.append(case)
                                 page.close()
                             print(filename, f'{width}x{height}', 'passed', flush=True)
+            for theme in ['fer-light', 'fer-night']:
+                for layout in ['lateral', 'superior']:
+                    filename = f'alerts-{theme}-{layout}.html'
+                    for width, height in [(1366, 768), (390, 844)]:
+                        case = {'fixture': filename, 'viewport': f'{width}x{height}', 'status': 'running'}
+                        errors = []
+                        page = browser.new_page(viewport={'width': width, 'height': height}, reduced_motion='reduce')
+                        prepare_existing_account(page)
+                        page.set_default_timeout(12000)
+                        page.on('pageerror', lambda error: errors.append(str(error)))
+                        page.route('https://**/*', lambda route: route.abort())
+                        try:
+                            page.goto(f'http://127.0.0.1:8765/fixtures/{filename}', wait_until='domcontentloaded')
+                            check_alert_panel(page, theme, layout, width)
+                            assert not errors, 'Unexpected JavaScript exception: ' + '; '.join(errors)
+                            page.screenshot(path=str(FIXTURES / f'alerts-{theme}-{layout}-{width}.png'), full_page=True)
+                            page.locator('[data-ui-alerts-trigger]').click()
+                            page.locator('[data-ui-alerts-panel]').wait_for(state='hidden')
+                            case['status'] = 'passed'
+                        except Exception as error:
+                            case['status'] = 'failed'
+                            case['error'] = str(error)
+                            page.screenshot(path=str(FIXTURES / f'FAILED-alerts-{theme}-{layout}-{width}.png'), full_page=True)
+                            raise
+                        finally:
+                            case['javascript_errors'] = errors
+                            report.append(case)
+                            page.close()
+                        print(filename, f'{width}x{height}', 'passed', flush=True)
             for kind in ['list', 'register']:
                 filename = f'operational-funcionarios-{kind}.html'
                 for width, height in [(1920, 1032), (1366, 768), (768, 1024), (390, 844)]:
@@ -646,8 +714,8 @@ def main():
     finally:
         server.shutdown()
         (FIXTURES / 'browser-results.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    assert len(report) == 96 and all(row['status'] == 'passed' for row in report)
-    print('96 real Blade/browser scenarios passed with no JavaScript exceptions.')
+    assert len(report) == 104 and all(row['status'] == 'passed' for row in report)
+    print('104 real Blade/browser scenarios passed with no JavaScript exceptions.')
 
 
 if __name__ == '__main__':

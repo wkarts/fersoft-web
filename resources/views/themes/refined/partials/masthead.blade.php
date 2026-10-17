@@ -177,7 +177,7 @@
                             </div>
                         </div>
 
-                        <div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg">
+                        <div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg ui-notification-panel">
                             <form>
                                 <!--begin::Header-->
                                 <div class="d-flex flex-column pt-12 bgi-size-cover bgi-no-repeat rounded-top">
@@ -197,7 +197,7 @@
 
                                 <div class="tab-content">
                                     <!--begin::Tabpane-->
-                                    <div class="tab-pane active show p-8" id="topbar_notifications_notifications" role="tabpanel">
+                                    <div class="tab-pane active show p-8" id="topbar_notifications_super" role="tabpanel">
                                         <!--begin::Scroll-->
                                         <div class="scroll pr-7 mr-n7 ps notifica-rows" data-scroll="true" data-height="300" data-mobile-height="200" style="height: 300px; overflow: hidden;">
 
@@ -208,6 +208,8 @@
                         </div>
 
                         <!-- Fim Alertas do Super -->
+                    </div>
+                    <div class="dropdown">
 
                         @if(sizeof($alertas) > 0)
                             <!-- <div class="topbar-item notifica-tour" data-toggle="dropdown" data-offset="10px,0px">
@@ -225,8 +227,12 @@
 									<span class="pulse-ring"></span>
 								</div>
 							</div> -->
+                            <button type="button" class="topbar-item notifica-tour ui-notification-trigger" data-toggle="dropdown" data-offset="10px,0px" data-ui-alerts-trigger aria-label="Alertas" aria-haspopup="true" aria-expanded="false" title="Alertas">
+                                <i class="la la-bell" aria-hidden="true"></i>
+                                <span class="ui-notification-count">{{ sizeof($alertas) }}</span>
+                            </button>
                         @endif
-                        <div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg">
+                        <div class="dropdown-menu p-0 m-0 dropdown-menu-right dropdown-menu-anim-up dropdown-menu-lg" data-ui-alerts-panel>
                             <form>
                                 <div class="d-flex flex-column pt-12 bgi-size-cover bgi-no-repeat rounded-top">
 
@@ -242,7 +248,7 @@
                                 <!--begin::Content-->
                                 <div class="tab-content">
                                     <!--begin::Tabpane-->
-                                    <div class="tab-pane active show p-8" id="topbar_notifications_notifications" role="tabpanel">
+                                    <div class="tab-pane active show p-8" id="topbar_notifications_company" role="tabpanel">
                                         <div class="scroll pr-7 mr-n7 ps" data-scroll="true" data-height="300" data-mobile-height="200" style="height: 300px; overflow: hidden;">
 
                                             @if(sizeof($alertas) > 0)
@@ -356,8 +362,8 @@
 
                                     <div class="tab-pane" id="topbar_notifications_logs" role="tabpanel">
                                         <!--begin::Nav-->
-                                        <div class="d-flex flex-center text-center text-muted min-h-200px">All caught up!
-                                            <br>No new notifications.
+                                        <div class="d-flex flex-center text-center text-muted min-h-200px">Tudo em dia!
+                                            <br>Nenhuma notificação nova.
                                         </div>
                                     </div>
                                 </div>

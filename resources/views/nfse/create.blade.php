@@ -1,6 +1,7 @@
 @extends('default.layout')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ui-document-fiscal.css') }}?v={{ filemtime(public_path('css/ui-document-fiscal.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/ui-fiscal-mtr-refinements.css') }}?v={{ filemtime(public_path('css/ui-fiscal-mtr-refinements.css')) }}">
 @endpush
 @section('content')
     @section('css')
@@ -67,7 +68,7 @@
         </style>
     @endsection
 
-    <div class="document-fiscal-page document-fiscal-page--nfse content d-flex flex-column flex-column-fluid" id="kt_content">
+    <div class="document-fiscal-page document-fiscal-page--nfse ui-op-refine content d-flex flex-column flex-column-fluid" id="kt_content">
 
         <div class="row" id="anime" style="display: none">
             <div class="col-s8 offset-s2 text-center">
@@ -76,7 +77,7 @@
         </div>
 
         <!-- Header com Status e Informações do Ambiente -->
-        <div class="card card-modern mb-5">
+        <div class="card card-modern ui-op-document-head mb-5">
             <div class="card-body d-flex align-items-center justify-content-between flex-wrap py-4">
                 <div class="d-flex align-items-center me-3">
                     <div class="symbol symbol-45px me-4">
@@ -111,8 +112,6 @@
             </div>
         </div>
 
-        {!! __view_locais_select() !!}
-
         <!-- Formulário Principal da NFS-e -->
         <form class="form" id="form-servico" method="post" @if(isset($item) && !isset($clone)) action="/nfse/update/{{ $item->id }}" @else action="/nfse/store" @endif>
             @csrf
@@ -120,6 +119,10 @@
                 @method('put')
             @endif
             <input type="hidden" id="_token" value="{{csrf_token()}}">
+
+            <div class="row ui-op-local-row">
+                {!! __view_locais_select() !!}
+            </div>
 
             <div class="wizard wizard-3" id="kt_wizard_v3" data-wizard-state="between" data-wizard-clickable="true">
 
