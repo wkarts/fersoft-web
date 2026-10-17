@@ -45,14 +45,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-identity:
-    if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/release-identity.yml
-    secrets: inherit
-
   full-validation:
-    if: github.ref == 'refs/heads/main'
-    needs: release-identity
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -190,10 +183,8 @@ jobs:
 
       - name: Obter tag anterior
         id: previous
-        shell: bash
         run: |
-          set -euo pipefail
-          prev=$(bash scripts/release/version.sh latest)
+          prev=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n1 || true)
           echo "previous_tag=$prev" >> "$GITHUB_OUTPUT"
 
       - name: Descobrir PR associado ao commit
@@ -239,12 +230,6 @@ jobs:
       - name: Calcular versão
         id: version
         shell: bash
-        env:
-          RELEASE_EVENT: ${{ github.event_name }}
-          RELEASE_MANUAL_VERSION: ${{ inputs.version }}
-          RELEASE_PRERELEASE: ${{ inputs.prerelease }}
-          RELEASE_PRERELEASE_NUMBER: ${{ inputs.prerelease_number }}
-          RELEASE_BUMP: ${{ steps.bump.outputs.bump }}
         run: |
           set -euo pipefail
           mode="auto"
@@ -252,17 +237,17 @@ jobs:
           prerelease="false"
           prerelease_number="1"
 
-          if [ "$RELEASE_EVENT" = "workflow_dispatch" ] && [ -n "$RELEASE_MANUAL_VERSION" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
             mode="manual"
-            manual_version="$RELEASE_MANUAL_VERSION"
+            manual_version="${{ inputs.version }}"
           fi
 
-          if [ "$RELEASE_EVENT" = "workflow_dispatch" ] && [ "$RELEASE_PRERELEASE" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.prerelease }}" = "true" ]; then
             prerelease="true"
-            prerelease_number="$RELEASE_PRERELEASE_NUMBER"
+            prerelease_number="${{ inputs.prerelease_number }}"
           fi
 
-          version=$(bash scripts/release/version.sh "$mode" "$RELEASE_BUMP" "$manual_version" "$prerelease" "$prerelease_number")
+          version=$(scripts/release/version.sh "$mode" "${{ steps.bump.outputs.bump }}" "$manual_version" "$prerelease" "$prerelease_number")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Versão definida: $version"
 
@@ -284,7 +269,7 @@ jobs:
           set -euo pipefail
           version="${{ needs.prepare-release.outputs.version }}"
           git fetch --tags --force
-          if git show-ref --verify --quiet "refs/tags/$version"; then
+          if git rev-parse "$version" >/dev/null 2>&1; then
             echo "Tag $version já existe. Abortando para manter idempotência."
             exit 1
           fi
@@ -313,13 +298,6 @@ jobs:
         run: |
           changelog_file=$(scripts/release/changelog.sh "${{ needs.prepare-release.outputs.previous_tag }}" "${GITHUB_SHA}" "release-notes.md")
           echo "file=$changelog_file" >> "$GITHUB_OUTPUT"
-
-      - name: Gerar identidade estável vinculada ao checkout
-        if: github.event_name != 'workflow_dispatch' || inputs.prerelease != true
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          python3 scripts/release/identity.py write --version "$RELEASE_VERSION" --commit "$GITHUB_SHA"
 
       - name: Gerar artifact zip
         shell: bash
@@ -350,30 +328,11 @@ jobs:
           zip -r "$artifact_name" . "${zip_args[@]}"
           echo "Artifact gerado: $artifact_name"
 
-      - name: Validar identidade dentro do ZIP antes de publicar
-        if: github.event_name != 'workflow_dispatch' || inputs.prerelease != true
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          python3 scripts/release/identity.py verify --version "$RELEASE_VERSION" --commit "$GITHUB_SHA" \
-            --archive "release-${RELEASE_VERSION#v}.zip"
-
       - name: Publicar artifact do workflow
         uses: actions/upload-artifact@v4
         with:
           name: app-release-${{ needs.prepare-release.outputs.version }}
           path: release-*.zip
-
-      - name: Fixar tag estável no commit validado
-        if: github.event_name != 'workflow_dispatch' || inputs.prerelease != true
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          set -euo pipefail
-          git tag "$RELEASE_VERSION" "$GITHUB_SHA"
-          git push origin "refs/tags/$RELEASE_VERSION"
-          python3 scripts/release/identity.py verify --version "$RELEASE_VERSION" --commit "$GITHUB_SHA" \
-            --archive "release-${RELEASE_VERSION#v}.zip" --require-tag
 
       - name: Criar GitHub Release
         id: create_release
@@ -385,17 +344,7 @@ jobs:
           append_body: true
           body_path: ${{ steps.changelog.outputs.file }}
           prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
-          target_commitish: ${{ github.sha }}
           files: release-*.zip
-
-      - name: Conferir tag publicada e identidade do pacote
-        if: github.event_name != 'workflow_dispatch' || inputs.prerelease != true
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          git fetch origin "refs/tags/$RELEASE_VERSION:refs/tags/$RELEASE_VERSION"
-          python3 scripts/release/identity.py verify --version "$RELEASE_VERSION" --commit "$GITHUB_SHA" \
-            --archive "release-${RELEASE_VERSION#v}.zip" --require-tag
 
       - name: Summary
         if: always()
@@ -431,8 +380,8 @@ jobs:
     secrets: inherit
 
   notify-failure:
-    if: ${{ always() && (needs.release-identity.result == 'failure' || needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure' || needs.apply-release.result == 'failure') }}
-    needs: [release-identity, full-validation, prepare-release, create-release, apply-release]
+    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure' || needs.apply-release.result == 'failure') }}
+    needs: [full-validation, prepare-release, create-release, apply-release]
     uses: ./.github/workflows/notify.yml
     with:
       status: failure

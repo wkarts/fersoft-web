@@ -245,9 +245,3 @@ public/xml_nfe/29260449916126000108550010000001581000766945.xml
 *.bak
 test-merger.php
 test-merger.php
-
-# Metadados gerados apenas no artefato de release
-/release-build-info.json
-/public/release-build-info.json
-__pycache__/
-*.pyc

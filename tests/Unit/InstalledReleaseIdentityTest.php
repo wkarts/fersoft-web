@@ -182,117 +182,6 @@ class InstalledReleaseIdentityTest extends TestCase
         self::assertSame('ui-continuous', $identity['tag']);
     }
 
-    public function testStableReleaseBuildInfoSupportsZipWithoutGit(): void
-    {
-        $sha = str_repeat('b', 40);
-        $this->writeMetadata($this->stableMetadata($sha), 'release-build-info.json');
-        $identity = (new InstalledReleaseIdentity($this->root))->resolve();
-
-        self::assertSame('5.0.237', $identity['version']);
-        self::assertSame('v5.0.237', $identity['tag']);
-        self::assertSame('stable', $identity['release_channel']);
-        self::assertSame($sha, $identity['git_commit_sha']);
-        self::assertSame('build-info', $identity['source']);
-    }
-
-    public function testStablePublisherMetadataIsAcceptedByThePhpReaderWithoutGit(): void
-    {
-        $head = $this->initGit();
-        $this->git(['branch', '-M', 'main']);
-        $producer = dirname(__DIR__, 2).'/scripts/release/identity.py';
-        $process = new Process([
-            'python3', $producer, 'write', '--repository', $this->root,
-            '--version', 'v5.0.237', '--commit', $head,
-        ], $this->root);
-        $process->setTimeout(10);
-        $process->mustRun();
-        self::assertFileExists($this->root.'/release-build-info.json');
-        $this->removeDirectory($this->root.'/.git');
-
-        $identity = (new InstalledReleaseIdentity($this->root))->resolve();
-
-        self::assertSame('5.0.237', $identity['version']);
-        self::assertSame('v5.0.237', $identity['tag']);
-        self::assertSame($head, $identity['git_commit_sha']);
-        self::assertSame('stable', $identity['release_channel']);
-        self::assertSame('build-info', $identity['source']);
-    }
-
-    public function testStableReleaseBuildInfoPrecedesLeftoverUiMetadata(): void
-    {
-        $sha = str_repeat('b', 40);
-        $this->writeMetadata($this->metadata($sha));
-        $this->writeMetadata($this->stableMetadata($sha), 'release-build-info.json');
-
-        self::assertSame('5.0.237', (new InstalledReleaseIdentity($this->root))->resolve()['version']);
-    }
-
-    public function testCanonicalIdentityFollowsZipOverlaysInBothChannelDirectionsWithoutGit(): void
-    {
-        $reader = new InstalledReleaseIdentity($this->root);
-        $this->writeMetadata($this->stableMetadata(str_repeat('a', 40)), 'release-build-info.json');
-        self::assertSame('5.0.237', $reader->resolve()['version']);
-
-        $beta = $this->metadata(str_repeat('b', 40));
-        $beta['version'] = 'v5.0.238-beta.57';
-        $beta['base_stable_tag'] = 'v5.0.237';
-        $beta['build_number'] = '57';
-        $beta['tag'] = 'ui-continuous';
-        $this->writeMetadata($beta, 'release-build-info.json');
-        $this->writeMetadata($beta, 'public/release-build-info.json');
-        $this->writeMetadata($beta);
-        $this->writeMetadata($beta, 'public/ui-build-info.json');
-        $identity = $reader->resolve();
-        self::assertSame('5.0.238-beta.57', $identity['version']);
-        self::assertSame('beta-continuous', $identity['release_channel']);
-        self::assertSame('v5.0.237', $identity['base_stable_tag']);
-        self::assertSame(str_repeat('b', 40), $identity['git_commit_sha']);
-
-        $stable = $this->stableMetadata(str_repeat('c', 40));
-        $stable['version'] = 'v5.0.238';
-        $stable['tag'] = 'v5.0.238';
-        $this->writeMetadata($stable, 'release-build-info.json');
-        // Old beta public/legacy files can remain after extracting a stable ZIP.
-        $identity = $reader->resolve();
-        self::assertSame('5.0.238', $identity['version']);
-        self::assertSame('stable', $identity['release_channel']);
-        self::assertSame('v5.0.238', $identity['tag']);
-        self::assertSame(str_repeat('c', 40), $identity['git_commit_sha']);
-    }
-
-    public function testStableManifestTagMustMatchVersion(): void
-    {
-        foreach ([
-            ['tag' => 'v5.0.236'],
-            ['tag' => 'ui-continuous'],
-            ['tag' => null],
-            ['schema_version' => 2],
-            ['release_channel' => 'prerelease'],
-        ] as $invalid) {
-            $this->writeMetadata(array_replace($this->stableMetadata(str_repeat('b', 40)), $invalid), 'release-build-info.json');
-            self::assertNull((new InstalledReleaseIdentity($this->root))->resolve(), json_encode($invalid));
-        }
-    }
-
-    public function testPublicStableManifestMustMatchGitHead(): void
-    {
-        $head = $this->initGit();
-        $this->writeMetadata($this->stableMetadata(str_repeat('a', 40)), 'public/release-build-info.json');
-        self::assertNull((new InstalledReleaseIdentity($this->root))->resolve());
-
-        $this->writeMetadata($this->stableMetadata($head), 'public/release-build-info.json');
-        self::assertSame($head, (new InstalledReleaseIdentity($this->root))->resolve()['git_commit_sha']);
-    }
-
-    public function testStableMetadataCannotClaimADifferentTagInUiCompatibilityFile(): void
-    {
-        $metadata = $this->stableMetadata(str_repeat('b', 40));
-        $metadata['tag'] = 'v5.0.236';
-        $this->writeMetadata($metadata);
-
-        self::assertNull((new InstalledReleaseIdentity($this->root))->resolve());
-    }
-
     public function testPublicBuildInfoIsSupportedAndBoundToGitHead(): void
     {
         $head = $this->initGit();
@@ -428,18 +317,6 @@ class InstalledReleaseIdentityTest extends TestCase
             'git_commit_sha' => $sha,
             'release_channel' => 'beta-continuous',
             'build_number' => '51',
-        ];
-    }
-
-    private function stableMetadata(string $sha): array
-    {
-        return [
-            'schema_version' => 1,
-            'version' => 'v5.0.237',
-            'tag' => 'v5.0.237',
-            'git_commit_sha' => $sha,
-            'release_channel' => 'stable',
-            'build_number' => '39017970356',
         ];
     }
 

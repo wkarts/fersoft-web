@@ -90,17 +90,10 @@ def main() -> None:
 
     with zipfile.ZipFile(ARCHIVE, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         build_info = json.dumps(metadata, ensure_ascii=False, indent=2) + "\n"
-        # Both channels replace the same marker when installed over an older ZIP.
-        canonical_metadata = {**metadata, "schema_version": 1, "tag": "ui-continuous"}
-        canonical_info = json.dumps(canonical_metadata, ensure_ascii=False, indent=2) + "\n"
-        archive.writestr("release-build-info.json", canonical_info)
-        archive.writestr("public/release-build-info.json", canonical_info)
         # Metadados verificáveis tanto no pacote quanto no endpoint estático do preview.
         archive.writestr("ui-build-info.json", build_info)
         archive.writestr("public/ui-build-info.json", build_info)
         for name in sorted(entries):
-            if name in {"release-build-info.json", "public/release-build-info.json", "ui-build-info.json", "public/ui-build-info.json"}:
-                continue
             file = ROOT / name
             if file.is_file() and not file.is_symlink():
                 archive.write(file, arcname=name)

@@ -42,17 +42,9 @@ class InstalledReleaseIdentity
             }
         }
 
-        foreach ([
-            'release-build-info.json', 'public/release-build-info.json',
-            'ui-build-info.json', 'public/ui-build-info.json',
-        ] as $relativePath) {
+        foreach (['ui-build-info.json', 'public/ui-build-info.json'] as $relativePath) {
             $metadata = $this->readJsonFile($this->root.'/'.$relativePath);
             if ($metadata === null) {
-                continue;
-            }
-            if (str_ends_with($relativePath, 'release-build-info.json')
-                && (($metadata['schema_version'] ?? null) !== 1
-                    || !in_array($metadata['release_channel'] ?? null, ['stable', 'beta-continuous'], true))) {
                 continue;
             }
             $identity = $this->fromMetadata($metadata, $head, 'build-info');
@@ -180,11 +172,6 @@ class InstalledReleaseIdentity
         }
         if ($tag === null && $channel === 'beta-continuous') {
             $tag = 'ui-continuous';
-        }
-        if ($channel === 'stable'
-            && ($tag === null || $this->semanticVersion($tag) !== $version
-                || (isset($metadata['tag']) && (!is_string($metadata['tag']) || $this->semanticVersion($metadata['tag']) !== $version)))) {
-            return null;
         }
 
         return [

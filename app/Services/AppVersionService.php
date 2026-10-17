@@ -90,17 +90,6 @@ class AppVersionService
     {
         $identity = $this->installedReleaseIdentity();
         if ($identity !== null) {
-            $current = $this->current();
-            $needsHistoryImport = $current === null
-                || $current->version !== $identity['version']
-                || !$this->revisionMatches($current->commit_hash, $identity['git_commit_sha'])
-                || !$this->sameReleaseIdentity(Arr::get((array) $current->metadata, 'installed_release'), $identity);
-            if ($needsHistoryImport) {
-                // Import notes/history once per identity transition, not on every page.
-                $this->syncFromManifest();
-                $this->syncFromArtifacts($identity['version']);
-            }
-
             return $this->reconcileInstalledRelease($identity);
         }
 
@@ -159,9 +148,7 @@ class AppVersionService
             ]);
             [$major, $minor, $patch] = $this->splitVersion($identity['version']);
             $metadata = (array) ($record->metadata ?? []);
-            if (!$this->sameReleaseIdentity(Arr::get($metadata, 'installed_release'), $identity)) {
-                $metadata['installed_release'] = $identity;
-            }
+            $metadata['installed_release'] = $identity;
             $changed = $record->wasRecentlyCreated || !$record->is_current
                 || $record->commit_hash !== $identity['git_commit_sha'];
 
@@ -196,18 +183,6 @@ class AppVersionService
         $recorded = trim((string) $recorded);
         return preg_match('/^[0-9a-f]{7,64}$/iD', $recorded) === 1
             && str_starts_with(strtolower($installed), strtolower($recorded));
-    }
-
-    private function sameReleaseIdentity($recorded, array $identity): bool
-    {
-        if (!is_array($recorded)) {
-            return false;
-        }
-        // MySQL JSON may reorder object keys while keeping their values/types.
-        ksort($recorded);
-        ksort($identity);
-
-        return $recorded === $identity;
     }
 
     public function resolveInstalledVersion(): string
@@ -321,47 +296,31 @@ class AppVersionService
                 $payload['commit_hash'] = $installedRevision;
             }
 
-            $record = $this->importReleaseHistory($version, $payload);
+            $record = AppVersion::query()->updateOrCreate(
+                ['version' => $version],
+                $payload
+            );
 
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
-        if ($identity === null && $installedVersion !== '') {
+        if ($installedVersion !== '') {
             AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
             AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
+
+            if ($installedRevision !== null) {
+                AppVersion::query()
+                    ->where('version', $installedVersion)
+                    ->update(['commit_hash' => $installedRevision]);
+            }
         }
 
-        if ($identity !== null) {
+        if ($identity !== null && $identity['version'] === $installedVersion) {
             $record = $this->reconcileInstalledRelease($identity);
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
         return $upserts;
-    }
-
-    /** Import missing release details without replacing installation history. */
-    private function importReleaseHistory(string $version, array $payload): AppVersion
-    {
-        $record = AppVersion::query()->firstOrCreate(['version' => $version], $payload);
-        if (!$record->wasRecentlyCreated) {
-            foreach ($payload as $field => $value) {
-                if ($field === 'is_current' || $value === null || $value === '' || $value === []) {
-                    continue;
-                }
-                $stored = $record->getAttribute($field);
-                $missing = $stored === null || $stored === ''
-                    || ($field === 'metadata' && $stored === [])
-                    || ($field === 'release_notes_format' && $stored === 'none');
-                if ($missing) {
-                    $record->setAttribute($field, $value);
-                }
-            }
-            if ($record->isDirty()) {
-                $record->save();
-            }
-        }
-
-        return $record;
     }
 
     private function artifactVersions(): Collection
@@ -523,8 +482,8 @@ class AppVersionService
 
             [$major, $minor, $patch] = $this->splitVersion($version);
 
-            $record = $this->importReleaseHistory(
-                $version,
+            $record = AppVersion::query()->updateOrCreate(
+                ['version' => $version],
                 [
                     'version_major' => $major,
                     'version_minor' => $minor,
@@ -554,11 +513,7 @@ class AppVersionService
             $upserts += $record->wasRecentlyCreated ? 1 : 0;
         }
 
-        $identity = $this->installedReleaseIdentity();
-        if ($identity !== null) {
-            $record = $this->reconcileInstalledRelease($identity);
-            $upserts += $record->wasRecentlyCreated ? 1 : 0;
-        } elseif ($currentVersion !== '') {
+        if ($currentVersion !== '') {
             AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
             AppVersion::query()->where('version', $currentVersion)->update(['is_current' => true]);
         }
