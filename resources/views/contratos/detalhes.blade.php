@@ -7,7 +7,7 @@
             <h4 class="text-primary font-weight-bold m-0">
                 <i class="fa fa-chart-line"></i> DRE e Histórico - Contrato Nº {{ $contratoEng->numero_contrato ?? $contratoEng->id }}
             </h4>
-            <a href="/contratos" class="btn btn-secondary btn-sm">
+            <a href="{{ route('contratos.index', [], false) }}" class="btn btn-secondary btn-sm">
                 <i class="fa fa-arrow-left"></i> Voltar
             </a>
         </div>

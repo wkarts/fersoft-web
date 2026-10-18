@@ -148,7 +148,7 @@ class ContratoEngenhariaController extends BaseController
             'title' => $title,
             'actionSave' => "{$this->redirectPage}/save",
             'actionUpdate' => "{$this->redirectPage}/update",
-            'actionCancel' => $this->redirectPage,
+            'actionCancel' => route('contratos.index', [], false),
         ]);
     }
 
@@ -222,7 +222,7 @@ class ContratoEngenhariaController extends BaseController
 
             DB::commit();
 
-            return redirect('/contratos')->with('mensagem_sucesso', 'Contrato e itens salvos com sucesso!');
+            return redirect()->route('contratos.index')->with('mensagem_sucesso', 'Contrato e itens salvos com sucesso!');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Erro ao salvar contrato de engenharia.', [
@@ -265,10 +265,10 @@ class ContratoEngenhariaController extends BaseController
             $contrato->delete();
 
             DB::commit();
-            return redirect('/contratos')->with('mensagem_sucesso', 'Contrato excluído com sucesso!');
+            return redirect()->route('contratos.index')->with('mensagem_sucesso', 'Contrato excluído com sucesso!');
         } catch (\Throwable $e) {
             DB::rollBack();
-            return redirect('/contratos')->with('mensagem_erro', $e->getMessage());
+            return redirect()->route('contratos.index')->with('mensagem_erro', $e->getMessage());
         }
     }
 

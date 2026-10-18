@@ -854,7 +854,7 @@
 
                                                 @if(!isset($i['rota_ativa']) && $i['rota'] != '')
                                                     <li class="menu-item menu-item-submenu @if($uri == $i['rota']) menu-item-active @endif" aria-haspopup="true" data-menu-toggle="hover">
-                                                        <a @isset($i['target']) target="_blank" @endisset href="{{$i['rota']}}" class="menu-link menu-">
+                                                        <a @isset($i['target']) target="_blank" @endisset href="{{$i['url'] ?? $i['rota']}}" class="menu-link menu-">
                                                             <i class="menu-bullet menu-bullet-line">
 													<span>
 

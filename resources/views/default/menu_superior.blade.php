@@ -333,7 +333,7 @@
 
                                                     @if(!isset($i['rota_ativa']) && $i['rota'] != '')
                                                         <li class="menu-item @if($uri == $i['rota']) menu-item-active @endif" aria-haspopup="true">
-                                                            <a @isset($i['target']) target="_blank" @endisset href="{{$i['rota']}}" class="menu-link">
+                                                            <a @isset($i['target']) target="_blank" @endisset href="{{$i['url'] ?? $i['rota']}}" class="menu-link">
                                                                 <span class="menu-text">{{$i['nome']}}</span>
                                                             </a>
                                                         </li>

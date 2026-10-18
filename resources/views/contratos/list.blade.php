@@ -4,7 +4,7 @@
     <div class="card-body">
         <h4 class="mb-4 text-primary font-weight-bold"><i class="fa fa-file-contract"></i> {{ $title ?? 'Lista de Contratos' }}</h4>
         
-        <form method="GET" action="/contratos" class="bg-light p-3 rounded mb-4 border">
+        <form method="GET" action="{{ route('contratos.index', [], false) }}" class="bg-light p-3 rounded mb-4 border">
             <div class="row align-items-end">
                 <div class="form-group col-md-3 mb-2">
                     <label class="small font-weight-bold text-muted">CLIENTE</label>
@@ -42,7 +42,7 @@
 
                 <div class="form-group col-md-4 mb-2 d-flex">
                     <button type="submit" class="btn btn-primary btn-sm mr-2 px-3"><i class="fa fa-search"></i> Filtrar</button>
-                    <a href="/contratos" class="btn btn-secondary btn-sm px-3"><i class="fa fa-eraser"></i> Limpar</a>
+                    <a href="{{ route('contratos.index', [], false) }}" class="btn btn-secondary btn-sm px-3"><i class="fa fa-eraser"></i> Limpar</a>
                 </div>
             </div>
         </form>
