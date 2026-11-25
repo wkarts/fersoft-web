@@ -144,7 +144,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          COMPOSER_GITHUB_TOKEN: ${{ secrets.REPOSITORY_PERSONAL_TOKEN }}
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
           COMPOSER_PROCESS_TIMEOUT: 0
           COMPOSER_NO_INTERACTION: 1
           COMPOSER_NO_AUDIT: 1
