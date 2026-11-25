@@ -1,6 +1,10 @@
 name: Deploy Release Notes
 
 on:
+  workflow_run:
+    workflows: ['Release - Automático e Manual']
+    branches: [main]
+    types: [completed]
   release:
     types: [published]
   workflow_call:
@@ -26,48 +30,107 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: deploy-release-notes
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    # As pré-releases do tema visual nunca podem acionar o deploy estável.
-    if: github.event_name != 'release' || github.event.release.prerelease == false
+  plan:
+    if: >-
+      (github.event_name != 'release' || !github.event.release.prerelease) &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.target.outputs.enabled }}
+      version: ${{ steps.version.outputs.version }}
+      ref: ${{ steps.version.outputs.ref }}
     steps:
-      - name: Resolver versão
+      - name: Resolver a release desta execução
         id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          TAG: ${{ github.event.release.tag_name || inputs.version }}
+          INPUT_REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "release" ]; then
-            raw="${{ github.event.release.tag_name }}"
-          else
-            raw="${{ inputs.version }}"
+          if [[ "$EVENT" == workflow_run ]]; then
+            # O nome do artefato identifica a versão inclusive em reexecuções antigas.
+            artifact_names=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[].name')
+            mapfile -t artifacts < <(printf '%s\n' "$artifact_names" | grep '^app-release-' || true)
+            if (( ${#artifacts[@]} != 1 )); then
+              echo "::error::Esperado um artefato de release no run $RUN_ID."
+              exit 1
+            fi
+            TAG=${artifacts[0]#app-release-}
+            [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || exit 1
+            metadata=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG")
+            if jq -e '.prerelease or .draft' <<< "$metadata" >/dev/null; then
+              echo "Pré-release ou rascunho: deploy estável dispensado." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            commit=$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq '.sha')
+            if [[ "$commit" != "$EXPECTED_SHA" ]]; then
+              echo "::error::A tag publicada não aponta para o commit validado."
+              exit 1
+            fi
+            INPUT_REF=$commit
           fi
-
-          version="${raw#v}"
-          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Versão inválida: $raw"
-            exit 1
-          fi
-
-          ref="${{ inputs.ref }}"
-          if [ -z "$ref" ]; then
-            ref="$raw"
-          fi
-
+          version=${TAG#v}
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Versão estável inválida."; exit 1; }
+          ref=${INPUT_REF:-$TAG}
+          git check-ref-format --allow-onelevel "$ref" && [[ "$ref" != -* ]] || exit 1
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
 
+      - name: Conferir destino SSH
+        id: target
+        if: steps.version.outputs.version != ''
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          HAS_HOST: ${{ secrets.DEPLOY_HOST != '' }}
+          HAS_USER: ${{ secrets.DEPLOY_USER != '' }}
+          HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' }}
+          HAS_DIR: ${{ secrets.DEPLOY_APP_DIR != '' }}
+          HAS_PORT: ${{ secrets.DEPLOY_PORT != '' }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT" != workflow_dispatch && "$HAS_HOST$HAS_USER$HAS_KEY$HAS_DIR$HAS_PORT" == falsefalsefalsefalsefalse ]]; then
+            echo "Destino SSH não configurado. Release disponível no GitHub." >> "$GITHUB_STEP_SUMMARY"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing=()
+          [[ "$HAS_HOST" == true ]] || missing+=(DEPLOY_HOST)
+          [[ "$HAS_USER" == true ]] || missing+=(DEPLOY_USER)
+          [[ "$HAS_KEY" == true ]] || missing+=(DEPLOY_SSH_KEY)
+          [[ "$HAS_DIR" == true ]] || missing+=(DEPLOY_APP_DIR)
+          if (( ${#missing[@]} )); then
+            echo "::error::Destino SSH incompleto. Configurar: ${missing[*]}"
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: plan
+    if: needs.plan.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    steps:
       - name: Preparar notas da release para o registro local
         id: notes
         shell: bash
         env:
           RELEASE_BODY: ${{ github.event.release.body || '' }}
-          MANUAL_VERSION: ${{ inputs.version || '' }}
+          MANUAL_VERSION: ${{ needs.plan.outputs.version }}
         run: |
           set -euo pipefail
           body="${RELEASE_BODY:-Release ${MANUAL_VERSION:-manual} aplicada pelo fluxo de release.}"
@@ -78,6 +141,9 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           RELEASE_NOTES_B64: ${{ steps.notes.outputs.notes_b64 }}
+          APP_DIR: ${{ secrets.DEPLOY_APP_DIR }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          REF: ${{ needs.plan.outputs.ref }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -85,12 +151,9 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script_stop: true
           command_timeout: 30m
-          envs: RELEASE_NOTES_B64
+          envs: RELEASE_NOTES_B64,APP_DIR,VERSION,REF
           script: |
             set -euo pipefail
-            APP_DIR="${{ secrets.DEPLOY_APP_DIR }}"
-            VERSION="${{ steps.version.outputs.version }}"
-            REF="${{ steps.version.outputs.ref }}"
 
             cd "$APP_DIR"
 
@@ -98,7 +161,7 @@ jobs:
               flock -n 9 || { echo "Deploy em execução. Abortando."; exit 1; }
 
               git fetch --all --tags --prune
-              git checkout "$REF"
+              git checkout --detach "$(git rev-parse --verify --end-of-options "$REF^{commit}")"
 
               composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
@@ -136,7 +199,7 @@ jobs:
                 --title="Release $VERSION" \
                 --release-channel=stable \
                 --build-number="${{ github.run_id }}" \
-                --commit-hash="${{ github.sha }}" \
+                --commit-hash="$(git rev-parse HEAD)" \
                 --author="Wallace Kleiton <wkarts@gmail.com>"
 
               php -r '$v=json_decode(file_get_contents("composer.json"), true)["version"] ?? ""; if($v !== getenv("RELEASE_VERSION")){fwrite(STDERR, "composer.json fora de sincronia\n"); exit(1);} echo "composer.json sincronizado: {$v}\n";'
