@@ -36,7 +36,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browser:
-    runs-on: ubuntu-latest
+    # A distribuição de Chromium do Playwright 1.51 suporta Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       APP_ENV: testing
