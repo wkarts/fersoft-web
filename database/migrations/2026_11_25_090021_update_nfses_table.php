@@ -19,7 +19,7 @@ return new class extends Migration
 
         $this->applyColumnDefinition('nfses', 'serie', 'varchar(5) NOT NULL');
 
-        $this->applyColumnDefinition('nfses', 'codigo_verificacao', 'varchar(60) NOT NULL DEFAULT \'\'');
+        $this->applyColumnDefinition('nfses', 'codigo_verificacao', 'varchar(60) NULL DEFAULT \'\'');
 
         $this->ensureColumn('nfses', 'motivo_rejeicao', function (Blueprint $table) {
             $table->text('motivo_rejeicao')->nullable();
@@ -68,10 +68,10 @@ return new class extends Migration
                 ],
             ],
             'codigo_verificacao' => [
-                'sql' => 'varchar(60) NOT NULL DEFAULT \'\'',
+                'sql' => 'varchar(60) NULL DEFAULT \'\'',
                 'expected' => [
                     'COLUMN_TYPE' => 'varchar(60)',
-                    'IS_NULLABLE' => 'NO',
+                    'IS_NULLABLE' => 'YES',
                     'COLUMN_DEFAULT' => '',
                     'EXTRA' => '',
                     'CHARACTER_SET_NAME' => 'utf8mb4',
@@ -97,7 +97,8 @@ return new class extends Migration
             'SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, '
             . 'CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_COMMENT FROM information_schema.COLUMNS '
             . 'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
-            [DB::getDatabaseName(), $tableName]
+            [DB::getDatabaseName(), $tableName],
+            false
         );
         $columns = [];
         foreach ($rows as $row) {
@@ -124,13 +125,32 @@ return new class extends Migration
             if ($this->columnMatches($current, $definition['expected'])) {
                 continue;
             }
-            if ($definition['previous'] === null
-                || !$this->columnMatches($current, $definition['previous'])) {
-                throw new \RuntimeException($tableName . ".{$name}: definição diferente das duas bases comparadas. Nenhuma substituição automática.");
+            $matchesPrevious = $definition['previous'] !== null
+                && $this->columnMatches($current, $definition['previous']);
+
+            // Compatibilidade pontual: código de verificação permite NULL.
+            // Aceita VARCHAR até 60, sem reduzir capacidade nem trocar charset/collation.
+            if (!$matchesPrevious && $name === 'codigo_verificacao'
+                && preg_match('/^varchar\((\d+)\)$/', $this->normalizeType((string) $current->COLUMN_TYPE), $length)
+                && (int) $length[1] >= 1 && (int) $length[1] <= 60
+                && in_array($current->IS_NULLABLE, ['YES', 'NO'], true)
+                && in_array($current->COLUMN_DEFAULT, [null, ''], true)
+                && trim((string) $current->EXTRA) === '') {
+                $compatible = $definition['expected'];
+                $compatible['COLUMN_TYPE'] = $current->COLUMN_TYPE;
+                $compatible['IS_NULLABLE'] = $current->IS_NULLABLE;
+                $compatible['COLUMN_DEFAULT'] = $current->COLUMN_DEFAULT;
+                $matchesPrevious = $this->columnMatches($current, $compatible);
+            }
+
+            if (!$matchesPrevious) {
+                throw new \RuntimeException($tableName . ".{$name}: definição incompatível com a alteração prevista. Atual: "
+                    . json_encode($current, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    . '. Nenhuma substituição automática.');
             }
 
             // Alterações sensíveis exigem valores compatíveis com o tipo/collation da origem.
-            if (isset($definition['guard']) && DB::selectOne($definition['guard']) !== null) {
+            if (isset($definition['guard']) && DB::selectOne($definition['guard'], [], false) !== null) {
                 throw new \RuntimeException($tableName . ".{$name}: há valores incompatíveis com o tipo da origem; nenhum registro foi corrigido ou excluído.");
             }
             $requiresStrictMode = $requiresStrictMode || isset($definition['guard']);
