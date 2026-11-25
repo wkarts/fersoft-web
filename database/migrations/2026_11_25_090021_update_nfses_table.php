@@ -122,6 +122,11 @@ return new class extends Migration
                 $alterations[] = "ADD COLUMN `{$name}` " . $definition['sql'];
                 continue;
             }
+            // Preserva NULLs existentes ao ampliar ou atualizar a definição da coluna.
+            if ($current->IS_NULLABLE === 'YES' && $definition['expected']['IS_NULLABLE'] === 'NO') {
+                $definition['expected']['IS_NULLABLE'] = 'YES';
+                $definition['sql'] = preg_replace('/\bNOT NULL\b/i', 'NULL', $definition['sql']);
+            }
             if ($this->columnMatches($current, $definition['expected'])) {
                 continue;
             }
@@ -141,6 +146,24 @@ return new class extends Migration
                 $compatible['IS_NULLABLE'] = $current->IS_NULLABLE;
                 $compatible['COLUMN_DEFAULT'] = $current->COLUMN_DEFAULT;
                 $matchesPrevious = $this->columnMatches($current, $compatible);
+            }
+
+
+            // Diferenças apenas de nulabilidade não impedem uma alteração compatível.
+            if (!$matchesPrevious && in_array($current->IS_NULLABLE, ['YES', 'NO'], true)) {
+                foreach ([$definition['previous'], $definition['expected']] as $candidate) {
+                    if ($candidate === null) {
+                        continue;
+                    }
+                    $candidate['IS_NULLABLE'] = $current->IS_NULLABLE;
+                    if ($current->IS_NULLABLE === 'YES' && $current->COLUMN_DEFAULT === null) {
+                        $candidate['COLUMN_DEFAULT'] = null;
+                    }
+                    if ($this->columnMatches($current, $candidate)) {
+                        $matchesPrevious = true;
+                        break;
+                    }
+                }
             }
 
             if (!$matchesPrevious) {
