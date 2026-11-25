@@ -190,9 +190,20 @@ return new class extends Migration
             if ($this->columnMatches($current, $definition['expected'])) {
                 continue;
             }
-            if ($definition['previous'] === null
-                || !$this->columnMatches($current, $definition['previous'])) {
-                throw new \RuntimeException($tableName . ".{$name}: definição diferente das duas bases comparadas. Nenhuma substituição automática.");
+            $matchesPrevious = $definition['previous'] !== null
+                && $this->columnMatches($current, $definition['previous']);
+
+            // Variante legada confirmada na homologação: IPI/PIS/COFINS VARCHAR(2).
+            // Aceita somente essa diferença de tamanho; os demais atributos são conferidos.
+            if (!$matchesPrevious && $definition['previous'] !== null
+                && in_array($name, ['cst_ipi', 'cst_pis', 'cst_cofins'], true)) {
+                $legacyDefinition = $definition['previous'];
+                $legacyDefinition['COLUMN_TYPE'] = 'varchar(2)';
+                $matchesPrevious = $this->columnMatches($current, $legacyDefinition);
+            }
+
+            if (!$matchesPrevious) {
+                throw new \RuntimeException($tableName . ".{$name}: definição incompatível com as variantes conhecidas. Nenhuma substituição automática.");
             }
 
             // Alterações sensíveis exigem valores compatíveis com o tipo/collation da origem.
