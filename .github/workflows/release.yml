@@ -95,9 +95,11 @@ jobs:
 
       - name: Validar Composer e dependências
         if: hashFiles('composer.json') != ''
+        env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
         run: |
           composer validate --no-check-publish --strict
-          composer install --prefer-dist --no-interaction --no-progress --no-scripts
+          bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress --no-scripts
 
       - name: Preparar ambiente Laravel para CI
         if: hashFiles('composer.json') != ''
@@ -339,6 +341,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare-release.outputs.version }}
+          target_commitish: ${{ github.sha }}
           name: Release ${{ needs.prepare-release.outputs.version }}
           generate_release_notes: true
           append_body: true
@@ -357,18 +360,9 @@ jobs:
             echo "- URL da release: ${{ steps.create_release.outputs.url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  apply-release:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.prerelease != true }}
-    needs: [prepare-release, create-release]
-    uses: ./.github/workflows/deploy-release-notes.yml
-    with:
-      version: ${{ needs.prepare-release.outputs.version }}
-      ref: ${{ needs.prepare-release.outputs.version }}
-    secrets: inherit
-
   notify-success:
-    if: ${{ always() && needs.create-release.result == 'success' && (needs.apply-release.result == 'success' || needs.apply-release.result == 'skipped') }}
-    needs: [prepare-release, create-release, apply-release]
+    if: ${{ always() && needs.create-release.result == 'success' }}
+    needs: [prepare-release, create-release]
     uses: ./.github/workflows/notify.yml
     with:
       status: success
@@ -380,14 +374,14 @@ jobs:
     secrets: inherit
 
   notify-failure:
-    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure' || needs.apply-release.result == 'failure') }}
-    needs: [full-validation, prepare-release, create-release, apply-release]
+    if: ${{ always() && (needs.full-validation.result == 'failure' || needs.prepare-release.result == 'failure' || needs.create-release.result == 'failure') }}
+    needs: [full-validation, prepare-release, create-release]
     uses: ./.github/workflows/notify.yml
     with:
       status: failure
       version: ${{ needs.prepare-release.outputs.version }}
       release_url: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       commit_sha: ${{ github.sha }}
-      summary: "Falha no pipeline de release ou aplicação. Verificar logs do run ${{ github.run_id }}."
+      summary: "Falha no pipeline de publicação da release. Verificar logs do run ${{ github.run_id }}."
       notify_required: false
     secrets: inherit
