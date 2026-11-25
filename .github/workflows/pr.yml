@@ -82,7 +82,9 @@ jobs:
         run: composer validate --no-check-publish --strict
 
       - name: Composer install
-        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+        env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.REPOSITORY_PERSONAL_TOKEN }}
+        run: bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress --no-scripts
 
       - name: Preparar ambiente Laravel para CI
         shell: bash
@@ -233,8 +235,7 @@ jobs:
         env:
           COMPOSER_NO_INTERACTION: '1'
         run: |
-          composer install --prefer-dist --no-interaction --no-progress --no-scripts
-          composer audit
+          composer audit --locked
 
       - name: Security Audit NPM (warning-only)
         if: matrix.target == 'npm' && needs.setup.outputs.has_package == 'true'
