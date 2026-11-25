@@ -92,10 +92,14 @@ class DiasDavilaTools implements NfseEmissorInterface
         $vDeducoes = $inf['valores']['trib']['vDed'] ?? 0;
         if ((float)$vDeducoes > 0) $valores->addChild('ValorDeducoes', $vDeducoes);
 
-        $vPis = $inf['valores']['trib']['tribFed']['piscofins']['vPIS'] ?? 0;
+        $vPis = $inf['valores']['trib']['tribFed']['piscofins']['vPis']
+            ?? $inf['valores']['trib']['tribFed']['piscofins']['vPIS']
+            ?? 0;
         if ((float)$vPis > 0) $valores->addChild('ValorPis', $vPis);
 
-        $vCofins = $inf['valores']['trib']['tribFed']['piscofins']['vCOFINS'] ?? 0;
+        $vCofins = $inf['valores']['trib']['tribFed']['piscofins']['vCofins']
+            ?? $inf['valores']['trib']['tribFed']['piscofins']['vCOFINS']
+            ?? 0;
         if ((float)$vCofins > 0) $valores->addChild('ValorCofins', $vCofins);
 
         $vInss = $inf['valores']['trib']['tribFed']['vRetCP'] ?? 0;
@@ -119,18 +123,21 @@ class DiasDavilaTools implements NfseEmissorInterface
 
         // ----------------------------------------------------
 
-        // Restaura a variável que tinha sido apagada
+        // No padrão ABRASF (Dias d'Ávila): 1 = ISS Retido, 2 = ISS Não Retido
+        // No padrão DPS Nacional (NfseController): tpRetISSQN 2 = Retido, 1 = Não Retido
+        $tpRetIss = (int) ($inf['valores']['trib']['tribMun']['tpRetISSQN'] ?? 1);
+        $issRetido = ($tpRetIss === 2) ? '1' : '2';
+
         $servico->addChild('IssRetido', $issRetido);
-        $servico->addChild('ResponsavelRetencao', '1');
+        if ($issRetido === '1') {
+            $servico->addChild('ResponsavelRetencao', '1');
+        }
 
         $itemLista = preg_replace('/[^0-9.]/', '', $serv['cServ']['cTribNac'] ?? '140501');
         $servico->addChild('ItemListaServico', $itemLista);
 
         $exigibilidade = $inf['valores']['trib']['tribMun']['tribISSQN'] ?? '1';
-        $servico->addChild('ExigibilidadeISS', $exigibilidade);
 
-        // >>> SOLUÇÃO DO IMPASSE: Se for Não Incidência (2), NÃO envia a tag NBS! <<<
-        // Assim a prefeitura não dá Erro 42 e o Nacional não dá E1000.
         if ($exigibilidade != '2') {
             $codigoNbs = preg_replace('/\D/', '', $serv['cServ']['cNBS'] ?? '');
             if (!empty($codigoNbs)) {
@@ -138,29 +145,15 @@ class DiasDavilaTools implements NfseEmissorInterface
             }
         }
 
-        $cidadePrestacao = preg_replace('/\D/', '', $serv['locPrest']['cLocPrest'] ?? $inf['cLocEmi']);
+        $servico->addChild('Discriminacao', htmlspecialchars($serv['cServ']['xDescServ'] ?? 'PRESTAÇÃO DE SERVIÇO', ENT_QUOTES, 'UTF-8'));
+
+        $cidadePrestacao = preg_replace('/\D/', '', $serv['locPrest']['cLocPrest'] ?? $inf['cLocEmi'] ?? '2910057');
         if (empty($cidadePrestacao) || strlen($cidadePrestacao) != 7) {
             $cidadePrestacao = '2910057';
         }
 
         $servico->addChild('CodigoMunicipio', $cidadePrestacao);
-        $servico->addChild('MunicipioIncidencia', $cidadePrestacao);
-
-        $servico->addChild('Discriminacao', htmlspecialchars($serv['cServ']['xDescServ'] ?? 'PRESTAÇÃO DE SERVIÇO', ENT_QUOTES, 'UTF-8'));
-
-
-        // BLINTAGEM MUNICÍPIO DE INCIDÊNCIA (Evita o erro E1521 forçando o emitente ou o valor correto)
-        $cidadePrestacao = preg_replace('/\D/', '', $serv['locPrest']['cLocPrest'] ?? $inf['cLocEmi']);
-        if (empty($cidadePrestacao) || strlen($cidadePrestacao) != 7) {
-            $cidadePrestacao = '2910057'; // Padrão Dias d'Ávila
-        }
-
-        $servico->addChild('CodigoMunicipio', $cidadePrestacao);
-
-        // Puxa a exigibilidade correta informada no Controller (1=Exigível, 2=Não Incidência, 3=Isenção...)
-        $exigibilidade = $inf['valores']['trib']['tribMun']['tribISSQN'] ?? '1';
         $servico->addChild('ExigibilidadeISS', $exigibilidade);
-
         $servico->addChild('MunicipioIncidencia', $cidadePrestacao);
 
         $prestador = $infDeclaracao->addChild('Prestador');
@@ -202,7 +195,7 @@ class DiasDavilaTools implements NfseEmissorInterface
         $infDeclaracao->addChild('IncentivoFiscal', '2');
 
         // ----------------------------------------------------
-        // BLOCO IBS / CBS (Cálculo Dinâmico com Dedução do ISS Real)
+        // BLOCO IBS / CBS (Base Limpa: Valor Serviço - Deduções - Desc. Incond. - ISS - PIS - COFINS)
         // ----------------------------------------------------
         $ibsCbs = $infDeclaracao->addChild('IbsCbs');
         $ibsCbs->addChild('MunicipioIncidencia', $cidadePrestacao);
@@ -215,32 +208,46 @@ class DiasDavilaTools implements NfseEmissorInterface
 
         $ibsCbs->addChild('IndicadorDestino', '0');
 
-        // CALCULA A BASE DE CÁLCULO DEDUZINDO O ISS EXATO DA NOTA
-        $vServFloat = (float) $vServ;
-        $pAliqIss = (float) ($inf['valores']['trib']['tribMun']['pAliq'] ?? 0);
-        $vIssReal = round($vServFloat * ($pAliqIss / 100), 2);
+        // Usa a Base de Cálculo já abatida pelo Controller (Valor Serviço - Deduções - Desc. Incond. - ISS - PIS - COFINS)
+        if (isset($inf['ibscbs']['baseCalculo'])) {
+            $baseCalcFloat = (float) $inf['ibscbs']['baseCalculo'];
+        } else {
+            $vServFloat = (float) $vServ;
+            $pAliqIss = (float) ($inf['valores']['trib']['tribMun']['pAliq'] ?? 0);
+            $vIssReal = round($vServFloat * ($pAliqIss / 100), 2);
+            $baseCalcFloat = max(0, round($vServFloat - (float)$vDeducoes - (float)$vDescIncond - $vIssReal - (float)$vPis - (float)$vCofins, 2));
+        }
 
-        // Base Limpa = Valor Serviço - ISS
-        $baseCalcIbs = number_format($vServFloat - $vIssReal, 2, '.', '');
-        $ibsCbs->addChild('BaseCalculo', $baseCalcIbs);
+        $ibsCbs->addChild('BaseCalculo', number_format($baseCalcFloat, 2, '.', ''));
 
-        // Calcula os percentuais do IBS e CBS sobre a Base Limpa
-        $valIbsEstadual = round(($vServFloat - $vIssReal) * 0.001, 2); // 0.10%
-        $valCbs = round(($vServFloat - $vIssReal) * 0.009, 2); // 0.90%
+        $percIbsMun = (float) ($inf['ibscbs']['percIbsMun'] ?? 0.00);
+        $valIbsMun  = isset($inf['ibscbs']['valIbsMun'])
+            ? (float) $inf['ibscbs']['valIbsMun']
+            : round($baseCalcFloat * ($percIbsMun / 100), 2);
+
+        $percIbsEst = (float) ($inf['ibscbs']['percIbsEst'] ?? 0.10);
+        $valIbsEst  = isset($inf['ibscbs']['valIbsEst'])
+            ? (float) $inf['ibscbs']['valIbsEst']
+            : round($baseCalcFloat * ($percIbsEst / 100), 2);
+
+        $percCbs = (float) ($inf['ibscbs']['percCbs'] ?? 0.90);
+        $valCbs  = isset($inf['ibscbs']['valCbs'])
+            ? (float) $inf['ibscbs']['valCbs']
+            : round($baseCalcFloat * ($percCbs / 100), 2);
 
         $ibsMun = $ibsCbs->addChild('IbsMunicipal');
-        $ibsMun->addChild('Percentual', '0.00');
-        $ibsMun->addChild('PercAliqEfet', '0.00');
-        $ibsMun->addChild('Valor', '0.00');
+        $ibsMun->addChild('Percentual', number_format($percIbsMun, 2, '.', ''));
+        $ibsMun->addChild('PercAliqEfet', number_format($percIbsMun, 2, '.', ''));
+        $ibsMun->addChild('Valor', number_format($valIbsMun, 2, '.', ''));
 
         $ibsEst = $ibsCbs->addChild('IbsEstadual');
-        $ibsEst->addChild('Percentual', '0.10');
-        $ibsEst->addChild('PercAliqEfet', '0.10');
-        $ibsEst->addChild('Valor', number_format($valIbsEstadual, 2, '.', ''));
+        $ibsEst->addChild('Percentual', number_format($percIbsEst, 2, '.', ''));
+        $ibsEst->addChild('PercAliqEfet', number_format($percIbsEst, 2, '.', ''));
+        $ibsEst->addChild('Valor', number_format($valIbsEst, 2, '.', ''));
 
         $cbsNode = $ibsCbs->addChild('Cbs');
-        $cbsNode->addChild('Percentual', '0.90');
-        $cbsNode->addChild('PercAliqEfet', '0.90');
+        $cbsNode->addChild('Percentual', number_format($percCbs, 2, '.', ''));
+        $cbsNode->addChild('PercAliqEfet', number_format($percCbs, 2, '.', ''));
         $cbsNode->addChild('Valor', number_format($valCbs, 2, '.', ''));
         // ----------------------------------------------------
 
