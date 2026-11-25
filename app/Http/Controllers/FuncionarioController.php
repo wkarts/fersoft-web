@@ -160,6 +160,7 @@ class FuncionarioController extends Controller
         $request->merge([
             'pin_ponto' => $request->pin_ponto ?? null,
             'permissao_nfe_whatsapp' => $request->has('permissao_nfe_whatsapp') ? 1 : 0,
+            'permissao_mtr_whatsapp' => $request->has('permissao_mtr_whatsapp') ? 1 : 0, // 👈 ADICIONE ESTA LINHA
         ]);
 
         $result = $funcionario->create($request->all());
@@ -308,6 +309,7 @@ class FuncionarioController extends Controller
         $resp->pin_ponto = $request->input('pin_ponto');
 
         $resp->permissao_nfe_whatsapp = $request->has('permissao_nfe_whatsapp') ? 1 : 0;
+        $resp->permissao_mtr_whatsapp = $request->has('permissao_mtr_whatsapp') ? 1 : 0; // 👈 ADICIONE ESTA LINHA
 
         $result = $resp->save();
         if($result){

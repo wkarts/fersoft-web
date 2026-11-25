@@ -5,8 +5,8 @@ namespace App\Models;
 
 class Tributacao extends BaseModel
 {
-	protected $fillable = [
-		'icms',
+    protected $fillable = [
+        'icms',
         'pis',
         'cofins',
         'regime',
@@ -14,7 +14,7 @@ class Tributacao extends BaseModel
         'ncm_padrao',
         'empresa_id',
         'link_nfse',
-		'perc_ap_cred',
+        'perc_ap_cred',
         'exclusao_icms_pis_cofins',
         'aliq_cbs',
         'aliq_ibs_uf',
@@ -23,13 +23,17 @@ class Tributacao extends BaseModel
         'class_trib_ibs_cbs',
         'perc_red_ibs',
         'perc_red_cbs',
+        'csll',
+        'ir',
+        'cofins',
+        'pis',
     ];
 
-	public static function regimes(){
-		return [
-			0 => 'Simples',
-			1 => 'Normal',
-			2 => 'MEI',
-		];
-	}
+    public static function regimes(){
+        return [
+            0 => 'Simples',
+            1 => 'Normal',
+            2 => 'MEI',
+        ];
+    }
 }

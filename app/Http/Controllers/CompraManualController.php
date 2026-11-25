@@ -71,9 +71,9 @@ class CompraManualController extends Controller
         if($countProdutos > env("ASSINCRONO_PRODUTOS")){ return $this->compraAssincrona(); }
         else{
             $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
-                          ->where('ativo', 1)
-                          ->orderBy('razao_social')
-                          ->get();
+                ->where('ativo', 1)
+                ->orderBy('razao_social')
+                ->get();
             if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
             $produtos = Produto::where('empresa_id', $this->empresa_id)->orderBy('nome')->get();
             foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
@@ -100,9 +100,9 @@ class CompraManualController extends Controller
 
     protected function compraAssincrona(){
         $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
-                          ->where('ativo', 1)
-                          ->orderBy('razao_social')
-                          ->get();
+            ->where('ativo', 1)
+            ->orderBy('razao_social')
+            ->get();
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         if(sizeof($fornecedores) == 0){ session()->flash("mensagem_erro", "Cadastre um fornecedor!"); return redirect('/fornecedores'); }
         $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
@@ -116,8 +116,8 @@ class CompraManualController extends Controller
         $listaCST_IPI = Produto::listaCST_IPI();
         $natureza = Produto::firstNatureza($this->empresa_id);
         $categoriasDeConta = CategoriaConta::where('empresa_id', $this->empresa_id)->where('tipo', 'pagar')->orderBy('nome', 'asc')->get();
-		$contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', 1)->get();
-      
+        $contasEmpresa = \App\Models\ContaEmpresa::where('empresa_id', $this->empresa_id)->where('status', 1)->get();
+
         return view('compraManual/register_assincrono')
             ->with('compraManualAssincrono', true)->with('veiculos', $veiculos)->with('fornecedores', $fornecedores)
             ->with('transportadoras', $transportadoras)->with('config', $config)->with('categoriasDeConta', $categoriasDeConta)
@@ -125,7 +125,7 @@ class CompraManualController extends Controller
             ->with('listaCSTCSOSN', $listaCSTCSOSN)->with('unidadesDeMedida', $unidadesDeMedida)
             ->with('listaCST_PIS_COFINS', $listaCST_PIS_COFINS)->with('listaCST_IPI', $listaCST_IPI)
             ->with('natureza', $natureza)->with('title', 'Compra Manual')
-      		->with('contasEmpresa', $contasEmpresa);
+            ->with('contasEmpresa', $contasEmpresa);
     }
 
     public function salvar(Request $request)
@@ -134,15 +134,15 @@ class CompraManualController extends Controller
             $result = DB::transaction(function () use ($request) {
                 $compra = $request->compra;
 
-                  if (($compra['formaPagamento'] ?? '') == 'a_vista') {
-                      if (isset($compra['data_retroativa']) && trim($compra['data_retroativa']) !== '' && $compra['data_retroativa'] != -1) {
-                          $dataEmissao = $this->parseDate($compra['data_retroativa']);
-                      } else {
-                          $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
-                      }
-                  } else {
-                      $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
-                  }
+                if (($compra['formaPagamento'] ?? '') == 'a_vista') {
+                    if (isset($compra['data_retroativa']) && trim($compra['data_retroativa']) !== '' && $compra['data_retroativa'] != -1) {
+                        $dataEmissao = $this->parseDate($compra['data_retroativa']);
+                    } else {
+                        $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
+                    }
+                } else {
+                    $dataEmissao = isset($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d H:i:s');
+                }
                 $qtdVol = isset($compra['qtdVol']) ? str_replace(",", ".", $compra['qtdVol']) : 0;
                 $pesoLiquido = isset($compra['pesoL']) ? str_replace(",", ".", $compra['pesoL']) : 0;
                 $pesoBruto = isset($compra['pesoB']) ? str_replace(",", ".", $compra['pesoB']) : 0;
@@ -163,12 +163,19 @@ class CompraManualController extends Controller
 
                 $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
 
+                $veiculoIdFinal = null;
+                if (!empty($compra['veiculos_ids']) && is_array($compra['veiculos_ids'])) {
+                    $veiculoIdFinal = $compra['veiculos_ids'][0];
+                } elseif (!empty($compra['veiculo_id'])) {
+                    $veiculoIdFinal = $compra['veiculo_id'];
+                }
+
                 $result = Compra::create([
                     'fornecedor_id'      => $compra['fornecedor'],
                     'nf'                 => $nf,
                     'numero_emissao'     => $compra['numero_emissao'] ?? '0',
                     'data_emissao'       => $dataEmissao,
-                    'veiculo_id'         => (!empty($compra['veiculo_id']) && $compra['veiculo_id'] > 0) ? $compra['veiculo_id'] : null,
+                    'veiculo_id'         => $veiculoIdFinal,
                     'usuario_id'         => $this->usuario_id,
                     'observacao'         => $compra['observacao'] ?? '',
                     'lote'               => $compra['lote'] ?? '',
@@ -222,7 +229,7 @@ class CompraManualController extends Controller
                 $res->data_retroativa = (isset($compra['data_retroativa']) && $compra['data_retroativa'] != -1) ? $this->parseDate($compra['data_retroativa']) : null;
                 $res->data_saida = (isset($compra['data_saida']) && $compra['data_saida'] != -1) ? $this->parseDate($compra['data_saida']) : null;
                 $res->save();
-              	// ==========================================
+                // ==========================================
                 // ADICIONE ESTA LINHA AQUI:
                 // Atualiza automaticamente o fornecedor de todas as contas a pagar vinculadas a esta compra
                 ContaPagar::where('compra_id', $res->id)->update(['fornecedor_id' => $res->fornecedor_id]);
@@ -244,20 +251,20 @@ class CompraManualController extends Controller
         } catch (\Exception $e) { __saveError($e, $this->empresa_id); return response()->json($e->getMessage(), 400); }
     }
 
-	public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
+    public function salvarParcela($id, $fatura, $fornecedor_id, $categoria_conta_id, $compra = []){
         $cont = 0;
         $usouCredito = (isset($compra['usar_adiantamento']) && $compra['usar_adiantamento'] == 1);
         $nf = $compra['nf'] ?? $compra['nNf'] ?? '0';
-        
+
         // CORREÇÃO: Usar a data informada na compra ao invés da data de hoje para Conta a Pagar
         $dataEmissaoConta = !empty($compra['data_emissao']) ? $compra['data_emissao'] : date('Y-m-d');
-        
+
         // Identifica se a condição escolhida foi À Vista
         $isAVista = ($compra['formaPagamento'] ?? '') == 'a_vista';
-    
+
         // 1. OBTÉM AS LINHAS DA TABELA DO FRONT-END (Rateio, Múltiplas Contas e Veículos já vêm prontos do JS)
         $faturasDoFront = $compra['fatura_manual'] ?? [];
-    
+
         // Fallback de segurança para não quebrar notas criadas sem a tabela
         if (count($faturasDoFront) == 0) {
             $faturasDoFront[] = [
@@ -269,63 +276,63 @@ class CompraManualController extends Controller
                 'conta_empresa_id' => $compra['conta_empresa_id'] ?? null
             ];
         }
-    
+
         // 2. CONSULTA O SALDO DE ADIANTAMENTO
         $saldoAdiantamento = 0;
         if ($usouCredito) {
             $adiantamentos = \App\Models\Adiantamento::where('empresa_id', $this->empresa_id)
-                                ->where('fornecedor_id', $fornecedor_id)
-                                ->where('status', 'aberto')->get();
+                ->where('fornecedor_id', $fornecedor_id)
+                ->where('status', 'aberto')->get();
             foreach($adiantamentos as $ad) {
                 $saldoAdiantamento += ($ad->valor_total - $ad->valor_utilizado);
             }
         }
-    
+
         // 3. PROCESSAMENTO DE CADA LINHA DA TABELA FINANCEIRA
         foreach($faturasDoFront as $parcela) {
             $cont++;
-            
+
             // CORREÇÃO 1: Previne o bug de converter valores flutuantes de forma errada
             $valorStr = (string) $parcela['valor'];
             if (strpos($valorStr, ',') !== false) {
                 $valorStr = str_replace('.', '', $valorStr);
                 $valorStr = str_replace(',', '.', $valorStr);
             }
-            
+
             // Atribui o valor já limpo na variável final
             $valorParcelaFloat = (float) $valorStr;
             if ($valorParcelaFloat <= 0) continue;
-    
+
             $formaPgto = $parcela['forma_pagamento'] ?? 'boleto';
             $veiculoIdVinculo = $parcela['veiculo_id'] ?? null;
             $contaEmpresaId = (!empty($parcela['conta_empresa_id'])) ? $parcela['conta_empresa_id'] : null;
-            
+
             // Define a Data de Vencimento / Baixa correta
             $dataVencimento = $this->parseDate($parcela['data']);
             if ($isAVista && !empty($compra['data_retroativa']) && $compra['data_retroativa'] != -1) {
                 $dataVencimento = $this->parseDate($compra['data_retroativa']);
             }
-    
+
             // Define se a parcela baixa na hora (A Vista OU se tiver conta informada com pagamentos instantâneos)
             $statusBaixa = ($isAVista || ($contaEmpresaId && in_array($formaPgto, ['dinheiro', 'pix', 'transferencia'])));
-    
+
             // ============================================
-            // LÓGICA A: ABATIMENTO POR CRÉDITO/ADIANTAMENTO 
+            // LÓGICA A: ABATIMENTO POR CRÉDITO/ADIANTAMENTO
             // ============================================
             if ($usouCredito && $saldoAdiantamento > 0) {
                 if ($saldoAdiantamento >= $valorParcelaFloat) {
                     // Adiantamento cobre toda a parcela
                     $resPaga = ContaPagar::create([
                         'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
-                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf,
                         'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
                         'data_vencimento' => $dataVencimento, 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorParcelaFloat,
-                        'valor_pago' => $valorParcelaFloat, 'status' => true, 'tipo_pagamento' => 'adiantamento', 
+                        'valor_pago' => $valorParcelaFloat, 'status' => true, 'tipo_pagamento' => 'adiantamento',
                         'referencia' => "Parcela " . ($parcela['numero'] ?? $cont) . " (Adiantamento) NF: " . $nf,
                         'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id
                     ]);
                     \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorParcelaFloat, $this->empresa_id, $resPaga->id, $this->usuario_id, $this->filial_id);
-                    
+
                     $saldoAdiantamento -= $valorParcelaFloat;
                     continue; // Pula para a próxima linha
                 } else {
@@ -333,29 +340,29 @@ class CompraManualController extends Controller
                     $valorAbater = $saldoAdiantamento;
                     $valorRestante = $valorParcelaFloat - $saldoAdiantamento;
                     $saldoAdiantamento = 0; // Zerou a carteira
-    
+
                     $resPagaParcial = ContaPagar::create([
                         'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
-                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                        'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf,
                         'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
-                        'data_vencimento' => $dataVencimento, 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorAbater, 
-                        'valor_pago' => $valorAbater, 'status' => true, 'tipo_pagamento' => 'adiantamento', 
+                        'data_vencimento' => $dataVencimento, 'data_pagamento' => date('Y-m-d'), 'valor_integral' => $valorAbater,
+                        'valor_pago' => $valorAbater, 'status' => true, 'tipo_pagamento' => 'adiantamento',
                         'referencia' => "Parcela " . ($parcela['numero'] ?? $cont) . " (Abate Adiantamento) NF: " . $nf,
                         'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id, 'usuario_baixa_id' => $this->usuario_id
                     ]);
                     \App\Http\Controllers\AdiantamentoController::baixarAdiantamento($fornecedor_id, 'fornecedor', $valorAbater, $this->empresa_id, $resPagaParcial->id, $this->usuario_id, $this->filial_id);
-    
+
                     // O que faltou pagar vira a parcela para o fluxo normal abaixo
                     $valorParcelaFloat = $valorRestante;
                 }
             }
-    
+
             // ============================================
             // LÓGICA B: FLUXO NORMAL (À VISTA/PRAZO/BANCO)
             // ============================================
             $contaPagar = ContaPagar::create([
                 'compra_id' => $id, 'fornecedor_id' => $fornecedor_id, 'usuario_id' => $this->usuario_id,
-                'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf, 
+                'veiculo_id' => $veiculoIdVinculo, 'numero_nota_fiscal' => $nf,
                 'data_emissao' => $dataEmissaoConta, // CORREÇÃO 2
                 'data_vencimento' => $dataVencimento, 'data_pagamento' => $statusBaixa ? $dataVencimento : null,
                 'valor_integral' => $valorParcelaFloat, 'valor_pago' => $statusBaixa ? $valorParcelaFloat : 0,
@@ -364,17 +371,17 @@ class CompraManualController extends Controller
                 'categoria_id' => $categoria_conta_id, 'empresa_id' => $this->empresa_id, 'filial_id' => $this->filial_id,
                 'usuario_baixa_id' => $statusBaixa ? $this->usuario_id : null
             ]);
-    
+
             // ============================================
             // LÓGICA C: ATUALIZA SALDO REAL DO BANCO/CAIXA
             // ============================================
             if ($statusBaixa && !empty($contaEmpresaId)) {
                 $contaBancaria = \DB::table('conta_empresas')->where('id', $contaEmpresaId)->first();
-    
+
                 if ($contaBancaria) {
                     // Subtrai o valor da parcela do saldo da conta
                     $saldoAtualizado = $contaBancaria->saldo - $valorParcelaFloat;
-    
+
                     // 1. Gera o Extrato
                     \DB::table('item_conta_empresas')->insert([
                         'conta_id' => $contaEmpresaId,
@@ -391,7 +398,7 @@ class CompraManualController extends Controller
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
-    
+
                     // 2. Atualiza a Conta Empresa
                     \DB::table('conta_empresas')->where('id', $contaEmpresaId)->update([
                         'saldo' => $saldoAtualizado,
@@ -492,9 +499,9 @@ class CompraManualController extends Controller
         $compra = Compra::findOrFail($id);
         $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
         $fornecedores = Fornecedor::where('empresa_id', $this->empresa_id)
-                          ->where('ativo', 1)
-                          ->orderBy('razao_social')
-                          ->get();
+            ->where('ativo', 1)
+            ->orderBy('razao_social')
+            ->get();
         $produtos = Produto::where('empresa_id', $this->empresa_id)->where('inativo', false)->orderBy('nome')->get();
         foreach($produtos as $p){ if($p->grade){ $p->nome .= " $p->str_grade"; } }
         $transportadoras = Transportadora::where('empresa_id', $this->empresa_id)->get();
@@ -668,7 +675,7 @@ class CompraManualController extends Controller
         $fornecedores = Fornecedor::
         where('empresa_id', $this->empresa_id)
             ->orderBy('razao_social')->get();
-       $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
+        $veiculos = \App\Models\Veiculo::where('empresa_id', $this->empresa_id)->get();
 
         if(sizeof($fornecedores) == 0){
             session()->flash("mensagem_erro", "Cadastre um fornecedor!");

@@ -15,10 +15,21 @@ class SolicitacaoColeta extends BaseModel
         'pessoa_id',
         'material',
         'dias_disponiveis',
-        'fotos',
         'observacao',
+        'fotos',
+        'tipo_transporte',
         'status',
-        'data_agendada'
+        'data_reserva',
+        'turno',
+        'tipo_veiculo',
+        'produto_residuo_id',
+        'produto_cacamba_id',
+        'qtd_cacambas',
+        'peso_estimado',
+        'unidade_peso',
+        'tempo_franquia_horas',
+        'valor_taxa_extra',
+        'aceitou_termo_taxa'
     ];
 
     // Cria o relacionamento: Uma solicitação pertence a uma Pessoa

@@ -22,6 +22,7 @@ class PessoaPreCadastro extends BaseModel
         'regime_tributario',
         'simples_nacional',
         'rg_ie',
+        'exibe_contratos',
 
         // Contato
         'telefone',
@@ -50,7 +51,11 @@ class PessoaPreCadastro extends BaseModel
         'chave_pix',
 
         // Controle
-        'status'
+        'status',
+
+        // 🚀 ADICIONADOS PARA RASTREABILIDADE
+        'exige_rastreabilidade',
+        'portal_nivel_visao',
     ];
 
     // Converte o campo boolean automaticamente

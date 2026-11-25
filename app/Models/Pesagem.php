@@ -252,4 +252,9 @@ class Pesagem extends BaseModel
 
         return $taraCalc < 0 ? 0 : $taraCalc;
     }
+
+    public function movimentacoes()
+    {
+        return $this->hasMany(\App\Models\MovimentacaoVeiculo::class, 'pesagem_id');
+    }
 }

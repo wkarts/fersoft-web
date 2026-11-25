@@ -24,52 +24,52 @@ ini_set('display_errors', 'On');
 
 class TransferenciaService{
 
-	private $config;
-	private $tools;
-	protected $empresa_id = null;
+    private $config;
+    private $tools;
+    protected $empresa_id = null;
     protected $empresa_uf = null;
 
-	public function __construct($config, $empresa_id = null){
-		if($empresa_id == null){
-			$value = session('user_logged');
-			$this->empresa_id = $value['empresa'];
-		}else{
-			$this->empresa_id = $empresa_id;
-		}
-		if(isset($config['is_filial']) && $config['is_filial']){
-			$certificado = Filial::findOrFail($config['is_filial']);
+    public function __construct($config, $empresa_id = null){
+        if($empresa_id == null){
+            $value = session('user_logged');
+            $this->empresa_id = $value['empresa'];
+        }else{
+            $this->empresa_id = $empresa_id;
+        }
+        if(isset($config['is_filial']) && $config['is_filial']){
+            $certificado = Filial::findOrFail($config['is_filial']);
 
-			$this->tools = new Tools(json_encode($config), Certificate::readPfx($certificado->arquivo_certificado, $certificado->senha_certificado));
-		}else{
-			$certificado = Certificado::
-			where('empresa_id', $this->empresa_id)
-			->first();
+            $this->tools = new Tools(json_encode($config), Certificate::readPfx($certificado->arquivo_certificado, $certificado->senha_certificado));
+        }else{
+            $certificado = Certificado::
+            where('empresa_id', $this->empresa_id)
+                ->first();
 
-			$this->tools = new Tools(json_encode($config), Certificate::readPfx($certificado->arquivo, $certificado->senha));
-		}
-		$soapCurl = new SoapCurl();
-		$soapCurl->httpVersion('1.1');
-		$this->tools->loadSoapClass($soapCurl);
+            $this->tools = new Tools(json_encode($config), Certificate::readPfx($certificado->arquivo, $certificado->senha));
+        }
+        $soapCurl = new SoapCurl();
+        $soapCurl->httpVersion('1.1');
+        $this->tools->loadSoapClass($soapCurl);
 
-		$contigencia = $this->getContigencia();
+        $contigencia = $this->getContigencia();
 
-		if($contigencia != null){
-			$contingency = new Contingency($contigencia->status_retorno);
-			$this->tools->contingency = $contingency;
-		}
+        if($contigencia != null){
+            $contingency = new Contingency($contigencia->status_retorno);
+            $this->tools->contingency = $contingency;
+        }
 
-		$this->config = $config;
-		$this->tools->model(55);
-	}
+        $this->config = $config;
+        $this->tools->model(55);
+    }
 
-	private function getContigencia(){
-		$active = Contigencia::
-		where('empresa_id', $this->empresa_id)
-		->where('status', 1)
-		->where('documento', 'NFe')
-		->first();
-		return $active;
-	}
+    private function getContigencia(){
+        $active = Contigencia::
+        where('empresa_id', $this->empresa_id)
+            ->where('status', 1)
+            ->where('documento', 'NFe')
+            ->first();
+        return $active;
+    }
 
     private function getCUF($uf)
     {
@@ -411,13 +411,16 @@ class TransferenciaService{
                 $i->cst_csosn = $transferencia->natureza->CST_CSOSN;
             }
 
-            // ICMS
-
-
-            if($tributacao->regime == 1){
+            // FORÇA A SOBRESCRITA DO CST SE CONFIGURADO NA NATUREZA DE OPERAÇÃO
+            if (!empty($transferencia->natureza->CST_CSOSN)) {
+                $i->produto->CST_CSOSN = $transferencia->natureza->CST_CSOSN;
+                $i->cst_csosn = $transferencia->natureza->CST_CSOSN;
+            } else {
                 $i->cst_csosn = $i->produto->CST_CSOSN;
-                //$venda->produto->CST  CST
+            }
 
+            // ICMS
+            if($tributacao->regime == 1){
                 $stdICMS = new \stdClass();
 
                 $stdICMS->pICMS = $this->format($i->perc_icms);
@@ -434,7 +437,6 @@ class TransferenciaService{
 
                 $stdICMS->CST = $i->cst_csosn;
 
-                // $stdICMS->modBC = 0;
                 $stdICMS->modBC = $i->produto->modBC;
                 $stdICMS->vBC = $this->format($i->vbc_icms);
                 $stdICMS->vICMS = $this->format($i->valor_icms);
@@ -451,9 +453,14 @@ class TransferenciaService{
                         $stdICMS->vBCSTDest = 0.00;
                         $stdICMS->vICMSSTDest = 0.00;
 
-                    }else if($stdICMS->CST == '40' || $stdICMS->CST == '41' || $stdICMS->CST == '51'){
-                        $stdICMS->vICMS = 0;
-                        $stdICMS->vBC = 0;
+                    }else if($stdICMS->CST == '90' || $stdICMS->CST == '40' || $stdICMS->CST == '41' || $stdICMS->CST == '50' || $stdICMS->CST == '51'){
+                        if($stdICMS->pICMS == 0){
+                            $stdICMS->vICMS = 0;
+                            $stdICMS->vBC = 0;
+                        } else {
+                            $VBC += $stdICMS->vBC;
+                            $somaICMS += $stdICMS->vICMS;
+                        }
                     }else{
                         if($stdICMS->pICMS > 0){
                             $VBC += $stdICMS->vBC;
@@ -463,13 +470,11 @@ class TransferenciaService{
                         }
                     }
                 }else{
-
                     $tempB = 100-$i->pRedBC;
                     $VBC += $stdICMS->vBC;
 
                     $v = $stdProd->vProd * ($tempB/100);
 
-                    // $VBC += $stdICMS->vBC = number_format($v,2,'.','');
                     $stdICMS->pICMS = $this->format($i->perc_icms);
                     $somaICMS += $stdICMS->vICMS = $this->format($i->valor_icms);
                     $stdICMS->pRedBC = $this->format($i->pRedBC);
@@ -485,22 +490,15 @@ class TransferenciaService{
                 }else{
                     $ICMS = $nfe->tagICMS($stdICMS);
                 }
+
                 // regime simples
             }else{
-                //$venda->produto->CST CSOSN
                 $stdICMS = new \stdClass();
 
                 $stdICMS->item = $itemCont;
                 $stdICMS->orig = $i->produto->origem;
 
                 $stdICMS->CSOSN = $i->cst_csosn;
-
-                // if($i->cst_csosn == '10'){
-                // 	$stdICMS->modBCST = (int)$i->produto->modBCST;
-                // 	$stdICMS->vBCST = $i->vBCST;
-                // 	$stdICMS->pICMSST = $this->format($i->pICMSST);
-                // 	$somaVICMSST += $stdICMS->vICMSST = $stdICMS->vBCST * ($stdICMS->pICMSST/100);
-                // }
 
                 if($stdICMS->CSOSN == '500'){
                     $stdICMS->modBCST = (int)$i->produto->modBCST;
@@ -510,7 +508,6 @@ class TransferenciaService{
                 }
 
                 if($stdICMS->CSOSN == '201'){
-
                     $stdICMS->modBCST = (int)$i->modBCST;
                     $stdICMS->vBCST = $i->vBCST;
                     $stdICMS->pICMSST = $this->format($i->pICMSST);
@@ -531,8 +528,8 @@ class TransferenciaService{
                     $stdICMS->vCredICMSSN = 0;
                 }
 
-                if($i->produto->CST_CSOSN == '61'){
-                    $stdICMS->CST = $i->produto->CST_CSOSN;
+                if($i->cst_csosn == '61'){
+                    $stdICMS->CST = $i->cst_csosn;
                     $stdICMS->qBCMonoRet = $this->format($stdProd->qTrib);
                     $stdICMS->adRemICMSRet = $this->format($i->produto->adRemICMSRet, 4);
                     $stdICMS->vICMSMonoRet = $this->format($i->produto->adRemICMSRet*$stdProd->qTrib, 4);
@@ -541,15 +538,10 @@ class TransferenciaService{
                     $ICMS = $nfe->tagICMSSN($stdICMS);
                 }
 
-
                 if($stdICMS->vICMS > 0 && $stdICMS->CSOSN == 900){
                     $VBC += $stdICMS->vBC;
                     $somaICMS += $stdICMS->vICMS;
                 }
-
-
-                // $VBC = 0;
-                // $somaICMS = 0;
             }
 
             //PIS
@@ -741,18 +733,21 @@ class TransferenciaService{
         // =======================================================
         // GERA A TAG DE VOLUMES E PESOS (Corrigido para $transferencia)
         // =======================================================
-        if($transferencia->peso_liquido > 0 || $transferencia->peso_bruto > 0) {
+        $pesoBruto = (float) $transferencia->peso_bruto;
+        $pesoLiquido = (float) $transferencia->peso_liquido;
+
+        if ($pesoLiquido > 0 || $pesoBruto > 0) {
             $stdVol = new \stdClass();
             $stdVol->item = 1;
-            $stdVol->qVol = 1; 
-            
-            if ($transferencia->peso_liquido > 0) {
-                $stdVol->pesoL = $this->format($transferencia->peso_liquido, 3);
+            $stdVol->qVol = 1;
+
+            if ($pesoLiquido > 0) {
+                $stdVol->pesoL = $this->format($pesoLiquido, 3);
             }
-            if ($transferencia->peso_bruto > 0) {
-                $stdVol->pesoB = $this->format($transferencia->peso_bruto, 3);
+            if ($pesoBruto > 0) {
+                $stdVol->pesoB = $this->format($pesoBruto, 3);
             }
-            
+
             $nfe->tagvol($stdVol);
         }
 
@@ -846,149 +841,149 @@ class TransferenciaService{
         }
     }
 
-	private function validate_EAN13Barcode($ean)
-	{
+    private function validate_EAN13Barcode($ean)
+    {
 
-		$sumEvenIndexes = 0;
-		$sumOddIndexes  = 0;
+        $sumEvenIndexes = 0;
+        $sumOddIndexes  = 0;
 
-		$eanAsArray = array_map('intval', str_split($ean));
+        $eanAsArray = array_map('intval', str_split($ean));
 
-		if (!$this->has13Numbers($eanAsArray)) {
-			return false;
-		};
+        if (!$this->has13Numbers($eanAsArray)) {
+            return false;
+        };
 
-		for ($i = 0; $i < count($eanAsArray)-1; $i++) {
-			if ($i % 2 === 0) {
-				$sumOddIndexes  += $eanAsArray[$i];
-			} else {
-				$sumEvenIndexes += $eanAsArray[$i];
-			}
-		}
+        for ($i = 0; $i < count($eanAsArray)-1; $i++) {
+            if ($i % 2 === 0) {
+                $sumOddIndexes  += $eanAsArray[$i];
+            } else {
+                $sumEvenIndexes += $eanAsArray[$i];
+            }
+        }
 
-		$rest = ($sumOddIndexes + (3 * $sumEvenIndexes)) % 10;
+        $rest = ($sumOddIndexes + (3 * $sumEvenIndexes)) % 10;
 
-		if ($rest !== 0) {
-			$rest = 10 - $rest;
-		}
+        if ($rest !== 0) {
+            $rest = 10 - $rest;
+        }
 
-		return $rest === $eanAsArray[12];
-	}
+        return $rest === $eanAsArray[12];
+    }
 
-	private function has13Numbers(array $ean)
-	{
-		return count($ean) === 13;
-	}
+    private function has13Numbers(array $ean)
+    {
+        return count($ean) === 13;
+    }
 
-	private function retiraAcentos($texto){
-		return preg_replace(array("/(á|à|ã|â|ä)/","/(Á|À|Ã|Â|Ä)/","/(é|è|ê|ë)/","/(É|È|Ê|Ë)/","/(í|ì|î|ï)/","/(Í|Ì|Î|Ï)/","/(ó|ò|õ|ô|ö)/","/(Ó|Ò|Õ|Ô|Ö)/","/(ú|ù|û|ü)/","/(Ú|Ù|Û|Ü)/","/(ñ)/","/(Ñ)/", "/(ç)/"),explode(" ","a A e E i I o O u U n N c"),$texto);
-	}
+    private function retiraAcentos($texto){
+        return preg_replace(array("/(á|à|ã|â|ä)/","/(Á|À|Ã|Â|Ä)/","/(é|è|ê|ë)/","/(É|È|Ê|Ë)/","/(í|ì|î|ï)/","/(Í|Ì|Î|Ï)/","/(ó|ò|õ|ô|ö)/","/(Ó|Ò|Õ|Ô|Ö)/","/(ú|ù|û|ü)/","/(Ú|Ù|Û|Ü)/","/(ñ)/","/(Ñ)/", "/(ç)/"),explode(" ","a A e E i I o O u U n N c"),$texto);
+    }
 
-	public function format($number, $dec = 2){
-		return number_format((float) $number, $dec, ".", "");
-	}
+    public function format($number, $dec = 2){
+        return number_format((float) $number, $dec, ".", "");
+    }
 
-	public function consultaCadastro($cnpj, $uf){
-		try {
+    public function consultaCadastro($cnpj, $uf){
+        try {
 
-			$iest = '';
-			$cpf = '';
-			$response = $this->tools->sefazCadastro($uf, $cnpj, $iest, $cpf);
+            $iest = '';
+            $cpf = '';
+            $response = $this->tools->sefazCadastro($uf, $cnpj, $iest, $cpf);
 
-			$stdCl = new Standardize($response);
+            $stdCl = new Standardize($response);
 
-			$std = $stdCl->toStd();
+            $std = $stdCl->toStd();
 
-			$arr = $stdCl->toArray();
+            $arr = $stdCl->toArray();
 
-			$json = $stdCl->toJson();
+            $json = $stdCl->toJson();
 
-			return [
-				'erro' => false,
-				'json' => $json
-			];
+            return [
+                'erro' => false,
+                'json' => $json
+            ];
 
-		} catch (\Exception $e) {
-			return [
-				'erro' => true,
-				'json' => $e->getMessage()
-			];
+        } catch (\Exception $e) {
+            return [
+                'erro' => true,
+                'json' => $e->getMessage()
+            ];
 
-		}
-	}
+        }
+    }
 
-	public function consultaChave($chave){
-		$response = $this->tools->sefazConsultaChave($chave);
+    public function consultaChave($chave){
+        $response = $this->tools->sefazConsultaChave($chave);
 
-		$stdCl = new Standardize($response);
-		$arr = $stdCl->toArray();
-		return $arr;
-	}
+        $stdCl = new Standardize($response);
+        $arr = $stdCl->toArray();
+        return $arr;
+    }
 
-	public function consultar($item){
-		try {
-			$this->tools->model('55');
+    public function consultar($item){
+        try {
+            $this->tools->model('55');
 
-			$chave = $item->chave;
-			$response = $this->tools->sefazConsultaChave($chave);
+            $chave = $item->chave;
+            $response = $this->tools->sefazConsultaChave($chave);
 
-			$stdCl = new Standardize($response);
-			$arr = $stdCl->toArray();
+            $stdCl = new Standardize($response);
+            $arr = $stdCl->toArray();
 
-			if($arr['xMotivo'] == 'Autorizado o uso da NF-e'){
-				if($item->estado != 'aprovado'){
+            if($arr['xMotivo'] == 'Autorizado o uso da NF-e'){
+                if($item->estado != 'aprovado'){
 
-					$config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+                    $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
-					// $nRec = $arr['protNFe']['infProt']['nProt'];
-					$chave = $arr['protNFe']['infProt']['chNFe'];
-					$nRec = $item->recibo;
-					$protocolo = $this->tools->sefazConsultaRecibo($nRec);
-					sleep(3);
-					$st = new Standardize();
-					$std = $st->toStd($protocolo);
-					// return $std;
-					if($std->protNFe->infProt->cStat == 100){
-						// $venda->chave = $chave;
-						$item->estado = 'aprovado';
-						$item->numero_nfe = $config->ultimo_numero_nfe+1;
-						$item->save();
+                    // $nRec = $arr['protNFe']['infProt']['nProt'];
+                    $chave = $arr['protNFe']['infProt']['chNFe'];
+                    $nRec = $item->recibo;
+                    $protocolo = $this->tools->sefazConsultaRecibo($nRec);
+                    sleep(3);
+                    $st = new Standardize();
+                    $std = $st->toStd($protocolo);
+                    // return $std;
+                    if($std->protNFe->infProt->cStat == 100){
+                        // $venda->chave = $chave;
+                        $item->estado = 'aprovado';
+                        $item->numero_nfe = $config->ultimo_numero_nfe+1;
+                        $item->save();
 
-						$config->ultimo_numero_nfe = $config->ultimo_numero_nfe+1;
-						$config->save();
-						$xml = Complements::toAuthorize($item->signed_xml, $protocolo);
-						safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
-						// return $xml;
-					}
-				}
-			}
-			return json_encode($arr);
+                        $config->ultimo_numero_nfe = $config->ultimo_numero_nfe+1;
+                        $config->save();
+                        $xml = Complements::toAuthorize($item->signed_xml, $protocolo);
+                        safe_file_put_contents(public_path('xml_nfe/').$chave.'.xml',$xml);
+                        // return $xml;
+                    }
+                }
+            }
+            return json_encode($arr);
 
-		} catch (\Exception $e) {
-			echo $e->getMessage();
-		}
-	}
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+        }
+    }
 
-	public function inutilizar($config, $nInicio, $nFinal, $justificativa){
-		try{
+    public function inutilizar($config, $nInicio, $nFinal, $justificativa){
+        try{
 
-			$nSerie = $config->numero_serie_nfe;
-			$nIni = $nInicio;
-			$nFin = $nFinal;
-			$xJust = $justificativa;
-			$response = $this->tools->sefazInutiliza($nSerie, $nIni, $nFin, $xJust);
+            $nSerie = $config->numero_serie_nfe;
+            $nIni = $nInicio;
+            $nFin = $nFinal;
+            $xJust = $justificativa;
+            $response = $this->tools->sefazInutiliza($nSerie, $nIni, $nFin, $xJust);
 
-			$stdCl = new Standardize($response);
-			$std = $stdCl->toStd();
-			$arr = $stdCl->toArray();
-			$json = $stdCl->toJson();
+            $stdCl = new Standardize($response);
+            $std = $stdCl->toStd();
+            $arr = $stdCl->toArray();
+            $json = $stdCl->toJson();
 
-			return $arr;
+            return $arr;
 
-		} catch (\Exception $e) {
-			return $e->getMessage();
-		}
-	}
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
 
     public function cancelar($item, $justificativa)
     {
@@ -1135,86 +1130,109 @@ class TransferenciaService{
         }
     }
 
-	public function sign($xml){
-		return $this->tools->signNFe($xml);
-	}
+    public function sign($xml){
+        return $this->tools->signNFe($xml);
+    }
 
     public function transmitir($signXml, $chave, $transferencia_id = null)
     {
         try {
             $idLote = str_pad(100, 15, '0', STR_PAD_LEFT);
-            $indSinc = 1; // síncrono, uma NFe por vez
+            $indSinc = 1; // Síncrono, uma NFe por vez
             $resp = $this->tools->sefazEnviaLote([$signXml], $idLote, $indSinc);
-            //$resp = $this->tools->sefazEnviaLote([$signXml], $idLote);
 
             $st = new Standardize();
             $std = $st->toStd($resp);
 
-            sleep(2);
+            // Se for Lote Recebido (Assíncrono)
+            if (isset($std->cStat) && $std->cStat == 103) {
+                $recibo = $std->infRec->nRec ?? null;
 
-            if ($std->cStat != 103) {
-                return "Erro: [$std->cStat] - $std->xMotivo";
-            }
+                if (!$recibo) {
+                    return "Erro: Sem número de recibo.";
+                }
 
-            $recibo = $std->infRec->nRec;
-
-            if ($transferencia_id != null) {
-                $transferencia = Transferencia::find($transferencia_id);
-
-                if ($transferencia != null) {
-                    $transferencia->recibo = $recibo;
-                    if ($transferencia->signed_xml == null) {
-                        $transferencia->signed_xml = $signXml;
+                if ($transferencia_id != null) {
+                    $transferencia = Transferencia::find($transferencia_id);
+                    if ($transferencia != null) {
+                        $transferencia->recibo = $recibo;
+                        if ($transferencia->signed_xml == null) {
+                            $transferencia->signed_xml = $signXml;
+                        }
+                        $transferencia->save();
                     }
-                    $transferencia->save();
+                }
+
+                sleep(5);
+
+                // Consulta o recibo
+                $protocolo = $this->tools->sefazConsultaRecibo($recibo);
+                $stdProtocolo = new Standardize();
+                $std = $stdProtocolo->toStd($protocolo);
+
+                // Pode vir múltiplas notas; aqui assume 1 por lote (indSinc=1)
+                $infProt = $std->protNFe->infProt ?? null;
+
+                if (!$infProt) {
+                    return "Erro: Retorno inválido da SEFAZ ao consultar recibo.";
                 }
             }
+            // Se for Lote Processado (Síncrono)
+            elseif (isset($std->cStat) && $std->cStat == 104) {
+                $infProt = $std->protNFe->infProt ?? null;
+                $protocolo = $resp; // O protocolo já vem na própria resposta do envio
 
-            sleep(5);
-
-            // Consulta o recibo
-            $protocolo = $this->tools->sefazConsultaRecibo($recibo);
-
-            $stdProtocolo = new Standardize();
-            $std = $stdProtocolo->toStd($protocolo);
-
-            if (!isset($std->protNFe) || !isset($std->protNFe->infProt)) {
-                return "Erro: Retorno inválido da SEFAZ ao consultar recibo.";
+                if (!$infProt) {
+                    return "Erro: [104] - Retorno malformado (sem infProt)";
+                }
+            }
+            // Outro erro de lote
+            else {
+                return "Erro: [" . ($std->cStat ?? '???') . "] - " . ($std->xMotivo ?? 'Retorno não reconhecido');
             }
 
-            $cStat = (int) $std->protNFe->infProt->cStat;
+            // Verifica o status da nota dentro do infProt (seja via recibo ou síncrono)
+            $cStat = (int) $infProt->cStat;
 
-            if ($cStat == 100) {
-                // Nota autorizada com sucesso
-                if (isset($transferencia)) {
-                    $transferencia->estado = 'aprovado';
-                    $transferencia->data_emissao = date('Y-m-d H:i:s');
+            if (in_array($cStat, [100, 150])) { // Autorizado
+                if (isset($transferencia_id)) {
+                    $transferencia = Transferencia::find($transferencia_id);
+                    if ($transferencia) {
+                        $transferencia->estado = 'aprovado';
+                        $transferencia->data_emissao = date('Y-m-d H:i:s');
 
-                    if (!$transferencia->chave) {
-                        $transferencia->chave = $std->protNFe->infProt->chNFe ?? $chave;
+                        if (!$transferencia->chave) {
+                            $transferencia->chave = $infProt->chNFe ?? $chave;
+                        }
+
+                        if (empty($transferencia->numero_nfe)) {
+                            $transferencia->numero_nfe = $this->buscarProximoNumeroNFe($transferencia);
+                        }
+
+                        $transferencia->save();
                     }
-
-                    // Atualiza número da NFe se ainda não foi salvo
-                    if (empty($transferencia->numero_nfe)) {
-                        $transferencia->numero_nfe = $this->buscarProximoNumeroNFe($transferencia);
-                    }
-
-                    $transferencia->save();
                 }
 
                 // Gera e salva o XML autorizado
                 $xmlAutorizado = Complements::toAuthorize($signXml, $protocolo);
-                safe_file_put_contents(public_path('xml_nfe/') . $chave . '.xml', $xmlAutorizado);
+
+                $dir = public_path('xml_nfe/');
+                if (!file_exists($dir)) {
+                    mkdir($dir, 0777, true);
+                }
+                safe_file_put_contents($dir . $chave . '.xml', $xmlAutorizado);
 
                 return "Sucesso: NF-e transmitida e autorizada!";
             } else {
-                // Nota rejeitada
-                if (isset($transferencia)) {
-                    $transferencia->estado = 'rejeitado';
-                    $transferencia->save();
+                // Rejeição
+                if (isset($transferencia_id)) {
+                    $transferencia = Transferencia::find($transferencia_id);
+                    if ($transferencia) {
+                        $transferencia->estado = 'rejeitado';
+                        $transferencia->save();
+                    }
                 }
-
-                return "Rejeição: [$cStat] - {$std->protNFe->infProt->xMotivo}";
+                return "Rejeição: [{$cStat}] - {$infProt->xMotivo}";
             }
         } catch (\Exception $e) {
             return "Erro: " . $e->getMessage();

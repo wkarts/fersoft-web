@@ -23,6 +23,7 @@ class TicketPesagem extends BaseModel
         'motorista_id',
         'balanca_config_id',
         'produto_id',
+        'producao_lote_id',
         'peso',
         'peso_bag',
         'peso_origem',
@@ -92,5 +93,10 @@ class TicketPesagem extends BaseModel
     public function getStatusLabelAttribute()
     {
         return ucfirst($this->status);
+    }
+
+    public function producaoLote()
+    {
+        return $this->belongsTo(\App\Models\ProducaoLote::class, 'producao_lote_id');
     }
 }

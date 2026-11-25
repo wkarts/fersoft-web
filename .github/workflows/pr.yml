@@ -81,32 +81,6 @@ jobs:
       - name: Composer validate
         run: composer validate --no-check-publish --strict
 
-      - name: Composer install
-        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
-
-      - name: Preparar ambiente Laravel para CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          cp .env.example .env
-          php -r 'echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
-          php -r 'echo "ENCRYPTION_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
-          {
-            echo "APP_ENV=testing"
-            echo "CACHE_DRIVER=array"
-            echo "QUEUE_CONNECTION=sync"
-            echo "SESSION_DRIVER=array"
-            echo "DB_CONNECTION=mysql"
-            echo "DB_HOST=127.0.0.1"
-            echo "DB_PORT=3306"
-            echo "DB_DATABASE=fersoft_test"
-            echo "DB_USERNAME=root"
-            echo "DB_PASSWORD=root"
-          } >> .env
-
-      - name: PHP version
-        run: php -v
-
       - name: PHP lint (escopo CI)
         shell: bash
         run: |
@@ -131,6 +105,35 @@ jobs:
       
           printf '%s\n' "${filtered[@]}" | xargs -n1 -P4 php -l >/dev/null
           echo "Lint PHP concluído com sucesso no escopo CI (${#filtered[@]} arquivos)."
+
+      - name: Composer install
+        env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
+        run: bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - name: Preparar ambiente Laravel para CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          php -r 'echo "APP_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
+          php -r 'echo "ENCRYPTION_KEY=base64:".base64_encode(random_bytes(32)).PHP_EOL;' >> .env
+          {
+            echo "APP_ENV=testing"
+            echo "CACHE_DRIVER=array"
+            echo "QUEUE_CONNECTION=sync"
+            echo "SESSION_DRIVER=array"
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=fersoft_test"
+            echo "DB_USERNAME=root"
+            echo "DB_PASSWORD=root"
+          } >> .env
+
+      - name: PHP version
+        run: php -v
+
       - name: PHPUnit
         shell: bash
         run: |
@@ -233,8 +236,7 @@ jobs:
         env:
           COMPOSER_NO_INTERACTION: '1'
         run: |
-          composer install --prefer-dist --no-interaction --no-progress --no-scripts
-          composer audit
+          composer audit --locked
 
       - name: Security Audit NPM (warning-only)
         if: matrix.target == 'npm' && needs.setup.outputs.has_package == 'true'

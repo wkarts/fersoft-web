@@ -17,6 +17,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Crypt;
+use App\Models\Usuario;
+use App\Support\AuditContext;
+
 
 class MovimentacaoVeiculoController extends BaseController
 {
@@ -30,15 +35,91 @@ class MovimentacaoVeiculoController extends BaseController
     protected $registerView = 'movimentacoes_veiculos.register';
     protected $redirectPage = '/movimentacaoVeiculo';
 
+    public function __construct()
+    {
+        // Libera chamadas via Cron/Artisan (Console) e a tela externa do motorista sem exigir sessão web
+        if (app()->runningInConsole() || request()->is('coleta-motorista*')) {
+            return;
+        }
+
+        parent::__construct();
+    }
+
     /* --- Métodos Obrigatórios do BaseController --- */
     public function rules(): array { return []; }
     public function messages(): array { return []; }
 
+
+    /**
+     * Aplica filtro por filial considerando a coluna 'locais' da tabela de usuários.
+     * Centralizado no BaseController para proteger TODAS as telas do ERP.
+     */
+    protected function applyFilialFilter($query, string $column = 'filial_id')
+    {
+        $usuarioId = session('user_logged')['id'] ?? session('user_logged')['usuario_id'] ?? null;
+        if (!$usuarioId) return $query;
+
+        $usuarioObj = \Illuminate\Support\Facades\DB::table('usuarios')->where('id', $usuarioId)->first();
+        if (!$usuarioObj || empty($usuarioObj->locais)) {
+            return $query;
+        }
+
+        $locaisPermitidos = json_decode($usuarioObj->locais, true);
+        if (!is_array($locaisPermitidos)) {
+            $locaisPermitidos = ['-1'];
+        }
+
+        $filtroFilialId = request('filial_id');
+
+        // Acesso total (Admin / Matriz)
+        if (in_array('-1', $locaisPermitidos, true) || in_array(-1, $locaisPermitidos, true)) {
+            if ($filtroFilialId !== null && $filtroFilialId !== '') {
+                if ($filtroFilialId == '0') {
+                    $query->where(function($q) use ($column) {
+                        $q->whereNull($column)->orWhere($column, 0);
+                    }); // 0 = Matriz
+                } else {
+                    $query->where($column, $filtroFilialId);
+                }
+            }
+            return $query;
+        }
+
+        // Restrição rigorosa às filiais permitidas
+        $locaisValidos = array_filter($locaisPermitidos, function($val) {
+            return $val !== null && $val !== '';
+        });
+
+        $query->where(function ($q) use ($locaisValidos, $column) {
+            $q->whereIn($column, $locaisValidos);
+            // Permite matriz se o ID 0 estiver na lista
+            if (in_array('0', $locaisValidos, true) || in_array(0, $locaisValidos, true)) {
+                $q->orWhereNull($column);
+            }
+        });
+
+        // Se o utilizador tentou filtrar na tela, valida a permissão
+        if ($filtroFilialId !== null && $filtroFilialId !== '') {
+            if (in_array((string)$filtroFilialId, $locaisValidos, true) || in_array((int)$filtroFilialId, $locaisValidos, true)) {
+                if ($filtroFilialId == '0') {
+                    $query->where(function($q) use ($column) {
+                        $q->whereNull($column)->orWhere($column, 0);
+                    });
+                } else {
+                    $query->where($column, $filtroFilialId);
+                }
+            } else {
+                $query->where($column, -1); // Bloqueia a consulta se tentou burlar
+            }
+        }
+
+        return $query;
+    }
+
     protected function getTenantRecords()
     {
         return $this->applyFilialFilter(parent::getTenantRecords())
-            // Adicionado 'destinos' para carregamento otimizado
-            ->with(['veiculo', 'motorista', 'tipoMovimentacao', 'cliente', 'fornecedor', 'abastecimentos', 'destinos'])
+            ->with(['veiculo', 'motorista', 'tipoMovimentacao', 'cliente', 'fornecedor', 'abastecimentos', 'destinos.cliente', 'destinos.fornecedor'])
             ->orderByDesc('data_hora_saida');
     }
 
@@ -49,7 +130,8 @@ class MovimentacaoVeiculoController extends BaseController
             'Status', 'KM Ini.', 'KM Fim',
             'Total Abastec.',
             'Destino', 'Tipo',
-            'Cliente / Fornecedor'
+            'Cliente / Fornecedor',
+            'Docs Fiscais'
         ];
     }
 
@@ -59,7 +141,8 @@ class MovimentacaoVeiculoController extends BaseController
             'veiculo.placa', 'motorista.nome', 'data_saida_formatada', 'data_chegada_formatada',
             'status_formatado', 'km_inicial_formatado', 'km_final_formatado',
             'valor_total_abastecimentos_formatado',
-            'destino', 'tipoMovimentacao.nome', 'entidade_nome'
+            'destino', 'tipoMovimentacao.nome', 'entidade_nome',
+            'documentos_fiscais_formatado'
         ];
     }
 
@@ -67,7 +150,28 @@ class MovimentacaoVeiculoController extends BaseController
     {
         $query = $this->model::where('empresa_id', $this->empresa_id);
 
-        // Aplicação dos Filtros na Query
+        // 1. Proteção de Segurança pelo BaseController
+        $query = $this->applyFilialFilter($query);
+
+        // 2. Busca as filiais permitidas para exibir as opções no Filtro
+        $user_logged = session('user_logged');
+        $usuarioObj = \Illuminate\Support\Facades\DB::table('usuarios')->where('id', $user_logged['id'] ?? $user_logged['usuario_id'] ?? 0)->first();
+
+        $locaisPermitidos = $usuarioObj && !empty($usuarioObj->locais) ? json_decode($usuarioObj->locais, true) : ['-1'];
+        if (!is_array($locaisPermitidos)) {
+            $locaisPermitidos = ['-1'];
+        }
+
+        $filiaisQuery = \Illuminate\Support\Facades\DB::table('filials');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('filials', 'empresa_id')) {
+            $filiaisQuery->where('empresa_id', $this->empresa_id);
+        }
+        if (!in_array('-1', $locaisPermitidos) && !in_array(-1, $locaisPermitidos)) {
+            $filiaisQuery->whereIn('id', $locaisPermitidos);
+        }
+        $listaFiliais = $filiaisQuery->get();
+
+        // 3. Aplicação dos demais Filtros da tela
         if ($request->filled('veiculo_id')) {
             $query->where('veiculo_id', $request->veiculo_id);
         }
@@ -84,9 +188,21 @@ class MovimentacaoVeiculoController extends BaseController
             $query->whereDate('data_hora_saida', '<=', $request->data_fim);
         }
 
-        $records = $query->with(['veiculo', 'motorista', 'tipoMovimentacao'])
-            ->orderByDesc('data_hora_saida')
-            ->get();
+        // 4. Executa a consulta ordenando pelos mais recentes no topo e limitando a 20 por página
+        $records = $query->with([
+            'veiculo',
+            'motorista',
+            'tipoMovimentacao',
+            'cliente',
+            'fornecedor',
+            'destinos.cliente',
+            'destinos.fornecedor'
+        ])
+            ->orderByDesc('id')
+            ->paginate(20);
+
+        $records->appends($request->all());
+        $links = $records->links();
 
         $filters = [
             [
@@ -125,6 +241,9 @@ class MovimentacaoVeiculoController extends BaseController
 
         return view($this->listView, [
             'records' => $records,
+            'links' => $links,
+            'listaFiliais' => $listaFiliais,
+            'podeReabrirAgenda' => $this->podeReabrirAgendamento(),
             'filters' => $filters,
             'title' => $this->formTitle,
             'headers' => $this->headers(),
@@ -137,10 +256,88 @@ class MovimentacaoVeiculoController extends BaseController
         ]);
     }
 
+    /**
+     * Segue o mesmo modelo OTP usado pela reabertura de pesagens.
+     * A exigência de permissão é explícita porque ValidaAcesso ignora AJAX.
+     */
+    private function podeReabrirAgendamento(): bool
+    {
+        $usuario = $this->usuario_id ? Usuario::find($this->usuario_id) : null;
+        if (!$usuario || !$usuario->hasOtp()) {
+            return false;
+        }
+
+        $sessao = session('user_logged', []);
+        if (!empty($sessao['super']) || !empty($sessao['adm']) || !empty($sessao['is_admin'])) {
+            return true;
+        }
+
+        $permissoes = json_decode((string) $usuario->permissao, true);
+        return is_array($permissoes) && (
+                in_array('/movimentacaoVeiculo', $permissoes, true)
+                || in_array('/movimentacaoVeiculo/agenda', $permissoes, true)
+            );
+    }
+
+    public function list(Request $request)
+    {
+        view()->share('podeReabrirAgenda', $this->podeReabrirAgendamento());
+        return parent::list($request);
+    }
+
+    /**
+     * Reabre somente um agendamento finalizado, sem apagar dados operacionais.
+     * Diferente de recriar a viagem, preservamos horários, km, destinos,
+     * pesagens e vínculos para permitir ajustes posteriores com rastreabilidade.
+     */
+    public function reabrir(Request $request, $id)
+    {
+        if (!$this->podeReabrirAgendamento()) {
+            return response()->json([
+                'error' => 'Somente usuários autorizados com OTP configurado podem reabrir agendamentos.'
+            ], 403);
+        }
+
+        // Mesmo contrato de entrada (campo "code") e mesma verificação das pesagens.
+        $this->validateOtp($request);
+
+        return DB::transaction(function () use ($id) {
+            $movimentacao = $this->applyFilialFilter(
+                MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
+            )->lockForUpdate()->findOrFail($id);
+
+            if (!in_array($movimentacao->status, ['finalizado', 'concluida'], true)) {
+                return response()->json([
+                    'error' => 'Somente agendamentos finalizados podem ser reabertos.'
+                ], 422);
+            }
+
+            $antes = $movimentacao->getAttributes();
+
+            // O status volta a permitir edição, sem destruir o histórico de viagem.
+            AuditContext::withoutModelAudit(function () use ($movimentacao) {
+                $movimentacao->update(['status' => 'iniciado']);
+            });
+
+            $this->logService->registrar('reabrir', MovimentacaoVeiculo::class, [
+                'registro_id'  => $movimentacao->id,
+                'dados_antes'  => $antes,
+                'dados_depois' => $movimentacao->getAttributes(),
+            ]);
+
+            return response()->json([
+                'success' => 'Agendamento reaberto com sucesso.',
+                'status'  => 'iniciado',
+            ]);
+        });
+    }
+
     public function edit($id)
     {
-        $movimentacao = $this->model::findOrFail($id);
-        if ($movimentacao->status == 'finalizado') {
+        $movimentacao = $this->applyFilialFilter(
+            $this->model::where('empresa_id', $this->empresa_id)
+        )->findOrFail($id);
+        if (in_array($movimentacao->status, ['finalizado', 'concluida'], true)) {
             session()->flash('mensagem_erro', 'Esta movimentação já foi concluída e não pode ser alterada.');
             return redirect($this->redirectPage);
         }
@@ -149,8 +346,40 @@ class MovimentacaoVeiculoController extends BaseController
 
     public function register($id = null)
     {
-        // Adicionado 'destinos' para trazer a rota guardada e exibir no formulário
-        $data = $id ? $this->model::with(['abastecimentos.produto', 'despesas', 'destinos'])->findOrFail($id) : null;
+        $data = $id ? $this->applyFilialFilter(
+            $this->model::with(['abastecimentos.produto', 'despesas', 'destinos'])
+                ->where('empresa_id', $this->empresa_id)
+        )->findOrFail($id) : null;
+
+        // =========================================================================
+        // INÍCIO DO NOVO BLOCO (Passo 2) - Intercepta os dados da solicitação de coleta
+        // =========================================================================
+        if (request()->has('coleta_id') && !$data) {
+            $coleta = \App\Models\SolicitacaoColeta::with('pessoa')->find(request('coleta_id'));
+            if ($coleta) {
+                // Cria um objeto temporário apenas para preencher o formulário na tela
+                $data = new $this->model();
+                $data->observacao = "Gerado via Solicitação de Coleta #{$coleta->id} - Material: " . $coleta->material;
+
+                // Busca o cliente ERP correspondente pelo CPF/CNPJ
+                $cnpjLimpo = preg_replace('/[^0-9]/', '', $coleta->pessoa->cpf_cnpj ?? '');
+                $clienteERP = \App\Models\Cliente::where('empresa_id', $this->empresa_id)
+                    ->whereRaw("REGEXP_REPLACE(cpf_cnpj, '[^0-9]', '') = ?", [$cnpjLimpo])
+                    ->first();
+
+                // Monta o destino sugerido (será lido na view para montar a primeira parada)
+                $endereco = trim(($coleta->pessoa->rua_coleta ?? '') . ', ' . ($coleta->pessoa->numero_coleta ?? ''));
+                $data->destino_sugerido_id = $clienteERP ? $clienteERP->id : null;
+                $data->destino_sugerido_endereco = $endereco;
+                $data->destino_sugerido_peso = $coleta->peso_estimado ?? '';
+                $data->destino_sugerido_produto_id = $coleta->produto_residuo_id ?? null;
+                $data->destino_sugerido_caixa_id = $coleta->produto_cacamba_id ?? null;
+                $data->coleta_origem_id = $coleta->id; // Guarda o ID para atualizar o status depois
+            }
+        }
+        // =========================================================================
+        // FIM DO NOVO BLOCO
+        // =========================================================================
 
         $combustiveis = Produto::where('empresa_id', $this->empresa_id)
             ->where(function($q) {
@@ -159,18 +388,80 @@ class MovimentacaoVeiculoController extends BaseController
                     ->orWhere('nome', 'LIKE', '%GASOLINA%');
             })->get();
 
+        // 1. RESÍDUOS: Apenas produtos cuja categoria seja de Resíduo / Descarte / Entulho
+        $produtosResiduos = Produto::where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->whereHas('categoria', function($q) {
+                $q->where('nome', 'LIKE', '%Resíduo%')
+                    ->orWhere('nome', 'LIKE', '%Residuo%')
+                    ->orWhere('nome', 'LIKE', '%Descarte%')
+                    ->orWhere('nome', 'LIKE', '%Entulho%')
+                    ->orWhere('nome', 'LIKE', '%Coleta%');
+            })
+            ->orderBy('nome')
+            ->get();
+
+        // 2. CAÇAMBAS / MÁQUINAS: Produtos marcados com opção de Locação (valor_locacao > 0)
+        $caixas = Produto::where('empresa_id', $this->empresa_id)
+            ->where('inativo', false)
+            ->where('valor_locacao', '>', 0)
+            ->orderBy('nome')
+            ->get();
+
+        // Busca as pesagens de SAÍDA que já estão finalizadas (peso líquido apurado)
+        // e que ainda não foram vinculadas a nenhuma viagem
+        $pesagensDisponiveis = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)
+            ->where(function($query) {
+                $query->where('tipo', 'LIKE', '%vend%')
+                    ->orWhereHas('tickets', function($q) {
+                        $q->where('tipo', 'saida');
+                    });
+            })
+            ->where('status', 'LIKE', '%conclu%')
+            ->orderBy('id', 'desc')
+            ->take(50)
+            ->get();
+
+        // Filtra apenas funcionários com função de Motorista ativo (mantendo o atual se for edição)
+        // Busca os IDs das funções que contêm "Motorista" na tabela funcoes da empresa
+        $funcoesMotoristaIds = DB::table('funcoes')
+            ->where('empresa_id', $this->empresa_id)
+            ->whereRaw('LOWER(nome) LIKE ?', ['%motorista%'])
+            ->pluck('id')
+            ->toArray();
+
+        // Filtra apenas funcionários vinculados à função de Motorista (mantendo o atual se for edição)
+        $motoristas = Funcionario::where('empresa_id', $this->empresa_id)
+            ->where(function ($q) use ($funcoesMotoristaIds, $data) {
+                if (!empty($funcoesMotoristaIds)) {
+                    $q->whereIn('funcao_id', $funcoesMotoristaIds);
+                } else {
+                    $q->whereRaw('1 = 0'); // Não traz ninguém se não houver função Motorista cadastrada
+                }
+
+                if ($data && !empty($data->motorista_id)) {
+                    $q->orWhere('id', $data->motorista_id);
+                }
+            })
+            ->orderBy('nome')
+            ->get();
+
         return view($this->registerView, [
-            'data' => $data,
-            'title' => $this->formTitle,
-            'actionSave' => "{$this->redirectPage}/save",
-            'actionUpdate' => "{$this->redirectPage}/save",
-            'actionCancel' => $this->redirectPage,
-            'veiculos' => Veiculo::where('empresa_id', $this->empresa_id)->get(),
-            'funcionarios' => Funcionario::where('empresa_id', $this->empresa_id)->get(),
-            'tipos' => TipoMovimentacao::where('empresa_id', $this->empresa_id)->get(),
-            'clientes' => Cliente::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get(),
-            'fornecedores' => Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get(),
-            'combustiveis' => $combustiveis,
+            'data'                => $data,
+            'title'               => $this->formTitle,
+            'actionSave'          => "{$this->redirectPage}/save",
+            'actionUpdate'        => "{$this->redirectPage}/save",
+            'actionCancel'        => $this->redirectPage,
+            'veiculos'            => Veiculo::where('empresa_id', $this->empresa_id)->get(),
+            'funcionarios'        => Funcionario::where('empresa_id', $this->empresa_id)->orderBy('nome')->get(),
+            'motoristas'          => $motoristas,
+            'tipos'               => TipoMovimentacao::where('empresa_id', $this->empresa_id)->get(),
+            'clientes'            => Cliente::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get(),
+            'fornecedores'        => Fornecedor::where('empresa_id', $this->empresa_id)->orderBy('razao_social')->get(),
+            'combustiveis'        => $combustiveis,
+            'produtosResiduos'    => $produtosResiduos,
+            'caixas'              => $caixas,
+            'pesagensDisponiveis' => $pesagensDisponiveis,
         ]);
     }
 
@@ -199,23 +490,58 @@ class MovimentacaoVeiculoController extends BaseController
         try {
             return DB::transaction(function () use ($request, $usuario_id, $empresa_id, $filial_id) {
 
+                // Bloqueia atualização direta de viagem finalizada: só o POST /reabrir
+                // com OTP pode alterar o status para permitir uma nova edição.
+                $registroExistente = null;
+                if ($request->filled('id') && (int) $request->id > 0) {
+                    $registroExistente = $this->applyFilialFilter(
+                        MovimentacaoVeiculo::where('empresa_id', $empresa_id)
+                    )->lockForUpdate()->findOrFail($request->id);
+
+                    if (in_array($registroExistente->status, ['finalizado', 'concluida'], true)) {
+                        session()->flash('mensagem_erro', 'A movimentação está finalizada. Utilize Reabrir com OTP antes de alterá-la.');
+                        return redirect()->back()->withInput();
+                    }
+                }
+
                 $dados = $request->all();
+                // Grava a opção da balança (se o utilizador marcou a caixa, guarda 1, senão guarda 0)
+                $dados['passar_balanca'] = $request->has('passar_balanca') ? 1 : 0;
+
                 $dados['empresa_id'] = $empresa_id;
                 $dados['filial_id'] = $filial_id;
                 $dados['solicitar_abastecimento'] = $request->solicitar_abastecimento ?? 0;
 
-                // 1. Definição do Status
+                // 🚀 DADOS DO TERCEIRO (FROTA EXTERNA)
+                $dados['is_terceirizado'] = $request->has('is_terceirizado') ? 1 : 0;
+
+                if ($dados['is_terceirizado']) {
+                    $dados['veiculo_id'] = null; // Terceiro não usa placa fixa do sistema
+                    $dados['motorista_id'] = null; // Terceiro não é funcionário
+                    $dados['terceiro_nome'] = $request->terceiro_nome;
+                    $dados['terceiro_documento'] = preg_replace('/[^0-9]/', '', $request->terceiro_documento);
+                    $dados['terceiro_telefone'] = preg_replace('/[^0-9]/', '', $request->terceiro_telefone);
+                } else {
+                    $dados['terceiro_nome'] = null;
+                    $dados['terceiro_documento'] = null;
+                    $dados['terceiro_telefone'] = null;
+                }
+
+                /// 1. Definição do Status (Corrigido para não iniciar agendamento futuro só porque tem KM inicial)
                 if ($request->filled('status')) {
                     $dados['status'] = $request->status;
                 } else {
                     if ($request->filled('km_final')) {
                         $dados['status'] = 'finalizado';
-                    } elseif ($request->filled('km_inicial')) {
+                    } elseif (!empty($request->data_hora_saida_real)) {
                         $dados['status'] = 'iniciado';
                     } else {
                         $dados['status'] = 'agendado';
                     }
                 }
+
+                $dados['gerar_mtr']   = $request->gerar_mtr ?? 0;
+                $dados['contrato_id'] = $request->contrato_id ?: null;
 
                 // EFEITO CASCATA DE KM
                 if (empty($request->id) && empty($request->filled('km_inicial')) && $request->filled('veiculo_id')) {
@@ -232,6 +558,8 @@ class MovimentacaoVeiculoController extends BaseController
                         $dados['km_inicial'] = $veiculoObj->quilometragem ?? 0;
                     }
                 }
+
+                $dados['pesagem_id'] = $request->pesagem_id ?: null;
 
                 $dados['data_hora_chegada_cliente'] = $request->data_hora_chegada_cliente ?? null;
                 $dados['data_hora_saida_cliente']   = $request->data_hora_saida_cliente ?? null;
@@ -264,7 +592,7 @@ class MovimentacaoVeiculoController extends BaseController
                 }
 
                 if ($request->id > 0) {
-                    $registro = $this->model::findOrFail($request->id);
+                    $registro = $registroExistente;
                     $registro->update($dados);
                     $registro->abastecimentos()->delete();
                     $registro->despesas()->delete();
@@ -274,8 +602,21 @@ class MovimentacaoVeiculoController extends BaseController
                 }
 
                 // GRAVAÇÃO DOS AJUDANTES
+                /*
                 if ($request->has('ajudantes_ids')) {
                     $registro->ajudantes()->sync($request->ajudantes_ids);
+                } else {
+                    $registro->ajudantes()->detach();
+                }
+                */
+
+                // GRAVAÇÃO DOS AJUDANTES
+                // Preserva o relacionamento e informa a empresa na tabela pivot.
+                if ($request->has('ajudantes_ids')) {
+                    $registro->ajudantes()->syncWithPivotValues(
+                        $request->ajudantes_ids,
+                        ['empresa_id' => $empresa_id]
+                    );
                 } else {
                     $registro->ajudantes()->detach();
                 }
@@ -298,15 +639,127 @@ class MovimentacaoVeiculoController extends BaseController
                                 $fornecedorId = str_replace('fornecedor_', '', $entidade);
                             }
 
-                            $registro->destinos()->create([
-                                'cliente_id'        => $clienteId,
-                                'fornecedor_id'     => $fornecedorId,
-                                'endereco_completo' => $destino['endereco_completo'] ?? null,
-                                'latitude'          => $destino['latitude'] ?? null,
-                                'longitude'         => $destino['longitude'] ?? null,
-                                'ordem'             => $ordem,
-                                'status'            => 'pendente'
+                            $latDest = $destino['latitude'] ?? null;
+                            $lonDest = $destino['longitude'] ?? null;
+
+                            // Se não veio coordenada da tela, busca automático do cadastro do Cliente ou Fornecedor
+                            if ((empty($latDest) || empty($lonDest)) && $clienteId) {
+                                $cliObj = Cliente::find($clienteId);
+                                $latDest = $cliObj->latitude ?? null;
+                                $lonDest = $cliObj->longitude ?? null;
+                            } elseif ((empty($latDest) || empty($lonDest)) && $fornecedorId) {
+                                $fornObj = Fornecedor::find($fornecedorId);
+                                $latDest = $fornObj->latitude ?? null;
+                                $lonDest = $fornObj->longitude ?? null;
+                            }
+
+                            // 1. Cria o destino principal na tabela pai
+                            $destinoCriado = $registro->destinos()->create([
+                                'cliente_id'          => $clienteId,
+                                'fornecedor_id'       => $fornecedorId,
+                                'is_aterro'           => isset($destino['is_aterro']) ? 1 : 0,
+                                'cobrar_frete'        => isset($destino['cobrar_frete']) ? (int)$destino['cobrar_frete'] : 1,
+                                'tipo_operacao_caixa' => $destino['tipo_operacao_caixa'] ?? 'nenhuma',
+                                'caixa_deixada_id'    => !empty($destino['caixa_deixada_id']) ? $destino['caixa_deixada_id'] : null,
+                                'caixa_retirada_id'   => !empty($destino['caixa_retirada_id']) ? $destino['caixa_retirada_id'] : null,
+                                'endereco_completo'   => $destino['endereco_completo'] ?? null,
+                                'latitude'            => $latDest,
+                                'longitude'           => $lonDest,
+                                'ordem'               => $ordem,
+                                'status'              => $destino['status'] ?? 'pendente',
+                                'data_hora_chegada'   => $destino['data_hora_chegada'] ?? null,
+                                'data_hora_saida'     => $destino['data_hora_saida'] ?? null,
                             ]);
+
+                            // 2. 🚀 GRAVA NA TABELA FILHA (movimentacao_destino_itens)
+                            // Se a viagem estiver vinculada a uma pesagem, importa TODOS os itens originais da balança
+                            if (!empty($request->pesagem_id)) {
+                                $ticketsPesagem = \DB::table('tickets_pesagem')->where('pesagem_id', $request->pesagem_id)->get();
+
+                                foreach ($ticketsPesagem as $tp) {
+                                    if (!empty($tp->produto_id)) {
+                                        \DB::table('movimentacao_destino_itens')->insert([
+                                            'movimentacao_veiculo_id' => $registro->id,
+                                            'movimentacao_destino_id' => $destinoCriado->id,
+                                            'produto_id'              => $tp->produto_id,
+                                            'quantidade'              => (float)($tp->peso ?? 0),
+                                            'unidade'                 => 'KG',
+                                            'observacao'              => 'Importado 100% via Balança',
+                                            'created_at'              => now(),
+                                            'updated_at'              => now(),
+                                        ]);
+                                    }
+                                }
+                            }
+                            // Caso contrário, grava o apontamento manual feito na tela (Agora suporta múltiplos)
+                            else {
+                                // Se a tela enviou a nova lista de múltiplos resíduos
+                                if (isset($destino['residuos']) && is_array($destino['residuos'])) {
+                                    foreach ($destino['residuos'] as $res) {
+                                        if (!empty($res['produto_id']) || !empty($res['quantidade'])) {
+                                            $qtdLimpa = !empty($res['quantidade'])
+                                                ? str_replace(',', '.', str_replace('.', '', $res['quantidade']))
+                                                : 0;
+
+                                            \DB::table('movimentacao_destino_itens')->insert([
+                                                'movimentacao_veiculo_id' => $registro->id,
+                                                'movimentacao_destino_id' => $destinoCriado->id,
+                                                'produto_id'              => $res['produto_id'] ?? null,
+                                                'quantidade'              => (float)$qtdLimpa,
+                                                'unidade'                 => 'KG',
+                                                'observacao'              => 'Apontado Manualmente na Agenda',
+                                                'created_at'              => now(),
+                                                'updated_at'              => now(),
+                                            ]);
+                                        }
+                                    }
+                                }
+                                // Fallback/Segurança caso venha no formato antigo
+                                elseif (!empty($destino['produto_residuo_id']) || !empty($destino['quantidade_residuo'])) {
+                                    $qtdLimpa = !empty($destino['quantidade_residuo'])
+                                        ? str_replace(',', '.', str_replace('.', '', $destino['quantidade_residuo']))
+                                        : 0;
+
+                                    \DB::table('movimentacao_destino_itens')->insert([
+                                        'movimentacao_veiculo_id' => $registro->id,
+                                        'movimentacao_destino_id' => $destinoCriado->id,
+                                        'produto_id'              => $destino['produto_residuo_id'] ?? null,
+                                        'quantidade'              => (float)$qtdLimpa,
+                                        'unidade'                 => 'KG',
+                                        'observacao'              => 'Apontado Manualmente na Agenda',
+                                        'created_at'              => now(),
+                                        'updated_at'              => now(),
+                                    ]);
+                                }
+                            }
+
+                            // Se o gestor já agendou deixando ou retirando caçamba física:
+                            if (!empty($destinoCriado->caixa_deixada_id)) {
+                                DB::table('produtos')
+                                    ->where('id', $destinoCriado->caixa_deixada_id)
+                                    ->update([
+                                        'status_localizacao' => 'cliente',
+                                        'cliente_atual_id'   => $clienteId,
+                                        'endereco_atual'     => $destinoCriado->endereco_completo,
+                                        'latitude_atual'     => $latDest,
+                                        'longitude_atual'    => $lonDest,
+                                        'updated_at'         => now()
+                                    ]);
+                            }
+
+                            if (!empty($destinoCriado->caixa_retirada_id)) {
+                                DB::table('produtos')
+                                    ->where('id', $destinoCriado->caixa_retirada_id)
+                                    ->update([
+                                        'status_localizacao' => 'base',
+                                        'cliente_atual_id'   => null,
+                                        'endereco_atual'     => null,
+                                        'latitude_atual'     => null,
+                                        'longitude_atual'    => null,
+                                        'updated_at'         => now()
+                                    ]);
+
+                            }
                             $ordem++;
                         }
                     }
@@ -394,6 +847,27 @@ class MovimentacaoVeiculoController extends BaseController
         $query = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)
             ->whereBetween('data_hora_saida', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59']);
 
+        // 1. Proteção de Segurança pelo BaseController
+        $query = $this->applyFilialFilter($query);
+
+        // 2. Busca as filiais permitidas para exibir as opções no Filtro
+        $user_logged = session('user_logged');
+        $usuarioObj = \Illuminate\Support\Facades\DB::table('usuarios')->where('id', $user_logged['id'] ?? $user_logged['usuario_id'] ?? 0)->first();
+
+        $locaisPermitidos = $usuarioObj && !empty($usuarioObj->locais) ? json_decode($usuarioObj->locais, true) : ['-1'];
+        if (!is_array($locaisPermitidos)) {
+            $locaisPermitidos = ['-1'];
+        }
+
+        $filiaisQuery = \Illuminate\Support\Facades\DB::table('filials');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('filials', 'empresa_id')) {
+            $filiaisQuery->where('empresa_id', $this->empresa_id);
+        }
+        if (!in_array('-1', $locaisPermitidos) && !in_array(-1, $locaisPermitidos)) {
+            $filiaisQuery->whereIn('id', $locaisPermitidos);
+        }
+        $listaFiliais = $filiaisQuery->get();
+
         if ($veiculoId) {
             $query->where('veiculo_id', $veiculoId);
         }
@@ -403,7 +877,6 @@ class MovimentacaoVeiculoController extends BaseController
         $totalAgendadas  = (clone $query)->where('status', 'agendado')->count();
         $totalEmPercurso = (clone $query)->where('status', 'iniciado')->count();
 
-        // ADICIONADO: 'destinos.cliente', 'destinos.fornecedor' para carregar o Multi-Stop
         $coletasRegistradas = (clone $query)->with(['veiculo', 'motorista', 'cliente', 'destinos.cliente', 'destinos.fornecedor'])->get();
         $coletasPorData = [];
 
@@ -419,12 +892,13 @@ class MovimentacaoVeiculoController extends BaseController
 
         $mesAnterior = $dt->copy()->subMonth()->format('Y-m');
         $mesProximo  = $dt->copy()->addMonth()->format('Y-m');
+        $podeReabrirAgenda = $this->podeReabrirAgendamento();
 
         return view('movimentacoes_veiculos.agenda', compact(
             'title', 'totalRealizadas', 'totalCanceladas',
             'totalAgendadas', 'totalEmPercurso', 'coletasPorData',
             'primeiroDiaSemana', 'diasNoMes', 'dt', 'veiculos',
-            'dataInicio', 'dataFim', 'veiculoId', 'mesAnterior', 'mesProximo'
+            'dataInicio', 'dataFim', 'veiculoId', 'mesAnterior', 'mesProximo', 'listaFiliais', 'podeReabrirAgenda'
         ));
     }
 
@@ -494,12 +968,22 @@ class MovimentacaoVeiculoController extends BaseController
             $usuarioIdLogado = $user_logged['id'] ?? $user_logged['usuario_id'];
             $isAdmin = $user_logged['adm'] ?? $user_logged['is_admin'] ?? false;
 
-            $coleta = MovimentacaoVeiculo::with(['veiculo', 'motorista'])->where('empresa_id', $this->empresa_id)->findOrFail($id);
+            $coleta = $this->applyFilialFilter(
+                MovimentacaoVeiculo::with(['veiculo', 'motorista'])->where('empresa_id', $this->empresa_id)
+            )->findOrFail($id);
 
+            if (in_array($coleta->status, ['finalizado', 'concluida'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'mensagem' => 'Agendamento finalizado. É necessário reabri-lo com OTP antes de registrar novos horários.'
+                ], 422);
+            }
+
+            // Permite se for Administrador, Motorista vinculado, ou se a viagem for Terceirizada
             $funcionarioMotorista = \App\Models\Funcionario::where('id', $coleta->motorista_id)->first();
             $isMotoristaDaColeta = ($funcionarioMotorista && $funcionarioMotorista->usuario_id == $usuarioIdLogado);
 
-            if (!$isAdmin && !$isMotoristaDaColeta) {
+            if (!$isAdmin && !$isMotoristaDaColeta && $coleta->is_terceirizado == 0) {
                 return response()->json([
                     'success' => false,
                     'mensagem' => 'Acesso negado: Somente o Motorista escalado ou Administradores podem registar horários nesta coleta.'
@@ -508,51 +992,78 @@ class MovimentacaoVeiculoController extends BaseController
 
             $tipo = $request->tipo;
 
+            // 🚀 LÊ A HORA DIGITADA NO MODAL (Ou assume a hora atual se vier vazio)
+            $horaRegistro = $request->filled('data_hora_manual')
+                ? \Carbon\Carbon::parse($request->data_hora_manual)
+                : now();
+
+            // 🚀 VERIFICA SE O OPERADOR MARCOU "NÃO GERAR PESAGEM"
+            $isManual = $request->input('is_manual') == 1;
+
             if ($tipo == 'saida_garagem') {
-                $coleta->data_hora_saida_real = now();
+                $coleta->data_hora_saida_real = $horaRegistro;
                 if ($coleta->status == 'agendado') {
                     $coleta->status = 'iniciado';
                 }
             } elseif ($tipo == 'chegada') {
-                $coleta->data_hora_chegada_cliente = now();
+                $coleta->data_hora_chegada_cliente = $horaRegistro;
                 if ($coleta->status == 'agendado') {
                     $coleta->status = 'iniciado';
                 }
             } elseif ($tipo == 'saida') {
-                $coleta->data_hora_saida_cliente = now();
+                $coleta->data_hora_saida_cliente = $horaRegistro;
             }
-            // 🚀 NOVA LÓGICA: CHEGADA INDIVIDUAL POR DESTINO (MULTI-STOP)
+            // LÓGICA DE DESTINOS INDIVIDUAIS (MULTI-STOP)
             elseif ($tipo == 'chegada_destino') {
                 $destino = \App\Models\MovimentacaoDestino::find($request->destino_id);
                 if ($destino) {
-                    $destino->data_hora_chegada = now();
+                    $destino->data_hora_chegada = $horaRegistro;
                     $destino->save();
+
+                    // GATILHO 1: WhatsApp do Motorista
+                    $primeiroDestinoColeta = $coleta->destinos()->where('is_aterro', 0)->orderBy('ordem', 'asc')->first();
+                    if ($primeiroDestinoColeta && $primeiroDestinoColeta->id == $destino->id && empty($coleta->alerta_atraso_enviado_at)) {
+                        $this->enviarLinkColetaWhatsApp($coleta->id);
+                        $coleta->alerta_atraso_enviado_at = now();
+                    }
                 }
-                if ($coleta->status == 'agendado') {
-                    $coleta->status = 'iniciado';
-                }
+                if ($coleta->status == 'agendado') { $coleta->status = 'iniciado'; }
             }
-            // 🚀 NOVA LÓGICA: SAÍDA INDIVIDUAL POR DESTINO (MULTI-STOP)
             elseif ($tipo == 'saida_destino') {
                 $destino = \App\Models\MovimentacaoDestino::find($request->destino_id);
                 if ($destino) {
-                    $destino->data_hora_saida = now();
+                    $destino->data_hora_saida = $horaRegistro;
                     $destino->status = 'visitado';
                     $destino->save();
+
+                    // GATILHO 2: Resumo WhatsApp (apenas se Gerar MTR? = SIM)
+                    $ultimoDestinoColeta = $coleta->destinos()->where('is_aterro', 0)->orderBy('ordem', 'desc')->first();
+                    if (
+                        (int) ($coleta->gerar_mtr ?? 0) === 1
+                        && $ultimoDestinoColeta
+                        && $ultimoDestinoColeta->id == $destino->id
+                        && $destino->alerta_mtr_enviado == 0
+                    ) {
+                        $this->enviarAlertaResumoAmbiental($coleta->id);
+                        $destino->alerta_mtr_enviado = 1;
+                        $destino->save();
+                    }
                 }
             }
+
             elseif ($tipo == 'chegada_garagem') {
-                $coleta->data_hora_chegada = now();
+                $coleta->data_hora_chegada = $horaRegistro;
                 $coleta->status = 'finalizado';
 
-                $base = $coleta->filial_id
-                    ? \Illuminate\Support\Facades\DB::table('filials')->where('id', $coleta->filial_id)->first()
-                    : \Illuminate\Support\Facades\DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
-                $latBase = $base->latitude ?? null;
-                $lonBase = $base->longitude ?? null;
+                // 🚀 SE FOR LANÇAMENTO MANUAL/RETROATIVO, DESLIGA A IDA PARA A BALANÇA!
+                if ($isManual) {
+                    $coleta->passar_balanca = 0;
+                }
 
-                $latOrigem = $latBase;
-                $lonOrigem = $lonBase;
+                // (O CÁLCULO DE KM ORIGINAL MANTÉM-SE AQUI INTACTO)
+                $base = $coleta->filial_id ? \Illuminate\Support\Facades\DB::table('filials')->where('id', $coleta->filial_id)->first() : \Illuminate\Support\Facades\DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+                $latBase = $base->latitude ?? null; $lonBase = $base->longitude ?? null;
+                $latOrigem = $latBase; $lonOrigem = $lonBase;
                 if ($coleta->tipo_partida == 'residencia' && $coleta->motorista) {
                     $latOrigem = $coleta->motorista->latitude_residencia ?? $latBase;
                     $lonOrigem = $coleta->motorista->longitude_residencia ?? $lonBase;
@@ -569,35 +1080,27 @@ class MovimentacaoVeiculoController extends BaseController
                 };
 
                 $kmPercorrido = 0;
-
                 if ($coleta->veiculo && $coleta->veiculo->traccar_id) {
                     try {
                         $config = \App\Models\TraccarConfig::where('empresa_id', $this->empresa_id)->first();
                         if ($config && !empty($config->base_url)) {
                             $baseUrl = rtrim($config->base_url, '/');
-                            $respDevices = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)
-                                ->get($baseUrl . '/api/devices');
-
+                            $respDevices = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)->get($baseUrl . '/api/devices');
                             if ($respDevices->successful()) {
                                 $device = collect($respDevices->json())->firstWhere('uniqueId', $coleta->veiculo->traccar_id);
                                 if ($device) {
                                     $idInterno = $device['id'];
                                     $from = \Carbon\Carbon::parse($coleta->data_hora_saida_real)->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
                                     $to = \Carbon\Carbon::now()->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
-
                                     $urlSummary = $baseUrl . "/api/reports/summary?deviceId={$idInterno}&from={$from}&to={$to}";
-                                    $respSummary = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)
-                                        ->withHeaders(['Accept' => 'application/json'])->get($urlSummary);
-
+                                    $respSummary = \Illuminate\Support\Facades\Http::withBasicAuth($config->mail_user_name, $config->password)->withHeaders(['Accept' => 'application/json'])->get($urlSummary);
                                     if ($respSummary->successful() && count($respSummary->json()) > 0) {
                                         $kmPercorrido = ($respSummary->json()[0]['distance'] ?? 0) / 1000;
                                     }
                                 }
                             }
                         }
-                    } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error("Erro Traccar Manual KM: " . $e->getMessage());
-                    }
+                    } catch (\Exception $e) { \Illuminate\Support\Facades\Log::error("Erro Traccar Manual KM: " . $e->getMessage()); }
                 }
 
                 if ($kmPercorrido <= 0) {
@@ -607,7 +1110,6 @@ class MovimentacaoVeiculoController extends BaseController
                 }
 
                 $coleta->km_final = (int) round($coleta->km_inicial + max(0, $kmPercorrido));
-
                 if ($coleta->veiculo_id && $coleta->km_final > 0) {
                     $veiculoObj = \App\Models\Veiculo::find($coleta->veiculo_id);
                     if ($veiculoObj) {
@@ -617,7 +1119,14 @@ class MovimentacaoVeiculoController extends BaseController
                 }
             }
 
+            // Grava a movimentação com a nova hora (e com o passar_balanca possivelmente desligado)
             $coleta->save();
+
+            // 🚀 CHAMA A PRÉ-PESAGEM CASO A VIAGEM TENHA TERMINADO E A BALANÇA ESTEJA LIGADA
+            if ($coleta->status === 'finalizado' && $coleta->passar_balanca == 1 && empty($coleta->pesagem_id)) {
+                $coleta->gerarPrePesagemAutomatica();
+            }
+
             return response()->json(['success' => true, 'mensagem' => 'Horário e status atualizados com sucesso!']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'mensagem' => $e->getMessage()], 400);
@@ -628,7 +1137,7 @@ class MovimentacaoVeiculoController extends BaseController
     {
         $movimentacao = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)->findOrFail($id);
 
-        if ($movimentacao->status == 'finalizado') {
+        if (in_array($movimentacao->status, ['finalizado', 'concluida'], true)) {
             session()->flash('mensagem_erro', 'Não é possível cancelar uma movimentação já finalizada.');
             return redirect()->back();
         }
@@ -1022,5 +1531,816 @@ class MovimentacaoVeiculoController extends BaseController
         $title = "Histórico e Linha do Tempo da Viagem";
 
         return view('movimentacoes_veiculos.historico', compact('movimentacao', 'title'));
+    }
+
+    /**
+     * ITEM 6: Tela Pública (Mobile) para o motorista informar Resíduo, Peso e Caçambas
+     */
+    public function exibirTelaColetaMotorista($id, $destino_id)
+    {
+        $movimentacao = MovimentacaoVeiculo::with(['veiculo', 'destinos.cliente', 'destinos.fornecedor'])->findOrFail($id);
+
+        // Busca segura do destino vinculado à viagem para evitar o erro 404/ModelNotFound
+        $destino = \App\Models\MovimentacaoDestino::where('movimentacao_veiculo_id', $id)
+            ->where('id', $destino_id)
+            ->first();
+
+        if (!$destino) {
+            $destino = $movimentacao->destinos->first();
+
+            if (!$destino) {
+                abort(404, 'Nenhum destino/parada encontrado para esta viagem.');
+            }
+        }
+
+        // Caçambas cadastradas como produtos com valor de locação
+        $caixas = \App\Models\Produto::where('empresa_id', $movimentacao->empresa_id)
+            ->where('inativo', false)
+            ->where('valor_locacao', '>', 0)
+            ->orderBy('nome')
+            ->get();
+
+        // Resíduos disponíveis
+        $produtos = \App\Models\Produto::where('empresa_id', $movimentacao->empresa_id)
+            ->where('inativo', false)
+            ->orderBy('nome')
+            ->get();
+
+        return view('movimentacoes_veiculos.coleta_motorista', compact('movimentacao', 'destino', 'caixas', 'produtos'));
+    }
+
+
+    /**
+     * ITEM 6: Salva os dados preenchidos pelo motorista
+     */
+    public function salvarColetaMotorista(Request $request, $id, $destino_id)
+    {
+        $movimentacao = MovimentacaoVeiculo::findOrFail($id);
+        $destino = \App\Models\MovimentacaoDestino::findOrFail($destino_id);
+
+        // 1. Atualiza Caçambas e Operação na Parada
+        if ($request->filled('tipo_operacao_caixa')) {
+            $destino->tipo_operacao_caixa = $request->tipo_operacao_caixa;
+            $destino->caixa_deixada_id    = $request->caixa_deixada_id ?: null;
+            $destino->caixa_retirada_id   = $request->caixa_retirada_id ?: null;
+        }
+
+        // 2. Upload da Foto do Ticket se houver
+        if ($request->hasFile('foto_ticket_balanca')) {
+            $arquivo = $request->file('foto_ticket_balanca');
+            $nomeArquivo = 'ticket_' . $destino->id . '_' . time() . '.' . $arquivo->getClientOriginalExtension();
+            $arquivo->move(public_path('uploads/tickets'), $nomeArquivo);
+            $destino->foto_ticket_balanca = $nomeArquivo;
+        }
+
+        // 3. Adiciona o Resíduo na tabela de itens (estilo itens de NF)
+        if (!empty($request->produto_residuo_id) && !empty($request->quantidade_residuo)) {
+            \App\Models\MovimentacaoDestinoItem::create([
+                'movimentacao_veiculo_id' => $movimentacao->id,
+                'movimentacao_destino_id' => $destino->id,
+                'produto_id'              => $request->produto_residuo_id,
+                'quantidade'              => str_replace(',', '.', $request->quantidade_residuo),
+                'unidade'                 => $request->unidade_residuo ?? 'KG'
+            ]);
+
+            // Mantém também na tabela mãe para compatibilidade direta de listagens antigas
+            $destino->produto_residuo_id = $request->produto_residuo_id;
+            $destino->quantidade_residuo = str_replace(',', '.', $request->quantidade_residuo);
+            $destino->unidade_residuo    = $request->unidade_residuo ?? 'KG';
+        }
+
+        $destino->save();
+
+        // =========================================================================
+        // 🔄 SINCRONIZAÇÃO DE CAÇAMBAS/EQUIPAMENTOS (Pátio x Cliente)
+        // =========================================================================
+
+        // Caçamba Deixada no Cliente -> Passa a 'cliente'
+        if (!empty($destino->caixa_deixada_id)) {
+            DB::table('produtos')
+                ->where('id', $destino->caixa_deixada_id)
+                ->update([
+                    'status_localizacao' => 'cliente',
+                    'cliente_atual_id'   => $destino->cliente_id,
+                    'endereco_atual'     => $destino->endereco_completo,
+                    'latitude_atual'     => $destino->latitude,
+                    'longitude_atual'    => $destino->longitude,
+                    'updated_at'         => now()
+                ]);
+
+            DB::table('patrimonio_movimentacoes')->insert([
+                'empresa_id'              => $movimentacao->empresa_id,
+                'patrimonio_id'           => $destino->caixa_deixada_id,
+                'cliente_id'              => $destino->cliente_id,
+                'tipo_acao'               => 'Entrega',
+                'movimentacao_veiculo_id' => $movimentacao->id,
+                'observacao'              => 'Entregue pelo motorista na Viagem #' . $movimentacao->id,
+                'created_at'              => now()
+            ]);
+        }
+
+        // Caçamba Retirada do Cliente -> Regressa à 'base'
+        if (!empty($destino->caixa_retirada_id)) {
+            DB::table('produtos')
+                ->where('id', $destino->caixa_retirada_id)
+                ->update([
+                    'status_localizacao' => 'base',
+                    'cliente_atual_id'   => null,
+                    'endereco_atual'     => null,
+                    'latitude_atual'     => null,
+                    'longitude_atual'    => null,
+                    'updated_at'         => now()
+                ]);
+
+            DB::table('patrimonio_movimentacoes')->insert([
+                'empresa_id'              => $movimentacao->empresa_id,
+                'patrimonio_id'           => $destino->caixa_retirada_id,
+                'cliente_id'              => $destino->cliente_id,
+                'tipo_acao'               => 'Retirada',
+                'movimentacao_veiculo_id' => $movimentacao->id,
+                'observacao'              => 'Recolhida pelo motorista na Viagem #' . $movimentacao->id,
+                'created_at'              => now()
+            ]);
+        }
+
+        $destino->save();
+
+        // =========================================================================
+        // 🚀 GATILHO: DISPARA O RESUMO AMBIENTAL / MTR APÓS O MOTORISTA SALVAR A COLETA
+        // =========================================================================
+        try {
+            $this->enviarAlertaResumoAmbiental($movimentacao->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Erro ao disparar MTR pós-coleta: " . $e->getMessage());
+        }
+
+        // 4. Se clicou em "Adicionar Mais Resíduo"
+        if ($request->input('acao') == 'adicionar_mais') {
+            return back()->with('sucesso', 'Material registado com sucesso! Indique o próximo resíduo.');
+        }
+
+        return back()->with('sucesso', 'Todos os materiais e equipamentos deste local foram gravados com sucesso!');
+    }
+
+    // Método para excluir um item digitado por engano
+    public function removerItemColetaMotorista($item_id)
+    {
+        $item = \App\Models\MovimentacaoDestinoItem::findOrFail($item_id);
+        $item->delete();
+
+        return back()->with('sucesso', 'Item removido com sucesso!');
+    }
+
+    public function enviarLinkColetaWhatsApp($id)
+    {
+        // 1. Busca a viagem sem depender da sessão web
+        $mov = MovimentacaoVeiculo::with(['motorista', 'veiculo', 'destinos'])->findOrFail($id);
+
+        if (!$mov->motorista || (empty($mov->motorista->celular) && empty($mov->motorista->telefone))) {
+            if (!app()->runningInConsole()) session()->flash('mensagem_erro', 'Motorista sem telefone cadastrado.');
+            return redirect()->back();
+        }
+
+        $telefone = $mov->motorista->celular ?: $mov->motorista->telefone;
+        $destino = $mov->destinos->first();
+
+        if (!$destino) {
+            if (!app()->runningInConsole()) session()->flash('mensagem_erro', 'Esta movimentação não possui destinos/paradas cadastradas.');
+            return redirect()->back();
+        }
+
+        // 🚀 FORÇA O DOMÍNIO CORRETO DE PRODUÇÃO EM VEZ DE LOCALHOST
+        $dominioBase = 'https://web.fersofterp.com.br';
+        $linkColeta = $dominioBase . '/coleta-motorista/' . $mov->id . '/destino/' . $destino->id;
+
+        $msg = "♻️ *REGISTRO DE COLETA E RESÍDUO*\n\n";
+        $msg .= "Olá, *{$mov->motorista->nome}*! Por favor, informe o resíduo e a quantidade coletada para o veículo *{$mov->veiculo->placa}* clicando no link abaixo:\n\n";
+        $msg .= "👉 {$linkColeta}";
+
+        try {
+            $resultado = app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendText(
+                (int) $mov->empresa_id,
+                (string) $telefone,
+                $msg
+            );
+
+            if (empty($resultado['success'])) {
+                if (!app()->runningInConsole()) session()->flash('mensagem_erro', 'Não foi possível enviar o link de coleta pelo WhatsApp.');
+                return redirect()->back();
+            }
+        } catch (\Throwable $e) {
+            if (!app()->runningInConsole()) session()->flash('mensagem_erro', 'Erro ao enviar WhatsApp: ' . $e->getMessage());
+            return redirect()->back();
+        }
+
+        if (!app()->runningInConsole()) session()->flash('mensagem_sucesso', 'Link de coleta de resíduos enviado com sucesso para o motorista!');
+        return redirect()->back();
+    }
+
+    public function verificarAtrasosFrota($empresa_id)
+    {
+        $param = \Illuminate\Support\Facades\DB::table('parametros_agendamento_logistica')
+            ->where('empresa_id', $empresa_id)
+            ->first();
+
+        if (!$param || empty($param->notificar_atraso_whatsapp)) {
+            return;
+        }
+
+        $tolerancia = (int) ($param->minutos_tolerancia_atraso ?? 20);
+        $limiteHora = now()->subMinutes($tolerancia);
+
+        // Busca movimentações com saída prevista vencida que continuam agendadas
+        $movimentacoesAtrasadas = MovimentacaoVeiculo::with(['veiculo', 'motorista', 'destinos.cliente'])
+            ->where('empresa_id', $empresa_id)
+            ->where('status', 'agendado')
+            ->where('data_hora_saida', '<=', $limiteHora)
+            ->whereNull('alerta_atraso_enviado_at')
+            ->get();
+
+        $gestor = $param->funcionario_gestor_frota_id
+            ? \App\Models\Funcionario::find($param->funcionario_gestor_frota_id)
+            : null;
+
+        $instanciaWhats = app(\App\Utils\WhatsAppUtil::class);
+
+        foreach ($movimentacoesAtrasadas as $mov) {
+            $placa = $mov->veiculo->placa ?? 'Sem Placa';
+            $motoristaNome = $mov->motorista->nome ?? 'Não informado';
+            $horaPrevista = date('H:i d/m', strtotime($mov->data_hora_saida));
+
+            // 1. WhatsApp para o Motorista
+            if ($mov->motorista && (!empty($mov->motorista->celular) || !empty($mov->motorista->telefone))) {
+                $numMotorista = preg_replace('/[^0-9]/', '', $mov->motorista->celular ?: $mov->motorista->telefone);
+                if (strlen($numMotorista) >= 10) {
+                    if (!str_starts_with($numMotorista, '55')) $numMotorista = '55' . $numMotorista;
+                    $msgMotorista = "⏰ *LEMBRETE DE SAÍDA - FROTA*\n\n"
+                        . "Olá, *{$motoristaNome}*!\n"
+                        . "A viagem com o veículo *{$placa}* estava prevista para sair às *{$horaPrevista}* e ainda consta como pendente de saída.\n"
+                        . "Favor iniciar o checklist ou comunicar o encarregado.";
+
+                    if (method_exists($instanciaWhats, 'sendMessage')) {
+                        $instanciaWhats->sendMessage($numMotorista, $msgMotorista, $empresa_id);
+                    }
+                }
+            }
+
+            // 2. WhatsApp para o Gestor da Frota
+            if ($gestor && (!empty($gestor->celular) || !empty($gestor->telefone))) {
+                $numGestor = preg_replace('/[^0-9]/', '', $gestor->celular ?: $gestor->telefone);
+                if (strlen($numGestor) >= 10) {
+                    if (!str_starts_with($numGestor, '55')) $numGestor = '55' . $numGestor;
+                    $msgGestor = "⚠️ *ALERTA DE ATRASO NA FROTA*\n\n"
+                        . "A saída do veículo *{$placa}* ultrapassou o limite de tolerância ({$tolerancia} min).\n"
+                        . "📌 *Saída Prevista:* {$horaPrevista}\n"
+                        . "👤 *Motorista:* {$motoristaNome}\n"
+                        . "Viagem ID: #{$mov->id}";
+
+                    if (method_exists($instanciaWhats, 'sendMessage')) {
+                        $instanciaWhats->sendMessage($numGestor, $msgGestor, $empresa_id);
+                    }
+                }
+            }
+
+            // Marca como enviado para evitar spam repetido
+            $mov->alerta_atraso_enviado_at = now();
+            $mov->save();
+        }
+    }
+
+    /**
+     * Envia o Resumo de Rota / Ordem de Coleta para o WhatsApp do motorista
+     */
+    public function enviarResumoViagemWhatsApp($id)
+    {
+        $mov = MovimentacaoVeiculo::with(['motorista', 'veiculo', 'destinos.cliente', 'destinos.fornecedor'])
+            ->where('empresa_id', $this->empresa_id)
+            ->findOrFail($id);
+
+        if (!$mov->motorista || (empty($mov->motorista->celular) && empty($mov->motorista->telefone))) {
+            session()->flash('mensagem_erro', 'Motorista sem telefone cadastrado.');
+            return redirect()->back();
+        }
+
+        $telefone = $mov->motorista->celular ?: $mov->motorista->telefone;
+        $placa = $mov->veiculo->placa ?? 'Sem Placa';
+        $modelo = $mov->veiculo->modelo ?? '';
+        $horaSaida = date('H:i d/m', strtotime($mov->data_hora_saida));
+
+        $msg = "🚚 *ORDEM DE COLETA DIGITAL* | Viagem #{$mov->id}\n";
+        $msg .= "Olá, *{$mov->motorista->nome}*! Sua rota está agendada para sair em breve.\n\n";
+
+        $msg .= "📋 *DETALHES DA ESCALA*\n";
+        $msg .= "• *Veículo:* {$placa} ({$modelo})\n";
+        $msg .= "• *Saída Prevista:* {$horaSaida}\n\n";
+
+        $msg .= "🗺️ *ITINERÁRIO DE PARADAS*\n";
+
+        if ($mov->destinos && $mov->destinos->count() > 0) {
+            foreach ($mov->destinos as $idx => $dest) {
+                $n = $idx + 1;
+                $nomeCliente = $dest->cliente->razao_social ?? ($dest->cliente->nome ?? ($dest->fornecedor->razao_social ?? 'Parada Sem Nome'));
+                $endereco = $dest->endereco_completo ?: 'Endereço não informado';
+
+                $opcoes = [
+                    'nenhuma' => 'Apenas Coleta de Resíduo',
+                    'colocar' => 'Deixar Caçamba Vazia',
+                    'retirar' => 'Recolher Caçamba Cheia',
+                    'trocar'  => 'Trocar Caçamba'
+                ];
+                $missao = $opcoes[$dest->tipo_operacao_caixa] ?? 'Conforme Planejamento';
+
+                // Gera link do Google Maps por coordenadas ou endereço formatado
+                if (!empty($dest->latitude) && !empty($dest->longitude)) {
+                    $linkMaps = "https://www.google.com/maps/search/?api=1&query={$dest->latitude},{$dest->longitude}";
+                } else {
+                    $linkMaps = "https://www.google.com/maps/search/?api=1&query=" . urlencode($endereco);
+                }
+
+                $msg .= "*Parada {$n}:* {$nomeCliente}\n";
+                $msg .= "• *Missão:* {$missao}\n";
+                $msg .= "• *Endereço:* {$endereco}\n";
+                $msg .= "📍 *Abrir no GPS:* {$linkMaps}\n\n";
+            }
+        } else {
+            $msg .= "• Destino: " . ($mov->destino ?: 'Conforme instrução interna') . "\n\n";
+        }
+
+        $linkColeta = url('/coleta-motorista/' . $mov->id . '/destino/' . ($mov->destinos->first()->id ?? 0));
+        $linkChecklist = url('/checklist/veiculo/' . $mov->id);
+
+        $msg .= "📲 *LINKS RÁPIDOS*\n";
+        $msg .= "👉 *Checklist do Veículo:* {$linkChecklist}\n";
+        $msg .= "👉 *Apontamento de Balança / Caçambas:* {$linkColeta}\n\n";
+        $msg .= "_Tenha uma excelente e segura rota!_";
+
+        try {
+            $resultado = app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendText(
+                (int) $this->empresa_id,
+                (string) $telefone,
+                $msg
+            );
+
+            if (empty($resultado['success'])) {
+                session()->flash('mensagem_erro', 'Falha ao enviar resumo pelo WhatsApp.');
+                return redirect()->back();
+            }
+        } catch (\Throwable $e) {
+            session()->flash('mensagem_erro', 'Erro ao disparar mensagem: ' . $e->getMessage());
+            return redirect()->back();
+        }
+
+        session()->flash('mensagem_sucesso', 'Resumo da rota enviado com sucesso para o WhatsApp do motorista!');
+        return redirect()->back();
+    }
+
+    public function sincronizarRetroativoTraccar($id)
+    {
+        $mov = \App\Models\MovimentacaoVeiculo::with(['destinos.cliente', 'destinos.fornecedor', 'veiculo', 'motorista', 'cliente', 'fornecedor'])->find($id);
+
+        if (!$mov || !in_array(strtolower($mov->status), ['agendado', 'iniciado'])) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_erro', 'Viagem não encontrada ou já finalizada.');
+        }
+
+        $config = \Illuminate\Support\Facades\DB::table('traccar_configs')->where('empresa_id', $mov->empresa_id)->orderBy('id', 'desc')->first();
+        if (!$config) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_erro', 'Traccar não configurado para esta empresa.');
+        }
+
+        $baseUrl = rtrim($config->base_url, '/');
+        $username = $config->mail_user_name;
+        $password = $config->password;
+        if (!empty($password)) {
+            try { $password = \Illuminate\Support\Facades\Crypt::decryptString($password); }
+            catch (\Throwable $e) { $password = $config->password; }
+        }
+
+        $imeiDispositivo = $mov->motorista->traccar_id ?? $mov->veiculo->traccar_id ?? null;
+        if (!$imeiDispositivo) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_erro', 'Nenhum ID Traccar vinculado ao motorista/veículo.');
+        }
+
+        $req = \Illuminate\Support\Facades\Http::acceptJson()->connectTimeout(5)->timeout(30);
+        $req = $config->token_traccar ? $req->withToken($config->token_traccar) : $req->withBasicAuth($username, $password);
+
+        $respDevices = $req->get("{$baseUrl}/api/devices");
+        if ($respDevices->failed()) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_erro', 'Falha ao conectar no Traccar.');
+        }
+
+        $traccarDevice = collect($respDevices->json())->first(fn($d) =>
+            (string)($d['uniqueId'] ?? '') === (string)$imeiDispositivo || (string)($d['id'] ?? '') === (string)$imeiDispositivo
+        );
+
+        if (!$traccarDevice) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_erro', 'Dispositivo não encontrado no Traccar.');
+        }
+
+        $inicioBusca = \Carbon\Carbon::parse($mov->data_hora_saida)->subHours(2)->utc()->format('Y-m-d\TH:i:s\Z');
+        $fimBusca = \Carbon\Carbon::now()->utc()->format('Y-m-d\TH:i:s\Z');
+
+        $respRoute = $req->get("{$baseUrl}/api/reports/route", [
+            'deviceId' => $traccarDevice['id'], 'from' => $inicioBusca, 'to' => $fimBusca
+        ]);
+
+        $rota = collect($respRoute->json());
+        if ($rota->isEmpty()) {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_warning', 'Nenhum histórico de GPS encontrado no Traccar para este horário.');
+        }
+
+        $fuso = config('app.timezone', 'America/Bahia');
+        $filialObj = $mov->filial_id ? \Illuminate\Support\Facades\DB::table('filials')->where('id', $mov->filial_id)->first() : null;
+        $configNotas = \Illuminate\Support\Facades\DB::table('config_notas')->where('empresa_id', $mov->empresa_id)->first();
+
+        $latBase = $filialObj->latitude ?? $configNotas->latitude ?? null;
+        $lonBase = $filialObj->longitude ?? $configNotas->longitude ?? null;
+
+        if (isset($mov->tipo_partida) && $mov->tipo_partida == 'residencia' && $mov->motorista) {
+            $latBase = $mov->motorista->latitude_residencia ?? $latBase;
+            $lonBase = $mov->motorista->longitude_residencia ?? $lonBase;
+        }
+
+        $temDestinos = method_exists($mov, 'destinos') && $mov->destinos && $mov->destinos->isNotEmpty();
+        $atualizouAlgo = false;
+
+        $dist = function($l1, $ln1, $l2, $ln2) {
+            if (!is_numeric($l1) || !is_numeric($ln1) || !is_numeric($l2) || !is_numeric($ln2)) return null;
+            return (2 * asin(sqrt(pow(sin(deg2rad((float)$l2 - (float)$l1) / 2), 2) + cos(deg2rad((float)$l1)) * cos(deg2rad((float)$l2)) * pow(sin(deg2rad((float)$ln2 - (float)$ln1) / 2), 2)))) * 6371000;
+        };
+
+        $primeiraLatGPS = null;
+        $primeiraLonGPS = null;
+        $saidaBaseEncontrada = false;
+
+        $janelaAceitacaoSaida = \Carbon\Carbon::parse($mov->data_hora_saida)->subMinutes(60);
+
+        // =========================================================================
+        // VARREDURA DE PONTOS DA ROTA (GPS)
+        // =========================================================================
+        foreach ($rota as $ponto) {
+            if (!isset($ponto['latitude'], $ponto['longitude'])) continue;
+
+            $latAtual = (float) $ponto['latitude'];
+            $lonAtual = (float) $ponto['longitude'];
+            $velocidadeKmH = ((float) ($ponto['speed'] ?? 0)) * 1.852;
+            $horarioPonto = \Carbon\Carbon::parse($ponto['fixTime'])->setTimezone($fuso);
+
+            if ($primeiraLatGPS === null) {
+                $primeiraLatGPS = $latAtual;
+                $primeiraLonGPS = $lonAtual;
+            }
+
+            $latRefSaida = $latBase ?? $primeiraLatGPS;
+            $lonRefSaida = $lonBase ?? $primeiraLonGPS;
+
+            // 1. SAÍDA DA BASE (Nova lógica enxuta e corrigida)
+            if (!$saidaBaseEncontrada && $horarioPonto->greaterThanOrEqualTo($janelaAceitacaoSaida)) {
+                $db = $dist($latAtual, $lonAtual, $latRefSaida, $lonRefSaida);
+                $foraDaBase = ($db !== null && $db > 250);
+                $emMovimento = ($velocidadeKmH >= 8);
+
+                if (($foraDaBase && $emMovimento) || ($latBase === null && $emMovimento)) {
+                    $saidaBaseEncontrada = true;
+                    if (empty($mov->data_hora_saida_real) || \Carbon\Carbon::parse($mov->data_hora_saida_real)->greaterThan($horarioPonto->copy()->addMinutes(2))) {
+                        $mov->data_hora_saida_real = $horarioPonto;
+                        $mov->status = 'iniciado';
+                        $atualizouAlgo = true;
+                    }
+                }
+            }
+
+            // 2. DESTINOS (MULTI-STOP)
+            if ($temDestinos) {
+                foreach ($mov->destinos as $destino) {
+                    $ld = $destino->latitude ?? $destino->cliente->latitude ?? $destino->fornecedor->latitude ?? null;
+                    $lnd = $destino->longitude ?? $destino->cliente->longitude ?? $destino->fornecedor->longitude ?? null;
+                    $dd = $dist($latAtual, $lonAtual, $ld, $lnd);
+
+                    if ($dd !== null && $dd <= 250 && empty($destino->data_hora_chegada)) {
+                        $destino->data_hora_chegada = $horarioPonto;
+                        $destino->save();
+                        if (empty($mov->data_hora_chegada_cliente)) $mov->data_hora_chegada_cliente = $horarioPonto;
+                        $atualizouAlgo = true;
+                    }
+
+                    if ($dd !== null && $dd > 250 && !empty($destino->data_hora_chegada) && empty($destino->data_hora_saida)) {
+                        if ($horarioPonto->greaterThan(\Carbon\Carbon::parse($destino->data_hora_chegada))) {
+                            $destino->data_hora_saida = $horarioPonto;
+                            $destino->status = 'visitado';
+                            $destino->save();
+                            $mov->data_hora_saida_cliente = $horarioPonto;
+                            $atualizouAlgo = true;
+                        }
+                    }
+                }
+            }
+            // 3. DESTINO SIMPLES
+            else {
+                $ld = $mov->latitude_destino ?? $mov->cliente->latitude ?? $mov->fornecedor->latitude ?? null;
+                $lnd = $mov->longitude_destino ?? $mov->cliente->longitude ?? $mov->fornecedor->longitude ?? null;
+                $dd = $dist($latAtual, $lonAtual, $ld, $lnd);
+
+                if ($dd !== null && $dd <= 250 && empty($mov->data_hora_chegada_cliente)) {
+                    $mov->data_hora_chegada_cliente = $horarioPonto;
+                    $atualizouAlgo = true;
+                }
+
+                if ($dd !== null && $dd > 250 && !empty($mov->data_hora_chegada_cliente) && empty($mov->data_hora_saida_cliente)) {
+                    if ($horarioPonto->greaterThan(\Carbon\Carbon::parse($mov->data_hora_chegada_cliente))) {
+                        $mov->data_hora_saida_cliente = $horarioPonto;
+                        $atualizouAlgo = true;
+                    }
+                }
+            }
+
+            // 4. RETORNO PARA A BASE
+            $todosVisitados = $temDestinos
+                ? $mov->destinos->every(fn($d) => !empty($d->data_hora_saida) && $d->status === 'visitado')
+                : !empty($mov->data_hora_saida_cliente);
+
+            $horaUltimaSaida = $temDestinos && $mov->destinos->count() > 0
+                ? \Carbon\Carbon::parse($mov->destinos->max('data_hora_saida'))
+                : ($mov->data_hora_saida_cliente ? \Carbon\Carbon::parse($mov->data_hora_saida_cliente) : null);
+
+            if ($todosVisitados && $horaUltimaSaida && $horarioPonto->greaterThan($horaUltimaSaida) && empty($mov->data_hora_chegada)) {
+                $db = $dist($latAtual, $lonAtual, $latRefSaida, $lonRefSaida);
+                if ($db !== null && $db <= 300) {
+                    $mov->data_hora_chegada = $horarioPonto;
+                    $mov->status = 'finalizado';
+                    $atualizouAlgo = true;
+                }
+            }
+        }
+
+        // =========================================================================
+        // GATILHO DE SEGURANÇA: CORREÇÃO FORÇADA DE HORÁRIOS INCOERENTES
+        // =========================================================================
+        $chegadaAvaliar = $temDestinos ? $mov->destinos->min('data_hora_chegada') : $mov->data_hora_chegada_cliente;
+        if (!empty($chegadaAvaliar)) {
+            if (empty($mov->data_hora_saida_real) || \Carbon\Carbon::parse($mov->data_hora_saida_real)->greaterThan(\Carbon\Carbon::parse($chegadaAvaliar))) {
+                // CORREÇÃO: Recua matematicamente 20 minutos antes de chegar no cliente, para evitar saltos!
+                $mov->data_hora_saida_real = \Carbon\Carbon::parse($chegadaAvaliar)->subMinutes(20);
+                $mov->status = 'iniciado';
+                $atualizouAlgo = true;
+            }
+        }
+
+        $todosVisitados = $temDestinos
+            ? $mov->destinos->every(fn($d) => !empty($d->data_hora_saida) && $d->status === 'visitado')
+            : !empty($mov->data_hora_saida_cliente);
+
+        if ($todosVisitados && !empty($mov->data_hora_saida_real) && empty($mov->data_hora_chegada)) {
+            $ultimaSaida = $temDestinos ? $mov->destinos->max('data_hora_saida') : $mov->data_hora_saida_cliente;
+            $ultimaSaidaCarbon = $ultimaSaida ? \Carbon\Carbon::parse($ultimaSaida) : null;
+            if ($ultimaSaidaCarbon) {
+                $mov->data_hora_chegada = $ultimaSaidaCarbon->copy()->addMinutes(30);
+                $mov->status = 'finalizado';
+                $atualizouAlgo = true;
+            }
+        }
+
+        // =========================================================================
+        // SINCRONIZAR PARADAS RETROATIVAS E KM
+        // =========================================================================
+        try {
+            $inicioBuscaParadas = $mov->data_hora_saida_real ?: $mov->data_hora_saida;
+            $fimBuscaParadas    = $mov->data_hora_chegada ?: now();
+
+            $fromStops = \Carbon\Carbon::parse($inicioBuscaParadas)->subHours(2)->utc()->format('Y-m-d\TH:i:s\Z');
+            $toStops   = \Carbon\Carbon::parse($fimBuscaParadas)->addHours(2)->utc()->format('Y-m-d\TH:i:s\Z');
+
+            $reqStops = \Illuminate\Support\Facades\Http::acceptJson()->connectTimeout(10)->timeout(30);
+            $reqStops = $config->token_traccar ? $reqStops->withToken($config->token_traccar) : $reqStops->withBasicAuth($username, $password);
+
+            $respStops = $reqStops->get("{$baseUrl}/api/reports/stops", [
+                'deviceId' => $traccarDevice['id'], 'from' => $fromStops, 'to' => $toStops
+            ]);
+
+            if ($respStops->successful()) {
+                $paradasTraccar = (array) $respStops->json();
+                foreach ($paradasTraccar as $parada) {
+                    if (empty($parada['startTime']) || empty($parada['endTime'])) continue;
+
+                    $duracao = (int) floor(((float) ($parada['duration'] ?? 0)) / 60000);
+                    if ($duracao < 5) continue;
+
+                    $inicioParada = \Carbon\Carbon::parse($parada['startTime'])->setTimezone($fuso);
+                    $fimParada = \Carbon\Carbon::parse($parada['endTime'])->setTimezone($fuso);
+                    $enderecoParada = $parada['address'] ?? 'Endereço desconhecido';
+
+                    $existe = \Illuminate\Support\Facades\DB::table('movimentacao_historico_paradas')
+                        ->where('movimentacao_veiculo_id', $mov->id)
+                        ->where('data_hora_inicio', $inicioParada)
+                        ->first();
+
+                    if (!$existe) {
+                        \Illuminate\Support\Facades\DB::table('movimentacao_historico_paradas')->insert([
+                            'movimentacao_veiculo_id' => $mov->id,
+                            'data_hora_inicio'        => $inicioParada,
+                            'data_hora_fim'           => $fimParada,
+                            'duracao_minutos'         => $duracao,
+                            'endereco'                => $enderecoParada,
+                            'latitude'                => $parada['latitude'] ?? null,
+                            'longitude'               => $parada['longitude'] ?? null,
+                            'created_at'              => now(),
+                            'updated_at'              => now(),
+                        ]);
+                    } else {
+                        \Illuminate\Support\Facades\DB::table('movimentacao_historico_paradas')
+                            ->where('id', $existe->id)
+                            ->update(['data_hora_fim' => $fimParada, 'duracao_minutos' => $duracao, 'updated_at' => now()]);
+                    }
+                }
+                $atualizouAlgo = true;
+            }
+        } catch (\Throwable $e) {}
+
+        if ($atualizouAlgo) {
+            if ($mov->status === 'finalizado' && (empty($mov->km_final) || $mov->km_final <= $mov->km_inicial)) {
+                $kmPercorrido = 0;
+                try {
+                    $fromKm = \Carbon\Carbon::parse($mov->data_hora_saida_real)->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
+                    $toKm = \Carbon\Carbon::parse($mov->data_hora_chegada)->timezone('UTC')->format('Y-m-d\TH:i:s\Z');
+
+                    $reqKm = \Illuminate\Support\Facades\Http::acceptJson()->connectTimeout(5)->timeout(15);
+                    $reqKm = $config->token_traccar ? $reqKm->withToken($config->token_traccar) : $reqKm->withBasicAuth($username, $password);
+
+                    $respSummary = $reqKm->get("{$baseUrl}/api/reports/summary", [
+                        'deviceId' => $traccarDevice['id'], 'from' => $fromKm, 'to' => $toKm
+                    ]);
+
+                    if ($respSummary->successful() && count($respSummary->json()) > 0) {
+                        $kmPercorrido = ($respSummary->json()[0]['distance'] ?? 0) / 1000;
+                    }
+                } catch (\Throwable $e) {}
+
+                if ($kmPercorrido <= 0) {
+                    if ($temDestinos) {
+                        $metros = 0; $antLat = $latBase; $antLon = $lonBase;
+                        foreach ($mov->destinos->sortBy('ordem') as $d) {
+                            if (is_numeric($d->latitude) && is_numeric($d->longitude)) {
+                                $metros += (float)$dist($antLat, $antLon, $d->latitude, $d->longitude);
+                                $antLat = $d->latitude; $antLon = $d->longitude;
+                            }
+                        }
+                        $metros += (float)$dist($antLat, $antLon, $latBase, $lonBase);
+                        $kmPercorrido = ($metros / 1000) * 1.25;
+                    } else {
+                        $distIda = (float)$dist($latBase, $lonBase, $mov->latitude_destino, $mov->longitude_destino);
+                        $distVolta = (float)$dist($mov->latitude_destino, $mov->longitude_destino, $latBase, $lonBase);
+                        $kmPercorrido = (($distIda + $distVolta) / 1000) * 1.25;
+                    }
+                }
+
+                $mov->km_final = (int) round((float)$mov->km_inicial + max(0, $kmPercorrido));
+
+                if ($mov->veiculo_id && $mov->km_final > 0) {
+                    \Illuminate\Support\Facades\DB::table('veiculos')->where('id', $mov->veiculo_id)->update(['quilometragem' => $mov->km_final]);
+                }
+            }
+
+            $mov->save();
+            $mov->gerarPrePesagemAutomatica();
+
+            if (app()->runningInConsole()) return true;
+            return redirect()->back()->with('mensagem_sucesso', 'Viagem sincronizada! Horários, Paradas e Quilometragem corrigidos com precisão.');
+        } else {
+            if (app()->runningInConsole()) return false;
+            return redirect()->back()->with('mensagem_warning', 'Aviso: GPS processado, mas não houve alteração no trajeto.');
+        }
+    }
+
+    public function enviarAlertaResumoAmbiental($id)
+    {
+        $mov = \App\Models\MovimentacaoVeiculo::with(['veiculo', 'destinos.cliente', 'destinos.fornecedor'])->find($id);
+        if (!$mov) return;
+
+        // Só envia o alerta se a opção "Gerar MTR?" estiver marcada como SIM (1)
+        if ((int) ($mov->gerar_mtr ?? 0) !== 1) {
+            return;
+        }
+
+        // Procura os funcionários que têm a flag "Alertas Coleta" ativada
+        $funcionarios = \App\Models\Funcionario::where('empresa_id', $mov->empresa_id)
+            ->where('recebe_alerta_coleta', 1)
+            ->get();
+
+        if ($funcionarios->isEmpty()) return;
+
+        $msg = "♻️ *RESUMO DE COLETA FINALIZADA* ♻️\n\n";
+        $msg .= "🚚 *Veículo:* " . ($mov->veiculo->placa ?? 'N/A') . "\n";
+        $msg .= "Viagem ID: #{$mov->id}\n";
+        $msg .= "📦 *Materiais Coletados:*\n";
+
+        $temMaterial = false;
+
+        foreach ($mov->destinos as $dest) {
+            if ($dest->is_aterro) continue; // Ignora o descarte final
+
+            $local = $dest->cliente->razao_social ?? ($dest->fornecedor->razao_social ?? 'Local não identificado');
+
+            // Busca os itens apontados pelo motorista na nova tabela de itens
+            $itens = \Illuminate\Support\Facades\DB::table('movimentacao_destino_itens')
+                ->join('produtos', 'movimentacao_destino_itens.produto_id', '=', 'produtos.id')
+                ->where('movimentacao_destino_id', $dest->id)
+                ->get();
+
+            if ($itens->count() > 0) {
+                $msg .= "\n📍 *" . $local . "*\n";
+                foreach ($itens as $item) {
+                    $msg .= " - " . (float)$item->quantidade . " " . $item->unidade . " de " . $item->nome . "\n";
+                    $temMaterial = true;
+                }
+            } elseif (!empty($dest->quantidade_residuo) && !empty($dest->produto_residuo_id)) {
+                // Fallback caso usem o método de lançamento antigo na capa do destino
+                $produto = \App\Models\Produto::find($dest->produto_residuo_id);
+                $nomeProd = $produto ? $produto->nome : 'Resíduo';
+                $msg .= "\n📍 *" . $local . "*\n";
+                $msg .= " - " . (float)$dest->quantidade_residuo . " " . $dest->unidade_residuo . " de " . $nomeProd . "\n";
+                $temMaterial = true;
+            }
+        }
+
+        if (!$temMaterial) {
+            $msg .= "\nNenhum material foi lançado pelo motorista durante a rota.\n";
+        }
+
+        $msg .= "\nPor favor, providencie a emissão do MTR e a documentação necessária.";
+
+        $apiService = app(\App\Services\ConnectApi\ConnectApiMessageService::class);
+
+        foreach ($funcionarios as $func) {
+            $telefone = preg_replace('/[^0-9]/', '', $func->celular ?: $func->telefone);
+            if (!empty($telefone)) {
+                try {
+                    $apiService->sendText($mov->empresa_id, $telefone, $msg);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Erro ao enviar resumo MTR WhatsApp: " . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * API INTERNA: Busca os dados do ticket de pesagem para preencher a agenda
+     */
+    public function getDadosPesagem($id)
+    {
+        try {
+            // Busca a capa da pesagem principal
+            $pesagem = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+            // Busca os itens/produtos detalhados na tabela tickets_pesagem
+            $tickets = \DB::table('tickets_pesagem')->where('pesagem_id', $pesagem->id)->get();
+
+            $itens = [];
+            $pesoTotalCalculado = 0;
+
+            foreach ($tickets as $t) {
+                if (!empty($t->produto_id)) {
+                    $itens[] = [
+                        'produto_id' => $t->produto_id,
+                        'quantidade' => $t->peso ?? 0,
+                        'unidade'    => 'KG'
+                    ];
+                }
+                $pesoTotalCalculado += (float)($t->peso ?? 0);
+            }
+
+            return response()->json([
+                'success'       => true,
+                'veiculo_id'    => $pesagem->veiculo_id,
+                'motorista_id'  => $pesagem->motorista_id,
+                'cliente_id'    => $pesagem->cliente_id ?? null,
+                'fornecedor_id' => $pesagem->fornecedor_id ?? null,
+                'peso_liquido'  => $pesagem->peso_liquido > 0 ? $pesagem->peso_liquido : $pesoTotalCalculado,
+                'itens'         => $itens
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'mensagem' => 'Ticket de pesagem não encontrado: ' . $e->getMessage()
+            ], 404);
+        }
+    }
+
+    public function vincularDocumentos(Request $request, $id)
+    {
+        try {
+            $mov = MovimentacaoVeiculo::where('empresa_id', $this->empresa_id)->findOrFail($id);
+            $mov->nfe_numero = $request->nfe_numero;
+            $mov->mtr_numero = $request->mtr_numero;
+            $mov->save();
+
+            return response()->json(['success' => true, 'message' => 'Documentos vinculados com sucesso!']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 }

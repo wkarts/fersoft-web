@@ -27,7 +27,8 @@ class Servico extends BaseModel
         'aliquota_ibs',
         'aliquota_cbs',
         'codigo_class_trib',
-        'iss_retido'
+        'iss_retido',
+        'codigo_indicador_operacao'
     ];
 
     public function categoria(){

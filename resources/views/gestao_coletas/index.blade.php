@@ -59,14 +59,19 @@
                                 @endif
                             </td>
                             <td class="align-middle">
-                                <button type="button" class="btn btn-sm btn-success fw-bold" onclick="abrirModalAgendamento({{ $c->id }}, '{{ $c->pessoa->nome_completo }}')">
-                                    <i class="la la-calendar-check"></i> Agendar e Liberar
+                                <!-- BOTÃO ANTIGO (Mantido para segurança) -->
+                                <button type="button" class="btn btn-sm btn-success fw-bold mb-1" onclick="abrirModalAgendamento({{ $c->id }}, '{{ $c->pessoa->nome_completo }}')">
+                                    <i class="la la-bolt"></i> Rápido
                                 </button>
 
-                                <form action="/gestao-coletas/recusar/{{ $c->id }}" method="POST" class="d-inline ml-2" onsubmit="return confirm('Deseja realmente recusar esta solicitação?');">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-danger"><i class="la la-times"></i></button>
-                                </form>
+                                <!-- NOVO BOTÃO (Vai para a tela completa) -->
+                                <a href="/movimentacaoVeiculo/new?coleta_id={{ $c->id }}" class="btn btn-sm btn-primary fw-bold mb-1">
+                                    <i class="la la-calendar-check"></i> Completo
+                                </a>
+
+                                <button type="button" class="btn btn-sm btn-danger fw-bold mb-1" onclick="abrirModalRecusa({{ $c->id }}, '{{ $c->pessoa->nome_completo }}')">
+                                    <i class="la la-times"></i> Recusar
+                                </button>
                             </td>
                         </tr>
                     @empty
@@ -116,7 +121,18 @@
                             </select>
                         </div>
 
-                        <!-- NOVO: Div do Funcionário da Portaria (Só aparece se o cliente trouxer) -->
+                        <!-- Seleção do Motorista ao Agendar -->
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold">Selecione o Motorista *</label>
+                            <select name="motorista_id" id="motorista_id" class="form-control" required>
+                                <option value="">Selecione o motorista...</option>
+                                @foreach($funcionarios as $f)
+                                    <option value="{{ $f->id }}">{{ $f->nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Div do Funcionário da Portaria (Só aparece se o cliente trouxer) -->
                         <div class="form-group mb-3" id="div_funcionario" style="display: none;">
                             <label class="font-weight-bold">Qual funcionário vai recebê-lo na Portaria? *</label>
                             <select name="funcionario_id" id="funcionario_id" class="form-control">
@@ -139,7 +155,31 @@
         </div>
     </div>
 
-    <!-- MODAL PARA VER FOTOS ... (Mantenha o HTML de fotos como estava) ... -->
+    <!-- MODAL DE RECUSA COM MOTIVO -->
+    <div class="modal fade" id="modal-recusar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-recusar" method="POST">
+                    @csrf
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title text-white">Recusar Solicitação - <span id="nome_cliente_recusa"></span></h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold">Informe o motivo da recusa para o parceiro *</label>
+                            <textarea name="motivo" class="form-control" rows="3" placeholder="Ex: Categoria de resíduo divergente, horário indisponível, etc." required></textarea>
+                            <small class="form-text text-muted">Esta justificativa será enviada automaticamente para o WhatsApp do parceiro e gravada no histórico.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger fw-bold"><i class="la la-ban"></i> Confirmar Recusa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL PARA VER FOTOS -->
     <div class="modal fer-extra-modal fade" id="modal-fotos" tabindex="-1">
@@ -170,6 +210,13 @@
             $('#modal-agendar').modal('show');
         }
 
+        function abrirModalRecusa(id, nomeCliente) {
+            $('#nome_cliente_recusa').text(nomeCliente);
+            $('#form-recusar').attr('action', '/gestao-coletas/recusar/' + id);
+            $('#form-recusar').find('textarea[name="motivo"]').val('');
+            $('#modal-recusar').modal('show');
+        }
+
         function verFotos(id) {
             let fotosHtml = $('#galeria-' + id).html();
             $('#corpo-fotos').html(fotosHtml);
@@ -184,14 +231,14 @@
                 $('#veiculo_id').val('');
 
                 $('#div_funcionario').slideDown();
-                $('#funcionario_id').prop('required', true); // Exige que o Gestor informe o funcionário!
+                $('#funcionario_id').prop('required', true);
             } else {
                 $('#div_funcionario').slideUp();
                 $('#funcionario_id').prop('required', false);
                 $('#funcionario_id').val('');
 
                 $('#div_veiculo').slideDown();
-                $('#veiculo_id').prop('required', true); // Exige o veículo
+                $('#veiculo_id').prop('required', true);
             }
         });
     </script>

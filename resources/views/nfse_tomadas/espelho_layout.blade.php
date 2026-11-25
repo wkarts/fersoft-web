@@ -4,123 +4,191 @@
     <meta charset="UTF-8">
     <title>{{ $title }}</title>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 30px; font-size: 13px; }
-        .wrapper { border: 1px solid #000; padding: 15px; width: 100%; max-width: 800px; margin: 0 auto; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .row { display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
-        .box { border: 1px solid #ccc; padding: 10px; flex: 1; background: #f9f9f9; }
-        .title { font-weight: bold; font-size: 11px; color: #666; text-uppercase; margin-bottom: 3px; }
-        .value { font-size: 14px; font-weight: bold; color: #000; }
-        .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #999; border-top: 1px dashed #ccc; padding-top: 10px; }
-        @media print { .no-print { display: none; } }
+        @page { margin: 10mm; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #000; margin: 0; background: #525659; }
+
+        .no-print { text-align: center; padding: 15px; background: #333; color: white; margin-bottom: 20px; }
+        .btn-print { padding: 10px 20px; background: #1bc5bd; color: #fff; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn-print:hover { background: #129b94; }
+
+        .a4-container { background: #fff; width: 100%; max-width: 800px; margin: 0 auto; padding: 15px; box-sizing: border-box; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+        .tabela-bordas { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px; table-layout: fixed; }
+        .tabela-bordas td, .tabela-bordas th { border: 1px solid #000; padding: 4px 6px; vertical-align: top; }
+
+        .bg-gray { background-color: #e9e9e9 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-uppercase { text-transform: uppercase; }
+
+        .lbl { font-size: 9px; color: #333; display: block; text-transform: uppercase; margin-bottom: 2px; }
+        .val { font-size: 12px; font-weight: bold; word-wrap: break-word; }
+
+        .header-title { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+        .header-subtitle { font-size: 11px; }
+
+        .chave-acesso { font-size: 12px; font-weight: bold; letter-spacing: 1px; text-align: center; }
+
+        @media print {
+            body { background: #fff; }
+            .no-print { display: none; }
+            .a4-container { box-shadow: none; max-width: 100%; padding: 0; }
+            .bg-gray { background-color: #e9e9e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
 
-    @php
-        // 🧠 MOTOR DE CÁLCULO DE RETENÇÕES (Engenharia Reversa)
-        $vServico = $nota->valor_servico;
-        $vLiquido = $nota->valor_liquido > 0 ? $nota->valor_liquido : $vServico;
-        
-        $diffFederal = round($vServico - $vLiquido, 2);
-        $vPis = 0; $vCofins = 0; $vCsll = 0; $vIr = 0;
+<div class="no-print">
+    <button onclick="window.print()" class="btn-print">🖨️ IMPRIMIR ESPELHO DA NOTA</button>
+</div>
 
-        if ($diffFederal > 0) {
-            $vPis = round($vServico * 0.0065, 2);
-            $vCofins = round($vServico * 0.03, 2);
-            $vCsll = round($vServico * 0.01, 2);
-            
-            // O IR absorve a diferença para fechar a matemática exata do líquido
-            $somaImpostos = $vPis + $vCofins + $vCsll;
-            $vIr = round($diffFederal - $somaImpostos, 2);
-            if ($vIr < 0) $vIr = 0; 
-        }
-    @endphp
+<div class="a4-container">
 
-    <div class="no-print" style="max-width: 800px; margin: 0 auto 15px auto; text-align: right;">
-        <button onclick="window.print()" style="padding: 8px 20px; background: #1bc5bd; color: #fff; border: none; font-weight: bold; border-radius: 4px; cursor: pointer;">🖨️ IMPRIMIR DOCUMENTO</button>
+    <!-- CABEÇALHO -->
+    <table class="tabela-bordas">
+        <tr>
+            <td width="20%" class="text-center" style="vertical-align: middle;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Coat_of_arms_of_Brazil.svg/200px-Coat_of_arms_of_Brazil.svg.png" alt="República" style="width: 60px;">
+            </td>
+            <td width="55%" class="text-center" style="vertical-align: middle;">
+                <div class="header-title">REPÚBLICA FEDERATIVA DO BRASIL</div>
+                <div class="header-title">Nota Fiscal de Serviço Eletrônica - NFS-e</div>
+                <div class="header-subtitle">Documento Auxiliar da NFS-e (DANFSE)</div>
+            </td>
+            <td width="25%">
+                <span class="lbl">Número da NFS-e</span>
+                <span class="val" style="font-size: 16px;">{{ $nota->numero_nota }}</span>
+
+                <span class="lbl" style="margin-top: 10px;">Data/Hora de Emissão</span>
+                <span class="val">{{ date('d/m/Y H:i', strtotime($nota->data_emissao)) }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" class="text-center bg-gray">
+                CHAVE DE ACESSO
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" class="text-center chave-acesso">
+                {{ $nota->chave ?? 'Não informada' }}
+            </td>
+        </tr>
+    </table>
+
+    <!-- PRESTADOR DE SERVIÇOS -->
+    <table class="tabela-bordas">
+        <tr>
+            <td colspan="2" class="bg-gray text-center text-uppercase">Prestador de Serviços</td>
+        </tr>
+        <tr>
+            <td width="70%">
+                <span class="lbl">Nome / Razão Social</span>
+                <span class="val">{{ $nota->prestador_nome }}</span>
+            </td>
+            <td width="30%">
+                <span class="lbl">CPF / CNPJ</span>
+                <span class="val">{{ $nota->prestador_cnpj_cpf }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <span class="lbl">Endereço</span>
+                <span class="val">{{ $endereco_prestador ?? 'Não informado no XML' }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- TOMADOR DE SERVIÇOS -->
+    <table class="tabela-bordas">
+        <tr>
+            <td colspan="2" class="bg-gray text-center text-uppercase">Tomador de Serviços</td>
+        </tr>
+        <tr>
+            <td width="70%">
+                <span class="lbl">Nome / Razão Social</span>
+                <span class="val">{{ $tomador['nome'] ?? 'Não informado' }}</span>
+            </td>
+            <td width="30%">
+                <span class="lbl">CPF / CNPJ</span>
+                <span class="val">{{ $tomador['cnpj_cpf'] ?? 'Não informado' }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                <span class="lbl">Endereço</span>
+                <span class="val">{{ $tomador['endereco'] ?? 'Não informado' }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- DESCRIÇÃO DO SERVIÇO -->
+    <table class="tabela-bordas">
+        <tr>
+            <td class="bg-gray text-center text-uppercase">Descrição do Serviço</td>
+        </tr>
+        <tr>
+            <td style="min-height: 150px; height: 150px;">
+                <div style="font-size: 12px; line-height: 1.5; white-space: pre-wrap;">{{ $descricao_servico ?? $nota->observacao }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- TRIBUTAÇÃO FEDERAL / RETENÇÕES -->
+    <table class="tabela-bordas">
+        <tr>
+            <td colspan="5" class="bg-gray text-center text-uppercase">Retenções Federais e Municipais</td>
+        </tr>
+        <tr class="text-center">
+            <td>
+                <span class="lbl">PIS (R$)</span>
+                <span class="val">{{ number_format($retencoes['pis'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td>
+                <span class="lbl">COFINS (R$)</span>
+                <span class="val">{{ number_format($retencoes['cofins'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td>
+                <span class="lbl">CSLL (R$)</span>
+                <span class="val">{{ number_format($retencoes['csll'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td>
+                <span class="lbl">IRRF (R$)</span>
+                <span class="val">{{ number_format($retencoes['irrf'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td>
+                <span class="lbl">ISS Retido (R$)</span>
+                <span class="val">{{ number_format($retencoes['iss_retido'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- TOTAIS -->
+    <table class="tabela-bordas">
+        <tr>
+            <td colspan="3" class="bg-gray text-center text-uppercase">Valores Declarados</td>
+        </tr>
+        <tr>
+            <td width="33%" class="text-center">
+                <span class="lbl">Valor do Serviço</span>
+                <span class="val" style="font-size: 16px;">R$ {{ number_format($nota->valor_servico, 2, ',', '.') }}</span>
+            </td>
+            <td width="33%" class="text-center">
+                <span class="lbl">Total de Retenções</span>
+                <span class="val" style="font-size: 16px; color: #d9534f;">R$ {{ number_format($retencoes['total_retido'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="34%" class="text-center bg-gray">
+                <span class="lbl" style="font-size: 11px;">VALOR LÍQUIDO DA NFS-E</span>
+                <span class="val" style="font-size: 18px;">R$ {{ number_format($retencoes['liquido'] ?? $nota->valor_servico, 2, ',', '.') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="text-center" style="font-size: 10px; color: #666; margin-top: 15px;">
+        Documento gerado automaticamente via integração de importação de XML - FerSoft ERP
     </div>
 
-    <div class="wrapper">
-        <div class="header">
-            <h2>RECEBIMENTO DE PRESTAÇÃO DE SERVIÇOS</h2>
-            <h3>DOCUMENTO AUXILIAR DA NFS-e ELETRÔNICA (DANFSE)</h3>
-            <p>Ambiente de Dados Nacional (ADN)</p>
-        </div>
-
-        <div class="row">
-            <div class="box">
-                <div class="title">Número da Nota</div>
-                <div class="value">{{ $nota->numero_nota }}</div>
-            </div>
-            <div class="box">
-                <div class="title">Código de Controle (NSU)</div>
-                <div class="value">{{ $nota->nsu }}</div>
-            </div>
-            <div class="box">
-                <div class="title">Data de Emissão</div>
-                <div class="value">{{ date('d/m/Y', strtotime($nota->data_emissao)) }}</div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="box">
-                <div class="title">Dados do Prestador (Fornecedor)</div>
-                <div class="value" style="font-size: 15px;">{{ $nota->prestador_nome }}</div>
-                <div style="margin-top: 5px;"><strong>CNPJ/CPF:</strong> {{ $nota->prestador_cnpj }}</div>
-            </div>
-        </div>
-
-        <div class="row">
-          <div class="box" style="min-height: 100px;">
-              <div class="title">Descrição dos Serviços Prestados</div>
-              <div style="font-size: 13px; line-height: 1.6; margin-top: 5px;">
-                  @if(isset($descricao_servico) && !empty($descricao_servico))
-                      {!! nl2br(e($descricao_servico)) !!}
-                  @else
-                      {{ $nota->observacao ?? 'Prestação de serviços executada conforme especificações registradas na receita federal.' }}
-                  @endif
-              </div>
-          </div>
-      </div>
-
-        {{-- BLOCO DINÂMICO DE RETENÇÕES FEDERAIS --}}
-        @if($diffFederal > 0)
-        <div class="row">
-            <div class="box" style="background: #fff8f8; border-color: #ffcccc;">
-                <div class="title" style="color: #d9534f;">RETENÇÕES FEDERAIS ESPECIFICADAS (PIS / COFINS / CSLL / IRRF)</div>
-                <div style="font-size: 13px; margin-top: 8px; display: flex; justify-content: space-between; border-top: 1px dashed #ffcccc; padding-top: 8px;">
-                    <span><strong>PIS:</strong> R$ {{ number_format($vPis, 2, ',', '.') }}</span>
-                    <span><strong>COFINS:</strong> R$ {{ number_format($vCofins, 2, ',', '.') }}</span>
-                    <span><strong>CSLL:</strong> R$ {{ number_format($vCsll, 2, ',', '.') }}</span>
-                    <span><strong>IRRF/Outros:</strong> R$ {{ number_format($vIr, 2, ',', '.') }}</span>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        {{-- RESUMO FINANCEIRO COMPLETO --}}
-        <div class="row">
-            <div class="box" style="text-align: right;">
-                <div class="title">VALOR DO SERVIÇO</div>
-                <div class="value" style="font-size: 18px;">R$ {{ number_format($vServico, 2, ',', '.') }}</div>
-            </div>
-            
-            <div class="box" style="text-align: right; background: #fff8f8; border-color: #ffcccc; {{ $diffFederal == 0 ? 'opacity: 0.5;' : '' }}">
-                <div class="title" style="color: #d9534f;">TOTAL DE RETENÇÕES</div>
-                <div class="value" style="font-size: 18px; color: #d9534f;">- R$ {{ number_format($diffFederal, 2, ',', '.') }}</div>
-            </div>
-            
-            <div class="box" style="text-align: right; background: #eef9f2; border-color: #1bc5bd;">
-                <div class="title" style="color: #1bc5bd;">VALOR LÍQUIDO DA NFS-E</div>
-                <div class="value" style="font-size: 24px; color: #0b6644;">R$ {{ number_format($vLiquido, 2, ',', '.') }}</div>
-            </div>
-        </div>
-
-        <div class="footer">
-            FerSoft ERP - Documento impresso via módulo de NFS-e Nacional em {{ date('d/m/Y H:i:s') }}
-        </div>
-    </div>
+</div>
 
 </body>
 </html>

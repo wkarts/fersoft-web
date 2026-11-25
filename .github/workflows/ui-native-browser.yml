@@ -70,7 +70,9 @@ jobs:
           cp .env.example .env
           echo "APP_KEY=$(php -r 'echo "base64:".base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
       - name: Instalar dependencias existentes do ERP
-        run: composer install --prefer-dist --no-interaction --no-progress --quiet
+        env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
+        run: bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress --quiet
       - name: Validar TODAS as Blades versionadas antes de gerar arquivos
         run: |
           set -euo pipefail

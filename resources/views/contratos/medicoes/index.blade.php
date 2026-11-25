@@ -5,7 +5,6 @@
 
 @section('content')
     <style>
-        /* Força a visibilidade e o estilo padrão dos selects de filtro */
         .filter-container select,
         .form-control,
         select.form-control,
@@ -29,7 +28,6 @@
         <div class="card-body bg-light rounded">
             <form action="{{ route('contratos.medicoes.index') }}" method="GET">
                 <div class="row">
-                    <!-- Filtro por Cliente -->
                     <div class="form-group col-md-3">
                         <label class="small font-weight-bold text-muted" for="cliente_id">CLIENTE</label>
                         <select name="cliente_id" id="cliente_id" class="form-control">
@@ -42,7 +40,6 @@
                         </select>
                     </div>
 
-                    <!-- Filtro por Contrato -->
                     <div class="form-group col-md-3">
                         <label class="small font-weight-bold text-muted" for="contrato_id">CONTRATO</label>
                         <select name="contrato_id" id="contrato_id" class="form-control">
@@ -55,7 +52,6 @@
                         </select>
                     </div>
 
-                    <!-- Filtro por Status -->
                     <div class="form-group col-md-2">
                         <label class="small font-weight-bold text-muted">STATUS</label>
                         <select name="status" class="form-control">
@@ -66,13 +62,11 @@
                         </select>
                     </div>
 
-                    <!-- Data Inicial -->
                     <div class="form-group col-md-2">
                         <label class="small font-weight-bold text-muted">DATA INICIAL</label>
                         <input type="date" name="data_inicial" class="form-control" value="{{ request('data_inicial') }}">
                     </div>
 
-                    <!-- Data Final -->
                     <div class="form-group col-md-2">
                         <label class="small font-weight-bold text-muted">DATA FINAL</label>
                         <input type="date" name="data_final" class="form-control" value="{{ request('data_final') }}">
@@ -81,12 +75,8 @@
 
                 <div class="row">
                     <div class="col-md-12 text-right">
-                        <a href="{{ route('contratos.medicoes.index') }}" class="btn btn-secondary btn-sm px-3">
-                            <i class="fa fa-eraser"></i> Limpar
-                        </a>
-                        <button type="submit" class="btn btn-primary btn-sm px-4">
-                            <i class="fa fa-filter"></i> Filtrar
-                        </button>
+                        <a href="{{ route('contratos.medicoes.index') }}" class="btn btn-secondary btn-sm px-3"><i class="fa fa-eraser"></i> Limpar</a>
+                        <button type="submit" class="btn btn-primary btn-sm px-4"><i class="fa fa-filter"></i> Filtrar</button>
                     </div>
                 </div>
             </form>
@@ -110,47 +100,40 @@
                 </div>
             </div>
 
-            @if(session('mensagem_sucesso'))
-                <div class="alert alert-success">{{ session('mensagem_sucesso') }}</div>
-            @endif
-            @if(session('sucesso'))
-                <div class="alert alert-success">{{ session('sucesso') }}</div>
-            @endif
-            @if(session('mensagem_erro') || session('error'))
-                <div class="alert alert-danger">{{ session('mensagem_erro') ?? session('error') }}</div>
-            @endif
-            @if(session('warning'))
-                <div class="alert alert-warning">{{ session('warning') }}</div>
-            @endif
+            @if(session('mensagem_sucesso')) <div class="alert alert-success">{{ session('mensagem_sucesso') }}</div> @endif
+            @if(session('sucesso')) <div class="alert alert-success">{{ session('sucesso') }}</div> @endif
+            @if(session('mensagem_erro') || session('error')) <div class="alert alert-danger">{{ session('mensagem_erro') ?? session('error') }}</div> @endif
+            @if(session('warning')) <div class="alert alert-warning">{{ session('warning') }}</div> @endif
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="bg-light text-secondary">
                     <tr>
-                        <th style="width: 4%;">#</th>
-                        <th style="width: 15%;">AÇÕES</th>
+                        <th style="width: 3%;">#</th>
+                        <th style="width: 14%;">AÇÕES</th>
                         <th style="width: 5%;">ID</th>
-                        <th style="width: 9%;">RPS/SÉRIE</th>
+                        <th style="width: 11%;">GRUPO</th>
                         <th style="width: 9%;">Nº NFS-E</th>
-                        <th style="width: 10%; text-align:center;">STATUS NFS-E</th>
-                        <th style="width: 16%;">CLIENTE</th>
-                        <th style="width: 10%;">DATA</th>
-                        <th style="width: 9%;">VALOR (R$)</th>
-                        <th style="width: 13%;" class="text-center">STATUS</th>
+                        <th style="width: 9%; text-align:center;">STATUS NFS-E</th>
+                        <th class="text-center">STATUS PORTAL</th>
+                        <th style="width: 17%;">CLIENTE</th>
+                        <th style="width: 9%;">DATA</th>
+                        <th style="width: 13%;">VALOR LÍQUIDO</th>
+                        <th style="width: 10%;" class="text-center">STATUS</th>
                     </tr>
                     </thead>
                     <tbody>
                     @forelse($medicoes as $medicao)
                         <tr>
-                            <td><input type="checkbox" name="id[]" value="{{ $medicao->id }}"></td>
+                            <td class="text-center"><input type="checkbox" name="id[]" value="{{ $medicao->id }}"></td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <!-- Botão de Imprimir Faturamento Interno -->
-                                    <a href="{{ route('contratos.medicoes.imprimir', $medicao->id) }}" target="_blank" class="btn btn-sm btn-secondary" title="Imprimir Comprovante Interno">
+                                    <!-- Comprovante Interno -->
+                                    <a href="{{ route('contratos.medicoes.imprimir', $medicao->id) }}" target="_blank" class="btn btn-sm btn-secondary" title="Imprimir Comprovante">
                                         <i class="fa fa-file-alt"></i>
                                     </a>
 
-                                    <!-- Botão de Imprimir/Visualizar NFS-e Oficial (Só acende se tiver número da nota) -->
+                                    <!-- Visualizar/Imprimir DANFSE -->
                                     @if(!empty($medicao->numero_nfse))
                                         <a href="{{ route('contratos.medicoes.danfse', $medicao->id) }}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir NFS-e Oficial">
                                             <i class="fa fa-print"></i>
@@ -163,7 +146,7 @@
                                         <a href="{{ route('contratos.medicoes.edit', $medicao->id) }}" class="btn btn-sm btn-warning text-white" title="Editar">
                                             <i class="fa fa-edit"></i>
                                         </a>
-                                        <a href="{{ route('contratos.medicoes.destroy', $medicao->id) }}" onclick="return confirm('Deseja excluir esta medição (Isso NÃO cancela na prefeitura)?')" class="btn btn-sm btn-danger" title="Excluir Registro">
+                                        <a href="{{ route('contratos.medicoes.destroy', $medicao->id) }}" onclick="return confirm('Deseja excluir esta medição?')" class="btn btn-sm btn-danger" title="Excluir">
                                             <i class="fa fa-trash"></i>
                                         </a>
                                     @else
@@ -172,17 +155,26 @@
                                 </div>
                             </td>
                             <td class="font-weight-bold">#{{ $medicao->id }}</td>
-                            <!-- Exibe o número do RPS e Série controlados pelo ERP -->
-                            <td>{{ $medicao->serie_nfse ?? '1' }} / {{ $medicao->id }}</td>
-                            <!-- Exibe o número oficial da Nota gerado pela prefeitura -->
+
+                            <!-- Grupo de Faturamento -->
                             <td>
-                                @if(!empty($medicao->numero_nfse))
-                                    <span class="badge badge-success font-weight-bold" style="font-size: 0.9rem;">{{ $medicao->numero_nfse }}</span>
+                                @if(($medicao->grupo_faturamento ?? '') == 'locacao')
+                                    <span class="badge badge-warning text-dark"><i class="fa fa-dumpster"></i> Locação</span>
+                                @elseif(($medicao->grupo_faturamento ?? '') == 'frete')
+                                    <span class="badge badge-info"><i class="fa fa-truck"></i> Frete</span>
                                 @else
-                                    <span class="text-muted small">Não emitida</span>
+                                    <span class="badge badge-primary"><i class="fa fa-recycle"></i> Resíduos</span>
                                 @endif
                             </td>
-                            <!-- COLUNA NOVA: Status da NFS-e -->
+
+                            <td>
+                                @if(!empty($medicao->numero_nfse))
+                                    <span class="badge badge-success font-weight-bold" style="font-size: 0.85rem;">{{ $medicao->numero_nfse }}</span>
+                                @else
+                                    <span class="text-muted small">Pendente</span>
+                                @endif
+                            </td>
+
                             <td class="text-center">
                                 @if(strtolower($medicao->estado_nfse) == 'aprovado')
                                     <span class="badge badge-success px-2 py-1">Aprovado</span>
@@ -196,9 +188,34 @@
                                     <span class="badge badge-secondary px-2 py-1">Novo</span>
                                 @endif
                             </td>
+
+                            <!-- 🚀 STATUS DO PORTAL (Corrigido com a variável $medicao) -->
+                            <td class="text-center">
+                                @if($medicao->status_aprovacao == 'aprovado')
+                                    <span class="badge badge-success font-weight-bold" style="font-size: 11px; padding: 5px 10px;">
+                        <i class="fa fa-check-circle mr-1"></i> Aprovado pelo Cliente
+                    </span>
+                                @elseif($medicao->status_aprovacao == 'rejeitado')
+                                    <span class="badge badge-danger font-weight-bold" style="font-size: 11px; padding: 5px 10px;">
+                        <i class="fa fa-times-circle mr-1"></i> Rejeitado
+                    </span>
+                                @else
+                                    <span class="badge badge-warning text-dark font-weight-bold" style="font-size: 11px; padding: 5px 10px;">
+                        <i class="fa fa-clock mr-1"></i> Aguardando Portal
+                    </span>
+                                @endif
+                            </td>
+
                             <td>{{ $medicao->cliente->razao_social ?? $medicao->cliente->nome ?? 'N/D' }}</td>
-                            <td>{{ date('d/m/Y H:i', strtotime($medicao->data_faturamento ?? $medicao->created_at)) }}</td>
-                            <td class="font-weight-bold text-primary">R$ {{ number_format($medicao->valor_total, 2, ',', '.') }}</td>
+                            <td>{{ date('d/m/Y', strtotime($medicao->data_faturamento ?? $medicao->created_at)) }}</td>
+                            <td>
+                                <span class="font-weight-bold text-primary">R$ {{ number_format($medicao->valor_total, 2, ',', '.') }}</span>
+                                @if(($medicao->valor_abatimento_compra ?? 0) > 0)
+                                    <div class="small text-danger font-weight-bold" title="Abatimento de compra de sucata">
+                                        - R$ {{ number_format($medicao->valor_abatimento_compra, 2, ',', '.') }}
+                                    </div>
+                                @endif
+                            </td>
                             <td class="text-center">
                                 <form action="{{ route('contratos.medicoes.status', $medicao->id) }}" method="POST">
                                     @csrf
@@ -212,7 +229,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-4">Nenhum registro encontrado com os filtros informados.</td>
+                            <td colspan="11" class="text-center text-muted py-4">Nenhum registro encontrado com os filtros informados.</td>
                         </tr>
                     @endforelse
                     </tbody>
@@ -222,7 +239,6 @@
             <!-- Painel de Ações Inferior -->
             <div class="row mt-4">
                 <div class="col-12" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between;">
-
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
                         <button class="btn btn-block text-white font-weight-bold shadow-sm" onclick="acaoEmLote('emitir_nfse')" style="background-color: #5bc0de; border:none; border-radius: 4px;">Emitir NFS-e</button>
                         <button class="btn btn-block text-white font-weight-bold shadow-sm" onclick="acaoEmLote('danfe')" style="background-color: #66b3ff; border:none; border-radius: 4px;">Visualizar Danfe</button>
@@ -239,11 +255,9 @@
                     </div>
 
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
-                        <!-- Ajustado para acionar a rota correta de cancelamento na prefeitura -->
                         <button class="btn btn-block text-white font-weight-bold shadow-sm" onclick="acaoEmLote('cancelar')" style="background-color: #ff7675; border:none; border-radius: 4px;">Cancelar NFS-e</button>
                         <button class="btn btn-block text-white font-weight-bold shadow-sm" onclick="acaoEmLote('whatsapp')" style="background-color: #00b894; border:none; border-radius: 4px;">WhatsApp</button>
                     </div>
-
                 </div>
             </div>
 
@@ -257,27 +271,6 @@
 
     <!-- Scripts de Alerta e Ações em Lote -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    @if(session('imprimir_id'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    title: 'Alerta',
-                    text: "Deseja imprimir o comprovante da medição?",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#f1f1f1',
-                    confirmButtonText: 'Sim',
-                    cancelButtonText: '<span style="color:#333">Não</span>'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.open("{{ route('contratos.medicoes.imprimir', session('imprimir_id')) }}", "_blank");
-                    }
-                });
-            });
-        </script>
-    @endif
-
     <script>
         function acaoEmLote(acao) {
             let checkboxSelecionado = document.querySelector('input[name="id[]"]:checked');
@@ -289,7 +282,6 @@
 
             let id = checkboxSelecionado.value;
 
-            // Dicionário com TODAS as rotas dos botões mapeadas
             let rotas = {
                 'imprimir': "{{ url('contratos/medicoes/imprimir') }}/" + id,
                 'whatsapp': "{{ url('contratos/medicoes/enviar-whatsapp') }}/" + id,
@@ -297,7 +289,6 @@
                 'danfe': "{{ url('contratos/medicoes/danfse') }}/" + id,
                 'baixar_xml': "{{ url('contratos/medicoes/baixar-xml') }}/" + id,
                 'consultar': "{{ url('contratos/medicoes/consultar-nfse') }}/" + id,
-                // Rota atualizada para o Cancelamento Fiscal (Não usar o delete!)
                 'cancelar': "{{ url('contratos/medicoes/cancelar-nfse') }}/" + id,
                 'email': "{{ url('contratos/medicoes/enviar-email') }}/" + id
             };
@@ -307,8 +298,8 @@
                     window.open(rotas[acao], '_blank');
                 } else if (acao === 'emitir_nfse') {
                     Swal.fire({
-                        title: 'Emitir NFS-e Nacional?',
-                        text: "A nota será assinada com o certificado A1 e transmitida ao Portal Nacional.",
+                        title: 'Emitir NFS-e?',
+                        text: "A nota fiscal será assinada e transmitida à Prefeitura.",
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#28a745',
@@ -321,10 +312,9 @@
                         }
                     });
                 } else if (acao === 'cancelar') {
-                    // Lógica corrigida para fazer envio via POST (como configurámos na rota)
                     Swal.fire({
                         title: 'Cancelar NFS-e na Prefeitura?',
-                        text: "Esta ação comunicará com a prefeitura para cancelar a nota fiscal e não poderá ser desfeita. Informe o motivo abaixo:",
+                        text: "Informe o motivo do cancelamento:",
                         input: 'text',
                         inputPlaceholder: 'Ex: Erro de emissão',
                         icon: 'warning',
@@ -335,7 +325,6 @@
                         cancelButtonText: 'Voltar'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            // Cria um formulário invisível para enviar a requisição POST com CSRF
                             let form = document.createElement('form');
                             form.method = 'POST';
                             form.action = rotas[acao];
@@ -359,8 +348,6 @@
                 } else {
                     window.location.href = rotas[acao];
                 }
-            } else {
-                Swal.fire('Em desenvolvimento', 'Esta função ainda não possui rota configurada.', 'info');
             }
         }
     </script>
