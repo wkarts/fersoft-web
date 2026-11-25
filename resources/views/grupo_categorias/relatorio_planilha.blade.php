@@ -65,9 +65,9 @@
                         </tr>
                     </thead>
                     <tbody style="font-size: 0.85rem;">
-                        @forelse($linhas as $grupoNota)
+                        @forelse($documentos as $primeiro)
                             @php
-                                $primeiro = $grupoNota->first();
+                                $grupoNota = $primeiro->boletos;
                                 
                                 // Formata os vencimentos separando por quebra de linha (<br>)
                                 $vencimentosHtml = $grupoNota->pluck('data_vencimento')->map(function($d) {
@@ -79,7 +79,7 @@
                                     return 'R$ ' . number_format($item->valor_boleto, 2, ',', '.');
                                 })->implode('<br>');
 
-                                $totalBoletos = $grupoNota->sum('valor_boleto');
+                                $totalBoletos = $primeiro->valor_total_nota;
                             @endphp
                             <tr>
                                 {{-- Empresa Beneficiária --}}
