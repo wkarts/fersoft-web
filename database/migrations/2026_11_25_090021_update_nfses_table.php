@@ -17,9 +17,18 @@ return new class extends Migration
             throw new \RuntimeException('Tabela esperada ausente: nfses');
         }
 
-        $this->applyColumnDefinition('nfses', 'serie', 'varchar(5) NOT NULL');
+        // Confere as duas colunas antes do ALTER, inclusive após execução parcial.
+        $alterations = [];
+        foreach (['serie' => 5, 'codigo_verificacao' => 60] as $columnName => $minimumLength) {
+            $definition = $this->expandedVarcharDefinition('nfses', $columnName, $minimumLength);
+            if ($definition !== null) {
+                $alterations[] = "MODIFY COLUMN `{$columnName}` {$definition}";
+            }
+        }
 
-        $this->applyColumnDefinition('nfses', 'codigo_verificacao', 'varchar(60) NOT NULL DEFAULT \'\'');
+        if ($alterations !== []) {
+            DB::statement('ALTER TABLE `nfses` ' . implode(', ', $alterations));
+        }
 
         $this->ensureColumn('nfses', 'motivo_rejeicao', function (Blueprint $table) {
             $table->text('motivo_rejeicao')->nullable();
@@ -28,7 +37,7 @@ return new class extends Migration
 
     public function down()
     {
-        // Migration somente evolutiva.
+        // Migration somente evolutiva: não reduz os campos nem remove registros.
         return;
     }
 
@@ -43,172 +52,75 @@ return new class extends Migration
         });
     }
 
-    private function applyColumnDefinition(string $tableName, string $columnName, string $definition): void
+    private function expandedVarcharDefinition(string $tableName, string $columnName, int $minimumLength): ?string
     {
-        $definitions = [
-            'serie' => [
-                'sql' => 'varchar(5) NOT NULL',
-                'expected' => [
-                    'COLUMN_TYPE' => 'varchar(5)',
-                    'IS_NULLABLE' => 'NO',
-                    'COLUMN_DEFAULT' => null,
-                    'EXTRA' => '',
-                    'CHARACTER_SET_NAME' => 'utf8mb4',
-                    'COLLATION_NAME' => 'utf8mb4_unicode_ci',
-                    'COLUMN_COMMENT' => '',
-                ],
-                'previous' => [
-                    'COLUMN_TYPE' => 'varchar(3)',
-                    'IS_NULLABLE' => 'NO',
-                    'COLUMN_DEFAULT' => null,
-                    'EXTRA' => '',
-                    'CHARACTER_SET_NAME' => 'utf8mb4',
-                    'COLLATION_NAME' => 'utf8mb4_unicode_ci',
-                    'COLUMN_COMMENT' => '',
-                ],
-            ],
-            'codigo_verificacao' => [
-                'sql' => 'varchar(60) NOT NULL DEFAULT \'\'',
-                'expected' => [
-                    'COLUMN_TYPE' => 'varchar(60)',
-                    'IS_NULLABLE' => 'NO',
-                    'COLUMN_DEFAULT' => '',
-                    'EXTRA' => '',
-                    'CHARACTER_SET_NAME' => 'utf8mb4',
-                    'COLLATION_NAME' => 'utf8mb4_unicode_ci',
-                    'COLUMN_COMMENT' => '',
-                ],
-                'previous' => [
-                    'COLUMN_TYPE' => 'varchar(20)',
-                    'IS_NULLABLE' => 'NO',
-                    'COLUMN_DEFAULT' => null,
-                    'EXTRA' => '',
-                    'CHARACTER_SET_NAME' => 'utf8mb4',
-                    'COLLATION_NAME' => 'utf8mb4_unicode_ci',
-                    'COLUMN_COMMENT' => '',
-                ],
-            ],
-        ];
-        $definitions = [$columnName => $definitions[$columnName]];
-        if ($definitions[$columnName]['sql'] !== $definition) {
-            throw new \RuntimeException("Definição não prevista para {$tableName}.{$columnName}.");
-        }
-        $rows = DB::select(
-            'SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, '
-            . 'CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_COMMENT FROM information_schema.COLUMNS '
-            . 'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
-            [DB::getDatabaseName(), $tableName]
+        $current = DB::selectOne(
+            'SELECT COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_COMMENT, EXTRA '
+            . 'FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [DB::getDatabaseName(), $tableName, $columnName],
+            false
         );
-        $columns = [];
-        foreach ($rows as $row) {
-            $columns[$row->COLUMN_NAME] = $row;
+
+        if ($current === null) {
+            throw new \RuntimeException("Coluna esperada ausente: {$tableName}.{$columnName}.");
         }
 
-        $alterations = [];
-        $requiresStrictMode = false;
-        foreach ($definitions as $name => $definition) {
-            $current = $columns[$name] ?? null;
-            if ($current === null) {
-                if ($definition['previous'] !== null) {
-                    throw new \RuntimeException($tableName . ".{$name}: coluna original ausente.");
-                }
-                $expected = $definition['expected'];
-                if (str_contains($expected['EXTRA'], 'auto_increment')
-                    || ($expected['IS_NULLABLE'] === 'NO' && $expected['COLUMN_DEFAULT'] === null
-                        && DB::table($tableName)->exists())) {
-                    throw new \RuntimeException($tableName . ".{$name}: inclusão exige revisão dos dados existentes.");
-                }
-                $alterations[] = "ADD COLUMN `{$name}` " . $definition['sql'];
-                continue;
-            }
-            if ($this->columnMatches($current, $definition['expected'])) {
-                continue;
-            }
-            if ($definition['previous'] === null
-                || !$this->columnMatches($current, $definition['previous'])) {
-                throw new \RuntimeException($tableName . ".{$name}: definição diferente das duas bases comparadas. Nenhuma substituição automática.");
-            }
-
-            // Alterações sensíveis exigem valores compatíveis com o tipo/collation da origem.
-            if (isset($definition['guard']) && DB::selectOne($definition['guard']) !== null) {
-                throw new \RuntimeException($tableName . ".{$name}: há valores incompatíveis com o tipo da origem; nenhum registro foi corrigido ou excluído.");
-            }
-            $requiresStrictMode = $requiresStrictMode || isset($definition['guard']);
-            $alterations[] = "MODIFY COLUMN `{$name}` " . $definition['sql'];
-        }
-        if ($alterations === []) {
-            return;
+        if (!preg_match('/^varchar\((\d+)\)$/i', trim((string) $current->COLUMN_TYPE), $match)) {
+            throw new \RuntimeException("{$tableName}.{$columnName}: esperado VARCHAR; encontrado {$current->COLUMN_TYPE}. Nenhuma conversão automática.");
         }
 
-        $sql = 'ALTER TABLE `' . $tableName . '` ' . implode(', ', $alterations);
-        if (!$requiresStrictMode) {
-            DB::statement($sql);
-            return;
+        // Não substituir expressões de DEFAULT, colunas geradas ou outros atributos extras.
+        if (trim((string) $current->EXTRA) !== '') {
+            throw new \RuntimeException("{$tableName}.{$columnName}: atributos extras exigem revisão: {$current->EXTRA}.");
         }
 
-        // Usa a conexão de escrita para consultar e ajustar apenas esta sessão.
-        $connection = DB::connection();
-        $mode = $connection->selectOne('SELECT @@SESSION.sql_mode AS modes', [], false);
-        if ($mode === null || !isset($mode->modes)) {
-            throw new \RuntimeException('Não foi possível consultar SQL_MODE da sessão de escrita.');
-        }
-        $originalMode = (string) $mode->modes;
-        $alreadyStrict = preg_match('/(?:^|,)\s*(?:STRICT_ALL_TABLES|STRICT_TRANS_TABLES)\s*(?:,|$)/i', $originalMode) === 1;
-        $modeChanged = false;
+        $currentLength = (int) $match[1];
+        $desiredLength = max($currentLength, $minimumLength);
+        $nullable = strtoupper((string) $current->IS_NULLABLE) === 'YES';
+        $currentDefault = $current->COLUMN_DEFAULT;
+        $desiredDefault = $currentDefault;
 
-        try {
-            if (!$alreadyStrict) {
-                $strictMode = trim($originalMode, " ,\t\n\r\0\x0B");
-                $strictMode = $strictMode === '' ? 'STRICT_ALL_TABLES' : $strictMode . ',STRICT_ALL_TABLES';
-                $connection->statement('SET SESSION sql_mode = ?', [$strictMode]);
-                $modeChanged = true;
-            }
-            $connection->statement($sql);
-        } finally {
-            // Restaura inclusive quando o ALTER falha; não altera configuração global.
-            if ($modeChanged) {
-                $connection->statement('SET SESSION sql_mode = ?', [$originalMode]);
+        // Regra do pacote: código NOT NULL sem default recebe ''.
+        // Preserva DEFAULTs existentes e não converte NULL de instalações nullable.
+        if ($columnName === 'codigo_verificacao' && !$nullable && $currentDefault === null) {
+            $desiredDefault = '';
+        }
+
+        if ($currentLength === $desiredLength && $currentDefault === $desiredDefault) {
+            return null;
+        }
+
+        $charset = (string) $current->CHARACTER_SET_NAME;
+        $collation = (string) $current->COLLATION_NAME;
+        foreach ([$charset, $collation] as $identifier) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/D', $identifier)) {
+                throw new \RuntimeException("{$tableName}.{$columnName}: charset/collation inválido ou ausente.");
             }
         }
+
+        $definition = "VARCHAR({$desiredLength}) CHARACTER SET {$charset} COLLATE {$collation}"
+            . ($nullable ? ' NULL' : ' NOT NULL');
+
+        if ($desiredDefault !== null) {
+            $definition .= ' DEFAULT ' . $this->quoteValue((string) $desiredDefault);
+        } elseif ($nullable) {
+            $definition .= ' DEFAULT NULL';
+        }
+
+        $comment = (string) $current->COLUMN_COMMENT;
+        if ($comment !== '') {
+            $definition .= ' COMMENT ' . $this->quoteValue($comment);
+        }
+
+        return $definition;
     }
 
-    private function columnMatches(object $current, array $expected): bool
+    private function quoteValue(string $value): string
     {
-        foreach ($expected as $key => $value) {
-            $actual = $current->{$key} ?? null;
-            if ($key === 'COLUMN_TYPE') {
-                if ($this->normalizeType((string) $actual) !== $this->normalizeType((string) $value)) {
-                    return false;
-                }
-            } elseif ($key === 'EXTRA') {
-                // MySQL 8 acrescenta DEFAULT_GENERATED a defaults de timestamp.
-                $normalize = static fn ($v) => strtolower(trim(preg_replace('/\s+/', ' ', str_ireplace(['DEFAULT_GENERATED', 'CURRENT_TIMESTAMP()'], ['', 'CURRENT_TIMESTAMP'], (string) $v))));
-                if ($normalize($actual) !== $normalize($value)) {
-                    return false;
-                }
-            } elseif ($key === 'COLUMN_DEFAULT') {
-                $normalize = static fn ($v) => $v === null ? null : preg_replace('/^current_timestamp(?:\(\))?$/i', 'CURRENT_TIMESTAMP', (string) $v);
-                if ($normalize($actual) !== $normalize($value)) {
-                    return false;
-                }
-            } elseif (($actual === null ? null : (string) $actual) !== ($value === null ? null : (string) $value)) {
-                return false;
-            }
+        $quoted = DB::connection()->getPdo()->quote($value);
+        if ($quoted === false) {
+            throw new \RuntimeException('Não foi possível preparar o literal SQL da definição da coluna.');
         }
-        return true;
+        return $quoted;
     }
-
-    private function normalizeType(string $type): string
-    {
-        $parts = preg_split("/('(?:''|\\\\.|[^'\\\\])*')/", $type, -1, PREG_SPLIT_DELIM_CAPTURE);
-        foreach ($parts as $index => &$part) {
-            if ($index % 2 === 0) {
-                $part = preg_replace('/\s+/', '', strtolower($part));
-            }
-        }
-        unset($part);
-        // Largura de exibição de inteiros não altera sua capacidade.
-        return preg_replace('/^(tinyint|smallint|mediumint|int|bigint)\(\d+\)/', '$1', implode('', $parts));
-    }
-
 };
