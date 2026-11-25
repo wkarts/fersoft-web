@@ -969,12 +969,9 @@ class MtrController extends BaseController
                 . "*Destinador:* {$mtr->destinador_nome}\n"
                 . "*Placa Veículo:* " . ($mtr->veiculo_placa ?: '-');
 
-            $mensagens = app(\App\Services\ConnectApi\ConnectApiMessageService::class);
-            $numeroNormalizado = $mensagens->normalizeNumber($numero);
-
-            $retorno = $mensagens->sendMedia(
+            $retorno = $this->whatsapputil->sendMedia(
                 (int) $this->empresa_id,
-                $numeroNormalizado,
+                $numero,
                 $caminhoTemp,
                 $legenda
             );
@@ -1809,11 +1806,10 @@ class MtrController extends BaseController
     private function enviarMensagemZapMtr(int $empresaId, string $telefone, string $mensagem): void
     {
         try {
-            $mensagens = app(\App\Services\ConnectApi\ConnectApiMessageService::class);
-            $destino = explode('@', $telefone)[0];
-            $numero = $mensagens->normalizeNumber($destino);
-
-            $retorno = $mensagens->sendText($empresaId, $numero, $mensagem);
+            $numero = explode('@', $telefone)[0];
+            $resultado = $this->whatsapputil->sendMessage($numero, $mensagem, $empresaId);
+            $this->assertWhatsAppSendSucceeded($resultado);
+            $retorno = json_decode($resultado, true)['text_response'];
 
             Log::info('MTR WhatsApp: tentativa de envio Connect|API', [
                 'empresa_id' => $empresaId,
@@ -2213,7 +2209,7 @@ class MtrController extends BaseController
                         $caminhoTemp = storage_path('app/public/' . $nomePdfLocal);
                         file_put_contents($caminhoTemp, $pdfContent);
 
-                        app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendMedia(
+                        $this->whatsapputil->sendMedia(
                             $empresaId,
                             $telefone,
                             $caminhoTemp,
