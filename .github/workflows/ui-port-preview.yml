@@ -1,0 +1,27 @@
+name: UI - Prever portabilidade para develop
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verificar regras de portabilidade
+        run: python3 scripts/ui/tests/test-preview-port.py
+      - name: Comparar o resultado proposto com a homologação
+        run: |
+          python3 scripts/ui/preview-port.py refs/remotes/origin/develop HEAD "$RUNNER_TEMP/ui-port"
+          cat "$RUNNER_TEMP/ui-port/resumo.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-port-preview-${{ github.run_id }}
+          path: ${{ runner.temp }}/ui-port/
+          retention-days: 30

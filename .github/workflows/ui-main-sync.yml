@@ -52,10 +52,16 @@ jobs:
             grep -E '^(resources/views/|public/(css|js|metronic)/|app/Helpers/Menu.php|app/Providers/|routes/|resources/js/|package(-lock)?.json)' "$RUNNER_TEMP/main-changes.txt" || true
           } > "$RUNNER_TEMP/ui-impact.txt"
           if [ -s "$RUNNER_TEMP/ui-impact.txt" ]; then
-            sed 's/^/- `/;s/$/`/' "$RUNNER_TEMP/ui-impact.txt" | head -100 >> "$GITHUB_STEP_SUMMARY"
+            head -100 "$RUNNER_TEMP/ui-impact.txt" | sed 's/^/- `/;s/$/`/' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "- Nenhum arquivo da camada visual/contratos foi alterado." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Preparar relatório e propostas para a homologação
+        if: steps.impact.outputs.needs_sync == 'true'
+        run: |
+          python3 scripts/ui/preview-port.py "origin/$UI_BRANCH" origin/main "$RUNNER_TEMP/ui-port"
+          cat "$RUNNER_TEMP/ui-port/resumo.md" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Incorporar main SEM alterar main
         id: merge
@@ -80,11 +86,18 @@ jobs:
 
             title="[UI-SYNC] Conflitos na importação da main"
             existing="$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[UI-SYNC] Conflitos na importação da main") | .number' | head -1 || true)"
-            body="Conflitos ao integrar a main $(git rev-parse --short origin/main) em $UI_BRANCH. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.\n\nArquivos:\n$conflicts"
+            body_file="$RUNNER_TEMP/ui-sync-issue.md"
+            {
+              echo "Conflitos ao integrar a main em $UI_BRANCH."
+              echo
+              echo "Execução e artefato com propostas: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              echo
+              cat "$RUNNER_TEMP/ui-port/resumo.md"
+            } > "$body_file"
             if [ -n "$existing" ]; then
-              gh issue comment "$existing" --body "$body" || true
+              gh issue comment "$existing" --body-file "$body_file" || true
             else
-              gh issue create --title "$title" --body "$body" || true
+              gh issue create --title "$title" --body-file "$body_file" || true
             fi
             exit 1
           fi
@@ -110,12 +123,13 @@ jobs:
           echo "- Workflow de pré-release solicitado para $UI_BRANCH" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Anexar lista de impactos
-        if: steps.impact.outputs.needs_sync == 'true'
+        if: always() && steps.impact.outputs.needs_sync == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ui-main-impact-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/main-changes.txt
             ${{ runner.temp }}/ui-impact.txt
+            ${{ runner.temp }}/ui-port/
           if-no-files-found: warn
           retention-days: 30
