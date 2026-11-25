@@ -39,6 +39,8 @@ class Usuario extends Authenticatable
         'balanca_padrao_id',
         'otp_secret',
         'permissao_nfe_whatsapp',
+        'cpf_mtr',
+        'token_mtr',
     ];
 
     /**
@@ -74,9 +76,9 @@ class Usuario extends Authenticatable
     public function ultimoAcesso(){
         $acesso = UsuarioAcesso::
         where('usuario_id', $this->id)
-        ->where('status', 1)
-        ->orderBy('id', 'desc')
-        ->first();
+            ->where('status', 1)
+            ->orderBy('id', 'desc')
+            ->first();
 
         return $acesso;
     }
@@ -84,9 +86,9 @@ class Usuario extends Authenticatable
     public function acesso(){
         $acesso = UsuarioAcesso::
         where('usuario_id', $this->id)
-        ->where('status', 0)
-        ->orderBy('id', 'desc')
-        ->first();
+            ->where('status', 0)
+            ->orderBy('id', 'desc')
+            ->first();
 
         return $acesso;
     }
@@ -133,5 +135,27 @@ class Usuario extends Authenticatable
     public function getAuthPassword()
     {
         return $this->senha; // IMPORTANTÍSSIMO: Laravel Auth procura "password" por padrão
+    }
+
+    public function setTokenMtrAttribute($value): void
+    {
+        $limpo = trim((string) $value);
+        if ($limpo === '') {
+            return;
+        }
+        $this->attributes['token_mtr'] = encrypt($limpo);
+    }
+
+    public function getTokenMtrDecryptedAttribute(): ?string
+    {
+        if (empty($this->attributes['token_mtr'])) {
+            return null;
+        }
+
+        try {
+            return decrypt($this->attributes['token_mtr']);
+        } catch (\Throwable $e) {
+            return (string) $this->attributes['token_mtr'];
+        }
     }
 }

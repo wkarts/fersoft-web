@@ -138,6 +138,8 @@ class NFSeTomadaController extends BaseController
             $local = $request->local ?? 'matriz';
             $filial_id = ($local == 'matriz') ? null : $local;
 
+            $cnpjEmpresaLogada = ''; // <-- 1. CRIE ESTA VARIÁVEL AQUI
+
             if ($local == 'matriz') {
                 $cert = DB::table('certificados')->where('empresa_id', $emp_id)->first();
                 $conf = DB::table('config_notas')->where('empresa_id', $emp_id)->first();
@@ -146,6 +148,7 @@ class NFSeTomadaController extends BaseController
                     throw new \Exception("Configurações de notas ou certificado da Matriz não encontrados para a empresa ID: " . $emp_id);
                 }
 
+                $cnpjEmpresaLogada = preg_replace('/[^0-9]/', '', $conf->cnpj); // <-- 2. GUARDE O CNPJ
                 $servico = new NFSeNacionalService($conf->cnpj, $cert->arquivo, $cert->senha);
             } else {
                 $f = DB::table('filials')->where('id', $local)->first();
@@ -154,6 +157,7 @@ class NFSeTomadaController extends BaseController
                     throw new \Exception("Filial não encontrada no sistema.");
                 }
 
+                $cnpjEmpresaLogada = preg_replace('/[^0-9]/', '', $f->cnpj); // <-- 3. GUARDE O CNPJ
                 $servico = new NFSeNacionalService($f->cnpj, $f->arquivo_certificado, $f->senha_certificado);
             }
 
@@ -256,6 +260,19 @@ class NFSeTomadaController extends BaseController
                         } else {
                             $prestadorCnpj = substr($chave, 6, 14);
                         }
+
+                        // ========================================================
+                        // 🔥 BLOQUEIO DE NOTAS EMITIDAS PELA PRÓPRIA EMPRESA
+                        // ========================================================
+                        $cnpjPrestadorLimpo = preg_replace('/[^0-9]/', '', $prestadorCnpj);
+
+                        if ($cnpjPrestadorLimpo === $cnpjEmpresaLogada) {
+                            // Incrementa a contagem para o sistema continuar puxando as próximas
+                            // notas (NSU) e não travar a fila da Receita.
+                            $notasNesseLote++;
+                            continue; // Pula a execução! Não salva no banco de dados.
+                        }
+                        // ========================================================
 
                         $vServicoBruto = 0;
                         $vLiquido = 0;
@@ -508,14 +525,60 @@ class NFSeTomadaController extends BaseController
                 'numero_emissao' => 0,
             ]);
 
-            $servicoProduto = \App\Models\Produto::where('empresa_id', $emp_id)->where('referencia', '140101')->first();
+            // ========================================================
+            // BUSCA O CÓDIGO DO SERVIÇO NO XML PARA A REFERÊNCIA
+            // ========================================================
+            $codigoServico = '140101'; // Fallback padrão caso não encontre tag
+            $caminhoXml = public_path('xml_servico/' . $nota->chave . '.xml');
+
+            if (file_exists($caminhoXml)) {
+                $xmlString = file_get_contents($caminhoXml);
+                $xmlClean = preg_replace('/ xmlns[^=]*="[^"]*"/i', '', $xmlString);
+                $xmlObj = simplexml_load_string($xmlClean);
+
+                // Tenta rastrear o código no Padrão Nacional ou Padrão ABRASF
+                if (isset($xmlObj->infNFSe->DPS->infDPS->serv->cServ->cTribNac)) {
+                    $codigoServico = (string)$xmlObj->infNFSe->DPS->infDPS->serv->cServ->cTribNac;
+                } elseif (isset($xmlObj->infNFSe->DPS->infDPS->serv->cServ->cLC116)) {
+                    $codigoServico = (string)$xmlObj->infNFSe->DPS->infDPS->serv->cServ->cLC116;
+                } elseif (isset($xmlObj->Nfse->InfNfse->Servico->ItemListaServico)) {
+                    $codigoServico = (string)$xmlObj->Nfse->InfNfse->Servico->ItemListaServico;
+                } elseif (isset($xmlObj->infNFSe->servico->ItemListaServico)) {
+                    $codigoServico = (string)$xmlObj->infNFSe->servico->ItemListaServico;
+                }
+
+                if (empty(trim($codigoServico))) {
+                    $codigoServico = '140101'; // Garante que nunca fique em branco
+                }
+            }
+
+            // ========================================================
+            // CRIA A CATEGORIA E O PRODUTO COM DADOS DINÂMICOS
+            // ========================================================
+            $categoriaPadrao = \App\Models\Categoria::firstOrCreate(
+                ['empresa_id' => $emp_id, 'nome' => 'Serviço Tomado'], // Categoria com o nome solicitado
+                ['empresa_id' => $emp_id, 'nome' => 'Serviço Tomado']
+            );
+
+            $servicoProduto = \App\Models\Produto::where('empresa_id', $emp_id)->where('referencia', $codigoServico)->first();
+
             if (!$servicoProduto) {
                 $servicoProduto = \App\Models\Produto::create([
-                    'nome' => 'SERVICO TOMADO - NFSE NACIONAL', 'referencia' => '140101',
-                    'valor_compra' => $nota->valor_servico, 'valor_venda' => $nota->valor_servico, 'gerenciar_estoque' => 0,
-                    'empresa_id' => $emp_id, 'locais' => '["-1"]', 'tipo_item' => '09', 'unidade_compra' => 'UN', 'unidade_venda' => 'UN', 'conversao_unitaria' => 1
+                    'nome' => 'SERVICO TOMADO - CÓD ' . $codigoServico,
+                    'referencia' => $codigoServico, // <-- Usa o código dinâmico do XML
+                    'valor_compra' => $nota->valor_servico,
+                    'valor_venda' => $nota->valor_servico,
+                    'gerenciar_estoque' => 0,
+                    'empresa_id' => $emp_id,
+                    'locais' => '["-1"]',
+                    'tipo_item' => '09',
+                    'unidade_compra' => 'UN',
+                    'unidade_venda' => 'UN',
+                    'conversao_unitaria' => 1,
+                    'categoria_id' => $categoriaPadrao->id // <-- Associa à nova categoria
                 ]);
             }
+
 
             \App\Models\ItemCompra::create([
                 'compra_id' => $compra->id,
@@ -796,21 +859,19 @@ class NFSeTomadaController extends BaseController
                             if (!empty($cMun)) {
                                 try {
                                     // Tenta buscar na tabela 'cidades' do ERP.
-                                    // OBS: Se a sua coluna de código IBGE tiver outro nome (ex: 'ibge'), mude abaixo:
                                     $cidadeDb = \Illuminate\Support\Facades\DB::table('cidades')
                                         ->where('codigo_ibge', $cMun)
                                         ->first();
 
                                     if ($cidadeDb) {
-                                        // Ajuste 'nome' se a sua coluna de nome da cidade for diferente
                                         $nomeCidade = $cidadeDb->nome;
                                     }
                                 } catch (\Exception $e) {
-                                    // Se a tabela não existir, ignora o erro e mostra o código numérico no lugar
+                                    // Se a tabela não existir, ignora o erro
                                 }
                             }
 
-                            // Montando o endereço completo bonitinho para o Espelho
+                            // Montando o endereço completo
                             $enderecoCompleto = $lgr . ', ' . $nro;
                             if ($bairro) $enderecoCompleto .= ' - ' . $bairro;
                             if ($nomeCidade) $enderecoCompleto .= ' - ' . $nomeCidade;
@@ -866,8 +927,51 @@ class NFSeTomadaController extends BaseController
                     }
                 }
 
+                // ==========================================
+                // 5. CAPTURAR DADOS ADICIONAIS DO SERVIÇO (Tributação, NBS, etc)
+                // ==========================================
+                $codigoTributacao = '-';
+                $codigoNBS = '-';
+                $localPrestacao = '-';
+                $aliquotaISS = '0,00';
+
+                // Código Tributação
+                if (isset($xml->infNFSe->DPS->infDPS->serv->cServ->cTribNac)) {
+                    $codigoTributacao = (string)$xml->infNFSe->DPS->infDPS->serv->cServ->cTribNac;
+                } elseif (isset($xml->infNFSe->servico->ItemListaServico)) {
+                    $codigoTributacao = (string)$xml->infNFSe->servico->ItemListaServico;
+                }
+
+                // Código NBS
+                if (isset($xml->infNFSe->DPS->infDPS->serv->cServ->cNBS)) {
+                    $codigoNBS = (string)$xml->infNFSe->DPS->infDPS->serv->cServ->cNBS;
+                }
+
+                // Local da Prestação (IBGE)
+                if (isset($xml->infNFSe->DPS->infDPS->serv->cLocPrestacao)) {
+                    $localPrestacao = (string)$xml->infNFSe->DPS->infDPS->serv->cLocPrestacao;
+                } elseif (isset($xml->infNFSe->servico->CodigoMunicipio)) {
+                    $localPrestacao = (string)$xml->infNFSe->servico->CodigoMunicipio;
+                }
+
+                // Alíquota ISS
+                if (isset($xml->infNFSe->DPS->infDPS->valores->trib->tribMun->pISSQN)) {
+                    $aliquotaISS = number_format((float)$xml->infNFSe->DPS->infDPS->valores->trib->tribMun->pISSQN, 2, ',', '.');
+                } elseif (isset($xml->infNFSe->servico->valores->aliquota)) {
+                    $valAliq = (float)$xml->infNFSe->servico->valores->aliquota;
+                    if ($valAliq < 1 && $valAliq > 0) $valAliq *= 100; // Converte 0.05 para 5.00
+                    $aliquotaISS = number_format($valAliq, 2, ',', '.');
+                }
+
+                $dadosAdicionais = [
+                    'codigo_tributacao' => $codigoTributacao,
+                    'codigo_nbs' => $codigoNBS,
+                    'local_prestacao' => $localPrestacao,
+                    'aliquota' => $aliquotaISS
+                ];
+
                 // ========================================================
-                // CÁLCULO DAS RETENÇÕES FEDERAIS PARA O ESPELHO
+                // 6. CÁLCULO DAS RETENÇÕES FEDERAIS PARA O ESPELHO
                 // ========================================================
                 $vServico = $nota->valor_servico;
                 $vLiquido = $nota->valor_liquido > 0 ? $nota->valor_liquido : $vServico;
@@ -902,10 +1006,12 @@ class NFSeTomadaController extends BaseController
                     'retencoes' => $retencoes,
                     'endereco_prestador' => $enderecoPrestador,
                     'tomador' => $tomador,
+                    'dadosAdicionais' => $dadosAdicionais,
                     'title' => 'DANFSE - Nota ' . $nota->numero_nota
                 ]);
             }
 
+            // Fallbacks caso o XML não exista
             $tomadorDefault = [
                 'nome' => 'Não informado',
                 'cnpj_cpf' => 'Não informado',
@@ -922,6 +1028,13 @@ class NFSeTomadaController extends BaseController
                 'liquido' => $nota->valor_servico ?? 0
             ];
 
+            $dadosAdicionaisDefault = [
+                'codigo_tributacao' => '-',
+                'codigo_nbs' => '-',
+                'local_prestacao' => '-',
+                'aliquota' => '0,00'
+            ];
+
             return view('nfse.visualizar', [
                 'nota' => $nota,
                 'xml' => null,
@@ -929,7 +1042,8 @@ class NFSeTomadaController extends BaseController
                 'title' => 'DANFSE - Nota ' . ($nota->numero_nota ?? 'N/A'),
                 'tomador' => $tomadorDefault,
                 'retencoes' => $retencoesDefault,
-                'endereco_prestador' => 'Não informado'
+                'endereco_prestador' => 'Não informado',
+                'dadosAdicionais' => $dadosAdicionaisDefault
             ]);
 
         } catch (\Exception $e) {

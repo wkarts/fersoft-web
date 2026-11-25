@@ -73,7 +73,23 @@ class ConferenciaFiscalController extends Controller
                 }
 
                 // Verifica se a nota teve recusa/devolução logística
-                $isRecusadaCliente = in_array($situacaoCliente, ['DEVOLVIDO', 'REJEITADO_PELO_CLIENTE']);
+                // Verifica se a nota teve recusa, devolução, cancelamento ou se é transferência
+                $situacaoUpper = strtoupper($situacaoCliente ?? '');
+                $estadoUpper = strtoupper($estadoFiscal ?? '');
+
+                $isRecusadaCliente = (
+                    str_contains($situacaoUpper, 'DEVOLVID') ||
+                    str_contains($situacaoUpper, 'REJEITAD') ||
+                    str_contains($estadoUpper, 'DEVOLVID') ||
+                    str_contains($estadoUpper, 'CANCELAD')
+                );
+
+                // Se for recusada, devolvida ou cancelada, força o Valor em Aberto para 0.00
+                if ($isRecusadaCliente) {
+                    $valorAberto = 0;
+                } else {
+                    $valorAberto = ($contas->count() > 0) ? ($contas->sum('valor_integral') - ($valorRecebido + $valorDesconto)) : $v->valor_total;
+                }
 
                 // Se for recusada/devolvida pelo cliente, força o Valor em Aberto para 0.00
                 if ($isRecusadaCliente) {

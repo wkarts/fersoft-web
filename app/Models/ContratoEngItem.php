@@ -8,7 +8,7 @@ class ContratoEngItem extends BaseModel
 
     protected $fillable = [
         'empresa_id', 'filial_id', 'usuario_id', 'contrato_eng_id', 'tipo_item', 'servico_id', 'produto_id',
-        'quantidade_prevista', 'valor_unitario', 'valor_total',
+        'quantidade_prevista', 'valor_unitario', 'valor_total','unidade',
     ];
 
     protected $casts = [

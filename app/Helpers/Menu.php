@@ -622,6 +622,10 @@ class Menu {
                         'nome' => 'Comparativo de Despesas (Mês vs Mês)',
                         'rota' => '/relatorios-financeiros/comparativo-meses'
                     ],
+                    [
+                        'nome' => 'Resumo Setorial de Despesas',
+                        'rota' => '/relatorios-financeiros/setorial'
+                    ],
                 ]
             ],
             [
@@ -642,6 +646,10 @@ class Menu {
                 'titulo' => 'Traccar',
                 'icone' => $this->getIcone('Traccar'),
                 'subs' => [
+                    [
+                        'nome' => 'Configuração',
+                        'rota' => '/traccarConfigs/new',
+                    ],
                     [
                         'nome' => 'Gerenciamento Traccar',
                         'rota' => '/traccar/rastreamentoVeiculo',
@@ -665,6 +673,10 @@ class Menu {
                         'rota' => '/pesagens',
                     ],
                     [
+                        'nome' => 'Pesagem Avulsa',
+                        'rota' => '/pesagens_avulsas',
+                    ],
+                    [
                         'nome' => 'Monitor de Pesagens',
                         'rota' => '/monitor/pesagens',
                     ],
@@ -681,6 +693,24 @@ class Menu {
                         'rota' => '/tabelaPrecoNfe',
                     ],
                 ],
+            ],
+            [
+                'titulo' => 'Rastreabilidade & Produção',
+                'icone' => $this->getIcone('Pesagens'),
+                'subs' => [
+                    [
+                        'nome' => 'Painel do Gerente (Lotes)',
+                        'rota' => '/producao/gerenciamento'
+                    ],
+                    [
+                        'nome' => 'Balança(Chão de Fábrica)',
+                        'rota' => '/producao/balanca'
+                    ],
+                    [
+                        'nome' => 'Controle de Lotes',
+                        'rota' => '/producao/controle-lotes'
+                    ],
+                ]
             ],
             [
                 'titulo' => 'Dispositivos A.D.P.',
@@ -721,8 +751,16 @@ class Menu {
                         'rota' => '/gestao-coletas'
                     ],
                     [
+                        'nome' => 'Parâmetros de Agendamento',
+                        'rota' => '/logistica/parametros-agendamento'
+                    ],
+                    [
                         'nome' => 'Agenda de Coletas',
                         'rota' => '/movimentacaoVeiculo/agenda'
+                    ],
+                    [
+                        'nome' => 'Mapa de Maq.Equip. (Ativos)',
+                        'rota' => '/equipamentos/mapa'
                     ],
                     [
                         'nome' => 'Funcionários',
@@ -743,7 +781,7 @@ class Menu {
                     ],
                     [
                         'nome' => 'Monitoramento',
-                        'rota' => '/traccar/mapa'
+                        'rota' => '/movimentacaoVeiculo/mapa'
                     ],
                     // Nova alternativa de mapa de movimentações; não substitui o Traccar.
                     [
@@ -1866,7 +1904,7 @@ class Menu {
 
     }
 
-    public function preparaMenu(){
+    /*public function preparaMenu(){
         $value = session('user_logged');
         $contador = session('tipo_contador');
 
@@ -1933,6 +1971,80 @@ class Menu {
                 // if($menu[$i]['titulo'] == 'Delivery' && !$plano->delivery){
                 //  $temp = false;
                 // }
+            }
+            $menu[$i]['ativo'] = $temp;
+        }
+
+        return $menu;
+    }*/
+
+    public function preparaMenu(){
+        $value = session('user_logged');
+        $contador = session('tipo_contador');
+
+        if($contador){
+            return $this->getMenuContador();
+        }
+        if(!$value) return [];
+        $menu = $this->getMenu();
+        $menu = $this->trataModulos($menu);
+
+        if(!empty($value['super'])){
+            return $menu;
+        }
+
+        $usuario = Usuario::where('id', $value['id'])->first();
+        if(!$usuario) return [];
+
+        $permissoesEmpresa = json_decode((string) optional($usuario->empresa)->permissao);
+        if(!$permissoesEmpresa){
+            $permissoesEmpresa = json_decode((string) $usuario->permissao);
+        }
+        $permissoesEmpresa = is_array($permissoesEmpresa) ? $permissoesEmpresa : [];
+
+        $isAdm = !empty($value['adm']) || (int) ($usuario->adm ?? 0) === 1;
+        $permissoesUsuario = json_decode((string) $usuario->permissao, true);
+        $permissoesUsuario = is_array($permissoesUsuario) ? $permissoesUsuario : [];
+
+        $empresa = $usuario->empresa;
+
+        $tributacao = Tributacao::where('empresa_id', $empresa->id)->first();
+
+        for($i=0; $i < sizeof($menu); $i++){
+            $temp = false;
+
+            for($j=0; $j < sizeof($menu[$i]['subs']); $j++){
+                $rotaSub = $menu[$i]['subs'][$j]['rota'];
+                $permitidoEmpresa = Empresa::validaLink($rotaSub, $permissoesEmpresa);
+
+                $permitidoUsuario = true;
+                if(!$isAdm){
+                    $permitidoUsuario = false;
+                    foreach($permissoesUsuario as $permUsu){
+                        $permLimpa = '/' . ltrim((string) $permUsu, '/');
+                        $rotaLimpa = '/' . ltrim((string) $rotaSub, '/');
+                        if($permLimpa === $rotaLimpa){
+                            $permitidoUsuario = true;
+                            break;
+                        }
+                    }
+                }
+
+                if($permitidoEmpresa && $permitidoUsuario){
+                    $temp = true;
+                }else{
+                    if($menu[$i]['subs'][$j]['nome'] != 'NFS-e'){
+                        if($tributacao != null && $tributacao->regime == 2){
+                            if($menu[$i]['subs'][$j]['nome'] != 'Emitir - DAS' && $menu[$i]['subs'][$j]['nome'] != 'Declaração - SIMEI'){
+                                $menu[$i]['subs'][$j]['rota_ativa'] = false;
+                            }
+                        }else{
+                            $menu[$i]['subs'][$j]['rota_ativa'] = false;
+                        }
+                    }elseif(!$permitidoUsuario){
+                        $menu[$i]['subs'][$j]['rota_ativa'] = false;
+                    }
+                }
             }
             $menu[$i]['ativo'] = $temp;
         }

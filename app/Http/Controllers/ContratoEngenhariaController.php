@@ -117,9 +117,6 @@ class ContratoEngenhariaController extends BaseController
                 ->with('itens')
                 ->findOrFail($id);
 
-            // A view histórica usa funcionario_id para o vendedor/responsável.
-            // O schema consolidado usa vendedor_id: adaptamos no controller,
-            // sem alterar a view nem sua mecânica.
             $data->funcionario_id = $data->vendedor_id;
         }
 
@@ -134,21 +131,59 @@ class ContratoEngenhariaController extends BaseController
             ->orderBy('funcionarios.nome')
             ->get();
 
-        // Mantém a apresentação histórica sem abrir mão da estrutura BaseController.
-        $title = $data ? 'Editar Contrato' : 'Novo Contrato';
+        $servicos = Servico::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
+        // 1. Resíduos e Sucatas: Traz todos os produtos ativos para a lista geral
+        $produtosGerais = Produto::where('empresa_id', $empresaId)
+            ->where(function ($q) {
+                $q->where('inativo', 0)->orWhereNull('inativo');
+            })
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'unidade_venda']);
+
+        // 2. Caçambas e Equipamentos (Locação): Busca inteligente
+        $produtosLocacao = Produto::where('empresa_id', $empresaId)
+            ->where(function ($q) {
+                $q->where('inativo', 0)->orWhereNull('inativo');
+            })
+            ->where(function ($q) {
+                // Procura se tem um valor de locação definido
+                if (\Illuminate\Support\Facades\Schema::hasColumn('produtos', 'valor_locacao')) {
+                    $q->orWhere('valor_locacao', '>', 0);
+                }
+                // Procura se tem as flags de locação antigas
+                if (\Illuminate\Support\Facades\Schema::hasColumn('produtos', 'locacao')) {
+                    $q->orWhere('locacao', 1)->orWhere('locacao', '1');
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('produtos', 'tipo_locacao')) {
+                    $q->orWhere('tipo_locacao', 1)->orWhere('tipo_locacao', '1');
+                }
+                // Procura por palavras-chave no nome do produto
+                $q->orWhere('nome', 'LIKE', '%CAÇAMBA%')
+                    ->orWhere('nome', 'LIKE', '%CACAMBA%')
+                    ->orWhere('nome', 'LIKE', '%CAIXA ESTACION%')
+                    ->orWhere('nome', 'LIKE', '%CONTAINER%')
+                    ->orWhere('nome', 'LIKE', '%ROLO%')
+                    ->orWhere('nome', 'LIKE', '%EQUIPAMENTO%');
+            })
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'unidade_venda']);
 
         return view('contratos.register', [
-            'data' => $data,
-            'clientes' => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
-            'filiaisLista' => Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get(),
-            'vendedores' => $vendedores,
-            'cidades' => Cidade::orderBy('nome')->get(),
-            'servicos' => Servico::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'produtos' => Produto::where('empresa_id', $empresaId)->orderBy('nome')->get(),
-            'title' => $title,
-            'actionSave' => "{$this->redirectPage}/save",
-            'actionUpdate' => "{$this->redirectPage}/update",
-            'actionCancel' => $this->redirectPage,
+            'data'            => $data,
+            'clientes'        => Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get(),
+            'filiaisLista'    => Filial::where('empresa_id', $empresaId)->orderBy('descricao')->get(),
+            'vendedores'      => $vendedores,
+            'cidades'         => Cidade::orderBy('nome')->get(),
+            'servicos'        => $servicos,
+            'produtos'        => $produtosGerais,
+            'produtosLocacao' => $produtosLocacao,
+            'title'           => $data ? 'Editar Contrato' : 'Novo Contrato',
+            'actionSave'      => "{$this->redirectPage}/save",
+            'actionUpdate'    => "{$this->redirectPage}/update",
+            'actionCancel'    => $this->redirectPage,
         ]);
     }
 
@@ -201,23 +236,38 @@ class ContratoEngenhariaController extends BaseController
             ContratoEngItem::where('contrato_eng_id', $contrato->id)->delete();
 
             foreach ((array) $request->input('itens', []) as $item) {
-                $tipo = ($item['tipo_item'] ?? 'Servico') === 'Locacao' ? 'Locacao' : 'Servico';
-                $qtd = $this->decimal($item['quantidade_prevista'] ?? 0);
+                $tipo = $item['tipo_item'] ?? 'Servico';
+                $qtd = $this->decimal($item['quantidade_prevista'] ?? 1);
                 $valor = $this->money($item['valor_unitario'] ?? 0);
 
-                if ($qtd <= 0 || $valor < 0) {
-                    continue;
-                }
+                // Captura produto de resíduo ou de locação
+                $produtoId = !empty($item['produto_id'])
+                    ? $item['produto_id']
+                    : (!empty($item['produto_id_locacao']) ? $item['produto_id_locacao'] : null);
 
-                ContratoEngItem::create([
-                    'contrato_eng_id' => $contrato->id,
-                    'tipo_item' => $tipo,
-                    'servico_id' => $tipo === 'Servico' ? ($item['servico_id'] ?? null) : null,
-                    'produto_id' => $tipo === 'Locacao' ? ($item['produto_id'] ?? null) : null,
-                    'quantidade_prevista' => $qtd,
-                    'valor_unitario' => $valor,
-                    'valor_total' => $qtd * $valor,
+                // Captura a unidade enviada pelo select do form (se não informada, infere pelo tipo)
+                $unidade = !empty($item['unidade'])
+                    ? strtoupper(trim($item['unidade']))
+                    : ($tipo === 'Locacao' ? 'MES' : ($tipo === 'Frete' ? 'VIAGEM' : 'TON'));
+
+                $itemCriado = ContratoEngItem::create([
+                    'empresa_id'          => $empresaId,
+                    'filial_id'           => $contrato->filial_id,
+                    'usuario_id'          => $this->usuario_id,
+                    'contrato_eng_id'     => $contrato->id,
+                    'tipo_item'           => $tipo,
+                    'servico_id'          => in_array($tipo, ['Servico', 'Frete', 'Residuo']) && !empty($item['servico_id']) ? $item['servico_id'] : null,
+                    'produto_id'          => in_array($tipo, ['Locacao', 'Residuo']) ? $produtoId : null,
+                    'quantidade_prevista' => $qtd > 0 ? $qtd : 1,
+                    'unidade'             => $unidade,
+                    'valor_unitario'      => $valor,
+                    'valor_total'         => ($qtd > 0 ? $qtd : 1) * $valor,
                 ]);
+
+                // Se for locação com produto informado, sincroniza com o módulo de locações
+                if ($tipo === 'Locacao' && !empty($itemCriado->produto_id)) {
+                    $this->sincronizarComModuloLocacao($contrato, $itemCriado);
+                }
             }
 
             DB::commit();
@@ -228,12 +278,13 @@ class ContratoEngenhariaController extends BaseController
             Log::error('Erro ao salvar contrato de engenharia.', [
                 'empresa_id' => $this->empresa_id,
                 'usuario_id' => $this->usuario_id,
-                'error' => $e->getMessage(),
+                'error'      => $e->getMessage(),
             ]);
 
             return redirect()->back()->withInput()->with('mensagem_erro', 'Erro ao salvar: ' . $e->getMessage());
         }
     }
+
 
     public function update(Request $request, $id)
     {
@@ -485,6 +536,99 @@ class ContratoEngenhariaController extends BaseController
 
             return $contrato;
         });
+    }
+
+    private function sincronizarComModuloLocacao($contrato, $item)
+    {
+        try {
+            // Texto usado para vincular e encontrar a locação
+            $observacaoContrato = 'Gerado a partir do Contrato #' . ($contrato->numero_contrato ?: $contrato->id);
+
+            // 1. Tenta encontrar se já existe o CABEÇALHO da locação para este contrato
+            $locacao = DB::table('locacaos')
+                ->where('empresa_id', $contrato->empresa_id)
+                ->where('cliente_id', $contrato->cliente_id)
+                ->where('observacao', $observacaoContrato)
+                ->first();
+
+            if ($locacao) {
+                $locacaoId = $locacao->id;
+                // Atualiza o total do cabeçalho
+                DB::table('locacaos')->where('id', $locacaoId)->update([
+                    'total' => DB::raw('total + ' . (float) $item->valor_total),
+                    'updated_at' => now()
+                ]);
+            } else {
+                // Se não existir, cria o CABEÇALHO da locação
+                $locacaoId = DB::table('locacaos')->insertGetId([
+                    'empresa_id'             => $contrato->empresa_id,
+                    'cliente_id'             => $contrato->cliente_id,
+                    'filial_id'              => $contrato->filial_id,
+                    'usuario_id'             => $this->usuario_id,
+                    'inicio'                 => $contrato->data_inicio ?: now()->format('Y-m-d'),
+                    'fim'                    => $contrato->data_fim ?: '1969-12-31', // Data padrão do seu sistema quando não tem fim
+                    'total'                  => $item->valor_total,
+                    'observacao'             => $observacaoContrato,
+                    'status'                 => 1,
+                    'tipo'                   => 'cacamba',
+                    'finalidade'             => 'locacao_cliente',
+                    'faturado'               => 0,
+                    'tipo_calculo'           => 'mes',
+                    'valor_unitario_calculo' => $item->valor_unitario,
+                    'created_at'             => now(),
+                    'updated_at'             => now(),
+                ]);
+            }
+
+            // 2. Insere ou Atualiza o PRODUTO na tabela secundária de itens
+            DB::table('item_locacaos')->updateOrInsert(
+                [
+                    'locacao_id' => $locacaoId,
+                    'produto_id' => $item->produto_id,
+                ],
+                [
+                    'valor'      => $item->valor_unitario,
+                    'observacao' => '',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Aviso: Falha ao tentar sincronizar locação automaticamente: " . $e->getMessage());
+        }
+    }
+
+    public function imprimir($id)
+    {
+        $empresaId = (int) $this->empresa_id;
+
+        // 🚀 Mudamos o nome para $contratoObj para blindar o código
+        $contratoObj = \App\Models\ContratoEngenharia::where('empresa_id', $empresaId)
+            ->with(['cliente.cidade', 'filial', 'itens.servico', 'itens.produto'])
+            ->findOrFail($id);
+
+        $equipeAlocada = \Illuminate\Support\Facades\DB::table('contrato_eng_funcionarios as cf')
+            ->join('funcionarios as f', 'f.id', '=', 'cf.funcionario_id')
+            ->leftJoin('funcoes as fn', 'fn.id', '=', 'f.funcao_id')
+            ->where('cf.contrato_eng_id', $contratoObj->id)
+            ->where('cf.status', 'Ativo')
+            ->select('f.nome', \Illuminate\Support\Facades\DB::raw("COALESCE(fn.nome, 'Operacional') as cargo_nome"))
+            ->get();
+
+        $empresa = \Illuminate\Support\Facades\DB::table('empresas')->where('id', $empresaId)->first();
+        $configNota = \Illuminate\Support\Facades\DB::table('config_notas')->where('empresa_id', $empresaId)->first();
+
+        $numeroExibicao = !empty($contratoObj->numero_contrato) ? $contratoObj->numero_contrato : str_pad($contratoObj->id, 4, '0', STR_PAD_LEFT);
+
+        return view('contratos.print', [
+            'dadosContrato'  => $contratoObj, // 🚀 AQUI: Garante que envia o objeto e não o $id
+            'equipeAlocada'  => $equipeAlocada,
+            'empresa'        => $empresa,
+            'configNota'     => $configNota,
+            'numeroExibicao' => $numeroExibicao,
+            'title'          => 'Contrato #' . $numeroExibicao
+        ]);
     }
 
     private function money($value): float

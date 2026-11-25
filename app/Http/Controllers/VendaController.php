@@ -48,6 +48,7 @@ use Illuminate\Support\Facades\Log;
 use App\Utils\WhatsAppUtil;
 use Illuminate\Support\Facades\Schema;
 use App\Services\ReformaTributariaService;
+use App\Models\ItemVendaExportacao;
 
 class VendaController extends Controller
 {
@@ -1324,6 +1325,51 @@ class VendaController extends Controller
                     $dataEmissao = date('Y-m-d H:i:s');
                 }
 
+                // === MONTAR TEXTO DE DIFERIMENTO E INFORMAÇÃO DO CLIENTE ===
+                $obsInformada = trim((string)($venda['observacao'] ?? ''));
+                $obsPartesAutomaticas = [];
+
+                if ($obsInformada !== '') {
+                    $obsPartesAutomaticas[] = $obsInformada;
+                }
+
+                $clienteObj = Cliente::find($venda['cliente']);
+                $configMatriz = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+                // 1. Informações adicionais do cadastro do cliente (apenas se houver texto)
+                if ($natureza && isset($natureza->usar_info_cliente) && (int)$natureza->usar_info_cliente === 1) {
+                    if ($clienteObj && !empty(trim((string)$clienteObj->informacao_nfe))) {
+                        $obsPartesAutomaticas[] = trim($clienteObj->informacao_nfe);
+                    }
+                }
+
+                // 2. Diferimento (apenas se tiver número cadastrado em algum lugar)
+                if ($natureza && isset($natureza->usar_diferimento) && (int)$natureza->usar_diferimento === 1) {
+                    $numDiferimento = null;
+
+                    // Ordem de busca: 1º Cliente -> 2º Filial -> 3º Matriz (ConfigNota)
+                    if ($clienteObj && !empty(trim((string)$clienteObj->numero_diferimento))) {
+                        $numDiferimento = trim($clienteObj->numero_diferimento);
+                    } elseif (!empty($venda['filial_id']) && $venda['filial_id'] != -1) {
+                        $filialDiferimento = DB::table('filials')->where('empresa_id', $this->empresa_id)->where('id', $venda['filial_id'])->value('numero_diferimento');
+                        if (!empty(trim((string)$filialDiferimento))) {
+                            $numDiferimento = trim($filialDiferimento);
+                        }
+                    }
+
+                    if (empty($numDiferimento) && $configMatriz && !empty(trim((string)$configMatriz->numero_diferimento))) {
+                        $numDiferimento = trim($configMatriz->numero_diferimento);
+                    }
+
+                    // Só adiciona na nota se realmente encontrou o número
+                    if (!empty($numDiferimento)) {
+                        $obsPartesAutomaticas[] = "DIFERIMENTO " . $numDiferimento . "";
+                    }
+                }
+
+
+                $observacaoFinalVenda = implode("\n", $obsPartesAutomaticas);
+
                 $result = Venda::create([
                     'cliente_id' => $venda['cliente'],
                     'transportadora_id' => $venda['transportadora'],
@@ -1339,7 +1385,7 @@ class VendaController extends Controller
                     'path_xml' => '',
                     'chave' => '',
                     'sequencia_cce' => 0,
-                    'observacao' => $venda['observacao'] ?? '',
+                    'observacao' => $observacaoFinalVenda,
                     'data_entrega' => $venda['data_entrega'] != '' ? $this->parseDate($venda['data_entrega']) : null,
                     'data_emissao'   => $dataEmissao, // aqui usamos a data retroativa ou a data atual
                     'data_retroativa' => $venda['data_retroativa'] != '' ? $this->parseDate($venda['data_retroativa']) : null,
@@ -1449,12 +1495,44 @@ class VendaController extends Controller
                         'x_pedido' => isset($i['x_pedido']) ? $i['x_pedido'] : "",
                         'num_item_pedido' => isset($i['num_item_pedido']) ? $i['num_item_pedido'] : "",
                         'valor_custo' => $produto->valor_compra
+
                     ];
+
+                    // Cálculo de Crédito Presumido a partir do produto ou item
+                    $percCredPres = (float) str_replace(',', '.', (string)($i['perc_cred_presumido'] ?? ($produto->perc_cred_presumido ?? 0)));
+                    $vlrUnitarioItem = (float) str_replace(',', '.', (string)$i['valor']);
+                    $qtdItem = (float) str_replace(',', '.', (string)$i['quantidade']);
+                    $baseItemCalc = $vlrUnitarioItem * $qtdItem;
+                    $vlrCredPres = round(($baseItemCalc * ($percCredPres / 100)), 2);
+
+                    $itemArr['cod_ajuste_icms'] = $i['cod_ajuste_icms'] ?? ($produto->cod_ajuste_icms ?? null);
+                    $itemArr['cod_ajuste_doc'] = $i['cod_ajuste_doc'] ?? ($produto->cod_ajuste_doc ?? null);
+                    $itemArr['perc_cred_presumido'] = $percCredPres;
+                    $itemArr['valor_cred_presumido'] = $vlrCredPres;
 
                     // >>> aplica RT no item (sem quebrar se não existirem colunas)
                     $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto, $natureza);
 
-                    ItemVenda::create($itemArr);
+                    if (!empty($i['nDraw'])) {
+                        $itemArr['nDraw'] = $i['nDraw'];
+                    }
+
+                    $novoItem = ItemVenda::create($itemArr);
+
+                    if (isset($i['exportacoes']) && is_array($i['exportacoes'])) {
+                        foreach ($i['exportacoes'] as $exp) {
+                            if (!empty($exp['chNFe'])) {
+                                ItemVendaExportacao::create([
+                                    'item_venda_id' => $novoItem->id,
+                                    'empresa_id'    => $this->empresa_id,
+                                    'filial_id'     => $venda['filial_id'] != -1 ? $venda['filial_id'] : null,
+                                    'nRE'           => !empty($exp['nRE']) ? $exp['nRE'] : null,
+                                    'chNFe'         => preg_replace('/\D/', '', $exp['chNFe']),
+                                    'qExport'       => (float) str_replace(',', '.', (string)$exp['qExport']),
+                                ]);
+                            }
+                        }
+                    }
 
                     // >>> acumula totais de RT para depois gravar na venda
                     $this->rtAccumulateFromItemArray($itemArr);
@@ -1676,6 +1754,21 @@ class VendaController extends Controller
                         }
                     }
                 }
+                // Gravação bidirecional do Venda_ID na Pesagem
+                $pesagemIdOrigem = $venda['pesagem_id'] ?? $request->input('pesagem_id') ?? null;
+                if (empty($pesagemIdOrigem) && !empty($venda['observacao'])) {
+                    if (preg_match('/Pesagem\s*#?(\d+)/i', $venda['observacao'], $matches)) {
+                        $pesagemIdOrigem = (int) $matches[1];
+                    }
+                }
+                if (!empty($pesagemIdOrigem)) {
+                    $pesagemOrigem = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)->find($pesagemIdOrigem);
+                    if ($pesagemOrigem) {
+                        $pesagemOrigem->venda_id = $result->id;
+                        $pesagemOrigem->save();
+                    }
+                }
+
                 if(sizeof($mensagem) == 0){
                     return $result;
                 }else{
@@ -1887,7 +1980,60 @@ class VendaController extends Controller
                 $venda->acrescimo = $acrescimo;
                 $venda->frete_id = $frete != null ? $frete->id : null;
                 $venda->natureza_id = $request['naturezaOp'];
-                $venda->observacao = $request['observacao'] ?? '';
+
+                $venda->natureza_id = $request['naturezaOp'];
+
+                // === MONTAR TEXTO DE DIFERIMENTO E INFORMAÇÃO DO CLIENTE NA EDIÇÃO ===
+                $obsInformada = trim((string)($request['observacao'] ?? ''));
+                $obsPartesAutomaticas = [];
+
+                if ($obsInformada !== '') {
+                    $obsPartesAutomaticas[] = $obsInformada;
+                }
+
+                $naturezaAtualizar = NaturezaOperacao::find($request['naturezaOp']);
+                $clienteAtualizar = Cliente::find($request['cliente']);
+                $configMatriz = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+                // 1. Informações adicionais do cliente (apenas se existir e se já não estiver na observação digitada)
+                if ($naturezaAtualizar && isset($naturezaAtualizar->usar_info_cliente) && (int)$naturezaAtualizar->usar_info_cliente === 1) {
+                    if ($clienteAtualizar && !empty(trim((string)$clienteAtualizar->informacao_nfe))) {
+                        $infoCli = trim($clienteAtualizar->informacao_nfe);
+                        if (stripos($obsInformada, $infoCli) === false) {
+                            $obsPartesAutomaticas[] = $infoCli;
+                        }
+                    }
+                }
+
+                // 2. Diferimento (apenas se houver número e se já não estiver no texto digitado)
+                if ($naturezaAtualizar && isset($naturezaAtualizar->usar_diferimento) && (int)$naturezaAtualizar->usar_diferimento === 1) {
+                    $numDiferimento = null;
+
+                    // Ordem de busca: 1º Cliente -> 2º Filial -> 3º Matriz (ConfigNota)
+                    if ($clienteAtualizar && !empty(trim((string)$clienteAtualizar->numero_diferimento))) {
+                        $numDiferimento = trim($clienteAtualizar->numero_diferimento);
+                    } elseif (!empty($request['filial_id']) && $request['filial_id'] != -1) {
+                        $filialDiferimento = DB::table('filials')->where('empresa_id', $this->empresa_id)->where('id', $request['filial_id'])->value('numero_diferimento');
+                        if (!empty(trim((string)$filialDiferimento))) {
+                            $numDiferimento = trim($filialDiferimento);
+                        }
+                    }
+
+                    if (empty($numDiferimento) && $configMatriz && !empty(trim((string)$configMatriz->numero_diferimento))) {
+                        $numDiferimento = trim($configMatriz->numero_diferimento);
+                    }
+
+                    if (!empty($numDiferimento)) {
+                        $fraseDiferimento = "DIFERIMENTO " . $numDiferimento . " ";
+                        if (stripos($obsInformada, "DIFERIMENTO") === false) {
+                            $obsPartesAutomaticas[] = $fraseDiferimento;
+                        }
+                    }
+                }
+
+
+                $venda->observacao = implode("\n", $obsPartesAutomaticas);
+
                 $venda->filial_id = $request['filial_id'] != -1 ? $request['filial_id'] : null;
 
                 if($request['data_venda'] != ''){
@@ -1965,11 +2111,42 @@ class VendaController extends Controller
                         'x_pedido' => isset($i['x_pedido']) ? $i['x_pedido'] : "",
                         'num_item_pedido' => isset($i['num_item_pedido']) ? $i['num_item_pedido'] : "",
                         'valor_custo' => $produto->valor_compra
+
                     ];
+
+                    $percCredPres = (float) str_replace(',', '.', (string)($i['perc_cred_presumido'] ?? ($produto->perc_cred_presumido ?? 0)));
+                    $vlrUnitarioItem = (float) str_replace(',', '.', (string)$i['valor']);
+                    $qtdItem = (float) str_replace(',', '.', (string)$i['quantidade']);
+                    $baseItemCalc = $vlrUnitarioItem * $qtdItem;
+                    $vlrCredPres = round(($baseItemCalc * ($percCredPres / 100)), 2);
+
+                    $itemArr['cod_ajuste_icms'] = $i['cod_ajuste_icms'] ?? ($produto->cod_ajuste_icms ?? null);
+                    $itemArr['cod_ajuste_doc'] = $i['cod_ajuste_doc'] ?? ($produto->cod_ajuste_doc ?? null);
+                    $itemArr['perc_cred_presumido'] = $percCredPres;
+                    $itemArr['valor_cred_presumido'] = $vlrCredPres;
 
                     $itemArr = $this->applyRtToItemVendaArray($itemArr, $produto, $natureza);
 
-                    ItemVenda::create($itemArr);
+                    if (!empty($i['nDraw'])) {
+                        $itemArr['nDraw'] = $i['nDraw'];
+                    }
+
+                    $novoItem = ItemVenda::create($itemArr);
+
+                    if (isset($i['exportacoes']) && is_array($i['exportacoes'])) {
+                        foreach ($i['exportacoes'] as $exp) {
+                            if (!empty($exp['chNFe'])) {
+                                ItemVendaExportacao::create([
+                                    'item_venda_id' => $novoItem->id,
+                                    'empresa_id'    => $this->empresa_id,
+                                    'filial_id'     => $request['filial_id'] != -1 ? $request['filial_id'] : null,
+                                    'nRE'           => !empty($exp['nRE']) ? $exp['nRE'] : null,
+                                    'chNFe'         => preg_replace('/\D/', '', $exp['chNFe']),
+                                    'qExport'       => (float) str_replace(',', '.', (string)$exp['qExport']),
+                                ]);
+                            }
+                        }
+                    }
 
                     $this->rtAccumulateFromItemArray($itemArr);
 
@@ -2330,11 +2507,12 @@ class VendaController extends Controller
         $venda = Venda::find($id);
         if(valida_objeto($venda)){
 
+            $configMatriz = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $casasDecimais = (int) ($configMatriz->casas_decimais ?? 2);
+
             $isFilial = $venda->filial_id;
             if($venda->filial_id == null){
-                $config = ConfigNota::
-                where('empresa_id', $this->empresa_id)
-                    ->first();
+                $config = $configMatriz;
             }else{
                 $config = Filial::findOrFail($venda->filial_id);
                 if($config->arquivo_certificado == null){
@@ -2359,11 +2537,9 @@ class VendaController extends Controller
                 "is_filial" => $isFilial
             ]);
             $nfe = $nfe_service->gerarNFe($id);
-            $signed = $nfe_service->sign($nfe['xml']);
-            if(!isset($nfe['erros_xml'])){
-                $xml = $nfe['xml'];
 
-                $public = env('SERVIDOR_WEB') ? 'public/' : '';
+            if(!isset($nfe['erros_xml'])){
+                $xml = $nfe_service->sign($nfe['xml']);
 
                 if($config->logo){
                     $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
@@ -2373,14 +2549,13 @@ class VendaController extends Controller
 
                 try {
                     $danfe = new Danfe($xml);
-                    // $id = $danfe->monta();
-                    $danfe->setVUnComCasasDec($config->casas_decimais);
+                    $danfe->setVUnComCasasDec($casasDecimais);
 
-                    $pdf = $danfe->render();
+                    $pdf = $danfe->render($logo);
                     header("Content-Disposition: ; filename=DANFE Temporária.pdf");
                     return response($pdf)
                         ->header('Content-Type', 'application/pdf');
-                } catch (InvalidArgumentException $e) {
+                } catch (\InvalidArgumentException $e) {
                     echo "Ocorreu um erro durante o processamento :" . $e->getMessage();
                 }
             } else{
@@ -2632,6 +2807,7 @@ class VendaController extends Controller
 
                 foreach($venda->itens as $i){
                     $i->produto;
+                    $i->exportacoes;
                 }
                 $venda->duplicatas;
                 $venda->natureza;
@@ -4062,8 +4238,11 @@ class VendaController extends Controller
     public function setEstadoCliente(Request $request)
     {
         try {
-            $vendaId = $request->input('venda_id');
-            $estadoCliente = $request->input('estado_cliente');
+            // Aceita tanto venda_id quanto id
+            $vendaId = $request->input('venda_id') ?? $request->input('id');
+
+            // Aceita tanto estado_cliente quanto estado
+            $estadoCliente = $request->input('estado_cliente') ?? $request->input('estado');
 
             $venda = Venda::where('empresa_id', $this->empresa_id)
                 ->where('id', $vendaId)
@@ -4073,14 +4252,122 @@ class VendaController extends Controller
                 $venda->estado_cliente = $estadoCliente ?: null;
                 $venda->save();
 
+                if ($request->ajax()) {
+                    return response()->json(['sucesso' => true, 'mensagem' => 'Situação atualizada!']);
+                }
+
                 session()->flash("mensagem_sucesso", "Situação do cliente atualizada com sucesso!");
             } else {
+                if ($request->ajax()) {
+                    return response()->json(['sucesso' => false, 'mensagem' => 'Venda não encontrada!'], 404);
+                }
                 session()->flash("mensagem_erro", "Venda não encontrada!");
             }
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['sucesso' => false, 'mensagem' => $e->getMessage()], 500);
+            }
             session()->flash("mensagem_erro", "Erro ao atualizar: " . $e->getMessage());
         }
 
         return redirect()->back();
+    }
+
+    public function getPesagensPendentesImportacao()
+    {
+        try {
+            $pesagens = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)
+                ->where('tipo', 'venda')->where('status', 'concluído')
+                ->whereNull('venda_id')
+                ->whereDoesntHave('venda', function ($q) { $q->where('estado', '!=', 'CANCELADO'); })
+                ->with(['cliente', 'veiculo', 'tickets.produto'])
+                ->orderBy('created_at', 'desc')->limit(30)->get();
+
+            $resultado = [];
+            foreach ($pesagens as $p) {
+                $entradas = (float) $p->tickets->where('tipo', 'entrada')->sum(fn($t) => max(0, $t->peso - ($t->peso_bag ?? 0)));
+                $saidas   = (float) $p->tickets->where('tipo', 'saida')->sum(fn($t) => max(0, $t->peso - ($t->peso_bag ?? 0)));
+                $avulsas  = (float) $p->tickets->where('tipo', 'avulsa')->sum(fn($t) => max(0, $t->peso - ($t->peso_bag ?? 0)));
+
+                $pesoTotal = max(0, ($entradas + $avulsas) - $saidas);
+                if ($pesoTotal == 0) { $pesoTotal = (float) $p->tickets->sum(fn($t) => max(0, $t->peso - ($t->peso_bag ?? 0))); }
+
+                $resultado[] = [
+                    'id'           => $p->id,
+                    'cliente_id'   => $p->cliente_id,
+                    'cliente_nome' => optional($p->cliente)->razao_social ?? 'Consumidor Avulso',
+                    'placa'        => optional($p->veiculo)->placa ?? $p->placa_veiculo ?? 'N/A',
+                    'peso_total'   => $pesoTotal,
+                    'data'         => optional($p->created_at)->format('d/m/Y H:i') ?? 'N/A',
+                ];
+            }
+            return response()->json(['success' => true, 'pesagens' => $resultado]);
+        } catch (\Throwable $e) { return response()->json(['success' => false, 'error' => $e->getMessage()], 500); }
+    }
+
+    public function getDadosPesagemParaVenda($id)
+    {
+        try {
+            $pesagem = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)
+                ->with(['cliente.cidade', 'veiculo', 'tickets.produto'])->findOrFail($id);
+            $configNota = \App\Models\ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $usarValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+
+            $grupos = [];
+            foreach ($pesagem->tickets as $t) {
+                if (empty($t->produto_id)) continue;
+                $pOrig = \App\Models\Produto::find($t->produto_id);
+                if (!$pOrig) continue;
+                $pIdDestino = !empty($pOrig->produto_referenciado_id) ? (int) $pOrig->produto_referenciado_id : (int) $pOrig->id;
+                $grupos[$pIdDestino][] = ['ticket' => $t, 'origem' => $pOrig];
+            }
+
+            $itensFormatados = [];
+            foreach ($grupos as $prodId => $registrosDoGrupo) {
+                $pGrupo = \App\Models\Produto::find($prodId);
+                if (!$pGrupo) continue;
+
+                $entrada = 0; $saida = 0; $avulsa = 0; $valorTotalPrioritario = 0.0; $lotesVinculados = [];
+                foreach ($registrosDoGrupo as $reg) {
+                    $t = $reg['ticket'];
+                    $pesoLiqTicket = max(0, ((float) $t->peso) - ((float) ($t->peso_bag ?? 0)));
+                    if ($t->tipo === 'entrada') { $entrada += $pesoLiqTicket; }
+                    elseif ($t->tipo === 'saida') { $saida += $pesoLiqTicket; }
+                    else { $avulsa += $pesoLiqTicket; }
+
+                    if (!empty($t->producao_lote_id)) $lotesVinculados[] = $t->producao_lote_id;
+
+                    $valorUnitTicket = (float) ($t->valor_unitario ?? 0) > 0 ? (float) $t->valor_unitario : (float) ($pGrupo->valor_venda ?? 0);
+                    $valorTotalPrioritario += (float) ($t->valor_total ?? 0) > 0 ? (float) $t->valor_total : ($pesoLiqTicket * $valorUnitTicket);
+                }
+
+                $quantidade = max(0, ($entrada + $avulsa) - $saida);
+                if ($quantidade <= 0) $quantidade = $saida > 0 ? $saida : 0;
+                if ($quantidade <= 0) continue;
+
+                $valorUnitarioCalculado = $quantidade > 0 ? ($valorTotalPrioritario / $quantidade) : (float) ($pGrupo->valor_venda ?? 0);
+                $valorFinalItem = $usarValoresTicket && $valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : (float) ($pGrupo->valor_venda ?? 0);
+
+                $casasDec = max(4, (int) ($configNota->casas_decimais ?? 4));
+
+                $itensFormatados[] = [
+                    'id'               => $pGrupo->id,
+                    'codigo'           => $pGrupo->id,
+                    'nome'             => $pGrupo->nome,
+                    'quantidade'       => round($quantidade, 3),
+                    'quantidade_dim'   => 1,
+                    'valor'            => round($valorFinalItem, $casasDec),
+                    'subtotal'         => round($quantidade * $valorFinalItem, 2),
+                    'producao_lote_id' => !empty($lotesVinculados) ? $lotesVinculados[0] : null,
+                ];
+            }
+
+            return response()->json([
+                'success'    => true, 'pesagem_id' => $pesagem->id,
+                'cliente'    => $pesagem->cliente, 'veiculo' => $pesagem->veiculo,
+                'observacao' => 'Venda referente à Pesagem #' . $pesagem->id,
+                'itens'      => $itensFormatados,
+            ]);
+        } catch (\Throwable $e) { return response()->json(['success' => false, 'error' => $e->getMessage()], 500); }
     }
 }

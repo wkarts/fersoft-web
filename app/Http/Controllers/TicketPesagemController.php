@@ -36,6 +36,7 @@ class TicketPesagemController extends BaseController
             'pesagem_id' => 'required|exists:pesagens,id',
             'veiculo_id' => 'required|exists:veiculos,id',
             'produto_id' => 'required|exists:produtos,id',
+            'producao_lote_id' => 'nullable|integer',
             'peso' => 'required|numeric|min:0',
             'balanca_config_id' => 'nullable|exists:balanca_configs,id',
             'peso_origem' => 'nullable|in:manual,balanca',
@@ -107,6 +108,11 @@ class TicketPesagemController extends BaseController
             $evidenceRaw = $request->input('balanca_evidence_json');
 
             $data = $request->all();
+            if ($request->filled('producao_lote_id')) {
+                $data['producao_lote_id'] = (int) $request->input('producao_lote_id');
+            } else {
+                $data['producao_lote_id'] = null;
+            }
             $data['peso_origem'] = $request->input('peso_origem', 'manual');
             $data['empresa_id'] = $this->empresa_id;
             $data['balanca_evidence_json'] = is_string($evidenceRaw)
@@ -171,14 +177,54 @@ class TicketPesagemController extends BaseController
             }
 
             if ($config && $config->usar_valores_ticket_pesagem) {
-                $valorUnitarioInput = $request->input('valor_unitario', $ticketExistente->valor_unitario ?? 0);
+                // --- INÍCIO DA RESOLUÇÃO INTELIGENTE DE PREÇO ---
+                $valorUnitarioInput = (float) $request->input('valor_unitario', $ticketExistente->valor_unitario ?? 0);
 
-                $data['valor_unitario'] = max(0, (float) $valorUnitarioInput);
+                if ($valorUnitarioInput > 0) {
+                    // 1. Se informou na pesagem/ticket, usa este
+                    $data['valor_unitario'] = $valorUnitarioInput;
+                } else {
+                    // 2. Se não informou, tenta buscar da tabela de preços do Fornecedor ou Cliente
+                    $tabelaPrecoId = null;
+                    if ($pesagem->tipo === 'compra' && $pesagem->fornecedor_id) {
+                        $fornecedor = \App\Models\Fornecedor::find($pesagem->fornecedor_id);
+                        $tabelaPrecoId = $fornecedor->tabela_preco_id ?? null;
+                    } elseif ($pesagem->tipo === 'venda' && $pesagem->cliente_id) {
+                        $cliente = \App\Models\Cliente::find($pesagem->cliente_id);
+                        $tabelaPrecoId = $cliente->tabela_preco_id ?? null;
+                    }
 
-                $pesoBruto = max(0, (float) $request->input('peso', 0));
-                $pesoRecipiente = max(0, (float) ($data['peso_bag'] ?? $request->input('peso_bag', 0)));
-                $pesoLiquido = max(0, $pesoBruto - $pesoRecipiente);
-                $data['valor_total'] = max(0, $pesoLiquido * $data['valor_unitario']);
+                    if ($tabelaPrecoId) {
+                        $valorUnitarioTabela = \DB::table('tabela_preco_itens')
+                            ->where('tabela_preco_id', $tabelaPrecoId)
+                            ->where('produto_id', $request->produto_id)
+                            ->value('valor_kg'); // Ajuste 'valor_kg' caso o campo na sua tabela de preços tenha outro nome (ex: 'valor')
+
+                        if ($valorUnitarioTabela > 0) {
+                            $data['valor_unitario'] = (float) $valorUnitarioTabela;
+                        }
+                    }
+
+                    // 3. Se ainda estiver zerado, busca do cadastro padrão do produto
+                    if (empty($data['valor_unitario']) || $data['valor_unitario'] <= 0) {
+                        $produtoModel = Produto::find($request->produto_id);
+                        if ($produtoModel) {
+                            $data['valor_unitario'] = $pesagem->tipo === 'compra'
+                                ? (float) ($produtoModel->valor_compra ?? 0)
+                                : (float) ($produtoModel->valor_venda ?? 0);
+                        } else {
+                            $data['valor_unitario'] = 0.00;
+                        }
+                    }
+                }
+
+                // Calcula o valor total com base no peso líquido (Peso Bruto - Peso Bag/Tara)
+                $pesoBrutoTicket = max(0, (float) $request->input('peso', 0));
+                $pesoBagTicket   = max(0, (float) ($data['peso_bag'] ?? $request->input('peso_bag', 0)));
+                $pesoLiquidoTicket = max(0, $pesoBrutoTicket - $pesoBagTicket);
+
+                $data['valor_total'] = max(0, $pesoLiquidoTicket * (float) $data['valor_unitario']);
+                // --- FIM DA RESOLUÇÃO INTELIGENTE DE PREÇO ---
 
                 $data['valor_origem'] = ($data['valor_unitario'] > 0 || $data['valor_total'] > 0)
                     ? 'ticket'
@@ -257,6 +303,40 @@ class TicketPesagemController extends BaseController
                 $mensagem = 'Ticket criado com sucesso!';
             }
 
+            // =================================================================
+            // 👉 INSERIR AQUI: ROTINA DE BAIXA DE LOTE (PEPS) + EXTRATO STOCK MOVEMENTS
+            // =================================================================
+            // Carrega a pesagem "mãe" para saber se é uma operação global de VENDA
+            $pesagemMae = \App\Models\Pesagem::find($ticket->pesagem_id);
+
+            // Só faz a baixa PEPS se a operação global for VENDA e houver lote vinculado
+            if ($pesagemMae && $pesagemMae->tipo === 'venda' && !empty($ticket->producao_lote_id)) {
+
+                // Calcula o peso líquido real deste ticket de balança
+                $pesoLiquidoTicket = max(0, (float) ($ticket->peso - ($ticket->peso_bag ?? 0)));
+
+                if ($pesoLiquidoTicket > 0) {
+                    // 1. Abate do lote (PEPS) na tabela producao_cortes
+                    $this->baixarEstoqueCortesPeps(
+                        (int) $ticket->producao_lote_id,
+                        (int) $ticket->produto_id,
+                        $pesoLiquidoTicket
+                    );
+
+                    // 2. Regista no extrato global (stock_movements) usando as colunas corretas
+                    \DB::table('stock_movements')->insert([
+                        'empresa_id'  => $ticket->empresa_id ?? $this->empresa_id,
+                        'produto_id'  => (int) $ticket->produto_id,
+                        'quantidade'  => -$pesoLiquidoTicket, // Valor negativo (Saída)
+                        'tipo'        => 'saida',
+                        'origem_tipo' => 'ticket_pesagem',
+                        'origem_id'   => $ticket->id,
+                        'created_at'  => now(),
+                        'updated_at'  => now()
+                    ]);
+                }
+            }
+            // =================================================================
 
             // Persistência física das imagens capturadas pelas câmeras ADP.
             // A imagem vem do navegador como data:image/base64 e o Laravel salva em public/S3/MinIO.
@@ -632,6 +712,108 @@ class TicketPesagemController extends BaseController
             'tickets_count' => $tickets->count(),      // Quantidade de tickets
             'total_por_tipo' => $totalPorTipo          // Totais separados por tipo
         ]);
+    }
+
+    /**
+     * Retorna os lotes com saldo disponível para o produto informado,
+     * ordenados por PEPS (o mais antigo primeiro).
+     */
+    /**
+     * Retorna os lotes/cortes com saldo disponível para o produto informado,
+     * ordenados por PEPS (o mais antigo primeiro).
+     */
+    /**
+     * Retorna apenas os Lotes-Mãe disponíveis para o produto,
+     * totalizando o saldo físico dos seus cortes/sublotes (Visão Cega para o Balanceiro).
+     */
+    public function getLotesDisponiveisPorProduto(\Illuminate\Http\Request $request, $produtoId)
+    {
+        try {
+            $empresaId = $this->empresa_id ?? session('user_logged')['empresa'] ?? 1;
+
+            $lotes = \DB::table('producao_cortes as pc')
+                ->join('producao_lotes as pl', 'pl.id', '=', 'pc.producao_lote_id')
+                ->where('pc.empresa_id', $empresaId)
+                ->where('pc.produto_gerado_id', $produtoId)
+                ->where('pc.status_estoque', 'disponivel')
+                ->where('pc.saldo_disponivel', '>', 0)
+                ->groupBy('pl.id', 'pl.codigo_lote', 'pl.created_at')
+                ->select(
+                    'pl.id as lote_id',
+                    'pl.codigo_lote',
+                    'pl.created_at',
+                    \DB::raw('SUM(pc.saldo_disponivel) as saldo_total_disponivel')
+                )
+                ->orderBy('pl.created_at', 'asc') // Regra PEPS no lote-mãe mais antigo
+                ->get();
+
+            $resultado = $lotes->map(function ($lote, $index) {
+                return [
+                    'id'              => $lote->lote_id,
+                    'codigo_lote'     => $lote->codigo_lote,
+                    'saldo'           => (float) $lote->saldo_total_disponivel,
+                    'label'           => "{$lote->codigo_lote} | Saldo Total: " . number_format($lote->saldo_total_disponivel, 2, ',', '.') . " kg" . ($index === 0 ? " [PEPS]" : "")
+                ];
+            });
+
+            return response()->json([
+                'success'          => true,
+                'lotes'            => $resultado,
+                'sugestao_peps_id' => $resultado->first()['id'] ?? null
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Erro ao buscar Lote-Mãe PEPS: ' . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Consome o saldo dos sublotes/cortes em cascata (PEPS / FIFO)
+     */
+    private function baixarEstoqueCortesPeps(int $loteMaeId, int $produtoId, float $pesoSaida)
+    {
+        if ($pesoSaida <= 0) return;
+
+        // Busca todos os cortes daquele lote mãe com saldo, do mais antigo para o mais novo
+        $cortes = \DB::table('producao_cortes')
+            ->where('producao_lote_id', $loteMaeId)
+            ->where('produto_gerado_id', $produtoId)
+            ->where('status_estoque', 'disponivel')
+            ->where('saldo_disponivel', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $pesoRestanteParaAbater = $pesoSaida;
+
+        foreach ($cortes as $corte) {
+            if ($pesoRestanteParaAbater <= 0) break;
+
+            $saldoAtualCorte = (float) $corte->saldo_disponivel;
+
+            if ($pesoRestanteParaAbater >= $saldoAtualCorte) {
+                // Esgota este corte completamente
+                $abatimento = $saldoAtualCorte;
+                $novoSaldo = 0.0000;
+                $novoStatus = 'esgotado';
+            } else {
+                // Abate parcial e ainda sobra saldo neste corte
+                $abatimento = $pesoRestanteParaAbater;
+                $novoSaldo = $saldoAtualCorte - $abatimento;
+                $novoStatus = 'disponivel';
+            }
+
+            \DB::table('producao_cortes')
+                ->where('id', $corte->id)
+                ->update([
+                    'quantidade_vendida' => \DB::raw("quantidade_vendida + {$abatimento}"),
+                    'saldo_disponivel'   => $novoSaldo,
+                    'status_estoque'     => $novoStatus,
+                    'updated_at'         => now(),
+                ]);
+
+            $pesoRestanteParaAbater -= $abatimento;
+        }
     }
 
 }

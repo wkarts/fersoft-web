@@ -35,13 +35,39 @@ class PontoWhatsAppController extends Controller
             return response()->json(['status' => 'grupo_ignorado']);
         }
 
-        // 🛑 TRAVA 3: Ignora mensagens enviadas pelo próprio bot
+        // 🛑 TRAVA 3: Ignora mensagens enviadas pelo próprio bot (evita loop infinito)
         $fromMe = $payload['data']['key']['fromMe'] ?? false;
         if ($fromMe) {
-            return response()->json(['status' => 'from_me_ignorado']);
+            $textoTrava = strtoupper(trim(
+                $payload['data']['message']['conversation']
+                ?? $payload['data']['message']['extendedTextMessage']['text']
+                ?? $payload['message']
+                ?? $payload['body']
+                ?? ''
+            ));
+
+            // ADICIONADA A PALAVRA 'PESAGEM' AQUI:
+            if (!preg_match('/^(NOTA|NFE|NF-E|NF|COMPRA|TRANSF|AGENDA|MTR|EMITIR|CANCELAR|HOLERITE|ATIVAR|CONECTAR|VINCULAR|DEVOLU|FAZER|GERAR|CONSULTAR|IMPRIMIR|DANFE|PESAGEM|1|2|3|4|5|6|SIM|NAO|NÃO)/i', $textoTrava)) {
+                return response()->json(['status' => 'from_me_ignorado']);
+            }
         }
 
-        // 1. Extração antecipada e segura de texto, tipo de mensagem e áudio
+        // =========================================================================
+        // 1. IDENTIFICAÇÃO ABSOLUTA DA EMPRESA VIA TABELA DE INSTÂNCIAS DA API
+        // =========================================================================
+        $instanceName = $payload['instance'] ?? $payload['data']['instance'] ?? '';
+
+        // Busca a instância diretamente na tabela connect_api_instances pelo nome exato
+        $instanciaConectada = DB::table('connect_api_instances')->where('instance_name', $instanceName)->first();
+
+        if (!$instanciaConectada) {
+            Log::warning("Ponto WhatsApp: Instância '{$instanceName}' não encontrada na tabela 'connect_api_instances'. Ignorando webhook.");
+            return response()->json(['status' => 'instancia_desconhecida']);
+        }
+
+        $empresaIdInstancia = $instanciaConectada->empresa_id;
+
+        // 2. Extração antecipada de texto
         $texto = strtoupper(trim(
             $payload['data']['message']['conversation']
             ?? $payload['data']['message']['extendedTextMessage']['text']
@@ -50,49 +76,169 @@ class PontoWhatsAppController extends Controller
             ?? ''
         ));
 
+        // =========================================================================
+        // 🚪 INTERCEPÇÃO IMEDIATA: COMANDO OU RESPOSTA DE AGENDA DE PORTARIA
+        // =========================================================================
+        $ehComandoAgenda = str_starts_with($texto, 'AGENDA') || (str_contains($texto, 'NOME:') && str_contains($texto, 'CPF:'));
+
+        if ($ehComandoAgenda) {
+            Log::info("Interceptado agendamento de Portaria via WhatsApp: {$texto}");
+
+            $numLimpo = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
+            $numeroTratado = strlen($numLimpo) >= 10 && !str_starts_with($numLimpo, '55') ? '55' . $numLimpo : $numLimpo;
+            $ultimos8 = strlen($numLimpo) >= 8 ? substr($numLimpo, -8) : $numLimpo;
+
+            // Busca o funcionário ESTRITAMENTE na empresa dona da instância (evita cruzamento)
+            $funcionario = Funcionario::where('empresa_id', $empresaIdInstancia)
+                ->where(function($q) use ($remoteJid, $ultimos8, $numLimpo) {
+                    $q->where('whatsapp_id', $remoteJid)
+                        ->orWhereRaw("REGEXP_REPLACE(celular, '[^0-9]', '') = ?", [$numLimpo])
+                        ->orWhereRaw("REGEXP_REPLACE(telefone, '[^0-9]', '') = ?", [$numLimpo])
+                        ->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8])
+                        ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8]);
+                })->first();
+
+            if ($funcionario) {
+                Log::info("Funcionário localizado para Agendamento: {$funcionario->nome} (ID: {$funcionario->id})");
+                $nfeController = app(\App\Http\Controllers\Api\WhatsappNfeController::class);
+                return $nfeController->processarAgendamentoPortaria($numeroTratado, $texto, $funcionario);
+            } else {
+                Log::warning("Tentativa de agendamento ignorada. Número {$numLimpo} não pertence à empresa {$empresaIdInstancia}.");
+                return response()->json(['status' => 'funcionario_nao_encontrado_nesta_empresa']);
+            }
+        }
+        // =========================================================================
+
         $messageType = $payload['data']['messageType'] ?? $payload['data']['message']['messageType'] ?? '';
         $audioUrl = $payload['data']['message']['audioMessage']['mediaUrl'] ?? null;
 
-        $remoteJid = $payload['data']['key']['remoteJid'] ?? '';
         $numLimpoOrigemFiscal = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
         $numeroDestinoEnvioFiscal = strlen($numLimpoOrigemFiscal) >= 10 && !str_starts_with($numLimpoOrigemFiscal, '55')
             ? '55' . $numLimpoOrigemFiscal
             : $numLimpoOrigemFiscal;
 
+
         // =========================================================================
-        // 🚀 PRIORIDADE MÁXIMA: DESVIO IMEDIATO PARA O MÓDULO FISCAL
+        // 🚀 PRIORIDADE PORTARIA: SÓ ROUBA A MENSAGEM SE TIVER VISITA ESPERANDO
+        // =========================================================================
+        $textoLimpo = strtoupper(trim($texto));
+        $numeroLimpoZap = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
+        $ultimos8ParaPortaria = strlen($numeroLimpoZap) >= 8 ? substr($numeroLimpoZap, -8) : $numeroLimpoZap;
+
+        $numeroDestinoPortaria = strlen($numeroLimpoZap) >= 10 && !str_starts_with($numeroLimpoZap, '55')
+            ? '55' . $numeroLimpoZap
+            : $numeroLimpoZap;
+
+        // Detecta se a pessoa respondeu citando (reply) a mensagem da Portaria
+        $textoCitado = strtoupper((string) (
+            $payload['data']['message']['extendedTextMessage']['contextInfo']['quotedMessage']['conversation']
+            ?? $payload['data']['message']['extendedTextMessage']['contextInfo']['quotedMessage']['extendedTextMessage']['text']
+            ?? ''
+        ));
+        $ehRespostaCitadaPortaria = str_contains($textoCitado, 'PORTARIA') && str_contains($textoCitado, 'LIBERAR');
+
+        // Busca TODOS os IDs de funcionários com esse número na empresa (evita erro se houver cadastro duplicado)
+        $funcionariosIdsPortaria = \App\Models\Funcionario::where('empresa_id', $empresaIdInstancia)
+            ->where(function($q) use ($remoteJid, $numeroLimpoZap, $ultimos8ParaPortaria) {
+                $q->where('whatsapp_id', $remoteJid)
+                    ->orWhere('whatsapp_id', $numeroLimpoZap)
+                    ->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8ParaPortaria])
+                    ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8ParaPortaria]);
+            })
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($funcionariosIdsPortaria)) {
+            $portariaPendente = DB::table('portaria_respostas_temp')
+                ->whereIn('funcionario_id', $funcionariosIdsPortaria)
+                ->where('status', 'pendente')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($portariaPendente) {
+                // Captura '1' ou 'LIBERAR'
+                if (preg_match('/^(1|LIBERAR|AUTORIZAR)/i', $textoLimpo)) {
+                    DB::table('portaria_respostas_temp')->where('id', $portariaPendente->id)->update(['status' => 'liberado']);
+                    app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendText((int) $empresaIdInstancia, (string) $numeroDestinoPortaria, "✅ Entrada do visitante LIBERADA com sucesso!");
+                    return response()->json(['status' => 'portaria_liberada']);
+                }
+
+                // Captura '2' e TUDO que vier depois (motivo)
+                if (preg_match('/^(2|NEGAR|BLOQUEAR)(.*)/i', $textoLimpo, $matches)) {
+                    $motivoRecusa = trim($matches[2]);
+                    DB::table('portaria_respostas_temp')->where('id', $portariaPendente->id)->update([
+                        'status' => 'negado',
+                        'motivo' => !empty($motivoRecusa) ? mb_strtoupper($motivoRecusa, 'UTF-8') : 'NÃO JUSTIFICADO'
+                    ]);
+                    app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendText((int) $empresaIdInstancia, (string) $numeroDestinoPortaria, "❌ Entrada do visitante NEGADA.");
+                    return response()->json(['status' => 'portaria_negada']);
+                }
+            } elseif ($ehRespostaCitadaPortaria) {
+                // Barra aqui para NUNCA cair no Ponto quando responder citando a mensagem da portaria
+                app(\App\Services\ConnectApi\ConnectApiMessageService::class)->sendText((int) $empresaIdInstancia, (string) $numeroDestinoPortaria, "ℹ️ Esta solicitação de portaria já foi respondida ou não está mais pendente.");
+                return response()->json(['status' => 'portaria_ja_respondida']);
+            }
+        }
+
+        // =========================================================================
+        // 🚀 PRIORIDADE MÁXIMA: DESVIO IMEDIATO PARA O MÓDULO FISCAL E MTR
         // =========================================================================
         $estadoNfeId = 'wa_nfe_estado_' . $numeroDestinoEnvioFiscal;
-        $temEstadoFiscalAtivo = \Illuminate\Support\Facades\Cache::has($estadoNfeId);
+        $temEstadoFiscalAtivo = Cache::has($estadoNfeId);
 
         $fileName = $payload['data']['message']['documentMessage']['fileName'] ?? '';
         $documentUrl = $payload['data']['message']['documentMessage']['mediaUrl'] ?? '';
         $extensaoArq = pathinfo($fileName, PATHINFO_EXTENSION);
         $ehXmlDevolucao = ($messageType === 'documentMessage' || strtolower($extensaoArq) === 'xml' || str_contains(strtolower($documentUrl), '.xml'));
 
-        $textoLimpo = strtoupper($texto);
+        $textoLimpo = strtoupper(trim($texto));
         $iniciouNfe = false;
+
+        $ehComandoMtrEmissao = (str_contains($textoLimpo, 'EMITIR MTR AGENDA') || str_contains($textoLimpo, 'MTR AGENDA'));
+        $ehComandoMtrConfirmacao = str_contains($textoLimpo, 'CONFIRMAR MTR');
+        $ehComandoMtrGeral = ($ehComandoMtrEmissao || $ehComandoMtrConfirmacao);
+        $ehComandoAgendaPortaria = str_starts_with($textoLimpo, 'AGENDA');
 
         if (
             $temEstadoFiscalAtivo ||
             $ehXmlDevolucao ||
+            $ehComandoMtrGeral ||
+            $ehComandoAgendaPortaria ||
             $messageType === 'audioMessage' ||
             !empty($audioUrl) ||
             $textoLimpo === 'CANCELAR' ||
-            preg_match('/^(NOTA|NFE|NF|EMITIR|FATURAR|CONSULTAR|IMPRIMIR|DANFE|PDF|XML)/i', $textoLimpo)
+            // ADICIONADA A PALAVRA 'PESAGEM' NO FINAL DESTE PREG_MATCH:
+            preg_match('/^(NOTA|NFE|NF-E|NF|COMPRA|NOTA DE COMPRA|NOTAS DE COMPRA|TRANSF|TRANSFERENCIA|NOTA DE TRANSFERENCIA|DEVOLU|FAZER DEVOLU|GERAR DEVOLU|EMITIR|FATURAR|CONSULTAR|IMPRIMIR|DANFE|PDF|XML|PESAGEM)/i', $textoLimpo)
         ) {
             $iniciouNfe = true;
         }
 
         if ($iniciouNfe) {
-            Log::info("Desvio Fiscal Ativado para: {$numeroDestinoEnvioFiscal}");
+            Log::info("Desvio Fiscal Ativado para: {$numeroDestinoEnvioFiscal} | Texto: {$textoLimpo}");
 
             $ultimos8Fiscal = strlen($numLimpoOrigemFiscal) >= 8 ? substr($numLimpoOrigemFiscal, -8) : $numLimpoOrigemFiscal;
-            $funcionarioFiscal = Funcionario::where(function($q) use ($remoteJid, $ultimos8Fiscal) {
-                $q->where('whatsapp_id', $remoteJid)
-                    ->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8Fiscal])
-                    ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8Fiscal]);
-            })->first();
+
+            // Busca o funcionário TRAVADO na empresa_id da instância
+            $funcionarioFiscal = Funcionario::where('empresa_id', $empresaIdInstancia)
+                ->where(function($q) use ($remoteJid, $ultimos8Fiscal) {
+                    $q->where('whatsapp_id', $remoteJid)
+                        ->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8Fiscal])
+                        ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8Fiscal]);
+                })->first();
+
+            if (!$funcionarioFiscal && $ultimos8Fiscal) {
+                $funcionarioFiscal = Funcionario::where('empresa_id', $empresaIdInstancia)
+                    ->where(function($q) use ($ultimos8Fiscal) {
+                        $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(celular, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8Fiscal}%"])
+                            ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8Fiscal}%"]);
+                    })->first();
+            }
+
+            // Se o número estiver em outra empresa (ex: 6), aborta imediatamente para a instância atual (ex: 4)
+            if (!$funcionarioFiscal) {
+                Log::warning("Desvio fiscal abortado: Número {$numLimpoOrigemFiscal} não pertence à empresa {$empresaIdInstancia}.");
+                return response()->json(['status' => 'funcionario_nao_encontrado_nesta_empresa']);
+            }
 
             $request->merge([
                 'funcionario_obj' => $funcionarioFiscal,
@@ -101,8 +247,31 @@ class PontoWhatsAppController extends Controller
                 'message_type' => $messageType,
                 'audio_url' => $audioUrl,
                 'file_name' => $fileName,
-                'media_url' => $documentUrl
+                'media_url' => $documentUrl,
+                'connect_api_instance_id' => $instanciaConectada->id,
+                'empresa_id' => $empresaIdInstancia
             ]);
+
+            if ($ehComandoMtrGeral) {
+                preg_match('/(\d+)\s*$/', $textoLimpo, $matchesId);
+                $mtrAgendaId = isset($matchesId[1]) ? (int) $matchesId[1] : 0;
+
+                Log::info("Comando MTR interceptado no Webhook", [
+                    'comando' => $textoLimpo,
+                    'id_capturado' => $mtrAgendaId,
+                    'funcionario_id' => $funcionarioFiscal->id ?? null
+                ]);
+
+                $mtrController = app(\App\Http\Controllers\MtrController::class);
+
+                if ($ehComandoMtrEmissao && $mtrAgendaId > 0) {
+                    return $mtrController->enviarResumoParaConfirmacao($funcionarioFiscal, $numeroDestinoEnvioFiscal, $mtrAgendaId);
+                }
+
+                if ($ehComandoMtrConfirmacao && $mtrAgendaId > 0) {
+                    return $mtrController->processarEmissaoPorWhatsappAgenda($funcionarioFiscal, $numeroDestinoEnvioFiscal, $mtrAgendaId);
+                }
+            }
 
             $nfeController = app(\App\Http\Controllers\Api\WhatsappNfeController::class);
             return $nfeController->webhook($request);
@@ -114,7 +283,7 @@ class PontoWhatsAppController extends Controller
         // =========================================================================
         $numLimpoOrigemCheck = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
         if (!empty($numLimpoOrigemCheck) && !empty($texto)) {
-            $chaveCacheDuplicada = "web_ponto_lock_{$numLimpoOrigemCheck}_{$texto}";
+            $chaveCacheDuplicada = "web_ponto_lock_{$empresaIdInstancia}_{$numLimpoOrigemCheck}_{$texto}";
             if (Cache::has($chaveCacheDuplicada)) {
                 return response()->json(['status' => 'mensagem_duplicada_ignorada']);
             }
@@ -143,7 +312,6 @@ class PontoWhatsAppController extends Controller
         $numLimpoOrigem = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
         $ultimos8 = strlen($numLimpoOrigem) >= 8 ? substr($numLimpoOrigem, -8) : $numLimpoOrigem;
 
-        // 🛑 TRAVA 4: Se o número não tiver ao menos 8 dígitos válidos, encerra na hora
         if (empty($ultimos8) || strlen($ultimos8) < 8) {
             return response()->json(['status' => 'numero_invalido_ignorado']);
         }
@@ -153,7 +321,9 @@ class PontoWhatsAppController extends Controller
         // =========================================================================
         if (preg_match('/^(?:ATIVAR|CONECTAR|VINCULAR)\s+(\d+)$/i', $texto, $matches)) {
             $idFuncionario = (int) $matches[1];
-            $funcAlvo = Funcionario::find($idFuncionario);
+
+            // Trava estrita na empresa da instância
+            $funcAlvo = Funcionario::where('id', $idFuncionario)->where('empresa_id', $empresaIdInstancia)->first();
 
             if ($funcAlvo) {
                 $idParaGravar = $lidPuro ?: $lidCompleto ?: $remoteJid;
@@ -171,30 +341,29 @@ class PontoWhatsAppController extends Controller
                 $this->enviarRespostaWhatsApp($funcAlvo->empresa_id, $celularReal, $msgAtivacao);
                 return response()->json(['status' => 'dispositivo_vinculado']);
             } else {
-                return response()->json(['status' => 'funcionario_nao_encontrado']);
+                return response()->json(['status' => 'funcionario_nao_encontrado_nesta_empresa']);
             }
         }
 
         // =========================================================================
-        // 2. IDENTIFICAÇÃO DIRETA (ÚLTIMOS 8 DÍGITOS LIMPOS)
+        // 2. IDENTIFICAÇÃO DIRETA (ÚLTIMOS 8 DÍGITOS LIMPOS) ESTRITA POR EMPRESA
         // =========================================================================
-        $numLimpoOrigem = preg_replace('/\D/', '', explode('@', $remoteJid)[0]);
-        $ultimos8 = strlen($numLimpoOrigem) >= 8 ? substr($numLimpoOrigem, -8) : $numLimpoOrigem;
-
-        // Busca direto pelo final de 8 dígitos ignorando qualquer máscara do banco
-        $funcionario = Funcionario::where(function($q) use ($lidCompleto, $lidPuro, $ultimos8) {
-            if ($lidCompleto) $q->where('whatsapp_id', $lidCompleto);
-            if ($lidPuro) $q->orWhere('whatsapp_id', $lidPuro);
-            if ($ultimos8) {
-                $q->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8])
-                    ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8]);
-            }
-        })->first();
+        $funcionario = Funcionario::where('empresa_id', $empresaIdInstancia)
+            ->where(function($q) use ($lidCompleto, $lidPuro, $ultimos8) {
+                if ($lidCompleto) $q->where('whatsapp_id', $lidCompleto);
+                if ($lidPuro) $q->orWhere('whatsapp_id', $lidPuro);
+                if ($ultimos8) {
+                    $q->orWhereRaw("RIGHT(REGEXP_REPLACE(celular, '[^0-9]', ''), 8) = ?", [$ultimos8])
+                        ->orWhereRaw("RIGHT(REGEXP_REPLACE(telefone, '[^0-9]', ''), 8) = ?", [$ultimos8]);
+                }
+            })->first();
 
         if (!$funcionario && $ultimos8) {
-            $funcionario = Funcionario::whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(celular, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8}%"])
-                ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8}%"])
-                ->first();
+            $funcionario = Funcionario::where('empresa_id', $empresaIdInstancia)
+                ->where(function($q) use ($ultimos8) {
+                    $q->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(celular, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8}%"])
+                        ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE ?", ["%{$ultimos8}%"]);
+                })->first();
         }
 
         if ($funcionario && empty($funcionario->whatsapp_id)) {
@@ -202,68 +371,18 @@ class PontoWhatsAppController extends Controller
         }
 
         if (!$funcionario) {
-            $portariaAberta = DB::table('portaria_respostas_temp')->where('status', 'pendente')->orderBy('id', 'desc')->first();
-            if ($portariaAberta) $funcionario = Funcionario::find($portariaAberta->funcionario_id);
-        }
-
-        if (!$funcionario) {
-            Log::warning("Número não reconhecido no ERP: {$numLimpoOrigem} ({$pushName})");
-
-            $numFallbackLog = $numeroOrigem ?? $numLimpoOrigem;
-            // A origem da empresa é verificada pelo dispatcher Connect|API.
-            // Nunca usar a primeira instância cadastrada, para evitar mistura entre tenants.
-            $empresaOrigemId = (int) $request->attributes->get('connect_api_empresa_id', 0);
-            if ($empresaOrigemId > 0 && !empty($numFallbackLog)) {
-                $this->enviarRespostaWhatsApp(
-                    $empresaOrigemId,
-                    $numFallbackLog,
-                    "⚠️ *ACESSO NÃO AUTORIZADO*\n\nOlá, *{$pushName}*!\nSeu número (*{$numFallbackLog}*) não foi localizado no cadastro de colaboradores do ERP.\n\nFavor solicitar a atualização do seu telefone junto ao RH."
-                );
-            }
-
-            return response()->json(['status' => 'error', 'message' => 'Funcionario nao reconhecido']);
+            Log::warning("Ponto WhatsApp: Número não reconhecido NA EMPRESA {$empresaIdInstancia}: {$numLimpoOrigem} ({$pushName}). Mensagem ignorada.");
+            return response()->json(['status' => 'nao_cadastrado_nesta_empresa_ignorado']);
         }
 
         // =========================================================================
         // 🎯 NÚMERO DE RESPOSTA: DIRETO NA CONVERSA ATIVA
         // =========================================================================
-        $numeroOrigem = !empty($remoteJid) ? preg_replace('/\D/', '', explode('@', $remoteJid)[0]) : null;
+        $numeroDestinoEnvio = $telefoneSemDdi ?: preg_replace('/\D/', '', $funcionario->celular ?: $funcionario->telefone);
 
-        $telefoneNumeros = (!empty($numeroOrigem) && strlen($numeroOrigem) >= 10)
-            ? $numeroOrigem
-            : preg_replace('/\D/', '', $funcionario->celular ?: $funcionario->telefone);
-
-        if (!str_starts_with($telefoneNumeros, '55')) {
-            $telefoneNumeros = '55' . $telefoneNumeros;
+        if (!str_starts_with($numeroDestinoEnvio, '55')) {
+            $numeroDestinoEnvio = '55' . $numeroDestinoEnvio;
         }
-
-        $numeroDestinoEnvio = $telefoneNumeros;
-
-        // =========================================================================
-        // 🚀 DESVIO PARA EMISSÃO DE NF-E (TEXTO OU ÁUDIO DA EVOLUTION API)
-        // =========================================================================
-        $estadoNfeId = 'wa_nfe_estado_' . $numeroDestinoEnvio;
-        $emFluxoNfe = \Illuminate\Support\Facades\Cache::has($estadoNfeId);
-
-        $iniciouNfe = false;
-
-        if (preg_match('/^(NOTA|NFE|NF-E|EMITIR NOTA|FATURAR|CANCELAR)/i', $texto) || $messageType === 'audioMessage' || !empty($audioUrl)) {
-            $iniciouNfe = true;
-        }
-
-        if ($emFluxoNfe || $iniciouNfe) {
-            $request->merge([
-                'funcionario_obj' => $funcionario,
-                'numero_tratado' => $numeroDestinoEnvio,
-                'texto_tratado' => $texto,
-                'message_type' => $messageType,
-                'audio_url' => $audioUrl
-            ]);
-
-            $nfeController = app(\App\Http\Controllers\Api\WhatsappNfeController::class);
-            return $nfeController->webhook($request);
-        }
-        // =========================================================================
 
         // =========================================================================
         // 3. Portaria (Preservado)
@@ -274,12 +393,12 @@ class PontoWhatsAppController extends Controller
             ->first();
 
         if ($portariaPendente) {
-            if (str_contains($texto, '1') || str_contains($texto, 'LIBERAR') || str_contains($texto, 'AUTORIZAR')) {
+            if (in_array($texto, ['1', 'LIBERAR', 'AUTORIZAR'], true)) {
                 DB::table('portaria_respostas_temp')->where('id', $portariaPendente->id)->update(['status' => 'liberado']);
                 $this->enviarRespostaWhatsApp($funcionario->empresa_id, $numeroDestinoEnvio, "✅ Entrada do visitante LIBERADA com sucesso!");
                 return response()->json(['status' => 'portaria_liberada']);
             }
-            if (str_contains($texto, '2') || str_contains($texto, 'NEGAR') || str_contains($texto, 'BLOQUEAR')) {
+            if (in_array($texto, ['2', 'NEGAR', 'BLOQUEAR'], true)) {
                 DB::table('portaria_respostas_temp')->where('id', $portariaPendente->id)->update(['status' => 'negado']);
                 $this->enviarRespostaWhatsApp($funcionario->empresa_id, $numeroDestinoEnvio, "❌ Entrada do visitante NEGADA.");
                 return response()->json(['status' => 'portaria_negada']);
@@ -361,15 +480,13 @@ class PontoWhatsAppController extends Controller
                 $nomeArquivo = "Contracheque_{$compLimpa}_{$funcionario->id}.pdf";
                 $caminhoRelativo = "holerites/{$nomeArquivo}";
 
-                \Illuminate\Support\Facades\Storage::disk('public')->put($caminhoRelativo, $pdf->output());
+                Storage::disk('public')->put($caminhoRelativo, $pdf->output());
 
                 $urlPdf = "https://grupometal.fersofterp.com.br/storage/{$caminhoRelativo}";
                 $legenda = "✅ *Contracheque Assinado!*\n"
                     . "Competência: {$holerite->competencia}\n\n"
                     . "Caso o anexo não abra no seu celular, acesse diretamente por este link:\n{$urlPdf}";
 
-                // O PDF local já foi gerado. A Connect|API envia pela instância
-                // vinculada exclusivamente à empresa do funcionário.
                 $arquivoPdf = Storage::disk('public')->path($caminhoRelativo);
                 $retorno = app(ConnectApiMessageService::class)->sendMedia(
                     (int) $funcionario->empresa_id,
@@ -384,11 +501,6 @@ class PontoWhatsAppController extends Controller
                         . ($retorno['error'] ?? 'Resposta sem sucesso.')
                     );
                 }
-
-                Log::info('Ponto WhatsApp: PDF do contracheque enviado pela Connect|API.', [
-                    'empresa_id' => (int) $funcionario->empresa_id,
-                    'status' => $retorno['status'] ?? null,
-                ]);
 
                 return response()->json(['status' => 'holerite_assinado_enviado']);
             } catch (\Exception $e) {
@@ -561,9 +673,28 @@ class PontoWhatsAppController extends Controller
             return response()->json(['status' => 'ponto_ajudante_registrado']);
         }
 
+        // 🛑 TRAVA DE MENSAGEM AVULSA (SILENCIOSA)
+        // Se a mensagem for um texto qualquer que não seja um comando de ponto reconhecido, ignora silenciosamente.
+        $textoPontoValido = str_contains($texto, '1') || str_contains($texto, 'ENTRADA') || $texto == 'entrada'
+            || str_contains($texto, '2') || str_contains($texto, 'ALMOCO') || $texto == 'inicio_almoco'
+            || str_contains($texto, '3') || str_contains($texto, 'VOLTA') || $texto == 'fim_almoco'
+            || str_contains($texto, '4') || str_contains($texto, 'SAIDA') || $texto == 'saida'
+            || str_contains($texto, '5') || str_contains($texto, 'EXTRA')
+            || str_contains($texto, '6') || str_contains($texto, 'FINAL') || str_contains($texto, 'ENCERRAR');
+
+        $pontoPendenteLocCheck = PontoMarcacao::where('funcionario_id', $funcionario->id)
+            ->whereDate('data_hora_marcacao', $hoje)
+            ->where('status', 'pendente_localizacao')
+            ->first();
+
+        // Se NÃO enviou localização, NÃO tem ponto pendente pedindo localização, e NÃO é comando de ponto: ignora silenciosamente.
+        if (!$latZap && !$lonZap && !$pontoPendenteLocCheck && !$textoPontoValido && !preg_match('/^(0|SAIR|CANCELAR)$/i', $texto)) {
+            return response()->json(['status' => 'mensagem_avulsa_ignorada_silenciosamente']);
+        }
+
         if (isset($funcionario->tipo_ponto) && $funcionario->tipo_ponto == 'local') {
-            $this->enviarRespostaWhatsApp($funcionario->empresa_id, $numeroDestinoEnvio, "⚠️ *ACESSO NEGADO!*\n\nOlá, *{$funcionario->nome}*. Seu cadastro exige registro de ponto presencial.");
-            return response()->json(['status' => 'error', 'message' => 'Ponto apenas local']);
+            // Em vez de enviar "Acesso Negado" no WhatsApp e incomodar, apenas registra no json
+            return response()->json(['status' => 'error', 'message' => 'Ponto apenas local ignorado silenciosamente']);
         }
 
         $pontoPendenteLoc = PontoMarcacao::where('funcionario_id', $funcionario->id)
@@ -779,7 +910,7 @@ class PontoWhatsAppController extends Controller
                 if ($horaAtual < '07:45') {
                     $obsJornada .= " | ⏰ ENTRADA ANTECIPADA (Sem viagem vinculada)";
                 } elseif ($horaAtual > '08:10') {
-                    $obsJornada .= " | ⚠️️ ATRASO";
+                    $obsJornada .= " | ⚠ ATRASO";
                 }
             }
         } elseif ($tipoBatida == 'saida' && $horaAtual > '18:10') {
@@ -900,7 +1031,6 @@ class PontoWhatsAppController extends Controller
                 return;
             }
 
-            // Resolução da instância e normalização centralizadas na Connect|API.
             $mensagens = app(ConnectApiMessageService::class);
             $destino = explode('@', (string) $telefone)[0];
             $numero = $mensagens->normalizeNumber($destino);

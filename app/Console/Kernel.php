@@ -102,6 +102,19 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(5);
 
+        // Sincronismo retroativo automático a cada 5 minutos
+        $schedule->command('frota:limpar-atrasadas')
+            ->everyFiveMinutes()
+            ->withoutOverlapping(10)
+            ->runInBackground();
+        // 👆 ------------------------------ 👆
+
+        // Alerta de saída atrasada (WhatsApp para motorista e gestor - disparo único)
+        $schedule->command('frota:verificar-atrasos')
+            ->everyTenMinutes()
+            ->withoutOverlapping(10)
+            ->runInBackground();
+
         /*
          * Reconciliação complementar: recupera do próprio Traccar eventos
          * que possam não ter chegado pelo Event Forwarding (queda de rede,

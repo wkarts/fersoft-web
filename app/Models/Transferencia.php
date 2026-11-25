@@ -10,7 +10,7 @@ class Transferencia extends BaseModel
 
     protected $fillable = [
         'empresa_id', 'filial_saida_id', 'filial_entrada_id', 'usuario_id', 'observacao', 'chave', 'numero_nfe',
-        'natureza_id', 'transportadora_id', 'data_emissao', 'finNFe', 'tpNF', 'sequencia_cce', 'estado',
+        'natureza_id', 'transportadora_id', 'data_emissao', 'finNFe', 'tpNF', 'sequencia_cce', 'estado','peso_liquido', 'peso_bruto',
     ];
 
     public function filial_saida(){
@@ -55,9 +55,9 @@ class Transferencia extends BaseModel
 
         $transferencia = Transferencia::
         where('numero_nfe', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->orderBy('numero_nfe', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->orderBy('numero_nfe', 'desc')
+            ->first();
 
         $numeroRemessa = $transferencia != null ? $transferencia->numero_nfe : 0;
 

@@ -11,7 +11,12 @@ class MtrDeparaResiduo extends BaseModel
         'categoria_id', 'sub_categoria_id', 'ncm', 'cod_ibama',
         'descricao_residuo', 'classe_residuo', 'estado_fisico',
         'acondicionamento_id', 'tratamento_id', 'unidade_medida',
-        'fator_conversao',
+        'fator_conversao', 'numero_onu',
+        'classe_risco',
+        'nome_embarque',
+        'grupo_embalagem',
+        'codigo_interno',
+        'descricao_interna',
     ];
 
     protected $casts = [

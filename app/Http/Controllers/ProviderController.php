@@ -136,6 +136,10 @@ class ProviderController extends BaseController
                 'conta'          => $request->input('conta') ?? '',
                 'tabela_preco_id'=> $request->input('tabela_preco_id') ?: null,
                 'ativo'          => $request->has('ativo') ? 1 : 0, // NOVO
+
+                // 🚀 ADICIONE ESTAS DUAS LINHAS AQUI:
+                'exige_rastreabilidade' => $request->input('exige_rastreabilidade', 0),
+                'portal_nivel_visao'    => $request->input('portal_nivel_visao', 'simples'),
             ]);
 
             $result = Fornecedor::create($request->all());
@@ -181,7 +185,7 @@ class ProviderController extends BaseController
         }
     }
 
-    public function update(Request $request, $id = null)
+    /*public function update(Request $request, $id = null)
     {
         $resp = Fornecedor::findOrFail($request->id);
 
@@ -230,6 +234,98 @@ class ProviderController extends BaseController
             $resp->conta          = $request->input('conta') ?? '';
             $resp->tabela_preco_id = $request->input('tabela_preco_id') ?: null;
             $resp->ativo = $request->has('ativo') ? 1 : 0; // NOVO
+
+          	// 🚀 ADICIONE ESTAS DUAS LINHAS AQUI:
+            $resp->exige_rastreabilidade = $request->input('exige_rastreabilidade', 0);
+            $resp->portal_nivel_visao    = $request->input('portal_nivel_visao', 'simples');
+
+            $resp->save();
+
+            $this->criarLog($resp, 'atualizar');
+            session()->flash('mensagem_sucesso', 'Fornecedor editado com sucesso!');
+        }catch(\Exception $e){
+            __saveError($e, $this->empresa_id);
+            session()->flash("mensagem_erro", "Algo deu errado: " . $e->getMessage());
+        }
+        return redirect('/fornecedores');
+    }*/
+
+    //CORREÇÃO INATIVO AO EDITAR
+    public function update(Request $request, $id = null)
+    {
+        // Garante que busca o registro estritamente da empresa logada
+        $resp = Fornecedor::where('id', $request->id)
+            ->where('empresa_id', $this->empresa_id)
+            ->firstOrFail();
+
+        $this->normalizeDocumentoECep($request);
+        $this->_validate($request);
+
+        // AVISO DE DUPLICIDADE (Não bloqueia mais o salvamento)
+        $cpfCnpjLimpo = $request->input('cpf_cnpj');
+        if ($cpfCnpjLimpo && $cpfCnpjLimpo !== '00.000.000/0000-00') {
+            $duplicado = Fornecedor::where('empresa_id', $this->empresa_id)
+                ->where('cpf_cnpj', $cpfCnpjLimpo)
+                ->where('id', '!=', $resp->id)
+                ->first();
+
+            if ($duplicado) {
+                // Apenas avisa o usuário que já existe outro cadastro com este documento
+                session()->flash("mensagem_aviso", "Aviso: Já existe outro fornecedor cadastrado com este mesmo CPF/CNPJ nesta empresa.");
+            }
+        }
+
+        try{
+            $cidade = $request->input('cidade');
+
+            $resp->razao_social   = $request->input('razao_social');
+            $resp->nome_fantasia  = $request->input('nome_fantasia');
+            $resp->cpf_cnpj       = $request->input('cpf_cnpj');
+            $resp->ie_rg          = $request->input('ie_rg') ?? '';
+            $resp->rua            = $request->input('rua');
+            $resp->numero         = $request->input('numero');
+            $resp->bairro         = $request->input('bairro');
+            $resp->telefone       = $request->input('telefone') ?? '';
+            $resp->celular        = $request->input('celular') ?? '';
+            $resp->pix            = $request->input('pix') ?? '';
+            $resp->complemento    = $request->input('complemento') ?? '';
+            $resp->tipo_pix       = $request->input('tipo_pix') ?? 'cpf';
+            $resp->email          = $request->input('email');
+            $resp->cep            = $request->input('cep');
+            $resp->contribuinte   = $request->input('contribuinte');
+            $resp->cidade_id      = $cidade;
+            $resp->cod_pais       = $request->input('cod_pais');
+            $resp->id_estrangeiro = $request->input('id_estrangeiro');
+
+            $cidObj = \App\Models\Cidade::find($cidade);
+            $lat = $request->input('latitude');
+            $lon = $request->input('longitude');
+
+            if(empty($lat) || empty($lon)){
+                $enderecoBusca = $resp->rua . ', ' . $resp->numero . ', ' . $resp->bairro . ', ' . ($cidObj->nome ?? '');
+                $coords = $this->buscarCoordenadas($enderecoBusca);
+                $lat = $coords['latitude'];
+                $lon = $coords['longitude'];
+            }
+
+            $resp->latitude       = $lat;
+            $resp->longitude      = $lon;
+
+            // Dados bancários e extras
+            $resp->banco          = $request->input('banco') ?? '';
+            $resp->agencia        = $request->input('agencia') ?? '';
+            $resp->conta          = $request->input('conta') ?? '';
+            $resp->tabela_preco_id = $request->input('tabela_preco_id') ?: null;
+
+            // Mantém o status ativo atual caso o formulário de edição não envie o campo
+            if ($request->has('ativo')) {
+                $resp->ativo = 1;
+            } else {
+                $resp->ativo = $resp->ativo;
+            }
+
+            $resp->exige_rastreabilidade = $request->input('exige_rastreabilidade', 0);
+            $resp->portal_nivel_visao    = $request->input('portal_nivel_visao', 'simples');
 
             $resp->save();
 

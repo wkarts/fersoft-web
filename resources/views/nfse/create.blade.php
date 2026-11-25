@@ -373,6 +373,21 @@
                         <div class="sub-section-title"><i class="fa fa-percent me-1"></i> Retenções e Alíquotas de Impostos</div>
 
                         <div class="row">
+                            <!-- NOVO CAMPO: Retenção Federal -->
+                            <div class="form-group col-lg-3 col-md-4 col-sm-6 mb-3">
+                                <label class="form-label">Retém PIS/COFINS/CSLL? <span class="text-danger">*</span></label>
+                                <select class="form-control custom-select" name="retencao_federal" id="retencao_federal">
+                                    <option value="1">Não (Apuração Própria)</option>
+                                    <option value="3">Sim (Retido pelo Tomador)</option>
+                                </select>
+                            </div>
+
+                            <!-- NOVO CAMPO: Total Retido -->
+                            <div class="form-group col-lg-3 col-md-4 col-sm-6 mb-3">
+                                <label class="form-label text-danger">Total Contribuições Retidas (R$)</label>
+                                <input type="text" readonly class="form-control text-danger fw-bold bg-light" id="total_contribuicoes_retidas" value="0,00" title="Soma de PIS, COFINS e CSLL retidos"/>
+                            </div>
+
                             <div class="form-group col-lg-2 col-md-4 col-sm-6 mb-3">
                                 <label class="form-label">Valor Deduções</label>
                                 <input type="text" name="valor_deducoes" class="form-control money" id="valor_deducoes" value="{{{ isset($item) ? moeda($item->servico->valor_deducoes) : old('valor_deducoes') }}}"/>
@@ -421,6 +436,16 @@
                             <div class="form-group col-lg-2 col-md-4 col-sm-6 mb-3">
                                 <label class="form-label">Alíquota CSLL (%)</label>
                                 <input type="text" name="aliquota_csll" class="form-control money" id="aliquota_csll" value="{{{ isset($item) ? moeda($item->servico->aliquota_csll) : old('aliquota_csll') }}}"/>
+                            </div>
+
+                            <div class="form-group col-lg-2 col-md-4 col-sm-6 mb-3">
+                                <label class="form-label text-primary">Alíquota IBS UF (%)</label>
+                                <input type="text" name="aliq_ibs_uf" class="form-control money border-primary" id="aliq_ibs_uf" value="{{ isset($item) ? moeda($item->servico->aliq_ibs_uf ?? ($tributacao->aliq_ibs_uf ?? 0.10)) : old('aliq_ibs_uf', isset($tributacao) ? moeda($tributacao->aliq_ibs_uf ?? 0.10) : '0,10') }}"/>
+                            </div>
+
+                            <div class="form-group col-lg-2 col-md-4 col-sm-6 mb-3">
+                                <label class="form-label text-primary">Alíquota CBS (%)</label>
+                                <input type="text" name="aliq_cbs" class="form-control money border-primary" id="aliq_cbs" value="{{ isset($item) ? moeda($item->servico->aliq_cbs ?? ($tributacao->aliq_cbs ?? 0.90)) : old('aliq_cbs', isset($tributacao) ? moeda($tributacao->aliq_cbs ?? 0.90) : '0,90') }}"/>
                             </div>
                         </div>
 
@@ -680,245 +705,78 @@
 @endsection
 
 @section('javascript')
+    @php
+        $sessao = session('user_logged');
+        $empId = $empresa_id ?? request()->empresa_id ?? ($sessao['empresa'] ?? $sessao['empresa_id'] ?? null);
+        $tribPadrao = $tributacao ?? ($empId ? \App\Models\Tributacao::where('empresa_id', $empId)->first() : \App\Models\Tributacao::first());
+    @endphp
     <script type="text/javascript">
-        $('#intermediador').change(() => {
-            changeIntermediador()
-        })
+        const rawPis = "{{ isset($tribPadrao) && $tribPadrao->pis ? $tribPadrao->pis : '0' }}";
+        const rawCofins = "{{ isset($tribPadrao) && $tribPadrao->cofins ? $tribPadrao->cofins : '0' }}";
+        const rawCsll = "{{ isset($tribPadrao) && $tribPadrao->csll ? $tribPadrao->csll : '0' }}";
+        const rawIr = "{{ isset($tribPadrao) && $tribPadrao->ir ? $tribPadrao->ir : '0' }}";
+        const rawIbsUf = "{{ isset($tribPadrao) && $tribPadrao->aliq_ibs_uf ? $tribPadrao->aliq_ibs_uf : '0.10' }}";
+        const rawCbs = "{{ isset($tribPadrao) && $tribPadrao->aliq_cbs ? $tribPadrao->aliq_cbs : '0.90' }}";
 
-        function changeIntermediador(){
-            let v = $('#intermediador').val()
-            if(v == 'n'){
-                $('.pfj').addClass('d-none')
-            }else{
-                $('.pfj').removeClass('d-none')
+        const aliqPisPadrao = parseFloat(rawPis.toString().replace(',', '.')) || 0;
+        const aliqCofinsPadrao = parseFloat(rawCofins.toString().replace(',', '.')) || 0;
+        const aliqCsllPadrao = parseFloat(rawCsll.toString().replace(',', '.')) || 0;
+        const aliqIrPadrao = parseFloat(rawIr.toString().replace(',', '.')) || 0;
+        const aliqIbsUfPadrao = parseFloat(rawIbsUf.toString().replace(',', '.')) || 0.10;
+        const aliqCbsPadrao = parseFloat(rawCbs.toString().replace(',', '.')) || 0.90;
+
+        function lerValorCampo(seletor) {
+            let str = ($(seletor).val() || '0').toString();
+            return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+        }
+
+        function preencherAliquotasPadrao() {
+            if (lerValorCampo('#aliquota_pis') === 0 && aliqPisPadrao > 0) {
+                $('#aliquota_pis').val(aliqPisPadrao.toFixed(2).replace('.', ','));
             }
-        }
-
-        $('#cliente').change(() => {
-            let cliente = $('#cliente').val()
-            if(cliente){
-                buscaCliente(cliente)
-            }
-        })
-
-        function buscaCliente(id){
-            $.get(path + 'clientes/findCliente/'+id)
-                .done((res) => {
-                    $('#documento').val(res.cpf_cnpj)
-                    $('#razao_social').val(res.razao_social)
-                    $('#cep').val(res.cep)
-                    $('#rua').val(res.rua)
-                    $('#ie').val(res.ie_rg)
-                    $('#numero').val(res.numero)
-                    $('#bairro').val(res.bairro)
-                    $('#complemento').val(res.complemento)
-                    $('#email').val(res.email)
-                    $('#telefone').val(res.telefone)
-                    $('#cidade_id').val(res.cidade_id).change()
-                })
-                .fail((err) => {
-                    console.log(err)
-                })
-        }
-
-        $('#servico_id').change(() => {
-            let servico = $('#servico_id').val()
-            if(servico){
-                buscaServico(servico)
-            }
-        })
-
-        function buscaServico(id){
-            $.get(path + 'servicos/find/' + id)
-                .done((res) => {
-                    console.log("Dados do serviço retornado:", res);
-
-                    // 1. Discriminação e Valor do Serviço
-                    $('#discriminacao').val(res.discriminacao || res.nome || '');
-                    if (res.valor) {
-                        $('#valor_servico').val(res.valor.toString().replace(".", ","));
-                    }
-
-                    // 2. Mapeamento flexível do Código do Serviço (LC 116)
-                    let codLC116 = res.codigo_servico || res.codigo_lc116 || res.codigo_trib_nac || res.cTribNac || res.codigo_tributacao_nacional || '';
-                    $('#codigo_servico').val(codLC116);
-
-                    // 3. Código de Tributação do Município (com fallback para o LC 116)
-                    let codTribMun = res.codigo_tributacao_municipio || res.codigo_trib_mun || codLC116;
-                    $('#codigo_tributacao_municipio').val(codTribMun);
-
-                    // 4. CNAE, Natureza e Alíquotas
-                    $('#codigo_cnae').val(res.codigo_cnae || res.cnae || '');
-                    if (res.natureza) {
-                        $('#natureza_operacao').val(res.natureza);
-                    }
-
-                    $('#aliquota_iss').val(res.aliquota_iss ? res.aliquota_iss.toString().replace(".", ",") : '');
-                    $('#aliquota_pis').val(res.aliquota_pis ? res.aliquota_pis.toString().replace(".", ",") : '');
-                    $('#aliquota_cofins').val(res.aliquota_cofins ? res.aliquota_cofins.toString().replace(".", ",") : '');
-                    $('#aliquota_inss').val(res.aliquota_inss ? res.aliquota_inss.toString().replace(".", ",") : '');
-
-                    // Atualiza a tabela financeira/parcelas se ativo
-                    if (typeof gerarParcelas === 'function') {
-                        gerarParcelas();
-                    }
-                })
-                .fail((err) => {
-                    console.error("Erro ao carregar o serviço:", err);
-                });
-        }
-
-        function novoCliente(){
-            $('#modal-cliente').modal('show')
-        }
-
-        function consultaCadastro() {
-            let cnpj = $('#cpf_cnpj').val().replace(/[^0-9]/g,'')
-
-            if (cnpj.length == 14){
-                $('#btn-consulta-cadastro').addClass('spinner spinner-white spinner-right')
-                $.get('https://publica.cnpj.ws/cnpj/' + cnpj)
-                    .done((data) => {
-                        $('#btn-consulta-cadastro').removeClass('spinner spinner-white spinner-right')
-                        if (data!= null) {
-                            let ie = ''
-                            if (data.estabelecimento.inscricoes_estaduais.length > 0) {
-                                ie = data.estabelecimento.inscricoes_estaduais[0].inscricao_estadual
-                            }
-                            $('#ie_rg').val(ie)
-                            $('#razao_social2').val(data.razao_social)
-                            $('#nome_fantasia2').val(data.estabelecimento.nome_fantasia)
-                            $("#rua-modal").val(data.estabelecimento.tipo_logradouro + " " + data.estabelecimento.logradouro)
-                            $('#numero-modal').val(data.estabelecimento.numero)
-                            $("#bairro-modal").val(data.estabelecimento.bairro);
-                            let cep = data.estabelecimento.cep.replace(/[^\d]+/g, '');
-                            $('#cep-modal').val(cep.substring(0, 5) + '-' + cep.substring(5, 9))
-                            $('#email-modal').val(data.estabelecimento.email)
-                            $('#telefone-modal').val(data.estabelecimento.telefone1)
-
-                            findCidadeCodigo(data.estabelecimento.cidade.ibge_id)
-                        }
-                    })
-                    .fail((err) => {
-                        $('#btn-consulta-cadastro').removeClass('spinner spinner-white spinner-right')
-                        console.log(err)
-                        swal("Erro", err.responseJSON ? err.responseJSON.titulo : "Erro ao consultar CNPJ", "error")
-                    })
-            }else{
-                swal("Alerta", "Informe corretamente o CNPJ (14 dígitos)", "warning")
-            }
-        }
-
-        function findCidadeCodigo(codigo_ibge){
-            $.get(path + "cidades/cidadePorCodigoIbge/" + codigo_ibge)
-                .done((res) => {
-                    $('#kt_select2_5').val(res.id).change();
-                })
-                .fail((err) => {
-                    console.log(err)
-                })
-        }
-
-        function limparCamposCliente(){
-            $('#razao_social2').val('')
-            $('#nome_fantasia2').val('')
-            $('#rua-modal').val('')
-            $('#numero-modal').val('')
-            $('#bairro-modal').val('')
-            $('#cep-modal').val('')
-            $('#kt_select2_5').val('1').change();
-        }
-
-        function salvarCliente(){
-            let js = {
-                razao_social: $('#razao_social2').val(),
-                nome_fantasia: $('#nome_fantasia2').val() ? $('#nome_fantasia2').val() : '',
-                rua: $('#rua-modal').val() ? $('#rua-modal').val() : '',
-                numero: $('#numero-modal').val() ? $('#numero-modal').val() : '',
-                cpf_cnpj: $('#cpf_cnpj').val() ? $('#cpf_cnpj').val() : '',
-                ie_rg: $('#ie_rg').val() ? $('#ie_rg').val() : '',
-                bairro: $('#bairro-modal').val() ? $('#bairro-modal').val() : '',
-                cep: $('#cep-modal').val() ? $('#cep-modal').val() : '',
-                consumidor_final: $('#consumidor_final').val() ? $('#consumidor_final').val() : '',
-                contribuinte: $('#contribuinte').val() ? $('#contribuinte').val() : '',
-                limite_venda: $('#limite_venda').val() ? $('#limite_venda').val() : '',
-                cidade_id: $('#kt_select2_5').val() ? $('#kt_select2_5').val() : 1,
-                telefone: $('#telefone-modal').val() ? $('#telefone-modal').val() : '',
-                celular: $('#celular-modal').val() ? $('#celular-modal').val() : '',
-                email: $('#email-modal').val() ? $('#email-modal').val() : '',
+            if (lerValorCampo('#aliquota_cofins') === 0 && aliqCofinsPadrao > 0) {
+                $('#aliquota_cofins').val(aliqCofinsPadrao.toFixed(2).replace('.', ','));
             }
 
-            if(js.razao_social == ''){
-                swal("Erro", "Informe a razão social", "warning")
-            }else{
-                let token = $('#_token').val();
-                $.post(path + 'clientes/quickSave', {
-                    _token: token,
-                    data: js
-                })
-                    .done((res) =>{
-                        limparCamposCliente()
-                        $('#cliente').append('<option value="'+res.id+'">'+ res.razao_social+'</option>').change();
-                        swal("Sucesso", "Cliente adicionado com sucesso!", 'success')
-                            .then(() => {
-                                $('#modal-cliente').modal('hide')
-                                $('#cliente').val(res.id).change();
-                            })
-                    })
-                    .fail((err) => {
-                        console.log(err)
-                        swal("Alerta", err.responseJSON || "Erro ao salvar cliente", "warning")
-                    })
-            }
-        }
-
-        // JS Lógica Financeira (Calculador de Parcelas)
-        $('#gerar_contas_receber').change(function() {
-            if ($(this).val() == '1') {
-                $('.area-financeiro').show();
+            if ($('#retencao_federal').val() == '3') {
+                if (lerValorCampo('#aliquota_csll') === 0 && aliqCsllPadrao > 0) {
+                    $('#aliquota_csll').val(aliqCsllPadrao.toFixed(2).replace('.', ','));
+                }
+                if (lerValorCampo('#aliquota_ir') === 0 && aliqIrPadrao > 0) {
+                    $('#aliquota_ir').val(aliqIrPadrao.toFixed(2).replace('.', ','));
+                }
             } else {
-                $('.area-financeiro').hide();
+                $('#aliquota_csll').val('0,00');
+                $('#aliquota_ir').val('0,00');
             }
-        });
 
-        function gerarParcelas() {
-            let qtd = parseInt($('#qtd_parcelas').val()) || 1;
-            let valorTotalStr = $('#valor_servico').val() || '0';
-            let valorTotal = parseFloat(valorTotalStr.replace(/\./g, '').replace(',', '.')) || 0;
-            let dataInicial = $('#primeira_data').val();
-
-            let container = $('#container_parcelas');
-            container.empty();
-
-            if (valorTotal <= 0 || !dataInicial) return;
-
-            let valorParcela = (valorTotal / qtd).toFixed(2);
-            let data = new Date(dataInicial + 'T00:00:00');
-
-            for (let i = 0; i < qtd; i++) {
-                let dataFormatada = data.toISOString().split('T')[0];
-                let row = `<tr>
-                <td><strong>Parcela ${i + 1}/${qtd}</strong></td>
-                <td>
-                    <input type="date" name="parcelas[${i}][vencimento]" class="form-control" value="${dataFormatada}" required />
-                </td>
-                <td>
-                    <input type="text" name="parcelas[${i}][valor]" class="form-control money" value="${valorParcela.replace('.', ',')}" required />
-                </td>
-            </tr>`;
-                container.append(row);
-                data.setMonth(data.getMonth() + 1);
+            if ($('#aliq_ibs_uf').length && lerValorCampo('#aliq_ibs_uf') === 0) {
+                $('#aliq_ibs_uf').val(aliqIbsUfPadrao > 0 ? aliqIbsUfPadrao.toFixed(2).replace('.', ',') : '0,10');
+            }
+            if ($('#aliq_cbs').length && lerValorCampo('#aliq_cbs') === 0) {
+                $('#aliq_cbs').val(aliqCbsPadrao > 0 ? aliqCbsPadrao.toFixed(2).replace('.', ',') : '0,90');
             }
         }
 
-        $(document).ready(function() {
-            gerarParcelas();
-            $('#valor_servico').on('change blur keyup', function() {
-                gerarParcelas();
-            });
-        });
-        @section('javascript')
-        <script type="text/javascript">
+        function calcularImpostosFederais() {
+            let valorServico = lerValorCampo('#valor_servico');
+            let aliqPis = lerValorCampo('#aliquota_pis');
+            let aliqCofins = lerValorCampo('#aliquota_cofins');
+            let aliqCsll = lerValorCampo('#aliquota_csll');
+
+            let retem = $('#retencao_federal').val() == '3';
+
+            let totalRetido = 0;
+            if (retem && valorServico > 0) {
+                let vPis = Math.round(valorServico * (aliqPis / 100) * 100) / 100;
+                let vCofins = Math.round(valorServico * (aliqCofins / 100) * 100) / 100;
+                let vCsll = Math.round(valorServico * (aliqCsll / 100) * 100) / 100;
+                totalRetido = vPis + vCofins + vCsll;
+            }
+
+            $('#total_contribuicoes_retidas').val(totalRetido.toFixed(2).replace('.', ','));
+        }
+
         $('#intermediador').change(() => {
             changeIntermediador();
         });
@@ -926,17 +784,17 @@
         function changeIntermediador(){
             let v = $('#intermediador').val();
             if(v == 'n'){
-            $('.pfj').addClass('d-none');
-        }else{
-            $('.pfj').removeClass('d-none');
-        }
+                $('.pfj').addClass('d-none');
+            }else{
+                $('.pfj').removeClass('d-none');
+            }
         }
 
         $('#cliente').change(() => {
             let cliente = $('#cliente').val();
             if(cliente){
-            buscaCliente(cliente);
-        }
+                buscaCliente(cliente);
+            }
         });
 
         function buscaCliente(id){
@@ -959,38 +817,49 @@
         $('#servico_id').change(() => {
             let servico = $('#servico_id').val();
             if(servico){
-            buscaServico(servico);
-        }
+                buscaServico(servico);
+            }
         });
 
         function buscaServico(id){
             $.get(path + 'servicos/find/' + id)
                 .done((res) => {
-                    console.log("Dados do serviço retornado:", res); // Isto vai ajudar a depurar no console (F12)
-
-                    // 1. Discriminação e Valor
                     $('#discriminacao').val(res.discriminacao || res.nome || '');
                     if (res.valor) {
-                        $('#valor_servico').val(res.valor.toString().replace(".", ","));
+                        $('#valor_servico').val(parseFloat(res.valor).toFixed(2).replace(".", ","));
                     }
 
-                    // 2. CORREÇÃO: Captura do Código do Serviço (Tenta os nomes de colunas mais comuns em ERPs)
                     let codLC116 = res.codigo_servico || res.codigo_lc116 || res.codigo_tributacao_nacional || res.cTribNac || res.codigo_trib_nac || res.codigo || '';
                     $('#codigo_servico').val(codLC116);
 
-                    // 3. CORREÇÃO: Captura do Código Municipal (com fallback)
                     let codTribMun = res.codigo_tributacao_municipio || res.codigo_trib_mun || codLC116;
                     $('#codigo_tributacao_municipio').val(codTribMun);
 
-                    // 4. CNAE e outros
                     $('#codigo_cnae').val(res.codigo_cnae || res.cnae || '');
                     if (res.natureza) $('#natureza_operacao').val(res.natureza);
 
-                    $('#aliquota_iss').val(res.aliquota_iss ? res.aliquota_iss.toString().replace(".", ",") : '');
-                    $('#aliquota_pis').val(res.aliquota_pis ? res.aliquota_pis.toString().replace(".", ",") : '');
-                    $('#aliquota_cofins').val(res.aliquota_cofins ? res.aliquota_cofins.toString().replace(".", ",") : '');
-                    $('#aliquota_inss').val(res.aliquota_inss ? res.aliquota_inss.toString().replace(".", ",") : '');
+                    $('#aliquota_iss').val(res.aliquota_iss ? parseFloat(res.aliquota_iss).toFixed(2).replace(".", ",") : '0,00');
+                    $('#aliquota_inss').val(res.aliquota_inss ? parseFloat(res.aliquota_inss).toFixed(2).replace(".", ",") : '0,00');
 
+                    $('#aliquota_pis').val(aliqPisPadrao > 0 ? aliqPisPadrao.toFixed(2).replace(".", ",") : '0,00');
+                    $('#aliquota_cofins').val(aliqCofinsPadrao > 0 ? aliqCofinsPadrao.toFixed(2).replace(".", ",") : '0,00');
+
+                    if ($('#retencao_federal').val() == '3') {
+                        $('#aliquota_ir').val(aliqIrPadrao > 0 ? aliqIrPadrao.toFixed(2).replace(".", ",") : '0,00');
+                        $('#aliquota_csll').val(aliqCsllPadrao > 0 ? aliqCsllPadrao.toFixed(2).replace(".", ",") : '0,00');
+                    } else {
+                        $('#aliquota_ir').val('0,00');
+                        $('#aliquota_csll').val('0,00');
+                    }
+
+                    if ($('#aliq_ibs_uf').length) {
+                        $('#aliq_ibs_uf').val(aliqIbsUfPadrao > 0 ? aliqIbsUfPadrao.toFixed(2).replace(".", ",") : '0,10');
+                    }
+                    if ($('#aliq_cbs').length) {
+                        $('#aliq_cbs').val(aliqCbsPadrao > 0 ? aliqCbsPadrao.toFixed(2).replace(".", ",") : '0,90');
+                    }
+
+                    calcularImpostosFederais();
                     gerarParcelas();
                 })
                 .fail((err) => {
@@ -1002,30 +871,216 @@
             $('#modal-cliente').modal('show');
         }
 
-        $('#gerar_contas_receber').change(function() {
-            if ($(this).val() == '1') {$('.area-financeiro').show();
-        } else {
-            $('.area-financeiro').hide();
+        window.consultaCadastro = function() {
+            let cnpj = ($('#cpf_cnpj').val() || '').replace(/\D/g, '');
+            if (cnpj.length !== 14) {
+                swal("Atenção", "Informe um CNPJ válido com 14 dígitos para realizar a consulta.", "warning");
+                return;
+            }
+
+            let btn = $('#btn-consulta-cadastro');
+            btn.addClass('spinner spinner-white spinner-right disabled').prop('disabled', true);
+
+            $.ajax({
+                url: 'https://publica.cnpj.ws/cnpj/' + cnpj,
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    btn.removeClass('spinner spinner-white spinner-right disabled').prop('disabled', false);
+                    if (data && data.estabelecimento) {
+                        let est = data.estabelecimento;
+                        $('#razao_social2').val(data.razao_social || '');
+                        $('#nome_fantasia2').val(est.nome_fantasia || data.razao_social || '');
+                        $('#rua-modal').val(((est.tipo_logradouro || '') + ' ' + (est.logradouro || '')).trim());
+                        $('#numero-modal').val(est.numero || 'S/N');
+                        $('#bairro-modal').val(est.bairro || '');
+                        $('#cep-modal').val(est.cep || '');
+                        $('#email-modal').val(est.email || '');
+
+                        let fone = (est.ddd1 && est.telefone1) ? (est.ddd1 + est.telefone1) : '';
+                        $('#telefone-modal').val(fone);
+                        $('#celular').val(fone);
+
+                        if (est.inscricoes_estaduais && est.inscricoes_estaduais.length > 0) {
+                            $('#ie_rg').val(est.inscricoes_estaduais[0].inscricao_estadual || 'ISENTO');
+                        } else {
+                            $('#ie_rg').val('ISENTO');
+                        }
+
+                        if (est.cidade && (est.cidade.ibge_id || est.cidade.nome)) {
+                            selecionarCidadeNoModal(est.cidade.ibge_id, est.cidade.nome);
+                        }
+                    }
+                },
+                error: function() {
+                    $.getJSON('https://brasilapi.com.br/api/cnpj/v1/' + cnpj)
+                        .done(function(res) {
+                            $('#razao_social2').val(res.razao_social || '');
+                            $('#nome_fantasia2').val(res.nome_fantasia || res.razao_social || '');
+                            $('#rua-modal').val(((res.descricao_tipo_de_logradouro || '') + ' ' + (res.logradouro || '')).trim());
+                            $('#numero-modal').val(res.numero || 'S/N');
+                            $('#bairro-modal').val(res.bairro || '');
+                            $('#cep-modal').val(res.cep || '');
+                            $('#email-modal').val(res.email || '');
+                            $('#telefone-modal').val(res.ddd_telefone_1 || '');
+                            $('#celular').val(res.ddd_telefone_1 || '');
+                            $('#ie_rg').val('ISENTO');
+
+                            if (res.codigo_municipio_ibge || res.municipio) {
+                                selecionarCidadeNoModal(res.codigo_municipio_ibge, res.municipio);
+                            }
+                        })
+                        .fail(function() {
+                            swal("Alerta", "Não foi possível consultar o CNPJ neste momento. Verifique o número digitado.", "warning");
+                        })
+                        .always(function() {
+                            btn.removeClass('spinner spinner-white spinner-right disabled').prop('disabled', false);
+                        });
+                }
+            });
+        };
+
+        function selecionarCidadeNoModal(codigoIbge, nomeCidade) {
+            if (codigoIbge) {
+                $.get(path + 'cidades/findCodigo/' + codigoIbge)
+                    .done((res) => {
+                        if (res && res.id) {
+                            $('#kt_select2_5').val(res.id).change();
+                        }
+                    });
+            }
+            if (nomeCidade) {
+                let buscaNome = nomeCidade.toUpperCase();
+                $('#kt_select2_5 option').each(function() {
+                    if ($(this).text().toUpperCase().indexOf(buscaNome) !== -1) {
+                        $('#kt_select2_5').val($(this).val()).change();
+                        return false;
+                    }
+                });
+            }
         }
+
+        $('#cep-modal').blur(function() {
+            let cep = $(this).val().replace(/\D/g, '');
+            if (cep.length === 8) {
+                $.getJSON(`https://viacep.com.br/ws/${cep}/json/`, function(data) {
+                    if (!data.erro) {
+                        $('#rua-modal').val(data.logradouro);
+                        $('#bairro-modal').val(data.bairro);
+                        if (data.ibge || data.localidade) {
+                            selecionarCidadeNoModal(data.ibge, data.localidade);
+                        }
+                    }
+                });
+            }
+        });
+
+        function limparCamposCliente(){
+            $('#razao_social2').val('');
+            $('#nome_fantasia2').val('');
+            $('#rua-modal').val('');
+            $('#numero-modal').val('');
+            $('#bairro-modal').val('');
+            $('#cep-modal').val('');
+            $('#kt_select2_5').val('1').change();
+        }
+
+        window.salvarCliente = function() {
+            let js = {
+                razao_social: $('#razao_social2').val(),
+                nome_fantasia: $('#nome_fantasia2').val() ? $('#nome_fantasia2').val() : '',
+                rua: $('#rua-modal').val() ? $('#rua-modal').val() : '',
+                numero: $('#numero-modal').val() ? $('#numero-modal').val() : '',
+                cpf_cnpj: $('#cpf_cnpj').val() ? $('#cpf_cnpj').val() : '',
+                ie_rg: $('#ie_rg').val() ? $('#ie_rg').val() : '',
+                bairro: $('#bairro-modal').val() ? $('#bairro-modal').val() : '',
+                cep: $('#cep-modal').val() ? $('#cep-modal').val() : '',
+                consumidor_final: $('#consumidor_final').val() ? $('#consumidor_final').val() : 1,
+                contribuinte: $('#contribuinte').val() ? $('#contribuinte').val() : 0,
+                limite_venda: $('#limite_venda').val() ? $('#limite_venda').val() : '0,00',
+                cidade_id: $('#kt_select2_5').val() ? $('#kt_select2_5').val() : 1,
+                telefone: $('#telefone-modal').val() ? $('#telefone-modal').val() : '',
+                celular: $('#celular').val() ? $('#celular').val() : '',
+                email: $('#email-modal').val() ? $('#email-modal').val() : '',
+            };
+
+            if(js.razao_social == ''){
+                swal("Erro", "Informe a razão social", "warning");
+                return;
+            }
+
+            let token = $('#_token').val();
+            $.post(path + 'clientes/quickSave', {
+                _token: token,
+                data: js
+            })
+                .done((res) => {
+                    limparCamposCliente();
+                    $('#cliente').append('<option value="'+res.id+'">'+ res.razao_social+'</option>').change();
+                    swal("Sucesso", "Cliente adicionado com sucesso!", 'success')
+                        .then(() => {
+                            $('#modal-cliente').modal('hide');
+                            $('#cliente').val(res.id).change();
+                        });
+                })
+                .fail((err) => {
+                    console.log(err);
+                    swal("Alerta", err.responseJSON || "Erro ao salvar cliente", "warning");
+                });
+        };
+
+        $('#gerar_contas_receber').change(function() {
+            if ($(this).val() == '1') {
+                $('.area-financeiro').show();
+                gerarParcelas();
+            } else {
+                $('.area-financeiro').hide();
+            }
         });
 
         function gerarParcelas() {
             let qtd = parseInt($('#qtd_parcelas').val()) || 1;
-            let valorTotalStr = $('#valor_servico').val() || '0';
-            let valorTotal = parseFloat(valorTotalStr.replace(/\./g, '').replace(',', '.')) || 0;
+            let valorBruto = lerValorCampo('#valor_servico');
             let dataInicial = $('#primeira_data').val();
 
             let container = $('#container_parcelas');
             container.empty();
 
-            if (valorTotal <= 0 || !dataInicial) return;
+            if (valorBruto <= 0 || !dataInicial) return;
 
-            let valorParcela = (valorTotal / qtd).toFixed(2);
+            // Desconta as retenções (se houver) para gerar o Contas a Receber pelo Valor Líquido
+            let retemFed = $('#retencao_federal').val() == '3';
+            let issRetido = ($('select[name="iss_retido"]').val() == '1' || $('#iss_retido').val() == '1');
+
+            let aliqPis = lerValorCampo('#aliquota_pis');
+            let aliqCofins = lerValorCampo('#aliquota_cofins');
+            let aliqCsll = lerValorCampo('#aliquota_csll');
+            let aliqIr = lerValorCampo('#aliquota_ir');
+            let aliqInss = lerValorCampo('#aliquota_inss');
+            let aliqIss = lerValorCampo('#aliquota_iss');
+            let descIncond = lerValorCampo('input[name="desconto_incondicional"]');
+            let outrasRet = lerValorCampo('input[name="outras_retencoes"]');
+
+            let vRetCsrf = 0;
+            let vRetIr = 0;
+            if (retemFed) {
+                let vPis = Math.round(valorBruto * (aliqPis / 100) * 100) / 100;
+                let vCofins = Math.round(valorBruto * (aliqCofins / 100) * 100) / 100;
+                let vCsll = Math.round(valorBruto * (aliqCsll / 100) * 100) / 100;
+                vRetCsrf = vPis + vCofins + vCsll;
+                vRetIr = Math.round(valorBruto * (aliqIr / 100) * 100) / 100;
+            }
+            let vRetInss = Math.round(valorBruto * (aliqInss / 100) * 100) / 100;
+            let vRetIss = issRetido ? (Math.round(valorBruto * (aliqIss / 100) * 100) / 100) : 0;
+
+            let valorLiquido = Math.max(0, Math.round((valorBruto - vRetCsrf - vRetIr - vRetInss - vRetIss - descIncond - outrasRet) * 100) / 100);
+
+            let valorParcela = (valorLiquido / qtd).toFixed(2);
             let data = new Date(dataInicial + 'T00:00:00');
 
             for (let i = 0; i < qtd; i++) {
-            let dataFormatada = data.toISOString().split('T')[0];
-            let row = `<tr>
+                let dataFormatada = data.toISOString().split('T')[0];
+                let row = `<tr>
                 <td><strong>Parcela ${i + 1}/${qtd}</strong></td>
                 <td>
                     <input type="date" name="parcelas[${i}][vencimento]" class="form-control" value="${dataFormatada}" required />
@@ -1034,22 +1089,50 @@
                     <input type="text" name="parcelas[${i}][valor]" class="form-control money" value="${valorParcela.replace('.', ',')}" required />
                 </td>
             </tr>`;
-            container.append(row);
-            data.setMonth(data.getMonth() + 1);
-        }
+                container.append(row);
+                data.setMonth(data.getMonth() + 1);
+            }
         }
 
         $(document).ready(function() {
-            gerarParcelas();
-            $('#valor_servico').on('change blur keyup', function() {
-            gerarParcelas();
-        });
+            // Se estiver editando nota com CSLL ou IR > 0, já marca "Sim (3)"
+            if (lerValorCampo('#aliquota_csll') > 0 || lerValorCampo('#aliquota_ir') > 0) {
+                $('#retencao_federal').val('3');
+            }
 
-            // Submit seguro do formulário
+            preencherAliquotasPadrao();
+            calcularImpostosFederais();
+            gerarParcelas();
+
+            // Executa novamente após 300ms caso o plugin de máscara (.money) ou nfse_clone.js limpe os campos no load
+            setTimeout(function() {
+                preencherAliquotasPadrao();
+                calcularImpostosFederais();
+                gerarParcelas();
+            }, 300);
+
+            $('#valor_servico, #aliquota_pis, #aliquota_cofins, #aliquota_csll, #aliquota_ir, #aliquota_inss, #aliquota_iss, #qtd_parcelas, #primeira_data').on('change blur keyup', function() {
+                calcularImpostosFederais();
+                gerarParcelas();
+            });
+
+            // Quando mudar o campo "Retém PIS/COFINS/CSLL?"
+            $('#retencao_federal').on('change', function() {
+                if ($(this).val() == '3') {
+                    $('#aliquota_csll').val(aliqCsllPadrao > 0 ? aliqCsllPadrao.toFixed(2).replace('.', ',') : '0,00');
+                    $('#aliquota_ir').val(aliqIrPadrao > 0 ? aliqIrPadrao.toFixed(2).replace('.', ',') : '0,00');
+                } else {
+                    $('#aliquota_csll').val('0,00');
+                    $('#aliquota_ir').val('0,00');
+                }
+                calcularImpostosFederais();
+                gerarParcelas();
+            });
+
             $('#form-servico').on('submit', function() {
-            let btnSalvar = $('#salvar');
-            btnSalvar.addClass('spinner spinner-white spinner-right disabled');
-        });
+                let btnSalvar = $('#salvar');
+                btnSalvar.addClass('spinner spinner-white spinner-right disabled');
+            });
         });
     </script>
 

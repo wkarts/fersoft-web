@@ -144,10 +144,11 @@ jobs:
 
       - name: Install dependencies
         env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
           COMPOSER_PROCESS_TIMEOUT: 0
           COMPOSER_NO_INTERACTION: 1
           COMPOSER_NO_AUDIT: 1
-        run: composer install --prefer-dist --no-interaction --no-progress
+        run: bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress
 
       - name: Prepare Laravel (MySQL 8)
         shell: bash

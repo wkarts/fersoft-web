@@ -9,18 +9,27 @@ use Illuminate\Support\Facades\DB;
 
 class GrupoCategoriaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $empresaId = request()->empresa_id ?? auth()->user()->empresa_id;
+        $empresaId = $request->empresa_id ?? auth()->user()->empresa_id;
 
         $grupos = GrupoCategoria::with('categorias')
             ->where('empresa_id', $empresaId)
             ->orderBy('nome')
             ->get();
 
+        // Busca as categorias sem grupo vinculadas à empresa atual
+        $categoriasSemGrupo = DB::table('categoria_contas as c')
+            ->leftJoin('categoria_conta_grupo as ccg', 'ccg.categoria_conta_id', '=', 'c.id')
+            ->where('c.empresa_id', $empresaId)
+            ->whereNull('ccg.categoria_conta_id')
+            ->select('c.id', 'c.nome')
+            ->orderBy('c.nome')
+            ->get();
+
         $title = 'Grupos de Categorias';
 
-        return view('grupo_categorias.index', compact('grupos', 'title'));
+        return view('grupo_categorias.index', compact('grupos', 'categoriasSemGrupo', 'title'));
     }
 
     public function create()
@@ -44,19 +53,35 @@ class GrupoCategoriaController extends Controller
             'categorias' => 'nullable|array',
         ]);
 
-        $empresaId = $request->empresa_id ?? auth()->user()->empresa_id;
+        $userLogged = session('user_logged');
+        $empresaId = $request->empresa_id ?? ($userLogged['empresa'] ?? auth()->user()->empresa_id ?? null);
 
-        DB::transaction(function () use ($request, $empresaId) {
+        // Se for matriz ou vier -1/vazio, salva null na filial
+        $filialId = $request->filial_id;
+        if (!$filialId || $filialId == -1 || $filialId == '-1') {
+            $filialId = null;
+        }
+
+        $usuarioId = $userLogged['id'] ?? auth()->id() ?? null;
+
+        DB::transaction(function () use ($request, $empresaId, $filialId, $usuarioId) {
             $grupo = GrupoCategoria::create([
                 'nome' => $request->nome,
                 'descricao' => $request->descricao,
                 'empresa_id' => $empresaId,
-                'filial_id' => $request->filial_id ?? null,
-                'usuario_id' => auth()->id(),
+                'filial_id' => $filialId,
+                'usuario_id' => $usuarioId,
             ]);
 
-            if ($request->has('categorias')) {
-                $grupo->categorias()->sync($request->categorias);
+            if ($request->has('categorias') && is_array($request->categorias)) {
+                // Prepara o array com o empresa_id para cada categoria na tabela pivot
+                $syncData = [];
+                foreach ($request->categorias as $categoriaId) {
+                    $syncData[$categoriaId] = [
+                        'empresa_id' => $empresaId,
+                    ];
+                }
+                $grupo->categorias()->sync($syncData);
             }
         });
 
@@ -90,16 +115,28 @@ class GrupoCategoriaController extends Controller
             'categorias' => 'nullable|array',
         ]);
 
-        $empresaId = $request->empresa_id ?? auth()->user()->empresa_id;
+        $userLogged = session('user_logged');
+        $empresaId = $request->empresa_id ?? ($userLogged['empresa'] ?? auth()->user()->empresa_id ?? null);
+
         $grupo = GrupoCategoria::where('empresa_id', $empresaId)->findOrFail($id);
 
-        DB::transaction(function () use ($request, $grupo) {
+        DB::transaction(function () use ($request, $grupo, $empresaId) {
             $grupo->update([
                 'nome' => $request->nome,
                 'descricao' => $request->descricao,
             ]);
 
-            $grupo->categorias()->sync($request->input('categorias', []));
+            $categorias = $request->input('categorias', []);
+            $syncData = [];
+            if (is_array($categorias)) {
+                foreach ($categorias as $categoriaId) {
+                    $syncData[$categoriaId] = [
+                        'empresa_id' => $empresaId,
+                    ];
+                }
+            }
+
+            $grupo->categorias()->sync($syncData);
         });
 
         return redirect('/grupo-categorias')->with('success', 'Grupo atualizado com sucesso!');

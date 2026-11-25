@@ -535,3 +535,13 @@ Route::group(['prefix' => 'traccar'], function(){
 // Connect|API - endpoint único de eventos/automações.
 Route::post('/webhooks/connect-api/{token}', 'ConnectApiWebhookController@receive')
     ->where('token', '[A-Za-z0-9]{32,128}');
+
+Route::group(['prefix' => 'v1/sync'], function () {
+    Route::post('/validar-empresa', 'Api\SyncApiController@validarEmpresa');
+    Route::get('/carga-inicial', 'Api\SyncApiController@cargaInicial');
+    Route::get('/atualizacoes', 'Api\SyncApiController@buscarAtualizacoes');
+    Route::post('/enviar-vendas', 'Api\SyncApiController@receberVendasOffline');
+    Route::post('/transmitir-sefaz', 'Api\SyncApiController@transmitirSefazOffline');
+    Route::post('/login', 'Api\SyncApiController@login');
+    Route::post('/fechar-caixa', [\App\Http\Controllers\Api\SyncApiController::class, 'fecharCaixaOffline']);
+});

@@ -16,6 +16,7 @@ use App\Models\Tributacao;
 use App\Services\Nfse\Drivers\SalvadorTools;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Services\Nfse\NfseTaxCalculator;
 use Mail;
 
@@ -39,6 +40,29 @@ class NfseController extends Controller
             }
             return $next($request);
         });
+    }
+
+    /**
+     * Define o provedor da NFS-e:
+     * - Simples Nacional (0) ou MEI (2/3) -> Sempre Portal Nacional ('nacional')
+     * - Regime Normal (1) -> Prefeitura Municipal (Dias d'Ávila, Salvador) ou Nacional
+     */
+    private function definirProvedorNfse($config, $tributacao, string $codigoIbge): string
+    {
+        $regimeTributacao = isset($tributacao->regime) ? (int) $tributacao->regime : 1;
+
+        // Se na Tributação Padrão NÃO for Regime Normal (1), ou seja, for Simples Nacional ou MEI:
+        // Envia obrigatoriamente para o Portal Nacional, mesmo sendo de Dias d'Ávila ou Salvador
+        if ($regimeTributacao !== 1) {
+            return 'nacional';
+        }
+
+        // Regime Normal (1): envia para o provedor municipal conforme código IBGE
+        return match ((string) $codigoIbge) {
+            '2910057' => 'diasdavila',
+            '2927408' => 'salvador',
+            default   => 'nacional',
+        };
     }
 
     public function index(){
@@ -134,9 +158,10 @@ class NfseController extends Controller
         $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->get();
 
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
         $tiposPagamento = ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'];
 
-        return view('nfse.create', compact('clientes', 'config', 'servicos', 'tiposPagamento', 'categorias'))
+        return view('nfse.create', compact('clientes', 'config', 'servicos', 'tiposPagamento', 'categorias', 'tributacao'))
             ->with('title', 'Nova NFSe');
     }
 
@@ -160,6 +185,7 @@ class NfseController extends Controller
             DB::transaction(function () use ($request, $totalServico) {
                 $usuario_id = session('user_logged')['id'] ?? null;
                 $filial_id = $request->input('filial_id') ?? (session('user_logged')['filial'] ?? null);
+                $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
 
                 $nfse = NotaServico::create([
                     'empresa_id' => $this->empresa_id,
@@ -188,7 +214,29 @@ class NfseController extends Controller
                     'telefone' => $request->telefone ?? ''
                 ]);
 
-                NfseServico::create([
+                // PIS, COFINS e INSS
+                $aliqPis    = ($request->aliquota_pis !== null && $request->aliquota_pis !== '') ? (float)__replace($request->aliquota_pis) : (float)($tributacao->pis ?? 0);
+                $aliqCofins = ($request->aliquota_cofins !== null && $request->aliquota_cofins !== '') ? (float)__replace($request->aliquota_cofins) : (float)($tributacao->cofins ?? 0);
+                $aliqInss   = $request->aliquota_inss ? (float)__replace($request->aliquota_inss) : 0;
+                $aliqIss    = $request->aliquota_iss ? (float)__replace($request->aliquota_iss) : 0;
+
+                // REGRA: Só coloca CSLL e IR se "Retém PIS/COFINS/CSLL?" estiver marcado como "Sim" (3)
+                $retemFederal = ((int)$request->input('retencao_federal', 1) === 3);
+                if ($retemFederal) {
+                    $aliqIr   = ($request->aliquota_ir !== null && $request->aliquota_ir !== '' && (float)__replace($request->aliquota_ir) > 0)
+                        ? (float)__replace($request->aliquota_ir) : (float)($tributacao->ir ?? 0);
+                    $aliqCsll = ($request->aliquota_csll !== null && $request->aliquota_csll !== '' && (float)__replace($request->aliquota_csll) > 0)
+                        ? (float)__replace($request->aliquota_csll) : (float)($tributacao->csll ?? 0);
+                } else {
+                    $aliqIr   = 0;
+                    $aliqCsll = 0;
+                }
+
+                $vDescIncond    = $request->desconto_incondicional ? (float)__replace($request->desconto_incondicional) : 0;
+                $outrasRet      = $request->outras_retencoes ? (float)__replace($request->outras_retencoes) : 0;
+                $issRetidoFlag  = (int)($request->iss_retido ?? 2);
+
+                $dadosServico = [
                     'nfse_id' => $nfse->id,
                     'discriminacao' => $request->discriminacao,
                     'valor_servico' => $totalServico,
@@ -197,28 +245,51 @@ class NfseController extends Controller
                     'codigo_servico' => $request->codigo_servico ?? '',
                     'codigo_tributacao_municipio' => $request->codigo_tributacao_municipio ?? '',
                     'exigibilidade_iss' => $request->exigibilidade_iss ?? 1,
-                    'iss_retido' => $request->iss_retido ?? 2,
+                    'iss_retido' => $issRetidoFlag,
                     'data_competencia' => $request->data_competencia ?? null,
                     'estado_local_prestacao_servico' => $request->estado_local_prestacao_servico ?? '',
                     'cidade_local_prestacao_servico' => $request->cidade_local_prestacao_servico ?? '',
                     'valor_deducoes' => $request->valor_deducoes ? __replace($request->valor_deducoes) : 0,
-                    'desconto_incondicional' => $request->desconto_incondicional ? __replace($request->desconto_incondicional) : 0,
+                    'desconto_incondicional' => $vDescIncond,
                     'desconto_condicional' => $request->desconto_condicional ? __replace($request->desconto_condicional) : 0,
-                    'outras_retencoes' => $request->outras_retencoes ? __replace($request->outras_retencoes) : 0,
-                    'aliquota_iss' => $request->aliquota_iss ? __replace($request->aliquota_iss) : 0,
-                    'aliquota_pis' => $request->aliquota_pis ? __replace($request->aliquota_pis) : 0,
-                    'aliquota_cofins' => $request->aliquota_cofins ? __replace($request->aliquota_cofins) : 0,
-                    'aliquota_inss' => $request->aliquota_inss ? __replace($request->aliquota_inss) : 0,
-                    'aliquota_ir' => $request->aliquota_ir ? __replace($request->aliquota_ir) : 0,
-                    'aliquota_csll' => $request->aliquota_csll ? __replace($request->aliquota_csll) : 0,
+                    'outras_retencoes' => $outrasRet,
+                    'aliquota_iss' => $aliqIss,
+                    'aliquota_pis' => $aliqPis,
+                    'aliquota_cofins' => $aliqCofins,
+                    'aliquota_inss' => $aliqInss,
+                    'aliquota_ir' => $aliqIr,
+                    'aliquota_csll' => $aliqCsll,
                     'intermediador' => $request->intermediador ?? 'n',
                     'documento_intermediador' => $request->documento_intermediador ?? '',
                     'nome_intermediador' => $request->nome_intermediador ?? '',
                     'im_intermediador' => $request->im_intermediador ?? '',
                     'responsavel_retencao_iss' => $request->responsavel_retencao_iss ?? 1,
-                ]);
+                ];
 
-                // Gravação Segura no Contas a Receber
+                if (Schema::hasColumn('nfse_servicos', 'aliq_ibs_uf')) {
+                    $dadosServico['aliq_ibs_uf'] = $request->aliq_ibs_uf ? __replace($request->aliq_ibs_uf) : ($tributacao->aliq_ibs_uf ?? 0.10);
+                }
+                if (Schema::hasColumn('nfse_servicos', 'aliq_cbs')) {
+                    $dadosServico['aliq_cbs'] = $request->aliq_cbs ? __replace($request->aliq_cbs) : ($tributacao->aliq_cbs ?? 0.90);
+                }
+
+                NfseServico::create($dadosServico);
+
+                // Cálculo do Valor Líquido (sem retenções) para o Contas a Receber
+                $vInssCalc = $aliqInss > 0 ? round($totalServico * ($aliqInss / 100), 2) : 0;
+                $vIrCalc   = $aliqIr > 0 ? round($totalServico * ($aliqIr / 100), 2) : 0;
+                $vCsllCalc = 0;
+                if ($retemFederal) {
+                    $vPisCalc    = round($totalServico * ($aliqPis / 100), 2);
+                    $vCofinsCalc = round($totalServico * ($aliqCofins / 100), 2);
+                    $vCsllPuro   = round($totalServico * ($aliqCsll / 100), 2);
+                    $vCsllCalc   = round($vPisCalc + $vCofinsCalc + $vCsllPuro, 2);
+                }
+                $vIssRetCalc = ($issRetidoFlag === 1) ? round($totalServico * ($aliqIss / 100), 2) : 0;
+                $totalRetencoesNota = round($vInssCalc + $vIrCalc + $vCsllCalc + $vIssRetCalc + $outrasRet + $vDescIncond, 2);
+                $valorLiquidoReceber = max(0, round($totalServico - $totalRetencoesNota, 2));
+
+                // Gravação Segura no Contas a Receber (pelo Valor Líquido sem a retenção)
                 if ($request->input('gerar_contas_receber') == '1' && $request->has('parcelas') && is_array($request->parcelas)) {
                     $categoriaId = $request->categoria_conta_id;
                     if (empty($categoriaId)) {
@@ -226,10 +297,24 @@ class NfseController extends Controller
                         $categoriaId = $primeiraCat->id ?? null;
                     }
 
+                    $totalParcelas = count($request->parcelas);
+                    $somaParcelasTela = 0;
+                    foreach ($request->parcelas as $p) {
+                        $somaParcelasTela += (float) __replace($p['valor'] ?? '0');
+                    }
+
+                    // Se na tela ainda estava o valor bruto cheio e houve retenção, divide o valorLiquidoReceber
+                    $recalcularPeloLiquido = ($totalRetencoesNota > 0 && abs($somaParcelasTela - $totalServico) < 0.05);
+                    $valorParcelaBase = $totalParcelas > 0 ? floor(($valorLiquidoReceber / $totalParcelas) * 100) / 100 : $valorLiquidoReceber;
+                    $restoCentavos = round($valorLiquidoReceber - ($valorParcelaBase * $totalParcelas), 2);
+
                     foreach ($request->parcelas as $key => $parcela) {
-                        $vlParcela = (float) __replace($parcela['valor'] ?? '0');
                         $numParcela = $key + 1;
-                        $totalParcelas = count($request->parcelas);
+                        if ($recalcularPeloLiquido) {
+                            $vlParcela = ($numParcela === $totalParcelas) ? round($valorParcelaBase + $restoCentavos, 2) : $valorParcelaBase;
+                        } else {
+                            $vlParcela = (float) __replace($parcela['valor'] ?? '0');
+                        }
 
                         DB::table('conta_recebers')->insert([
                             'empresa_id'      => $this->empresa_id,
@@ -305,7 +390,7 @@ class NfseController extends Controller
     }
 
     /**
-     * Atualização da NFS-e
+     * Atualização da NFS-e (incluindo gravação completa de todos os impostos)
      */
     public function update(Request $request, $id)
     {
@@ -319,6 +404,7 @@ class NfseController extends Controller
             }
 
             $totalServico = (float)__replace($request->valor_servico);
+            $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
 
             $item->update([
                 'valor_total'       => $totalServico,
@@ -338,7 +424,24 @@ class NfseController extends Controller
                 'telefone'          => $request->telefone ?? ''
             ]);
 
-            NfseServico::where('nfse_id', $item->id)->update([
+            $aliqPis    = ($request->aliquota_pis !== null && $request->aliquota_pis !== '') ? (float)__replace($request->aliquota_pis) : (float)($tributacao->pis ?? 0);
+            $aliqCofins = ($request->aliquota_cofins !== null && $request->aliquota_cofins !== '') ? (float)__replace($request->aliquota_cofins) : (float)($tributacao->cofins ?? 0);
+            $aliqInss   = $request->aliquota_inss ? (float)__replace($request->aliquota_inss) : 0;
+            $aliqIss    = $request->aliquota_iss ? (float)__replace($request->aliquota_iss) : 0;
+
+            // REGRA: Só coloca CSLL e IR se "Retém PIS/COFINS/CSLL?" estiver marcado como "Sim" (3)
+            $retemFederal = ((int)$request->input('retencao_federal', 1) === 3);
+            if ($retemFederal) {
+                $aliqIr   = ($request->aliquota_ir !== null && $request->aliquota_ir !== '' && (float)__replace($request->aliquota_ir) > 0)
+                    ? (float)__replace($request->aliquota_ir) : (float)($tributacao->ir ?? 0);
+                $aliqCsll = ($request->aliquota_csll !== null && $request->aliquota_csll !== '' && (float)__replace($request->aliquota_csll) > 0)
+                    ? (float)__replace($request->aliquota_csll) : (float)($tributacao->csll ?? 0);
+            } else {
+                $aliqIr   = 0;
+                $aliqCsll = 0;
+            }
+
+            $dadosUpdateServico = [
                 'discriminacao'                  => $request->discriminacao,
                 'valor_servico'                  => $totalServico,
                 'servico_id'                     => $request->servico_id,
@@ -350,7 +453,31 @@ class NfseController extends Controller
                 'data_competencia'               => $request->data_competencia ?? null,
                 'estado_local_prestacao_servico' => $request->estado_local_prestacao_servico ?? '',
                 'cidade_local_prestacao_servico' => $request->cidade_local_prestacao_servico ?? '',
-            ]);
+                'valor_deducoes'                 => $request->valor_deducoes ? __replace($request->valor_deducoes) : 0,
+                'desconto_incondicional'         => $request->desconto_incondicional ? __replace($request->desconto_incondicional) : 0,
+                'desconto_condicional'           => $request->desconto_condicional ? __replace($request->desconto_condicional) : 0,
+                'outras_retencoes'               => $request->outras_retencoes ? __replace($request->outras_retencoes) : 0,
+                'aliquota_iss'                   => $aliqIss,
+                'aliquota_pis'                   => $aliqPis,
+                'aliquota_cofins'                => $aliqCofins,
+                'aliquota_inss'                  => $aliqInss,
+                'aliquota_ir'                    => $aliqIr,
+                'aliquota_csll'                  => $aliqCsll,
+                'intermediador'                  => $request->intermediador ?? 'n',
+                'documento_intermediador'        => $request->documento_intermediador ?? '',
+                'nome_intermediador'             => $request->nome_intermediador ?? '',
+                'im_intermediador'               => $request->im_intermediador ?? '',
+                'responsavel_retencao_iss'       => $request->responsavel_retencao_iss ?? 1,
+            ];
+
+            if (Schema::hasColumn('nfse_servicos', 'aliq_ibs_uf')) {
+                $dadosUpdateServico['aliq_ibs_uf'] = $request->aliq_ibs_uf ? __replace($request->aliq_ibs_uf) : ($tributacao->aliq_ibs_uf ?? 0.10);
+            }
+            if (Schema::hasColumn('nfse_servicos', 'aliq_cbs')) {
+                $dadosUpdateServico['aliq_cbs'] = $request->aliq_cbs ? __replace($request->aliq_cbs) : ($tributacao->aliq_cbs ?? 0.90);
+            }
+
+            NfseServico::where('nfse_id', $item->id)->update($dadosUpdateServico);
 
             session()->flash('mensagem_sucesso', 'NFS-e atualizada com sucesso!');
         } catch (\Throwable $e) {
@@ -389,11 +516,35 @@ class NfseController extends Controller
             $valorFormatado = number_format($item->valor_total, 2, ',', '.');
             $numNota = $item->numero_nfse > 0 ? $item->numero_nfse : $item->id;
 
+            // 1. Garante que o PDF físico existe na pasta nfse_pdf (gera se não existir)
             $caminhoPdf = public_path('nfse_pdf/NFSe_' . $item->id . '.pdf');
+            if (!file_exists($caminhoPdf)) {
+                try {
+                    $pdfContent = view('nfse.danfse_nacional', [
+                        'dados' => $this->prepararDadosPdf($item),
+                        'item' => $item
+                    ])->render();
 
+                    $pdf = \App::make('dompdf.wrapper');
+                    $pdf->loadHTML($pdfContent)->setPaper('a4', 'portrait')->save($caminhoPdf);
+                } catch (\Throwable $ex) {
+                    Log::warning("Aviso ao gerar PDF no WhatsApp: " . $ex->getMessage());
+                }
+            }
+
+            // 2. Localiza o XML correspondente
+            $caminhoXml = public_path('nfse_doc/NFSe_' . $item->id . '.xml');
+            if (!file_exists($caminhoXml) && !empty($item->codigo_verificacao)) {
+                $caminhoXml = public_path('nfse_doc/' . $item->codigo_verificacao . '.xml');
+            }
+            if (!file_exists($caminhoXml) && !empty($item->uuid)) {
+                $caminhoXml = public_path('nfse_doc/' . $item->uuid);
+            }
+
+            // Mensagem informativa limpa
             $mensagem  = "📄 *NOTA FISCAL DE SERVIÇO ELETRÔNICA (NFS-e) #{$numNota}*\n\n";
             $mensagem .= "Olá, *{$item->razao_social}*!\n\n";
-            $mensagem .= "Segue em anexo o documento referente aos serviços prestados:\n\n";
+            $mensagem .= "Segue em anexo o documento em PDF e o arquivo XML referentes aos serviços prestados:\n\n";
             $mensagem .= "• *Número da Nota:* {$numNota}\n";
             $mensagem .= "• *Valor Total:* R$ {$valorFormatado}\n";
             if (!empty($item->codigo_verificacao)) {
@@ -403,7 +554,20 @@ class NfseController extends Controller
             $mensagem .= "Atenciosamente,\n*{$nomeEmpresa}*";
 
             $instanciaWhats = app('\App\Utils\WhatsAppUtil');
-            $retornoJson = $instanciaWhats->sendMessage($numero, $mensagem, $this->empresa_id, file_exists($caminhoPdf) ? $caminhoPdf : null);
+
+            // 3. Disparar o envio principal anexando primariamente o PDF
+            $retornoJson = null;
+            if (file_exists($caminhoPdf)) {
+                // Se a ferramenta aceitar arquivo no 4º parâmetro
+                $retornoJson = $instanciaWhats->sendMessage($numero, $mensagem, $this->empresa_id, $caminhoPdf);
+            } else {
+                $retornoJson = $instanciaWhats->sendMessage($numero, $mensagem, $this->empresa_id, null);
+            }
+
+            // 4. Envia o XML logo em seguida como arquivo complementar
+            if (file_exists($caminhoXml)) {
+                $instanciaWhats->sendMessage($numero, "📎 *XML Oficial da NFS-e #{$numNota}*", $this->empresa_id, $caminhoXml);
+            }
 
             $res = json_decode($retornoJson, true);
             if (isset($res['success']) && $res['success'] === false) {
@@ -411,7 +575,7 @@ class NfseController extends Controller
                 return redirect()->back()->with('mensagem_erro', "Erro no envio do WhatsApp: " . $msgErro);
             }
 
-            return redirect()->back()->with('mensagem_sucesso', "NFS-e #{$numNota} enviada por WhatsApp para {$item->razao_social}!");
+            return redirect()->back()->with('mensagem_sucesso', "NFS-e #{$numNota} enviada com sucesso por WhatsApp para {$item->razao_social}!");
 
         } catch (\Throwable $e) {
             Log::error("WhatsApp NFS-e #{$id}: Erro - " . $e->getMessage());
@@ -458,23 +622,13 @@ class NfseController extends Controller
             $codigoIbgeEmitente = str_pad(preg_replace('/\D/', '', $codigoIbgeEmitente), 7, '0', STR_PAD_LEFT);
 
             // 3. SELEÇÃO DINÂMICA DO PROVEDOR
+            // Regra solicitada: Simples Nacional e MEI emitem sempre pelo Portal Nacional ('nacional').
+            // Regime Normal emite pelas Prefeituras (Dias d'Ávila, Salvador) ou Nacional.
             $configArray = $config->toArray();
-            switch ((string) $codigoIbgeEmitente) {
-                case '2910057': // Dias d'Ávila - BA
-                    $provedor = 'diasdavila';
-                    if (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri'])) {
-                        throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
-                    }
-                    break;
+            $provedor = $this->definirProvedorNfse($config, $tributacao, $codigoIbgeEmitente);
 
-                case '2927408': // Salvador - BA
-                    $provedor = 'salvador';
-                    break;
-
-                case '2919207': // Lauro de Freitas - BA (Portal Nacional)
-                default:
-                    $provedor = 'nacional';
-                    break;
+            if ($provedor === 'diasdavila' && (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri']))) {
+                throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
             }
 
             $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $configArray, $certificate);
@@ -493,14 +647,25 @@ class NfseController extends Controller
             }
 
             // 5. DOCUMENTO E ENDEREÇO DO TOMADOR
-            $docTomador = preg_replace('/\D/', '', $item->documento ?? $cliente->cpf_cnpj ?? '');
+            $docTemp = !empty($item->documento) ? $item->documento : ($cliente->cpf_cnpj ?? '');
+            $docTomador = preg_replace('/\D/', '', $docTemp);
             $tipoDocTomador = strlen($docTomador) > 11 ? 'CNPJ' : 'CPF';
             $codigoIbgeTomador = preg_replace('/\D/', '', $item->cidade->codigo ?? $cliente->cidade->codigo ?? $codigoIbgeEmitente);
+            $cMunPrestacao = preg_replace('/\D/', '', $nfseServico->cidade_local_prestacao_servico ?? $codigoIbgeEmitente);
 
             // 6. CÁLCULO DE VALORES E REFORMA TRIBUTÁRIA USANDO O SERVICE
             $valorServico = (float) $item->valor_total;
             $vDescIncond = (float) ($nfseServico->desconto_incondicional ?? 0);
             $vDeducoes   = (float) ($nfseServico->valor_deducoes ?? 0);
+
+            // Calcula o ISS exato para poder deduzir da Reforma Tributária
+            $aliquotaIss = (float) ($nfseServico->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
+            $valorIssCalculado = round($valorServico * ($aliquotaIss / 100), 2);
+            $issRetido   = ((int) ($nfseServico->iss_retido ?? 0) === 1);
+
+            // Alíquotas IBS e CBS (da nota ou da Tributação Padrão)
+            $aliqIbsUfNota = (float) (($nfseServico->aliq_ibs_uf ?? 0) > 0 ? $nfseServico->aliq_ibs_uf : ($tributacao->aliq_ibs_uf ?? 0.1000));
+            $aliqCbsNota   = (float) (($nfseServico->aliq_cbs ?? 0) > 0 ? $nfseServico->aliq_cbs : ($tributacao->aliq_cbs ?? 0.9000));
 
             // Instancia o service oficial da Reforma Tributária
             $rtService = new \App\Services\ReformaTributariaService();
@@ -510,35 +675,65 @@ class NfseController extends Controller
                 'valor_total' => $valorServico,
                 'cst_ibs_cbs' => $servicoMaster->cst_ibscbs ?? $tributacao->cst_ibs_cbs ?? '000',
                 'class_trib_ibs_cbs' => $servicoMaster->codigo_class_trib ?? $tributacao->class_trib_ibs_cbs ?? '000001',
-                'aliq_cbs' => (float)($tributacao->aliq_cbs ?? 0.9000),
-                'aliq_ibs_uf' => (float)($tributacao->aliq_ibs_uf ?? 0.1000),
+                'aliq_cbs' => $aliqCbsNota,
+                'aliq_ibs_uf' => $aliqIbsUfNota,
                 'aliq_ibs_mun' => (float)($tributacao->aliq_ibs_mun ?? 0.0000),
             ];
 
-            // Executa o motor de cálculo oficial do service
             $rtService->calcularItem($itemCalculo, $this->empresa_id);
 
-            $baseCalculoIbsCbs = $itemCalculo['bc_ibs_cbs'] ?? round($valorServico - $vDeducoes - $vDescIncond, 2);
-            $valIbsEstadual    = $itemCalculo['valor_ibs_uf'] ?? round($baseCalculoIbsCbs * 0.001, 2);
-            $valCbs            = $itemCalculo['valor_cbs'] ?? round($baseCalculoIbsCbs * 0.009, 2);
+            // >>> REGRA NACIONAL EXATA: O ISS NÃO INTEGRA A BASE DO IBS/CBS <<<
+            $baseCalculoIbsCbs = round($valorServico - $vDeducoes - $vDescIncond - $valorIssCalculado, 2);
 
-            $aliquotaIss = (float) ($nfseServico->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
-            $issRetido   = ((int) ($nfseServico->iss_retido ?? 0) === 1);
+            // Calcula os impostos aplicando as alíquotas rigorosamente sobre a Base Limpa
+            $valIbsEstadual = round($baseCalculoIbsCbs * (($itemCalculo['aliq_ibs_uf'] ?? 0.10) / 100), 2);
+            $valCbs         = round($baseCalculoIbsCbs * (($itemCalculo['aliq_cbs'] ?? 0.90) / 100), 2);
 
-            // Retenções na Fonte
-            $vRetCP   = (float) ($nfseServico->aliquota_inss ?? $servicoMaster->aliquota_inss ?? 0) > 0
-                ? round($valorServico * (($nfseServico->aliquota_inss ?? $servicoMaster->aliquota_inss) / 100), 2) : 0.00;
-            $vRetIRRF = (float) ($nfseServico->aliquota_ir ?? 0) > 0
-                ? round($valorServico * ($nfseServico->aliquota_ir / 100), 2) : 0.00;
-            $vRetCSLL = (float) ($nfseServico->aliquota_csll ?? 0) > 0
-                ? round($valorServico * ($nfseServico->aliquota_csll / 100), 2) : 0.00;
 
-            // PIS/COFINS
+            // 1. Retenções na Fonte (INSS e IRRF)
+            $aliqInssNota = (float) ($nfseServico->aliquota_inss ?? 0);
+            $aliqIrNota   = (float) ($nfseServico->aliquota_ir ?? 0);
+
+            $vRetCP   = $aliqInssNota > 0 ? round($valorServico * ($aliqInssNota / 100), 2) : 0.00;
+            $vRetIRRF = $aliqIrNota > 0 ? round($valorServico * ($aliqIrNota / 100), 2) : 0.00;
+
+            // 2. Alíquotas de PIS, COFINS (da nota ou tributação padrão) e CSLL
             $cstPisCofins = ($opSimpNac === 1) ? '01' : '07';
-            $vPis    = (float) ($nfseServico->aliquota_pis ?? $servicoMaster->aliquota_pis ?? 0) > 0
-                ? round($valorServico * (($nfseServico->aliquota_pis ?? $servicoMaster->aliquota_pis) / 100), 2) : 0.00;
-            $vCofins = (float) ($nfseServico->aliquota_cofins ?? $servicoMaster->aliquota_cofins ?? 0) > 0
-                ? round($valorServico * (($nfseServico->aliquota_cofins ?? $servicoMaster->aliquota_cofins) / 100), 2) : 0.00;
+            $aliqPis      = (float) ($nfseServico->aliquota_pis > 0 ? $nfseServico->aliquota_pis : ($tributacao->pis ?? 0));
+            $aliqCofins   = (float) ($nfseServico->aliquota_cofins > 0 ? $nfseServico->aliquota_cofins : ($tributacao->cofins ?? 0));
+            $aliqCsll     = (float) (($nfseServico->aliquota_csll ?? 0) > 0 ? $nfseServico->aliquota_csll : 0);
+
+            // 3. Valores de PIS, COFINS e CSLL
+            $vPis      = round($valorServico * ($aliqPis / 100), 2);
+            $vCofins   = round($valorServico * ($aliqCofins / 100), 2);
+            $vCsllPuro = round($valorServico * ($aliqCsll / 100), 2);
+
+            // 4. Define se TEM RETENÇÃO ou NÃO:
+            // Se tiver CSLL preenchida (> 0) ou se veio retencao_federal = 3
+            $temRetencaoFederal = ($aliqCsll > 0 || (int) $request->input('retencao_federal', 0) === 3);
+
+            if ($temRetencaoFederal) {
+                $tpRetPisCofins = 3; // 3 = PIS/COFINS/CSLL Retidos pelo Tomador
+                // No Portal Nacional, a tag vRetCSLL exibe o total de Contribuições Sociais Retidas (PIS + COFINS + CSLL)
+                $totalContribuicoesSociaisRetidas = round($vPis + $vCofins + $vCsllPuro, 2);
+                $vRetCSLL = $totalContribuicoesSociaisRetidas;
+            } else {
+                $tpRetPisCofins = 2; // 2 = PIS/COFINS Não Retidos (Apuração Própria)
+                $totalContribuicoesSociaisRetidas = 0.00;
+                $vRetCSLL = 0.00;
+            }
+
+            // 5. Abatimento na Base de Cálculo do IBS/CBS (sempre abate PIS, COFINS e ISS)
+            $baseCalculoIbsCbsAbatida = round($valorServico - $vDeducoes - $vDescIncond - $valorIssCalculado - $vPis - $vCofins, 2);
+
+            if ($baseCalculoIbsCbsAbatida > 0) {
+                $valIbsEstadual = round($baseCalculoIbsCbsAbatida * (($itemCalculo['aliq_ibs_uf'] ?? 0.10) / 100), 2);
+                $valCbs         = round($baseCalculoIbsCbsAbatida * (($itemCalculo['aliq_cbs'] ?? 0.90) / 100), 2);
+            } else {
+                $baseCalculoIbsCbsAbatida = 0;
+                $valIbsEstadual = 0;
+                $valCbs = 0;
+            }
 
             // 7. MONTAGEM DA ESTRUTURA DPS (PADRÃO NACIONAL)
             $dpsData = [
@@ -577,10 +772,10 @@ class NfseController extends Controller
                     // Serviço
                     'serv' => [
                         'locPrest' => [
-                            'cLocPrest' => preg_replace('/\D/', '', $nfseServico->cidade_local_prestacao_servico ?? $codigoIbgeEmitente),
+                            'cLocPrest' => $cMunPrestacao,
                         ],
                         'cServ' => [
-                            'cTribNac'  => preg_replace('/\D/', '', $nfseServico->codigo_servico ?? $servicoMaster->codigo_servico ?? '140501'),
+                            'cTribNac'  => preg_replace('/[^0-9.]/', '', $nfseServico->codigo_servico ?? $servicoMaster->codigo_servico ?? '140501'),
                             'xDescServ' => $nfseServico->discriminacao ?? $servicoMaster->nome ?? 'PRESTAÇÃO DE SERVIÇOS',
                             'cNBS'      => preg_replace('/\D/', '', $servicoMaster->codigo_nbs ?? '101010100'),
                         ]
@@ -604,9 +799,13 @@ class NfseController extends Controller
                                 'vRetIRRF'  => number_format($vRetIRRF, 2, '.', ''),
                                 'vRetCSLL'  => number_format($vRetCSLL, 2, '.', ''),
                                 'piscofins' => [
-                                    'CST'     => $cstPisCofins,
-                                    'vPIS'    => number_format($vPis, 2, '.', ''),
-                                    'vCOFINS' => number_format($vCofins, 2, '.', '')
+                                    'CST'            => $cstPisCofins,
+                                    'vBCPisCofins'   => number_format($valorServico, 2, '.', ''),
+                                    'pAliqPis'       => number_format($aliqPis, 2, '.', ''),
+                                    'pAliqCofins'    => number_format($aliqCofins, 2, '.', ''),
+                                    'vPis'           => number_format($vPis, 2, '.', ''),
+                                    'vCofins'        => number_format($vCofins, 2, '.', ''),
+                                    'tpRetPisCofins' => $tpRetPisCofins
                                 ]
                             ]
                         ]
@@ -616,13 +815,16 @@ class NfseController extends Controller
                     'ibscbs' => [
                         'CST'         => $itemCalculo['cst_ibs_cbs'] ?? '000',
                         'cClassTrib'  => $itemCalculo['class_trib_ibs_cbs'] ?? '000001',
-                        'cIndOp'      => '050101',
-                        'baseCalculo' => number_format($baseCalculoIbsCbs, 2, '.', ''),
+                        'cIndOp'      => $servicoMaster->codigo_indicador_operacao
+                            ?? $servicoMaster->cIndOp
+                                ?? (($cMunPrestacao === $codigoIbgeEmitente) ? '050101' : '050201'),
+                        'indDest'     => '0',
+                        'baseCalculo' => number_format($baseCalculoIbsCbsAbatida, 2, '.', ''), // BC Abatida
                         'percIbsMun'  => '0.00',
                         'valIbsMun'   => '0.00',
-                        'percIbsEst'  => '0.10',
+                        'percIbsEst'  => number_format($aliqIbsUfNota, 2, '.', ''),
                         'valIbsEst'   => number_format($valIbsEstadual, 2, '.', ''),
-                        'percCbs'     => '0.90',
+                        'percCbs'     => number_format($aliqCbsNota, 2, '.', ''),
                         'valCbs'      => number_format($valCbs, 2, '.', ''),
                     ]
                 ]
@@ -706,6 +908,23 @@ class NfseController extends Controller
             $item->motivo_rejeicao = null;
             $item->save();
 
+            $this->atualizarStatusMedicaoNota($item->id, 'aprovado', $numeroNfse, $codVerificacao);
+
+            try {
+                $pdfPath = public_path('nfse_pdf/NFSe_' . $item->id . '.pdf');
+                // Simula a renderização da view de impressão para salvar no servidor
+                $pdfContent = view('nfse.danfse_nacional', [
+                    'dados' => $this->prepararDadosPdf($item),
+                    'item' => $item
+                ])->render();
+
+                // Se estiver a usar Dompdf ou biblioteca similar no seu projeto:
+                $pdf = \App::make('dompdf.wrapper');
+                $pdf->loadHTML($pdfContent)->setPaper('a4', 'portrait')->save($pdfPath);
+            } catch (\Throwable $ex) {
+                Log::warning("Aviso: Não foi possível gerar o PDF automático: " . $ex->getMessage());
+            }
+
             if (!empty($config->ultimo_numero_nfse) && (int)$resultado['numero_nfse'] > (int)$config->ultimo_numero_nfse) {
                 $config->ultimo_numero_nfse = (int)$resultado['numero_nfse'];
                 $config->save();
@@ -759,13 +978,35 @@ class NfseController extends Controller
             return response()->json(['erro' => true, 'motivo' => 'Apenas notas aprovadas podem ser canceladas.'], 422);
         }
 
-        $chaveAcesso = $item->codigo_verificacao;
+        // 1. Recupera a chave completa (50 dígitos no Padrão Nacional)
+        $chaveAcesso = trim((string) $item->codigo_verificacao);
+
+        // Se o banco cortou em 20 caracteres, recupera do campo uuid (ex: 2919207...xml)
+        if (strlen($chaveAcesso) < 50 && !empty($item->uuid)) {
+            $chaveUuid = str_replace('.xml', '', trim($item->uuid));
+            if (strlen($chaveUuid) >= 50) {
+                $chaveAcesso = $chaveUuid;
+            }
+        }
+
+        // Se ainda não tiver 50 dígitos, tenta ler de dentro do arquivo XML salvo
+        if (strlen($chaveAcesso) < 50) {
+            $xmlPath = !empty($item->uuid) ? public_path('nfse_doc/' . $item->uuid) : public_path('nfse_doc/NFSe_' . $item->id . '.xml');
+            if (file_exists($xmlPath)) {
+                $xmlContent = file_get_contents($xmlPath);
+                if (preg_match('/Id="NFS([0-9]{50})"/i', $xmlContent, $m)) {
+                    $chaveAcesso = $m[1];
+                }
+            }
+        }
+
         if (empty($chaveAcesso)) {
             return response()->json(['erro' => true, 'motivo' => 'Chave de acesso não localizada para esta nota.'], 422);
         }
 
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
         $certRes = Certificado::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
 
         if (!$config || !$certRes) {
             return response()->json(['erro' => true, 'motivo' => 'Certificado digital ou configurações não configurados.'], 400);
@@ -778,31 +1019,44 @@ class NfseController extends Controller
             }
             $certificate = Certificate::readPfx($certContent, $certRes->senha);
 
-            $codigoIbge = $config->codMun ?? $config->codigo_ibge_municipio ?? '2919207';
+            // Identificação segura do município emitente
+            $codigoIbge = null;
+            if (!empty($config->cidade_id)) {
+                $cidadeObj = DB::table('cidades')->where('id', $config->cidade_id)->first();
+                if ($cidadeObj) {
+                    $codigoIbge = $cidadeObj->codigo ?? $cidadeObj->codigo_ibge ?? null;
+                }
+            }
+            if (!$codigoIbge) {
+                $codigoIbge = $config->codMun ?? $config->codigo_ibge_municipio ?? '2919207';
+            }
+            $codigoIbge = str_pad(preg_replace('/\D/', '', $codigoIbge), 7, '0', STR_PAD_LEFT);
+
             $configArray = $config->toArray();
 
-            $provedor = match ((string) $codigoIbge) {
-                '2910057' => 'diasdavila',
-                '2927408' => 'salvador',
-                default   => 'nacional',
-            };
+            $provedor = (strlen(preg_replace('/\D/', '', $chaveAcesso)) === 50)
+                ? 'nacional'
+                : $this->definirProvedorNfse($config, $tributacao, $codigoIbge);
 
             $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $configArray, $certificate);
 
+            // No Portal Nacional, xMotivo exige no mínimo 15 caracteres
             $motivosTexto = [
-                '1' => 'Erro na emissão',
-                '2' => 'Serviço não prestado',
-                '4' => 'Duplicidade de nota'
+                '1' => 'Cancelamento por erro na emissao da nota fiscal',
+                '2' => 'Cancelamento por servico nao prestado ao tomador',
+                '4' => 'Cancelamento por duplicidade de emissao da nota'
             ];
-            $motivoEnvio = $motivosTexto[$request->motivo] ?? 'Erro na emissão';
+            $motivoEnvio = $motivosTexto[$request->motivo] ?? 'Cancelamento por erro na emissao da nota fiscal';
 
-            // Dispara o cancelamento no Portal Nacional
+            // Dispara o cancelamento no Portal Nacional / Municipal
             $resultado = $emissor->cancelar($chaveAcesso, $motivoEnvio);
 
             // Atualiza a nota no ERP
             $item->estado = 'cancelado';
             $item->motivo_rejeicao = 'Cancelada: ' . $motivoEnvio;
             $item->save();
+
+            $this->atualizarStatusMedicaoNota($item->id, 'cancelado');
 
             // Inativa contas a receber geradas por essa nota
             DB::table('conta_recebers')
@@ -832,6 +1086,7 @@ class NfseController extends Controller
         $item = NotaServico::where('empresa_id', $this->empresa_id)->findOrFail($request->id);
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
         $certRes = Certificado::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
 
         try {
             $certContent = file_exists(storage_path('app/public/certificados/' . $certRes->arquivo))
@@ -855,42 +1110,77 @@ class NfseController extends Controller
             Log::info("Consulta NFS-e: Município detectado = {$codigoIbgeEmitente}");
 
             $configArray = $config->toArray();
-            switch ((string) $codigoIbgeEmitente) {
-                case '2910057': // Dias d'Ávila - BA
-                    $provedor = 'diasdavila';
-                    if (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri'])) {
-                        throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
-                    }
-                    break;
-                case '2927408': // Salvador
-                    $provedor = 'salvador';
-                    break;
-                default:
-                    $provedor = 'nacional';
-                    break;
+            $provedor = $this->definirProvedorNfse($config, $tributacao, $codigoIbgeEmitente);
+
+            if ($provedor === 'diasdavila' && (empty($configArray['usuario_saatri']) || empty($configArray['senha_saatri']))) {
+                throw new \RuntimeException('Configure as credenciais do provedor municipal antes de continuar.');
             }
 
             Log::info("Consulta NFS-e: Provedor selecionado = {$provedor}");
 
             $emissor = \App\Services\Nfse\NfseServiceFactory::criar($provedor, $configArray, $certificate);
 
-            // Realiza a consulta no webservice da prefeitura
-            $retorno = $emissor->consultar($item->numero_nfse);
+            // >>> CORREÇÃO 1: Recupera a chave de 50 dígitos para o Portal Nacional ou usa o número/ID
+            $chaveNacional = trim((string) $item->codigo_verificacao);
+            if (strlen($chaveNacional) < 50 && !empty($item->uuid)) {
+                $possivelChave = str_replace('.xml', '', trim($item->uuid));
+                if (strlen($possivelChave) >= 50) {
+                    $chaveNacional = $possivelChave;
+                }
+            }
+
+            if ($provedor === 'nacional' && strlen($chaveNacional) >= 50) {
+                $numeroParaConsulta = $chaveNacional;
+            } else {
+                $numeroParaConsulta = $item->numero_nfse > 0 ? $item->numero_nfse : $item->id;
+            }
+
+            // Realiza a consulta no webservice usando o identificador correto
+            $retorno = $emissor->consultar($numeroParaConsulta);
 
             $statusRetorno = strtoupper($retorno['status'] ?? '');
             $isCancelada   = $retorno['cancelada'] ?? false;
             $numeroOficial = $retorno['numero_nfse'] ?? null;
             $codigoVerif   = $retorno['codigo_verificacao'] ?? null;
 
-            // SE A PREFEITURA INDICAR QUE ESTÁ CANCELADA
+            // Captura mensagem de rejeição caso venha no retorno da consulta
+            $mensagemRetorno = $retorno['mensagem'] ?? '';
+            $xmlRespConsulta = $retorno['xml_resposta'] ?? (is_string($retorno) ? $retorno : '');
+
+            // >>> CORREÇÃO 2: TRATAMENTO DO E91 (NOTA AINDA NA FILA) <<<
+            // Tem que vir ANTES da regra de rejeição, senão ele acha que é erro!
+            if (stripos($xmlRespConsulta, 'E91') !== false || stripos($xmlRespConsulta, 'não consta em nossa base') !== false) {
+                return response()->json([
+                    'status' => 'PROCESSANDO',
+                    'mensagem' => 'A nota está na fila de processamento do Ambiente Nacional. Aguarde uns minutos e consulte novamente.'
+                ]);
+            }
+
+            // 1. SE A PREFEITURA INDICAR QUE FOI REJEITADA DE VERDADE (ex: E1521, E1530)
+            if (stripos($xmlRespConsulta, 'Rejeit') !== false || stripos($xmlRespConsulta, '<Codigo>E') !== false) {
+                preg_match('/<Mensagem>(.*?)<\/Mensagem>/s', $xmlRespConsulta, $mMsg);
+                $descricaoErro = $mMsg[1] ?? 'Rejeitada no Ambiente Nacional.';
+
+                $item->estado = 'rejeitado';
+                $item->motivo_rejeicao = html_entity_decode(trim($descricaoErro));
+                $item->save();
+
+                return response()->json([
+                    'erro' => true,
+                    'mensagem' => 'A consulta detetou a rejeição: ' . $item->motivo_rejeicao
+                ], 422);
+            }
+
+            // 2. SE A PREFEITURA INDICAR QUE ESTÁ CANCELADA
             if ($isCancelada || $statusRetorno === 'CANCELADO') {
                 $item->estado = 'cancelado';
                 if ($numeroOficial) $item->numero_nfse = $numeroOficial;
                 if ($codigoVerif) $item->codigo_verificacao = $codigoVerif;
-                $item->motivo_rejeicao = 'Cancelada diretamente no Portal da Prefeitura de Dias d\'Ávila.';
+                $item->motivo_rejeicao = 'Cancelada diretamente no Portal da Prefeitura.';
                 $item->save();
 
-                // Atualiza Contas a Receber (inativa os lançamentos ou marca conforme regra de cancelamento)
+                $this->atualizarStatusMedicaoNota($item->id, 'cancelado');
+
                 DB::table('conta_recebers')
                     ->where('empresa_id', $this->empresa_id)
                     ->where('referencia', 'like', "NFS-e #" . $item->id . "%")
@@ -898,28 +1188,30 @@ class NfseController extends Controller
 
                 return response()->json([
                     'status' => 'CANCELADO',
-                    'mensagem' => 'A consulta detetou que a NFS-e foi cancelada no portal. Status atualizado no sistema com sucesso!'
+                    'mensagem' => 'A consulta detetou que a NFS-e foi cancelada no portal.'
                 ]);
             }
 
-            // SE ESTIVER AUTORIZADA
+            // 3. SE ESTIVER AUTORIZADA
             if ($statusRetorno === 'AUTORIZADO' || !empty($numeroOficial)) {
                 $item->estado = 'aprovado';
                 $item->numero_nfse = $numeroOficial ?? $item->numero_nfse;
                 if (!empty($codigoVerif)) {
                     $item->codigo_verificacao = $codigoVerif;
                 }
+
+                // Se a consulta devolveu o XML oficial da nota, salva na pasta nfse_doc
+                if (!empty($xmlRespConsulta) && str_contains($xmlRespConsulta, '<NFSe')) {
+                    $xmlName = (!empty($codigoVerif) && strlen($codigoVerif) >= 40) ? $codigoVerif . '.xml' : 'NFSe_' . $item->id . '.xml';
+                    file_put_contents(public_path('nfse_doc/' . $xmlName), $xmlRespConsulta);
+                    $item->uuid = $xmlName;
+                    $item->url_xml = asset('nfse_doc/' . $xmlName);
+                }
+
                 $item->motivo_rejeicao = null;
                 $item->save();
 
-                DB::table('conta_recebers')
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('referencia', 'like', "NFS-e #" . $item->id . "%")
-                    ->update([
-                        'nf_numero'  => $item->numero_nfse,
-                        'nf_modelo'  => 55,
-                        'updated_at' => now()
-                    ]);
+                $this->atualizarStatusMedicaoNota($item->id, 'aprovado', $item->numero_nfse, $item->codigo_verificacao);
 
                 return response()->json([
                     'status' => 'APROVADO',
@@ -941,45 +1233,80 @@ class NfseController extends Controller
         }
     }
 
-    public function baixarXml($id){
-        $item = NotaServico::findOrFail($id);
-        $path = public_path('nfse_doc/NFSe_' . $item->id . '.xml');
+    public function baixarXml($id)
+    {
+        $item = NotaServico::where('empresa_id', $this->empresa_id)->findOrFail($id);
 
-        if(file_exists($path)){
-            return response()->download($path);
-        } else {
-            return redirect()->back()->with('mensagem_erro', 'Arquivo XML não encontrado!');
+        // Lista de possíveis nomes com que o XML foi salvo na pasta nfse_doc
+        $arquivosTentativa = [];
+
+        // 1. Nome salvo no campo uuid (ex: 2919207...xml ou NFSe_16.xml)
+        if (!empty($item->uuid)) {
+            $nomeUuid = str_ends_with($item->uuid, '.xml') ? $item->uuid : $item->uuid . '.xml';
+            $arquivosTentativa[] = public_path('nfse_doc/' . $nomeUuid);
         }
+
+        // 2. Chave salva em codigo_verificacao
+        if (!empty($item->codigo_verificacao)) {
+            $arquivosTentativa[] = public_path('nfse_doc/' . $item->codigo_verificacao . '.xml');
+        }
+
+        // 3. Padrão por ID da nota ou RPS local
+        $arquivosTentativa[] = public_path('nfse_doc/NFSe_' . $item->id . '.xml');
+        $arquivosTentativa[] = public_path('nfse_doc/RPS_Local_' . $item->id . '.xml');
+
+        foreach ($arquivosTentativa as $path) {
+            if (file_exists($path)) {
+                $numeroDownload = $item->numero_nfse > 0 ? $item->numero_nfse : $item->id;
+                return response()->download($path, "NFSe_{$numeroDownload}.xml", [
+                    'Content-Type' => 'application/xml',
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('mensagem_erro', 'Arquivo XML não encontrado no servidor!');
     }
 
     public function imprimir($id)
     {
         $item = NotaServico::where('empresa_id', $this->empresa_id)->findOrFail($id);
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
         $cliente = Cliente::with('cidade')->find($item->cliente_id);
-        $servicoMaster = $item->servico ? ($item->servico->servico ?? Servico::find($item->servico->servico_id)) : null;
+        $servicoItem = $item->servico;
+        $servicoMaster = $servicoItem ? ($servicoItem->servico ?? Servico::find($servicoItem->servico_id)) : null;
 
-        // 1. RECUPERAÇÃO DA CHAVE E LEITURA DO XML
-        $chaveAcesso = $item->codigo_verificacao;
-
-        // Localiza o XML independente de ter sido salvo pelo ID, pela Chave ou UUID
-        $xmlPath = public_path('nfse_doc/NFSe_' . $item->id . '.xml');
-        if (!file_exists($xmlPath) && !empty($chaveAcesso)) {
-            $xmlPath = public_path('nfse_doc/' . $chaveAcesso . '.xml');
+        // 1. LOCALIZA O ARQUIVO XML E RECUPERA A CHAVE DE 50 DÍGITOS
+        $chaveAcesso = trim((string) $item->codigo_verificacao);
+        if (strlen($chaveAcesso) < 50 && !empty($item->uuid)) {
+            $possivelChave = str_replace('.xml', '', trim($item->uuid));
+            if (strlen($possivelChave) >= 50) {
+                $chaveAcesso = $possivelChave;
+            }
         }
-        if (!file_exists($xmlPath) && !empty($item->uuid)) {
-            $xmlPath = public_path('nfse_doc/' . $item->uuid);
+
+        $possiveisXml = [
+            !empty($item->uuid) ? public_path('nfse_doc/' . (str_ends_with($item->uuid, '.xml') ? $item->uuid : $item->uuid . '.xml')) : null,
+            !empty($chaveAcesso) ? public_path('nfse_doc/' . $chaveAcesso . '.xml') : null,
+            public_path('nfse_doc/NFSe_' . $item->id . '.xml'),
+        ];
+
+        $xmlPath = null;
+        foreach (array_filter($possiveisXml) as $caminho) {
+            if (file_exists($caminho)) {
+                $xmlPath = $caminho;
+                break;
+            }
         }
 
         $descricaoTribNac = null;
         $descricaoNbs     = null;
+        $xmlContent       = null;
 
-        // Lê o XML sempre para extrair as tags oficiais retornadas pela SEFIN
-        if (file_exists($xmlPath)) {
+        if ($xmlPath && file_exists($xmlPath)) {
             $xmlContent = file_get_contents($xmlPath);
 
-            // Chave de acesso (se ainda não estava no banco)
-            if (empty($chaveAcesso) || strlen($chaveAcesso) < 40) {
+            if (empty($chaveAcesso) || strlen($chaveAcesso) < 50) {
                 if (preg_match('/(?:Id="NFS|chaveAcesso="?|chNFSe>)([0-9]{50})/i', $xmlContent, $m)) {
                     $chaveAcesso = $m[1];
                 } elseif (preg_match('/([0-9]{50})/', $xmlContent, $m)) {
@@ -987,45 +1314,110 @@ class NfseController extends Controller
                 }
             }
 
-            // Descrição da Tributação Nacional (<xTribNac>)
             if (preg_match('/<xTribNac>(.*?)<\/xTribNac>/is', $xmlContent, $mTrib)) {
                 $descricaoTribNac = html_entity_decode(trim($mTrib[1]), ENT_QUOTES, 'UTF-8');
             }
 
-            // Descrição da NBS (<xNBS>)
             if (preg_match('/<xNBS>(.*?)<\/xNBS>/is', $xmlContent, $mNbs)) {
                 $descricaoNbs = html_entity_decode(trim($mNbs[1]), ENT_QUOTES, 'UTF-8');
             }
         }
 
-        // Fallbacks de segurança
         if (empty($chaveAcesso)) {
             $chaveAcesso = '29192072205693853000170000000000014026101412894024';
         }
 
-        $codServico = $item->servico->codigo_servico ?? $servicoMaster->codigo_servico ?? '030303';
-        if (empty($descricaoTribNac) && $codServico == '030303') {
-            $descricaoTribNac = 'Exploração de quadras esportivas, estádios, ginásios, canchas e congêneres, para realização de eventos ou negócios de qualquer natureza.';
+        $codServico = $servicoItem->codigo_servico ?? $servicoMaster->codigo_servico ?? '040303';
+        if (empty($descricaoTribNac)) {
+            $descricaoTribNac = $servicoMaster->nome ?? 'Serviços prestados';
         }
-
         if (empty($descricaoNbs)) {
-            $descricaoNbs = 'Serviços médicos especializados';
+            $descricaoNbs = 'Serviços especializados';
         }
 
-        // 2. VALORES E ALÍQUOTAS
-        $valorServico = (float) $item->valor_total;
-        $aliquotaIss  = (float) ($item->servico->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
-        $valorIss     = round($valorServico * ($aliquotaIss / 100), 2);
-        $dataEmissao  = date('d/m/Y H:i:s', strtotime($item->updated_at));
+        // 2. CÁLCULO DE VALORES, RETENÇÕES E VALOR LÍQUIDO
+        $valorServico  = (float) ($item->valor_total ?? 0);
+        $vDescIncond   = (float) ($servicoItem->desconto_incondicional ?? 0);
+        $vDescCond     = (float) ($servicoItem->desconto_condicional ?? 0);
+        $vDeducoes     = (float) ($servicoItem->valor_deducoes ?? 0);
 
-        // 3. ARRAY COMPLETO PARA A VIEW (COM AS DESCRIÇÕES INCLUÍDAS)
+        $aliquotaIss   = (float) ($servicoItem->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
+        $valorIss      = round($valorServico * ($aliquotaIss / 100), 2);
+        $issRetidoBool = ((int) ($servicoItem->iss_retido ?? 2) === 1);
+
+        // Alíquotas Federais (prioriza o que foi salvo na nota; para PIS/COFINS usa fallback da tributação padrão)
+        $aliqPis    = (float) (($servicoItem->aliquota_pis ?? 0) > 0 ? $servicoItem->aliquota_pis : ($tributacao->pis ?? 0));
+        $aliqCofins = (float) (($servicoItem->aliquota_cofins ?? 0) > 0 ? $servicoItem->aliquota_cofins : ($tributacao->cofins ?? 0));
+        $aliqInss   = (float) ($servicoItem->aliquota_inss ?? 0);
+        $aliqIr     = (float) ($servicoItem->aliquota_ir ?? 0);
+        $aliqCsll   = (float) ($servicoItem->aliquota_csll ?? 0);
+
+        $valPis    = round($valorServico * ($aliqPis / 100), 2);
+        $valCofins = round($valorServico * ($aliqCofins / 100), 2);
+        $vRetCP    = $aliqInss > 0 ? round($valorServico * ($aliqInss / 100), 2) : 0.00;
+        $vRetIRRF  = $aliqIr > 0 ? round($valorServico * ($aliqIr / 100), 2) : 0.00;
+        $vCsllPuro = $aliqCsll > 0 ? round($valorServico * ($aliqCsll / 100), 2) : 0.00;
+
+        // Verifica no XML se tpRetPisCofins == 3 ou se CSLL > 0 na nota
+        $temRetencaoPisCofinsCsll = ($aliqCsll > 0);
+        if ($xmlContent && preg_match('/<tpRetPisCofins>([0-9]+)<\/tpRetPisCofins>/i', $xmlContent, $mTpRet)) {
+            $temRetencaoPisCofinsCsll = ((int) $mTpRet[1] === 3);
+        }
+
+        if ($temRetencaoPisCofinsCsll) {
+            // Soma PIS + COFINS + CSLL quando retido
+            $totalContribuicoesSociaisRetidas = round($valPis + $valCofins + $vCsllPuro, 2);
+            // Se o XML já trouxer <vRetCSLL>, garante exatamente o valor do XML
+            if ($xmlContent && preg_match('/<vRetCSLL>([0-9.]+)<\/vRetCSLL>/i', $xmlContent, $mCsllXml)) {
+                $totalContribuicoesSociaisRetidas = (float) $mCsllXml[1];
+            }
+        } else {
+            $totalContribuicoesSociaisRetidas = 0.00;
+        }
+
+        // Total de retenções federais e líquido da nota
+        $totalRetencoesFederais = round($totalContribuicoesSociaisRetidas + $vRetIRRF + $vRetCP, 2);
+        $totalRetencoesGeral    = round($totalRetencoesFederais + ($issRetidoBool ? $valorIss : 0), 2);
+        $valorLiquidoNfse       = round($valorServico - $vDescIncond - $totalRetencoesGeral, 2);
+
+        // Se o XML autorizado tiver <vTotalRet> e <vLiq>, usa os valores oficiais da SEFIN
+        if ($xmlContent) {
+            if (preg_match('/<vTotalRet>([0-9.]+)<\/vTotalRet>/i', $xmlContent, $mTotRet)) {
+                $totalRetencoesGeral = (float) $mTotRet[1];
+            }
+            if (preg_match('/<vLiq>([0-9.]+)<\/vLiq>/i', $xmlContent, $mLiq)) {
+                $valorLiquidoNfse = (float) $mLiq[1];
+            }
+        }
+
+        // 3. CÁLCULO IBS / CBS (REFORMA TRIBUTÁRIA)
+        $baseCalculoIbsCbs = max(0, round($valorServico - $vDeducoes - $vDescIncond - $valorIss - $valPis - $valCofins, 2));
+        if ($xmlContent && preg_match('/<IBSCBS>.*?<valores>.*?<vBC>([0-9.]+)<\/vBC>/is', $xmlContent, $mBcIbs)) {
+            $baseCalculoIbsCbs = (float) $mBcIbs[1];
+        }
+
+        $valCbs         = round($baseCalculoIbsCbs * 0.0036, 2);
+        $valIbsEstadual = round($baseCalculoIbsCbs * 0.0004, 2);
+        if ($xmlContent) {
+            if (preg_match('/<vCBS>([0-9.]+)<\/vCBS>/i', $xmlContent, $mVCbs)) {
+                $valCbs = (float) $mVCbs[1];
+            }
+            if (preg_match('/<vIBSUF>([0-9.]+)<\/vIBSUF>/i', $xmlContent, $mVIbsUf)) {
+                $valIbsEstadual = (float) $mVIbsUf[1];
+            }
+        }
+        $valTotalIbsCbs = round($valCbs + $valIbsEstadual, 2);
+
+        $dataEmissao = date('d/m/Y H:i:s', strtotime($item->updated_at));
+
+        // 4. MONTAGEM COMPLETA DO ARRAY $dados PARA O DANFSE
         $dados = [
             'chave'              => $chaveAcesso,
             'numero_nfse'        => $item->numero_nfse > 0 ? $item->numero_nfse : $item->id,
             'numero_dps'         => $item->id,
             'serie_dps'          => $item->serie ?: '1',
-            'competencia'        => $item->servico && $item->servico->data_competencia
-                ? date('d/m/Y', strtotime($item->servico->data_competencia))
+            'competencia'        => $servicoItem && $servicoItem->data_competencia
+                ? date('d/m/Y', strtotime($servicoItem->data_competencia))
                 : date('d/m/Y', strtotime($item->created_at)),
 
             // Datas
@@ -1051,24 +1443,108 @@ class NfseController extends Controller
             'tomador_cep'        => $item->cep ?? ($cliente->cep ?? ''),
             'tomador_fone'       => $cliente->telefone ?? $cliente->celular ?? '-',
 
-            // Serviço e Descrições Extraídas
+            // Serviço
             'codigo_servico'     => $codServico,
             'codigo_nbs'         => $servicoMaster->codigo_nbs ?? '123012200',
             'descricao_trib_nac' => $descricaoTribNac,
             'descricao_nbs'      => $descricaoNbs,
-            'discriminacao'      => $item->servico->discriminacao ?? $servicoMaster->nome ?? 'REFERENTE SERVIÇO PRESTADO',
-            'local_prestacao'    => ($item->cidade->nome ?? 'Lauro de Freitas') . ' - ' . ($item->cidade->uf ?? 'BA'),
+            'discriminacao'      => $servicoItem->discriminacao ?? $servicoMaster->nome ?? 'REFERENTE SERVIÇO PRESTADO',
+            'local_prestacao'    => (function() use ($servicoItem) {
+                $codMun = $servicoItem->cidade_local_prestacao_servico ?? null;
+                if (!empty($codMun)) {
+                    $cidadeObj = \App\Models\Cidade::where('codigo', $codMun)->orWhere('id', $codMun)->first();
+                    if ($cidadeObj) {
+                        return $cidadeObj->nome . ' - ' . $cidadeObj->uf;
+                    }
+                    return $codMun;
+                }
+                return 'Lauro de Freitas - BA';
+            })(),
 
-            // Valores e Impostos
-            'valor_total'        => $valorServico,
-            'valor_servico'      => $valorServico,
-            'valor_liquido'      => $valorServico,
-            'aliquota_iss'       => number_format($aliquotaIss, 2, ',', '.'),
-            'valor_iss'          => $valorIss,
-            'iss_retido'         => ((int) ($item->servico->iss_retido ?? 0) === 1),
+            // Valores Principais e ISS
+            'valor_total'                 => $valorServico,
+            'valor_servico'               => $valorServico,
+            'desconto_incondicional'      => $vDescIncond,
+            'desconto_condicional'        => $vDescCond,
+            'valor_deducoes'              => $vDeducoes,
+            'valor_liquido'               => $valorLiquidoNfse,
+            'v_liq'                       => $valorLiquidoNfse,
+            'aliquota_iss'                => number_format($aliquotaIss, 2, ',', '.'),
+            'valor_iss'                   => $valorIss,
+            'iss_retido'                  => $issRetidoBool,
+
+            // Tributos Federais e Retenções (envia todos os aliases para a Blade não ficar zerada)
+            'pis_proprio'                 => $valPis,
+            'cofins_proprio'              => $valCofins,
+            'valor_pis'                   => $valPis,
+            'valor_cofins'                => $valCofins,
+            'v_pis'                       => $valPis,
+            'v_cofins'                    => $valCofins,
+            'v_ret_pis'                   => $valPis,
+            'v_ret_cofins'                => $valCofins,
+            'pis'                         => $valPis,
+            'cofins'                      => $valCofins,
+
+            'v_ret_cp'                    => $vRetCP,
+            'v_ret_inss'                  => $vRetCP,
+            'valor_inss'                  => $vRetCP,
+            'inss'                        => $vRetCP,
+
+            'v_ret_irrf'                  => $vRetIRRF,
+            'valor_ir'                    => $vRetIRRF,
+            'valor_irrf'                  => $vRetIRRF,
+            'irrf'                        => $vRetIRRF,
+            'ir'                          => $vRetIRRF,
+
+            // CSLL pura (1%) e Contribuições Sociais Retidas (PIS + COFINS + CSLL)
+            'csll_puro'                   => $vCsllPuro,
+            'v_ret_csll'                  => $vCsllPuro,
+            'valor_csll'                  => $vCsllPuro,
+            'csll'                        => $vCsllPuro,
+            'total_contribuicoes_sociais' => $totalContribuicoesSociaisRetidas,
+            'total_retencoes'             => $totalRetencoesGeral,
+            'valor_total_retencoes'       => $totalRetencoesGeral,
+            'v_total_ret'                 => $totalRetencoesGeral,
+            'outras_retencoes'            => $totalRetencoesGeral,
+
+            // IBS / CBS (Reforma Tributária)
+            'ibscbs_bc'                   => $baseCalculoIbsCbs,
+            'cst_ibscbs'                  => $servicoMaster->cst_ibscbs ?? '200',
+            'class_trib'                  => $servicoMaster->codigo_class_trib ?? '200029',
+            'aliq_cbs'                    => 0.90,
+            'aliq_efetiva_cbs'            => 0.36,
+            'val_cbs'                     => $valCbs,
+            'aliq_ibs_est'                => 0.10,
+            'aliq_efetiva_est'            => 0.04,
+            'val_ibs_est'                 => $valIbsEstadual,
+            'aliq_ibs_mun'                => 0.00,
+            'aliq_efetiva_mun'            => 0.00,
+            'val_ibs_mun'                 => 0.00,
+            'val_total_ibscbs'            => $valTotalIbsCbs,
+            'total_ibscbs'                => $valTotalIbsCbs,
         ];
 
+        try {
+            $pdfPath = public_path('nfse_pdf/NFSe_' . $item->id . '.pdf');
+            $pdfContent = view('nfse.danfse_nacional', [
+                'dados' => $dados,
+                'item'  => $item
+            ])->render();
+
+            $pdf = \App::make('dompdf.wrapper');
+            $pdf->loadHTML($pdfContent)->setPaper('a4', 'portrait')->save($pdfPath);
+        } catch (\Throwable $ex) {
+            Log::warning("Erro ao salvar PDF físico na impressão: " . $ex->getMessage());
+        }
+
         return view('nfse.danfse_nacional', compact('dados', 'item'));
+    }
+
+    private function prepararDadosPdf($item)
+    {
+        // Reaproveita a mesma lógica chamando os dados completos
+        $response = $this->imprimir($item->id);
+        return $response->getData()['dados'] ?? [];
     }
 
     public function enviarXml(Request $request){
@@ -1149,10 +1625,11 @@ class NfseController extends Controller
 
         $categorias = CategoriaConta::where('empresa_id', $this->empresa_id)->get();
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
         $tiposPagamento = ['Dinheiro', 'Boleto', 'Cartão de Crédito', 'Cartão de Débito', 'Pix', 'Transferência'];
 
         // CORREÇÃO: Apontar para 'nfse.create' e enviar as variáveis corretas
-        return view('nfse.create', compact('item', 'clientes', 'config', 'servicos', 'tiposPagamento', 'categorias'))
+        return view('nfse.create', compact('item', 'clientes', 'config', 'servicos', 'tiposPagamento', 'categorias', 'tributacao'))
             ->with('title', 'Editar NFS-e #' . $item->id);
     }
 
@@ -1161,11 +1638,17 @@ class NfseController extends Controller
     {
         $item = NotaServico::findOrFail($id);
 
-        $xmlPath = public_path('nfse_doc/NFSe_' . $item->id . '.xml');
+        $possiveisXml = [
+            !empty($item->uuid) ? public_path('nfse_doc/' . (str_ends_with($item->uuid, '.xml') ? $item->uuid : $item->uuid . '.xml')) : null,
+            !empty($item->codigo_verificacao) ? public_path('nfse_doc/' . $item->codigo_verificacao . '.xml') : null,
+            public_path('nfse_doc/NFSe_' . $item->id . '.xml'),
+        ];
 
         // Se a nota já foi aprovada, mostra o XML real
-        if ($item->estado === 'aprovado' && file_exists($xmlPath)) {
-            return response(file_get_contents($xmlPath))->header('Content-Type', 'application/xml');
+        foreach (array_filter($possiveisXml) as $xmlPath) {
+            if ($item->estado === 'aprovado' && file_exists($xmlPath)) {
+                return response(file_get_contents($xmlPath))->header('Content-Type', 'application/xml');
+            }
         }
 
         // Se for uma nota nova (Rascunho), mostra os dados em JSON para conferência
@@ -1215,7 +1698,7 @@ class NfseController extends Controller
             'tomador_cnpj'       => $item->documento ?? ($cliente->cpf_cnpj ?? ''),
             'tomador_nome'       => $item->razao_social ?? ($cliente->razao_social ?? 'CONSUMIDOR'),
             'tomador_endereco'   => "{$item->rua}, {$item->numero} - {$item->bairro}",
-            'tomador_cidade'     => ($item->cidade->nome ?? $cliente->cidade->nome ?? 'Lauro de Freitas') . ' / ' . ($item->cidade->uf ?? $cliente->cidade->uf ?? 'BA'),
+            'tomador_cidade'     => ($item->cidade->nome ?? $cliente->cidade->nome ?? 'Lauro de Freitas') . ' / ' . ($item->cidade->uf ?? 'BA'),
             'tomador_cep'        => $item->cep ?? ($cliente->cep ?? ''),
             'tomador_fone'       => $cliente->telefone ?? $cliente->celular ?? '-',
 
@@ -1235,5 +1718,493 @@ class NfseController extends Controller
         ];
 
         return view('nfse.danfse_nacional', compact('dados', 'item'));
+    }
+
+    /**
+     * Duplica uma NFS-e existente gerando um novo rascunho
+     */
+    public function clone($id)
+    {
+        try {
+            $original = NotaServico::where('empresa_id', $this->empresa_id)->with('servico')->findOrFail($id);
+
+            DB::transaction(function () use ($original) {
+                $novaNota = $original->replicate();
+                $novaNota->estado = 'novo';
+                $novaNota->numero_nfse = 0;
+                $novaNota->codigo_verificacao = '';
+                $novaNota->url_xml = '';
+                $novaNota->url_pdf_nfse = '';
+                $novaNota->url_pdf_rps = '';
+                $novaNota->created_at = now();
+                $novaNota->updated_at = now();
+                $novaNota->save();
+
+                if ($original->servico) {
+                    $novoServico = $original->servico->replicate();
+                    $novoServico->nfse_id = $novaNota->id;
+                    $novoServico->save();
+                }
+            });
+
+            session()->flash('mensagem_sucesso', 'NFS-e duplicada com sucesso!');
+        } catch (\Throwable $e) {
+            Log::error("Erro ao clonar NFS-e #{$id}: " . $e->getMessage());
+            session()->flash('mensagem_erro', 'Erro ao duplicar NFS-e: ' . $e->getMessage());
+        }
+
+        return redirect('/nfse');
+    }
+
+    /*private function prepararDadosPdf($item) {
+        $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $cliente = Cliente::with('cidade')->find($item->cliente_id);
+        $servicoMaster = $item->servico ? ($item->servico->servico ?? Servico::find($item->servico->servico_id)) : null;
+
+        $valorServico = (float) $item->valor_total;
+        $aliquotaIss  = (float) ($item->servico->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
+        $valorIss     = round($valorServico * ($aliquotaIss / 100), 2);
+        $dataEmissao  = date('d/m/Y H:i:s', strtotime($item->updated_at));
+
+        // Dados completos exigidos pelo DANFSe
+        return [
+            'chave'              => $item->codigo_verificacao ?? '29192072205693853000170000000000014026101412894024',
+            'numero_nfse'        => $item->numero_nfse > 0 ? $item->numero_nfse : $item->id,
+            'numero_dps'         => $item->id,
+            'serie_dps'          => $item->serie ?: '1',
+            'competencia'        => date('d/m/Y', strtotime($item->created_at)),
+            'data_emissao'       => $dataEmissao,
+            'data_emissao_nfse'  => $dataEmissao,
+            'data_emissao_dps'   => date('d/m/Y H:i:s', strtotime($item->created_at)),
+
+            'prestador_cnpj'     => $config->cnpj ?? '',
+            'prestador_nome'     => $config->razao_social ?? '',
+            'prestador_im'       => $config->inscricao_municipal ?? '',
+            'prestador_endereco' => "{$config->logradouro}, {$config->numero} - {$config->bairro}",
+            'prestador_cidade'   => ($config->municipio ?? 'Lauro de Freitas') . ' / ' . ($config->UF ?? 'BA'),
+            'prestador_cep'      => $config->cep ?? '',
+            'prestador_fone'     => $config->fone ?? '',
+            'prestador_email'    => $config->email ?? '',
+
+            'tomador_cnpj'       => $item->documento ?? ($cliente->cpf_cnpj ?? ''),
+            'tomador_nome'       => $item->razao_social ?? ($cliente->razao_social ?? 'CONSUMIDOR'),
+            'tomador_endereco'   => "{$item->rua}, {$item->numero} - {$item->bairro}",
+            'tomador_cidade'     => ($item->cidade->nome ?? $cliente->cidade->nome ?? 'Lauro de Freitas') . ' / ' . ('BA'),
+            'tomador_cep'        => $item->cep ?? ($cliente->cep ?? ''),
+            'tomador_fone'       => $cliente->telefone ?? $cliente->celular ?? '-',
+
+            'codigo_servico'     => $item->servico->codigo_servico ?? '030303',
+            'codigo_nbs'         => $servicoMaster->codigo_nbs ?? '123012200',
+            'descricao_trib_nac' => 'Serviço Prestado',
+            'descricao_nbs'      => 'Serviço Especializado',
+            'discriminacao'      => $item->servico->discriminacao ?? 'REFERENTE SERVIÇO PRESTADO',
+            'local_prestacao'    => 'Lauro de Freitas - BA',
+
+            'valor_total'        => $valorServico,
+            'valor_servico'      => $valorServico,
+            'valor_liquido'      => $valorServico,
+            'aliquota_iss'       => number_format($aliquotaIss, 2, ',', '.'),
+            'valor_iss'          => $valorIss,
+            'iss_retido'         => ((int) ($item->servico->iss_retido ?? 0) === 1),
+
+            'pis_proprio'                 => 0,
+            'cofins_proprio'              => 0,
+            'v_ret_irrf'                  => 0,
+            'v_ret_cp'                    => 0,
+            'total_contribuicoes_sociais' => 0,
+            'ibscbs_bc'                   => $valorServico,
+            'cst_ibscbs'                  => '200',
+            'class_trib'                  => '200029',
+            'val_cbs'                     => 0,
+            'val_ibs_est'                 => 0,
+            'val_total_ibscbs'            => 0,
+        ];
+    }*/
+
+    public function importarMedicao(Request $request)
+    {
+        $medicaoId = $request->input('fatura_eng_id');
+        $fatura = \App\Models\FaturaEngenharia::with(['itens.servico', 'cliente', 'contrato'])
+            ->where('empresa_id', $this->empresa_id)
+            ->findOrFail($medicaoId);
+
+        if ($fatura->status_aprovacao !== 'aprovado') {
+            return redirect()->back()->with('mensagem_erro', 'Esta medição ainda não foi aprovada pelo cliente no portal.');
+        }
+
+        // >>> INÍCIO DA MELHORIA 1: VERIFICAÇÃO DE NOTAS EXISTENTES <<<
+        // Procura se já existem notas para esta medição que NÃO estejam canceladas nem rejeitadas
+        $notasExistentes = DB::table('fatura_eng_notas')
+            ->where('fatura_eng_id', $medicaoId)
+            ->whereNotIn('status', ['cancelado', 'rejeitado'])
+            ->get();
+
+        if ($notasExistentes->count() > 0) {
+            $msg = 'Atenção! Esta medição já possui notas fiscais ativas ou em processamento (';
+            $numeros = [];
+            foreach ($notasExistentes as $n) {
+                $numeros[] = $n->numero_nfse > 0 ? '#' . $n->numero_nfse : '(Rascunho)';
+            }
+            $msg .= implode(', ', $numeros) . '). Só é possível re-importar se as notas anteriores forem canceladas.';
+
+            return redirect()->back()->with('mensagem_erro', $msg);
+        }
+        // >>> FIM DA MELHORIA 1 <<<
+
+        try {
+            DB::transaction(function () use ($fatura) {
+                $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+
+                // Agrupa os itens por serviço fiscal para gerar múltiplas notas se necessário
+                $gruposServicos = [];
+                foreach ($fatura->itens as $it) {
+                    $sId = $it->servico_id ?? $fatura->servico_id;
+                    if (!isset($gruposServicos[$sId])) {
+                        $gruposServicos[$sId] = [
+                            'servico_id' => $sId,
+                            'valor_total' => 0,
+                            'discriminacao' => "Medição de Contrato #" . ($fatura->contrato->numero_contrato ?? $fatura->id) . "\n"
+                        ];
+                    }
+                    $gruposServicos[$sId]['valor_total'] += (float)$it->valor_total;
+                    $nomeItem = $it->descricao ?? $it->servico->nome ?? $it->produto->nome ?? 'Item';
+
+                    // CORREÇÃO: Garante que os códigos/detalhes dos itens são levados para a discriminação
+                    $codProduto = $it->produto_id ? " (Cód. {$it->produto_id})" : "";
+                    $gruposServicos[$sId]['discriminacao'] .= "- {$nomeItem}{$codProduto} | Qtd: {$it->quantidade} | R$ " . number_format($it->valor_total, 2, ',', '.') . "\n";
+                }
+
+                $cliente = $fatura->cliente;
+
+                // Gera um rascunho de NFS-e para cada grupo de serviço separado
+                foreach ($gruposServicos as $grupo) {
+                    $servicoObj = \App\Models\Servico::find($grupo['servico_id']);
+
+                    // Cria a NFS-e principal respeitando a Matriz ou Filial da medição
+                    $nfse = \App\Models\Nfse::create([
+                        'empresa_id'         => $this->empresa_id,
+                        'filial_id'          => $fatura->filial_id,
+                        'valor_total'        => $grupo['valor_total'],
+                        'estado'             => 'novo',
+                        'serie'              => '1',
+                        'cliente_id'         => $fatura->cliente_id,
+                        'natureza_operacao'  => '1',
+                        'documento'          => preg_replace('/\D/', '', $cliente->cpf_cnpj ?? ''),
+                        'razao_social'       => $cliente->razao_social ?? $cliente->nome,
+                        'cep'                => preg_replace('/\D/', '', $cliente->cep ?? ''),
+                        'rua'                => $cliente->rua ?? 'Não informada',
+                        'numero'             => $cliente->numero ?? 'S/N',
+                        'bairro'             => $cliente->bairro ?? 'Centro',
+                        'cidade_id'          => $cliente->cidade_id ?? $fatura->municipio_prestacao_id,
+                        'email'              => $cliente->email ?? '',
+                        'telefone'           => $cliente->telefone ?? $cliente->celular ?? ''
+                    ]);
+
+                    // Insere os detalhes do serviço fiscal vinculado
+                    \App\Models\NfseServico::create([
+                        'nfse_id'                        => $nfse->id,
+                        'discriminacao'                  => trim($grupo['discriminacao']),
+                        'valor_servico'                  => $grupo['valor_total'],
+                        'servico_id'                     => $grupo['servico_id'],
+                        'codigo_servico'                 => $servicoObj->codigo_servico ?? $servicoObj->codigo_tributacao_nacional ?? '1405',
+                        'aliquota_iss'                   => $servicoObj->aliquota_iss ?? 3.00,
+                        'aliquota_pis'                   => $tributacao->pis ?? 0.00,
+                        'aliquota_cofins'                => $tributacao->cofins ?? 0.00,
+                        'aliquota_ir'                    => $tributacao->ir ?? 0.00,
+                        'aliquota_csll'                  => $tributacao->csll ?? 0.00,
+                        'iss_retido'                     => $servicoObj->iss_retido ?? 2,
+                        'cidade_local_prestacao_servico' => $fatura->municipio_prestacao_id
+                    ]);
+
+                    // Vincula na tabela auxiliar de notas da medição para rastreio
+                    DB::table('fatura_eng_notas')->insert([
+                        'fatura_eng_id' => $fatura->id,
+                        'empresa_id'    => $this->empresa_id,
+                        'numero_nfse'   => 0,
+                        'chave_nfse'    => 'RASCUNHO-NFSE-' . $nfse->id,
+                        'status'        => 'novo',
+                        'created_at'    => now(),
+                        'updated_at'    => now()
+                    ]);
+                }
+            });
+
+            return redirect()->route('nfse.index')->with('mensagem_sucesso', 'Medição importada com sucesso para a rotina de NFS-e! As notas estão prontas como rascunho.');
+
+        } catch (\Throwable $e) {
+            Log::error("Erro ao importar medição para NFS-e: " . $e->getMessage());
+            return redirect()->back()->with('mensagem_erro', 'Erro ao importar medição: ' . $e->getMessage());
+        }
+    }
+
+    public function gerarXmlLocal($id)
+    {
+        try {
+            $item = NotaServico::with(['servico.servico', 'cidade'])->findOrFail($id);
+            $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            $tributacao = Tributacao::where('empresa_id', $this->empresa_id)->first();
+            $nfseServico = $item->servico;
+            $servicoMaster = $nfseServico->servico ?? Servico::find($nfseServico->servico_id);
+            $cliente = Cliente::with('cidade')->find($item->cliente_id);
+
+            // 1. Emitente
+            $codigoIbgeEmitente = str_pad(preg_replace('/\D/', '', $config->codMun ?? '2910057'), 7, '0', STR_PAD_LEFT);
+            $cnpjEmitente = preg_replace('/\D/', '', $config->cnpj);
+            $imEmitente = preg_replace('/\D/', '', $config->inscricao_municipal);
+
+            // 2. Tomador
+            $docTomador = preg_replace('/\D/', '', $item->documento ?? $cliente->cpf_cnpj);
+            $tagDocTomador = strlen($docTomador) > 11 ? '<Cnpj>'.$docTomador.'</Cnpj>' : '<Cpf>'.$docTomador.'</Cpf>';
+            $codigoIbgeTomador = preg_replace('/\D/', '', $item->cidade->codigo ?? $cliente->cidade->codigo ?? $codigoIbgeEmitente);
+
+            // 3. Serviços, Valores e Indicador de Operação
+            $cMunPrestacao = preg_replace('/\D/', '', $nfseServico->cidade_local_prestacao_servico ?? $codigoIbgeEmitente);
+            $cIndOp = $servicoMaster->codigo_indicador_operacao ?? $servicoMaster->cIndOp ?? (($cMunPrestacao === $codigoIbgeEmitente) ? '050101' : '050201');
+
+            $valorServico = (float) $item->valor_total;
+            $aliquotaIss = (float) ($nfseServico->aliquota_iss ?? $servicoMaster->aliquota_iss ?? 3.00);
+            $valorIss = round($valorServico * ($aliquotaIss / 100), 2);
+            $issRetido = ((int) ($nfseServico->iss_retido ?? 0) === 1) ? 1 : 2;
+
+            // 4. Reforma Tributária
+            $rtService = new \App\Services\ReformaTributariaService();
+            $itemCalculo = [
+                'valor_total' => $valorServico,
+                'cst_ibs_cbs' => $servicoMaster->cst_ibscbs ?? $tributacao->cst_ibs_cbs ?? '000',
+                'class_trib_ibs_cbs' => $servicoMaster->codigo_class_trib ?? $tributacao->class_trib_ibs_cbs ?? '000001',
+                'aliq_cbs' => (float)($tributacao->aliq_cbs ?? 0.9000),
+                'aliq_ibs_uf' => (float)($tributacao->aliq_ibs_uf ?? 0.1000),
+                'aliq_ibs_mun' => (float)($tributacao->aliq_ibs_mun ?? 0.0000),
+            ];
+            $rtService->calcularItem($itemCalculo, $this->empresa_id);
+
+            $bcIbsCbs = number_format($itemCalculo['bc_ibs_cbs'] ?? $valorServico, 2, '.', '');
+            $valIbsEst = number_format($itemCalculo['valor_ibs_uf'] ?? round($valorServico * 0.001, 2), 2, '.', '');
+            $valCbs = number_format($itemCalculo['valor_cbs'] ?? round($valorServico * 0.009, 2), 2, '.', '');
+
+            // 5. Montagem Completa do XML
+            $xmlString = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            $xmlString .= '<GerarNfseEnvio xmlns="http://www.abrasf.org.br/nfse.xsd">' . "\n";
+            $xmlString .= '  <Rps>' . "\n";
+            $xmlString .= '    <InfDeclaracaoPrestacaoServico Id="Declaracao_' . $item->id . '">' . "\n";
+            $xmlString .= '      <Rps Id="RPS_' . $item->id . '">' . "\n";
+            $xmlString .= '        <IdentificacaoRps>' . "\n";
+            $xmlString .= '          <Numero>' . $item->id . '</Numero>' . "\n";
+            $xmlString .= '          <Serie>1</Serie>' . "\n";
+            $xmlString .= '          <Tipo>1</Tipo>' . "\n";
+            $xmlString .= '        </IdentificacaoRps>' . "\n";
+            $xmlString .= '        <DataEmissao>' . date('Y-m-d', strtotime($item->created_at)) . '</DataEmissao>' . "\n";
+            $xmlString .= '        <Status>1</Status>' . "\n";
+            $xmlString .= '      </Rps>' . "\n";
+            $xmlString .= '      <Competencia>' . date('Y-m-d', strtotime($item->created_at)) . '</Competencia>' . "\n";
+            $xmlString .= '      <Servico>' . "\n";
+            $xmlString .= '        <Valores>' . "\n";
+            $xmlString .= '          <ValorServicos>' . number_format($valorServico, 2, '.', '') . '</ValorServicos>' . "\n";
+            $xmlString .= '          <ValorIss>' . number_format($valorIss, 2, '.', '') . '</ValorIss>' . "\n";
+            $xmlString .= '          <Aliquota>' . number_format($aliquotaIss, 4, '.', '') . '</Aliquota>' . "\n";
+            $xmlString .= '        </Valores>' . "\n";
+            $xmlString .= '        <IssRetido>' . $issRetido . '</IssRetido>' . "\n";
+            $xmlString .= '        <ResponsavelRetencao>1</ResponsavelRetencao>' . "\n";
+            $xmlString .= '        <ItemListaServico>' . preg_replace('/[^0-9.]/', '', $nfseServico->codigo_servico ?? '140501') . '</ItemListaServico>' . "\n";
+            $xmlString .= '        <CodigoNbs>' . preg_replace('/\D/', '', $servicoMaster->codigo_nbs ?? '120029000') . '</CodigoNbs>' . "\n";
+            $xmlString .= '        <Discriminacao>' . htmlspecialchars($nfseServico->discriminacao ?? 'SERVICO PRESTADO') . '</Discriminacao>' . "\n";
+            $xmlString .= '        <CodigoMunicipio>' . $cMunPrestacao . '</CodigoMunicipio>' . "\n";
+            $xmlString .= '        <ExigibilidadeISS>1</ExigibilidadeISS>' . "\n";
+            $xmlString .= '        <MunicipioIncidencia>' . $cMunPrestacao . '</MunicipioIncidencia>' . "\n";
+            $xmlString .= '      </Servico>' . "\n";
+            $xmlString .= '      <Prestador>' . "\n";
+            $xmlString .= '        <CpfCnpj><Cnpj>' . $cnpjEmitente . '</Cnpj></CpfCnpj>' . "\n";
+            $xmlString .= '        <InscricaoMunicipal>' . $imEmitente . '</InscricaoMunicipal>' . "\n";
+            $xmlString .= '      </Prestador>' . "\n";
+            $xmlString .= '      <Tomador>' . "\n";
+            $xmlString .= '        <IdentificacaoTomador><CpfCnpj>' . $tagDocTomador . '</CpfCnpj></IdentificacaoTomador>' . "\n";
+            $xmlString .= '        <RazaoSocial>' . htmlspecialchars($item->razao_social ?? $cliente->razao_social) . '</RazaoSocial>' . "\n";
+            $xmlString .= '        <Endereco>' . "\n";
+            $xmlString .= '          <Endereco>' . htmlspecialchars($item->rua ?? $cliente->rua) . '</Endereco>' . "\n";
+            $xmlString .= '          <Numero>' . htmlspecialchars($item->numero ?? $cliente->numero) . '</Numero>' . "\n";
+            $xmlString .= '          <Bairro>' . htmlspecialchars($item->bairro ?? $cliente->bairro) . '</Bairro>' . "\n";
+            $xmlString .= '          <CodigoMunicipio>' . $codigoIbgeTomador . '</CodigoMunicipio>' . "\n";
+            $xmlString .= '          <Uf>' . ($item->cidade->uf ?? 'BA') . '</Uf>' . "\n";
+            $xmlString .= '          <Cep>' . preg_replace('/\D/', '', $item->cep ?? $cliente->cep) . '</Cep>' . "\n";
+            $xmlString .= '        </Endereco>' . "\n";
+            $xmlString .= '      </Tomador>' . "\n";
+            $xmlString .= '      <OptanteSimplesNacional>' . ($config->opcao_simples_nacional == 1 ? 1 : 2) . '</OptanteSimplesNacional>' . "\n";
+            $xmlString .= '      <IncentivoFiscal>2</IncentivoFiscal>' . "\n";
+            $xmlString .= '      <IbsCbs>' . "\n";
+            $xmlString .= '        <MunicipioIncidencia>' . $cMunPrestacao . '</MunicipioIncidencia>' . "\n";
+            $xmlString .= '        <IndicadorOperacao>' . $cIndOp . '</IndicadorOperacao>' . "\n";
+            $xmlString .= '        <ClassificacaoTributaria>' . ($itemCalculo['class_trib_ibs_cbs'] ?? '000001') . '</ClassificacaoTributaria>' . "\n";
+            $xmlString .= '        <IndicadorDestino>0</IndicadorDestino>' . "\n";
+            $xmlString .= '        <BaseCalculo>' . $bcIbsCbs . '</BaseCalculo>' . "\n";
+            $xmlString .= '        <IbsMunicipal><Percentual>0.00</Percentual><PercAliqEfet>0.00</PercAliqEfet><Valor>0.00</Valor></IbsMunicipal>' . "\n";
+            $xmlString .= '        <IbsEstadual><Percentual>0.10</Percentual><PercAliqEfet>0.10</PercAliqEfet><Valor>' . $valIbsEst . '</Valor></IbsEstadual>' . "\n";
+            $xmlString .= '        <Cbs><Percentual>0.90</Percentual><PercAliqEfet>0.90</PercAliqEfet><Valor>' . $valCbs . '</Valor></Cbs>' . "\n";
+            $xmlString .= '      </IbsCbs>' . "\n";
+            $xmlString .= '    </InfDeclaracaoPrestacaoServico>' . "\n";
+            $xmlString .= '  </Rps>' . "\n";
+            $xmlString .= '</GerarNfseEnvio>';
+
+            // Salva e força download
+            $xmlName = 'RPS_Local_' . $item->id . '.xml';
+            $caminhoCompleto = public_path('nfse_doc/' . $xmlName);
+            file_put_contents($caminhoCompleto, $xmlString);
+
+            return response()->download($caminhoCompleto, $xmlName, [
+                'Content-Type' => 'application/xml',
+            ]);
+
+        } catch (\Throwable $th) {
+            return redirect()->back()->with('mensagem_erro', 'Erro ao gerar XML local: ' . $th->getMessage());
+        }
+    }
+
+    public function importarXml(Request $request)
+    {
+        $request->validate([
+            'id_nota' => 'required|integer',
+            'xml_file' => 'required|file|mimes:xml'
+        ]);
+
+        $id = $request->id_nota;
+        $file = $request->file('xml_file');
+
+        try {
+            $item = NotaServico::where('empresa_id', $this->empresa_id)->findOrFail($id);
+            $xmlContent = file_get_contents($file->getRealPath());
+
+            // Carrega o XML (usando a tag base NFSe)
+            $xml = simplexml_load_string($xmlContent);
+            if ($xml === false) {
+                return response()->json(['erro' => true, 'mensagem' => 'Ficheiro XML inválido.'], 400);
+            }
+
+            // Lê as informações do XML usando o namespace para lidar com as tags
+            $ns = $xml->getNamespaces(true);
+            $infNFSe = $xml->children($ns[''])->infNFSe;
+
+            if (!$infNFSe) {
+                return response()->json(['erro' => true, 'mensagem' => 'O XML não é uma NFS-e válida.'], 400);
+            }
+
+            // Extração de dados da NFS-e
+            $numeroNfse = (int)$infNFSe->nNFSe;
+            // A chave (codigo_verificacao) vem do atributo Id da tag infNFSe
+            $chave = str_replace('NFS', '', (string)$infNFSe['Id']);
+
+            // Se o XML veio com a tag DPS, tentaremos pegar a chave do ID do DPS também (como no seu exemplo)
+            if(empty($chave)) {
+                $chave = (string)$infNFSe->DPS->infDPS['Id'] ?? null;
+            }
+
+            // Nomeia e salva o arquivo
+            $xmlName = (strlen($chave) >= 40) ? $chave . '.xml' : 'NFSe_' . $item->id . '.xml';
+            $file->move(public_path('nfse_doc'), $xmlName);
+
+            // Atualiza os dados da nota no banco
+            $item->estado = 'aprovado';
+            $item->numero_nfse = $numeroNfse;
+            $item->codigo_verificacao = $chave;
+            $item->uuid = $xmlName;
+            $item->url_xml = asset('nfse_doc/' . $xmlName);
+            // Aqui mantemos a URL de impressão que aponta para o sistema de Dias d'Ávila, conforme o código existente
+            $item->url_pdf_nfse = "https://diasdavila.saatri.com.br/ConsultaNota/Visualizar?codigo=" . $chave;
+            $item->motivo_rejeicao = null;
+            $item->save();
+
+            $this->atualizarStatusMedicaoNota($item->id, 'aprovado', $numeroNfse, $chave);
+
+            // Atualiza a tabela de conta_recebers, se existir
+            DB::table('conta_recebers')
+                ->where('empresa_id', $this->empresa_id)
+                ->where('referencia', 'like', "NFS-e #" . $item->id . "%")
+                ->update([
+                    'nf_numero'  => $item->numero_nfse,
+                    'nf_modelo'  => 55, // Assumindo modelo de NFS-e
+                    'status' => 1,
+                    'updated_at' => now()
+                ]);
+
+            return response()->json(['sucesso' => true, 'mensagem' => 'XML importado com sucesso. Nota atualizada para aprovada!']);
+
+        } catch (\Throwable $th) {
+            Log::error("Erro na importação XML da NFSe #{$id}: " . $th->getMessage());
+            return response()->json(['erro' => true, 'mensagem' => 'Erro ao processar ficheiro: ' . $th->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Função auxiliar para atualizar o status da medição ao aprovar/cancelar uma nota.
+     */
+    private function atualizarStatusMedicaoNota($nfseId, $statusNovo, $numeroNfse = null, $chave = null)
+    {
+        // 1. Procura o vínculo usando a chave de rascunho ou a chave oficial
+        $vinculo = DB::table('fatura_eng_notas')
+            ->where('empresa_id', $this->empresa_id)
+            ->where(function($query) use ($nfseId, $chave) {
+                $query->where('chave_nfse', 'RASCUNHO-NFSE-' . $nfseId);
+                if ($chave) {
+                    $query->orWhere('chave_nfse', $chave);
+                }
+            })
+            ->first();
+
+        if ($vinculo) {
+            // Atualiza os dados na tabela de vínculo
+            $updateDados = [
+                'status' => $statusNovo,
+                'updated_at' => now()
+            ];
+
+            if ($numeroNfse) $updateDados['numero_nfse'] = $numeroNfse;
+            if ($chave) $updateDados['chave_nfse'] = $chave;
+
+            DB::table('fatura_eng_notas')
+                ->where('id', $vinculo->id)
+                ->update($updateDados);
+
+            // 2. Atualiza a medição na tabela principal para que apareça na listagem
+            if ($statusNovo === 'aprovado') {
+                $dadosFatura = [
+                    'status' => 'Finalizado',
+                    'estado_nfse' => 'aprovado'
+                ];
+
+                // Grava o número e a chave diretamente na medição para exibir na grelha
+                if ($numeroNfse) $dadosFatura['numero_nfse'] = $numeroNfse;
+                if ($chave) $dadosFatura['chave_nfse'] = $chave;
+                if ($chave) $dadosFatura['protocolo_nfse'] = $chave;
+
+                // Tenta atualizar a coluna estado_nfse se ela existir (pode dar erro silencioso se não existir, por isso usamos try)
+                try {
+                    DB::table('faturas_engenharia')
+                        ->where('id', $vinculo->fatura_eng_id)
+                        ->update($dadosFatura);
+                } catch (\Exception $e) {
+                    // Se a coluna estado_nfse não existir, atualiza só o que existe
+                    unset($dadosFatura['estado_nfse']);
+                    DB::table('faturas_engenharia')
+                        ->where('id', $vinculo->fatura_eng_id)
+                        ->update($dadosFatura);
+                }
+            }
+            elseif ($statusNovo === 'cancelado') {
+                $outrasAtivas = DB::table('fatura_eng_notas')
+                    ->where('fatura_eng_id', $vinculo->fatura_eng_id)
+                    ->whereNotIn('status', ['cancelado', 'rejeitado'])
+                    ->count();
+
+                if ($outrasAtivas === 0) {
+                    try {
+                        DB::table('faturas_engenharia')
+                            ->where('id', $vinculo->fatura_eng_id)
+                            ->update(['status' => 'Cancelado', 'estado_nfse' => 'cancelado']);
+                    } catch (\Exception $e) {
+                        DB::table('faturas_engenharia')
+                            ->where('id', $vinculo->fatura_eng_id)
+                            ->update(['status' => 'Cancelado']);
+                    }
+                }
+            }
+        }
     }
 }
