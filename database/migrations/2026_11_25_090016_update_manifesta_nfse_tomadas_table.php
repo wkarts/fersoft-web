@@ -112,7 +112,8 @@ return new class extends Migration
             'SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, '
             . 'CHARACTER_SET_NAME, COLLATION_NAME, COLUMN_COMMENT FROM information_schema.COLUMNS '
             . 'WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
-            [DB::getDatabaseName(), $tableName]
+            [DB::getDatabaseName(), $tableName],
+            false
         );
         $columns = [];
         foreach ($rows as $row) {
@@ -136,16 +137,42 @@ return new class extends Migration
                 $alterations[] = "ADD COLUMN `{$name}` " . $definition['sql'];
                 continue;
             }
+            // Preserva NULLs existentes ao ampliar ou atualizar a definição da coluna.
+            if ($current->IS_NULLABLE === 'YES' && $definition['expected']['IS_NULLABLE'] === 'NO') {
+                $definition['expected']['IS_NULLABLE'] = 'YES';
+                $definition['sql'] = preg_replace('/\bNOT NULL\b/i', 'NULL', $definition['sql']);
+            }
             if ($this->columnMatches($current, $definition['expected'])) {
                 continue;
             }
-            if ($definition['previous'] === null
-                || !$this->columnMatches($current, $definition['previous'])) {
-                throw new \RuntimeException($tableName . ".{$name}: definição diferente das duas bases comparadas. Nenhuma substituição automática.");
+            $matchesPrevious = $definition['previous'] !== null
+                && $this->columnMatches($current, $definition['previous']);
+
+            // Diferenças apenas de nulabilidade não impedem uma alteração compatível.
+            if (!$matchesPrevious && in_array($current->IS_NULLABLE, ['YES', 'NO'], true)) {
+                foreach ([$definition['previous'], $definition['expected']] as $candidate) {
+                    if ($candidate === null) {
+                        continue;
+                    }
+                    $candidate['IS_NULLABLE'] = $current->IS_NULLABLE;
+                    if ($current->IS_NULLABLE === 'YES' && $current->COLUMN_DEFAULT === null) {
+                        $candidate['COLUMN_DEFAULT'] = null;
+                    }
+                    if ($this->columnMatches($current, $candidate)) {
+                        $matchesPrevious = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$matchesPrevious) {
+                throw new \RuntimeException($tableName . ".{$name}: definição incompatível com a alteração prevista. Atual: "
+                    . json_encode($current, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                    . '. Nenhuma substituição automática.');
             }
 
             // Alterações sensíveis exigem valores compatíveis com o tipo/collation da origem.
-            if (isset($definition['guard']) && DB::selectOne($definition['guard']) !== null) {
+            if (isset($definition['guard']) && DB::selectOne($definition['guard'], [], false) !== null) {
                 throw new \RuntimeException($tableName . ".{$name}: há valores incompatíveis com o tipo da origem; nenhum registro foi corrigido ou excluído.");
             }
             $requiresStrictMode = $requiresStrictMode || isset($definition['guard']);
