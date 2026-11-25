@@ -39,7 +39,7 @@ concurrency:
 jobs:
   plan:
     if: >-
-      (github.event_name != 'release' || !github.event.release.prerelease) &&
+      (github.event_name != 'release' || github.event.release.prerelease == false) &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == github.repository &&
