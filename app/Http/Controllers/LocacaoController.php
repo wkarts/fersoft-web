@@ -235,7 +235,8 @@ class LocacaoController extends Controller
                         'ENTREGA DE CAÇAMBA/EQUIPAMENTO',
                         $request->veiculo_id,
                         $request->motorista_id,
-                        $request->data_hora_saida
+                        $request->data_hora_saida,
+                        $request->cacamba_deixada_id
                     );
                 }
 
@@ -293,7 +294,8 @@ class LocacaoController extends Controller
                     'RETIRADA DE CAÇAMBA/EQUIPAMENTO',
                     $request->veiculo_id,
                     $request->motorista_id,
-                    $request->data_hora_saida
+                    $request->data_hora_saida,
+                    $request->cacamba_deixada_id
                 );
 
                 session()->flash('mensagem_sucesso', 'Solicitação de retirada e agendamento registrados!');
@@ -629,7 +631,8 @@ class LocacaoController extends Controller
     }
 
     private function gerarAgendamentoVeiculo($locacao, $tipoOperacao, $veiculoId, $motoristaId, $dataHoraSaidaStr) {
-        $nomeTipoMovimentacao = ($tipoOperacao == 'ENTREGA DE CAÇAMBA/EQUIPAMENTO')
+        $isEntrega = ($tipoOperacao == 'ENTREGA DE CAÇAMBA/EQUIPAMENTO');
+        $nomeTipoMovimentacao = $isEntrega
             ? 'ENTREGA DE CAÇAMBA/EQUIPAMENTO'
             : 'RETIRADA DE CAÇAMBA/EQUIPAMENTO';
 
@@ -644,7 +647,11 @@ class LocacaoController extends Controller
         );
 
         $patrimonios = [];
+        $primeiroProdutoId = null;
         foreach($locacao->itens as $item) {
+            if (!$primeiroProdutoId) {
+                $primeiroProdutoId = $item->produto_id;
+            }
             $patrimonios[] = $item->produto->nome . ($item->codigo_patrimonio ? " ({$item->codigo_patrimonio})" : "");
         }
         $strPatrimonios = count($patrimonios) > 0 ? implode(', ', $patrimonios) : "Locação #{$locacao->id}";
@@ -659,10 +666,12 @@ class LocacaoController extends Controller
             $observacaoOperacao .= " | Ref: {$locacao->referencia_entrega}";
         }
 
-        MovimentacaoVeiculo::create([
+        // 1. Cria a Movimentação Principal
+        $mov = MovimentacaoVeiculo::create([
             'empresa_id'            => $locacao->empresa_id,
             'filial_id'             => $locacao->filial_id,
             'cliente_id'            => $locacao->cliente_id,
+            'fornecedor_id'         => $locacao->fornecedor_id,
             'veiculo_id'            => $veiculoId,
             'motorista_id'          => $motoristaId,
             'tipo_movimentacao_id'  => $tipoMovimentacao->id,
@@ -671,6 +680,21 @@ class LocacaoController extends Controller
             'destino'               => $enderecoObra,
             'observacao'            => $observacaoOperacao,
         ]);
+
+        // 2. Cria a Parada (Multi-Stop) preenchendo automaticamente a Caçamba Deixada ou Retirada!
+        if (method_exists($mov, 'destinos')) {
+            $mov->destinos()->create([
+                'cliente_id'          => $locacao->cliente_id,
+                'fornecedor_id'       => $locacao->fornecedor_id,
+                'is_aterro'           => 0,
+                'tipo_operacao_caixa' => $isEntrega ? 'colocar' : 'retirar',
+                'caixa_deixada_id'    => $isEntrega ? $primeiroProdutoId : null,
+                'caixa_retirada_id'   => !$isEntrega ? $primeiroProdutoId : null,
+                'endereco_completo'   => $enderecoObra,
+                'ordem'               => 1,
+                'status'              => 'pendente',
+            ]);
+        }
     }
 
     private function recalculaTotalLocacao($locacao){

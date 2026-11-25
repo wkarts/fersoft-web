@@ -320,14 +320,53 @@
 
     <!-- TRIBUTAÇÃO FEDERAL -->
     <table>
-        <tr><th colspan="6" class="cabecalho-secao">TRIBUTAÇÃO FEDERAL (RETENÇÕES)</th></tr>
+        <tr><th colspan="7" class="cabecalho-secao">TRIBUTAÇÃO FEDERAL (RETENÇÕES)</th></tr>
         <tr>
-            <td width="16%"><span class="rotulo">PIS</span><span class="valor">R$ 0,00</span></td>
-            <td width="16%"><span class="rotulo">COFINS</span><span class="valor">R$ 0,00</span></td>
-            <td width="17%"><span class="rotulo">INSS / CP</span><span class="valor">R$ 0,00</span></td>
-            <td width="17%"><span class="rotulo">IRRF</span><span class="valor">R$ 0,00</span></td>
-            <td width="17%"><span class="rotulo">CSLL</span><span class="valor">R$ 0,00</span></td>
-            <td width="17%"><span class="rotulo">TOTAL RETENÇÕES</span><span class="valor">R$ 0,00</span></td>
+            <td width="13%">
+                <span class="rotulo">PIS</span>
+                <span class="valor">R$ {{ number_format($dados['valor_pis'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="13%">
+                <span class="rotulo">COFINS</span>
+                <span class="valor">R$ {{ number_format($dados['valor_cofins'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="13%">
+                <span class="rotulo">INSS / CP</span>
+                <span class="valor">R$ {{ number_format($dados['v_ret_inss'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="13%">
+                <span class="rotulo">IRRF</span>
+                <span class="valor">R$ {{ number_format($dados['v_ret_irrf'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="13%">
+                <span class="rotulo">CSLL</span>
+                <span class="valor">R$ {{ number_format($dados['csll_puro'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="18%" style="background: #f8fafc;">
+                <span class="rotulo">CONTRIB. SOCIAIS - RETIDAS</span>
+                <span class="valor">R$ {{ number_format($dados['total_contribuicoes_sociais'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="17%" style="background: #fef2f2;">
+                <span class="rotulo">TOTAL RETENÇÕES</span>
+                <span class="valor" style="color: #b91c1c;">R$ {{ number_format($dados['total_retencoes'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- TRIBUTAÇÃO IBS/CBS (REFORMA TRIBUTÁRIA) -->
+    <table>
+        <tr><th colspan="4" class="cabecalho-secao">TRIBUTAÇÃO IBS/CBS (REFORMA TRIBUTÁRIA)</th></tr>
+        <tr>
+            <td width="25%"><span class="rotulo">CST / Classificação Tributária</span><span class="valor">{{ $dados['cst_ibscbs'] ?? '200' }} / {{ $dados['class_trib'] ?? '200029' }}</span></td>
+            <td width="25%"><span class="rotulo">Base de Cálculo IBS/CBS</span><span class="valor">R$ {{ number_format($dados['ibscbs_bc'] ?? 0, 2, ',', '.') }}</span></td>
+            <td width="25%"><span class="rotulo">Valor Total CBS</span><span class="valor">R$ {{ number_format($dados['val_cbs'] ?? 0, 2, ',', '.') }}</span></td>
+            <td width="25%"><span class="rotulo">Valor Total IBS</span><span class="valor">R$ {{ number_format($dados['val_ibs_est'] ?? 0, 2, ',', '.') }}</span></td>
+        </tr>
+        <tr>
+            <td><span class="rotulo">Alíquota Efetiva CBS ({{ number_format($dados['aliq_efetiva_cbs'] ?? 0.36, 2, ',', '.') }}%)</span><span class="valor">R$ {{ number_format($dados['val_cbs'] ?? 0, 2, ',', '.') }}</span></td>
+            <td><span class="rotulo">Alíq. Efetiva IBS Estadual ({{ number_format($dados['aliq_efetiva_est'] ?? 0.04, 2, ',', '.') }}%)</span><span class="valor">R$ {{ number_format($dados['val_ibs_est'] ?? 0, 2, ',', '.') }}</span></td>
+            <td><span class="rotulo">Alíq. Efetiva IBS Municipal ({{ number_format($dados['aliq_efetiva_mun'] ?? 0.00, 2, ',', '.') }}%)</span><span class="valor">R$ {{ number_format($dados['val_ibs_mun'] ?? 0, 2, ',', '.') }}</span></td>
+            <td><span class="rotulo">Total IBS/CBS</span><span class="valor" style="color: #1e3a8a;">R$ {{ number_format($dados['val_total_ibscbs'] ?? $dados['total_ibscbs'] ?? 0, 2, ',', '.') }}</span></td>
         </tr>
     </table>
 
@@ -335,12 +374,21 @@
     <table>
         <tr><th colspan="4" class="cabecalho-secao">VALOR TOTAL DA NFS-E</th></tr>
         <tr>
-            <td width="25%"><span class="rotulo">VALOR DA OPERAÇÃO / SERVIÇO</span><span class="valor">R$ {{ number_format($dados['valor_total'], 2, ',', '.') }}</span></td>
-            <td width="25%"><span class="rotulo">DESCONTO INCONDICIONADO</span><span class="valor">R$ 0,00</span></td>
-            <td width="25%"><span class="rotulo">DESCONTO CONDICIONADO</span><span class="valor">R$ 0,00</span></td>
+            <td width="25%">
+                <span class="rotulo">VALOR DA OPERAÇÃO / SERVIÇO</span>
+                <span class="valor">R$ {{ number_format($dados['valor_total'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="25%">
+                <span class="rotulo">DESCONTO INCONDICIONADO</span>
+                <span class="valor">R$ {{ number_format($dados['desconto_incondicional'] ?? 0, 2, ',', '.') }}</span>
+            </td>
+            <td width="25%">
+                <span class="rotulo">DESCONTO CONDICIONADO</span>
+                <span class="valor">R$ {{ number_format($dados['desconto_condicional'] ?? 0, 2, ',', '.') }}</span>
+            </td>
             <td width="25%" style="background: #eff6ff;">
                 <span class="rotulo">VALOR LÍQUIDO DA NFS-E</span>
-                <span class="valor" style="font-size: 11px; color: #1e3a8a;">R$ {{ number_format($dados['valor_total'], 2, ',', '.') }}</span>
+                <span class="valor" style="font-size: 11px; color: #1e3a8a;">R$ {{ number_format($dados['valor_liquido'] ?? $dados['valor_total'] ?? 0, 2, ',', '.') }}</span>
             </td>
         </tr>
     </table>
@@ -351,7 +399,11 @@
         <tr>
             <td style="font-size: 7.2px; line-height: 1.35; color: #374151;">
                 A autenticidade desta NFS-e pode ser verificada pela leitura do código QR acima ou pela consulta da chave de acesso no portal nacional da NFS-e (www.nfse.gov.br).<br>
-                Totais aproximados dos Tributos cfe. Lei nº 12.741/2012: Federais: R$ 0,00; Estaduais: R$ 0,00; Municipais: R$ {{ number_format($dados['valor_iss'], 2, ',', '.') }}.
+                @php
+                    $tribFedAprox = ($dados['valor_pis'] ?? 0) + ($dados['valor_cofins'] ?? 0) + ($dados['val_cbs'] ?? 0);
+                    $tribEstAprox = ($dados['val_ibs_est'] ?? 0);
+                @endphp
+                Totais aproximados dos Tributos cfe. Lei nº 12.741/2012: Federais: R$ {{ number_format($tribFedAprox, 2, ',', '.') }}; Estaduais: R$ {{ number_format($tribEstAprox, 2, ',', '.') }}; Municipais: R$ {{ number_format($dados['valor_iss'] ?? 0, 2, ',', '.') }}.
             </td>
         </tr>
     </table>

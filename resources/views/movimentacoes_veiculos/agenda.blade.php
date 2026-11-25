@@ -180,9 +180,7 @@
 
                                 $placa = $coleta->veiculo->placa ?? 'S/ Placa';
 
-                                // =========================================================================
                                 // HTML MULTI-STOP COM BOTÕES INDIVIDUAIS INJETADOS
-                                // =========================================================================
                                 $htmlMultiStop = '';
                                 $isMultiStop = 'false';
 
@@ -204,7 +202,6 @@
                                             $htmlMultiStop .= '<small class="text-muted d-block ml-8 mb-2">'.htmlspecialchars($dest->endereco_completo).'</small>';
                                         }
 
-                                        // Lógica de tempo e botões de Check-in para esta parada
                                         $cheg = $dest->data_hora_chegada ? \Carbon\Carbon::parse($dest->data_hora_chegada)->format('d/m/Y H:i') : null;
                                         $sai = $dest->data_hora_saida ? \Carbon\Carbon::parse($dest->data_hora_saida)->format('d/m/Y H:i') : null;
 
@@ -244,6 +241,16 @@
                                     $tempoCliente = \Carbon\Carbon::parse($coleta->data_hora_chegada_cliente)->diffForHumans(\Carbon\Carbon::parse($coleta->data_hora_saida_cliente), true);
                                 }
 
+                                // Obtém a descrição da filial para mostrar na agenda
+                                $nomeFilialAg = 'Matriz';
+                                if (!empty($coleta->filial_id)) {
+                                    $fObj = \Illuminate\Support\Facades\DB::table('filials')->where('id', $coleta->filial_id)->first();
+                                    $nomeFilialAg = $fObj->descricao ?? ('Filial #' . $coleta->filial_id);
+                                }
+
+                                // Pega apenas o primeiro nome do motorista para não quebrar o layout do quadradinho
+                                $primeiroNomeMotorista = explode(' ', trim($coleta->motorista->nome ?? 'Sem Motorista'))[0];
+
                                 $htmlMultiStopB64 = base64_encode($htmlMultiStop);
                                 $pontualidadeB64 = base64_encode($textoAtraso);
                             @endphp
@@ -266,12 +273,23 @@
                                 '{{ $tempoCliente }}',
                                 '{{ $isMultiStop }}'
                              )">
-                                <div>
-                                    <i class="la la-truck"></i>
-                                    <span>{{ $placa }}</span>
+                                <div class="w-100">
+                                    <!-- Linha 1: Caminhão, Placa e Filial -->
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="la la-truck mr-1"></i>
+                                        <span class="font-weight-bold text-truncate" style="max-width: 65px;">{{ $placa }}</span>
+                                        <span class="ml-auto px-1 rounded bg-white text-dark font-weight-bolder" style="font-size: 9px; margin-left: auto;">{{ $nomeFilialAg }}</span>
+                                    </div>
+                                    <!-- Linha 2: Ícone de Usuário e Primeiro Nome do Motorista -->
+                                    <div class="d-flex align-items-center text-white-50" style="font-size: 10px; line-height: 1;">
+                                        <i class="la la-user mr-1" style="font-size: 10px;"></i>
+                                        <span class="text-truncate" style="max-width: 100px;" title="{{ $coleta->motorista->nome ?? 'Sem Motorista' }}">
+                                            {{ $primeiroNomeMotorista }}
+                                        </span>
+                                    </div>
                                 </div>
                                 @if($isAtrasado)
-                                    <span class="badge-atrasado">Atrasado</span>
+                                    <span class="badge-atrasado mt-1">Atrasado</span>
                                 @endif
                             </div>
                         @endforeach
@@ -384,7 +402,16 @@
                     <button type="button" class="btn btn-danger" id="btnModalCancelar" onclick="abrirCancelamento()">
                         <i class="la la-times-circle"></i> Cancelar Coleta
                     </button>
-                    <div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-end" style="gap: 6px;">
+                        @if($podeReabrirAgenda ?? false)
+                            <button type="button" id="btnModalReabrir" class="btn btn-light-primary btn-reabrir-movimentacao"
+                                    style="display:none" title="Reabrir agendamento com OTP">
+                                <i class="la la-unlock"></i> Reabrir
+                            </button>
+                        @endif
+                        <a id="btnModalSync" href="#" class="btn btn-primary mr-2" title="Puxar histórico do GPS Traccar">
+                            <i class="la la-satellite-dish"></i> Sincronizar Rota
+                        </a>
                         <button type="button" class="btn btn-info mr-2" id="btnModalAbastecimento" onclick="pedirAbastecimento()">
                             <i class="la la-gas-pump"></i> Link Abastecimento
                         </button>
@@ -420,6 +447,7 @@
         </div>
     </div>
 
+    @include('movimentacoes_veiculos.partials.reabrir_modal')
 @endsection
 
 @section('javascript')
@@ -447,15 +475,27 @@
 
             $('#mChegadaBase').text(chegadaBase || '---');
 
-            $('#btnModalEditar').attr('href', '/movimentacaoVeiculo/edit/' + id);
+            const estaFinalizado = status === 'Finalizado' || status === 'Concluida';
+            $('#btnModalEditar').attr('href', '/movimentacaoVeiculo/edit/' + id).toggle(!estaFinalizado);
+            $('.btn-acao-horario').toggle(!estaFinalizado);
+            $('#btnModalReabrir').data('id', id).toggle(estaFinalizado);
 
-            if (status === 'Cancelado' || status === 'Finalizado') {
+            if (status === 'Cancelado' || estaFinalizado) {
                 $('#btnModalCancelar').hide();
             } else {
                 $('#btnModalCancelar').show();
             }
 
-            // ESCONDE OS BOTÕES ANTIGOS DE CLIENTE SE FOR MULTI-STOP
+            $('#btnModalSync').attr('href', '/movimentacaoVeiculo/sync-retroativo/' + id);
+
+            if (status === 'Cancelado' || estaFinalizado) {
+                $('#btnModalCancelar').hide();
+                $('#btnModalSync').hide();
+            } else {
+                $('#btnModalCancelar').show();
+                $('#btnModalSync').show();
+            }
+
             if (isMultiStop === 'true') {
                 $('#blocoLegadoChegada').hide();
                 $('#blocoLegadoSaida').hide();
@@ -475,42 +515,94 @@
             $('#modalResumoColeta').modal('show');
         }
 
-        // Função Original para os Botões Genéricos e Retorno
-        function marcarHorario(tipo) {
-            if (!idColetaAtual) return;
+        // 🚀 FUNÇÃO NOVA: Cria um alerta bonitinho para perguntar a hora e se é manual
+        function pedirDataHoraManual(titulo, callback) {
+            let now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            let dataAtualFormatada = now.toISOString().slice(0,16);
 
-            $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
-                _token: '{{ csrf_token() }}',
-                tipo: tipo
-            }, function(res) {
-                if (res.success) {
-                    window.location.reload();
-                } else {
-                    alert('Erro: ' + res.mensagem);
+            Swal.fire({
+                title: titulo,
+                html: `
+                    <div class="text-left mt-3">
+                        <label class="font-weight-bold text-primary">Data e Hora Real:</label>
+                        <input type="datetime-local" id="swal-input-datahora" class="form-control mb-4" value="${dataAtualFormatada}">
+
+                        <label class="checkbox checkbox-danger font-weight-bold" title="Marca esta opção se for um registo do passado e não quiser sujar a balança.">
+                            <input type="checkbox" id="swal-input-manual" value="1">
+                            <span></span> &nbsp; Lançamento Manual Retroativo (Não gerar pesagem)
+                        </label>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="la la-check"></i> Registrar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    return {
+                        data_hora: document.getElementById('swal-input-datahora').value,
+                        is_manual: document.getElementById('swal-input-manual').checked ? 1 : 0
+                    };
                 }
-            }).fail(function(xhr) {
-                var msg = xhr.responseJSON ? xhr.responseJSON.mensagem : 'Erro ao processar a solicitação.';
-                alert('Aviso: ' + msg);
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    callback(result.value);
+                }
             });
         }
 
-        // NOVA Função para Marcar Parada a Parada na Lista de Destinos
+        // 🚀 FUNÇÃO ATUALIZADA: Marcar Horário Base/Garagem
+        function marcarHorario(tipo) {
+            if (!idColetaAtual) return;
+
+            let acoesNomes = {
+                'saida_garagem': 'Registrar Saída da Base',
+                'chegada': 'Registrar Chegada no Cliente',
+                'saida': 'Registrar Saída do Cliente',
+                'chegada_garagem': 'Registrar Retorno à Base (Fim)'
+            };
+
+            pedirDataHoraManual(acoesNomes[tipo] || 'Registrar Horário', function(valores) {
+                $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
+                    _token: '{{ csrf_token() }}',
+                    tipo: tipo,
+                    data_hora_manual: valores.data_hora, // Envia a hora digitada
+                    is_manual: valores.is_manual         // Envia se é para ignorar a balança
+                }, function(res) {
+                    if (res.success) {
+                        window.location.reload();
+                    } else {
+                        Swal.fire('Erro', res.mensagem, 'error');
+                    }
+                }).fail(function(xhr) {
+                    var msg = xhr.responseJSON ? xhr.responseJSON.mensagem : 'Erro ao processar a solicitação.';
+                    Swal.fire('Aviso', msg, 'warning');
+                });
+            });
+        }
+
+        // 🚀 FUNÇÃO ATUALIZADA: Marcar Horário Multi-Stop (Paradas)
         function marcarHorarioDestino(tipo, destinoId) {
             if (!idColetaAtual) return;
 
-            $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
-                _token: '{{ csrf_token() }}',
-                tipo: tipo,
-                destino_id: destinoId
-            }, function(res) {
-                if (res.success) {
-                    window.location.reload();
-                } else {
-                    alert('Erro: ' + res.mensagem);
-                }
-            }).fail(function(xhr) {
-                var msg = xhr.responseJSON ? xhr.responseJSON.mensagem : 'Erro ao processar a solicitação.';
-                alert('Aviso: ' + msg);
+            let acaoNome = tipo === 'chegada_destino' ? 'Registrar Chegada na Parada' : 'Registrar Saída da Parada';
+
+            pedirDataHoraManual(acaoNome, function(valores) {
+                $.post('/movimentacaoVeiculo/registrarHorarioCliente/' + idColetaAtual, {
+                    _token: '{{ csrf_token() }}',
+                    tipo: tipo,
+                    destino_id: destinoId,
+                    data_hora_manual: valores.data_hora, // Envia a hora digitada
+                    is_manual: valores.is_manual         // Envia se é para ignorar a balança
+                }, function(res) {
+                    if (res.success) {
+                        window.location.reload();
+                    } else {
+                        Swal.fire('Erro', res.mensagem, 'error');
+                    }
+                }).fail(function(xhr) {
+                    var msg = xhr.responseJSON ? xhr.responseJSON.mensagem : 'Erro ao processar a solicitação.';
+                    Swal.fire('Aviso', msg, 'warning');
+                });
             });
         }
 
@@ -528,4 +620,5 @@
             }
         }
     </script>
+    @include('movimentacoes_veiculos.partials.reabrir_script')
 @endsection

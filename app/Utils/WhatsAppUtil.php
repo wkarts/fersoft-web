@@ -72,6 +72,11 @@ class WhatsAppUtil
         }
     }
 
+    public function sendMedia(int $empresaId, string $numero, string $arquivo, string $legenda = ''): array
+    {
+        return $this->connectApi->sendMedia($empresaId, $numero, $arquivo, $legenda);
+    }
+
     public function sendTemplate(
         string $numero,
         string $eventKey,

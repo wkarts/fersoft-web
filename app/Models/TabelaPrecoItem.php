@@ -12,11 +12,9 @@ class TabelaPrecoItem extends BaseModel
         'tabela_preco_id',
         'produto_id',
         'tipo_frete',
-        'valor_kg',
-        'created_at',
-        'updated_at',
+        'valor_kg'
     ];
-    
+
     // Liga o item com o cadastro de produtos
     public function produto()
     {

@@ -95,9 +95,10 @@ jobs:
         run: bash scripts/ci/bootstrap-env.sh
       - name: Instalar dependências Laravel
         env:
+          COMPOSER_GITHUB_TOKEN: ${{ secrets.COMPOSER_UPDATER_READ_TOKEN || secrets.REPOSITORY_PERSONAL_TOKEN }}
           COMPOSER_PROCESS_TIMEOUT: '0'
           COMPOSER_NO_AUDIT: '1'
-        run: composer install --prefer-dist --no-interaction --no-progress
+        run: bash scripts/ci/composer-install.sh --prefer-dist --no-interaction --no-progress
       - name: Compilar todas as views e validar configurações
         run: |
           set -euo pipefail

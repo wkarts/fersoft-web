@@ -1,0 +1,509 @@
+{
+  "source": "7a5b2a4e086c8e0c1b5c59e4c6565d9b26e3bcd3",
+  "views": {
+    "resources/views/clientes/register.blade.php": {
+      "required": [
+        ["name", "exige_rastreabilidade"],
+        ["name", "portal_nivel_visao"]
+      ]
+    },
+    "resources/views/compraManual/listAll.blade.php": {
+      "required": [
+        ["form:action", "/compras/importarXml"],
+        ["form:enctype", "multipart/form-data"],
+        ["form:method", "POST"],
+        ["id", "btn-grade"],
+        ["id", "btn-tabela"],
+        ["id", "compra_id_importar"],
+        ["id", "form-importar-xml"],
+        ["id", "modal-importar-xml"],
+        ["id", "view-grade"],
+        ["id", "view-tabela"],
+        ["id", "xmlFile"],
+        ["name", "compra_id"],
+        ["name", "file"],
+        ["onclick", "abrirModalImportarXml({{ $c->id }})"],
+        ["onclick", "mudarVisualizacao('grade')"],
+        ["onclick", "mudarVisualizacao('tabela')"],
+        ["onclick", "swal(\"Atenção!\", \"Deseja gerar o espelho para DEVOLUÇÃO TOTAL desta nota?\", \"warning\").then((sim) => {if(sim){ location.href=\"/compras/devolver/{{ $c->id }}\" }else{return false} })"],
+        ["onsubmit", "validarXmlAntes(event)"]
+      ]
+    },
+    "resources/views/contratos/list.blade.php": {
+      "required": [
+        ["href", "/contratos/imprimir/{{ $item->id }}"]
+      ]
+    },
+    "resources/views/contratos/medicoes/create.blade.php": {
+      "retired": [
+        ["id", "forma_pagamento"],
+        ["name", "cidade_prestacao_id"],
+        ["name", "funcionarios[0][diarias]"],
+        ["name", "funcionarios[0][funcao]"],
+        ["name", "funcionarios[0][funcionario_id]"],
+        ["name", "funcionarios[0][valor_diaria]"],
+        ["name", "nf_data_emissao"],
+        ["onchange", "ajustarFormaPagamento(this.value)"],
+        ["onclick", "removerFuncionario(this)"]
+      ],
+      "required": [
+        ["id", "apuracao_data_final"],
+        ["id", "apuracao_data_inicial"],
+        ["id", "valor_abatimento_compra"],
+        ["name", "valor_abatimento_compra"],
+        ["onclick", "carregarApuracaoContrato()"]
+      ],
+      "occurrences": [
+        ["name", "codigo_obra", 1],
+        ["name", "servico_id", 1]
+      ]
+    },
+    "resources/views/contratos/medicoes/edit.blade.php": {
+      "retired": [
+        ["id", "add-funcionario"],
+        ["id", "container-funcionarios"],
+        ["name", "funcionarios[0][diarias]"],
+        ["name", "funcionarios[0][funcao]"],
+        ["name", "funcionarios[0][funcionario_id]"],
+        ["name", "funcionarios[0][valor_diaria]"],
+        ["onchange", "mudarContrato(this)"]
+      ],
+      "required": [
+        ["id", "apuracao_data_final"],
+        ["id", "apuracao_data_inicial"],
+        ["id", "valor_abatimento_compra"],
+        ["name", "grupo_faturamento"],
+        ["name", "itens[{{$idx}}][descricao]"],
+        ["name", "itens[{{$idx}}][produto_id]"],
+        ["name", "itens[{{$idx}}][quantidade]"],
+        ["name", "itens[{{$idx}}][servico_id]"],
+        ["name", "itens[{{$idx}}][tipo_item]"],
+        ["name", "itens[{{$idx}}][valor_unitario]"],
+        ["name", "valor_abatimento_compra"],
+        ["onclick", "carregarApuracaoContrato()"],
+        ["onclick", "removerLinha(this)"],
+        ["oninput", "calcularTotalGeral()"]
+      ]
+    },
+    "resources/views/contratos/medicoes/index.blade.php": {
+      "retired": [
+        ["onclick", "return confirm('Deseja excluir esta medição (Isso NÃO cancela na prefeitura)?')"]
+      ],
+      "required": [
+        ["onclick", "return confirm('Deseja excluir esta medição?')"]
+      ]
+    },
+    "resources/views/contratos/medicoes/register.blade.php": {
+      "retired": [
+        ["form:action", "{{ route('contratos.medicoes.store', $contrato->id) }}"],
+        ["id", "container-parcelas"],
+        ["name", "categoria_conta_id"],
+        ["name", "itens[0][produto_id]"],
+        ["name", "itens[0][quantidade]"],
+        ["name", "itens[0][servico_id]"],
+        ["name", "itens[0][tipo_item]"],
+        ["name", "itens[0][valor_unitario]"],
+        ["name", "parcelas[0][valor]"],
+        ["name", "parcelas[0][vencimento]"],
+        ["name", "tipo_pagamento"],
+        ["name", "valor_total"],
+        ["onclick", "adicionarParcela()"],
+        ["onclick", "removerParcela(this)"]
+      ],
+      "required": [
+        ["form:action", "{{ optional($data)->id ? $actionUpdate . '/' . $data->id :$actionSave }}"],
+        ["form:enctype", "multipart/form-data"],
+        ["id", "bairro"],
+        ["id", "cep"],
+        ["id", "cidade_obra_id"],
+        ["id", "cliente_id"],
+        ["id", "funcionario_id"],
+        ["id", "rua"],
+        ["name", "arquivo_contrato"],
+        ["name", "bairro_obra"],
+        ["name", "cep_obra"],
+        ["name", "cidade_obra_id"],
+        ["name", "cliente_id"],
+        ["name", "contato_nome"],
+        ["name", "contato_telefone"],
+        ["name", "data_fim"],
+        ["name", "data_inicio"],
+        ["name", "endereco_obra"],
+        ["name", "filial_id"],
+        ["name", "funcionario_id"],
+        ["name", "id"],
+        ["name", "itens[{{ $idx }}][produto_id]"],
+        ["name", "itens[{{ $idx }}][quantidade_prevista]"],
+        ["name", "itens[{{ $idx }}][servico_id]"],
+        ["name", "itens[{{ $idx }}][tipo_item]"],
+        ["name", "itens[{{ $idx }}][unidade]"],
+        ["name", "itens[{{ $idx }}][valor_unitario]"],
+        ["name", "numero_contrato"],
+        ["name", "numero_obra"],
+        ["name", "observacoes"],
+        ["name", "percentual_retencao"],
+        ["name", "status"],
+        ["name", "valor_contrato"],
+        ["onchange", "mudarTipoItem(this)"]
+      ]
+    },
+    "resources/views/contratos/register.blade.php": {
+      "retired": [
+        ["form:action", "{{ optional($data)->id ? $actionUpdate . '/' . $data->id : $actionSave }}"],
+        ["name", "itens[{{$idx}}][produto_id]"],
+        ["name", "itens[{{$idx}}][quantidade_prevista]"],
+        ["name", "itens[{{$idx}}][servico_id]"],
+        ["name", "itens[{{$idx}}][tipo_item]"],
+        ["name", "itens[{{$idx}}][valor_unitario]"]
+      ],
+      "required": [
+        ["form:action", "{{ optional($data)->id ? $actionUpdate . '/' . $data->id :$actionSave }}"],
+        ["name", "itens[{{ $idx }}][produto_id]"],
+        ["name", "itens[{{ $idx }}][quantidade_prevista]"],
+        ["name", "itens[{{ $idx }}][servico_id]"],
+        ["name", "itens[{{ $idx }}][tipo_item]"],
+        ["name", "itens[{{ $idx }}][unidade]"],
+        ["name", "itens[{{ $idx }}][valor_unitario]"]
+      ]
+    },
+    "resources/views/fornecedores/register.blade.php": {
+      "required": [
+        ["name", "exige_rastreabilidade"],
+        ["name", "portal_nivel_visao"]
+      ]
+    },
+    "resources/views/funcionarios/register.blade.php": {
+      "required": [
+        ["name", "permissao_mtr_whatsapp"]
+      ]
+    },
+    "resources/views/gestao_coletas/index.blade.php": {
+      "retired": [
+        ["form:action", "/gestao-coletas/recusar/{{ $c->id }}"],
+        ["onsubmit", "return confirm('Deseja realmente recusar esta solicitação?');"]
+      ],
+      "required": [
+        ["href", "/movimentacaoVeiculo/new?coleta_id={{ $c->id }}"],
+        ["id", "form-recusar"],
+        ["id", "modal-recusar"],
+        ["id", "motorista_id"],
+        ["id", "nome_cliente_recusa"],
+        ["name", "motivo"],
+        ["name", "motorista_id"],
+        ["onclick", "abrirModalRecusa({{ $c->id }}, '{{ $c->pessoa->nome_completo }}')"]
+      ]
+    },
+    "resources/views/movimentacoes_veiculos/agenda.blade.php": {
+      "required": [
+        ["id", "btnModalReabrir"],
+        ["id", "btnModalSync"]
+      ]
+    },
+    "resources/views/movimentacoes_veiculos/list.blade.php": {
+      "required": [
+        ["data-dismiss", "modal"],
+        ["href", "/movimentacaoVeiculo/enviar-link-coleta/{{ $record->id }}"],
+        ["id", "btnSalvarVinculoDocsFrota"],
+        ["id", "formVincularDocsFrota"],
+        ["id", "inputMtrFrota"],
+        ["id", "inputNfeFrota"],
+        ["id", "modalVincularDocsFrota"],
+        ["id", "vincularMovimentacaoId"],
+        ["name", "filial_id"],
+        ["name", "movimentacao_id"],
+        ["name", "mtr_numero"],
+        ["name", "nfe_numero"]
+      ]
+    },
+    "resources/views/movimentacoes_veiculos/register.blade.php": {
+      "retired": [
+        ["id", "linha_destino_old_0"],
+        ["id", "tabela-destinos"],
+        ["name", "destinos[old_0][endereco_completo]"],
+        ["name", "destinos[old_0][entidade_id]"],
+        ["name", "destinos[old_0][latitude]"],
+        ["name", "destinos[old_0][longitude]"],
+        ["onclick", "removerDestino('old_0')"]
+      ],
+      "required": [
+        ["id", "container-destinos"],
+        ["id", "container-residuos-old_{{ $key }}"],
+        ["id", "is_terceirizado"],
+        ["id", "motorista_id"],
+        ["id", "pesagem_id"],
+        ["id", "templates-ocultos"],
+        ["id", "terceiro_nome"],
+        ["id", "terceiro_telefone"],
+        ["id", "tpl-options-caixas"],
+        ["id", "tpl-options-combustiveis"],
+        ["id", "tpl-options-entidades"],
+        ["id", "tpl-options-residuos"],
+        ["name", "coleta_origem_id"],
+        ["name", "destinos[old_{{ $key }}][caixa_deixada_id]"],
+        ["name", "destinos[old_{{ $key }}][caixa_retirada_id]"],
+        ["name", "destinos[old_{{ $key }}][cobrar_frete]"],
+        ["name", "destinos[old_{{ $key }}][is_aterro]"],
+        ["name", "destinos[old_{{ $key }}][residuos][old_{{ $idxRes }}][produto_id]"],
+        ["name", "destinos[old_{{ $key }}][residuos][old_{{ $idxRes }}][quantidade]"],
+        ["name", "destinos[old_{{ $key }}][tipo_operacao_caixa]"],
+        ["name", "gerar_mtr"],
+        ["name", "is_terceirizado"],
+        ["name", "passar_balanca"],
+        ["name", "pesagem_id"],
+        ["name", "terceiro_documento"],
+        ["name", "terceiro_nome"],
+        ["name", "terceiro_telefone"],
+        ["onclick", "$(this).closest('.residuo-row').remove();"],
+        ["onclick", "adicionarResiduoParada('old_{{ $key }}')"]
+      ]
+    },
+    "resources/views/mtr/depara/create.blade.php": {
+      "required": [
+        ["id", "classe_residuo"],
+        ["name", "classe_risco"],
+        ["name", "codigo_interno"],
+        ["name", "descricao_interna"],
+        ["name", "grupo_embalagem"],
+        ["name", "nome_embarque"],
+        ["name", "numero_onu"]
+      ]
+    },
+    "resources/views/mtr/depara/edit.blade.php": {
+      "required": [
+        ["id", "classe_residuo"],
+        ["name", "classe_risco"],
+        ["name", "codigo_interno"],
+        ["name", "descricao_interna"],
+        ["name", "grupo_embalagem"],
+        ["name", "nome_embarque"],
+        ["name", "numero_onu"]
+      ]
+    },
+    "resources/views/mtr/emissao/create.blade.php": {
+      "required": [
+        ["data-target", "#inputNomeMotorista"],
+        ["data-target", "#inputPlacaVeiculo"],
+        ["id", "acond-{{ $index }}"],
+        ["id", "classe-{{ $index }}"],
+        ["id", "depara-msg-{{ $index }}"],
+        ["id", "embarque-{{ $index }}"],
+        ["id", "estado-{{ $index }}"],
+        ["id", "grupo-{{ $index }}"],
+        ["id", "ibama-{{ $index }}"],
+        ["id", "inputNomeMotorista"],
+        ["id", "inputPlacaVeiculo"],
+        ["id", "listaMotoristas"],
+        ["id", "listaPlacas"],
+        ["id", "onu-{{ $index }}"],
+        ["id", "qtd-{{ $index }}"],
+        ["id", "risco-{{ $index }}"],
+        ["id", "trat-{{ $index }}"],
+        ["id", "unidade-{{ $index }}"],
+        ["name", "residuos[{{ $index }}][classe_residuo]"],
+        ["name", "residuos[{{ $index }}][classe_risco]"],
+        ["name", "residuos[{{ $index }}][grupo_embalagem]"],
+        ["name", "residuos[{{ $index }}][nome_embarque]"],
+        ["name", "residuos[{{ $index }}][numero_onu]"]
+      ]
+    },
+    "resources/views/mtr/emissao/edit.blade.php": {
+      "retired": [
+        ["name", "residuos[{{ $index }}][acondicionamento]"],
+        ["name", "residuos[{{ $index }}][tratamento]"]
+      ],
+      "required": [
+        ["id", "listaMotoristas"],
+        ["id", "listaPlacas"],
+        ["name", "residuos[{{ $index }}][acondicionamento_id]"],
+        ["name", "residuos[{{ $index }}][classe_risco]"],
+        ["name", "residuos[{{ $index }}][grupo_embalagem]"],
+        ["name", "residuos[{{ $index }}][nome_embarque]"],
+        ["name", "residuos[{{ $index }}][numero_onu]"],
+        ["name", "residuos[{{ $index }}][tratamento_id]"]
+      ]
+    },
+    "resources/views/mtr/emissao/index.blade.php": {
+      "required": [
+        ["name", "data_fim"],
+        ["name", "data_inicio"],
+        ["onclick", "return confirmImportacao({{ $t->tem_mtr ? 'true' : 'false' }})"],
+        ["onclick", "return confirmImportacao({{ $v->tem_mtr ? 'true' : 'false' }})"]
+      ]
+    },
+    "resources/views/mtr/recepcao/index.blade.php": {
+      "required": [
+        ["id", "inputResponsavelRecebimento"]
+      ]
+    },
+    "resources/views/nfse/create.blade.php": {
+      "required": [
+        ["id", "aliq_cbs"],
+        ["id", "aliq_ibs_uf"],
+        ["id", "retencao_federal"],
+        ["id", "total_contribuicoes_retidas"],
+        ["name", "aliq_cbs"],
+        ["name", "aliq_ibs_uf"],
+        ["name", "retencao_federal"]
+      ]
+    },
+    "resources/views/nfse/index.blade.php": {
+      "required": [
+        ["data-target", "#modalPuxarMedicao"],
+        ["form:action", "{{ route('nfse.importar.medicao') }}"],
+        ["form:enctype", "multipart/form-data"],
+        ["form:method", "POST"],
+        ["href", "/nfse/gerar-xml-local/{{ $item->id }}"],
+        ["id", "customFile"],
+        ["id", "formImportarXml"],
+        ["id", "import_id_nota"],
+        ["id", "modalImportarXml"],
+        ["id", "modalPuxarMedicao"],
+        ["name", "fatura_eng_id"],
+        ["name", "id_nota"],
+        ["name", "xml_file"]
+      ]
+    },
+    "resources/views/pesagens/list.blade.php": {
+      "required": [
+        ["id", "box_producao_lote"],
+        ["id", "btnSalvarRecebimento"],
+        ["id", "btnSalvarVinculoDocs"],
+        ["id", "dt_registro"],
+        ["id", "formRecebimentoMtr"],
+        ["id", "formVincularDocs"],
+        ["id", "inputMtrBuscaRapidaPesagem"],
+        ["id", "inputMtrEntrada"],
+        ["id", "inputNfeEntrada"],
+        ["id", "inputResponsavelRecebimento"],
+        ["id", "lblRecMtr"],
+        ["id", "lote-{{ $ticket->id }}"],
+        ["id", "modalRecebimentoMtr"],
+        ["id", "modalVincularDocs"],
+        ["id", "producao_lote_id"],
+        ["id", "recGeradorNome"],
+        ["id", "recGeradorNomeVisivel"],
+        ["id", "recMotorista"],
+        ["id", "recNumeroMtr"],
+        ["id", "recPlaca"],
+        ["id", "recTransportadorNome"],
+        ["id", "recTransportadorNomeVisivel"],
+        ["id", "tabelaResiduosRecebimento"],
+        ["id", "vincularPesagemId"],
+        ["name", "data_recebimento"],
+        ["name", "dt_registro"],
+        ["name", "gerador_nome"],
+        ["name", "motorista"],
+        ["name", "mtr_entrada"],
+        ["name", "nfe_entrada"],
+        ["name", "numero_mtr"],
+        ["name", "placa"],
+        ["name", "producao_lote_id"],
+        ["name", "relatorio_80mm_simples"],
+        ["name", "responsavel"],
+        ["name", "transportador_nome"],
+        ["onclick", "adicionarResiduoManual()"],
+        ["onclick", "consultarEAbirRecebimentoPesagem()"]
+      ]
+    },
+    "resources/views/portaria/index.blade.php": {
+      "retired": [
+        ["onsubmit", "return confirm('Deseja realmente excluir este agendamento?');"]
+      ],
+      "required": [
+        ["id", "btn_adicionar_acompanhante"],
+        ["id", "container_acompanhantes"],
+        ["id", "motivo_visita"],
+        ["name", "motivo_visita"],
+        ["onsubmit", "return confirm('Deseja excluir este agendamento?');"]
+      ]
+    },
+    "resources/views/pre_cadastro/index.blade.php": {
+      "retired": [
+        ["onclick", "aprovarParceiro({{ $p->id }}, 'ambos')"],
+        ["onclick", "aprovarParceiro({{ $p->id }}, 'cliente')"],
+        ["onclick", "aprovarParceiro({{ $p->id }}, 'fornecedor')"]
+      ],
+      "required": [
+        ["id", "modal-aprovacao"],
+        ["name", "exibe_contratos"],
+        ["name", "exige_rastreabilidade"],
+        ["name", "portal_nivel_visao"],
+        ["onclick", "abrirModalAprovacao({{ $p->id }}, 'ambos')"],
+        ["onclick", "abrirModalAprovacao({{ $p->id }}, 'cliente')"],
+        ["onclick", "abrirModalAprovacao({{ $p->id }}, 'fornecedor')"]
+      ]
+    },
+    "resources/views/servicos/register.blade.php": {
+      "required": [
+        ["name", "codigo_indicador_operacao"]
+      ]
+    },
+    "resources/views/tributos/index.blade.php": {
+      "required": [
+        ["id", "aliq_cbs"],
+        ["id", "aliq_ibs_uf"],
+        ["id", "csll"],
+        ["id", "ir"],
+        ["name", "aliq_cbs"],
+        ["name", "aliq_ibs_uf"],
+        ["name", "csll"],
+        ["name", "ir"]
+      ]
+    },
+    "resources/views/usuarios/register.blade.php": {
+      "required": [
+        ["id", "cpf_mtr"],
+        ["id", "token_mtr"],
+        ["name", "cpf_mtr"],
+        ["name", "remover_token_mtr"],
+        ["name", "token_mtr"]
+      ]
+    },
+    "resources/views/vendas/edit_assincrono.blade.php": {
+      "required": [
+        ["id", "cod_ajuste_doc"],
+        ["id", "cod_ajuste_icms"],
+        ["id", "item_nDraw"],
+        ["id", "perc_cred_presumido"],
+        ["id", "tabela-exportacao-item"],
+        ["id", "tbody-exportacao-item"],
+        ["id", "valor_cred_presumido"],
+        ["name", "cod_ajuste_doc"],
+        ["name", "cod_ajuste_icms"],
+        ["name", "item_nDraw"],
+        ["name", "perc_cred_presumido"],
+        ["name", "valor_cred_presumido"],
+        ["onclick", "adicionarLinhaExportacao()"],
+        ["onkeyup", "calcularCreditoPresumidoModal()"]
+      ]
+    },
+    "resources/views/vendas/list.blade.php": {
+      "required": [
+        ["onchange", "alterarSituacaoCliente({{ $v->id }}, this.value)"]
+      ]
+    },
+    "resources/views/vendas/register_assincrono.blade.php": {
+      "required": [
+        ["id", "cod_ajuste_doc"],
+        ["id", "cod_ajuste_icms"],
+        ["id", "item_nDraw"],
+        ["id", "modal-importar-pesagem"],
+        ["id", "perc_cred_presumido"],
+        ["id", "pesagem_id"],
+        ["id", "tabela-exportacao-item"],
+        ["id", "tabela-pesagens-pendentes"],
+        ["id", "tbody-exportacao-item"],
+        ["id", "valor_cred_presumido"],
+        ["name", "cod_ajuste_doc"],
+        ["name", "cod_ajuste_icms"],
+        ["name", "item_nDraw"],
+        ["name", "perc_cred_presumido"],
+        ["name", "pesagem_id"],
+        ["name", "valor_cred_presumido"],
+        ["onclick", "abrirModalImportarPesagem()"],
+        ["onclick", "adicionarLinhaExportacao()"],
+        ["onkeyup", "calcularCreditoPresumidoModal()"]
+      ]
+    }
+  }
+}

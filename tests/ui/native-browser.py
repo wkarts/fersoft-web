@@ -265,6 +265,7 @@ def check_page(page, theme, layout, density, width):
     assert page.locator('.ui-chart-empty').first.evaluate('(e)=>e.getBoundingClientRect().height <= 205'), 'Empty charts do not match the proposal height.'
     assert page.locator('.ui-metric').first.evaluate('(e)=>e.getBoundingClientRect().height <= 128'), 'Metric cards exceed the proposal height.'
     assert page.locator('#ui-navigation a[href="/logs"]').count() == 0, 'Unauthorized menu was exposed.'
+    assert page.locator('#ui-navigation a[href="/marcas"]').count() == 0, 'A company route was exposed without operator permission.'
     assert page.locator('#ui-navigation a[href="/produtos"]').count() == 1
     assert page.locator('#ui-navigation a[href="/clientes"]').count() == 1
     assert page.locator('#ui-navigation a[href="/funcionarios"]').count() >= 1

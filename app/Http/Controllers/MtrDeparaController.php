@@ -161,6 +161,14 @@ class MtrDeparaController extends BaseController
             'tratamento_id' => $request->tratamento_id,
             'unidade_medida' => $request->input('unidade_medida', 'Kg'),
             'fator_conversao' => $request->input('fator_conversao', 1.0000),
+
+            // --- NOVOS CAMPOS ANTT / CLASSE I (PRODUTOS PERIGOSOS) ---
+            'numero_onu' => $request->numero_onu,
+            'classe_risco' => $request->classe_risco,
+            'nome_embarque' => $request->nome_embarque,
+            'grupo_embalagem' => $request->grupo_embalagem,
+            'codigo_interno' => $request->codigo_interno,
+            'descricao_interna' => $request->descricao_interna,
         ];
     }
 }

@@ -172,6 +172,7 @@
                                 </select>
                             </div>
 
+
                             <!-- Adicionar junto aos campos fiscais na Seção 2 do servicos/register.blade.php -->
                             <div class="form-group validated col-sm-6 col-lg-3">
                                 <label class="font-weight-bold">Exige Código de Obra / ART?</label>
@@ -236,6 +237,12 @@
                                        data-mask="000,00" data-mask-reverse="true" name="aliquota_inss" placeholder="0,00"
                                        value="{{ isset($servico) ? $servico->aliquota_inss : old('aliquota_inss') }}">
                             </div>
+
+                            <div class="form-group col-lg-4 col-6 mb-3">
+                                <label class="form-label">Código Indicador da Operação (IBS/CBS)</label>
+                                <input type="text" name="codigo_indicador_operacao" class="form-control" value="{{ isset($servico) ? $servico->codigo_indicador_operacao : '050101' }}" placeholder="Ex: 050101">
+                            </div>
+
                         </div>
                         <!-- Rodapé com Botões -->
                         <div class="card-footer bg-light-secondary d-flex justify-content-end py-4">

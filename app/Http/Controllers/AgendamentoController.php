@@ -103,13 +103,13 @@ class AgendamentoController extends Controller
     }
 
 // --- BUSCA DINÂMICA DE EVENTOS (ALL) ---
+    // --- BUSCA DINÂMICA DE EVENTOS (ALL) ---
     public function all(Request $request)
     {
         $userLogged = session('user_logged');
         $usuario_id = $userLogged['id'] ?? $userLogged['usuario_id'] ?? null;
         $usuario = \App\Models\Usuario::find($usuario_id);
 
-        // Identificação de Administrador
         $ehAdmin = false;
         if ($usuario && ((int)$usuario->adm === 1 || (int)($usuario->is_admin ?? 0) === 1)) {
             $ehAdmin = true;
@@ -120,7 +120,6 @@ class AgendamentoController extends Controller
         $funcionarioVinculado = \App\Models\Funcionario::where('usuario_id', $usuario_id)->first();
         $meuFuncionarioId = $funcionarioVinculado ? $funcionarioVinculado->id : 0;
 
-        // Normalização das datas enviadas pelo calendário
         if ($request->filled('start') && $request->filled('end')) {
             $dataInicio = substr($request->start, 0, 10);
             $dataFim    = substr($request->end, 0, 10);
@@ -138,7 +137,6 @@ class AgendamentoController extends Controller
             ->where('empresa_id', $this->empresa_id)
             ->whereBetween('data', [$dataInicio, $dataFim]);
 
-        // Se NÃO for Admin, mostra apenas as atribuídas a ele ou criadas por ele
         if (!$ehAdmin) {
             $queryTarefas->where(function($q) use ($meuFuncionarioId, $usuario_id) {
                 if ($meuFuncionarioId > 0) {
@@ -151,7 +149,6 @@ class AgendamentoController extends Controller
             });
         }
 
-        // Filtro manual da barra superior (se o usuário selecionar no select)
         if ($request->filled('funcionario_id') && $request->funcionario_id !== 'null') {
             $queryTarefas->where('funcionario_id', $request->funcionario_id);
         }
@@ -160,21 +157,14 @@ class AgendamentoController extends Controller
         $agora = \Carbon\Carbon::now();
 
         foreach ($tarefas as $t) {
-            /*
-             * Complemento compatível com a versão nova:
-             * interpreta variações de status sem alterar o status persistido.
-             */
             $statusReal = strtolower(trim((string) $t->status));
             $isConcluida = in_array($statusReal, ['concluida', 'concluido', 'finalizada'], true);
             $isAndamento = in_array($statusReal, ['em_andamento', 'andamento', 'executando'], true);
             $isCancelada = in_array($statusReal, ['cancelada', 'cancelado'], true);
-
             $isAtrasada = false;
 
             if (!$isConcluida && !$isCancelada && !empty($t->data_limite)) {
-                $dataApenas = \Carbon\Carbon::parse(
-                    str_replace('/', '-', (string) $t->data_limite)
-                )->format('Y-m-d');
+                $dataApenas = \Carbon\Carbon::parse(str_replace('/', '-', (string) $t->data_limite))->format('Y-m-d');
                 $horaLim = !empty($t->hora_limite) ? $t->hora_limite : '23:59:59';
                 $limite = \Carbon\Carbon::parse($dataApenas . ' ' . $horaLim);
 
@@ -183,49 +173,30 @@ class AgendamentoController extends Controller
                 }
             }
 
-            // Cor por Status da Tarefa (incluindo os status complementares).
             if ($isConcluida) {
-                $cor = '#10B981'; // Verde
-                $icon = '✓';
-                $statusFinalParaFront = 'concluida';
+                $cor = '#10B981'; $icon = '✓'; $statusFinalParaFront = 'concluida';
             } elseif ($isAtrasada) {
-                $cor = '#DC2626'; // Vermelho: inclui em andamento atrasada
-                $icon = '⚠️';
-                $statusFinalParaFront = $isAndamento ? 'em_andamento' : 'pendente';
+                $cor = '#DC2626'; $icon = '⚠️'; $statusFinalParaFront = $isAndamento ? 'em_andamento' : 'pendente';
             } elseif ($isAndamento) {
-                $cor = '#0EA5E9'; // Azul
-                $icon = '⏱';
-                $statusFinalParaFront = 'em_andamento';
+                $cor = '#0EA5E9'; $icon = '⏱'; $statusFinalParaFront = 'em_andamento';
             } elseif ($isCancelada) {
-                $cor = '#4B5563'; // Cinza
-                $icon = '✕';
-                $statusFinalParaFront = 'cancelada';
+                $cor = '#4B5563'; $icon = '✕'; $statusFinalParaFront = 'cancelada';
             } else {
-                $cor = '#8B5CF6'; // Roxo (Pendente)
-                $icon = '👤';
-                $statusFinalParaFront = 'pendente';
+                $cor = '#8B5CF6'; $icon = '👤'; $statusFinalParaFront = 'pendente';
             }
 
-            // Nome do responsável (apenas primeiro nome ou nome curto para caber no card)
             $nomeCompleto = $t->funcionario->nome ?? 'Não atribuído';
             $partesNome = explode(' ', trim($nomeCompleto));
             $primeiroNome = $partesNome[0] . (isset($partesNome[1]) ? ' ' . substr($partesNome[1], 0, 1) . '.' : '');
 
-            // Preserva o título compacto atual e acrescenta o horário REAL,
-            // quando informado; nunca utiliza uma hora fictícia como fallback.
             $tituloCardOriginal = "{$icon} {$t->titulo} ({$primeiroNome})";
             $horaExibicao = !empty($t->hora_estimada) ? substr((string) $t->hora_estimada, 0, 5) : null;
-            $tituloCard = $horaExibicao !== null
-                ? "{$horaExibicao} {$tituloCardOriginal}"
-                : $tituloCardOriginal;
+            $tituloCard = $horaExibicao !== null ? "{$horaExibicao} {$tituloCardOriginal}" : $tituloCardOriginal;
 
             $dataTarefa = \Carbon\Carbon::parse($t->data)->format('Y-m-d');
             $horaIni = !empty($t->hora_estimada) ? substr($t->hora_estimada, 0, 5) : null;
             $horaFim = !empty($t->hora_limite) ? substr($t->hora_limite, 0, 5) : '18:00';
-
-            $dataLimiteFormatada = !empty($t->data_limite)
-                ? \Carbon\Carbon::parse(str_replace('/', '-', (string) $t->data_limite))->format('d/m/Y')
-                : 'Não definido';
+            $dataLimiteFormatada = !empty($t->data_limite) ? \Carbon\Carbon::parse(str_replace('/', '-', (string) $t->data_limite))->format('d/m/Y') : 'Não definido';
 
             $eventos[] = [
                 'id'              => 'tarefa_' . $t->id,
@@ -236,7 +207,6 @@ class AgendamentoController extends Controller
                 'backgroundColor' => $cor,
                 'borderColor'     => $cor,
                 'textColor'       => '#FFFFFF',
-                // Propriedades completas para o Modal
                 'extendedProps'   => [
                     'tipo'                 => 'tarefa',
                     'tarefa_id'            => $t->id,
@@ -308,6 +278,68 @@ class AgendamentoController extends Controller
                     'id'   => $a->id
                 ]
             ];
+        }
+
+        // =========================================================================
+        // 3. AGENDAMENTOS DA PORTARIA (AGORA NO LUGAR CORRETO)
+        // =========================================================================
+        try {
+            $clienteFiltro = $request->input('cliente_id');
+
+            if (empty($clienteFiltro) || $clienteFiltro === 'null') {
+                $queryPortaria = \App\Models\PortariaAgendamento::with(['visitante', 'funcionario'])
+                    ->where('empresa_id', $this->empresa_id)
+                    ->whereBetween('data_hora_prevista', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59']);
+
+                $funcionarioFiltro = $request->input('funcionario_id');
+                if (!empty($funcionarioFiltro) && $funcionarioFiltro !== 'null') {
+                    $queryPortaria->where('funcionario_id', $funcionarioFiltro);
+                }
+
+                $portariaAgendamentos = $queryPortaria->get();
+
+                foreach ($portariaAgendamentos as $p) {
+                    $nomeVisitante = $p->visitante ? $p->visitante->nome : 'Visitante Desconhecido';
+                    $nomeFuncionario = $p->funcionario ? $p->funcionario->nome : 'Atendente';
+                    $statusStr = $p->status ?? 'pendente';
+
+                    $cor = ($statusStr == 'realizado') ? '#0d9488' : '#475569';
+                    $icone = ($statusStr == 'realizado') ? '🏢✓' : '🏢';
+
+                    $dataStr = (string) $p->data_hora_prevista;
+                    $dataIso = date('Y-m-d\TH:i:s', strtotime($dataStr));
+                    $dataBR = date('d/m/Y', strtotime($dataStr));
+                    $hora = date('H:i', strtotime($dataStr));
+
+                    $eventos[] = [
+                        'id'              => 'portaria_' . $p->id,
+                        'title'           => "{$icone} {$nomeVisitante} ({$nomeFuncionario})",
+                        'start'           => $dataIso,
+                        'allDay'          => false,
+                        'color'           => $cor,
+                        'backgroundColor' => $cor,
+                        'borderColor'     => $cor,
+                        'textColor'       => '#FFFFFF',
+                        'url'             => "/portaria",
+                        'extendedProps'   => [
+                            'tipo'                 => 'portaria',
+                            'agendamento_id'       => $p->id,
+                            'titulo'               => 'Visita: ' . $nomeVisitante,
+                            'descricao'            => 'Agendamento de visita na portaria.',
+                            'funcionario'          => $nomeFuncionario,
+                            'prioridade'           => 'Portaria',
+                            'status'               => ucfirst($statusStr),
+                            'is_atrasada'          => false,
+                            'data_inicio'          => $dataBR,
+                            'hora_estimada'        => $hora,
+                            'tempo_gasto'          => 0,
+                            'justificativa_atraso' => ''
+                        ]
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error("ERRO MODEL PORTARIA CALENDARIO: " . $e->getMessage());
         }
 
         return response()->json($eventos, 200);
@@ -575,7 +607,77 @@ class AgendamentoController extends Controller
             }
         }
 
-        return response()->json($temp, 200);
+        // =========================================================================
+        // 3. AGENDAMENTOS DA PORTARIA (USANDO MODELO PARA GARANTIR CONEXÃO CORRETA)
+        // =========================================================================
+        try {
+            // A sua intuição estava certa! Se o utilizador estiver a filtrar por um Cliente
+            // específico no calendário, escondemos a portaria (já que visita não tem cliente do ERP).
+            $clienteFiltro = $request->input('cliente_id');
+
+            if (empty($clienteFiltro) || $clienteFiltro === 'null') {
+
+                $queryPortaria = \App\Models\PortariaAgendamento::with(['visitante', 'funcionario'])
+                    ->where('empresa_id', $this->empresa_id)
+                    ->whereBetween('data_hora_prevista', [$dataInicio . ' 00:00:00', $dataFim . ' 23:59:59']);
+
+                // Filtro de Atendente/Funcionário
+                $funcionarioFiltro = $request->input('funcionario_id');
+                if (!empty($funcionarioFiltro) && $funcionarioFiltro !== 'null') {
+                    $queryPortaria->where('funcionario_id', $funcionarioFiltro);
+                }
+
+                $portariaAgendamentos = $queryPortaria->get();
+
+                foreach ($portariaAgendamentos as $p) {
+                    $nomeVisitante = $p->visitante ? $p->visitante->nome : 'Visitante Desconhecido';
+                    $nomeFuncionario = $p->funcionario ? $p->funcionario->nome : 'Atendente';
+                    $statusStr = $p->status ?? 'pendente';
+
+                    $cor = ($statusStr == 'realizado') ? '#0d9488' : '#475569';
+                    $icone = ($statusStr == 'realizado') ? '🏢✓' : '🏢';
+
+                    // Formatação super segura de data nativa
+                    $dataStr = (string) $p->data_hora_prevista;
+                    $dataIso = date('Y-m-d\TH:i:s', strtotime($dataStr));
+                    $dataBR = date('d/m/Y', strtotime($dataStr));
+                    $hora = date('H:i', strtotime($dataStr));
+
+                    $eventos[] = [
+                        'id'              => 'portaria_' . $p->id,
+                        'title'           => "{$icone} {$nomeVisitante} ({$nomeFuncionario})",
+                        'start'           => $dataIso,
+                        'allDay'          => false,
+                        'color'           => $cor,
+                        'backgroundColor' => $cor,
+                        'borderColor'     => $cor,
+                        'textColor'       => '#FFFFFF',
+                        'url'             => "/portaria", // Ao clicar no evento, vai direto para a tela da portaria
+                        'extendedProps'   => [
+                            'tipo'                 => 'portaria',
+                            'agendamento_id'       => $p->id,
+                            'titulo'               => 'Visita: ' . $nomeVisitante,
+                            'descricao'            => 'Agendamento de visita na portaria.',
+                            'funcionario'          => $nomeFuncionario,
+                            'prioridade'           => 'Portaria',
+                            'status'               => ucfirst($statusStr),
+                            'is_atrasada'          => false,
+                            'data_inicio'          => $dataBR,
+                            'hora_estimada'        => $hora,
+                            'tempo_gasto'          => 0,
+                            'justificativa_atraso' => ''
+                        ]
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::error("ERRO MODEL PORTARIA CALENDARIO: " . $e->getMessage());
+        }
+
+        // Esta deve ser a ÚLTIMA linha do método all()
+        return response()->json($eventos, 200);
+
+
     }
 
     public function detalhes($id){

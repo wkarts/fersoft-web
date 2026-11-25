@@ -179,7 +179,7 @@ class NfseNacionalTools implements NfseEmissorInterface
 
             if (isset($infDPS['serv']['cServ'])) {
                 $cServ = $serv->addChild('cServ');
-                $cTribNac = preg_replace('/\D/', '', $infDPS['serv']['cServ']['cTribNac'] ?? '140501');
+                $cTribNac = preg_replace('/[^0-9.]/', '', $infDPS['serv']['cServ']['cTribNac'] ?? '140501');
                 $cServ->addChild('cTribNac', str_pad($cTribNac, 6, '0', STR_PAD_LEFT));
                 $cServ->addChild('xDescServ', htmlspecialchars($infDPS['serv']['cServ']['xDescServ'] ?? 'PRESTACAO DE SERVICO', ENT_QUOTES, 'UTF-8'));
 
@@ -233,12 +233,27 @@ class NfseNacionalTools implements NfseEmissorInterface
                     $tribFedData = $infDPS['valores']['trib']['tribFed'];
                     $tribFed = $trib->addChild('tribFed');
 
-                    // PIS / COFINS
-                    $piscofins = $tribFed->addChild('piscofins');
-                    $cstPis = $tribFedData['piscofins']['CST'] ?? ($opSimpNac === 1 ? '01' : '07');
-                    $piscofins->addChild('CST', (string) $cstPis);
+                    // PIS / COFINS Completo (Padrão Nacional)
+                    if (isset($tribFedData['piscofins'])) {
+                        $pcData = $tribFedData['piscofins'];
+                        $piscofins = $tribFed->addChild('piscofins');
+                        $cstPis = $pcData['CST'] ?? ($opSimpNac === 1 ? '01' : '07');
+                        $piscofins->addChild('CST', (string) $cstPis);
 
-                    // Retenções na fonte (INSS, IRRF, CSLL)
+                        $vPisVal    = (float) ($pcData['vPis'] ?? $pcData['vPIS'] ?? 0);
+                        $vCofinsVal = (float) ($pcData['vCofins'] ?? $pcData['vCOFINS'] ?? 0);
+
+                        if ($vPisVal > 0 || $vCofinsVal > 0) {
+                            $piscofins->addChild('vBCPisCofins', number_format((float)($pcData['vBCPisCofins'] ?? $vServFloat), 2, '.', ''));
+                            $piscofins->addChild('pAliqPis', number_format((float)($pcData['pAliqPis'] ?? 0), 2, '.', ''));
+                            $piscofins->addChild('pAliqCofins', number_format((float)($pcData['pAliqCofins'] ?? 0), 2, '.', ''));
+                            $piscofins->addChild('vPis', number_format($vPisVal, 2, '.', ''));
+                            $piscofins->addChild('vCofins', number_format($vCofinsVal, 2, '.', ''));
+                            $piscofins->addChild('tpRetPisCofins', (string) ($pcData['tpRetPisCofins'] ?? 2));
+                        }
+                    }
+
+                    // Retenções na fonte (INSS, IRRF, CSLL/Contribuições Sociais)
                     if (isset($tribFedData['vRetCP']) && (float)$tribFedData['vRetCP'] > 0) {
                         $tribFed->addChild('vRetCP', number_format((float)$tribFedData['vRetCP'], 2, '.', ''));
                     }
@@ -266,7 +281,9 @@ class NfseNacionalTools implements NfseEmissorInterface
             $ibscbs = $nodeInf->addChild('IBSCBS');
             $ibscbs->addChild('finNFSe', (string) ($infDPS['ibscbs']['finNFSe'] ?? '0'));
             $ibscbs->addChild('cIndOp', (string) $infDPS['ibscbs']['cIndOp']);
-            $ibscbs->addChild('indDest', (string) ($infDPS['ibscbs']['indDest'] ?? '1'));
+
+            // CORRIGIDO AQUI PARA 0:
+            $ibscbs->addChild('indDest', (string) ($infDPS['ibscbs']['indDest'] ?? '0'));
 
             $ibscbsValores = $ibscbs->addChild('valores');
             $ibscbsTrib = $ibscbsValores->addChild('trib');
@@ -291,33 +308,126 @@ class NfseNacionalTools implements NfseEmissorInterface
     }
 
     /**
-     * Transmite o Evento 101101 de Cancelamento
+     * Consulta a NFS-e pela chave de acesso ou DPS no Portal Nacional
      */
-    public function cancelar(string $chave, string $motivo = 'Cancelamento')
+    public function consultar($chaveOuNumero)
+    {
+        $tpAmb = $this->config['tpAmb'] ?? 1;
+        $baseUrl = ($tpAmb == 1)
+            ? 'https://sefin.nfse.gov.br/SefinNacional'
+            : 'https://sefin.homologacao.nfse.gov.br/SefinNacional';
+
+        $chaveLimpa = preg_replace('/\D/', '', (string) $chaveOuNumero);
+
+        // Se tiver 50 dígitos, consulta direto pela chave da NFS-e
+        if (strlen($chaveLimpa) === 50) {
+            $urlApi = "{$baseUrl}/nfse/{$chaveLimpa}";
+        } else {
+            // Caso contrário, monta o ID da DPS (45 caracteres) para consultar
+            $cnpjPrestador   = str_pad(preg_replace('/\D/', '', $this->config['cnpj'] ?? ''), 14, '0', STR_PAD_LEFT);
+            $tipoInscricao   = '2';
+            $cLocEmi         = str_pad(preg_replace('/\D/', '', $this->config['codMun'] ?? '2919207'), 7, '0', STR_PAD_LEFT);
+            $serieFormatada  = str_pad(preg_replace('/\D/', '', (string)($this->config['serie_dps'] ?? '1')), 5, '0', STR_PAD_LEFT);
+            $numeroFormatado = str_pad($chaveLimpa, 15, '0', STR_PAD_LEFT);
+            $idDps           = 'DPS' . $cLocEmi . $tipoInscricao . $cnpjPrestador . $serieFormatada . $numeroFormatado;
+
+            $urlApi = "{$baseUrl}/dps/{$idDps}";
+        }
+
+        $resData = $this->executarGetSefaz($urlApi);
+
+        $xmlAutorizado = null;
+        if (!empty($resData['nfseXmlGZipB64'])) {
+            $xmlAutorizado = gzdecode(base64_decode($resData['nfseXmlGZipB64']));
+        }
+
+        return [
+            'status'             => 'AUTORIZADO',
+            'cancelada'          => ($resData['cStat'] ?? 100) == 101,
+            'numero_nfse'        => $resData['nNFSe'] ?? $resData['numeroNfse'] ?? null,
+            'codigo_verificacao' => $resData['chaveAcesso'] ?? (strlen($chaveLimpa) === 50 ? $chaveLimpa : null),
+            'xml_resposta'       => $xmlAutorizado ?? json_encode($resData)
+        ];
+    }
+
+    /**
+     * Transmite o Evento 101101 de Cancelamento (Schema Nacional v1.01 - 59 caracteres)
+     */
+    public function cancelar(string $chave, string $motivo = 'Cancelamento por erro na emissao')
     {
         $codigoMotivo = '1';
         $cnpj = preg_replace('/\D/', '', $this->config['cnpj'] ?? '');
-        $idEvento = "PRE" . $chave . "101101";
+        $chaveLimpa = preg_replace('/\D/', '', $chave);
+
+        if (strlen($chaveLimpa) !== 50) {
+            throw new \Exception("Chave da NFS-e inválida para cancelamento ({$chaveLimpa}). Deve conter 50 dígitos.");
+        }
+
+        // Padrão TSIdPedRegEvt v1.01: 'PRE' (3) + Chave (50) + TipoEvento '101101' (6) = 59 caracteres (PRE[0-9]{56})
+        $idEvento = "PRE" . $chaveLimpa . "101101";
 
         $xml = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse"/>');
-        $xml->addAttribute('versao', '1.00');
+        $xml->addAttribute('versao', '1.01');
 
         $inf = $xml->addChild('infPedReg');
         $inf->addAttribute('Id', $idEvento);
-        $inf->addChild('tpAmb', $this->config['tpAmb'] ?? 1);
+        $inf->addChild('tpAmb', (string) ($this->config['tpAmb'] ?? 1));
         $inf->addChild('verAplic', 'FersoftERP_1.0');
         $inf->addChild('dhEvento', date('Y-m-d\TH:i:sP'));
         $inf->addChild('CNPJAutor', $cnpj);
-        $inf->addChild('chNFSe', $chave);
+        $inf->addChild('chNFSe', $chaveLimpa);
 
         $e101101 = $inf->addChild('e101101');
         $e101101->addChild('xDesc', 'Cancelamento de NFS-e');
         $e101101->addChild('cMotivo', $codigoMotivo);
-        $e101101->addChild('xMotivo', htmlspecialchars($motivo, ENT_QUOTES, 'UTF-8'));
+        $e101101->addChild('xMotivo', htmlspecialchars(
+            strlen(trim($motivo)) >= 15 ? trim($motivo) : 'Cancelamento por erro na emissao da nota fiscal',
+            ENT_QUOTES,
+            'UTF-8'
+        ));
 
         $xmlAssinado = $this->assinarXml($xml->asXML(), 'infPedReg');
 
-        return $this->transmitirEventoParaSefaz($chave, $xmlAssinado);
+        return $this->transmitirEventoParaSefaz($chaveLimpa, $xmlAssinado);
+    }
+
+    protected function executarGetSefaz(string $urlApi)
+    {
+        $certPem = $this->certificate->publicKey ?? $this->certificate->certificate ?? '';
+        $keyPem  = $this->certificate->privateKey ?? '';
+
+        $tempCert = tempnam(sys_get_temp_dir(), 'cert_');
+        $tempKey  = tempnam(sys_get_temp_dir(), 'key_');
+
+        file_put_contents($tempCert, $certPem);
+        file_put_contents($tempKey, $keyPem);
+
+        try {
+            $client = new Client([
+                'timeout'     => 30,
+                'verify'      => false,
+                'cert'        => $tempCert,
+                'ssl_key'     => $tempKey,
+                'http_errors' => false,
+            ]);
+
+            $response = $client->get($urlApi, [
+                'headers' => ['Accept' => 'application/json']
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $resBody    = (string) $response->getBody();
+            $resData    = json_decode($resBody, true);
+
+            if ($statusCode == 200 || $statusCode == 201) {
+                return $resData;
+            }
+
+            throw new \Exception("Consulta SEFAZ (HTTP {$statusCode}): " . ($resData['erro']['descricao'] ?? $resBody));
+        } finally {
+            @unlink($tempCert);
+            @unlink($tempKey);
+        }
     }
 
     protected function transmitirParaSefaz($xmlSigned)

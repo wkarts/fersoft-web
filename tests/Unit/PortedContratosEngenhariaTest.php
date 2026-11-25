@@ -160,7 +160,8 @@ class PortedContratosEngenhariaTest extends TestCase
         $controller = file_get_contents($root . '/app/Http/Controllers/ContratoEngMedicaoController.php');
 
         $this->assertStringNotContainsString("'sub_total'", $itemModel);
-        $this->assertStringNotContainsString("'descricao'", $itemModel);
+        $this->assertStringContainsString("'descricao'", $itemModel);
+        $this->assertStringNotContainsString("'descricao'", $contractItemModel);
         $this->assertStringNotContainsString("['sub_total']", $controller);
 
         foreach ([$itemModel, $employeeModel, $contractItemModel] as $model) {

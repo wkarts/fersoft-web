@@ -119,12 +119,35 @@ class DiasDavilaTools implements NfseEmissorInterface
 
         // ----------------------------------------------------
 
-        $issRetido = ($inf['valores']['trib']['tribMun']['tpRetISSQN'] ?? 1) == 2 ? '1' : '2';
+        // Restaura a variável que tinha sido apagada
         $servico->addChild('IssRetido', $issRetido);
         $servico->addChild('ResponsavelRetencao', '1');
-        $servico->addChild('ItemListaServico', $serv['cServ']['cTribNac'] ?? '140501');
-        $servico->addChild('CodigoNbs', $serv['cServ']['cNBS'] ?? '118066200');
+
+        $itemLista = preg_replace('/[^0-9.]/', '', $serv['cServ']['cTribNac'] ?? '140501');
+        $servico->addChild('ItemListaServico', $itemLista);
+
+        $exigibilidade = $inf['valores']['trib']['tribMun']['tribISSQN'] ?? '1';
+        $servico->addChild('ExigibilidadeISS', $exigibilidade);
+
+        // >>> SOLUÇÃO DO IMPASSE: Se for Não Incidência (2), NÃO envia a tag NBS! <<<
+        // Assim a prefeitura não dá Erro 42 e o Nacional não dá E1000.
+        if ($exigibilidade != '2') {
+            $codigoNbs = preg_replace('/\D/', '', $serv['cServ']['cNBS'] ?? '');
+            if (!empty($codigoNbs)) {
+                $servico->addChild('CodigoNbs', $codigoNbs);
+            }
+        }
+
+        $cidadePrestacao = preg_replace('/\D/', '', $serv['locPrest']['cLocPrest'] ?? $inf['cLocEmi']);
+        if (empty($cidadePrestacao) || strlen($cidadePrestacao) != 7) {
+            $cidadePrestacao = '2910057';
+        }
+
+        $servico->addChild('CodigoMunicipio', $cidadePrestacao);
+        $servico->addChild('MunicipioIncidencia', $cidadePrestacao);
+
         $servico->addChild('Discriminacao', htmlspecialchars($serv['cServ']['xDescServ'] ?? 'PRESTAÇÃO DE SERVIÇO', ENT_QUOTES, 'UTF-8'));
+
 
         // BLINTAGEM MUNICÍPIO DE INCIDÊNCIA (Evita o erro E1521 forçando o emitente ou o valor correto)
         $cidadePrestacao = preg_replace('/\D/', '', $serv['locPrest']['cLocPrest'] ?? $inf['cLocEmi']);
@@ -133,7 +156,11 @@ class DiasDavilaTools implements NfseEmissorInterface
         }
 
         $servico->addChild('CodigoMunicipio', $cidadePrestacao);
-        $servico->addChild('ExigibilidadeISS', '1');
+
+        // Puxa a exigibilidade correta informada no Controller (1=Exigível, 2=Não Incidência, 3=Isenção...)
+        $exigibilidade = $inf['valores']['trib']['tribMun']['tribISSQN'] ?? '1';
+        $servico->addChild('ExigibilidadeISS', $exigibilidade);
+
         $servico->addChild('MunicipioIncidencia', $cidadePrestacao);
 
         $prestador = $infDeclaracao->addChild('Prestador');
@@ -175,39 +202,44 @@ class DiasDavilaTools implements NfseEmissorInterface
         $infDeclaracao->addChild('IncentivoFiscal', '2');
 
         // ----------------------------------------------------
-        // BLOCO IBS / CBS (Corrigido sem PercRedAliq para evitar E1540)
+        // BLOCO IBS / CBS (Cálculo Dinâmico com Dedução do ISS Real)
         // ----------------------------------------------------
-        $valorServico = (float) $vServ;
-        $valorIss = round($valorServico * 0.03, 2); // 3% de ISS = 0.30
-        $baseCalcIbs = number_format($valorServico - $valorIss, 2, '.', ''); // 9.70
-
         $ibsCbs = $infDeclaracao->addChild('IbsCbs');
         $ibsCbs->addChild('MunicipioIncidencia', $cidadePrestacao);
-        $ibsCbs->addChild('IndicadorOperacao', '050101');
-        $ibsCbs->addChild('ClassificacaoTributaria', '000001');
+
+        $indicadorOperacao = $inf['ibscbs']['cIndOp'] ?? '050201';
+        $ibsCbs->addChild('IndicadorOperacao', $indicadorOperacao);
+
+        $classificacaoTrib = $inf['ibscbs']['cClassTrib'] ?? '000001';
+        $ibsCbs->addChild('ClassificacaoTributaria', $classificacaoTrib);
+
         $ibsCbs->addChild('IndicadorDestino', '0');
 
-        $ibsCbs->addChild('BaseCalculo', $baseCalcIbs); // Envia 9.70
+        // CALCULA A BASE DE CÁLCULO DEDUZINDO O ISS EXATO DA NOTA
+        $vServFloat = (float) $vServ;
+        $pAliqIss = (float) ($inf['valores']['trib']['tribMun']['pAliq'] ?? 0);
+        $vIssReal = round($vServFloat * ($pAliqIss / 100), 2);
+
+        // Base Limpa = Valor Serviço - ISS
+        $baseCalcIbs = number_format($vServFloat - $vIssReal, 2, '.', '');
+        $ibsCbs->addChild('BaseCalculo', $baseCalcIbs);
+
+        // Calcula os percentuais do IBS e CBS sobre a Base Limpa
+        $valIbsEstadual = round(($vServFloat - $vIssReal) * 0.001, 2); // 0.10%
+        $valCbs = round(($vServFloat - $vIssReal) * 0.009, 2); // 0.90%
 
         $ibsMun = $ibsCbs->addChild('IbsMunicipal');
         $ibsMun->addChild('Percentual', '0.00');
-        // Removido PercRedAliq para evitar E1540
         $ibsMun->addChild('PercAliqEfet', '0.00');
         $ibsMun->addChild('Valor', '0.00');
 
-        // IBS Estadual (0.10% calculado sobre 9.70)
-        $valIbsEst = round((float)$baseCalcIbs * 0.001, 2);
         $ibsEst = $ibsCbs->addChild('IbsEstadual');
         $ibsEst->addChild('Percentual', '0.10');
-        // Removido PercRedAliq para evitar E1540
         $ibsEst->addChild('PercAliqEfet', '0.10');
-        $ibsEst->addChild('Valor', number_format($valIbsEst, 2, '.', ''));
+        $ibsEst->addChild('Valor', number_format($valIbsEstadual, 2, '.', ''));
 
-        // CBS (0.90% calculado sobre 9.70)
-        $valCbs = round((float)$baseCalcIbs * 0.009, 2);
         $cbsNode = $ibsCbs->addChild('Cbs');
         $cbsNode->addChild('Percentual', '0.90');
-        // Removido PercRedAliq para evitar E1540
         $cbsNode->addChild('PercAliqEfet', '0.90');
         $cbsNode->addChild('Valor', number_format($valCbs, 2, '.', ''));
         // ----------------------------------------------------
@@ -339,8 +371,8 @@ XML;
 
     public function consultar($nReciboOuRps)
     {
-        // Garante que usa o número do RPS original (ex: 59) e nunca o número da NFS-e (44)
-        $numeroRps = is_numeric($nReciboOuRps) && (int)$nReciboOuRps < 1000 ? $nReciboOuRps : 59;
+
+        $numeroRps = $nReciboOuRps;
 
         $xmlConsulta = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
         $xmlConsulta .= "<ConsultarNfseRpsEnvio xmlns=\"http://www.abrasf.org.br/nfse.xsd\">";

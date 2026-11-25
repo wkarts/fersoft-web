@@ -166,6 +166,11 @@
                 </div>
 
                 <div class="col-md-4 col-12 text-md-right ui-op-main-action">
+                    <!-- Botão para abrir o modal de puxar medições aprovadas -->
+                    <button type="button" class="btn btn-info font-weight-bolder px-4 py-3 rounded-lg shadow-sm mr-2" data-toggle="modal" data-target="#modalPuxarMedicao">
+                        <i class="la la-file-invoice font-size-h5"></i> Puxar Medição
+                    </button>
+
                     <a href="/nfse/create" class="btn btn-success font-weight-bolder px-5 py-3 rounded-lg shadow-sm">
                         <i class="la la-plus-circle font-size-h5"></i> Nova NFS-e
                     </a>
@@ -254,6 +259,13 @@
                                         <button type="button" onclick="transmitir('{{ $item->id }}')" title="Transmitir para o Portal Nacional" class="btn btn-action-icon btn-success">
                                             <i class="la la-send"></i>
                                         </button>
+                                        <button type="button" class="btn btn-action-icon btn-light-info btn-importar" data-id="{{ $item->id }}" title="Importar XML Aprovado (Autorizar status)">
+                                            <i class="la la-upload text-info"></i>
+                                        </button>
+                                        <a href="/nfse/gerar-xml-local/{{ $item->id }}" target="_blank" class="btn btn-action-icon btn-light-primary" title="Gerar e Baixar XML Local (Sem Enviar)">
+                                            <i class="la la-file-code text-primary"></i>
+                                        </a>
+
                                         <a class="btn btn-action-icon btn-light-warning" title="Editar NFS-e" onclick='swal("Atenção!", "Deseja editar este registro?", "warning").then((sim) => {if(sim){ location.href="/nfse/edit/{{ $item->id }}" }})' href="#!">
                                             <i class="la la-edit text-warning"></i>
                                         </a>
@@ -404,15 +416,96 @@
     </div>
 
     <div class="modal-loading loading-class"></div>
+    <!-- Modal Puxar Medição Aprovada -->
+    <div class="modal fade" id="modalPuxarMedicao" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content rounded-xl shadow-lg border-0">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title font-weight-bolder text-white">
+                        <i class="la la-file-invoice mr-2 text-white"></i> Importar Medição Aprovada pelo Cliente
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                </div>
+                <form method="POST" action="{{ route('nfse.importar.medicao') }}">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <div class="alert alert-light-info mb-4">
+                            Selecione abaixo uma medição que já foi aprovada no portal. O sistema criará automaticamente os rascunhos das notas fiscais correspondentes (separando por tipo de serviço, se houver mais de um).
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="form-label font-weight-bolder">Medições Aprovadas Disponíveis</label>
+                            <select name="fatura_eng_id" class="form-control custom-select rounded-lg" required>
+                                <option value="">Selecione a Medição Aprovada...</option>
+                                @php
+                                    $empresaIdView = session('user_logged')['empresa'] ?? session('user_logged')['empresa_id'] ?? 0;
+
+                                    $medicoesAprovadas = \App\Models\FaturaEngenharia::with(['cliente', 'contrato'])
+                                        ->where('empresa_id', $empresaIdView)
+                                        ->where('status_aprovacao', 'aprovado')
+                                        ->orderBy('id', 'desc')
+                                        ->get();
+                                @endphp
+                                @foreach($medicoesAprovadas as $med)
+                                    <option value="{{ $med->id }}">
+                                        ✅ [APROVADA PELO CLIENTE] Medição #{{ $med->id }} | Contrato: {{ $med->contrato->numero_contrato ?? 'Avulso' }} | Cliente: {{ $med->cliente->razao_social ?? 'N/D' }} | R$ {{ number_format($med->valor_liquido, 2, ',', '.') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0">
+                        <button type="button" class="btn btn-light-dark font-weight-bold" data-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-info font-weight-bold px-4">
+                            Gerar Rascunhos de NFS-e
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importar XML (Autorização Manual) -->
+    <div class="modal fade" id="modalImportarXml" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content rounded-xl shadow-lg border-0">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title font-weight-bolder text-white">
+                        <i class="la la-upload mr-2 text-white"></i> Importar XML (Autorização Manual)
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                </div>
+                <form id="formImportarXml" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="id_nota" id="import_id_nota" value="">
+
+                        <div class="alert alert-light-warning mb-4">
+                            <strong>Atenção:</strong> Utilize esta opção apenas para notas que foram emitidas diretamente no portal da prefeitura. O ficheiro XML importado deve ser o oficial.
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="form-label font-weight-bolder">Selecione o ficheiro XML</label>
+                            <div class="custom-file">
+                                <input type="file" name="xml_file" class="custom-file-input" id="customFile" accept=".xml" required>
+                                <label class="custom-file-label" for="customFile">Escolher ficheiro XML...</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0">
+                        <button type="button" class="btn btn-light-dark font-weight-bold" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-info font-weight-bold px-4">
+                            Importar e Autorizar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('javascript')
-    @if(empty($config->integracao_nfse) || $config->integracao_nfse == 'webmania')
-        <script type="text/javascript" src="/js/nfse_envio.js?v={{ time() }}"></script>
-    @else
-        <script type="text/javascript" src="/js/nfse_integra_notas.js?v={{ time() }}"></script>
-    @endif
-
     <script type="text/javascript">
         function verMotivoRejeicao(motivo) {
             swal({
@@ -422,12 +515,30 @@
                 button: "Entendido, vou corrigir"
             });
         }
+
+        // Variável global para armazenar o ID da nota selecionada para cancelamento
+        let idNotaSelecionada = null;
+
+        function setarNumero(isXml = false) {
+            let notas_selecionadas = [];
+            $('.table-nfse tbody input[type="checkbox"]:checked').each(function() {
+                let id_nota = $(this).closest('td').find('#id').text();
+                if (id_nota) {
+                    notas_selecionadas.push(id_nota);
+                }
+            });
+
+            if (notas_selecionadas.length === 0) {
+                swal("Atenção", "Selecione pelo menos uma NFS-e na tabela.", "warning");
+                return;
+            }
+            idNotaSelecionada = notas_selecionadas[0];
+            $('#numero_cancelamento, #numero_email').text('#' + idNotaSelecionada);
+        }
+
         function enviar() {
             let notas_selecionadas = [];
-
-            // Verifica todos os inputs dentro da tabela que estejam selecionados
             $('.table-nfse tbody input[type="checkbox"]:checked').each(function() {
-                // Encontra o ID da nota escondido no span da mesma linha
                 let id_nota = $(this).closest('td').find('#id').text();
                 if (id_nota) {
                     notas_selecionadas.push(id_nota);
@@ -441,17 +552,142 @@
 
             swal({
                 title: "Transmitir NFS-e",
-                text: "Deseja transmitir " + notas_selecionadas.length + " nota(s) para a Prefeitura?",
+                text: "Deseja transmitir a nota selecionada para o Portal Nacional?",
                 icon: "info",
                 buttons: ["Cancelar", "Transmitir"]
             }).then((sim) => {
                 if (sim) {
                     $('.modal-loading').show();
-                    // Processa a primeira da fila
                     transmitir(notas_selecionadas[0]);
-                    // Dica: Para enviar em lote, precisará de criar uma rotina no JS ou enviar o array inteiro para uma nova rota do Controller.
                 }
             });
         }
+
+        // Transmissão individual via AJAX
+        function transmitir(id) {
+            let token = $('#_token').val();
+            $.post('/nfse/enviar', {
+                _token: token,
+                id: id
+            })
+                .done((res) => {
+                    $('.modal-loading').hide();
+                    swal("Sucesso", "NFS-e transmitida e autorizada com sucesso!", "success")
+                        .then(() => { location.reload(); });
+                })
+                .fail((err) => {
+                    $('.modal-loading').hide();
+                    let msg = err.responseJSON && err.responseJSON.motivo ? err.responseJSON.motivo : "Erro ao transmitir NFS-e.";
+                    swal("Rejeição da Sefaz", msg, "error");
+                });
+        }
+
+        // Consulta de Status da Nota
+        function consultar() {
+            let notas_selecionadas = [];
+            $('.table-nfse tbody input[type="checkbox"]:checked').each(function() {
+                let id_nota = $(this).closest('td').find('#id').text();
+                if (id_nota) notas_selecionadas.push(id_nota);
+            });
+
+            if (notas_selecionadas.length === 0) {
+                swal("Atenção", "Selecione uma NFS-e na tabela para consultar.", "warning");
+                return;
+            }
+
+            let id = notas_selecionadas[0];
+            $('.modal-loading').show();
+            let token = $('#_token').val();
+
+            $.post('/nfse/consultar', {
+                _token: token,
+                id: id
+            })
+                .done((res) => {
+                    $('.modal-loading').hide();
+                    swal("Consulta Sefin", res.mensagem || "Consulta realizada com sucesso!", "success")
+                        .then(() => { location.reload(); });
+                })
+                .fail((err) => {
+                    $('.modal-loading').hide();
+                    let msg = err.responseJSON && err.responseJSON.mensagem ? err.responseJSON.mensagem : "Erro ao consultar status.";
+                    swal("Erro", msg, "error");
+                });
+        }
+
+        // Cancelamento de NFS-e Aprovada
+        function cancelar() {
+            if (!idNotaSelecionada) {
+                swal("Atenção", "Nenhuma nota selecionada para cancelamento.", "warning");
+                return;
+            }
+
+            let motivo = $('#motivo').val();
+            $('.modal-loading').show();
+            $('#modal1').modal('hide');
+            let token = $('#_token').val();
+
+            $.post('/nfse/cancelar', {
+                _token: token,
+                id: idNotaSelecionada,
+                motivo: motivo
+            })
+                .done((res) => {
+                    $('.modal-loading').hide();
+                    swal("Sucesso", res.mensagem || "NFS-e cancelada com sucesso!", "success")
+                        .then(() => { location.reload(); });
+                })
+                .fail((err) => {
+                    $('.modal-loading').hide();
+                    let msg = err.responseJSON && err.responseJSON.motivo ? err.responseJSON.motivo : "Erro ao cancelar NFS-e.";
+                    swal("Erro no Cancelamento", msg, "error");
+                });
+        }
+
+        $(document).ready(function() {
+            // Mostra o nome do ficheiro selecionado no input customizado
+            $('.custom-file-input').on('change', function() {
+                let fileName = $(this).val().split('\\').pop();
+                $(this).next('.custom-file-label').addClass("selected").html(fileName);
+            });
+
+            // Abrir o Modal e setar o ID
+            $('.btn-importar').on('click', function() {
+                var id = $(this).data('id');
+                $('#import_id_nota').val(id);
+                $('#modalImportarXml').modal('show');
+            });
+
+            // Enviar o formulário via AJAX
+            $('#formImportarXml').on('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+
+                $('.modal-loading').show();
+
+                $.ajax({
+                    url: '{{ route("nfse.importar.xml") }}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        $('.modal-loading').hide();
+                        if(response.sucesso) {
+                            swal("Sucesso", response.mensagem, "success").then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            swal("Erro", response.mensagem, "error");
+                        }
+                    },
+                    error: function(xhr) {
+                        $('.modal-loading').hide();
+                        let msg = xhr.responseJSON && xhr.responseJSON.mensagem ? xhr.responseJSON.mensagem : "Ocorreu um erro ao importar o ficheiro.";
+                        swal("Erro", msg, "error");
+                    }
+                });
+            });
+        });
     </script>
 @endsection

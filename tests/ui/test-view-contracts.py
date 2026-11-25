@@ -146,6 +146,8 @@ class DevelopViewContract(unittest.TestCase):
         index = json.loads(BASELINE.read_text(encoding='utf-8'))
         self.assertEqual('supplied develop ZIP', index['source'])
         self.assertGreaterEqual(index['views_count'], 200)
+        # Changes in the reviewed stable ERP release, relative to the original ZIP.
+        stable = json.loads(BASELINE.with_name('main-310-contracts.json').read_text(encoding='utf-8'))['views']
         seen = set()
         totals = Counter()
         for entry in index['shards']:
@@ -170,12 +172,19 @@ class DevelopViewContract(unittest.TestCase):
                     source = current.read_text(encoding='utf-8')
                     actual = set(tuple(pair) for pair in extract_contracts(source))
                     expected = set(tuple(pair) for pair in contract)
+                    changes = stable.get(path, {})
+                    retired = set(map(tuple, changes.get('retired', [])))
+                    self.assertTrue(retired <= expected, path)
+                    expected.difference_update(retired)
+                    expected.update(map(tuple, changes.get('required', [])))
                     missing = expected - actual
                     self.assertFalse(missing, f'{path}: removed functional HTML contracts: {sorted(missing)}')
                     counts = extract_critical_counts(source)
+                    occurrences = {(k, v): n for k, v, n in changes.get('occurrences', [])}
                     for key, value, minimum in shard['duplicate_occurrences'].get(path, []):
-                        self.assertGreaterEqual(counts[(key, value)], minimum,
+                        self.assertGreaterEqual(counts[(key, value)], occurrences.get((key, value), minimum),
                             f'{path}: lost one of the original {key}="{value}" controls')
+        self.assertTrue(set(stable) <= seen, 'Unknown path in reviewed main contracts')
         self.assertEqual(totals['views'], index['views_count'])
         self.assertEqual(totals['contracts'], index['contracts_count'])
         self.assertEqual(totals['duplicates'], index['duplicate_occurrences_count'])

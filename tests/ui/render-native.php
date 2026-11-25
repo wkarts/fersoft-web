@@ -22,7 +22,7 @@ $app['session']->start();
 $app['request']->setLaravelSession($app['session']->driver());
 session(['user_logged' => ['id' => 1, 'empresa' => 1, 'nome' => 'Operador de teste', 'empresa_nome' => 'EMPRESA DE TESTE', 'ambiente' => 'Homologação', 'super' => 0, 'tipo_representante' => 0], 'alerta_tarefas_visto' => true]);
 Schema::create('filials', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->integer('status'); $table->string('descricao'); $table->timestamps(); });
-Schema::create('usuarios', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->text('locais'); $table->integer('local_padrao'); $table->timestamps(); });
+Schema::create('usuarios', function (Blueprint $table) { $table->increments('id'); $table->integer('empresa_id'); $table->text('locais'); $table->text('permissao')->nullable(); $table->integer('local_padrao'); $table->timestamps(); });
 Schema::create('cidades', function (Blueprint $table) { $table->increments('id'); $table->string('codigo'); $table->string('nome'); $table->string('uf', 2); $table->timestamps(); });
 Schema::create('config_caixas', function (Blueprint $table) { $table->increments('id'); $table->integer('usuario_id'); $table->text('tipos_pagamento')->nullable(); $table->string('tipo_pagamento_padrao')->nullable(); $table->timestamps(); });
 DB::table('usuarios')->insert(['id'=>1,'empresa_id'=>1,'locais'=>'["-1","2"]','local_padrao'=>-1]);
@@ -44,6 +44,9 @@ foreach ((new \App\Helpers\Menu())->getMenu() as $group) {
     }
 }
 DB::table('empresas')->insert(['id'=>1,'nome'=>'EMPRESA DE TESTE','permissao'=>json_encode($fixturePermissions)]);
+// O operador tem somente parte das rotas contratadas pela empresa.
+$operatorPermissions = array_values(array_diff($fixturePermissions, ['/marcas']));
+DB::table('usuarios')->where('id', 1)->update(['permissao' => json_encode($operatorPermissions)]);
 
 $base = [
     'title'=>'Dashboard de teste','tema'=>1,'tema_menu'=>1,'logo'=>'','alertas'=>[], 'rotaAtiva'=>'Financeiro','uri'=>'/contasPagar','configCatraca'=>null,'deliveryConfig'=>false,'ifoodConfig'=>false,

@@ -23,6 +23,7 @@ use App\Models\Compra;
 use App\Models\Venda; // Adicione esta linha
 use App\Models\ItemVenda; // Para os itens de venda
 use App\Models\ConfigNota;
+use App\Models\ProducaoLote;
 use App\Events\MovimentoRealtime;
 use App\Services\MonitorPesagemService;
 use App\Services\StockService;
@@ -37,6 +38,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Support\PesagemReportCalculator;
 use App\Support\AuditContext;
+
 
 
 class PesagemController extends BaseController
@@ -175,6 +177,10 @@ class PesagemController extends BaseController
             $data = $request->all();
             $data['empresa_id'] = $this->empresa_id;
             $data['usuario_id'] = $this->usuario_id;
+
+            $data['dt_registro'] = $request->filled('dt_registro')
+                ? $request->input('dt_registro')
+                : date('Y-m-d');
 
             // Gera um token único somente para novas pesagens
             if (!$request->filled('id')) {
@@ -389,8 +395,8 @@ class PesagemController extends BaseController
     public function concluir(Request $request, $id)
     {
         try {
-            // Busca a pesagem com seus tickets
-            $pesagem = Pesagem::with('tickets')->findOrFail($id);
+            // Busca a pesagem com seus tickets e fornecedor/cliente
+            $pesagem = Pesagem::with(['tickets', 'fornecedor', 'cliente'])->findOrFail($id);
 
             // Verifica se há tickets pendentes
             $ticketsPendentes = $pesagem->tickets->where('status', 'em andamento');
@@ -402,37 +408,24 @@ class PesagemController extends BaseController
             $entradas = $pesagem->tickets->where('tipo', 'entrada')->sum('peso');
             $saidas = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
             $avulsas = $pesagem->tickets->where('tipo', 'avulsa')->sum('peso');
-            //$pesoBruto = abs($entradas - $saidas + $avulsas);
             $pesoBruto = abs($entradas + $avulsas);
+
             // Calcula os descontos aplicáveis
             $descontos = 0;
-
-            // Verifica e aplica descontos de campos ativos
-            if ($pesagem->danificado) {
-                $descontos += $pesoBruto * ($pesagem->danificado_desconto / 100);
-            }
-            if ($pesagem->quebrado) {
-                $descontos += $pesoBruto * ($pesagem->quebrado_desconto / 100);
-            }
-            if ($pesagem->esverdeado) {
-                $descontos += $pesoBruto * ($pesagem->esverdeado_desconto / 100);
-            }
-            if ($pesagem->ardido) {
-                $descontos += $pesoBruto * ($pesagem->ardido_desconto / 100);
-            }
-            if ($pesagem->secagem) {
-                $descontos += $pesoBruto * ($pesagem->secagem_desconto / 100);
-            }
+            if ($pesagem->danificado) { $descontos += $pesoBruto * ($pesagem->danificado_desconto / 100); }
+            if ($pesagem->quebrado) { $descontos += $pesoBruto * ($pesagem->quebrado_desconto / 100); }
+            if ($pesagem->esverdeado) { $descontos += $pesoBruto * ($pesagem->esverdeado_desconto / 100); }
+            if ($pesagem->ardido) { $descontos += $pesoBruto * ($pesagem->ardido_desconto / 100); }
+            if ($pesagem->secagem) { $descontos += $pesoBruto * ($pesagem->secagem_desconto / 100); }
 
             // Descontos fixos
             $descontos += $pesoBruto * ($pesagem->umidade_desconto / 100);
             $descontos += $pesoBruto * ($pesagem->impureza_desconto / 100);
 
             // Cálculo do peso final
-            //$pesoFinal = max(0, $pesoBruto - $descontos);
             $pesoFinal = max(0, $pesoBruto - $descontos - $saidas);
 
-            // Atualiza a pesagem
+            // Atualiza a pesagem principal
             $pesagem->update([
                 'view_public' => 1,
                 'peso' => $pesoFinal,
@@ -441,54 +434,207 @@ class PesagemController extends BaseController
                 'status' => 'concluído',
             ]);
 
-            // Atualiza todos os tickets como concluídos
-            TicketPesagem::where('pesagem_id', $id)->update(['status' => 'concluído']);
+            // =========================================================================
+            // 🚀 NOVO: PREENCHE OS VALORES DOS TICKETS ANTES DE CONCLUIR SE ESTIVEREM A ZERO
+            // =========================================================================
+            $configNota = \DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+            $cnpjEmpresa = $configNota ? preg_replace('/[^0-9]/', '', $configNota->cnpj) : '';
+
+            foreach ($pesagem->tickets as $ticket) {
+                if ($ticket->produto_id) {
+                    $valorUnitario = (float) ($ticket->valor_unitario ?? 0);
+                    $pesoLiqTicket = max(0, ((float) $ticket->peso) - ((float) $ticket->peso_bag));
+
+                    // Se o ticket foi salvo sem preço pelo balanceiro, busca a tabela de preços agora
+                    if ($valorUnitario == 0) {
+                        $tabelaPrecoId = null;
+
+                        // Descobre se é compra ou venda
+                        $tipoMovimento = ($ticket->tipo === 'saida' || $pesagem->tipo === 'venda') ? 'saida' : 'entrada';
+
+                        if ($tipoMovimento === 'entrada' && $pesagem->fornecedor_id) {
+                            $tabelaPrecoId = $pesagem->fornecedor->tabela_preco_id ?? 1;
+                        } elseif ($tipoMovimento === 'saida' && $pesagem->cliente_id) {
+                            $tabelaPrecoId = $pesagem->cliente->tabela_preco_id ?? 1;
+                        }
+
+                        if ($tabelaPrecoId) {
+                            $tipoFrete = 'ENTREGA';
+                            if ($pesagem->veiculo_id) {
+                                $veiculo = \App\Models\Veiculo::find($pesagem->veiculo_id);
+                                if ($veiculo && !empty($veiculo->proprietario_documento)) {
+                                    $docVeiculo = preg_replace('/[^0-9]/', '', $veiculo->proprietario_documento);
+                                    if ($docVeiculo === $cnpjEmpresa && $docVeiculo !== '00000000000000' && $docVeiculo !== '00000000000') {
+                                        $tipoFrete = 'COLETA';
+                                    }
+                                }
+                            }
+
+                            // Busca na tabela de preços
+                            $valorUnitario = \DB::table('tabela_preco_itens')
+                                ->where('tabela_preco_id', $tabelaPrecoId)
+                                ->where('produto_id', $ticket->produto_id)
+                                ->where('tipo_frete', $tipoFrete)
+                                ->value('valor_kg') ?? 0;
+                        }
+
+                        // Se a tabela não tem preço, pega o valor padrão do produto
+                        if ($valorUnitario == 0) {
+                            $produtoBase = \App\Models\Produto::find($ticket->produto_id);
+                            $valorUnitario = $tipoMovimento === 'entrada' ? (float) ($produtoBase->valor_compra ?? 0) : (float) ($produtoBase->valor_venda ?? 0);
+                        }
+
+                        // Atualiza o ticket no banco de dados com o valor preenchido e fecha o status
+                        $ticket->update([
+                            'valor_unitario' => $valorUnitario,
+                            'valor_total'    => ($pesoLiqTicket * $valorUnitario),
+                            'status'         => 'concluído'
+                        ]);
+                    } else {
+                        // Se já tiver preço (ex: digitado manualmente na tela), apenas conclui
+                        $ticket->update(['status' => 'concluído']);
+                    }
+                } else {
+                    $ticket->update(['status' => 'concluído']);
+                }
+            }
+
+            // =========================================================================
+            // INTEGRAÇÃO DE VOLTA: DEVOLVER O PESO DA BALANÇA PARA A AGENDA (FROTA)
+            // =========================================================================
+            if (!empty($pesagem->movimentacao_id)) {
+                $mov = \App\Models\MovimentacaoVeiculo::with('destinos')->find($pesagem->movimentacao_id);
+
+                if ($mov && $mov->destinos && $mov->destinos->count() > 0) {
+                    $primeiroDestino = $mov->destinos->first();
+
+                    \Illuminate\Support\Facades\DB::table('movimentacao_destino_itens')
+                        ->where('movimentacao_veiculo_id', $mov->id)
+                        ->where('movimentacao_destino_id', $primeiroDestino->id)
+                        ->delete();
+
+                    $pesoTotalBalanca = 0;
+
+                    foreach ($pesagem->tickets as $ticket) {
+                        if ($ticket->produto_id) {
+                            $pesoLiquidoTicket = max(0, $ticket->peso - $ticket->peso_bag);
+                            $pesoTotalBalanca += $pesoLiquidoTicket;
+
+                            \Illuminate\Support\Facades\DB::table('movimentacao_destino_itens')->insert([
+                                'movimentacao_veiculo_id' => $mov->id,
+                                'movimentacao_destino_id' => $primeiroDestino->id,
+                                'produto_id'              => $ticket->produto_id,
+                                'quantidade'              => $pesoLiquidoTicket,
+                                'unidade'                 => 'KG',
+                                'observacao'              => 'Aferido na Balança (Ticket #' . $ticket->id . ')',
+                                'created_at'              => now(),
+                                'updated_at'              => now(),
+                            ]);
+                        }
+                    }
+                    $primeiroDestino->quantidade_residuo = $pesoTotalBalanca;
+                    $primeiroDestino->unidade_residuo = 'KG';
+                    $primeiroDestino->save();
+                }
+            }
+            // =========================================================================
 
             $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
 
+            // 🚀 PROCESSAMENTO SEGURO DA BAIXA PEPS E STOCK MOVEMENTS
+            $this->processarBaixaPepsPesagemConcluida($pesagem);
+
+            // =========================================================================
+            // INÍCIO: GERAÇÃO AUTOMÁTICA DE LOTE DE RASTREABILIDADE
+            // =========================================================================
+            try {
+                if (strtolower((string) $pesagem->tipo) === 'compra' && \Illuminate\Support\Facades\Schema::hasTable('producao_lotes')) {
+                    $entidadeOrigem = null;
+                    if (!empty($pesagem->fornecedor_id)) {
+                        $entidadeOrigem = Fornecedor::find($pesagem->fornecedor_id);
+                    } elseif (!empty($pesagem->cliente_id)) {
+                        $entidadeOrigem = Cliente::find($pesagem->cliente_id);
+                    }
+
+                    if ($entidadeOrigem && !empty($entidadeOrigem->exige_rastreabilidade)) {
+                        $loteJaExiste = ProducaoLote::where('empresa_id', $this->empresa_id)
+                            ->where('pesagem_entrada_id', $pesagem->id)
+                            ->exists();
+
+                        $pesoBagTotalLote = $pesagem->tickets->sum('peso_bag');
+                        $pesoLiquidoLote  = max(0, $pesoFinal - $pesoBagTotalLote);
+                        if ($pesoLiquidoLote <= 0) {
+                            $pesoLiquidoLote = max(0, $pesoFinal);
+                        }
+
+                        if (!$loteJaExiste && $pesoLiquidoLote > 0) {
+                            $docs = ProducaoLote::extrairCnpjERaiz($entidadeOrigem->cpf_cnpj ?? '');
+                            $primeiroTicket = $pesagem->tickets->whereNotNull('produto_id')->first() ?? $pesagem->tickets->first();
+                            $filialIdLote = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : ($pesagem->filial_id ?? $this->filial_id);
+
+                            $ultimoId = ProducaoLote::where('empresa_id', $this->empresa_id)->max('id') ?? 0;
+                            $codigoLote = 'LOTE-' . date('Ym') . '-' . str_pad((string) ($ultimoId + 1), 4, '0', STR_PAD_LEFT);
+
+                            while (ProducaoLote::where('empresa_id', $this->empresa_id)->where('codigo_lote', $codigoLote)->exists()) {
+                                $ultimoId++;
+                                $codigoLote = 'LOTE-' . date('Ym') . '-' . str_pad((string) ($ultimoId + 1), 4, '0', STR_PAD_LEFT);
+                            }
+
+                            ProducaoLote::create([
+                                'empresa_id'         => $this->empresa_id,
+                                'filial_id'          => $filialIdLote,
+                                'usuario_id'         => $this->usuario_id ?? $pesagem->usuario_id,
+                                'codigo_lote'        => $codigoLote,
+                                'pesagem_entrada_id' => $pesagem->id,
+                                'fornecedor_id'      => $pesagem->fornecedor_id,
+                                'cliente_origem_id'  => $pesagem->cliente_id,
+                                'cnpj_origem'        => $docs['cnpj_origem'],
+                                'cnpj_raiz'          => $docs['cnpj_raiz'],
+                                'nfe_entrada'        => $pesagem->nfe_numero ?? ($pesagem->nf ?? null),
+                                'mtr_entrada'        => $pesagem->mtr_numero ?? ($pesagem->mtr_oficial ?? null),
+                                'produto_origem_id'  => $primeiroTicket ? $primeiroTicket->produto_id : null,
+                                'peso_entrada'       => $pesoLiquidoLote,
+                                'peso_produzido'     => 0,
+                                'peso_perda'         => 0,
+                                'nfe_perda_status'   => 'nao_aplicavel',
+                                'status'             => 'novo',
+                                'observacoes'        => 'Lote gerado automaticamente na conclusão da Pesagem #' . $pesagem->id,
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::error('Erro ao gerar lote automático de rastreabilidade na pesagem ' . $pesagem->id . ': ' . $e->getMessage());
+            }
+
             // --- INÍCIO DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
             try {
-                // Busca o CNPJ da empresa nas configurações
-                $configNota = \DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
-                $cnpjEmpresa = $configNota ? preg_replace('/[^0-9]/', '', $configNota->cnpj) : '';
                 $filialIdSalvar = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : $pesagem->filial_id;
-
-                // 1. AGRUPAMENTO POR PRODUTO
                 $ticketsAgrupados = $pesagem->tickets->groupBy('produto_id');
 
                 foreach ($ticketsAgrupados as $produtoId => $ticketsProduto) {
                     if (empty($produtoId)) continue;
 
-                    // Evita duplicidade
                     $movimentoExiste = \DB::table('estoque_fisico_movimentos')
                         ->where('pesagem_id', $pesagem->id)
                         ->where('produto_id', $produtoId)
                         ->exists();
 
                     if (!$movimentoExiste) {
-
-                        // 2. TIPO DE MOVIMENTO NO ESTOQUE (Regra baseada na operação principal)
                         $tipoMovimento = (strtolower($pesagem->tipo) === 'venda') ? 'saida' : 'entrada';
-
-                        // 3. CÁLCULO DA TARA E PESO LÍQUIDO
                         $pesoEntrada = $ticketsProduto->where('tipo', 'entrada')->sum('peso');
                         $pesoSaida = $ticketsProduto->where('tipo', 'saida')->sum('peso');
-
                         $pesoLiquidoBalanca = abs($pesoEntrada - $pesoSaida);
 
-                        // Fallback de segurança para ticket único manual
                         if ($pesoLiquidoBalanca == 0) {
                             $pesoLiquidoBalanca = $pesoEntrada > 0 ? $pesoEntrada : $pesoSaida;
                         }
 
-                        // Subtrai peso do bag (se preenchido nos tickets)
                         $pesoBagTotal = $ticketsProduto->sum('peso_bag');
                         $pesoLiquidoBalanca = max(0, $pesoLiquidoBalanca - $pesoBagTotal);
 
-                        // Se o peso líquido for zero ou negativo após descontar bag, ignora
                         if ($pesoLiquidoBalanca <= 0) continue;
 
-                        // 4. CÁLCULO DA IMPUREZA CORRETA (Em cima do Líquido)
                         $percentualAbatimento = 0;
                         if ($pesagem->danificado)   { $percentualAbatimento += (float) $pesagem->danificado_desconto; }
                         if ($pesagem->quebrado)     { $percentualAbatimento += (float) $pesagem->quebrado_desconto; }
@@ -498,50 +644,13 @@ class PesagemController extends BaseController
                         $percentualAbatimento += (float) $pesagem->umidade_desconto;
                         $percentualAbatimento += (float) $pesagem->impureza_desconto;
 
-                        // Aplica a porcentagem SOMENTE no peso líquido da balança
                         $pesoImpurezaFinal = $pesoLiquidoBalanca * ($percentualAbatimento / 100);
-
-                        // 5. PESO FINAL PARA O ESTOQUE
                         $pesoFinalEstoque = max(0, $pesoLiquidoBalanca - $pesoImpurezaFinal);
 
-                        // 6. VALOR UNITÁRIO (Tabela de preços inteligente)
+                        // Como preenchemos o valor nos tickets acima, podemos pegar daqui tranquilamente
                         $ticketRef = $ticketsProduto->firstWhere('valor_unitario', '>', 0) ?? $ticketsProduto->first();
                         $valorUnitario = (float) ($ticketRef->valor_unitario ?? 0);
 
-                        if ($valorUnitario == 0) {
-                            $tabelaPrecoId = null;
-                            if ($tipoMovimento === 'entrada' && $pesagem->fornecedor_id) {
-                                $fornecedor = \App\Models\Fornecedor::find($pesagem->fornecedor_id);
-                                $tabelaPrecoId = $fornecedor->tabela_preco_id ?? 1;
-                            } elseif ($tipoMovimento === 'saida' && $pesagem->cliente_id) {
-                                $cliente = \App\Models\Cliente::find($pesagem->cliente_id);
-                                $tabelaPrecoId = $cliente->tabela_preco_id ?? 1;
-                            }
-
-                            if ($tabelaPrecoId) {
-                                $tipoFrete = 'ENTREGA';
-                                if ($pesagem->veiculo_id) {
-                                    $veiculo = \App\Models\Veiculo::find($pesagem->veiculo_id);
-                                    if ($veiculo && !empty($veiculo->proprietario_documento)) {
-                                        $docVeiculo = preg_replace('/[^0-9]/', '', $veiculo->proprietario_documento);
-                                        if ($docVeiculo === $cnpjEmpresa && $docVeiculo !== '00000000000000' && $docVeiculo !== '00000000000') $tipoFrete = 'COLETA';
-                                    }
-                                }
-                                $valorUnitario = \DB::table('tabela_preco_itens')
-                                    ->where('tabela_preco_id', $tabelaPrecoId)
-                                    ->where('produto_id', $produtoId)
-                                    ->where('tipo_frete', $tipoFrete)
-                                    ->value('valor_kg') ?? 0;
-                            }
-                        }
-
-                        // Se tudo falhar, pega o preço base do cadastro do produto
-                        if ($valorUnitario == 0) {
-                            $produtoBase = \App\Models\Produto::find($produtoId);
-                            $valorUnitario = $tipoMovimento === 'entrada' ? (float) ($produtoBase->valor_compra ?? 0) : (float) ($produtoBase->valor_venda ?? 0);
-                        }
-
-                        // 7. INSERE O REGISTRO CORRETO NO ESTOQUE
                         \DB::table('estoque_fisico_movimentos')->insert([
                             'empresa_id'     => $this->empresa_id,
                             'filial_id'      => $filialIdSalvar,
@@ -563,16 +672,321 @@ class PesagemController extends BaseController
             } catch (\Exception $e) {
                 \Log::error('Erro ao gravar estoque físico detalhado multiempresa da pesagem ' . $pesagem->id . ': ' . $e->getMessage());
             }
-            // --- FIM DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
-            return response()->json(['success' => 'Pesagem concluída com sucesso!']);
+            return response()->json(['success' => 'Pesagem concluída com sucesso e preços atualizados!']);
+
         } catch (\Exception $e) {
-            \Log::error('Erro ao concluir a pesagem', [
-                'pesagemId' => $id,
-                'exception' => $e->getMessage(),
-            ]);
+            \Log::error('Erro ao concluir a pesagem', ['pesagemId' => $id, 'exception' => $e->getMessage()]);
             return response()->json(['error' => 'Erro ao concluir a pesagem: ' . $e->getMessage()], 500);
         }
     }
+    /* public function concluir(Request $request, $id)
+      {
+          try {
+              // Busca a pesagem com seus tickets
+              $pesagem = Pesagem::with('tickets')->findOrFail($id);
+
+              // Verifica se há tickets pendentes
+              $ticketsPendentes = $pesagem->tickets->where('status', 'em andamento');
+              if ($ticketsPendentes->count() > 0) {
+                  return response()->json(['error' => 'Finalize os tickets antes de concluir a pesagem.']);
+              }
+
+              // Cálculo do peso bruto
+              $entradas = $pesagem->tickets->where('tipo', 'entrada')->sum('peso');
+              $saidas = $pesagem->tickets->where('tipo', 'saida')->sum('peso');
+              $avulsas = $pesagem->tickets->where('tipo', 'avulsa')->sum('peso');
+              //$pesoBruto = abs($entradas - $saidas + $avulsas);
+              $pesoBruto = abs($entradas + $avulsas);
+              // Calcula os descontos aplicáveis
+              $descontos = 0;
+
+              // Verifica e aplica descontos de campos ativos
+              if ($pesagem->danificado) {
+                  $descontos += $pesoBruto * ($pesagem->danificado_desconto / 100);
+              }
+              if ($pesagem->quebrado) {
+                  $descontos += $pesoBruto * ($pesagem->quebrado_desconto / 100);
+              }
+              if ($pesagem->esverdeado) {
+                  $descontos += $pesoBruto * ($pesagem->esverdeado_desconto / 100);
+              }
+              if ($pesagem->ardido) {
+                  $descontos += $pesoBruto * ($pesagem->ardido_desconto / 100);
+              }
+              if ($pesagem->secagem) {
+                  $descontos += $pesoBruto * ($pesagem->secagem_desconto / 100);
+              }
+
+              // Descontos fixos
+              $descontos += $pesoBruto * ($pesagem->umidade_desconto / 100);
+              $descontos += $pesoBruto * ($pesagem->impureza_desconto / 100);
+
+              // Cálculo do peso final
+              //$pesoFinal = max(0, $pesoBruto - $descontos);
+              $pesoFinal = max(0, $pesoBruto - $descontos - $saidas);
+
+              // Atualiza a pesagem
+              $pesagem->update([
+                  'view_public' => 1,
+                  'peso' => $pesoFinal,
+                  'peso_liquido_bruto' => $pesoBruto,
+                  'peso_final' => $pesoFinal,
+                  'status' => 'concluído',
+              ]);
+
+              // Atualiza todos os tickets como concluídos
+              TicketPesagem::where('pesagem_id', $id)->update(['status' => 'concluído']);
+
+                // =========================================================================
+              // INTEGRAÇÃO DE VOLTA: DEVOLVER O PESO DA BALANÇA PARA A AGENDA (FROTA)
+              // =========================================================================
+              if (!empty($pesagem->movimentacao_id)) {
+                  $mov = \App\Models\MovimentacaoVeiculo::with('destinos')->find($pesagem->movimentacao_id);
+
+                  if ($mov && $mov->destinos && $mov->destinos->count() > 0) {
+                      $primeiroDestino = $mov->destinos->first();
+
+                      // 1. Limpa os itens (estimativas) que o motorista digitou para evitar duplicidade
+                      \Illuminate\Support\Facades\DB::table('movimentacao_destino_itens')
+                          ->where('movimentacao_veiculo_id', $mov->id)
+                          ->where('movimentacao_destino_id', $primeiroDestino->id)
+                          ->delete();
+
+                      $pesoTotalBalanca = 0;
+
+                      // 2. Insere os pesos REAIS e oficiais aferidos na balança (cada ticket vira um item na agenda)
+                      foreach ($pesagem->tickets as $ticket) {
+                          if ($ticket->produto_id) {
+                              // Subtrai o bag (se houver) para mandar o peso líquido exato para o contrato
+                              $pesoLiquidoTicket = max(0, $ticket->peso - $ticket->peso_bag);
+                              $pesoTotalBalanca += $pesoLiquidoTicket;
+
+                              \Illuminate\Support\Facades\DB::table('movimentacao_destino_itens')->insert([
+                                  'movimentacao_veiculo_id' => $mov->id,
+                                  'movimentacao_destino_id' => $primeiroDestino->id,
+                                  'produto_id'              => $ticket->produto_id,
+                                  'quantidade'              => $pesoLiquidoTicket,
+                                  'unidade'                 => 'KG',
+                                  'observacao'              => 'Aferido na Balança (Ticket #' . $ticket->id . ')',
+                                  'created_at'              => now(),
+                                  'updated_at'              => now(),
+                              ]);
+                          }
+                      }
+
+                      // 3. Atualiza o cabeçalho do destino com o peso total (retrocompatibilidade)
+                      $primeiroDestino->quantidade_residuo = $pesoTotalBalanca;
+                      $primeiroDestino->unidade_residuo = 'KG';
+                      $primeiroDestino->save();
+                  }
+              }
+              // =========================================================================
+
+              $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
+
+                // 🚀 PROCESSAMENTO SEGURO DA BAIXA PEPS E STOCK MOVEMENTS
+              $this->processarBaixaPepsPesagemConcluida($pesagem);
+
+              // =========================================================================
+              // 🚀 INÍCIO: GERAÇÃO AUTOMÁTICA DE LOTE DE RASTREABILIDADE (BLINDADO)
+              // =========================================================================
+              try {
+                  if (strtolower((string) $pesagem->tipo) === 'compra' && \Illuminate\Support\Facades\Schema::hasTable('producao_lotes')) {
+                      $entidadeOrigem = null;
+                      if (!empty($pesagem->fornecedor_id)) {
+                          $entidadeOrigem = Fornecedor::find($pesagem->fornecedor_id);
+                      } elseif (!empty($pesagem->cliente_id)) {
+                          $entidadeOrigem = Cliente::find($pesagem->cliente_id);
+                      }
+
+                      // Só gera lote se no cadastro do Fornecedor/Cliente estiver marcado 'exige_rastreabilidade' = 1
+                      if ($entidadeOrigem && !empty($entidadeOrigem->exige_rastreabilidade)) {
+                          $loteJaExiste = ProducaoLote::where('empresa_id', $this->empresa_id)
+                              ->where('pesagem_entrada_id', $pesagem->id)
+                              ->exists();
+
+                          // Calcula o peso líquido descontando os bags dos tickets (caso $pesoFinal seja zero em operação avulsa)
+                          $pesoBagTotalLote = $pesagem->tickets->sum('peso_bag');
+                          $pesoLiquidoLote  = max(0, $pesoFinal - $pesoBagTotalLote);
+                          if ($pesoLiquidoLote <= 0) {
+                              $pesoLiquidoLote = max(0, $pesoFinal);
+                          }
+
+                          if (!$loteJaExiste && $pesoLiquidoLote > 0) {
+                              $docs = ProducaoLote::extrairCnpjERaiz($entidadeOrigem->cpf_cnpj ?? '');
+                              $primeiroTicket = $pesagem->tickets->whereNotNull('produto_id')->first() ?? $pesagem->tickets->first();
+                              $filialIdLote = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : ($pesagem->filial_id ?? $this->filial_id);
+
+                              // Gera código único sequencial por empresa (Ex: LOTE-202610-0001)
+                              $ultimoId = ProducaoLote::where('empresa_id', $this->empresa_id)->max('id') ?? 0;
+                              $codigoLote = 'LOTE-' . date('Ym') . '-' . str_pad((string) ($ultimoId + 1), 4, '0', STR_PAD_LEFT);
+
+                              // Evita colisão de código único caso haja exclusão anterior
+                              while (ProducaoLote::where('empresa_id', $this->empresa_id)->where('codigo_lote', $codigoLote)->exists()) {
+                                  $ultimoId++;
+                                  $codigoLote = 'LOTE-' . date('Ym') . '-' . str_pad((string) ($ultimoId + 1), 4, '0', STR_PAD_LEFT);
+                              }
+
+                              ProducaoLote::create([
+                                  'empresa_id'         => $this->empresa_id,
+                                  'filial_id'          => $filialIdLote,
+                                  'usuario_id'         => $this->usuario_id ?? $pesagem->usuario_id,
+                                  'codigo_lote'        => $codigoLote,
+                                  'pesagem_entrada_id' => $pesagem->id,
+                                  'fornecedor_id'      => $pesagem->fornecedor_id,
+                                  'cliente_origem_id'  => $pesagem->cliente_id,
+                                  'cnpj_origem'        => $docs['cnpj_origem'],
+                                  'cnpj_raiz'          => $docs['cnpj_raiz'],
+                                  'nfe_entrada'        => $pesagem->nfe_numero ?? ($pesagem->nf ?? null),
+                                  'mtr_entrada'        => $pesagem->mtr_numero ?? ($pesagem->mtr_oficial ?? null),
+                                  'produto_origem_id'  => $primeiroTicket ? $primeiroTicket->produto_id : null,
+                                  'peso_entrada'       => $pesoLiquidoLote,
+                                  'peso_produzido'     => 0,
+                                  'peso_perda'         => 0,
+                                  'nfe_perda_status'   => 'nao_aplicavel',
+                                  'status'             => 'novo',
+                                  'observacoes'        => 'Lote gerado automaticamente na conclusão da Pesagem #' . $pesagem->id,
+                              ]);
+                          }
+                      }
+                  }
+              } catch (\Throwable $e) {
+                  // Se acontecer qualquer falha no lote, grava no log mas NÃO trava a conclusão da balança!
+                  \Log::error('Erro ao gerar lote automático de rastreabilidade na pesagem ' . $pesagem->id . ': ' . $e->getMessage());
+              }
+              // =========================================================================
+              // 🚀 FIM: GERAÇÃO AUTOMÁTICA DE LOTE DE RASTREABILIDADE
+              // =========================================================================
+
+              $this->dispararMonitoramentoPesagem($pesagem->id, 'pesagem.finished');
+
+              // --- INÍCIO DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
+              try {
+                  // Busca o CNPJ da empresa nas configurações
+                  $configNota = \DB::table('config_notas')->where('empresa_id', $this->empresa_id)->first();
+                  $cnpjEmpresa = $configNota ? preg_replace('/[^0-9]/', '', $configNota->cnpj) : '';
+                  $filialIdSalvar = ($pesagem->filial_nome == 'Matriz' || session('filial_nome') == 'Matriz') ? null : $pesagem->filial_id;
+
+                  // 1. AGRUPAMENTO POR PRODUTO
+                  $ticketsAgrupados = $pesagem->tickets->groupBy('produto_id');
+
+                  foreach ($ticketsAgrupados as $produtoId => $ticketsProduto) {
+                      if (empty($produtoId)) continue;
+
+                      // Evita duplicidade
+                      $movimentoExiste = \DB::table('estoque_fisico_movimentos')
+                          ->where('pesagem_id', $pesagem->id)
+                          ->where('produto_id', $produtoId)
+                          ->exists();
+
+                      if (!$movimentoExiste) {
+
+                          // 2. TIPO DE MOVIMENTO NO ESTOQUE (Regra baseada na operação principal)
+                          $tipoMovimento = (strtolower($pesagem->tipo) === 'venda') ? 'saida' : 'entrada';
+
+                          // 3. CÁLCULO DA TARA E PESO LÍQUIDO
+                          $pesoEntrada = $ticketsProduto->where('tipo', 'entrada')->sum('peso');
+                          $pesoSaida = $ticketsProduto->where('tipo', 'saida')->sum('peso');
+
+                          $pesoLiquidoBalanca = abs($pesoEntrada - $pesoSaida);
+
+                          // Fallback de segurança para ticket único manual
+                          if ($pesoLiquidoBalanca == 0) {
+                              $pesoLiquidoBalanca = $pesoEntrada > 0 ? $pesoEntrada : $pesoSaida;
+                          }
+
+                          // Subtrai peso do bag (se preenchido nos tickets)
+                          $pesoBagTotal = $ticketsProduto->sum('peso_bag');
+                          $pesoLiquidoBalanca = max(0, $pesoLiquidoBalanca - $pesoBagTotal);
+
+                          // Se o peso líquido for zero ou negativo após descontar bag, ignora
+                          if ($pesoLiquidoBalanca <= 0) continue;
+
+                          // 4. CÁLCULO DA IMPUREZA CORRETA (Em cima do Líquido)
+                          $percentualAbatimento = 0;
+                          if ($pesagem->danificado)   { $percentualAbatimento += (float) $pesagem->danificado_desconto; }
+                          if ($pesagem->quebrado)     { $percentualAbatimento += (float) $pesagem->quebrado_desconto; }
+                          if ($pesagem->esverdeado)   { $percentualAbatimento += (float) $pesagem->esverdeado_desconto; }
+                          if ($pesagem->ardido)       { $percentualAbatimento += (float) $pesagem->ardido_desconto; }
+                          if ($pesagem->secagem)      { $percentualAbatimento += (float) $pesagem->secagem_desconto; }
+                          $percentualAbatimento += (float) $pesagem->umidade_desconto;
+                          $percentualAbatimento += (float) $pesagem->impureza_desconto;
+
+                          // Aplica a porcentagem SOMENTE no peso líquido da balança
+                          $pesoImpurezaFinal = $pesoLiquidoBalanca * ($percentualAbatimento / 100);
+
+                          // 5. PESO FINAL PARA O ESTOQUE
+                          $pesoFinalEstoque = max(0, $pesoLiquidoBalanca - $pesoImpurezaFinal);
+
+                          // 6. VALOR UNITÁRIO (Tabela de preços inteligente)
+                          $ticketRef = $ticketsProduto->firstWhere('valor_unitario', '>', 0) ?? $ticketsProduto->first();
+                          $valorUnitario = (float) ($ticketRef->valor_unitario ?? 0);
+
+                          if ($valorUnitario == 0) {
+                              $tabelaPrecoId = null;
+                              if ($tipoMovimento === 'entrada' && $pesagem->fornecedor_id) {
+                                  $fornecedor = \App\Models\Fornecedor::find($pesagem->fornecedor_id);
+                                  $tabelaPrecoId = $fornecedor->tabela_preco_id ?? 1;
+                              } elseif ($tipoMovimento === 'saida' && $pesagem->cliente_id) {
+                                  $cliente = \App\Models\Cliente::find($pesagem->cliente_id);
+                                  $tabelaPrecoId = $cliente->tabela_preco_id ?? 1;
+                              }
+
+                              if ($tabelaPrecoId) {
+                                  $tipoFrete = 'ENTREGA';
+                                  if ($pesagem->veiculo_id) {
+                                      $veiculo = \App\Models\Veiculo::find($pesagem->veiculo_id);
+                                      if ($veiculo && !empty($veiculo->proprietario_documento)) {
+                                          $docVeiculo = preg_replace('/[^0-9]/', '', $veiculo->proprietario_documento);
+                                          if ($docVeiculo === $cnpjEmpresa && $docVeiculo !== '00000000000000' && $docVeiculo !== '00000000000') $tipoFrete = 'COLETA';
+                                      }
+                                  }
+                                  $valorUnitario = \DB::table('tabela_preco_itens')
+                                      ->where('tabela_preco_id', $tabelaPrecoId)
+                                      ->where('produto_id', $produtoId)
+                                      ->where('tipo_frete', $tipoFrete)
+                                      ->value('valor_kg') ?? 0;
+                              }
+                          }
+
+                          // Se tudo falhar, pega o preço base do cadastro do produto
+                          if ($valorUnitario == 0) {
+                              $produtoBase = \App\Models\Produto::find($produtoId);
+                              $valorUnitario = $tipoMovimento === 'entrada' ? (float) ($produtoBase->valor_compra ?? 0) : (float) ($produtoBase->valor_venda ?? 0);
+                          }
+
+                          // 7. INSERE O REGISTRO CORRETO NO ESTOQUE
+                          \DB::table('estoque_fisico_movimentos')->insert([
+                              'empresa_id'     => $this->empresa_id,
+                              'filial_id'      => $filialIdSalvar,
+                              'usuario_id'     => $this->usuario_id ?? $pesagem->usuario_id,
+                              'produto_id'     => $produtoId,
+                              'pesagem_id'     => $pesagem->id,
+                              'tipo'           => $tipoMovimento,
+                              'peso_bruto'     => $pesoLiquidoBalanca,
+                              'peso_impureza'  => $pesoImpurezaFinal,
+                              'quantidade'     => $pesoFinalEstoque,
+                              'valor_unitario' => $valorUnitario,
+                              'valor_total'    => ($pesoFinalEstoque * $valorUnitario),
+                              'data_movimento' => date('Y-m-d', strtotime($pesagem->created_at ?? now())),
+                              'created_at'     => now(),
+                              'updated_at'     => now(),
+                          ]);
+                      }
+                  }
+              } catch (\Exception $e) {
+                  \Log::error('Erro ao gravar estoque físico detalhado multiempresa da pesagem ' . $pesagem->id . ': ' . $e->getMessage());
+              }
+              // --- FIM DA ATUALIZAÇÃO DO ESTOQUE FÍSICO ---
+              return response()->json(['success' => 'Pesagem concluída com sucesso!']);
+          } catch (\Exception $e) {
+              \Log::error('Erro ao concluir a pesagem', [
+                  'pesagemId' => $id,
+                  'exception' => $e->getMessage(),
+              ]);
+              return response()->json(['error' => 'Erro ao concluir a pesagem: ' . $e->getMessage()], 500);
+          }
+      }*/
 
     /**
      * Listar todas as pesagens com filtros e paginação.
@@ -874,6 +1288,10 @@ class PesagemController extends BaseController
             $data['empresa_id'] = $this->empresa_id;
             $data['usuario_id'] = $this->usuario_id;
 
+            if ($request->filled('dt_registro')) {
+                $data['dt_registro'] = $request->input('dt_registro');
+            }
+
             // Garante que checkboxes booleanos sejam tratados corretamente
             $data['danificado'] = $request->has('danificado') ? 1 : 0;
             $data['quebrado'] = $request->has('quebrado') ? 1 : 0;
@@ -1128,12 +1546,23 @@ class PesagemController extends BaseController
     {
         $term = $request->get('term', '');
 
+        $funcoesMotoristaIds = DB::table('funcoes')
+            ->where('empresa_id', $this->empresa_id)
+            ->whereRaw('LOWER(nome) LIKE ?', ['%motorista%'])
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($funcoesMotoristaIds)) {
+            return response()->json(['results' => []]);
+        }
+
         $motoristas = Funcionario::where('empresa_id', $this->empresa_id)
-            ->where('status_motorista', 'Ativo')
+            ->whereIn('funcao_id', $funcoesMotoristaIds)
             ->where(function ($query) use ($term) {
                 $query->where('nome', 'like', "%{$term}%")
                     ->orWhere('cpf', 'like', "%{$term}%");
             })
+            ->orderBy('nome')
             ->limit(10)
             ->get([
                 'id',
@@ -1271,9 +1700,29 @@ class PesagemController extends BaseController
                 $path80mm = public_path("tmp_files/RL{$csrfToken}80MM.pdf");
                 safe_file_put_contents($path80mm, $relatorio80mm->getContent());
                 if (file_exists($path80mm)) {
-                    $arquivos[] = $path80mm; // Usa caminho absoluto
+                    $arquivos[] = $path80mm;
                 } else {
                     \Log::error("Arquivo 80mm não encontrado: {$path80mm}");
+                }
+            }
+
+            // ➔ ADICIONE ESTE BLOCO PARA O 80MM SIMPLES:
+            if ($request->has('relatorio_80mm_simples')) {
+                // Passa o ID da pesagem e o $this->empresa_id atual
+                $relatorio80mmSimples = $relatorioController->imprimirPesagem80mmSimples($id, $this->empresa_id);
+
+                $path80mmSimples = public_path("tmp_files/RL{$csrfToken}80MMSIMPLES.pdf");
+
+                if (method_exists($relatorio80mmSimples, 'getContent')) {
+                    safe_file_put_contents($path80mmSimples, $relatorio80mmSimples->getContent());
+                } else {
+                    safe_file_put_contents($path80mmSimples, $relatorio80mmSimples);
+                }
+
+                if (file_exists($path80mmSimples)) {
+                    $arquivos[] = $path80mmSimples;
+                } else {
+                    \Log::error("Arquivo 80mm Simples não encontrado: {$path80mmSimples}");
                 }
             }
 
@@ -1282,7 +1731,18 @@ class PesagemController extends BaseController
                 $pathA4 = public_path("tmp_files/RL{$csrfToken}A4.pdf");
                 safe_file_put_contents($pathA4, $relatorioA4->getContent());
                 if (file_exists($pathA4)) {
-                    $arquivos[] = $pathA4; // Usa caminho absoluto
+                    $arquivos[] = $pathA4;
+                } else {
+                    \Log::error("Arquivo A4 não encontrado: {$pathA4}");
+                }
+            }
+
+            if ($request->has('relatorio_a4')) {
+                $relatorioA4 = $relatorioController->imprimirPesagemA4Whats($id, $this->empresa_id);
+                $pathA4 = public_path("tmp_files/RL{$csrfToken}A4.pdf");
+                safe_file_put_contents($pathA4, $relatorioA4->getContent());
+                if (file_exists($pathA4)) {
+                    $arquivos[] = $pathA4;
                 } else {
                     \Log::error("Arquivo A4 não encontrado: {$pathA4}");
                 }
@@ -1431,6 +1891,16 @@ class PesagemController extends BaseController
 
             $produto = Produto::findOrFail($ticket->produto_id);
 
+            // Busca as configurações de nota antes de criar a venda
+            $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+
+            // Valida se a natureza padrão existe na configuração
+            if (!$configNota || empty($configNota->nat_op_padrao)) {
+                throw new \Exception('A Natureza de Operação Padrão não está configurada. Por favor, defina em Configurações de Nota.');
+            }
+
+            $usarValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+
             // Criar a venda com status "DISPONÍVEL"
             $venda = Venda::create([
                 'cliente_id'    => $pesagem->cliente_id,
@@ -1441,7 +1911,7 @@ class PesagemController extends BaseController
                 'estado'        => 'DISPONIVEL',
                 'empresa_id'    => $this->empresa_id,
                 'observacao'    => 'Venda gerada automaticamente a partir da pesagem #' . $pesagem->id,
-                'natureza_id'   => 1,   // Substitua pelo ID da natureza padrão
+                'natureza_id'   => $configNota->nat_op_padrao, // <-- Pegando dinamicamente da config_notas
             ]);
 
             $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
@@ -2556,6 +3026,375 @@ class PesagemController extends BaseController
         } catch (\Exception $e) {
             \Log::error('Erro ao sincronizar estoque: ' . $e->getMessage());
             return redirect()->back()->withErrors(['error' => 'Erro ao sincronizar histórico: ' . $e->getMessage()]);
+        }
+    }
+
+    public function vincularDocumentos(Request $request, $id)
+    {
+        $request->validate([
+            'nfe_entrada' => 'nullable|string|max:60',
+            'mtr_entrada' => 'nullable|string|max:60',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($request, $id) {
+                $pesagem = \App\Models\Pesagem::where('empresa_id', $this->empresa_id)->findOrFail($id);
+
+                $nfeInput = trim((string) $request->input('nfe_entrada', ''));
+                $mtrInput = trim((string) $request->input('mtr_entrada', ''));
+
+                // Grava diretamente para não depender do $fillable do Model
+                $pesagem->nfe_entrada = $nfeInput !== '' ? $nfeInput : null;
+                $pesagem->mtr_entrada = $mtrInput !== '' ? $mtrInput : null;
+                $pesagem->save();
+
+                // Atualiza também no lote de produção vinculado à pesagem (se existir)
+                if (\Illuminate\Support\Facades\Schema::hasTable('producao_lotes')) {
+                    \App\Models\ProducaoLote::where('empresa_id', $this->empresa_id)
+                        ->where('pesagem_entrada_id', $pesagem->id)
+                        ->update([
+                            'nfe_entrada' => $pesagem->nfe_entrada ?? \DB::raw('nfe_entrada'),
+                            'mtr_entrada' => $pesagem->mtr_entrada ?? \DB::raw('mtr_entrada'),
+                        ]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Documentos (NF-e / MTR) vinculados com sucesso!'
+                ]);
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Erro ao vincular documentos na pesagem: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error'   => 'Erro ao salvar os documentos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Retorna os lotes com saldo disponível para o produto informado,
+     * ordenados por PEPS (o mais antigo primeiro).
+     */
+    /* public function getLotesDisponiveisPorProduto(\Illuminate\Http\Request $request, $produtoId)
+     {
+         try {
+             $empresaId = $this->empresa_id ?? session('user_logged')['empresa'] ?? 1;
+
+             // Busca os lotes que produziram este produto e desconta vendas já cadastradas
+             $lotes = \DB::table('producao_lotes as pl')
+                 ->join('producao_lote_itens as pli', function ($join) use ($produtoId) {
+                     $join->on('pl.id', '=', 'pli.producao_lote_id')
+                          ->where('pli.produto_id', '=', $produtoId)
+                          ->where('pli.processado', '=', 1);
+                 })
+                 // Desconta o que já saiu em outros tickets de venda
+                 ->leftJoinSub(
+                     \DB::table('tickets_pesagem as tp')
+                         ->join('pesagens as p', 'p.id', '=', 'tp.pesagem_id')
+                         ->where('p.tipo', 'venda')
+                         ->where('p.status', '!=', 'cancelado')
+                         ->where('tp.produto_id', $produtoId)
+                         ->whereNotNull('tp.producao_lote_id')
+                         ->groupBy('tp.producao_lote_id')
+                         ->select(
+                             'tp.producao_lote_id',
+                             \DB::raw('SUM(GREATEST(0, tp.peso - COALESCE(tp.peso_bag, 0))) as total_vendido')
+                         ),
+                     'vendas_anteriores',
+                     'pl.id',
+                     '=',
+                     'vendas_anteriores.producao_lote_id'
+                 )
+                 ->where('pl.empresa_id', $empresaId)
+                 ->whereIn('pl.status', ['em_corte', 'transformado', 'concluido'])
+                 ->groupBy(
+                     'pl.id',
+                     'pl.codigo_lote',
+                     'pl.created_at',
+                     'vendas_anteriores.total_vendido'
+                 )
+                 ->select(
+                     'pl.id as lote_id',
+                     'pl.codigo_lote',
+                     'pl.created_at',
+                     \DB::raw('SUM(pli.peso_liquido) as total_produzido'),
+                     \DB::raw('COALESCE(vendas_anteriores.total_vendido, 0) as total_ja_vendido'),
+                     \DB::raw('(SUM(pli.peso_liquido) - COALESCE(vendas_anteriores.total_vendido, 0)) as saldo_disponivel')
+                 )
+                 ->havingRaw('saldo_disponivel > 0')
+                 ->orderBy('pl.created_at', 'asc') // Critério PEPS (o mais antigo primeiro)
+                 ->orderBy('pl.id', 'asc')
+                 ->get();
+
+             $resultado = $lotes->map(function ($item, $indice) {
+                 return [
+                     'id'               => $item->lote_id,
+                     'codigo_lote'      => $item->codigo_lote,
+                     'saldo'            => (float) $item->saldo_disponivel,
+                     'saldo_formatado'  => number_format($item->saldo_disponivel, 2, ',', '.') . ' kg',
+                     'data_entrada'     => date('d/m/Y', strtotime($item->created_at)),
+                     'peps_sugerido'    => $indice === 0,
+                     'label'            => "{$item->codigo_lote} | Saldo: " . number_format($item->saldo_disponivel, 2, ',', '.') . " kg (Entrada: " . date('d/m/Y', strtotime($item->created_at)) . ")" . ($indice === 0 ? " [PEPS]" : "")
+                 ];
+             });
+
+             return response()->json([
+                 'success'          => true,
+                 'lotes'            => $resultado,
+                 'sugestao_peps_id' => $resultado->first()['id'] ?? null
+             ]);
+
+         } catch (\Throwable $e) {
+             \Log::error('Erro ao buscar lotes PEPS: ' . $e->getMessage());
+             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+         }
+     }*/
+
+    /**
+     * Processa a baixa PEPS e o extrato de stock quando a pesagem de venda é concluída com sucesso.
+     */
+    private function processarBaixaPepsPesagemConcluida(Pesagem $pesagem)
+    {
+        try {
+            // Apenas executa se for uma operação global de VENDA concluída
+            if (strtolower((string) $pesagem->tipo) !== 'venda') {
+                return;
+            }
+
+            foreach ($pesagem->tickets as $ticket) {
+                // Verifica se o ticket tem lote vinculado e produto válido
+                if (!empty($ticket->producao_lote_id) && !empty($ticket->produto_id)) {
+
+                    $pesoLiquidoTicket = max(0, (float) ($ticket->peso - ($ticket->peso_bag ?? 0)));
+
+                    if ($pesoLiquidoTicket > 0) {
+                        // 1. Abate em cascata (PEPS) na tabela producao_cortes
+                        $this->baixarEstoqueCortesPeps(
+                            (int) $ticket->producao_lote_id,
+                            (int) $ticket->produto_id,
+                            $pesoLiquidoTicket
+                        );
+
+                        // 2. Regista no extrato global (stock_movements) de forma segura
+                        $movimentoExiste = \DB::table('stock_movements')
+                            ->where('origem_tipo', 'ticket_pesagem')
+                            ->where('origem_id', $ticket->id)
+                            ->exists();
+
+                        if (!$movimentoExiste) {
+                            \DB::table('stock_movements')->insert([
+                                'empresa_id'  => $pesagem->empresa_id,
+                                'filial_id'   => $pesagem->filial_id ?? null,
+                                'usuario_id'  => $this->usuario_id ?? $pesagem->usuario_id,
+                                'produto_id'  => (int) $ticket->produto_id,
+                                'quantidade'  => -$pesoLiquidoTicket, // Saída negativa
+                                'tipo'        => 'saida',
+                                'origem_tipo' => 'ticket_pesagem',
+                                'origem_id'   => $ticket->id,
+                                'created_at'  => now(),
+                                'updated_at'  => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Grava o erro no log para auditoria, mas não interrompe a conclusão da pesagem em produção
+            \Log::error('Erro ao processar baixa PEPS na pesagem concluída #' . $pesagem->id . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Regra interna de consumo PEPS em cascata (FIFO) nos cortes do lote
+     */
+    private function baixarEstoqueCortesPeps(int $loteMaeId, int $produtoId, float $pesoSaida)
+    {
+        if ($pesoSaida <= 0) return;
+
+        $cortes = \DB::table('producao_cortes')
+            ->where('producao_lote_id', $loteMaeId)
+            ->where('produto_gerado_id', $produtoId)
+            ->where('status_estoque', 'disponivel')
+            ->where('saldo_disponivel', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $pesoRestanteParaAbater = $pesoSaida;
+
+        foreach ($cortes as $corte) {
+            if ($pesoRestanteParaAbater <= 0) break;
+
+            $saldoAtualCorte = (float) $corte->saldo_disponivel;
+
+            if ($pesoRestanteParaAbater >= $saldoAtualCorte) {
+                $abatimento = $saldoAtualCorte;
+                $novoSaldo = 0.0000;
+                $novoStatus = 'esgotado';
+            } else {
+                $abatimento = $pesoRestanteParaAbater;
+                $novoSaldo = $saldoAtualCorte - $abatimento;
+                $novoStatus = 'disponivel';
+            }
+
+            \DB::table('producao_cortes')
+                ->where('id', $corte->id)
+                ->update([
+                    'quantidade_vendida' => \DB::raw("quantidade_vendida + {$abatimento}"),
+                    'saldo_disponivel'   => $novoSaldo,
+                    'status_estoque'     => $novoStatus,
+                    'updated_at'         => now(),
+                ]);
+
+            $pesoRestanteParaAbater -= $abatimento;
+        }
+    }
+
+    public function imprimirRelatorioOpcao4($id)
+    {
+        try {
+            $pesagem = Pesagem::with(['veiculo', 'tickets.produto', 'cliente', 'fornecedor', 'motorista', 'filial'])
+                ->where('empresa_id', $this->empresa_id)
+                ->findOrFail($id);
+
+            $resumo = \App\Support\PesagemReportCalculator::summarize($pesagem);
+
+            // Identifica se é Filial ou Matriz conforme solicitado
+            $emitente = null;
+            if (!empty($pesagem->filial_id)) {
+                $emitente = \App\Models\Filial::where('id', $pesagem->filial_id)->first();
+            }
+
+            if (!$emitente) {
+                $emitente = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            }
+
+            $viewData = compact('pesagem', 'resumo', 'emitente');
+
+            $dompdf = new Dompdf(['enable_remote' => true]);
+            $dompdf->loadHtml(view('relatorios.pesagem_opcao_4', $viewData)->render());
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            return response($dompdf->output())
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="relatorio-pesagem-' . $pesagem->id . '.pdf"')
+                ->header('Cache-Control', 'no-cache, must-revalidate');
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao gerar relatório de pesagem opção 4: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => 'Erro ao gerar o relatório em PDF.']);
+        }
+    }
+
+    public function criarVendaDePesagemWhatsApp($pesagemId, $observacaoCustomizada)
+    {
+        try {
+            $pesagem = Pesagem::with(['cliente', 'tickets', 'veiculo', 'motorista'])
+                ->where('empresa_id', $this->empresa_id)
+                ->findOrFail($pesagemId);
+
+            if ($pesagem->venda_id) {
+                throw new \Exception('Já existe uma venda associada a esta pesagem.');
+            }
+
+            if ($pesagem->tipo !== 'venda') {
+                throw new \Exception('Apenas pesagens do tipo "venda" podem gerar uma venda.');
+            }
+
+            if (!$pesagem->cliente) {
+                throw new \Exception('Não foi encontrado um cliente associado à pesagem.');
+            }
+
+            $ticket = $pesagem->tickets->first();
+            if (!$ticket || !$ticket->produto_id) {
+                throw new \Exception('Nenhum produto foi associado à pesagem.');
+            }
+
+            $configNota = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+            if (!$configNota || empty($configNota->nat_op_padrao)) {
+                throw new \Exception('A Natureza de Operação Padrão não está configurada.');
+            }
+
+            // AQUI USAMOS A OBSERVAÇÃO QUE VEM DO WHATSAPP COM PLACA E MOTORISTA
+            $venda = Venda::create([
+                'cliente_id'    => $pesagem->cliente_id,
+                'usuario_id'    => $pesagem->usuario_id,
+                'valor_total'   => 0,
+                'desconto'      => 0,
+                'acrescimo'     => 0,
+                'estado'        => 'DISPONIVEL',
+                'empresa_id'    => $this->empresa_id,
+                'observacao'    => $observacaoCustomizada,
+                'natureza_id'   => $configNota->nat_op_padrao,
+            ]);
+
+            $usarValoresTicket = (bool) ($configNota->usar_valores_ticket_pesagem ?? false);
+
+            $grupos = [];
+            foreach ($pesagem->tickets as $t) {
+                $pOrig   = Produto::findOrFail($t->produto_id);
+                $pId     = $pOrig->produto_referenciado_id ?: $pOrig->id;
+                $grupos[$pId][] = $t;
+            }
+
+            foreach ($grupos as $prodId => $ticketsGrupo) {
+                $entrada = $saida = $avulsa = 0;
+                foreach ($ticketsGrupo as $t) {
+                    $pesoLiq = max(0, $t->peso - $t->peso_bag);
+                    if ($t->tipo === 'entrada') {
+                        $entrada += $pesoLiq;
+                    } elseif ($t->tipo === 'saida') {
+                        $saida   += $pesoLiq;
+                    } else {
+                        $avulsa  += $pesoLiq;
+                    }
+                }
+                $quantidade = max(0, ($entrada + $avulsa) - $saida);
+
+                $pGrupo = Produto::findOrFail($prodId);
+                $valorProdutoPadrao = (float) $pGrupo->valor_venda;
+
+                $valorTotalPrioritario = 0.0;
+                foreach ($ticketsGrupo as $ticketGrupo) {
+                    $pesoLiqTicket = max(0, ((float) $ticketGrupo->peso) - ((float) $ticketGrupo->peso_bag));
+                    $valorUnitarioPrioritario = (float) ($ticketGrupo->valor_unitario ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_unitario
+                        : $valorProdutoPadrao;
+
+                    $valorTotalPrioritario += (float) ($ticketGrupo->valor_total ?? 0) > 0
+                        ? (float) $ticketGrupo->valor_total
+                        : ($pesoLiqTicket * $valorUnitarioPrioritario);
+                }
+
+                $valorUnitarioCalculado = $quantidade > 0 ? ($valorTotalPrioritario / $quantidade) : $valorProdutoPadrao;
+
+                $valorItem = $usarValoresTicket
+                    ? ($valorUnitarioCalculado > 0 ? $valorUnitarioCalculado : $valorProdutoPadrao)
+                    : $valorProdutoPadrao;
+
+                ItemVenda::create([
+                    'venda_id'     => $venda->id,
+                    'produto_id'   => $pGrupo->id,
+                    'produto_nome' => $pGrupo->nome,
+                    'quantidade'   => (float) $quantidade,
+                    'valor'        => (float) $valorItem,
+                    'valor_custo'  => (float) $pGrupo->valor_compra,
+                ]);
+            }
+
+            $venda->valor_total = $venda->itens->sum(fn($item) => $item->quantidade * $item->valor);
+            $venda->save();
+
+            // GRAVA O ID DA VENDA NA PESAGEM
+            $pesagem->venda_id = $venda->id;
+            $pesagem->save();
+
+            return response()->json(['success' => true, 'venda_id' => $pesagem->venda_id], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
 }

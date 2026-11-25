@@ -34,15 +34,10 @@ class UsuarioController extends Controller
                 return redirect("/login");
             }
 
-            // 🔹 Define a filial padrão com prioridade:
-            // 1. Requisição (request param)
-            // 2. Sessão do usuário (local_padrao)
-            // 3. Fallback: null
             $this->filial_id = $request->get('filial_id')
                 ?? session('user_logged.local_padrao')
                 ?? null;
 
-            // 🔹 Inicializa o LogService com empresa e usuário automaticamente
             $this->logService = new LogService($this->empresa_id, $this->usuario_id, $this->filial_id);
 
             return $next($request);
@@ -52,37 +47,28 @@ class UsuarioController extends Controller
     public function setLocation_(Request $request)
     {
         try {
-            // 🔹 Obtém a instância correta da model Usuario
             $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-            // 🔹 Busca o usuário e captura os dados antes da alteração
             $usuario = Usuario::findOrFail(get_id_user());
             $dadosAnteriores = $usuario->toArray();
 
-            // 🔹 Converte "-1" para null (representa Matriz no banco)
             $filialId = $request->filial_id;
             if ($filialId === '-1' || $filialId === -1) {
                 $filialId = null;
             }
 
-            // 🔹 Atualiza o local padrão do usuário
             $usuario->local_padrao = $filialId;
             $usuario->save();
 
-            // 🔹 Captura os dados após a alteração
             $dadosDepois = $usuario->toArray();
 
-            // 🔹 Atualiza a sessão sem apagar dados obrigatórios
             $user_logged = session('user_logged');
             $user_logged['local_padrao'] = $usuario->local_padrao;
-            $user_logged['id'] = $usuario->id; // reforça id
-            $user_logged['empresa'] = $usuario->empresa_id; // reforça empresa
+            $user_logged['id'] = $usuario->id;
+            $user_logged['empresa'] = $usuario->empresa_id;
             session(['user_logged' => $user_logged]);
-            session(['empresa_id' => $usuario->empresa_id]); // reforça empresa global
+            session(['empresa_id' => $usuario->empresa_id]);
 
-            //session()->put('user_logged.local_padrao', $request->filial_id);
-
-            // 🔹 Registra log da alteração de localização do usuário
             $this->logService->registrar('update', get_class($modelInstance), [
                 'registro_id' => $usuario->id,
                 'dados_antes' => $dadosAnteriores,
@@ -104,27 +90,20 @@ class UsuarioController extends Controller
     public function setLocation(Request $request)
     {
         try {
-            // 🔹 Obtém a instância correta da model Usuario
             $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-            // 🔹 Busca o usuário e captura os dados antes da alteração
             $usuario = Usuario::findOrFail(get_id_user());
             $dadosAnteriores = $usuario->toArray();
 
-            // 🔹 Atualiza o local padrão do usuário
             $usuario->local_padrao = $request->filial_id;
             $usuario->save();
 
-            // 🔹 Captura os dados após a alteração
             $dadosDepois = $usuario->toArray();
 
-            // 🔹 Atualiza a sessão
             $user_logged = session('user_logged');
             $user_logged['local_padrao'] = $usuario->local_padrao;
             session(['user_logged' => $user_logged]);
-            //session()->put('user_logged.local_padrao', $request->filial_id);
 
-            // 🔹 Registra log da alteração de localização do usuário
             $this->logService->registrar('update', get_class($modelInstance), [
                 'registro_id' => $usuario->id,
                 'dados_antes' => $dadosAnteriores,
@@ -166,11 +145,9 @@ class UsuarioController extends Controller
     public function new()
     {
         try {
-            // 🔹 Obtém o usuário logado
             $value = session('user_logged');
             $usuario = Usuario::findOrFail($value['id']);
 
-            // 🔹 Captura os dados antes da alteração
             $dadosAnteriores = $usuario->toArray();
 
             $permissoesAtivas = $usuario->empresa->permissao;
@@ -195,16 +172,13 @@ class UsuarioController extends Controller
                 $menu[$i]['ativo'] = $temp;
             }
 
-            // 🔹 Captura os dados depois da alteração
             $dadosDepois = [
                 'permissoesAtivas' => $permissoesAtivas,
                 'menu' => $menu
             ];
 
-            // 🔹 Obtém a instância correta da model Usuario
             $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-            // 🔹 Registra log da criação do usuário
             $this->logService->registrar('create', get_class($modelInstance), [
                 'registro_id' => $usuario->id,
                 'dados_antes' => $dadosAnteriores,
@@ -363,12 +337,12 @@ class UsuarioController extends Controller
             $request->merge([
                 'local_padrao' => $request->local_padrao > 0 ? $request->local_padrao : null
             ]);
-            // dd($locais);
 
-            // 🔹 Captura os dados antes da criação do usuário
             $dadosAnteriores = [];
 
-            // 🔹 Criação do usuário
+            $cpfMtr = preg_replace('/\D+/', '', (string) $request->input('cpf_mtr', ''));
+            $tokenMtr = trim((string) $request->input('token_mtr', ''));
+
             $result = Usuario::create([
                 'nome' => $request->nome,
                 'login' => $request->login,
@@ -385,7 +359,9 @@ class UsuarioController extends Controller
                 'rota_acesso' => $request->rota_acesso ?? '',
                 'permissao' => json_encode($permissao),
                 'empresa_id' => $this->empresa_id,
-                'permissao_nfe_whatsapp' => $request->permissao_nfe_whatsapp ? true : false
+                'permissao_nfe_whatsapp' => $request->permissao_nfe_whatsapp ? true : false,
+                'cpf_mtr' => $cpfMtr !== '' ? $cpfMtr : null,
+                'token_mtr' => $tokenMtr !== '' ? $tokenMtr : null,
             ]);
 
             $this->criaConfigCaixa($result);
@@ -408,13 +384,10 @@ class UsuarioController extends Controller
                     $photoSaved ? 'Usuário salvo!' : 'Usuário salvo, mas a foto não pôde ser armazenada. Edite o usuário para tentar novamente.'
                 );
 
-                // 🔹 Obtém a instância correta da model Usuario
                 $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-                // 🔹 Captura os dados após a criação
                 $dadosDepois = $result->toArray();
 
-                // 🔹 Registra log da criação do usuário
                 $this->logService->registrar('create', get_class($modelInstance), [
                     'registro_id' => $result->id,
                     'dados_antes' => $dadosAnteriores,
@@ -452,7 +425,10 @@ class UsuarioController extends Controller
         $request->merge([
             'local_padrao' => $request->local_padrao > 0 ? $request->local_padrao : null
         ]);
-        // dd($locais);
+
+        $cpfMtr = preg_replace('/\D+/', '', (string) $request->input('cpf_mtr', ''));
+        $tokenMtr = trim((string) $request->input('token_mtr', ''));
+
         $result = Usuario::create([
             'nome' => $request->nome,
             'login' => $request->login,
@@ -469,7 +445,9 @@ class UsuarioController extends Controller
             'rota_acesso' => $request->rota_acesso ?? '',
             'permissao' => json_encode($permissao),
             'empresa_id' => $this->empresa_id,
-            'permissao_nfe_whatsapp' => $request->permissao_nfe_whatsapp ? true : false
+            'permissao_nfe_whatsapp' => $request->permissao_nfe_whatsapp ? true : false,
+            'cpf_mtr' => $cpfMtr !== '' ? $cpfMtr : null,
+            'token_mtr' => $tokenMtr !== '' ? $tokenMtr : null,
         ]);
 
         $this->criaConfigCaixa($result);
@@ -521,16 +499,11 @@ class UsuarioController extends Controller
         try {
             $permissao = $this->validaPermissao($request);
 
-            // 🔹 Busca o usuário antes da atualização para capturar os dados anteriores
             $usr = Usuario::where('id', $request->id)
                 ->where('empresa_id', $this->empresa_id)->firstOrFail();
             $dadosAnteriores = $usr->toArray();
 
             $locais = $request->local ? json_encode($request->local) : null;
-
-            // $request->merge([
-            // 	'local_padrao' => $request->local_padrao > 0 ? $request->local_padrao : null
-            // ]);
 
             $usr->nome = $request->nome;
             $usr->login = $request->login;
@@ -558,7 +531,16 @@ class UsuarioController extends Controller
 
             $usr->permissao_nfe_whatsapp = $request->permissao_nfe_whatsapp ? true : false;
 
-            // 🔹 Salva as alterações
+            // Credenciais individuais SINIR / MTR
+            $cpfMtr = preg_replace('/\D+/', '', (string) $request->input('cpf_mtr', ''));
+            $usr->cpf_mtr = $cpfMtr !== '' ? $cpfMtr : null;
+
+            if ($request->boolean('remover_token_mtr')) {
+                $usr->setRawAttributes(array_merge($usr->getAttributes(), ['token_mtr' => null]));
+            } elseif ($request->filled('token_mtr')) {
+                $usr->token_mtr = trim((string) $request->token_mtr);
+            }
+
             $result = $request->hasFile('foto')
                 ? (bool) app(UserAvatarService::class)->store($usr, $request->file('foto'))
                 : $usr->save();
@@ -570,13 +552,10 @@ class UsuarioController extends Controller
                 }
                 session()->flash("mensagem_sucesso", "Usuário atualizado!");
 
-                // 🔹 Obtém a instância correta da model Usuario
                 $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-                // 🔹 Captura os dados após a atualização
                 $dadosDepois = $usr->toArray();
 
-                // 🔹 Registra log da atualização do usuário
                 $this->logService->registrar('update', get_class($modelInstance), [
                     'registro_id' => $usr->id,
                     'dados_antes' => $dadosAnteriores,
@@ -611,10 +590,6 @@ class UsuarioController extends Controller
 
         $locais = $request->local ? json_encode($request->local) : null;
 
-        // $request->merge([
-        // 	'local_padrao' => $request->local_padrao > 0 ? $request->local_padrao : null
-        // ]);
-
         $usr->nome = $request->nome;
         $usr->login = $request->login;
         $usr->locais = $locais;
@@ -638,8 +613,16 @@ class UsuarioController extends Controller
 
         $usr->permissao_nfe_whatsapp = $request->permissao_nfe_whatsapp ? true : false;
 
-        // echo $usr->local_padrao;
-        // die;
+        // Credenciais individuais SINIR / MTR
+        $cpfMtr = preg_replace('/\D+/', '', (string) $request->input('cpf_mtr', ''));
+        $usr->cpf_mtr = $cpfMtr !== '' ? $cpfMtr : null;
+
+        if ($request->boolean('remover_token_mtr')) {
+            $usr->setRawAttributes(array_merge($usr->getAttributes(), ['token_mtr' => null]));
+        } elseif ($request->filled('token_mtr')) {
+            $usr->token_mtr = trim((string) $request->token_mtr);
+        }
+
         $result = $usr->save();
         if($result){
             session()->flash("mensagem_sucesso", "Usuário atualizado!");
@@ -786,7 +769,6 @@ class UsuarioController extends Controller
 
         if(valida_objeto($usuario)){
 
-            // BUSCA OS REGISTOS DA NOVA TABELA DE LOGS (Auditoria) DO SISTEMA
             $acessos = \Illuminate\Support\Facades\DB::table('logs')
                 ->where('usuario_id', $id)
                 ->orderBy('created_at', 'desc')
@@ -801,74 +783,54 @@ class UsuarioController extends Controller
         }
     }
 
-    /**
-     * Gera um novo otp_secret para o usuário e retorna o QR Code e a chave em JSON,
-     * registrando em log a mudança do campo otp_secret.
-     */
     public function generateOtp(Request $request, $id)
     {
-        // 🔹 Instância da model e LogService já disponível via middleware
         $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-        // 🔹 Busca o usuário e captura os dados antes da alteração
         $usuario = Usuario::findOrFail($id);
         $dadosAnteriores = $usuario->toArray();
 
-        // 🔹 Gera a nova secret
         $otpService = app(\App\Services\OtpService::class);
         $secret = $otpService->generateSecret();
 
-        // 🔹 Atribui e salva (mutator criptografa)
         $usuario->otp_secret = $secret;
         $usuario->save();
 
-        // 🔹 Captura os dados após a alteração
         $dadosDepois = $usuario->toArray();
 
-        // 🔹 Registra log da geração do OTP
         $this->logService->registrar('update', get_class($modelInstance), [
             'registro_id' => $usuario->id,
             'dados_antes'  => array_intersect_key($dadosAnteriores, array_flip(['otp_secret'])),
             'dados_depois' => array_intersect_key($dadosDepois,  array_flip(['otp_secret'])),
         ]);
 
-        // 🔹 Gera o QR Code inline (SVG base64)
         $qrCode = $otpService->getQRCodeInline(
             config('app.name'),
             $usuario->email,
             $secret
         );
 
-        // 🔹 Retorna JSON
         return response()->json([
             'secret' => $secret,
             'qrCode' => $qrCode,
         ], 200);
     }
 
-    /**
-     * Gera secret + QR Code (sem salvar) e registra no log a pré-visualização.
-     */
     public function previewOtp(Request $request, $id)
     {
-        // 🔹 Instância da model e LogService
         $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-        // 🔹 Busca o usuário
         $usuario = Usuario::findOrFail($id);
 
-        // 🔹 Gera a chave em claro
         $otpService = app(OtpService::class);
         $secret = $otpService->generateSecret();
 
-        // 🔹 Registra log da pré-visualização do OTP (não altera DB)
         $this->logService->registrar('preview', get_class($modelInstance), [
             'registro_id' => $usuario->id,
             'dados_antes'  => null,
             'dados_depois' => ['preview_secret' => $secret],
         ]);
 
-        // 🔹 Prepara QR Code (app name + nome do usuário)
         $qrCode = $otpService->getQRCodeInline(
             config('app.name'),
             $usuario->nome,
@@ -881,11 +843,6 @@ class UsuarioController extends Controller
         ], 200);
     }
 
-
-    /**
-     * Recebe secret + código, verifica e então grava no banco,
-     * registrando em log a alteração de otp_secret.
-     */
     public function saveOtp(Request $request, $id)
     {
         $request->validate([
@@ -893,14 +850,11 @@ class UsuarioController extends Controller
             'code'   => 'required|digits:6',
         ]);
 
-        // 🔹 Instância da model e LogService
         $modelInstance = is_string(Usuario::class) ? app(Usuario::class) : Usuario::class;
 
-        // 🔹 Busca o usuário e captura dados antes
         $usuario = Usuario::findOrFail($id);
         $dadosAnteriores = $usuario->toArray();
 
-        // 🔹 Verifica o código contra a chave
         $otpService = app(OtpService::class);
         if (! $otpService->verify($request->secret, $request->code)) {
             return response()->json([
@@ -908,14 +862,11 @@ class UsuarioController extends Controller
             ], 422);
         }
 
-        // 🔹 Salva a chave (mutator cifra)
         $usuario->otp_secret = $request->secret;
         $usuario->save();
 
-        // 🔹 Captura dados depois
         $dadosDepois = $usuario->toArray();
 
-        // 🔹 Registra log da configuração do OTP
         $this->logService->registrar('update', get_class($modelInstance), [
             'registro_id' => $usuario->id,
             'dados_antes'  => array_intersect_key($dadosAnteriores, array_flip(['otp_secret'])),
@@ -927,9 +878,6 @@ class UsuarioController extends Controller
         ], 200);
     }
 
-    /**
-     * Verifica o código atual antes de permitir regenerar o OTP.
-     */
     public function verifyCurrentOtp(Request $request, $id)
     {
         $request->validate([
@@ -938,12 +886,9 @@ class UsuarioController extends Controller
 
         $usuario = Usuario::findOrFail($id);
 
-        // nota: se você encriptou o secret no model, use o accessor para pegá-lo em claro:
         $secret = $usuario->otp_secret;
         $isValid = app(OtpService::class)->verify($secret, $request->code);
 
         return response()->json(['valid' => $isValid]);
     }
-
-
 }

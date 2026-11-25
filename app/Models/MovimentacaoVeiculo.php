@@ -44,6 +44,9 @@ class MovimentacaoVeiculo extends BaseModel
         'bater_ponto_whatsapp',
         'data_cancelamento',
         'solicitar_abastecimento',
+        'gerar_mtr',
+        'passar_balanca',
+        'pesagem_id',
     ];
 
     /* Relacionamentos */
@@ -135,6 +138,10 @@ class MovimentacaoVeiculo extends BaseModel
 
         if ($this->status == 'agendado') {
             return '<span class="badge badge-info">Agendado</span>';
+        }
+
+        if ($this->status == 'iniciado') {
+            return '<span class="badge badge-warning">Em curso</span>';
         }
 
         if (
@@ -348,5 +355,172 @@ class MovimentacaoVeiculo extends BaseModel
             . '<i class="la la-check text-white"></i> '
             . 'No Horário'
             . '</span>';
+    }
+
+    public function pesagem()
+    {
+        // Ajuste 'Pesagem::class' para o nome exato do seu Model de balança, se for diferente
+        return $this->belongsTo(\App\Models\Pesagem::class, 'pesagem_id');
+    }
+
+
+    public function gerarPrePesagemAutomatica()
+    {
+        // 1. Condição básica: Só gera se a viagem estiver finalizada e a flag de balança estiver ativa
+        if ($this->status !== 'finalizado' || empty($this->passar_balanca)) {
+            return;
+        }
+
+        // 2. Prevenção de duplicidade: verifica se já existe uma pesagem vinculada
+        if (\App\Models\Pesagem::where('movimentacao_id', $this->id)->exists() || !empty($this->pesagem_id)) {
+            return;
+        }
+
+        $clienteId = null;
+        $fornecedorId = null;
+
+        // 3. Captura o destino principal da viagem
+        if ($this->destinos && $this->destinos->count() > 0) {
+            $primeiroDestino = $this->destinos->first();
+            $clienteId = $primeiroDestino->cliente_id;
+            $fornecedorId = $primeiroDestino->fornecedor_id;
+        } else {
+            $clienteId = $this->cliente_id;
+            $fornecedorId = $this->fornecedor_id;
+        }
+
+        // 4. Inteligência: A balança DEVE ser Compra.
+        // Se a logística enviou para um "Cliente", busca o Fornecedor Equivalente pelo CNPJ limpo
+        if (!empty($clienteId) && empty($fornecedorId)) {
+            $cliente = \App\Models\Cliente::find($clienteId);
+
+            if ($cliente && !empty($cliente->cpf_cnpj)) {
+                $cnpjLimpo = preg_replace('/[^0-9]/', '', $cliente->cpf_cnpj);
+
+                // Procura um fornecedor com o exato mesmo CNPJ (ignorando pontos e traços)
+                $fornecedorEquivalente = \App\Models\Fornecedor::where('empresa_id', $this->empresa_id)
+                    ->whereRaw("REPLACE(REPLACE(REPLACE(cpf_cnpj, '.', ''), '/', ''), '-', '') = ?", [$cnpjLimpo])
+                    ->first();
+
+                if ($fornecedorEquivalente) {
+                    $fornecedorId = $fornecedorEquivalente->id;
+                    $clienteId = null; // Zera para não dar conflito na balança
+                }
+            }
+        }
+
+        // Se mesmo assim não achou fornecedor, zera o cliente para forçar que a balança classifique como Compra (e o balanceiro escolhe)
+        if (!empty($clienteId) && empty($fornecedorId)) {
+            $clienteId = null;
+        }
+
+        // 5. Cria a pré-pesagem na balança como COMPRA obrigatória
+        try {
+            $pesagem = \App\Models\Pesagem::create([
+                'empresa_id'         => $this->empresa_id,
+                'filial_id'          => $this->filial_id,
+                'usuario_id'         => $this->usuario_id ?? 1,
+                'veiculo_id'         => $this->veiculo_id,
+                'motorista_id'       => $this->motorista_id,
+                'placa_veiculo'      => $this->veiculo->placa ?? null,
+                'motorista_nome'     => $this->motorista->nome ?? ($this->terceiro_nome ?? null),
+                'movimentacao_id'    => $this->id,
+                'status'             => 'em andamento',
+                'tipo'               => 'compra', // 🚀 Sempre COMPRA!
+                'cliente_id'         => null,
+                'fornecedor_id'      => $fornecedorId,
+                'peso'               => 0,
+                'peso_liquido_bruto' => 0,
+                'peso_final'         => 0,
+                'dt_registro'        => now()->toDateString(),
+                'token'              => md5(uniqid(rand(), true)),
+                'observacoes'        => "Pré-pesagem de COMPRA gerada automaticamente pelo retorno da Viagem #{$this->id}",
+            ]);
+
+            // Atualiza a viagem com o ID da pesagem que acabou de ser criada para criar a ponte perfeita!
+            $this->pesagem_id = $pesagem->id;
+            $this->save();
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Falha ao gerar pré-pesagem auto da viagem #{$this->id}: " . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // 🚀 NOVO: Indicador Visual de Documentos Fiscais (NF-e e MTR)
+    // =========================================================================
+    public function getDocumentosFiscaisFormatadoAttribute()
+    {
+        // Se a viagem não terminou, não exige documentação
+        if (!in_array(strtolower($this->status), ['finalizado', 'concluida'])) {
+            return '<span class="text-muted" style="font-size: 10px;">Aguardando<br>Conclusão</span>';
+        }
+
+        $html = '';
+        $nfeEncontrada = null;
+
+        // --- 1. BUSCA DA NF-e ---
+        // A lógica do sistema: A viagem gera uma pesagem -> A pesagem gera uma Compra -> A Compra tem a NFe
+        if ($this->pesagem_id) {
+            // Tenta encontrar a Compra gerada a partir da pesagem desta viagem
+            $compra = \Illuminate\Support\Facades\DB::table('compras')
+                ->where('empresa_id', $this->empresa_id)
+                ->whereExists(function ($query) {
+                    $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('pesagens')
+                        ->whereColumn('pesagens.compra_id', 'compras.id')
+                        ->where('pesagens.id', $this->pesagem_id);
+                })
+                ->first();
+
+            if ($compra && !empty($compra->nf)) {
+                $nfeEncontrada = $compra->nf;
+            } else {
+                // Tenta ver se a NF-e foi colada diretamente na pesagem (botão de Vincular Docs que fizemos antes)
+                $pesagem = \Illuminate\Support\Facades\DB::table('pesagens')->where('id', $this->pesagem_id)->first();
+                if ($pesagem && !empty($pesagem->nfe_entrada)) {
+                    $nfeEncontrada = $pesagem->nfe_entrada;
+                }
+            }
+        }
+
+        if (!empty($nfeEncontrada)) {
+            $html .= '<span class="badge badge-success badge-fixed-width-doc mb-1" title="NF-e Vinculada">NF-e: ' . mb_strimwidth($nfeEncontrada, 0, 9, '..') . '</span><br>';
+        } else {
+            // Para não apitar erro em viagens que só levam caçamba e não trazem material (não geram compra),
+            // ele avisa que está "Sem NF-e" em amarelo/vermelho.
+            $html .= '<span class="badge badge-danger badge-fixed-width-doc mb-1 text-white" title="NF-e Pendente"><i class="fa fa-exclamation-triangle text-white" style="font-size: 9px;"></i> Sem NF-e</span><br>';
+        }
+
+        // --- 2. BUSCA DO MTR ---
+        $mtrEncontrado = null;
+
+        if (!empty($this->mtr_numero)) {
+            $mtrEncontrado = $this->mtr_numero;
+        } else {
+            // Tenta ver se tem MTR nos destinos (Multi-Stop)
+            if ($this->destinos && $this->destinos->count() > 0) {
+                $destinoComMtr = $this->destinos->whereNotNull('mtr_numero')->first();
+                if ($destinoComMtr) {
+                    $mtrEncontrado = $destinoComMtr->mtr_numero;
+                }
+            }
+
+            // Tenta ver se o MTR foi amarrado na pesagem (via botão Vincular Docs)
+            if (empty($mtrEncontrado) && $this->pesagem_id) {
+                $pesagem = \Illuminate\Support\Facades\DB::table('pesagens')->where('id', $this->pesagem_id)->first();
+                if ($pesagem && !empty($pesagem->mtr_entrada)) {
+                    $mtrEncontrado = $pesagem->mtr_entrada;
+                }
+            }
+        }
+
+        if (!empty($mtrEncontrado)) {
+            $html .= '<span class="badge badge-primary badge-fixed-width-doc text-white" title="MTR Vinculado">MTR: ' . mb_strimwidth($mtrEncontrado, 0, 9, '..') . '</span>';
+        } else {
+            $html .= '<span class="badge badge-warning badge-fixed-width-doc text-dark" title="MTR Pendente"><i class="fa fa-exclamation-triangle text-dark" style="font-size: 9px;"></i> Sem MTR</span>';
+        }
+
+        return $html;
     }
 }

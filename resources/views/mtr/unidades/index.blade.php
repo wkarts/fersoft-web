@@ -5,37 +5,37 @@
 @endpush
 
 @section('content')
-<div class="document-fiscal-page document-fiscal-page--mtr ui-op-refine card card-custom gutter-b">
-    <div class="card-header flex-wrap ui-op-heading">
-        <div class="card-title">
-            <h3 class="card-label">
-                <i class="fa fa-key text-primary"></i> Unidades e Credenciais MTR (SINIR / IEMA)
-            </h3>
-        </div>
-        <div class="card-toolbar">
-            <a href="{{ route('mtr.unidades.create') }}" class="btn btn-primary font-weight-bolder">
-                <i class="fa fa-plus"></i> Nova Credencial
-            </a>
-        </div>
-    </div>
-
-    <div class="card-body">
-        @if(session('sucesso'))
-            <div class="alert alert-custom alert-light-success ui-op-alert fade show" role="status">
-                <div class="alert-icon"><i class="flaticon-outline-check font-size-h2"></i></div>
-                <div class="alert-text">{{ session('sucesso') }}</div>
+    <div class="document-fiscal-page document-fiscal-page--mtr ui-op-refine card card-custom gutter-b">
+        <div class="card-header flex-wrap ui-op-heading">
+            <div class="card-title">
+                <h3 class="card-label">
+                    <i class="fa fa-key text-primary"></i> Unidades e Credenciais MTR (SINIR / IEMA)
+                </h3>
             </div>
-        @endif
-        @if(session('erro'))
-            <div class="alert alert-custom alert-light-danger ui-op-alert fade show" role="alert">
-                <div class="alert-icon"><i class="flaticon-warning font-size-h2"></i></div>
-                <div class="alert-text">{{ session('erro') }}</div>
+            <div class="card-toolbar">
+                <a href="{{ route('mtr.unidades.create') }}" class="btn btn-primary font-weight-bolder">
+                    <i class="fa fa-plus"></i> Nova Credencial
+                </a>
             </div>
-        @endif
+        </div>
 
-        <div class="table-responsive">
-            <table class="table table-head-custom table-vertical-center ui-op-table" id="kt_advance_table_widget_1">
-                <thead>
+        <div class="card-body">
+            @if(session('sucesso'))
+                <div class="alert alert-custom alert-light-success ui-op-alert fade show mb-5" role="status">
+                    <div class="alert-icon"><i class="flaticon-outline-check font-size-h2"></i></div>
+                    <div class="alert-text">{{ session('sucesso') }}</div>
+                </div>
+            @endif
+            @if(session('erro'))
+                <div class="alert alert-custom alert-light-danger ui-op-alert fade show mb-5" role="alert">
+                    <div class="alert-icon"><i class="flaticon-warning font-size-h2"></i></div>
+                    <div class="alert-text">{{ session('erro') }}</div>
+                </div>
+            @endif
+
+            <div class="table-responsive">
+                <table class="table table-head-custom table-vertical-center ui-op-table" id="kt_advance_table_widget_1">
+                    <thead>
                     <tr class="text-left">
                         <th>Órgão</th>
                         <th>Filial</th>
@@ -46,13 +46,18 @@
                         <th>Status</th>
                         <th class="text-center">Ações</th>
                     </tr>
-                </thead>
-                <tbody>
+                    </thead>
+                    <tbody>
                     @forelse($unidades as $u)
                         <tr>
                             <td><span class="label label-inline label-light-primary font-weight-bold">{{ $u->orgao }}</span></td>
                             <td>{{ $u->filial_nome ?? 'Matriz / Todas' }}</td>
-                            <td><code>{{ $u->cpf_cnpj }}</code></td>
+                            <td>
+                                <code>{{ $u->cpf_cnpj }}</code>
+                                @if(!empty($u->descricao))
+                                    <div class="mt-1 text-muted font-size-sm">{{ mb_strtoupper($u->descricao) }}</div>
+                                @endif
+                            </td>
                             <td>{{ $u->unidade_id }}</td>
                             <td>{{ $u->perfil }}</td>
                             <td>
@@ -87,9 +92,9 @@
                             </td>
                         </tr>
                     @endforelse
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 @endsection

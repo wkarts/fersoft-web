@@ -181,6 +181,10 @@ class PessoaPreCadastroController extends Controller
                 'email'         => $pessoa->email ?? '',
                 'latitude'      => $pessoa->latitude ?? null,
                 'longitude'     => $pessoa->longitude ?? null,
+
+                // 🚀 PROPAGAÇÃO DA RASTREABILIDADE NA APROVAÇÃO
+                'exige_rastreabilidade'  => $pessoa->exige_rastreabilidade ?? 0,
+                'portal_nivel_visao'     => $pessoa->portal_nivel_visao ?? 'simples',
             ];
 
             // ==========================================================

@@ -23,7 +23,7 @@ class Fornecedor extends BaseModel
         'empresa_id',
         'contribuinte',
         'pix',
-      	'tabela_preco_id',
+        'tabela_preco_id',
         'tipo_pix',
         'complemento',
         'cod_pais',
@@ -33,7 +33,10 @@ class Fornecedor extends BaseModel
         'imagem',
         'banco',
         'agencia',
-        'conta'
+        'exige_rastreabilidade',
+        'portal_nivel_visao',
+        'conta',
+        'exibe_contratos'
     ];
 
     protected $appends = ['imgApp'];
@@ -85,7 +88,7 @@ class Fornecedor extends BaseModel
         $this->attributes['cep'] = preg_replace('/\D/', '', (string)$value);
     }
 
- 	public function tabelaPreco()
+    public function tabelaPreco()
     {
         return $this->belongsTo(\App\Models\TabelaPreco::class, 'tabela_preco_id');
     }

@@ -439,7 +439,8 @@ class PurchaseController extends Controller
             $natureza = NaturezaOperacao::find($request->natureza);
 
             // --- Monta XML ---
-            $nfe = $nfe_service->gerarNFe($compra, $natureza, $request->tipo_pagamento);
+            $tipoPagamento = $request->tipo_pagamento ?? $compra->tipo_pagamento ?: '01';
+            $nfe = $nfe_service->gerarNFe($compra, $natureza, $tipoPagamento);
             if (isset($nfe['erros_xml'])) {
                 // Mantém contrato antigo: 401 com STRING começando em 'Erro: '
                 return response()->json('Erro: '.json_encode($nfe['erros_xml']), 401);
@@ -1349,7 +1350,8 @@ class PurchaseController extends Controller
             header('Content-type: text/html; charset=UTF-8');
             $natureza = NaturezaOperacao::find($request->natureza);
 
-            $nfe = $nfe_service->gerarNFe($compra, $natureza, $request->tipo_pagamento);
+            $tipoPagamento = $request->tipo_pagamento ?? $compra->tipo_pagamento ?: '90';
+            $nfe = $nfe_service->gerarNFe($compra, $natureza, $tipoPagamento);
             if(!isset($nfe['erros_xml'])){
 
                 $config = ConfigNota::
@@ -2032,4 +2034,619 @@ class PurchaseController extends Controller
         return $date;
     }
 
+    public function validaXmlImportacao(Request $request)
+    {
+        try {
+            $compra = Compra::with('fornecedor', 'itens.produto')->findOrFail($request->compra_id);
+
+            if (!$request->hasFile('file')) {
+                return response()->json(['status' => 'error', 'message' => 'Arquivo não enviado.']);
+            }
+
+            $xml = simplexml_load_file($request->file('file')->getRealPath());
+            if (!$xml || !isset($xml->NFe) || !isset($xml->NFe->infNFe)) {
+                return response()->json(['status' => 'error', 'message' => 'XML inválido ou corrompido.']);
+            }
+
+            $infNFe = $xml->NFe->infNFe;
+            $cnpj_nfe = (string)$infNFe->emit->CNPJ;
+            $cnpj_fornecedor = preg_replace('/\D/', '', $compra->fornecedor->cpf_cnpj);
+
+            $flags = [
+                'diverge_cnpj' => ($cnpj_nfe !== $cnpj_fornecedor),
+                'diverge_tributos' => false,
+                'compra_maior' => false,
+                'nfe_maior' => false,
+            ];
+
+            $qtd_nfe = 0;
+            $valor_nfe = (float)$infNFe->total->ICMSTot->vNF;
+            $tributos_ok = true;
+
+            // Percorre os itens do XML para validar Qtd e NCM
+            foreach ($infNFe->det as $det) {
+                $qtd_nfe += (float)$det->prod->qCom;
+                $ncm = (string)$det->prod->NCM;
+
+                $achou_igual = false;
+                foreach ($compra->itens as $item) {
+                    $prod_ncm = $item->produto->NCM ?? '';
+
+                    // Como a balança não grava CFOP/CST, validamos apenas se o NCM do XML bate com o cadastro
+                    if ($prod_ncm == $ncm) {
+                        $achou_igual = true;
+                    }
+                }
+
+                if (!$achou_igual && count($compra->itens) > 0) {
+                    $tributos_ok = false;
+                }
+            }
+
+            $flags['diverge_tributos'] = !$tributos_ok;
+
+            $qtd_compra = (float)$compra->itens->sum('quantidade');
+            $valor_compra = (float)$compra->valor;
+
+            // Margem de erro técnica de 0.01 para ponto flutuante
+            if ($qtd_compra > ($qtd_nfe + 0.01)) {
+                $flags['compra_maior'] = true;
+            } elseif (($qtd_nfe > $qtd_compra + 0.01) || ($valor_nfe > $valor_compra + 0.01)) {
+                $flags['nfe_maior'] = true;
+            }
+
+            return response()->json([
+                'status' => 'ok',
+                'flags' => $flags
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function importarXmlStore(Request $request)
+    {
+        try {
+            $compra = Compra::findOrFail($request->compra_id);
+
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $filePath = $file->getRealPath();
+
+                // 1. Carrega o XML
+                $xml = simplexml_load_file($filePath);
+
+                if (!$xml || !isset($xml->NFe) || !isset($xml->NFe->infNFe)) {
+                    session()->flash('mensagem_erro', 'XML inválido ou com estrutura incorreta!');
+                    return redirect()->back();
+                }
+
+                $infNFe = $xml->NFe->infNFe;
+                if (!$infNFe->attributes()) {
+                    session()->flash('mensagem_erro', 'Não foi possível encontrar os atributos no XML!');
+                    return redirect()->back();
+                }
+
+                // 2. Extrai os dados principais
+                $chave = substr((string)$infNFe->attributes()->Id, 3, 44);
+                $numero_nota = (string)$infNFe->ide->nNF;
+
+                // Datas de Emissão e Saída do XML
+                $dhEmi = (string)($infNFe->ide->dhEmi ?? $infNFe->ide->dEmi ?? '');
+                $dataEmissao = $dhEmi ? \Carbon\Carbon::parse($dhEmi)->format('Y-m-d H:i:s') : date('Y-m-d H:i:s');
+
+                $dhSaiEnt = (string)($infNFe->ide->dhSaiEnt ?? $infNFe->ide->dSaiEnt ?? '');
+                $dataSaida = $dhSaiEnt
+                    ? \Carbon\Carbon::parse($dhSaiEnt)->format('Y-m-d')
+                    : \Carbon\Carbon::parse($dataEmissao)->format('Y-m-d');
+
+                // Busca a categoria "Compra de Sucata" (ou similar contendo "sucata")
+                $categoria = \App\Models\CategoriaConta::where('empresa_id', $this->empresa_id)
+                    ->where('nome', 'LIKE', '%compra%sucata%')
+                    ->first();
+
+                if (!$categoria) {
+                    $categoria = \App\Models\CategoriaConta::where('empresa_id', $this->empresa_id)
+                        ->where('nome', 'LIKE', '%sucata%')
+                        ->first();
+                }
+
+                $categoriaId = $categoria ? $categoria->id : $compra->categoria_conta_id;
+
+                // 3. Move o arquivo para a pasta de XMLs de Entrada
+                $fileName = $chave . '.xml';
+                $file->move(public_path('xml_entrada'), $fileName);
+
+                // 4. Atualiza a Compra original (Cabeçalho + Totais Fiscais)
+                $compra->chave = $chave;
+                $compra->nf = $numero_nota;
+                $compra->xml_path = $fileName;
+                $compra->estado = 'IMPORTADO';
+                $compra->xml_importado = 1;
+                $compra->data_emissao = $dataEmissao;
+                $compra->data_saida = $dataSaida;
+                $compra->categoria_conta_id = $categoriaId;
+
+                // Totais ICMS / IPI / PIS / COFINS
+                if (isset($infNFe->total->ICMSTot)) {
+                    $icmsTot = $infNFe->total->ICMSTot;
+                    $compra->vbc_icms = (float)($icmsTot->vBC ?? 0);
+                    $compra->v_icms   = (float)($icmsTot->vICMS ?? 0);
+                    $compra->v_ipi    = (float)($icmsTot->vIPI ?? 0);
+                    $compra->v_pis    = (float)($icmsTot->vPIS ?? 0);
+                    $compra->v_cofins = (float)($icmsTot->vCOFINS ?? 0);
+                }
+
+                // Totais IBS / CBS / IS (Reforma Tributária)
+                if (isset($infNFe->total->IBSCBSTot)) {
+                    $ibsCbsTot = $infNFe->total->IBSCBSTot;
+                    $compra->total_bc_ibs_cbs       = isset($ibsCbsTot->vBCIBSCBS) ? (float)$ibsCbsTot->vBCIBSCBS : null;
+                    $compra->total_ibs_uf_dif       = isset($ibsCbsTot->gIBS->gIBSUF->vDif) ? (float)$ibsCbsTot->gIBS->gIBSUF->vDif : null;
+                    $compra->total_ibs_uf_dev_trib  = isset($ibsCbsTot->gIBS->gIBSUF->vDevTrib) ? (float)$ibsCbsTot->gIBS->gIBSUF->vDevTrib : null;
+                    $compra->total_ibs_uf           = isset($ibsCbsTot->gIBS->gIBSUF->vIBSUF) ? (float)$ibsCbsTot->gIBS->gIBSUF->vIBSUF : null;
+                    $compra->total_ibs_mun_dif      = isset($ibsCbsTot->gIBS->gIBSMun->vDif) ? (float)$ibsCbsTot->gIBS->gIBSMun->vDif : null;
+                    $compra->total_ibs_mun_dev_trib = isset($ibsCbsTot->gIBS->gIBSMun->vDevTrib) ? (float)$ibsCbsTot->gIBS->gIBSMun->vDevTrib : null;
+                    $compra->total_ibs_mun          = isset($ibsCbsTot->gIBS->gIBSMun->vIBSMun) ? (float)$ibsCbsTot->gIBS->gIBSMun->vIBSMun : null;
+                    $compra->total_ibs              = isset($ibsCbsTot->gIBS->vIBS) ? (float)$ibsCbsTot->gIBS->vIBS : null;
+                    $compra->total_cbs_dif          = isset($ibsCbsTot->gCBS->vDif) ? (float)$ibsCbsTot->gCBS->vDif : null;
+                    $compra->total_cbs_dev_trib     = isset($ibsCbsTot->gCBS->vDevTrib) ? (float)$ibsCbsTot->gCBS->vDevTrib : null;
+                    $compra->total_cbs              = isset($ibsCbsTot->gCBS->vCBS) ? (float)$ibsCbsTot->gCBS->vCBS : null;
+                    $compra->total_ibs_mono         = isset($ibsCbsTot->gMono->vIBSMono) ? (float)$ibsCbsTot->gMono->vIBSMono : null;
+                    $compra->total_cbs_mono         = isset($ibsCbsTot->gMono->vCBSMono) ? (float)$ibsCbsTot->gMono->vCBSMono : null;
+                    $compra->total_ibs_mono_reten   = isset($ibsCbsTot->gMono->vIBSMonoReten) ? (float)$ibsCbsTot->gMono->vIBSMonoReten : null;
+                    $compra->total_cbs_mono_reten   = isset($ibsCbsTot->gMono->vCBSMonoReten) ? (float)$ibsCbsTot->gMono->vCBSMonoReten : null;
+                    $compra->total_ibs_mono_ret     = isset($ibsCbsTot->gMono->vIBSMonoRet) ? (float)$ibsCbsTot->gMono->vIBSMonoRet : null;
+                    $compra->total_cbs_mono_ret     = isset($ibsCbsTot->gMono->vCBSMonoRet) ? (float)$ibsCbsTot->gMono->vCBSMonoRet : null;
+
+                    $totalIbs = $compra->total_ibs ?? 0;
+                    $totalCbs = $compra->total_cbs ?? 0;
+                    $compra->total_ibs_cbs = ($totalIbs + $totalCbs) > 0 ? ($totalIbs + $totalCbs) : null;
+                }
+
+                if (isset($infNFe->total->ISTot->vIS)) {
+                    $compra->total_is = (float)$infNFe->total->ISTot->vIS;
+                }
+
+                $compra->save();
+
+                // =========================================================================
+                // 5. LÓGICA DO CONTA A PAGAR
+                // =========================================================================
+                $contaPagar = \App\Models\ContaPagar::where('compra_id', $compra->id)->first();
+
+                if ($contaPagar) {
+                    $contaPagar->referencia = "NFe: " . $numero_nota;
+                    if ($categoriaId) {
+                        $contaPagar->categoria_id = $categoriaId;
+                    }
+                    $contaPagar->save();
+                } else {
+                    $novaConta = new \App\Models\ContaPagar();
+                    $novaConta->compra_id = $compra->id;
+                    $novaConta->empresa_id = $compra->empresa_id;
+                    $novaConta->fornecedor_id = $compra->fornecedor_id;
+                    $novaConta->valor_integral = $compra->valor;
+                    $novaConta->data_vencimento = date('Y-m-d');
+                    $novaConta->categoria_id = $categoriaId;
+                    $novaConta->referencia = "NFe: " . $numero_nota;
+                    $novaConta->status = 0;
+                    $novaConta->save();
+                }
+
+                // =========================================================================
+                // 6. LÓGICA DE NOTA COMPLEMENTAR E DEVOLUÇÃO
+                // =========================================================================
+
+                // --- GERAÇÃO DE COMPRA PARA NOTA COMPLEMENTAR ---
+                if ($request->has('gerar_complementar') && $request->gerar_complementar == 1) {
+                    $qtd_nfe = 0;
+                    foreach ($xml->NFe->infNFe->det as $det) {
+                        $qtd_nfe += (float)$det->prod->qCom;
+                    }
+                    $qtd_compra = $compra->itens->sum('quantidade');
+                    $dif_qtd = $qtd_compra - $qtd_nfe;
+
+                    if ($dif_qtd > 0) {
+                        $novaCompra = $compra->replicate();
+                        $novaCompra->estado = 'NOVO';
+                        $novaCompra->nf = '';
+                        $novaCompra->chave = '';
+                        $novaCompra->xml_path = '';
+                        $novaCompra->xml_importado = 0;
+                        $novaCompra->numero_emissao = 0;
+                        $novaCompra->numero_sequencial = 0;
+                        $novaCompra->observacao = "Compra Complementar Automática (Ref. Compra original #{$compra->id} com peso maior que a NFe importada).";
+
+                        $valor_unitario = $qtd_compra > 0 ? ($compra->valor / $qtd_compra) : 0;
+                        $novaCompra->valor = $valor_unitario * $dif_qtd;
+                        $novaCompra->save();
+
+                        $primeiroItem = $compra->itens->first();
+                        if ($primeiroItem) {
+                            $novoItem = $primeiroItem->replicate();
+                            $novoItem->compra_id = $novaCompra->id;
+                            $novoItem->quantidade = $dif_qtd;
+                            $novoItem->save();
+                        }
+                    }
+                }
+
+                // --- SINALIZAÇÃO E CRIAÇÃO AUTOMÁTICA DE NOTA DE DEVOLUÇÃO PARCIAL ---
+                if ($request->has('gerar_devolucao') && $request->gerar_devolucao == 1) {
+                    $naturezaDev = \App\Models\NaturezaOperacao::where('empresa_id', $this->empresa_id)
+                        ->where('natureza', 'LIKE', '%devolu%')
+                        ->first();
+                    $naturezaId = $naturezaDev ? $naturezaDev->id : $compra->natureza_id;
+
+                    $devolucao = new \App\Models\Devolucao();
+                    $devolucao->empresa_id = $compra->empresa_id;
+                    $devolucao->fornecedor_id = $compra->fornecedor_id;
+                    $devolucao->usuario_id = $this->usuario_id;
+                    $devolucao->natureza_id = $naturezaId;
+                    $devolucao->filial_id = $compra->filial_id;
+                    $devolucao->valor_integral = (float)$xml->NFe->infNFe->total->ICMSTot->vNF;
+                    $devolucao->estado = 0; // 0 = NOVO
+                    $devolucao->devolucao_parcial = 1; // 1 = Parcial
+                    $devolucao->chave_nf_entrada = $chave;
+                    $devolucao->nNf = $numero_nota;
+                    $devolucao->tipo = 1; // 1 = Saída
+                    $devolucao->motivo = "Devolução parcial da NF-e {$numero_nota} ref. {$chave}";
+                    $devolucao->observacao = "Devolução parcial da NF-e {$numero_nota} ref. chave {$chave}";
+                    $devolucao->valor_devolvido = 0;
+
+                    $devolucao->chave_gerada = '';
+                    $devolucao->numero_gerado = 0;
+                    $devolucao->vFrete = 0;
+                    $devolucao->vDesc = 0;
+                    $devolucao->save();
+
+                    $valor_devolvido_total = 0;
+                    $idx = 0;
+
+                    foreach ($compra->itens as $item) {
+                        $det = $xml->NFe->infNFe->det[$idx] ?? $xml->NFe->infNFe->det[0];
+
+                        $qtd_xml = (float)$det->prod->qCom;
+                        $qtd_compra = (float)$item->quantidade;
+                        $dif_qtd = $qtd_xml - $qtd_compra;
+
+                        if ($dif_qtd > 0) {
+                            $cfopXml = (string)$det->prod->CFOP;
+                            $valor_unit = (float)$det->prod->vUnCom;
+
+                            // Extração do CST (3 dígitos: orig + CST) ou CSOSN
+                            $cst_xml = '000';
+                            $orig_xml = 0;
+                            if (isset($det->imposto->ICMS) && count($det->imposto->ICMS->children()) > 0) {
+                                $icmsNode = $det->imposto->ICMS->children()[0];
+                                $orig_xml = isset($icmsNode->orig) ? (int)$icmsNode->orig : 0;
+                                if (isset($icmsNode->CST)) {
+                                    $cst_xml = str_pad($orig_xml . (string)$icmsNode->CST, 3, '0', STR_PAD_LEFT);
+                                } elseif (isset($icmsNode->CSOSN)) {
+                                    $cst_xml = (string)$icmsNode->CSOSN;
+                                }
+                            }
+
+                            $pisNode = (isset($det->imposto->PIS) && count($det->imposto->PIS->children()) > 0)
+                                ? $det->imposto->PIS->children()[0] : null;
+                            $cofinsNode = (isset($det->imposto->COFINS) && count($det->imposto->COFINS->children()) > 0)
+                                ? $det->imposto->COFINS->children()[0] : null;
+                            $ipiNode = isset($det->imposto->IPI->IPITrib)
+                                ? $det->imposto->IPI->IPITrib
+                                : ($det->imposto->IPI->IPINT ?? null);
+
+                            $itemDev = new \App\Models\ItemDevolucao();
+                            $itemDev->devolucao_id = $devolucao->id;
+                            $itemDev->cod = $item->produto->id;
+                            $itemDev->nome = $item->produto->nome;
+                            $itemDev->ncm = (string)$det->prod->NCM;
+                            $itemDev->cfop = $this->getCfopDevolucao($cfopXml);
+                            $itemDev->codBarras = $item->produto->codBarras ?? 'SEM GTIN';
+                            $itemDev->valor_unit = $valor_unit;
+                            $itemDev->quantidade = $dif_qtd;
+                            $itemDev->item_parcial = 1;
+                            $itemDev->unidade_medida = (string)$det->prod->uCom;
+
+                            $itemDev->cst_csosn = $cst_xml;
+                            $itemDev->cst_pis = $pisNode && isset($pisNode->CST) ? (string)$pisNode->CST : '99';
+                            $itemDev->cst_cofins = $cofinsNode && isset($cofinsNode->CST) ? (string)$cofinsNode->CST : '99';
+                            $itemDev->cst_ipi = $ipiNode && isset($ipiNode->CST) ? (string)$ipiNode->CST : '99';
+
+                            $itemDev->perc_icms = isset($icmsNode->pICMS) ? (float)$icmsNode->pICMS : 0;
+                            $itemDev->perc_pis = $pisNode && isset($pisNode->pPIS) ? (float)$pisNode->pPIS : 0;
+                            $itemDev->perc_cofins = $cofinsNode && isset($cofinsNode->pCOFINS) ? (float)$cofinsNode->pCOFINS : 0;
+                            $itemDev->perc_ipi = $ipiNode && isset($ipiNode->pIPI) ? (float)$ipiNode->pIPI : 0;
+                            $itemDev->pRedBC = 0; $itemDev->modBCST = 0;
+                            $itemDev->vBCST = 0; $itemDev->pICMSST = 0; $itemDev->vICMSST = 0;
+                            $itemDev->pMVAST = 0; $itemDev->orig = $orig_xml; $itemDev->pST = 0;
+                            $itemDev->vICMSSubstituto = 0; $itemDev->vICMSSTRet = 0;
+                            $itemDev->vbc_manual = 0; $itemDev->vicms_manual = 0; $itemDev->vpis_manual = 0;
+                            $itemDev->vcofins_manual = 0; $itemDev->vipi_manual = 0;
+
+                            $itemDev->save();
+                            $valor_devolvido_total += ($dif_qtd * $valor_unit);
+                        }
+                        $idx++;
+                    }
+
+                    $devolucao->valor_devolvido = $valor_devolvido_total;
+                    $devolucao->save();
+
+                    $compra->observacao = trim($compra->observacao . " [SINALIZADO DEVOLUÇÃO PARCIAL]");
+                    $compra->save();
+                }
+
+                // =========================================================================
+                // 7. ATUALIZAÇÃO COMPLETA DE TRIBUTAÇÃO NOS ITENS DA COMPRA (SPED FISCAL)
+                // =========================================================================
+                $mapaCfop = [
+                    '5102' => '1102',
+                    '6102' => '2102',
+                    '5949' => '1102',
+                    '5502' => '1501',
+                    '6502' => '2501'
+                ];
+
+                $idx = 0;
+                foreach ($compra->itens as $item) {
+                    $det = $xml->NFe->infNFe->det[$idx] ?? $xml->NFe->infNFe->det[0];
+                    $cfop_xml = (string)$det->prod->CFOP;
+
+                    // Conversão de CFOP
+                    if (array_key_exists($cfop_xml, $mapaCfop)) {
+                        $cfop_convertido = $mapaCfop[$cfop_xml];
+                    } else {
+                        if (substr($cfop_xml, 0, 1) == '5') {
+                            $cfop_convertido = $item->produto->CFOP_entrada_estadual;
+                        } else {
+                            $cfop_convertido = $item->produto->CFOP_entrada_inter_estadual;
+                        }
+                    }
+                    $item->cfop_entrada = $cfop_convertido ?: $cfop_xml;
+
+                    // --- ICMS (CST com 3 dígitos: orig + CST, ex: 051) ---
+                    if (isset($det->imposto->ICMS) && count($det->imposto->ICMS->children()) > 0) {
+                        $icmsNode = $det->imposto->ICMS->children()[0];
+                        $orig = isset($icmsNode->orig) ? (string)$icmsNode->orig : '0';
+
+                        if (isset($icmsNode->CST)) {
+                            $item->cst_icms = str_pad($orig . (string)$icmsNode->CST, 3, '0', STR_PAD_LEFT);
+                        } elseif (isset($icmsNode->CSOSN)) {
+                            $item->cst_icms = (string)$icmsNode->CSOSN;
+                        }
+
+                        $item->vbc_icms = isset($icmsNode->vBC) ? (float)$icmsNode->vBC : 0;
+                        $item->p_icms   = isset($icmsNode->pICMS) ? (float)$icmsNode->pICMS : 0;
+                        $item->v_icms   = isset($icmsNode->vICMS) ? (float)$icmsNode->vICMS : 0;
+                    }
+
+                    // --- IPI ---
+                    if (isset($det->imposto->IPI)) {
+                        $ipiNode = $det->imposto->IPI->IPITrib ?? $det->imposto->IPI->IPINT ?? null;
+                        if ($ipiNode) {
+                            $item->cst_ipi = isset($ipiNode->CST) ? (string)$ipiNode->CST : null;
+                            $item->vbc_ipi = isset($ipiNode->vBC) ? (float)$ipiNode->vBC : 0;
+                            $item->p_ipi   = isset($ipiNode->pIPI) ? (float)$ipiNode->pIPI : 0;
+                            $item->v_ipi   = isset($ipiNode->vIPI) ? (float)$ipiNode->vIPI : 0;
+                        }
+                    }
+
+                    // --- PIS ---
+                    if (isset($det->imposto->PIS) && count($det->imposto->PIS->children()) > 0) {
+                        $pisNode = $det->imposto->PIS->children()[0];
+                        $item->cst_pis = isset($pisNode->CST) ? (string)$pisNode->CST : null;
+                        $item->vbc_pis = isset($pisNode->vBC) ? (float)$pisNode->vBC : 0;
+                        $item->p_pis   = isset($pisNode->pPIS) ? (float)$pisNode->pPIS : 0;
+                        $item->v_pis   = isset($pisNode->vPIS) ? (float)$pisNode->vPIS : 0;
+                    }
+
+                    // --- COFINS ---
+                    if (isset($det->imposto->COFINS) && count($det->imposto->COFINS->children()) > 0) {
+                        $cofinsNode = $det->imposto->COFINS->children()[0];
+                        $item->cst_cofins = isset($cofinsNode->CST) ? (string)$cofinsNode->CST : null;
+                        $item->vbc_cofins = isset($cofinsNode->vBC) ? (float)$cofinsNode->vBC : 0;
+                        $item->p_cofins   = isset($cofinsNode->pCOFINS) ? (float)$cofinsNode->pCOFINS : 0;
+                        $item->v_cofins   = isset($cofinsNode->vCOFINS) ? (float)$cofinsNode->vCOFINS : 0;
+                    }
+
+                    // --- IS (Imposto Seletivo) ---
+                    if (isset($det->imposto->IS)) {
+                        $isNode = $det->imposto->IS;
+                        $item->cst_is        = isset($isNode->CSTIS) ? (string)$isNode->CSTIS : null;
+                        $item->is_bc         = isset($isNode->vBCIS) ? (float)$isNode->vBCIS : null;
+                        $item->is_aliq       = isset($isNode->pIS) ? (float)$isNode->pIS : null;
+                        $item->is_aliq_espec = isset($isNode->pISEspec) ? (float)$isNode->pISEspec : null;
+                        $item->is_und_trib   = isset($isNode->uTrib) ? (string)$isNode->uTrib : null;
+                        $item->is_qtd_trib   = isset($isNode->qTrib) ? (float)$isNode->qTrib : null;
+                        $item->is_valor      = isset($isNode->vIS) ? (float)$isNode->vIS : null;
+                    }
+
+                    // --- IBS / CBS (Reforma Tributária) ---
+                    if (isset($det->imposto->IBSCBS)) {
+                        $ibscbs = $det->imposto->IBSCBS;
+                        $item->cst_ibs_cbs        = isset($ibscbs->CST) ? (string)$ibscbs->CST : null;
+                        $item->class_trib_ibs_cbs = isset($ibscbs->cClassTrib) ? (string)$ibscbs->cClassTrib : null;
+
+                        if (isset($ibscbs->gIBSCBS)) {
+                            $g = $ibscbs->gIBSCBS;
+                            $item->bc_ibs_cbs = isset($g->vBC) ? (float)$g->vBC : null;
+
+                            // IBS UF
+                            if (isset($g->gIBSUF)) {
+                                $item->aliq_ibs_uf              = isset($g->gIBSUF->pIBSUF) ? (float)$g->gIBSUF->pIBSUF : null;
+                                $item->valor_ibs_uf             = isset($g->gIBSUF->vIBSUF) ? (float)$g->gIBSUF->vIBSUF : null;
+                                $item->aliq_efet_ibs_uf         = isset($g->gIBSUF->gRed->pAliqEfet) ? (float)$g->gIBSUF->gRed->pAliqEfet : null;
+                                $item->perc_dif_ibs_uf          = isset($g->gIBSUF->gDif->pDif) ? (float)$g->gIBSUF->gDif->pDif : null;
+                                $item->valor_dif_ibs_uf         = isset($g->gIBSUF->gDif->vDif) ? (float)$g->gIBSUF->gDif->vDif : null;
+                                $item->valor_dif_ibs_uf_devtrib = isset($g->gIBSUF->gDevTrib->vDevTrib) ? (float)$g->gIBSUF->gDevTrib->vDevTrib : null;
+                            }
+
+                            // IBS Município
+                            if (isset($g->gIBSMun)) {
+                                $item->aliq_ibs_mun           = isset($g->gIBSMun->pIBSMun) ? (float)$g->gIBSMun->pIBSMun : null;
+                                $item->valor_ibs_mun          = isset($g->gIBSMun->vIBSMun) ? (float)$g->gIBSMun->vIBSMun : null;
+                                $item->aliq_efet_ibs_mun      = isset($g->gIBSMun->gRed->pAliqEfet) ? (float)$g->gIBSMun->gRed->pAliqEfet : null;
+                                $item->perc_dif_ibs_mun       = isset($g->gIBSMun->gDif->pDif) ? (float)$g->gIBSMun->gDif->pDif : null;
+                                $item->valor_dif_ibs_mun      = isset($g->gIBSMun->gDif->vDif) ? (float)$g->gIBSMun->gDif->vDif : null;
+                                $item->valor_dif_ibs_mun_trib = isset($g->gIBSMun->gDevTrib->vDevTrib) ? (float)$g->gIBSMun->gDevTrib->vDevTrib : null;
+                            }
+
+                            $item->valor_ibs = isset($g->vIBS)
+                                ? (float)$g->vIBS
+                                : (($item->valor_ibs_uf ?? 0) + ($item->valor_ibs_mun ?? 0));
+
+                            // CBS
+                            if (isset($g->gCBS)) {
+                                $item->aliq_cbs              = isset($g->gCBS->pCBS) ? (float)$g->gCBS->pCBS : null;
+                                $item->valor_cbs             = isset($g->gCBS->vCBS) ? (float)$g->gCBS->vCBS : null;
+                                $item->aliq_efet_cbs         = isset($g->gCBS->gRed->pAliqEfet) ? (float)$g->gCBS->gRed->pAliqEfet : null;
+                                $item->perc_dif_cbs          = isset($g->gCBS->gDif->pDif) ? (float)$g->gCBS->gDif->pDif : null;
+                                $item->valor_dif_cbs         = isset($g->gCBS->gDif->vDif) ? (float)$g->gCBS->gDif->vDif : null;
+                                $item->valor_dif_cbs_devtrib = isset($g->gCBS->gDevTrib->vDevTrib) ? (float)$g->gCBS->gDevTrib->vDevTrib : null;
+                            }
+                        }
+                    }
+
+                    $item->save();
+                    $idx++;
+                }
+
+                // =========================================================================
+                // 8. FINALIZAÇÃO E ALERTAS
+                // =========================================================================
+                if ($request->has('gerar_devolucao') && $request->gerar_devolucao == 1) {
+                    $pastaDestino = public_path('xml_devolucao_entrada');
+                    if (!file_exists($pastaDestino)) {
+                        mkdir($pastaDestino, 0777, true);
+                    }
+                    if (file_exists(public_path('xml_entrada/' . $chave . '.xml'))) {
+                        copy(public_path('xml_entrada/' . $chave . '.xml'), $pastaDestino . '/' . $chave . '.xml');
+                    }
+
+                    session()->flash('alerta_devolucao', "XML importado!\n\nVá no menu Vendas -> Devoluções e faça a emissão da NF-e de devolução parcial.");
+                } else {
+                    session()->flash('mensagem_sucesso', 'XML importado, mapeado e validado com sucesso!');
+                }
+
+            } else {
+                session()->flash('mensagem_erro', 'Nenhum arquivo enviado.');
+            }
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao importar XML: ' . $e->getMessage());
+        }
+
+        return redirect()->back();
+    }
+
+    private function getCfopDevolucao($cfop)
+    {
+        $map = [
+            '5101' => '5202', '5102' => '5202',
+            '6101' => '6202', '6102' => '6202',
+            '6502' => '6503', '5502' => '5503',
+            '1102' => '5202', '2102' => '6202',
+            '1556' => '5556', '2556' => '6556'
+        ];
+
+        if (array_key_exists($cfop, $map)) {
+            return $map[$cfop];
+        }
+
+        // Regra geral de fallback: se começou com 1 vira 5, se começou com 2 vira 6
+        if (substr($cfop, 0, 1) == '1') return '5' . substr($cfop, 1);
+        if (substr($cfop, 0, 1) == '2') return '6' . substr($cfop, 1);
+        if (substr($cfop, 0, 1) == '5') return '5202';
+        if (substr($cfop, 0, 1) == '6') return '6202';
+
+        return $cfop;
+    }
+
+    public function gerarDevolucaoManual($id)
+    {
+        try {
+            $compra = Compra::with('itens.produto')->findOrFail($id);
+
+            $naturezaDev = \App\Models\NaturezaOperacao::where('empresa_id', $this->empresa_id)
+                ->where('natureza', 'LIKE', '%devolu%')
+                ->first();
+            $naturezaId = $naturezaDev ? $naturezaDev->id : $compra->natureza_id;
+
+            $devolucao = new \App\Models\Devolucao();
+            $devolucao->empresa_id = $compra->empresa_id;
+            $devolucao->fornecedor_id = $compra->fornecedor_id;
+            $devolucao->usuario_id = $this->usuario_id;
+            $devolucao->natureza_id = $naturezaId;
+            $devolucao->filial_id = $compra->filial_id;
+            $devolucao->valor_integral = $compra->valor;
+            $devolucao->estado = 0; // NOVO
+            $devolucao->devolucao_parcial = 0; // Total
+            $devolucao->chave_nf_entrada = $compra->chave ?? '';
+            $devolucao->nNf = $compra->numero_emissao ?: ($compra->nf ?: 0);
+            $devolucao->tipo = 1;
+            $devolucao->motivo = "Devolução Total de Compra ref. NFe " . $devolucao->nNf;
+            $devolucao->observacao = "Devolução Total da NF-e {$devolucao->nNf} ref. chave {$devolucao->chave_nf_entrada}";
+            $devolucao->valor_devolvido = $compra->valor;
+
+            $devolucao->chave_gerada = '';
+            $devolucao->numero_gerado = 0;
+            $devolucao->vFrete = 0;
+            $devolucao->vDesc = 0;
+            $devolucao->save();
+
+            // Copia o XML da compra para a pasta de devoluções
+            $chave_xml = $compra->chave;
+            if ($chave_xml != "") {
+                $pastaDestino = public_path('xml_devolucao_entrada');
+                if (!file_exists($pastaDestino)) {
+                    mkdir($pastaDestino, 0777, true);
+                }
+
+                $path1 = public_path('xml_entrada/' . $chave_xml . '.xml');
+                $path2 = public_path('xml_entrada_emitida/' . $chave_xml . '.xml');
+
+                if (file_exists($path1)) {
+                    copy($path1, $pastaDestino . '/' . $chave_xml . '.xml');
+                } elseif (file_exists($path2)) {
+                    copy($path2, $pastaDestino . '/' . $chave_xml . '.xml');
+                }
+            }
+
+            foreach ($compra->itens as $item) {
+                $itemDev = new \App\Models\ItemDevolucao();
+                $itemDev->devolucao_id = $devolucao->id;
+                $itemDev->cod = $item->produto->id;
+                $itemDev->nome = $item->produto->nome;
+                $itemDev->ncm = $item->produto->NCM ?? '';
+
+                // Traduz o CFOP da Compra para o de Devolução
+                $itemDev->cfop = $this->getCfopDevolucao($item->cfop_entrada);
+
+                $itemDev->codBarras = $item->produto->codBarras ?? 'SEM GTIN';
+                $itemDev->valor_unit = $item->valor_unitario;
+                $itemDev->quantidade = $item->quantidade;
+                $itemDev->item_parcial = 0;
+                $itemDev->unidade_medida = $item->unidade_compra;
+
+                $itemDev->cst_csosn = $item->cst_icms ?? '000';
+                $itemDev->cst_pis = $item->cst_pis ?? '99';
+                $itemDev->cst_cofins = $item->cst_cofins ?? '99';
+                $itemDev->cst_ipi = $item->cst_ipi ?? '99';
+
+                $itemDev->perc_icms = 0; $itemDev->perc_pis = 0; $itemDev->perc_cofins = 0;
+                $itemDev->perc_ipi = 0; $itemDev->pRedBC = 0; $itemDev->modBCST = 0;
+                $itemDev->vBCST = 0; $itemDev->pICMSST = 0; $itemDev->vICMSST = 0;
+                $itemDev->pMVAST = 0; $itemDev->orig = 0; $itemDev->pST = 0;
+                $itemDev->vICMSSubstituto = 0; $itemDev->vICMSSTRet = 0;
+                $itemDev->vbc_manual = 0; $itemDev->vicms_manual = 0; $itemDev->vpis_manual = 0;
+                $itemDev->vcofins_manual = 0; $itemDev->vipi_manual = 0;
+                $itemDev->save();
+            }
+
+            session()->flash('alerta_devolucao', "Espelho de devolução gerado!\n\nVá no menu Vendas -> Devoluções e faça a emissão da NF-e de devolução total.");
+        } catch (\Exception $e) {
+            session()->flash('mensagem_erro', 'Erro ao gerar devolução: ' . $e->getMessage());
+        }
+        return redirect()->back();
+    }
 }
