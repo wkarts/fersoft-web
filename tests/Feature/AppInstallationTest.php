@@ -9,7 +9,7 @@ class AppInstallationTest extends TestCase
     public function test_manifest_is_always_available_even_if_old_feature_flag_was_false(): void
     {
         config()->set('login_presentation.page', 'access');
-         Instalações antigas ainda podem ter PWA_ENABLED=false no .env.
+        // Instalações antigas ainda podem ter PWA_ENABLED=false no .env.
         // O código não deve consultar mais essa chave.
         config()->set('app.pwa_enabled', false);
         config()->set('app.name', 'Aplicação do Cliente');
