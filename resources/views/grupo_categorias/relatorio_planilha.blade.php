@@ -65,50 +65,39 @@
                         </tr>
                     </thead>
                     <tbody style="font-size: 0.85rem;">
-                        @forelse($linhas as $grupoNota)
-                            @php
-                                $primeiro = $grupoNota->first();
-                                
-                                // Formata os vencimentos separando por quebra de linha (<br>)
-                                $vencimentosHtml = $grupoNota->pluck('data_vencimento')->map(function($d) {
-                                    return \Carbon\Carbon::parse($d)->format('d/m/Y');
-                                })->implode('<br>');
-
-                                // Formata os valores dos boletos alinhados linha a linha
-                                $valoresBoletosHtml = $grupoNota->map(function($item) {
-                                    return 'R$ ' . number_format($item->valor_boleto, 2, ',', '.');
-                                })->implode('<br>');
-
-                                $totalBoletos = $grupoNota->sum('valor_boleto');
-                            @endphp
+                        @forelse($documentos as $documento)
                             <tr>
                                 {{-- Empresa Beneficiária --}}
-                                <td class="fw-bold text-start" style="border: 1px solid #d0d0d0;">{{ strtoupper($primeiro->empresa_beneficiaria) }}</td>
+                                <td class="fw-bold text-start" style="border: 1px solid #d0d0d0;">{{ strtoupper($documento->empresa_beneficiaria) }}</td>
                                 
                                 {{-- Nº Nota Fiscal (Alinhado à Esquerda) --}}
-                                <td class="text-start" style="border: 1px solid #d0d0d0;">{{ $primeiro->numero_nota ?? '-' }}</td>
+                                <td class="text-start" style="border: 1px solid #d0d0d0;">{{ $documento->numero_nota ?? '-' }}</td>
                                 
                                 {{-- Valores da Nota (Alinhado à Esquerda - Padrão PT-BR) --}}
-                                <td class="text-start fw-bold" style="border: 1px solid #d0d0d0;">R$ {{ number_format($totalBoletos, 2, ',', '.') }}</td>
+                                <td class="text-start fw-bold" style="border: 1px solid #d0d0d0;">R$ {{ number_format($documento->valor_total_nota, 2, ',', '.') }}</td>
                                 
                                 {{-- Classificação (GRUPO) --}}
-                                <td class="fw-bold text-uppercase text-start" style="border: 1px solid #d0d0d0;">{{ $primeiro->classificacao }}</td>
+                                <td class="fw-bold text-uppercase text-start" style="border: 1px solid #d0d0d0;">{{ $documento->classificacao }}</td>
                                 
                                 {{-- Descriminação (CATEGORIA) --}}
-                                <td class="text-uppercase text-start" style="border: 1px solid #d0d0d0;">{{ $primeiro->descriminacao }}</td>
+                                <td class="text-uppercase text-start" style="border: 1px solid #d0d0d0;">{{ $documento->descriminacao }}</td>
                                 
                                 {{-- Vencimentos (Centralizado) --}}
                                 <td class="text-center fw-bold text-danger" style="border: 1px solid #d0d0d0; background-color: #fdfdfe; line-height: 1.4;">
-                                    {!! $vencimentosHtml !!}
+                                    @foreach($documento->boletos as $boleto)
+                                        <div>{{ \Carbon\Carbon::parse($boleto->data_vencimento)->format('d/m/Y') }}</div>
+                                    @endforeach
                                 </td>
                                 
                                 {{-- Valores dos Boletos (Alinhado à Esquerda - Padrão PT-BR) --}}
                                 <td class="text-start fw-bold" style="border: 1px solid #d0d0d0; line-height: 1.4;">
-                                    {!! $valoresBoletosHtml !!}
+                                    @foreach($documento->boletos as $boleto)
+                                        <div>R$ {{ number_format($boleto->valor_boleto, 2, ',', '.') }}</div>
+                                    @endforeach
                                 </td>
                                 
                                 {{-- Pagador (Matriz / Filial) --}}
-                                <td class="text-uppercase fw-bold text-start" style="border: 1px solid #d0d0d0;">{{ $primeiro->pagador }}</td>
+                                <td class="text-uppercase fw-bold text-start" style="border: 1px solid #d0d0d0;">{{ $documento->pagador }}</td>
                             </tr>
                         @empty
                             <tr>
