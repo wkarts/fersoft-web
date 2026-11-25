@@ -16,6 +16,9 @@ jobs:
     uses: ./.github/workflows/ui-compatibility.yml
 
   preview-package:
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+      beta: ${{ steps.beta.outputs.version }}
     needs: compatibility
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
@@ -122,6 +125,7 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Atualizar SOMENTE prerelease de desenvolvimento
+        id: publish
         if: steps.infra.outputs.available == 'true'
         shell: bash
         env:
@@ -195,3 +199,50 @@ jobs:
             echo "- SHA: $GITHUB_SHA"
             echo "- URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/ui-continuous"
           } >> "$GITHUB_STEP_SUMMARY"
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  atualizar-pr-homologacao:
+    needs: preview-package
+    if: needs.preview-package.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Atualizar a beta publicada na PR de homologação
+        uses: actions/github-script@v7
+        env:
+          BETA_VERSION: ${{ needs.preview-package.outputs.beta }}
+        with:
+          script: |
+            const target = { ...context.repo, pull_number: 274 };
+            const { data: pr } = await github.rest.pulls.get(target);
+            if (pr.state !== 'open' || pr.base.ref !== 'main' || pr.head.ref !== 'develop' ||
+                pr.head.repo?.id !== pr.base.repo.id || pr.head.sha !== context.sha) return;
+
+            const url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY;
+            const version = process.env.BETA_VERSION;
+            const start = '<!-- ui-beta:start -->';
+            const end = '<!-- ui-beta:end -->';
+            const block = [
+              start,
+              '**Beta publicada:** [' + version + '](' + url + '/releases/tag/ui-continuous) · ' +
+                '[commit ' + context.sha.slice(0, 8) + '](' + url + '/commit/' + context.sha + ') · ' +
+                '[execução](' + url + '/actions/runs/' + context.runId + ')',
+              end,
+            ].join('\n');
+            const current = pr.body ?? '';
+            const first = current.indexOf(start);
+            const last = current.indexOf(end);
+            let body;
+            if (first === -1 && last === -1) {
+              body = block + '\n\n' + current;
+            } else if (first >= 0 && last > first && first === current.lastIndexOf(start) && last === current.lastIndexOf(end)) {
+              body = current.slice(0, first) + block + current.slice(last + end.length);
+            } else {
+              throw new Error('Marcadores da beta inválidos na descrição da PR #274.');
+            }
+
+            const title = pr.title.replace(/ · v\d+\.\d+\.\d+-beta\.\d+$/, '') + ' · ' + version;
+            if (title !== pr.title || body !== current) {
+              await github.rest.pulls.update({ ...target, title, body });
+            }
