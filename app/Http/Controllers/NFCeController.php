@@ -45,6 +45,37 @@ class NFCeController extends Controller
     }
 
     /**
+     * Resolve a configuração fiscal (Matriz ou Filial) e valida o certificado.
+     */
+    private function resolveConfigFiscal(?int $filialId): array
+    {
+        $configMatriz = ConfigNota::where('empresa_id', $this->empresa_id)->first();
+        $config = $configMatriz;
+
+        if ($filialId !== null && $filialId > 0) {
+            $filial = Filial::where('empresa_id', $this->empresa_id)->findOrFail($filialId);
+            if ($filial->arquivo_certificado == null) {
+                throw new \RuntimeException('Necessário o certificado da filial para realizar esta ação!');
+            }
+            $config = $filial;
+        }
+
+        $cnpj = preg_replace('/[^0-9]/', '', (string)$config->cnpj);
+
+        return [
+            'config' => $config,
+            'configMatriz' => $configMatriz,
+            'is_filial' => ($filialId !== null && $filialId > 0) ? $filialId : null,
+            'cnpj' => $cnpj,
+            'tpAmb' => (int)($config->ambiente ?? $configMatriz->ambiente ?? 2),
+            'razaosocial' => $config->razao_social,
+            'siglaUF' => $config->UF ?? $configMatriz->UF,
+            'csc' => $config->csc ?? $configMatriz->csc,
+            'csc_id' => $config->csc_id ?? $configMatriz->csc_id,
+        ];
+    }
+
+    /**
      * Auditoria interna e técnica da NFC-e. Somente metadados, sem CPF/CNPJ,
      * XML, credenciais ou payload sensível nos logs de atividade.
      * Falha no registro de auditoria não mascara a resposta da SEFAZ.
@@ -96,8 +127,7 @@ class NFCeController extends Controller
         }
 
         // Preserva a entrada original do documento do consumidor ANTES da
-        // geração da NFC-e e da consulta de reenvio. A PR anterior havia
-        // adiado essa atualização e podia perder o CPF neste fluxo.
+        // geração da NFC-e e da consulta de reenvio.
         if(isset($request->doc) && in_array($venda->estado, ['DISPONIVEL', 'REJEITADO'], true)){
             $venda->cpf = $request->doc;
             $venda->save();
@@ -162,9 +192,6 @@ class NFCeController extends Controller
                 header('Content-type: text/html; charset=UTF-8');
 
                 if ($retransmitindo) {
-                    // Notas antigas podem ter perdido a chave na edição da venda.
-                    // Recuperar só de um XML assinado persistido, jamais
-                    // sorteando nova identidade por causa do estado REJEITADO.
                     $precisaRecuperar = !preg_match('/^[0-9]{44}$/D', $chaveOriginal)
                         || $numeroOriginal <= 0
                         || trim((string)$venda->signed_xml) === '';
@@ -221,8 +248,6 @@ class NFCeController extends Controller
                                 'exception' => $e,
                             ]);
 
-                            // A UI legada espera um array JSON de mensagens
-                            // (o mesmo contrato dos demais erros de geração).
                             return response()->json([
                                 $e instanceof \DomainException
                                     ? $e->getMessage()
@@ -231,9 +256,6 @@ class NFCeController extends Controller
                         }
                     }
 
-                    // Um timeout de SSL/SOAP não prova rejeição da SEFAZ.
-                    // Consulta a chave ANTES de transmitir outro XML.
-                    // Se já estiver autorizada, recupera autorização sem duplicar.
                     try {
                         $situacao = $nfe_service->consultarSituacaoDaChave($chaveOriginal);
                     } catch (\Throwable $e) {
@@ -259,8 +281,6 @@ class NFCeController extends Controller
                     ], $situacao['situacao'] === 'indeterminada' ? 'error' : 'info');
 
                     if ($situacao['situacao'] === 'autorizada') {
-                        // A SEFAZ pode ter autorizado a nota durante o timeout.
-                        // Recupera o protocolo sem gerar nova chave ou número.
                         try {
                             $nfe_service->conciliarAutorizacaoConsultada($venda, $situacao);
                         } catch (\Throwable $e) {
@@ -359,8 +379,6 @@ class NFCeController extends Controller
                     return response()->json([$mensagemErro], 500);
                 }
                 if(!isset($nfce['erros_xml'])){
-                    // Não assinar, transmitir nem salvar se o serviço alterar
-                    // qualquer parte da identidade fiscal da nota rejeitada.
                     if ($retransmitindo
                         && ($chaveOriginal !== (string) ($nfce['chave'] ?? '')
                             || $numeroOriginal !== (int) ($nfce['nNf'] ?? 0))) {
@@ -392,8 +410,6 @@ class NFCeController extends Controller
                         return response()->json(['Falha na assinatura fiscal da NFC-e. Consulte o log técnico.'], 500);
                     }
                     if ($retransmitindo) {
-                        // A assinatura também deve manter a identidade fiscal;
-                        // somente um XML com o mesmo Id pode seguir à SEFAZ.
                         $xmlAssinado = new \DOMDocument('1.0', 'UTF-8');
                         $infOriginal = false;
                         if (is_string($signed) && @$xmlAssinado->loadXML($signed, LIBXML_NONET)) {
@@ -407,9 +423,6 @@ class NFCeController extends Controller
                         }
                     }
 
-                    // Guarda a chave e o XML assinado ANTES da chamada SOAP.
-                    // Em caso de timeout, o número já está reservado; sem esta
-                    // persistência a próxima tentativa gerava outro cNF/chave.
                     if (!$retransmitindo && (string) $venda->chave !== ''
                         && !hash_equals((string) $venda->chave, (string) $nfce['chave'])) {
                         $this->registrarEventoNfce($venda, 'chave_anterior_divergente', [
@@ -464,8 +477,7 @@ class NFCeController extends Controller
                         }
                         $venda->data_emissao = date('Y-m-d H:i:s');
                         $venda->save();
-                        // O número da primeira emissão já foi reservado pelo serviço.
-                        // Uma rejeitada retransmitida nunca reduz/avança o contador.
+
                         if (!$retransmitindo && (int)$config->ultimo_numero_nfce < (int)$nfce['nNf']) {
                             $config->ultimo_numero_nfce = $nfce['nNf'];
                             $config->save();
@@ -508,9 +520,6 @@ class NFCeController extends Controller
                             $file = safe_file_get_contents(public_path('xml_nfce/'.$nfce['chave'].'.xml'));
                             importaXmlSieg($file, $this->empresa_id);
                         }else{
-                            // Mantém compatibilidade com o estado legado usado
-                            // pela grid do PDV. O log identifica separadamente
-                            // rejeição fiscal (cStat) e timeout SOAP/SSL.
                             $venda->estado = 'REJEITADO';
                             if($venda->chave == ''){
                                 $venda->chave = $nfce['chave'];
@@ -744,13 +753,13 @@ class NFCeController extends Controller
                     where('empresa_id', $this->empresa_id)
                         ->first();
 
-                    if($venda->tipo_pagamento == 17){
-                        // $this->gerarPix($config, $venda);
+                    $logoFile = $config->logo ?? null;
+                    if ($venda->filial_id != null && $venda->filial && $venda->filial->logo) {
+                        $logoFile = $venda->filial->logo;
                     }
 
-                    if($config->logo){
-                        $public = env('SERVIDOR_WEB') ? 'public/' : '';
-                        $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $config->logo));
+                    if($logoFile){
+                        $logo = 'data://text/plain;base64,'. base64_encode(safe_file_get_contents(public_path('logos/') . $logoFile));
                     }else{
                         $logo = null;
                     }
@@ -794,35 +803,6 @@ class NFCeController extends Controller
             return redirect('/403');
         }
     }
-
-    // public function imprimirNaoFiscal($id){
-    // 	$venda = VendaCaixa::
-    // 	where('id', $id)
-    // 	->first();
-    // 	if(valida_objeto($venda)){
-
-    // 		$config = ConfigNota::
-    // 		where('empresa_id', $this->empresa_id)
-    // 		->first();
-
-    // $public = env('SERVIDOR_WEB') ? 'public/' : '';
-    // $pathLogo = $public.'logos/' . $config->logo;
-    // 		if($venda->tipo_pagamento == 17){
-    // 			// $this->gerarPix($config, $venda);
-    // 		}
-    // 		$usuario = Usuario::find(get_id_user());
-    // 		$cupom = new Cupom($venda, $pathLogo, $config, $usuario->config ? $usuario->config->impressora_modelo : 80);
-    // 		$cupom->monta();
-    // 		$pdf = $cupom->render();
-
-    // 	// header('Content-Type: application/pdf');
-    // 	// echo $pdf;
-    // 		return response($pdf)
-    // 		->header('Content-Type', 'application/pdf');
-    // 	}else{
-    // 		return redirect('/403');
-    // 	}
-    // }
 
     public function imprimirNaoFiscal($id){
         $venda = VendaCaixa::
@@ -944,8 +924,6 @@ class NFCeController extends Controller
             $cupom->monta();
             $pdf = $cupom->render();
 
-            // header('Content-Type: application/pdf');
-            // echo $pdf;
             return response($pdf)
                 ->header('Content-Type', 'application/pdf');
         }else{
@@ -1034,60 +1012,68 @@ class NFCeController extends Controller
     }
 
     public function cancelar(Request $request){
-
-        $config = ConfigNota::
-        where('empresa_id', $this->empresa_id)
+        $venda = VendaCaixa::where('empresa_id', $this->empresa_id)
+            ->where('id', $request->id)
             ->first();
 
-        $cnpj = str_replace(".", "", $config->cnpj);
-        $cnpj = str_replace("/", "", $cnpj);
-        $cnpj = str_replace("-", "", $cnpj);
-        $cnpj = str_replace(" ", "", $cnpj);
+        if (!$venda) {
+            return response()->json(['mensagem' => 'Venda NFC-e não encontrada.', 'erro' => true], 404);
+        }
+
+        if (!valida_objeto($venda)) {
+            return response()->json(['mensagem' => 'Não autorizado.', 'erro' => true], 403);
+        }
+
+        try {
+            $fiscal = $this->resolveConfigFiscal($venda->filial_id ? (int)$venda->filial_id : null);
+        } catch (\Throwable $e) {
+            return response()->json(['mensagem' => $e->getMessage(), 'erro' => true], 400);
+        }
+
         $nfe_service = new NFCeService([
             "atualizacao" => date('Y-m-d h:i:s'),
-            "tpAmb" => (int)$config->ambiente,
-            "razaosocial" => $config->razao_social,
-            "siglaUF" => $config->UF,
-            "cnpj" => $cnpj,
+            "tpAmb" => $fiscal['tpAmb'],
+            "razaosocial" => $fiscal['razaosocial'],
+            "siglaUF" => $fiscal['siglaUF'],
+            "cnpj" => $fiscal['cnpj'],
+            "is_filial" => $fiscal['is_filial'],
             "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
-            "CSC" => $config->csc,
-            "CSCid" => $config->csc_id
-        ]);
-
+            "CSC" => $fiscal['csc'],
+            "CSCid" => $fiscal['csc_id']
+        ], $this->empresa_id);
 
         $nfce = $nfe_service->cancelarNFCe($request->id, $request->justificativa);
 
-        if(!isset($nfce['cStat'])){
+        if (!isset($nfce['cStat'])) {
             return response()->json($nfce, 404);
         }
-        if($nfce['retEvento']['infEvento']['cStat'] == 135){
-            $venda = VendaCaixa::
-            where('id', $request->id)
-                ->first();
+
+        $cStatEvento = (int)($nfce['retEvento']['infEvento']['cStat'] ?? 0);
+        if (in_array($cStatEvento, [101, 135, 155], true)) {
             $venda->estado = 'CANCELADO';
             $venda->valor_total = 0;
             $venda->save();
 
-            $file = safe_file_get_contents(public_path('xml_nfce_cancelada/'.$venda->chave.'.xml'));
-            importaXmlSieg($file, $this->empresa_id);
+            $this->registrarEventoNfce($venda, 'cancelada', [
+                'cStat' => $cStatEvento,
+                'xMotivo' => $nfce['retEvento']['infEvento']['xMotivo'] ?? null,
+            ]);
 
-            // if($venda){
-            // 	$stockMove = new StockMove();
+            if (file_exists(public_path('xml_nfce_cancelada/'.$venda->chave.'.xml'))) {
+                $file = safe_file_get_contents(public_path('xml_nfce_cancelada/'.$venda->chave.'.xml'));
+                importaXmlSieg($file, $this->empresa_id);
+            }
 
-            // 	foreach($venda->itens as $i){
-            // 		$stockMove->pluStock($i->produto_id,
-            // 			$i->quantidade, -50); // -50 na altera valor compra
-            // 	}
-            // }
             return response()->json($nfce, 200);
-
-        }else{
+        } else {
+            $this->registrarEventoNfce($venda, 'cancelamento_rejeitado', [
+                'cStat' => $cStatEvento ?: ($nfce['cStat'] ?? null),
+                'xMotivo' => $nfce['retEvento']['infEvento']['xMotivo'] ?? ($nfce['xMotivo'] ?? null),
+            ], 'warning');
             return response()->json($nfce, 401);
         }
-
-
     }
 
     public function deleteVenda($id){
@@ -1101,38 +1087,31 @@ class NFCeController extends Controller
     }
 
     public function consultar($id){
-        $venda = VendaCaixa::find($id);
+        $venda = VendaCaixa::where('empresa_id', $this->empresa_id)->find($id);
 
         if(valida_objeto($venda)){
-
-            $config = ConfigNota::
-            where('empresa_id', $this->empresa_id)
-                ->first();
-
-            $cnpj = str_replace(".", "", $config->cnpj);
-            $cnpj = str_replace("/", "", $cnpj);
-            $cnpj = str_replace("-", "", $cnpj);
-            $cnpj = str_replace(" ", "", $cnpj);
             try{
+                $fiscal = $this->resolveConfigFiscal($venda->filial_id ? (int)$venda->filial_id : null);
+
                 $nfe_service = new NFCeService([
                     "atualizacao" => date('Y-m-d h:i:s'),
-                    "tpAmb" => (int)$config->ambiente,
-                    "razaosocial" => $config->razao_social,
-                    "siglaUF" => $config->UF,
-                    "cnpj" => $cnpj,
+                    "tpAmb" => $fiscal['tpAmb'],
+                    "razaosocial" => $fiscal['razaosocial'],
+                    "siglaUF" => $fiscal['siglaUF'],
+                    "cnpj" => $fiscal['cnpj'],
+                    "is_filial" => $fiscal['is_filial'],
                     "schemes" => config('fiscal.default_schemes'),
                     "versao" => "4.00",
                     "tokenIBPT" => "AAAAAAA",
-                    "CSC" => $config->csc,
-                    "CSCid" => $config->csc_id
-                ]);
+                    "CSC" => $fiscal['csc'],
+                    "CSCid" => $fiscal['csc_id']
+                ], $this->empresa_id);
 
                 $c = $nfe_service->consultarNFCe($venda);
 
                 return response()->json($c, 200);
-            }catch(\Exception $r){
+            }catch(\Throwable $e){
                 return response()->json($e->getMessage(), 401);
-
             }
         }else{
             return response()->json("Não permitido!", 403);
@@ -1210,37 +1189,32 @@ class NFCeController extends Controller
 
     public function inutilizar(Request $request){
         try{
+            $filialId = ($request->filled('filial_id') && (int)$request->filial_id > 0)
+                ? (int)$request->filial_id
+                : null;
 
-            $config = ConfigNota::
-            where('empresa_id', $this->empresa_id)
-                ->first();
-
-            $cnpj = str_replace(".", "", $config->cnpj);
-            $cnpj = str_replace("/", "", $cnpj);
-            $cnpj = str_replace("-", "", $cnpj);
-            $cnpj = str_replace(" ", "", $cnpj);
+            $fiscal = $this->resolveConfigFiscal($filialId);
 
             $nfce_service = new NFCeService([
                 "atualizacao" => date('Y-m-d h:i:s'),
-                "tpAmb" => (int)$config->ambiente,
-                "razaosocial" => $config->razao_social,
-                "siglaUF" => $config->UF,
-                "cnpj" => $cnpj,
+                "tpAmb" => $fiscal['tpAmb'],
+                "razaosocial" => $fiscal['razaosocial'],
+                "siglaUF" => $fiscal['siglaUF'],
+                "cnpj" => $fiscal['cnpj'],
+                "is_filial" => $fiscal['is_filial'],
                 "schemes" => config('fiscal.default_schemes'),
                 "versao" => "4.00",
                 "tokenIBPT" => "AAAAAAA",
-                "CSC" => $config->csc,
-                "CSCid" => $config->csc_id
-            ]);
+                "CSC" => $fiscal['csc'],
+                "CSCid" => $fiscal['csc_id']
+            ], $this->empresa_id);
 
-            // echo json_encode($request->justificativa);
-            $result = $nfce_service->inutilizar($config, $request->nInicio, $request->nFinal,
+            $result = $nfce_service->inutilizar($fiscal['config'], $request->nInicio, $request->nFinal,
                 $request->justificativa, $request->nSerie);
 
             echo json_encode($result);
-        }catch(\Exception $e){
+        }catch(\Throwable $e){
             return response()->json($e->getMessage(), 401);
-
         }
     }
 
@@ -1265,34 +1239,6 @@ class NFCeController extends Controller
             });
         }
     }
-
-    // public function importaXmlSieg($venda){
-    // 	$escritorio = EscritorioContabil::
-    // 	where('empresa_id', $this->empresa_id)
-    // 	->first();
-    // 	if($escritorio != null && $escritorio->token_sieg != ""){
-    // 		$url = "https://api.sieg.com/aws/api-xml.ashx";
-
-    // 		$curl = curl_init();
-
-    // 		$headers = [];
-
-    // 		$data = safe_file_get_contents(public_path('xml_nfce/'.$venda->chave.'.xml'));
-    // 		curl_setopt($curl, CURLOPT_URL, $url . "?apikey=".$escritorio->token_sieg."&email=".$escritorio->email);
-    // 		curl_setopt($curl, CURLOPT_POST, true);
-    // 		curl_setopt($curl,CURLOPT_HTTPHEADER, $headers);
-    // 		curl_setopt($curl,CURLOPT_RETURNTRANSFER, true );
-    // 	// curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-    // 		curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
-    //    		//curl_setopt($curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-    // 		curl_setopt($curl, CURLOPT_HEADER, false);
-    // 		$xml = json_decode(curl_exec($curl));
-    // 		if($xml->Message == 'Importado com sucesso'){
-    // 			return true;
-    // 		}
-    // 		return false;
-    // 	}
-    // }
 
     public function imprimirRascunhoPrevenda($id){
 
@@ -1321,8 +1267,6 @@ class NFCeController extends Controller
                 $p = view('frontBox/impressao_prevenda_a4')
                     ->with('venda', $venda)
                     ->with('config', $config);
-
-                // return $p;
 
                 $domPdf = new Dompdf(["enable_remote" => true]);
                 $domPdf->loadHtml($p);
@@ -1364,8 +1308,6 @@ class NFCeController extends Controller
                 $p = view('frontBox/impressao_prevenda_a4')
                     ->with('venda', $venda)
                     ->with('config', $config);
-
-                // return $p;
 
                 $domPdf = new Dompdf(["enable_remote" => true]);
                 $domPdf->loadHtml($p);

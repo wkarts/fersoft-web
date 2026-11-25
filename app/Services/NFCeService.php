@@ -314,13 +314,13 @@ class NFCeService{
         }
         $xp = new \DOMXPath($dom);
         $xp->registerNamespace('nfe', 'http://www.portalfiscal.inf.br/nfe');
-		$rt = app(ReformaTributariaService::class);
-		if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
-			foreach ($xp->query('//nfe:IBSCBS | //nfe:IS | //nfe:IBSCBSTot | //nfe:ISTot') as $node) {
-				$node->parentNode?->removeChild($node);
-			}
-			return ['xml' => $dom->saveXML(), 'structured' => false];
-		}
+        $rt = app(ReformaTributariaService::class);
+        if (!$rt->shouldApply((int)($this->empresa_id ?? 0))) {
+            foreach ($xp->query('//nfe:IBSCBS | //nfe:IS | //nfe:IBSCBSTot | //nfe:ISTot') as $node) {
+                $node->parentNode?->removeChild($node);
+            }
+            return ['xml' => $dom->saveXML(), 'structured' => false];
+        }
 
         $detNodes = $xp->query('//nfe:det');
         $items = $venda->itens ?? [];
@@ -552,9 +552,9 @@ class NFCeService{
 
         $dhSaiEnt = trim((string) $xpath->evaluate('string(./nfe:ide/nfe:dhSaiEnt)', $infNFe));
         if ($dhSaiEnt !== '' && !preg_match(
-            '/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D',
-            $dhSaiEnt
-        )) {
+                '/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\+|-)[0-9]{2}:[0-9]{2}$/D',
+                $dhSaiEnt
+            )) {
             throw new \DomainException('Data original de saída/movimentação inválida. Retransmissão bloqueada para não trocar o horário do documento.');
         }
 
@@ -611,9 +611,9 @@ class NFCeService{
 
         $pathXmlAnterior = trim((string) $ultimoLog->xml_envio_path);
         if (!preg_match(
-            '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\\.xml$~D',
-            $pathXmlAnterior
-        ) || !Storage::disk('local')->exists($pathXmlAnterior)) {
+                '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\\.xml$~D',
+                $pathXmlAnterior
+            ) || !Storage::disk('local')->exists($pathXmlAnterior)) {
             return [
                 'permitido' => false,
                 'motivo' => 'O XML original da tentativa 704 não está disponível no histórico fiscal. A retransmissão foi bloqueada.',
@@ -1028,9 +1028,9 @@ class NFCeService{
 
             $path = (string) $log->xml_envio_path;
             if ($path === '' || !preg_match(
-                '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\.xml$~D',
-                $path
-            )) {
+                    '~^fiscal_emissions/[0-9]{4}/[0-9]{2}/[0-9]{2}/[A-Za-z0-9]+_envio_[A-Za-z0-9]+\.xml$~D',
+                    $path
+                )) {
                 continue;
             }
 
@@ -1360,9 +1360,9 @@ class NFCeService{
             if ($this->emitentePermiteIsencao($tributacao)) {
                 $ie = 'ISENTO';
             } else {
-            return [
-                'erros_xml' => ['Inscrição estadual do emitente não configurada. Atualize o cadastro do emitente e tente novamente.'],
-            ];
+                return [
+                    'erros_xml' => ['Inscrição estadual do emitente não configurada. Atualize o cadastro do emitente e tente novamente.'],
+                ];
             }
         }
 
@@ -2505,7 +2505,7 @@ class NFCeService{
                     $venda->estado = 'APROVADO';
                     $venda->save();
                     try{
-                        $xml = Complements::toAuthorize($venda->signed_xml, $nRec);
+                        $xml = Complements::toAuthorize($venda->signed_xml, $response);
                         safe_file_put_contents(public_path('xml_nfce/').$chave.'.xml',$xml);
                     }catch(\Exception $e){
 
@@ -2534,6 +2534,17 @@ class NFCeService{
             $arr = $stdCl->toArray();
             $xJust = $justificativa;
 
+            if (!isset($arr['protNFe']['infProt']['nProt'])) {
+                $cStatConsulta = $arr['cStat'] ?? '---';
+                $xMotivoConsulta = $arr['xMotivo'] ?? 'Protocolo de autorização não localizado na SEFAZ.';
+                return [
+                    'mensagem' => "[{$cStatConsulta}] - {$xMotivoConsulta}",
+                    'cStat' => $cStatConsulta,
+                    'xMotivo' => $xMotivoConsulta,
+                    'erro' => true
+                ];
+            }
+
             $nProt = $arr['protNFe']['infProt']['nProt'];
             sleep(1);
 
@@ -2544,18 +2555,26 @@ class NFCeService{
             $arr = $stdCl->toArray();
             $json = $stdCl->toJson();
 
-            $public = env('SERVIDOR_WEB') ? 'public/' : '';
             if ($std->cStat != 128) {
-
+                return [
+                    'mensagem' => "[{$std->cStat}] - " . ($std->xMotivo ?? 'Falha no lote de evento da SEFAZ.'),
+                    'cStat' => $std->cStat,
+                    'xMotivo' => $std->xMotivo ?? '',
+                    'erro' => true
+                ];
             } else {
                 $cStat = $std->retEvento->infEvento->cStat;
+                $xMotivo = $std->retEvento->infEvento->xMotivo ?? '';
                 if ($cStat == '101' || $cStat == '135' || $cStat == '155' ) {
                     $xml = Complements::toAuthorize($this->tools->lastRequest, $response);
                     safe_file_put_contents(public_path('xml_nfce_cancelada/').$chave.'.xml',$xml);
 
                     return $arr;
                 } else {
-                    return $arr;
+                    return array_merge($arr, [
+                        'mensagem' => "[{$cStat}] - {$xMotivo}",
+                        'erro' => true
+                    ]);
                 }
             }
 

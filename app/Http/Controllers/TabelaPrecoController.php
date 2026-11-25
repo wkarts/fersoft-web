@@ -17,28 +17,44 @@ class TabelaPrecoController extends BaseController
         $this->redirectPage = '/tabelas-precos';
         $this->listView     = 'tabelas_precos.list';
         $this->registerView = 'tabelas_precos.register';
-        
+
         parent::__construct();
     }
 
     protected function rules(): array { return ['descricao' => 'required']; }
     protected function messages(): array { return ['descricao.required' => 'O nome da tabela é obrigatório.']; }
 
+    private function getEmpresaId() {
+        return $this->empresa_id ?? session('user_logged')['empresa'] ?? session('user_logged')['empresa_id'] ?? 1;
+    }
+
     public function list(Request $request)
     {
-        $empresaId = $this->empresa_id;
+        $empresaId = $this->getEmpresaId();
         $records = TabelaPreco::where('empresa_id', $empresaId)->get();
         return view($this->listView, ['records' => $records, 'title' => 'Tabelas de Preços']);
     }
 
     public function register($id = null)
     {
-        $empresaId = $this->empresa_id;
-        
+        $empresaId = $this->getEmpresaId();
+
         $data = $id ? TabelaPreco::with('itens.produto')->where('empresa_id', $empresaId)->findOrFail($id) : null;
         $title = $id ? "Editar Tabela de Preços" : "Nova Tabela de Preços";
 
         return view($this->registerView, compact('data', 'title'));
+    }
+
+    // Garante que a rota /new funcione
+    public function new()
+    {
+        return $this->register(null);
+    }
+
+    // Garante que a rota /edit/{id} carregue a tabela junto com os itens e produtos
+    public function edit($id)
+    {
+        return $this->register($id);
     }
 
     public function save(Request $request)
@@ -47,15 +63,15 @@ class TabelaPrecoController extends BaseController
 
         DB::beginTransaction();
         try {
-            $empresaId = $this->empresa_id;
+            $empresaId = $this->getEmpresaId();
 
             $tabelaData = [
                 'empresa_id' => $empresaId,
-                'descricao' => $request->descricao
+                'nome'       => $request->descricao // usando 'nome' conforme alterado no banco
             ];
 
             if ($request->id) {
-                $tabela = TabelaPreco::where('empresa_id', $empresaId)->findOrFail($request->id);
+                $tabela = TabelaPreco::findOrFail($request->id);
                 $tabela->update($tabelaData);
                 TabelaPrecoItem::where('tabela_preco_id', $tabela->id)->delete();
                 $mensagem = "Tabela atualizada com sucesso!";
@@ -66,16 +82,19 @@ class TabelaPrecoController extends BaseController
 
             if ($request->has('produto_id')) {
                 foreach ($request->produto_id as $index => $produtoId) {
-                    if(empty($produtoId)) continue; 
+                    if(empty($produtoId)) continue;
 
                     $valorFormatado = str_replace(['R$', '.', ' '], '', $request->valor_kg[$index]);
                     $valorFormatado = str_replace(',', '.', $valorFormatado);
 
                     TabelaPrecoItem::create([
+                        'empresa_id'      => $tabela->empresa_id ?? $empresaId,
+                        'filial_id'       => $tabela->filial_id ?? null,
+                        'usuario_id'      => $tabela->usuario_id ?? null,
                         'tabela_preco_id' => $tabela->id,
-                        'produto_id' => $produtoId,
-                        'tipo_frete' => $request->tipo_frete[$index],
-                        'valor_kg' => (float) $valorFormatado
+                        'produto_id'      => $produtoId,
+                        'tipo_frete'      => $request->tipo_frete[$index],
+                        'valor_kg'        => (float) $valorFormatado
                     ]);
                 }
             }
@@ -96,14 +115,14 @@ class TabelaPrecoController extends BaseController
     {
         try {
             $term = $request->get('term', '');
-            $empresaId = $this->empresa_id;
+            $empresaId = $this->getEmpresaId();
 
             $produtos = Produto::where('empresa_id', $empresaId)
-                ->where('controla_pesagem', 1) 
+                ->where('controla_pesagem', 1)
                 ->where(function ($query) use ($term) {
                     $query->where('nome', 'like', "%{$term}%")
-                          ->orWhere('referencia', 'like', "%{$term}%")
-                          ->orWhere('codBarras', 'like', "%{$term}%");
+                        ->orWhere('referencia', 'like', "%{$term}%")
+                        ->orWhere('codBarras', 'like', "%{$term}%");
                 })
                 ->limit(30)
                 ->get(); // <-- A SOLUÇÃO: Não limitamos as colunas aqui, para evitar que o Laravel falhe ao carregar atributos virtuais do Produto.
@@ -112,7 +131,7 @@ class TabelaPrecoController extends BaseController
             foreach ($produtos as $produto) {
                 $ref = !empty($produto->referencia) ? "Ref: {$produto->referencia} | " : "";
                 $cod = !empty($produto->codBarras) ? " | Cód: {$produto->codBarras}" : "";
-                
+
                 $results[] = [
                     'id' => $produto->id,
                     'text' => $ref . $produto->nome . $cod

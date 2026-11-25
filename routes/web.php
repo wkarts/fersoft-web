@@ -174,6 +174,11 @@ Route::group(['prefix' => 'abastecimento-motorista'], function(){
     Route::post('/salvar', 'AbastecimentoExternoController@store');
 });
 
+Route::get('/coleta-motorista/{id}/destino/{destino_id}', 'MovimentacaoVeiculoController@exibirTelaColetaMotorista');
+Route::post('/coleta-motorista/{id}/destino/{destino_id}', 'MovimentacaoVeiculoController@salvarColetaMotorista');
+Route::get('/coleta-motorista/item/remover/{item_id}', 'MovimentacaoVeiculoController@removerItemColetaMotorista');
+
+
 // Assinatura Digital de Holerite com o Dedo
 Route::group(['prefix' => 'holerite'], function(){
     Route::get('/assinar/{token}', 'FolhaPagamentoController@telaAssinatura')->name('holerite.assinar.tela');
@@ -195,8 +200,6 @@ Route::match(['get', 'post'], '/whatsapp/nfe/webhook/messages-upsert', 'App\Http
         \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class
     ]);
 
-// PORTAL DO CLIENTE
-// O NOVO não fornece middleware próprio do portal; não utilizar a sessão interna do ERP como substituta.
 Route::group(['prefix' => 'portal-cliente'], function(){
     Route::get('/{empresa_id}/login', 'PortalClienteController@login');
     Route::post('/{empresa_id}/autenticar', 'PortalClienteController@autenticar');
@@ -204,11 +207,32 @@ Route::group(['prefix' => 'portal-cliente'], function(){
     Route::get('/{slug}/esqueci-senha', 'PortalClienteController@esqueciSenha');
     Route::post('/{slug}/recuperar-senha', 'PortalClienteController@recuperarSenha');
 
-    // Painel e Solicitação: a sessão do cliente deve ser validada no controller.
+    // Painel e Solicitação
     Route::get('/painel', 'PortalClienteController@painel');
     Route::post('/coleta/salvar', 'PortalClienteController@storeColeta');
     Route::get('/sair', 'PortalClienteController@logout');
+
+    // Rota de Consulta de Vagas no Calendário
+    Route::get('/disponibilidade', 'PortalClienteController@consultarDisponibilidade');
+    Route::get('/resumo-mes', 'PortalClienteController@resumoDisponibilidadeMes');
+
+    // 🚀 NOVA ROTA: Download do MTR / Certificado de Saída pelo Parceiro
+    Route::get('/mtr/download/{ticketId}', 'PortalClienteController@downloadMtrSaida');
+
+    // 🚀 NOVA ROTA AQUI PARA O DOWNLOAD DO TICKET DA PESAGEM DE ENTRADA:
+    Route::get('/pesagem/download/{id}', 'PortalClienteController@baixarTicketPesagem');
+
+    // Rotas para o cliente aprovar/rejeitar medições de contrato
+    Route::post('/medicao/{id}/aprovar', 'PortalClienteController@aprovarMedicao');
+    Route::post('/medicao/{id}/rejeitar', 'PortalClienteController@rejeitarMedicao');
+
+    // 🚀 NOVA ROTA: Imprimir Contrato no Portal do Cliente
+    Route::get('/contrato/imprimir/{id}', 'PortalClienteController@imprimirContrato');
 });
+
+// Rotas Internas do ERP (Fora do grupo do portal do cliente)
+Route::get('/logistica/parametros-agendamento', 'PortalClienteController@parametrosIndex');
+Route::post('/logistica/parametros-agendamento/salvar', 'PortalClienteController@parametrosSalvar');
 
 // 📋 Rota Pública do Checklist do Motorista (Acesso via WhatsApp)
 // O controller deve validar a autorização do acesso externo; o ID sozinho não demonstra essa autorização.
@@ -228,7 +252,8 @@ Route::get('/clear-all', function(){
     \Artisan::call('cache:clear');
     \Artisan::call('config:clear');
     \Artisan::call('view:clear');
-    // system('composer dump-autoload');
+    \Artisan::call('route:clear'); // <-- ADICIONE ESTA LINHA AQUI
+    return "Cache limpo com sucesso!";
 });
 
 Route::get('/', function(){
@@ -371,6 +396,7 @@ Route::group(['prefix' => 'relatorioSuper', 'middleware' => 'verificaEmpresa'], 
     Route::get('/planosVencer', 'RelatorioSuperController@planosVencer');
 });
 
+
 Route::group(['prefix' => '/assinarContrato', 'middleware' => 'verificaEmpresa'], function(){
     Route::get('/', 'AssinarContratoController@index');
     Route::post('/', 'AssinarContratoController@assinar');
@@ -435,6 +461,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/teste', 'NfseController@teste');
         Route::get('/baixarXml/{id}', 'NfseController@baixarXml');
         Route::get('/imprimir/{id}', 'NfseController@imprimir')->name('nfse.imprimir');
+
+        Route::get('/gerar-xml-local/{id}', 'NfseController@gerarXmlLocal');
+
         Route::post('/store', 'NfseController@store');
         Route::post('/storeAjax', 'NfseController@storeAjax');
         Route::put('/update/{id}', 'NfseController@update');
@@ -443,6 +472,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/consultar', 'NfseController@consultar');
         Route::post('/cancelar', 'NfseController@cancelar');
         Route::get('/enviarXml', 'NfseController@enviarXml');
+
+        // 🚀 ADICIONE ESTA LINHA AQUI:
+        Route::post('/importar-medicao', 'NfseController@importarMedicao')->name('nfse.importar.medicao');
+
+        // 🚀 NOVA ROTA PARA IMPORTAR O XML:
+        Route::post('/importar-xml', 'NfseController@importarXml')->name('nfse.importar.xml');
 
         Route::post('/enviar-integra-notas', 'NfseIntegraNotasController@enviar');
         Route::post('/consultar-integra-notas', 'NfseIntegraNotasController@consultar');
@@ -920,6 +955,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/list', 'ContratoEngenhariaController@filtro');
         Route::get('/new', 'ContratoEngenhariaController@register');
         Route::get('/detalhes/{id}', 'ContratoEngenhariaController@detalhes')->name('contratos.detalhes');
+
+        // 🚀 NOVA ROTA: Imprimir Contrato no ERP
+        Route::get('/imprimir/{id}', 'ContratoEngenhariaController@imprimir');
+
         Route::get('/edit/{id}', 'ContratoEngenhariaController@edit');
         Route::post('/save', 'ContratoEngenhariaController@save');
         Route::post('/update/{id}', 'ContratoEngenhariaController@update');
@@ -931,10 +970,20 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/dashboard-dre/excel', 'ContratoEngenhariaController@exportarExcelDashboard')->name('contratos.dashboard-dre.excel');
     });
 
+    Route::group(['middleware' => ['auth']], function () {
+        // Rota AJAX para apurar coletas da frota, fretes e compras na medição
+        Route::post('/contratos/medicoes/apurar-coletas', 'ContratoEngMedicaoController@carregarDadosApuraColeta')
+            ->name('contratos.medicoes.apurar-coletas');
+    });
+
     // ==============================================================================
     // ROTAS DE MEDIÇÕES / LOCAÇÃO - MÃO-DE-OBRA
     // ==============================================================================
     Route::group(['prefix' => 'contratos/medicoes', 'middleware' => 'verificaEmpresa'], function(){
+
+        // 🚀 Rota AJAX para apurar coletas da frota, fretes e compras (Integrada no grupo seguro)
+        Route::get('/apurar-coleta', 'ContratoEngMedicaoController@carregarDadosApuraColeta')
+            ->name('contratos.medicoes.apurar-coletas');
 
         // 1. Criação e Salvamento
         Route::get('/create/novo', 'ContratoEngMedicaoController@create')->name('contratos.medicoes.create.avulso');
@@ -968,6 +1017,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/{contrato_id?}', 'ContratoEngMedicaoController@index')
             ->where('contrato_id', '[0-9]+')
             ->name('contratos.medicoes.index');
+
+
     });
 
     // NFS-e de medições: endpoints históricos consumidos pela view existente.
@@ -986,6 +1037,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/xml/{id}', 'NfseNacionalController@downloadXml')->name('contratos.nfse.xml');
         Route::get('/imprimir/{id}', 'NfseNacionalController@imprimir')->name('contratos.nfse.imprimir');
     });
+
+
 
     // MTR 3.0 - SINIR / IEMA
     Route::group(['prefix' => 'mtr/unidades', 'middleware' => 'verificaEmpresa'], function(){
@@ -2112,6 +2165,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/pesquisa', 'ClienteDeliveryController@pesquisa');
     });
 
+    Route::get('/equipamentos/mapa', 'EquipamentoController@index');
 
     Route::group(['prefix' => 'transportadoras'],function(){
         Route::get('/', 'TransportadoraController@index');
@@ -2430,6 +2484,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/clone', 'VendaController@salvarClone');
         Route::post('/enviar-whats', 'VendaController@enviarWhats');
 
+        // 👉 ROTAS DE IMPORTAÇÃO DE PESAGEM PARA A TELA DE VENDA
+        Route::get('/pesagens-pendentes', 'VendaController@getPesagensPendentesImportacao')->name('vendas.pesagens_pendentes');
+        Route::get('/dados-pesagem/{id}', 'VendaController@getDadosPesagemParaVenda')->name('vendas.dados_pesagem');
+
         Route::get('/calculaFrete', 'VendaController@calculaFrete');
         Route::get('/importacao', 'VendaController@importacao');
         Route::post('/importacao', 'VendaController@importacaoStore');
@@ -2446,7 +2504,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/{venda}/nfe/reforma/recalc-item/{item}', 'VendaController@recalcItem')->name('vendas.nfe.reforma.recalcItem');
         Route::post('/{venda}/nfe/reforma/recalc-all', 'VendaController@recalcAll')->name('vendas.nfe.reforma.recalcAll');
 
-        Route::post('/setEstadoCliente', 'VendaController@setEstadoCliente');
+        // Route::post('/setEstadoCliente', 'VendaController@setEstadoCliente');
+
+        Route::match(['get', 'post'], '/setEstadoCliente', 'VendaController@setEstadoCliente');
+        Route::match(['get', 'post'], '/set_estado_cliente', 'VendaController@setEstadoCliente');
     });
 
     Route::group(['prefix' => 'compras'],function(){
@@ -2468,6 +2529,13 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('/cancelarEntrada', 'PurchaseController@cancelarEntrada');
         Route::post('/cartaCorrecao', 'PurchaseController@cartaCorrecao');
         Route::post('/consultar', 'PurchaseController@consultar');
+
+        Route::get('/devolver/{id}', 'PurchaseController@gerarDevolucaoManual');
+
+        // NOVA ROTA DE IMPORTAÇÃO DE XML AQUI:
+        Route::post('/importarXml', 'PurchaseController@importarXmlStore');
+
+        Route::post('/validaXmlImportacao', 'PurchaseController@validaXmlImportacao');
 
         Route::get('/imprimir/{id}', 'PurchaseController@imprimir');
         Route::get('/imprimirCce/{id}', 'PurchaseController@imprimirCce');
@@ -2618,8 +2686,12 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     });
 
     Route::group(['prefix' => 'gestao-estoque'], function () {
-        Route::get('/', 'GestaoEstoqueController@index')->name('gestao-estoque.index');
-        Route::post('/sincronizar', 'GestaoEstoqueController@sincronizar')->name('gestao-estoque.sincronizar');
+        Route::get('/', 'GestaoEstoqueController@index')->name('estoque.index');
+        Route::post('/sincronizar', 'GestaoEstoqueController@sincronizar')->name('estoque.sincronizar');
+
+        // Compatibilidade caso algum menu chame pelo nome antigo
+        Route::get('/list', 'GestaoEstoqueController@index')->name('gestao-estoque.index');
+        Route::post('/sincronizar-alt', 'GestaoEstoqueController@sincronizar')->name('gestao-estoque.sincronizar');
     });
 
     Route::group(['prefix' => 'cotacao'],function(){
@@ -3295,6 +3367,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         // Rotas adicionais da agenda, cancelamento, coletas e checklist.
         Route::get('/agenda', 'MovimentacaoVeiculoController@agenda')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::post('/cancelar/{id}', 'MovimentacaoVeiculoController@cancelar')->middleware(['verificaEmpresa', 'validaAcesso']);
+        Route::post('/reabrir/{id}', 'MovimentacaoVeiculoController@reabrir')->middleware(['verificaEmpresa', 'validaAcesso', 'throttle:10,1'])->name('movimentacaoVeiculo.reabrir');
         Route::get('/eventosCalendario', 'MovimentacaoVeiculoController@eventosCalendario')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::get('/relatorioColetas', 'MovimentacaoVeiculoController@relatorioColetas')->middleware(['verificaEmpresa', 'validaAcesso']);
         Route::post('/registrarHorarioCliente/{id}', 'MovimentacaoVeiculoController@registrarHorarioCliente')->middleware(['verificaEmpresa', 'validaAcesso']);
@@ -3302,12 +3375,27 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/enviar-checklist/{id}', 'MovimentacaoVeiculoController@enviarChecklistWhatsApp');
         Route::get('/ver-checklist/{id}', 'MovimentacaoVeiculoController@verChecklist');
 
+        Route::get('/enviar-link-coleta/{id}', 'MovimentacaoVeiculoController@enviarLinkColetaWhatsApp');
+
+        // 👇 NOVA ROTA: Envio da Ordem de Coleta / Resumo com GPS no WhatsApp
+        Route::get('/enviar-resumo/{id}', 'MovimentacaoVeiculoController@enviarResumoViagemWhatsApp');
+
         Route::get('/mapa', function() {
             return view('movimentacoes_veiculos.mapa')->with('title', 'Mapa em Tempo Real');
         })->middleware(['verificaEmpresa', 'validaAcesso']);
 
         Route::get('/enviarLinkAbastecimento/{id}', 'MovimentacaoVeiculoController@enviarLinkAbastecimentoWhatsApp');
+
+        Route::get('/dados-pesagem/{id}', 'MovimentacaoVeiculoController@getDadosPesagem')->middleware(['verificaEmpresa', 'validaAcesso']);
+
+        // 👇 NOVA ROTA: Sincronização Retroativa com Traccar
+        Route::get('/sync-retroativo/{id}', 'MovimentacaoVeiculoController@sincronizarRetroativoTraccar')->middleware(['verificaEmpresa', 'validaAcesso']);
+
+        // 👇 NOVA ROTA: Vincular NF-e e MTR à Movimentação
+        Route::post('/vincular-documentos/{id}', 'MovimentacaoVeiculoController@vincularDocumentos')->middleware(['verificaEmpresa', 'validaAcesso']);
     });
+
+
 
     Route::group(['prefix' => 'atendimentoWeb'], function () {
         Route::get('/', 'SiteViewController@atendimentoWeb');
@@ -3363,8 +3451,53 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/gen/criarCompra/{id}', 'PesagemController@criarCompraDePesagem')->name('pesagens.criarCompra');
         Route::post('/reabrir/{id}', 'PesagemController@reabrir')->name('pesagens.reabrir');
         Route::get('/relatorios/analitico', 'PesagemController@relatorioAnalitico')->name('pesagens.relatorios.analitico');
+        Route::post('/vincular-documentos/{id}', 'PesagemController@vincularDocumentos')->name('pesagens.vincularDocumentos');
 
+        //Route::get('/relatorios/pesagem/imprimirRelatorio4/{id}', 'PesagemController@imprimirRelatorioOpcao4')->name('pesagens.relatorios.opcao4');
     });
+
+    Route::get('/relatorios/pesagem/imprimirRelatorio4/{id}', [App\Http\Controllers\PesagemController::class, 'imprimirRelatorioOpcao4'])->name('pesagens.relatorios.opcao4');
+
+    Route::group(['prefix' => 'pesagens_avulsas'], function () {
+        Route::get('/', 'PesagemAvulsaController@index')->name('pesagens_avulsas.index');
+        Route::post('/cliente', 'PesagemAvulsaController@buscarOuCriarCliente')->name('pesagens_avulsas.cliente');
+        Route::post('/save', 'PesagemAvulsaController@save')->name('pesagens_avulsas.save');
+        Route::post('/item/delete/{id}', 'PesagemAvulsaController@deleteItem')->name('pesagens_avulsas.item.delete');
+        Route::get('/imprimir-80mm/{id}', 'PesagemAvulsaController@imprimir80mm')->name('pesagens_avulsas.imprimir_80mm');
+        Route::post('/cancelar/{id}', 'PesagemAvulsaController@cancelar')->name('pesagens_avulsas.cancelar');
+        Route::get('/historico', 'PesagemAvulsaController@historico')->name('pesagens_avulsas.historico');
+    });
+
+    Route::group(['prefix' => 'producao'], function () {
+        // Painel do Gerente
+        Route::get('/gerenciamento', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'gerenciamentoIndex'])->name('producao.gerenciamento');
+        Route::post('/gerenciamento/concluir/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'concluirLote'])->name('producao.gerenciamento.concluir');
+        Route::post('/gerenciamento/nfe-perda/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'emitirNfePerda'])->name('producao.gerenciamento.nfePerda');
+
+        // Balança Cega de Produção (Chão de Fábrica)
+        Route::get('/balanca', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'balancaIndex'])->name('producao.balanca');
+        Route::post('/balanca/salvar-corte', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'salvarCorte'])->name('producao.balanca.salvarCorte');
+
+        Route::get('/balanca/ler-peso/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'lerPesoBalanca'])->name('producao.balanca.lerPeso');
+
+        // 🚀 NOVAS ROTAS DA LISTAGEM DE ITENS:
+        Route::post('/balanca/item/save', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'salvarItemBalanca'])->name('producao.balanca.item.save');
+        Route::get('/balanca/itens/{loteId}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'listarItensBalanca'])->name('producao.balanca.itens.list');
+        Route::delete('/balanca/item/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'deletarItemBalanca'])->name('producao.balanca.item.delete');
+
+        // Rotas de Fechamento do Lote e Ticket (PDV)
+        Route::post('/balanca/finalizar/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'finalizarLoteBalanca'])->name('producao.balanca.finalizar');
+        Route::get('/balanca/ticket/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'imprimirTicketLote'])->name('producao.balanca.ticket');
+
+        Route::post('/gerenciamento/reabrir/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'reabrirLote'])->name('producao.gerenciamento.reabrir');
+
+        // Rota do Dossiê Detalhado / Histórico do Lote
+        Route::get('/gerenciamento/dossie/{id}', [App\Http\Controllers\ProducaoRastreabilidadeController::class, 'dossieLote'])->name('producao.gerenciamento.dossie');
+
+        // 🚀 NOVA ROTA DO PAINEL DE CONTROLE DE LOTES (ÁRVORE)
+        Route::get('/controle-lotes', [App\Http\Controllers\ControleLoteController::class, 'index'])->name('producao.controle_lotes');
+    });
+
 
     Route::group(['prefix' => 'pesagemNfe'], function () {
         Route::get('/', 'PesagemNfeController@index')->name('pesagem-nfe.index');
@@ -3401,6 +3534,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::put('/update/{id}', 'TicketPesagemController@update')->name('ticketsPesagem.update');
         Route::delete('/delete/{id}', 'TicketPesagemController@delete')->name('ticketsPesagem.delete');
         Route::get('/getTicketsDados/{pesagem_id}', 'TicketPesagemController@getTicketsDados')->name('ticketsPesagem.getTicketsDados');
+        // 👉 ADICIONE ESTA LINHA AQUI:
+        Route::get('/lotes-disponiveis/{produtoId}', 'TicketPesagemController@getLotesDisponiveisPorProduto')->name('ticketsPesagem.lotes.disponiveis');
     });
 
     Route::group(['prefix' => 'balancas'], function () {
@@ -3558,6 +3693,10 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/resumo-despesas', 'RelatorioResumoController@resumoDespesas');
         Route::get('/comparativo-meses', 'RelatorioResumoController@comparativoMeses');
 
+        // 👇 ADICIONE ESTAS DUAS NOVAS ROTAS AQUI:
+        Route::get('/setorial', [App\Http\Controllers\RelatorioSetorialController::class, 'index'])->name('relatorios.setorial');
+        Route::get('/setorial/excel', [App\Http\Controllers\RelatorioSetorialController::class, 'exportarExcel'])->name('relatorios.setorial.excel');
+
         // Rotas do Prosoft padronizadas
         Route::get('/exportar-prosoft', 'ProsoftExportController@index');
         Route::post('/exportar-prosoft', 'ProsoftExportController@exportar');
@@ -3571,6 +3710,7 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         });
 
     });
+
 
     Route::group(['prefix' => 'portaria'], function(){
         // Telas e Ações Principais
@@ -3602,6 +3742,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/agendamento/{id}/editar', 'PortariaController@editarAgendamento');
         Route::post('/agendamento/{id}/atualizar', 'PortariaController@atualizarAgendamento');
         Route::delete('/agendamento/{id}', 'PortariaController@excluirAgendamento');
+
+        Route::post('/cancelar-espera', 'PortariaController@cancelarEsperaAjax');
     });
 
     Route::group(['prefix' => 'gestao-coletas'], function(){
@@ -3879,6 +4021,9 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/delete/{id}', 'PesagemController@delete')->name('pesagens.delete');
         Route::get('/concluir/{id}', 'PesagemController@concluir')->name('pesagens.concluir');
     });
+
+
+
 
     Route::group(['prefix' => 'ticketsPesagem'], function () {
         Route::get('/', 'TicketPesagemController@list');
@@ -4367,6 +4512,7 @@ Route::group([
             app()->instance('fersoft.cron_source', 'internal_http');
 
             \Illuminate\Support\Facades\Artisan::call('schedule:run');
+            \Illuminate\Support\Facades\Artisan::call('frota:verificar-atrasos');
             $output = trim(\Illuminate\Support\Facades\Artisan::output());
 
             return response()->json([
@@ -4438,3 +4584,18 @@ Route::group([
     Route::get('/{version}/logs/{log}', 'Updates\UpdateController@showLog')->name('updates.logs.show');
 });
 */
+/*Route::get('/storage/visitantes/{filename}', function ($filename) {
+    // 1. SEGURANÇA: basename() impede ataques de Directory Traversal (ex: ../../.env)
+    // Isso garante que o sistema leia apenas o nome final do arquivo, ignorando barras de diretório.
+    $safeFilename = basename($filename);
+    $path = storage_path('app/public/visitantes/' . $safeFilename);
+
+    // 2. Verifica se o arquivo realmente existe fisicamente
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    // 3. Entrega a imagem ao navegador
+    return response()->file($path);
+
+})->middleware('auth'); // 4. SEGURANÇA: Só permite visualizar se o usuário estiver logado no sistema*/

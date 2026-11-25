@@ -124,6 +124,8 @@ class ServiceController extends Controller
 
         $request->merge(['exige_obra' => $request->input('exige_obra', 0)]);
 
+        $request->merge([ 'codigo_indicador_operacao' => $request->codigo_indicador_operacao ?? "050101"]);
+
         $result = $servico->create($request->all());
 
         if($result){
@@ -175,6 +177,8 @@ class ServiceController extends Controller
         $resp->codigo_class_trib = $request->codigo_class_trib ?? "";
 
         $resp->exige_obra = $request->input('exige_obra', 0);
+
+        $resp->codigo_indicador_operacao = $request->codigo_indicador_operacao ?? "050101";
 
         $result = $resp->save();
         if($result){

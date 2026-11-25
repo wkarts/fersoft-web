@@ -749,10 +749,10 @@ class RelatorioController extends Controller
         $itensVenda = ItemVenda
             ::select(\DB::raw('produtos.id as id, produtos.nome as nome, produtos.grade as grade, produtos.str_grade as str_grade, produtos.valor_venda, produtos.valor_compra, sum(item_vendas.quantidade) as total, sum(item_vendas.quantidade * item_vendas.valor) as total_dinheiro, produtos.unidade_venda'))
             ->join('produtos', 'produtos.id', '=', 'item_vendas.produto_id')
-                ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
-                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
-                    return $q->whereNull('vendas.deleted_at');
-                })
+            ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                return $q->whereNull('vendas.deleted_at');
+            })
             ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_vendas.created_at', [$data_inicial,
@@ -786,10 +786,10 @@ class RelatorioController extends Controller
         $itensVendaCaixa = ItemVendaCaixa
             ::select(\DB::raw('produtos.id as id, produtos.nome as nome, produtos.grade as grade, produtos.str_grade as str_grade, produtos.valor_venda, produtos.valor_compra, sum(item_venda_caixas.quantidade) as total, sum(item_venda_caixas.quantidade * item_venda_caixas.valor) as total_dinheiro, produtos.unidade_venda'))
             ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
-                ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
-                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
-                    return $q->whereNull('venda_caixas.deleted_at');
-                })
+            ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                return $q->whereNull('venda_caixas.deleted_at');
+            })
             ->where(function($q) use ($data_inicial, $data_final){
                 if($data_final && $data_final){
                     return $q->whereBetween('item_venda_caixas.created_at', [$data_inicial,
@@ -1364,9 +1364,9 @@ class RelatorioController extends Controller
             $data_final = $this->parseDate($data_inicial);
 
             $vendas = Venda::withoutDeleted()->whereBetween('vendas.created_at', [
-                    $data_inicial . " 00:00:00",
-                    $data_final . " 23:59:00"
-                ])
+                $data_inicial . " 00:00:00",
+                $data_final . " 23:59:00"
+            ])
                 ->when($filial_id, function($q) use ($filial_id){
                     $local = $filial_id == -1 ? null : $filial_id;
                     return $q->where('vendas.filial_id', $local);
@@ -1376,9 +1376,9 @@ class RelatorioController extends Controller
                 ->get();
 
             $vendasCaixa = VendaCaixa::withoutDeleted()->whereBetween('venda_caixas.created_at', [
-                    $data_inicial . " 00:00:00",
-                    $data_final . " 23:59:00"
-                ])
+                $data_inicial . " 00:00:00",
+                $data_final . " 23:59:00"
+            ])
                 ->when($filial_id, function($q) use ($filial_id){
                     $local = $filial_id == -1 ? null : $filial_id;
                     return $q->where('venda_caixas.filial_id', $local);
@@ -1500,9 +1500,9 @@ class RelatorioController extends Controller
             }
 
             $vendas = Venda::withoutDeleted()->whereBetween('vendas.created_at', [
-                    $data_inicial . " 00:00:00",
-                    $data_final . " 23:59:00"
-                ])
+                $data_inicial . " 00:00:00",
+                $data_final . " 23:59:00"
+            ])
                 ->when($filial_id, function($q) use ($filial_id){
                     $local = $filial_id == -1 ? null : $filial_id;
                     return $q->where('vendas.filial_id', $local);
@@ -1513,9 +1513,9 @@ class RelatorioController extends Controller
                 ->get();
 
             $vendasCaixa = VendaCaixa::withoutDeleted()->whereBetween('venda_caixas.created_at', [
-                    $data_inicial . " 00:00:00",
-                    $data_final . " 23:59:00"
-                ])
+                $data_inicial . " 00:00:00",
+                $data_final . " 23:59:00"
+            ])
                 ->when($filial_id, function($q) use ($filial_id){
                     $local = $filial_id == -1 ? null : $filial_id;
                     return $q->where('venda_caixas.filial_id', $local);
@@ -2049,16 +2049,16 @@ class RelatorioController extends Controller
         }
 
         $vendasPdv = VendaCaixa::withoutDeleted()->whereBetween('created_at', [
-                $this->parseDate($data_inicial),
-                $this->parseDate($data_final, true)
-            ])
+            $this->parseDate($data_inicial),
+            $this->parseDate($data_final, true)
+        ])
             ->where('empresa_id', $this->empresa_id)
             ->get();
 
         $vendas = Venda::withoutDeleted()->whereBetween('created_at', [
-                $this->parseDate($data_inicial),
-                $this->parseDate($data_final, true)
-            ])
+            $this->parseDate($data_inicial),
+            $this->parseDate($data_final, true)
+        ])
             ->where('empresa_id', $this->empresa_id)
             ->get();
 
@@ -3612,9 +3612,9 @@ class RelatorioController extends Controller
         where('vendas.empresa_id', $this->empresa_id)
             ->select('item_vendas.*')
             ->join('vendas', 'vendas.id', '=', 'item_vendas.venda_id')
-                ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
-                    return $q->whereNull('vendas.deleted_at');
-                })
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('vendas', 'deleted_at'), function ($q) {
+                return $q->whereNull('vendas.deleted_at');
+            })
             ->when($data_inicial != '', function($q) use ($data_inicial){
                 return $q->whereDate('item_vendas.created_at', '>=', $data_inicial);
             })
@@ -3656,9 +3656,9 @@ class RelatorioController extends Controller
         where('venda_caixas.empresa_id', $this->empresa_id)
             ->select('item_venda_caixas.*')
             ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
-                ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
-                    return $q->whereNull('venda_caixas.deleted_at');
-                })
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('venda_caixas', 'deleted_at'), function ($q) {
+                return $q->whereNull('venda_caixas.deleted_at');
+            })
             ->when($data_inicial != '', function($q) use ($data_inicial){
                 return $q->whereDate('item_venda_caixas.created_at', '>=', $data_inicial);
             })
@@ -4196,37 +4196,38 @@ class RelatorioController extends Controller
             ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
-    public function imprimirPesagem80mmSimples($id)
+    public function imprimirPesagem80mmSimples($id, $empresaId = null)
     {
+        // Usa o ID passado pelo WhatsApp ou recorre ao padrão da classe/sessão
+        $filtroEmpresa = $empresaId ?? $this->empresa_id ?? session('empresa_id');
+
         // Busca a pesagem
         try {
-            $pesagem = Pesagem::with(['tickets.produto', 'veiculo'])
-                ->where('empresa_id', $this->empresa_id)
-                ->findOrFail($id); // Tenta buscar o registro
+            $query = Pesagem::with(['tickets.produto', 'veiculo']);
+
+            if ($filtroEmpresa) {
+                $query->where('empresa_id', $filtroEmpresa);
+            }
+
+            $pesagem = $query->findOrFail($id);
+
         } catch (ModelNotFoundException $e) {
-            // Registra o erro no log com informações adicionais
-            \Log::error('Erro ao buscar pesagem', [
+            \Log::error('Erro ao buscar pesagem para 80mm simples', [
                 'id' => $id,
+                'empresa_id' => $filtroEmpresa,
                 'exception' => $e->getMessage(),
             ]);
 
-            // Define uma mensagem amigável para o usuário na sessão
             session()->flash('mensagem_erro', "A pesagem com o ID #{$id} não foi encontrada. Verifique o ID informado e tente novamente.");
 
-            // Registra no log que a mensagem foi salva na sessão
-            \Log::debug('Mensagem de erro definida na sessão');
-
-            // Verifica se o redirecionamento para a página anterior é aplicável
             if (request()->headers->get('referer')) {
-                // Redireciona o usuário de volta para a página anterior
                 return redirect()->back();
             }
 
-            // Redireciona para uma página padrão (por exemplo, lista de pesagens)
             return redirect()->route('pesagens.list');
         }
 
-        // Cria uma instância do relatório
+        // Cria uma instância do relatório (mantendo exatamente como o seu original funciona)
         $relatorio = new PesagemPrint80Simples($pesagem);
 
         // Monta o relatório

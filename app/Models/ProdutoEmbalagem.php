@@ -4,10 +4,12 @@ namespace App\Models;
 
 class ProdutoEmbalagem extends BaseModel
 {
-    // Dizendo ao Laravel o nome exato da tabela no banco
     protected $table = 'produto_embalagens';
 
     protected $fillable = [
+        'empresa_id',
+        'filial_id',
+        'usuario_id',
         'produto_id',
         'unidade',
         'fator_conversao',

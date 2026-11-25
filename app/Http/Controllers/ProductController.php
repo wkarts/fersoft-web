@@ -462,19 +462,28 @@ class ProductController extends Controller
                     $request->merge([ 'grade' => false ]);
                     $request->merge([ 'str_grade' => '' ]);
 
+                    $request->merge([
+                        'qtd_minima_atacado' => $request->input('qtd_minima_atacado') ? __replace($request->input('qtd_minima_atacado')) : 0,
+                        'preco_atacado'      => $request->input('preco_atacado') ? __replace($request->input('preco_atacado')) : 0,
+                    ]);
+
                     $result = $produto->create($request->all());
                     $this->inserePercentualPorEstado($result);
 
                     if ($request->has('emb_unidade')) {
-                        // No update(), mantenha o delete() aqui: \App\Models\ProdutoEmbalagem::where('produto_id', $resp->id)->delete();
+                        // Em update(), mantenha o delete() anterior:
+                        // \App\Models\ProdutoEmbalagem::where('produto_id', $resp->id)->delete();
 
                         foreach ($request->emb_unidade as $key => $unidade) {
                             if (!empty($unidade) && !empty($request->emb_fator[$key])) {
                                 \App\Models\ProdutoEmbalagem::create([
-                                    'produto_id'      => $result->id, // No update, use $resp->id
+                                    'empresa_id'      => $this->empresa_id,
+                                    'filial_id'       => $request->filial_id ?? null,
+                                    'usuario_id'      => function_exists('get_id_user') ? get_id_user() : (session('user_logged')['id'] ?? null),
+                                    'produto_id'      => $result->id, // Em update(), use $resp->id
                                     'unidade'         => strtoupper($unidade),
                                     'fator_conversao' => __replace($request->emb_fator[$key]),
-                                    'preco_venda'     => isset($request->emb_preco_venda[$key]) ? __replace($request->emb_preco_venda[$key]) : 0, // NOVO CAMPO
+                                    'preco_venda'     => isset($request->emb_preco_venda[$key]) ? __replace($request->emb_preco_venda[$key]) : 0,
                                     'codigo_barras'   => $request->emb_codigo_barras[$key] ?? null
                                 ]);
                             }
@@ -1346,6 +1355,9 @@ class ProductController extends Controller
                 $resp->controla_pesagem = $request->input('controla_pesagem') ? true : false;
                 $resp->produto_referenciado_id = $request->input('produto_referenciado_id') ?? null;
                 $resp->produto_prateleira_id = $request->input('produto_prateleira_id') ?? null;
+
+                $resp->qtd_minima_atacado = $request->input('qtd_minima_atacado') ? __replace($request->input('qtd_minima_atacado')) : 0;
+                $resp->preco_atacado      = $request->input('preco_atacado') ? __replace($request->input('preco_atacado')) : 0;
 
                 $result = $resp->save();
 

@@ -10,7 +10,12 @@ class MtrManifestoItem extends BaseModel
         'empresa_id', 'filial_id', 'usuario_id', 'mtr_manifesto_id',
         'produto_id', 'cod_ibama', 'descricao_residuo', 'quantidade',
         'unidade_medida', 'estado_fisico', 'classe_residuo',
-        'acondicionamento_id', 'tratamento_id',
+        'acondicionamento_id', 'tratamento_id', 'numero_onu',
+        'classe_risco',
+        'nome_embarque',
+        'grupo_embalagem',
+        'codigo_interno',
+        'descricao_interna',
     ];
 
     protected $casts = [

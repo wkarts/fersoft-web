@@ -221,6 +221,39 @@
                                             @endif
                                         </div>
 
+                                        <!-- BLOCO CREDENCIAIS INDIVIDUAIS SINIR / MTR -->
+                                        <div class="row mt-3 mb-4 p-4 rounded" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                            <div class="col-12 mb-2">
+                                                <h6 class="font-weight-bolder text-dark mb-1">
+                                                    <i class="fa fa-recycle text-success mr-1"></i> Credenciais Individuais SINIR / MTR (Opcional)
+                                                </h6>
+                                                <small class="text-muted">Se preenchido, o sistema usará o CPF e o Token API WS deste usuário ao emitir/consultar MTR quando ele estiver logado. Caso fique em branco, usará automaticamente a credencial padrão da Unidade MTR.</small>
+                                            </div>
+
+                                            <div class="form-group validated col-sm-12 col-lg-3 mb-0">
+                                                <label class="col-form-label font-weight-bold">CPF no Portal SINIR</label>
+                                                <input id="cpf_mtr" type="text" class="form-control" name="cpf_mtr" maxlength="14" placeholder="Somente números ou 000.000.000-00" value="{{ old('cpf_mtr', $usuario->cpf_mtr ?? '') }}">
+                                            </div>
+
+                                            <div class="form-group validated col-sm-12 col-lg-9 mb-0">
+                                                <label class="col-form-label font-weight-bold">
+                                                    Token de Integração API WS (SINIR)
+                                                    @if(isset($usuario) && !empty($usuario->token_mtr))
+                                                        <span class="badge badge-success ml-2"><i class="fa fa-lock text-white"></i> Token cadastrado</span>
+                                                    @endif
+                                                </label>
+                                                <input id="token_mtr" type="password" class="form-control" name="token_mtr" autocomplete="new-password" placeholder="{{ (isset($usuario) && !empty($usuario->token_mtr)) ? 'Deixe em branco para manter o token atual ou cole um novo token...' : 'Cole aqui o Token gerado em Configurações > Gerar Token API WS no portal SINIR' }}">
+                                                @if(isset($usuario) && !empty($usuario->token_mtr))
+                                                    <div class="mt-2">
+                                                        <label class="checkbox checkbox-danger checkbox-sm">
+                                                            <input type="checkbox" name="remover_token_mtr" value="1">
+                                                            <span></span>Remover token individual deste usuário (voltar a usar o da Unidade MTR)
+                                                        </label>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+
                                         {{-- Botões OTP: mostrar apenas ao EDITAR --}}
                                         @isset($usuario)
                                             @if($usuario->hasOtp())
@@ -362,18 +395,15 @@
     <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
-                <!-- Cabeçalho -->
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalConfirmacaoLabel">Confirmação</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <!-- Corpo -->
                 <div class="modal-body" id="modalConfirmacaoMensagem">
                     Deseja realmente continuar?
                 </div>
-                <!-- Rodapé -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Não</button>
                     <button type="button" id="btnConfirmarAcao" class="btn btn-primary">Sim</button>
@@ -386,18 +416,15 @@
     <div class="modal fade" id="modalMensagem" tabindex="-1" role="dialog" aria-labelledby="modalMensagemLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
-                <!-- Cabeçalho -->
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalMensagemLabel">Mensagem</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <!-- Corpo -->
                 <div class="modal-body" id="modalMensagemTexto">
                     Mensagem exibida aqui.
                 </div>
-                <!-- Rodapé -->
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
                 </div>
@@ -408,9 +435,6 @@
 @endsection
 
 @section('javascript')
-    <script type="text/javascript">
-        $('[data-toggle="popover"]').popover()
-    </script>
     <script type="text/javascript">
         $('[data-toggle="popover"]').popover()
     </script>
@@ -425,7 +449,6 @@
                 const verifyUrl = "{{ route('usuarios.verify-current-otp', $usuario->id) }}";
                 const saveUrl   = "{{ route('usuarios.save-otp', $usuario->id) }}";
 
-                // Helpers
                 function showConfirm(message, onConfirm) {
                     $('#modalConfirmacaoMensagem').text(message);
                     $('#btnConfirmarAcao').off('click').on('click', function(){
@@ -444,7 +467,6 @@
                     $('#modalMensagem').modal('show');
                 }
 
-                // 1) Preview + abrir modal (só se existir botão)
                 if (btnPreview) {
                     btnPreview.addEventListener('click', function () {
                         const url = this.dataset.previewUrl;
@@ -471,7 +493,6 @@
                     });
                 }
 
-                // 2) Validar + salvar secret
                 $('#modal-validate-btn').on('click', function(){
                     const code   = $('#modal-otp-code').val().trim();
                     const secret = $('#modal-secret-text').text().trim();
@@ -530,7 +551,6 @@
 
                 const verifyUrl = "{{ route('usuarios.verify-current-otp', $usuario->id) }}";
 
-                // 1) clicar em “Alterar OTP”
                 btnChange.addEventListener('click', () => {
                     showConfirm(
                         'Já existe um token. Deseja realmente alterar o OTP?',
@@ -538,7 +558,6 @@
                     );
                 });
 
-                // 2) validar código atual
                 document.getElementById('btn-verify-current-otp').addEventListener('click', () => {
                     const code = $('#verify-current-otp-code').val().trim();
                     if (!/^\d{6}$/.test(code)) {

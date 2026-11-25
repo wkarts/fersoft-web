@@ -160,7 +160,7 @@
                         <div class="card-body py-4">
                             <div class="row">
                                 <!-- Função com Botão + Integrado -->
-                                <div class="form-group validated col-lg-4 col-md-6">
+                                <div class="form-group validated col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold">Função / Cargo</label>
                                     <div class="d-flex">
                                         <div class="flex-grow-1 mr-2">
@@ -178,7 +178,7 @@
                                 </div>
 
                                 <!-- Escala de Trabalho -->
-                                <div class="form-group validated col-lg-4 col-md-6">
+                                <div class="form-group validated col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold text-primary">Escala de Trabalho / Ponto</label>
                                     <select class="form-control custom-select" name="ponto_escala_id">
                                         <option value="">Padrão CLT 44h (Sem escala vinculada)</option>
@@ -194,7 +194,7 @@
                                 </div>
 
                                 <!-- Unidade / Filial -->
-                                <div class="form-group validated col-lg-4 col-md-6">
+                                <div class="form-group validated col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold">Unidade / Filial</label>
                                     <select class="form-control custom-select" name="filial_id">
                                         <option value="">MATRIZ</option>
@@ -207,7 +207,7 @@
                                 </div>
 
                                 <!-- Usuário ERP -->
-                                <div class="form-group validated col-lg-3 col-md-6">
+                                <div class="form-group validated col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold">Usuário Vinculado ao ERP</label>
                                     <select class="form-control custom-select" name="usuario_id">
                                         <option value="NULL">-- Nenhum --</option>
@@ -218,7 +218,7 @@
                                 </div>
 
                                 <!-- Tipo de Batida -->
-                                <div class="form-group col-lg-3 col-md-6">
+                                <div class="form-group col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold">Batida de Ponto Permitida</label>
                                     <select class="custom-select form-control" name="tipo_ponto">
                                         <option value="ambos" {{ isset($funcionario) && $funcionario->tipo_ponto == 'ambos' ? 'selected' : '' }}>Ambos (WhatsApp e Local)</option>
@@ -228,145 +228,174 @@
                                 </div>
 
                                 <!-- PIN Ponto -->
-                                <div class="form-group col-lg-2 col-md-4">
+                                <div class="form-group col-lg-4 col-md-4 mb-3">
                                     <label class="font-weight-bold">PIN Ponto (4 dígitos)</label>
                                     <input id="pin_ponto" type="text" class="form-control text-center font-weight-bold letter-spacing-2" name="pin_ponto" value="{{{ isset($funcionario) ? $funcionario->pin_ponto : old('pin_ponto') }}}" maxlength="4" placeholder="Ex: 1234">
                                 </div>
 
-                                <!-- Permissão Emissão NF-e WhatsApp -->
-                                <div class="form-group col-lg-3 col-md-4 mb-2">
-                                    <label class="font-weight-bold d-block text-primary">Acesso ao Robô Fiscal</label>
-                                    <div class="d-flex align-items-center mt-2">
-                                    <span class="switch switch-sm switch-outline switch-icon switch-primary mr-3">
-                                        <label class="mb-0">
-                                            <input type="checkbox" name="permissao_nfe_whatsapp" value="1" {{ isset($funcionario) && $funcionario->permissao_nfe_whatsapp ? 'checked' : '' }} />
-                                            <span></span>
-                                        </label>
-                                    </span>
-                                        <span class="font-weight-bold text-dark font-size-sm">Emitir NF-e via WhatsApp</span>
-                                    </div>
-                                </div>
-
                                 <!-- Salário Base -->
-                                <div class="form-group validated col-lg-2 col-md-4">
+                                <div class="form-group validated col-lg-3 col-md-4 mb-3">
                                     <label class="font-weight-bold">Salário Base (R$)</label>
                                     <input id="salario" type="text" class="form-control money" name="salario" value="{{{ isset($funcionario) ? $funcionario->salario : old('salario') }}}">
                                 </div>
 
                                 <!-- Comissão -->
-                                <div class="form-group validated col-lg-2 col-md-4">
+                                <div class="form-group validated col-lg-3 col-md-4 mb-3">
                                     <label class="font-weight-bold">Comissão (%)</label>
                                     <input id="percentual_comissao" type="text" class="form-control money" name="percentual_comissao" value="{{{ isset($funcionario) ? $funcionario->percentual_comissao : old('percentual_comissao') }}}">
                                 </div>
-                            </div>
 
-                            <div class="row pt-2 align-items-center">
-                                <div class="form-group col-lg-3 col-md-6 mb-2">
+                                <!-- Matrícula -->
+                                <div class="form-group col-lg-3 col-md-6 mb-3">
                                     <label class="font-weight-bold">Matrícula (Ponto/AFD)</label>
                                     <input type="text" name="matricula" class="form-control" value="{{ isset($funcionario->matricula) ? $funcionario->matricula : old('matricula') }}">
                                 </div>
-                                <div class="form-group col-lg-3 col-md-6 mb-2">
+
+                                <!-- PIS / PASEP -->
+                                <div class="form-group col-lg-3 col-md-6 mb-3">
                                     <label class="font-weight-bold">PIS / PASEP</label>
                                     <input type="text" name="pis" class="form-control" value="{{ isset($funcionario->pis) ? $funcionario->pis : old('pis') }}">
                                 </div>
-                                <div class="form-group col-lg-3 col-md-6 mb-2">
+
+                                <!-- Data de Registro -->
+                                <div class="form-group col-lg-4 col-md-6 mb-3">
                                     <label class="font-weight-bold">Data de Registro</label>
                                     <div class="input-group date">
                                         <input type="text" name="data_registro" class="form-control @if($errors->has('data_registro')) is-invalid @endif" readonly value="{{{ isset($funcionario->data_registro) ? \Carbon\Carbon::parse($funcionario->data_registro)->format('d/m/Y') : old('data_registro') }}}" id="kt_datepicker_3" />
                                         <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
                                     </div>
                                 </div>
-                                <div class="form-group col-lg-3 col-md-6 mb-2">
-                                    <label class="font-weight-bold d-block">Alertas de Logística</label>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <!-- BLOCO DE PERMISSÕES E INTEGRAÇÕES WHATSAPP -->
+                            <h6 class="font-weight-bolder text-dark mb-3">
+                                <i class="la la-whatsapp text-success mr-1 font-size-lg"></i> Permissões e Automações (WhatsApp)
+                            </h6>
+
+                            <div class="row bg-light-light p-3 rounded mx-0 align-items-center">
+                                <!-- Acesso ao Robô Fiscal (NF-e) -->
+                                <div class="form-group col-lg-4 col-md-6 mb-2">
+                                    <label class="font-weight-bold d-block text-primary">Acesso ao Robô Fiscal</label>
                                     <div class="d-flex align-items-center mt-2">
-        <span class="switch switch-outline switch-icon switch-success mr-3">
-            <label class="mb-0">
-                <input type="checkbox" name="recebe_alerta_coleta" value="1" {{ isset($funcionario) && $funcionario->recebe_alerta_coleta ? 'checked' : '' }} />
-                <span></span>
-            </label>
-        </span>
-                                        <span class="font-weight-bold text-dark">Alertas Coleta (WhatsApp)</span>
+                    <span class="switch switch-sm switch-outline switch-icon switch-primary mr-3">
+                        <label class="mb-0">
+                            <input type="checkbox" name="permissao_nfe_whatsapp" value="1" {{ isset($funcionario) && $funcionario->permissao_nfe_whatsapp ? 'checked' : '' }} />
+                            <span></span>
+                        </label>
+                    </span>
+                                        <span class="font-weight-bold text-dark font-size-sm">Emitir NF-e via WhatsApp</span>
+                                    </div>
+                                </div>
+
+                                <!-- Acesso ao MTR via WhatsApp -->
+                                <div class="form-group col-lg-4 col-md-6 mb-2">
+                                    <label class="font-weight-bold d-block text-success">Gestão de Resíduos</label>
+                                    <div class="d-flex align-items-center mt-2">
+                    <span class="switch switch-sm switch-outline switch-icon switch-success mr-3">
+                        <label class="mb-0">
+                            <input type="checkbox" name="permissao_mtr_whatsapp" value="1" {{ isset($funcionario) && $funcionario->permissao_mtr_whatsapp ? 'checked' : '' }} />
+                            <span></span>
+                        </label>
+                    </span>
+                                        <span class="font-weight-bold text-dark font-size-sm">Emitir MTR via WhatsApp</span>
+                                    </div>
+                                </div>
+
+                                <!-- Alertas de Logística -->
+                                <div class="form-group col-lg-4 col-md-6 mb-2">
+                                    <label class="font-weight-bold d-block text-info">Avisos Operacionais</label>
+                                    <div class="d-flex align-items-center mt-2">
+                    <span class="switch switch-sm switch-outline switch-icon switch-info mr-3">
+                        <label class="mb-0">
+                            <input type="checkbox" name="recebe_alerta_coleta" value="1" {{ isset($funcionario) && $funcionario->recebe_alerta_coleta ? 'checked' : '' }} />
+                            <span></span>
+                        </label>
+                    </span>
+                                        <span class="font-weight-bold text-dark font-size-sm">Alertas Coleta (WhatsApp)</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- 4. SEÇÃO DINÂMICA DE MOTORISTA (EXIBIDA SE A FUNÇÃO FOR MOTORISTA) -->
-                        <div id="secao_motorista" style="display: none;">
-                            <div class="card card-custom border border-primary mb-5">
-                                <div class="card-header border-0 py-3 min-h-40px bg-light-primary">
-                                    <h6 class="card-title font-weight-bolder text-primary mb-0">
-                                        <i class="la la-truck text-primary mr-2 font-size-lg"></i> Dados do Motorista & Geolocalização
-                                    </h6>
-                                </div>
-                                <div class="card-body py-4">
-                                    <div class="row">
-                                        <div class="form-group col-lg-3 col-md-6">
-                                            <label class="font-weight-bold">Número da CNH</label>
-                                            <input id="cnh" type="text" class="form-control" name="cnh" value="{{{ isset($funcionario) ? $funcionario->cnh : old('cnh') }}}">
-                                        </div>
+                    <!-- 4. SEÇÃO DINÂMICA DE MOTORISTA (EXIBIDA SE A FUNÇÃO FOR MOTORISTA) -->
+                    <div id="secao_motorista" style="display: none;">
+                        <div class="card card-custom border border-primary mb-5">
+                            <div class="card-header border-0 py-3 min-h-40px bg-light-primary">
+                                <h6 class="card-title font-weight-bolder text-primary mb-0">
+                                    <i class="la la-truck text-primary mr-2 font-size-lg"></i> Dados do Motorista & Geolocalização
+                                </h6>
+                            </div>
+                            <div class="card-body py-4">
+                                <div class="row">
+                                    <div class="form-group col-lg-3 col-md-6">
+                                        <label class="font-weight-bold">Número da CNH</label>
+                                        <input id="cnh" type="text" class="form-control" name="cnh" value="{{{ isset($funcionario) ? $funcionario->cnh : old('cnh') }}}">
+                                    </div>
 
-                                        <div class="form-group col-lg-2 col-md-6">
-                                            <label class="font-weight-bold">Categoria CNH</label>
-                                            <select class="custom-select form-control" name="categoria_cnh">
-                                                <option value="">--</option>
-                                                @foreach(['A','B','C','D','E', 'AB', 'AC', 'AD', 'AE'] as $cat)
-                                                    <option value="{{$cat}}" @if(isset($funcionario) && $funcionario->categoria_cnh == $cat) selected @endif>{{$cat}}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                    <div class="form-group col-lg-2 col-md-6">
+                                        <label class="font-weight-bold">Categoria CNH</label>
+                                        <select class="custom-select form-control" name="categoria_cnh">
+                                            <option value="">--</option>
+                                            @foreach(['A','B','C','D','E', 'AB', 'AC', 'AD', 'AE'] as $cat)
+                                                <option value="{{$cat}}" @if(isset($funcionario) && $funcionario->categoria_cnh == $cat) selected @endif>{{$cat}}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                        <div class="form-group col-lg-3 col-md-6">
-                                            <label class="font-weight-bold">Vencimento da CNH</label>
-                                            <div class="input-group date">
-                                                <input type="text" name="vencimento_cnh" class="form-control" readonly value="{{ isset($funcionario->vencimento_cnh) && $funcionario->vencimento_cnh ? \Carbon\Carbon::parse($funcionario->vencimento_cnh)->format('d/m/Y') : old('vencimento_cnh') }}" id="kt_datepicker_3" />
-                                                <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group col-lg-2 col-md-6">
-                                            <label class="font-weight-bold">Status do Motorista</label>
-                                            <select class="custom-select form-control" name="status_motorista">
-                                                <option value="Ativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Ativo') selected @endif>Ativo</option>
-                                                <option value="Inativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Inativo') selected @endif>Inativo</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group col-lg-2 col-md-6">
-                                            <label class="font-weight-bold">ID Traccar (IMEI)</label>
-                                            <input type="text" class="form-control" name="traccar_id" value="{{{ isset($funcionario) ? $funcionario->traccar_id : old('traccar_id') }}}" placeholder="Ex: 8645000...">
+                                    <div class="form-group col-lg-3 col-md-6">
+                                        <label class="font-weight-bold">Vencimento da CNH</label>
+                                        <div class="input-group date">
+                                            <input type="text" name="vencimento_cnh" class="form-control" readonly value="{{ isset($funcionario->vencimento_cnh) && $funcionario->vencimento_cnh ? \Carbon\Carbon::parse($funcionario->vencimento_cnh)->format('d/m/Y') : old('vencimento_cnh') }}" id="kt_datepicker_3" />
+                                            <div class="input-group-append"><span class="input-group-text"><i class="la la-calendar"></i></span></div>
                                         </div>
                                     </div>
 
-                                    <!-- Coordenadas -->
-                                    <div class="row p-3 rounded mt-2 bg-light">
-                                        <div class="col-12 mb-2">
+                                    <div class="form-group col-lg-2 col-md-6">
+                                        <label class="font-weight-bold">Status do Motorista</label>
+                                        <select class="custom-select form-control" name="status_motorista">
+                                            <option value="Ativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Ativo') selected @endif>Ativo</option>
+                                            <option value="Inativo" @if(isset($funcionario) && $funcionario->status_motorista == 'Inativo') selected @endif>Inativo</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group col-lg-2 col-md-6">
+                                        <label class="font-weight-bold">ID Traccar (IMEI)</label>
+                                        <input type="text" class="form-control" name="traccar_id" value="{{{ isset($funcionario) ? $funcionario->traccar_id : old('traccar_id') }}}" placeholder="Ex: 8645000...">
+                                    </div>
+                                </div>
+
+                                <!-- Coordenadas -->
+                                <div class="row p-3 rounded mt-2 bg-light">
+                                    <div class="col-12 mb-2">
                                     <span class="font-weight-bold text-dark font-size-sm">
                                         <i class="la la-map-marker text-danger mr-1"></i> Coordenadas da Residência (Usado quando a partida da rota for de casa)
                                     </span>
-                                        </div>
-                                        <div class="form-group col-lg-6 col-md-6 mb-0">
-                                            <label class="font-size-xs text-muted">Latitude</label>
-                                            <input type="text" class="form-control" name="latitude_residencia" placeholder="Ex: -12.97140000" value="{{{ isset($funcionario) ? $funcionario->latitude_residencia : old('latitude_residencia') }}}">
-                                        </div>
-                                        <div class="form-group col-lg-6 col-md-6 mb-0">
-                                            <label class="font-size-xs text-muted">Longitude</label>
-                                            <input type="text" class="form-control" name="longitude_residencia" placeholder="Ex: -38.50140000" value="{{{ isset($funcionario) ? $funcionario->longitude_residencia : old('longitude_residencia') }}}">
-                                        </div>
+                                    </div>
+                                    <div class="form-group col-lg-6 col-md-6 mb-0">
+                                        <label class="font-size-xs text-muted">Latitude</label>
+                                        <input type="text" class="form-control" name="latitude_residencia" placeholder="Ex: -12.97140000" value="{{{ isset($funcionario) ? $funcionario->latitude_residencia : old('latitude_residencia') }}}">
+                                    </div>
+                                    <div class="form-group col-lg-6 col-md-6 mb-0">
+                                        <label class="font-size-xs text-muted">Longitude</label>
+                                        <input type="text" class="form-control" name="longitude_residencia" placeholder="Ex: -38.50140000" value="{{{ isset($funcionario) ? $funcionario->longitude_residencia : old('longitude_residencia') }}}">
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- BOTÕES DE AÇÃO FIXOS/CENTRALIZADOS -->
-                        <div class="d-flex justify-content-between align-items-center pt-4 border-top">
-                            <a class="btn btn-outline-danger font-weight-bold px-5" href="/funcionarios">
-                                <i class="la la-times"></i> Cancelar
-                            </a>
-                            <button type="submit" class="btn btn-success font-weight-bold px-8 shadow-sm">
-                                <i class="la la-check"></i> Salvar Colaborador
-                            </button>
-                        </div>
+                    <!-- BOTÕES DE AÇÃO FIXOS/CENTRALIZADOS -->
+                    <div class="d-flex justify-content-between align-items-center pt-4 border-top">
+                        <a class="btn btn-outline-danger font-weight-bold px-5" href="/funcionarios">
+                            <i class="la la-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success font-weight-bold px-8 shadow-sm">
+                            <i class="la la-check"></i> Salvar Colaborador
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

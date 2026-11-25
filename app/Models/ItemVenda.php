@@ -15,7 +15,10 @@ class ItemVenda extends BaseModel
     protected $fillable = [
         'produto_id', 'venda_id', 'quantidade', 'valor', 'cfop', 'altura', 'largura', 'profundidade',
         'acrescimo_perca', 'esquerda', 'direita', 'inferior', 'superior', 'valor_custo',
-        'quantidade_dimensao', 'devolvido', 'x_pedido', 'num_item_pedido', 'produto_nome',
+        'quantidade_dimensao', 'devolvido', 'x_pedido', 'num_item_pedido', 'produto_nome', 'nDraw', 'cod_ajuste_icms',
+        'cod_ajuste_doc',
+        'perc_cred_presumido',
+        'valor_cred_presumido',
 
         // 1) IS
         'is_bc', 'is_aliq', 'is_aliq_espec', 'is_und_trib', 'is_qtd_trib', 'is_valor',
@@ -65,8 +68,8 @@ class ItemVenda extends BaseModel
 
     protected $casts = [
         'quantidade' => 'decimal:4',
-        'valor' => 'decimal:2',
-        'valor_custo' => 'decimal:2',
+        'valor' => 'decimal:6',
+        'valor_custo' => 'decimal:6',
 
         'is_bc' => 'decimal:2',
         'is_aliq' => 'decimal:6',
@@ -128,5 +131,10 @@ class ItemVenda extends BaseModel
             ->first();
 
         return $tributacao;
+    }
+
+    public function exportacoes()
+    {
+        return $this->hasMany(ItemVendaExportacao::class, 'item_venda_id');
     }
 }

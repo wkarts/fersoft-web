@@ -131,14 +131,22 @@
                 </div>
             @endif
             <div class="@if(env('ANIMACAO')) animate__animated @endif animate__backInLeft d-flex flex-wrap align-items-center justify-content-between mb-3">
-                <div>
+                <div class="d-flex align-items-center flex-wrap" style="gap: 10px;">
                     <!-- Botão para abrir o modal de nova pesagem -->
                     <button id="btnNovaPesagem" type="button" class="btn btn-lg btn-success" data-toggle="modal" data-target="#modalPesagem">
                         <i class="fa fa-plus"></i> Nova Pesagem
                     </button>
                     @include('pesagens.partials.cadastros-rapidos-acoes')
                 </div>
-                @include('pesagens.partials.cadastros-rapidos-acoes')
+
+                <!-- CAMPO RÁPIDO DE RECEBIMENTO DE MTR PARA O BALANCEIRO -->
+                <div class="d-flex align-items-center bg-light p-2 rounded border" style="gap: 8px;">
+                    <span class="font-weight-bold text-dark font-size-sm"><i class="fa fa-file-invoice text-success mr-1"></i> Receber MTR:</span>
+                    <input type="text" id="inputMtrBuscaRapidaPesagem" class="form-control form-control-sm" placeholder="Nº do MTR Oficial" style="width: 180px;" autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-primary font-weight-bold" onclick="consultarEAbirRecebimentoPesagem()">
+                        <i class="fa fa-search"></i> Consultar & Baixar
+                    </button>
+                </div>
             </div>
             <br>
 
@@ -418,12 +426,20 @@
 
                                         <!-- Peso inicial real da sequência -->
                                         <td id="pesoBruto-{{ $pesagem->id }}" class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">
-                                            {{ number_format($pesoInicial, 2, ',', '.') }} kg
+                                            @if($pesagem->tickets->where('tipo', 'saida')->count() == 0 && $pesagem->tickets->count() > 1)
+                                                <span class="text-muted" title="Pesagem múltipla direta (Sem Tara)">---</span>
+                                            @else
+                                                {{ number_format($pesoInicial, 2, ',', '.') }} kg
+                                            @endif
                                         </td>
 
                                         <!-- Último estado físico conhecido da sequência -->
                                         <td id="pesoFinal-{{ $pesagem->id }}" class="datatable-cell text-center" style="white-space: nowrap; font-size: 12px;">
-                                            {{ number_format($pesoFinalSequencia, 2, ',', '.') }} kg
+                                            @if($pesagem->tickets->where('tipo', 'saida')->count() == 0 && $pesagem->tickets->count() > 1)
+                                                <span class="text-muted" title="Pesagem múltipla direta (Sem Tara)">---</span>
+                                            @else
+                                                {{ number_format($pesoFinalSequencia, 2, ',', '.') }} kg
+                                            @endif
                                         </td>
 
                                         <!--
@@ -484,6 +500,9 @@
                                                     <a class="dropdown-item" href="{{ url('/relatorios/pesagem/imprimir80mmSimples/' . $pesagem->id) }}" target="_blank">
                                                         <i class="la la-print"></i>  80mm Simples
                                                     </a>
+                                                    <a class="dropdown-item" href="{{ url('/relatorios/pesagem/imprimirRelatorio4/' . $pesagem->id) }}" target="_blank">
+                                                        <i class="la la-file-text"></i>  Relatório por Item (Opção 4)
+                                                    </a>
                                                 </div>
                                             </div>
                                             <style>
@@ -508,6 +527,15 @@
                                             </style>
 
                                             @if($pesagem->status == 'concluído')
+
+                                                <!-- Botão para Vincular NF-e e MTR -->
+                                                <button type="button" class="btn btn-info btn-sm btn-custom btn-vincular-docs"
+                                                        data-id="{{ $pesagem->id }}"
+                                                        data-nfe="{{ $pesagem->nfe_entrada ?? '' }}"
+                                                        data-mtr="{{ $pesagem->mtr_entrada ?? '' }}"
+                                                        title="Vincular NF-e e MTR">
+                                                    <i class="fa fa-file-alt"></i> <span class="d-none d-xl-inline">Docs</span>
+                                                </button>
 
                                                 @if(
                                                         $pesagem->status === 'concluído'
@@ -611,6 +639,74 @@
         </div>
     </div>
 
+    <!-- Modal para Vincular NF-e e MTR -->
+    <div class="modal fade" id="modalVincularDocs" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form id="formVincularDocs">
+                @csrf
+                <input type="hidden" name="pesagem_id" id="vincularPesagemId">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title font-weight-bold text-white"><i class="fa fa-file-invoice mr-2"></i> Vincular NF-e e MTR à Pesagem</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Número da Nota Fiscal (NF-e):</label>
+                            <input type="text" name="nfe_entrada" id="inputNfeEntrada" class="form-control" placeholder="Ex: 000123456 ou Chave de Acesso">
+                            <small class="text-muted">Você pode digitar o número ou importar/selecionar da compra.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Número do MTR (Manifesto):</label>
+                            <input type="text" name="mtr_entrada" id="inputMtrEntrada" class="form-control" placeholder="Ex: MTR-2026-XXXXXX">
+                            <small class="text-muted">Informe o MTR oficial vinculado a esta carga.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary font-weight-bold" id="btnSalvarVínculoDocs">
+                            <i class="fa fa-save"></i> Salvar Vínculo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Abre o modal preenchendo os dados atuais se já existirem
+        $(document).on('click', '.btn-vincular-docs', function() {
+            const id = $(this).data('id');
+            const nfe = $(this).data('nfe');
+            const mtr = $(this).data('mtr');
+
+            $('#vincularPesagemId').val(id);
+            $('#inputNfeEntrada').val(nfe);
+            $('#inputMtrEntrada').val(mtr);
+            $('#modalVincularDocs').modal('show');
+        });
+
+        // Submete o vínculo via AJAX
+        $('#formVincularDocs').on('submit', function(e) {
+            e.preventDefault();
+            const id = $('#vincularPesagemId').val();
+            const formData = $(this).serialize();
+
+            $.post(`/pesagens/vincular-documentos/${id}`, formData)
+                .done(function(res) {
+                    if(res.success) {
+                        $('#modalVincularDocs').modal('hide');
+                        swal("Sucesso!", res.message, "success").then(() => location.reload());
+                    } else {
+                        swal("Atenção", res.error || "Erro ao salvar.", "warning");
+                    }
+                })
+                .fail(function() {
+                    swal("Erro", "Falha de comunicação com o servidor.", "error");
+                });
+        });
+    </script>
+
     <style>
         #modalPesagem .pesagem-select-action {
             display: flex;
@@ -663,7 +759,7 @@
                         <input type="hidden" id="pesagem_id" name="id" value="">
                         <input type="hidden" name="_method" id="_methodType" value="POST">
 
-                        <!-- Tipo e Associado -->
+                        <!-- Tipo, Data de Registro e Associado -->
                         <div class="row mb-2">
                             <!-- Tipo -->
                             <div class="form-group col-lg-2 mb-1">
@@ -674,8 +770,14 @@
                                 </select>
                             </div>
 
+                            <!-- Data de Registro -->
+                            <div class="form-group col-lg-3 mb-1">
+                                <label for="dt_registro">Data de Registro:</label>
+                                <input type="date" id="dt_registro" name="dt_registro" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            </div>
+
                             <!-- Cliente/Fornecedor -->
-                            <div class="form-group col-lg-10">
+                            <div class="form-group col-lg-7">
                                 <!-- Cliente -->
                                 <div id="cliente-container" class="form-group mb-1">
                                     <label>Cliente:</label>
@@ -899,10 +1001,10 @@
                             <input type="hidden" name="camera_snapshots_json" id="camera_snapshots_json">
 
                             <div class="row">
+                                <!-- LINHA 1: BALANÇA (ESQ) | ESTABILIDADE (DIR) -->
                                 <div class="form-group col-lg-6">
                                     <label for="balanca-select">Balança:</label>
                                     <div class="input-group">
-                                        <!-- Select de balanças -->
                                         <select id="balanca-select" class="form-control">
                                             <option value="">Selecione</option>
                                             @foreach($balancas as $balanca)
@@ -918,52 +1020,62 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <!-- Botões -->
                                         <div class="input-group-append">
                                             <button id="connect" type="button" class="btn btn-success btn-sm" disabled>Conectar</button>
                                             <button id="disconnect" type="button" class="btn btn-danger btn-sm" disabled>Desconectar</button>
                                             <button id="capture-evidence" type="button" class="btn btn-info btn-sm" disabled>Capturar câmeras</button>
                                         </div>
                                     </div>
-
                                 </div>
                                 <div class="form-group col-lg-6">
                                     <div class="mt-2">
-                                        <label >Pesagem / Estabilidade:</label> <span>   </span> <strong><span id="pesoEstabilidade"></span></strong>
+                                        <label>Pesagem / Estabilidade:</label> <span>&nbsp;&nbsp;&nbsp;</span> <strong><span id="pesoEstabilidade"></span></strong>
                                         <br>
                                         <strong>Peso Bruto:</strong> <span id="pesoBruto">----</span> kg
-                                        <span>   </span> <strong>Tara:</strong> <span id="pesoTara">----</span> kg
-                                        <span>   </span> <strong>Peso Líquido:</strong> <span id="pesoLiquido">----</span> kg
+                                        <span>&nbsp;&nbsp;&nbsp;</span> <strong>Tara:</strong> <span id="pesoTara">----</span> kg
+                                        <span>&nbsp;&nbsp;&nbsp;</span> <strong>Peso Líquido:</strong> <span id="pesoLiquido">----</span> kg
                                     </div>
                                 </div>
+
                                 <div class="form-group col-lg-12 adp-camera-preview-area" style="display:none;">
                                     <label>Imagens/arquivos das câmeras vinculadas à balança:</label>
                                     <div class="adp-ticket-camera-list adp-camera-preview-list"></div>
                                     <small class="form-text text-muted">Clique em uma miniatura para ampliar a imagem capturada.</small>
                                 </div>
-                                <!-- Dentro de cada modalTickets... -->
-                                <div class="form-group col-lg-6">
-                                    <label for="produto_id">Produto:</label>
-                                    <div class="input-group" style="width:100%;">
-                                        <select name="produto_id" id="produto_id" class="form-control">
-                                            <option value="">Selecione</option>
-                                            @foreach($produtos as $produto)
-                                                <option value="{{ $produto->id }}">{{ $produto->nome }}</option>
-                                            @endforeach
-                                        </select>
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-danger btn-sm btn-clear-produto" title="Limpar seleção">
-                                                <i class="fa fa-times"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-secondary btn-sm btn-fixar-produto" title="Fixar produto">
-                                                <i class="fa fa-thumb-tack"></i>
-                                            </button>
+
+                                <!-- LINHA 2: PRODUTO + LOTE (ESQUERDA) | PESOS (DIREITA) -->
+                                <div class="col-lg-6">
+                                    <div class="form-group mb-2">
+                                        <label for="produto_id">Produto:</label>
+                                        <div class="input-group" style="width:100%;">
+                                            <select name="produto_id" id="produto_id" class="form-control">
+                                                <option value="">Selecione</option>
+                                                @foreach($produtos as $produto)
+                                                    <option value="{{ $produto->id }}">{{ $produto->nome }}</option>
+                                                @endforeach
+                                            </select>
+                                            <div class="input-group-append">
+                                                <button type="button" class="btn btn-danger btn-sm btn-clear-produto" title="Limpar seleção">
+                                                    <i class="fa fa-times"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm btn-fixar-produto" title="Fixar produto">
+                                                    <i class="fa fa-thumb-tack"></i>
+                                                </button>
+                                            </div>
                                         </div>
+                                    </div>
+
+                                    <!-- Campo de Lote acoplado na mesma coluna do produto -->
+                                    <div class="form-group" id="box_producao_lote" style="display: {{ $pesagem->tipo === 'venda' ? 'block' : 'none' }};">
+                                        <label for="producao_lote_id" class="font-weight-bold text-primary font-size-sm">
+                                            <i class="fa fa-boxes"></i> Lote de Origem (Sugestão PEPS):
+                                        </label>
+                                        <select name="producao_lote_id" id="producao_lote_id" class="form-control form-control-sm">
+                                            <option value="">Selecione um produto para carregar os lotes...</option>
+                                        </select>
                                     </div>
                                 </div>
 
-
-                                <!-- Peso -->
                                 <div class="form-group col-lg-6">
                                     <div class="row">
                                         <div class="form-group col-md-6 col-sm-12">
@@ -984,17 +1096,17 @@
                                                 <label for="valor_unitario">Valor Unitário do Produto:</label>
                                                 <input type="number" name="valor_unitario" id="valor_unitario" step="0.000001" class="form-control" value="0.00">
                                             </div>
-                                            {{-- Mantido apenas para compatibilidade do fluxo atual; não é exibido como valor financeiro da leitura bruta. --}}
                                             <input type="hidden" name="valor_total" id="valor_total" value="0.00">
                                         @endif
                                     </div>
                                 </div>
 
+                                <!-- LINHA 3: INÍCIO/FIM (ESQUERDA) | TIPO/STATUS (DIREITA) -->
                                 <div class="form-group col-lg-6">
                                     <label for="inicio">Início:</label>
                                     <input type="datetime-local" name="inicio" id="inicio" class="form-control" step="1">
-                                    <label for="fim">Fim:</label>
-                                    <input type="datetime-local" name="fim"    id="fim"    class="form-control" step="1">
+                                    <label for="fim" class="mt-2">Fim:</label>
+                                    <input type="datetime-local" name="fim" id="fim" class="form-control" step="1">
                                 </div>
 
                                 <div class="form-group col-lg-6">
@@ -1004,13 +1116,14 @@
                                         <option value="saida">Saída</option>
                                         <option value="avulsa">Avulsa</option>
                                     </select>
-                                    <label for="status">Status:</label>
+                                    <label for="status" class="mt-2">Status:</label>
                                     <select name="status" id="status" class="form-control" required>
                                         <option value="em andamento">Em Andamento</option>
                                         <option value="concluído">Concluído</option>
                                     </select>
                                 </div>
 
+                                <!-- LINHA 4: OBSERVAÇÕES (LARGURA TOTAL) -->
                                 <div class="form-group col-lg-12">
                                     <label for="observacoes">Observações:</label>
                                     <textarea name="observacoes" id="observacoes" class="form-control" rows="3"></textarea>
@@ -1032,6 +1145,7 @@
                                 <tr>
                                     <th style="width: 5%; white-space: nowrap;">ID</th>
                                     <th style="width: 20%; white-space: nowrap;">Produto</th>
+                                    <th style="width: 15%; white-space: nowrap;">Lote</th>
                                     <th style="width: 10%; white-space: nowrap;">Tipo</th>
                                     <th style="width: 10%; white-space: nowrap;">Peso</th>
                                     <th style="width: 10%; white-space: nowrap;">Peso Recip</th>
@@ -1049,6 +1163,9 @@
                                     <tr id="ticket-{{ $ticket->id }}" class="datatable-row">
                                         <td class="datatable-cell">{{ $ticket->id }}</td>
                                         <td id="produto-{{ $ticket->id }}" class="datatable-cell">{{ $ticket->produto->nome ?? 'N/A' }}</td>
+                                        <td id="lote-{{ $ticket->id }}" class="datatable-cell font-weight-bold text-primary">
+                                            {{ $ticket->producaoLote->codigo_lote ?? '---' }}
+                                        </td>
                                         <td id="tipo-{{ $ticket->id }}" class="datatable-cell">{{ ucfirst($ticket->tipo) }}</td>
                                         <td id="peso-{{ $ticket->id }}" class="datatable-cell">{{ number_format($ticket->peso, 2, ',', '.') }} kg</td>
                                         <td id="peso-{{ $ticket->id }}" class="datatable-cell">{{ number_format($ticket->peso_bag, 2, ',', '.') }} kg</td>
@@ -1118,6 +1235,91 @@
             </div>
         </div>
     @endforeach
+
+    <!-- MODAL DE RECEBIMENTO DE MTR NA TELA DE PESAGEM -->
+    <div class="modal fade" id="modalRecebimentoMtr" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <form id="formRecebimentoMtr">
+                @csrf
+                <input type="hidden" name="numero_mtr" id="recNumeroMtr">
+                <input type="hidden" name="gerador_nome" id="recGeradorNome">
+                <input type="hidden" name="transportador_nome" id="recTransportadorNome">
+
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title font-weight-bold text-white">
+                            <i class="fa fa-check-circle mr-2"></i> Recebimento de MTR Oficial (SINIR)
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row bg-light p-3 rounded mb-3">
+                            <div class="col-md-3">
+                                <label class="text-muted d-block font-weight-bold">Número do MTR</label>
+                                <strong id="lblRecMtr" class="text-primary font-size-h6">--</strong>
+                            </div>
+                            <div class="col-md-3 form-group mb-0">
+                                <label class="font-weight-bold">Placa do Veículo: <span class="text-danger">*</span></label>
+                                <input type="text" name="placa" id="recPlaca" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-md-3 form-group mb-0">
+                                <label class="font-weight-bold">Nome do Motorista: <span class="text-danger">*</span></label>
+                                <input type="text" name="motorista" id="recMotorista" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-md-3 form-group mb-0">
+                                <label class="font-weight-bold">Data de Recebimento: <span class="text-danger">*</span></label>
+                                <input type="date" name="data_recebimento" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold">Gerador (SINIR ou Cadastro): <span class="text-danger">*</span></label>
+                                <input type="text" name="gerador_nome" id="recGeradorNomeVisivel" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold">Transportador (SINIR ou Cadastro): <span class="text-danger">*</span></label>
+                                <input type="text" name="transportador_nome" id="recTransportadorNomeVisivel" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="font-weight-bold">Responsável pelo Recebimento: <span class="text-danger">*</span></label>
+                                <input type="text" name="responsavel" id="inputResponsavelRecebimento" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                            <h6 class="font-weight-bold text-dark mb-0"><i class="fa fa-boxes mr-1"></i> Resíduos e Conferência</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold" onclick="adicionarResiduoManual()">
+                                <i class="fa fa-plus"></i> Inserir Resíduo Manual
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="thead-light">
+                                <tr>
+                                    <th>Resíduo</th>
+                                    <th>Un.</th>
+                                    <th>Tratamento</th>
+                                    <th width="120">Qtd. Emitida</th>
+                                    <th width="140">Qtd. Recebida</th>
+                                    <th>Justificativa</th>
+                                </tr>
+                                </thead>
+                                <tbody id="tabelaResiduosRecebimento">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success font-weight-bold" id="btnSalvarRecebimento">
+                            <i class="fa fa-download"></i> Confirmar Baixa no SINIR
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Modal Reutilizável -->
     <div class="modal fade" id="modalConfirmacao" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacaoLabel" aria-hidden="true">
@@ -1199,6 +1401,9 @@
                             <input type="checkbox" name="relatorio_80mm" checked> Ticket 80mm
                         </div>
                         <div class="form-group col-lg-4 col-md-6">
+                            <input type="checkbox" name="relatorio_80mm_simples"> Ticket 80mm Simples
+                        </div>
+                        <div class="form-group col-lg-4 col-md-6">
                             <input type="checkbox" name="relatorio_a4"> Ticket A4
                         </div>
                     </div>
@@ -1236,6 +1441,90 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal para Vincular NF-e e MTR -->
+    <div class="modal fade" id="modalVincularDocs" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form id="formVincularDocs">
+                @csrf
+                <input type="hidden" name="pesagem_id" id="vincularPesagemId">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title font-weight-bold text-white"><i class="fa fa-file-invoice mr-2"></i> Vincular NF-e e MTR à Pesagem</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="font-weight-bold">Número da Nota Fiscal (NF-e):</label>
+                            <input type="text" name="nfe_entrada" id="inputNfeEntrada" class="form-control" placeholder="Ex: 000123456">
+                        </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Número do MTR (Manifesto):</label>
+                            <input type="text" name="mtr_entrada" id="inputMtrEntrada" class="form-control" placeholder="Ex: MTR-2026-XXXXXX">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary font-weight-bold" id="btnSalvarVinculoDocs">
+                            <i class="fa fa-save"></i> Salvar Vínculo
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Delegação global de evento garantindo que o jQuery escute o clique
+            $(document).on('click', '.btn-vincular-docs', function(e) {
+                e.preventDefault();
+                const id = $(this).attr('data-id');
+                const nfe = $(this).attr('data-nfe');
+                const mtr = $(this).attr('data-mtr');
+
+                $('#vincularPesagemId').val(id);
+                $('#inputNfeEntrada').val(nfe);
+                $('#inputMtrEntrada').val(mtr);
+                $('#modalVincularDocs').modal('show');
+            });
+
+            // Submissão do formulário de vínculo
+            $(document).off('submit', '#formVincularDocs').on('submit', '#formVincularDocs', function(e) {
+                e.preventDefault();
+                const id = $('#vincularPesagemId').val();
+                const formData = $(this).serialize();
+                const $btn = $('#btnSalvarVinculoDocs');
+
+                $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Salvando...');
+
+                $.post(`/pesagens/vincular-documentos/${id}`, formData)
+                    .done(function(res) {
+                        if(res.success) {
+                            $('#modalVincularDocs').modal('hide');
+                            if (typeof abrirModalMensagem === 'function') {
+                                abrirModalMensagem('Sucesso!', res.message);
+                            } else {
+                                alert(res.message);
+                            }
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            alert(res.error || "Erro ao salvar documentos.");
+                        }
+                    })
+                    .fail(function(xhr) {
+                        let msg = "Falha de comunicação com o servidor.";
+                        if(xhr.responseJSON && xhr.responseJSON.error) {
+                            msg = xhr.responseJSON.error;
+                        }
+                        alert(msg);
+                    })
+                    .always(function() {
+                        $btn.prop('disabled', false).html('<i class="fa fa-save"></i> Salvar Vínculo');
+                    });
+            });
+        });
+    </script>
 
     @include('pesagens.partials.cadastros-rapidos-modal')
 @endsection
@@ -1300,6 +1589,7 @@
                 $('#div-cliente').hide();
                 $('#fornecedor_id').val(null).trigger('change'); // Reseta o fornecedor
                 $('#fornecedor').hide();
+                $('#dt_registro').val('{{ date("Y-m-d") }}');
             });
 
             // Função para abrir o modal de edição de pesagem
@@ -1381,6 +1671,7 @@
 
                     $('#modalPesagemLabel').text(`Editar Pesagem #${pesagemId}`);
                     $('#pesagem_id').val(data.id);
+                    $('#dt_registro').val(data.dt_registro ? data.dt_registro.substring(0, 10) : '{{ date("Y-m-d") }}');
                     $('#peso').val(data.peso);
                     $('#peso_liquido').val(data.peso_liquido);
                     $('#peso_final').val(data.peso_final);
@@ -1981,6 +2272,38 @@
                 });
             }
 
+            // 👉 INSERIR AQUI: Busca lotes com saldo (PEPS) ao selecionar o produto
+            $select.off('change.carregarLotes').on('change.carregarLotes', function () {
+                const produtoId = $(this).val();
+                const $selectLote = $modal.find('#producao_lote_id');
+
+                if (!produtoId) {
+                    $selectLote.html('<option value="">Selecione um produto primeiro...</option>');
+                    return;
+                }
+
+                $selectLote.html('<option value="">Buscando lotes com saldo...</option>').prop('disabled', true);
+
+                $.get(`/ticketsPesagem/lotes-disponiveis/${produtoId}`, function (res) {
+                    if (res.success && res.lotes.length > 0) {
+                        let options = '<option value="">-- Selecione o Lote --</option>';
+                        res.lotes.forEach(lote => {
+                            options += `<option value="${lote.id}">${lote.label}</option>`;
+                        });
+                        $selectLote.html(options).prop('disabled', false);
+
+                        // Sugere o lote PEPS (mais antigo com saldo)
+                        if (res.sugestao_peps_id) {
+                            $selectLote.val(res.sugestao_peps_id);
+                        }
+                    } else {
+                        $selectLote.html('<option value="">Nenhum lote com saldo encontrado</option>').prop('disabled', false);
+                    }
+                }).fail(function () {
+                    $selectLote.html('<option value="">Erro ao consultar lotes</option>').prop('disabled', false);
+                });
+            });
+
             // 3) Eventos de Limpar / Fixar
             //    - Limpar só se não estiver fixado
             $clear.off('click').on('click', () => {
@@ -2493,10 +2816,15 @@
 
             $.get(`/ticketsPesagem/list/${pesagemId}`, function (tickets) {
                 tickets.forEach(ticket => {
+                    let loteLabel = (ticket.producao_lote && ticket.producao_lote.codigo_lote)
+                        ? ticket.producao_lote.codigo_lote
+                        : ((ticket.producaoLote && ticket.producaoLote.codigo_lote) ? ticket.producaoLote.codigo_lote : '---');
+
                     tabelaTickets.append(`
                 <tr class="datatable-row">
                     <td class="datatable-cell">${ticket.id}</td>
                     <td id="produto-${ticket.id}" class="datatable-cell">${ticket.produto ? ticket.produto.nome : 'N/A'}</td>
+                    <td id="lote-${ticket.id}" class="datatable-cell font-weight-bold text-primary">${loteLabel}</td>
                     <td id="tipo-${ticket.id}" class="datatable-cell">${ticket.tipo.charAt(0).toUpperCase() + ticket.tipo.slice(1)}</td>
                     <td id="peso-${ticket.id}" class="datatable-cell">${parseFloat(ticket.peso).toFixed(2).replace('.', ',')} kg</td>
                     <td id="peso-${ticket.id}" class="datatable-cell">${parseFloat(ticket.peso_bag || 0).toFixed(2).replace('.', ',')} kg</td>
@@ -2520,7 +2848,6 @@
             `);
                 });
 
-                // Preserva o estilo responsivo
                 tabelaTickets.closest('.table-responsive').css({
                     'max-height': '200px',
                     'overflow-y': 'auto',
@@ -2588,6 +2915,7 @@
 
             // Campos de controle
             $form.find('#ticket_id').val('');
+            $form.find('#producao_lote_id').html('<option value="">Selecione um produto para carregar os lotes...</option>').val('');
             $form.find('#_method').val('POST');
             $form.attr('action', '{{ route("ticketsPesagem.save") }}');
             $form.find('#edicao_confirmada').val('0');
@@ -3334,6 +3662,146 @@
         });
     </script>
 
+    <script>
+        function consultarEAbirRecebimentoPesagem() {
+            var num = $('#inputMtrBuscaRapidaPesagem').val();
+            if(!num) { swal("Atenção", "Informe o número do MTR.", "warning"); return; }
+            abrirModalRecebimento(num);
+        }
+
+        function abrirModalRecebimento(numeroMtr) {
+            swal({ title: "Buscando MTR...", text: "Consultando dados no SINIR", icon: "info", buttons: false, closeOnClickOutside: false });
+
+            $.get('/mtr/detalhes/' + numeroMtr)
+                .done(function(res) {
+                    swal.close();
+                    if(res.success) {
+                        var d = res.data;
+                        $('#recNumeroMtr').val(d.numeroMtr);
+                        $('#lblRecMtr').text(d.numeroMtr);
+                        $('#recPlaca').val(d.veiculoPlaca || '');
+                        $('#recMotorista').val(d.motoristaNome || '');
+
+                        $('#recGeradorNome').val(d.geradorNome || '');
+                        $('#recGeradorNomeVisivel').val(d.geradorNome || '');
+                        $('#recTransportadorNome').val(d.transportadorNome || '');
+                        $('#recTransportadorNomeVisivel').val(d.transportadorNome || '');
+
+                        if(localStorage.getItem('mtr_ultimo_responsavel')) {
+                            $('#inputResponsavelRecebimento').val(localStorage.getItem('mtr_ultimo_responsavel'));
+                        }
+
+                        var htmlRows = '';
+                        if(d.residuos && d.residuos.length > 0) {
+                            d.residuos.forEach(function(r, index) {
+                                htmlRows += `<tr>
+                                <td>
+                                    <input type="hidden" name="residuos[${index}][cod_ibama]" value="${r.codigoIbama}">
+                                    <input type="hidden" name="residuos[${index}][descricao]" value="${r.descricaoResiduo}">
+                                    <input type="hidden" name="residuos[${index}][quantidade]" value="${r.quantidade}">
+                                    <input type="hidden" name="residuos[${index}][unidade_medida]" value="${r.uniCodigo || 3}">
+                                    <input type="hidden" name="residuos[${index}][tratamento_id]" value="${r.traCodigo || 43}">
+                                    <input type="hidden" name="residuos[${index}][acondicionamento_id]" value="${r.tiaCodigo || 8}">
+                                    <input type="hidden" name="residuos[${index}][estado_fisico]" value="${r.tieCodigo || 1}">
+                                    <input type="hidden" name="residuos[${index}][classe_residuo]" value="${r.claCodigo || 43}">
+                                    <strong>${r.codigoIbama}</strong> - ${r.descricaoResiduo}
+                                </td>
+                                <td>${r.unidadeMedidaNome || 'TON'}</td>
+                                <td>${r.tratamentoNome || 'Reciclagem'}</td>
+                                <td class="text-center align-middle"><span class="font-weight-bold text-muted" id="emitida_${index}">${r.quantidade}</span></td>
+                                <td>
+                                    <input type="text" name="residuos[${index}][quantidadeRecebida]" id="recebida_${index}" class="form-control form-control-sm text-center font-weight-bold text-success qtd-recebida-input" data-index="${index}" value="${r.quantidade}" required>
+                                </td>
+                                <td>
+                                    <input type="text" name="residuos[${index}][justificativa]" id="just_${index}" class="form-control form-control-sm" placeholder="Obrigatório se peso divergente" disabled>
+                                </td>
+                            </tr>`;
+                            });
+                        } else {
+                            htmlRows = `<tr><td colspan="6" class="text-center text-muted">Nenhum resíduo retornado.</td></tr>`;
+                        }
+                        $('#tabelaResiduosRecebimento').html(htmlRows);
+                        $('#modalRecebimentoMtr').modal('show');
+                    } else {
+                        swal("Erro", res.message, "error");
+                    }
+                })
+                .fail(function() {
+                    swal.close();
+                    swal("Erro", "Falha ao consultar MTR no servidor.", "error");
+                });
+        }
+
+        $(document).on('input', '.qtd-recebida-input', function() {
+            var idx = $(this).data('index');
+            var qtdEmitida = parseFloat($('#emitida_' + idx).text()) || 0;
+            var qtdRecebida = parseFloat($(this).val()) || 0;
+            var $justInput = $('#just_' + idx);
+            if (qtdRecebida !== qtdEmitida) {
+                $justInput.prop('disabled', false).prop('required', true).attr('placeholder', 'Digite o motivo');
+            } else {
+                $justInput.prop('disabled', true).prop('required', false).val('').attr('placeholder', 'Obrigatório se peso divergente');
+            }
+        });
+
+        function adicionarResiduoManual() {
+            $('#tabelaResiduosRecebimento').find('.text-muted').closest('tr').remove();
+            var i = Date.now();
+            var htmlRows = `<tr>
+            <td>
+                <input type="text" name="residuos[${i}][cod_ibama]" class="form-control form-control-sm" placeholder="Cód IBAMA" required>
+                <input type="hidden" name="residuos[${i}][descricao]" value="RESÍDUO BALANÇA">
+                <input type="hidden" name="residuos[${i}][estado_fisico]" value="1">
+                <input type="hidden" name="residuos[${i}][classe_residuo]" value="43">
+				<input type="hidden" name="residuos[${i}][acondicionamento_id]" value="8">
+            </td>
+            <td>
+                <select name="residuos[${i}][unidade_medida]" class="form-control form-control-sm">
+                    <option value="1">KG</option>
+                    <option value="3" selected>TON</option>
+                </select>
+            </td>
+            <td>
+                <select name="residuos[${i}][tratamento_id]" class="form-control form-control-sm">
+                    <option value="43" selected>Reciclagem (43)</option>
+                    <option value="61">Triagem e Transbordo (61)</option>
+                    <option value="46">Triagem com Armazenamento (46)</option>
+                    <option value="60">Coprocessamento (60)</option>
+                </select>
+            </td>
+            <td><input type="text" name="residuos[${i}][quantidade]" class="form-control form-control-sm text-center text-primary" placeholder="Qtd Emitida" required></td>
+            <td><input type="text" name="residuos[${i}][quantidadeRecebida]" class="form-control form-control-sm text-center text-success" placeholder="Qtd Balança" required></td>
+            <td><input type="text" name="residuos[${i}][justificativa]" class="form-control form-control-sm" placeholder="Opcional"></td>
+        </tr>`;
+            $('#tabelaResiduosRecebimento').append(htmlRows);
+        }
+
+        $('#formRecebimentoMtr').on('submit', function(e) {
+            e.preventDefault();
+
+            var resp = $('#inputResponsavelRecebimento').val();
+            if(resp) localStorage.setItem('mtr_ultimo_responsavel', resp);
+
+            var $btn = $('#btnSalvarRecebimento');
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processando...');
+
+            $.post('/mtr/receber-completo', $(this).serialize())
+                .done(function(res) {
+                    if(res.success) {
+                        swal("Sucesso!", res.message, "success").then(() => { $('#modalRecebimentoMtr').modal('hide'); });
+                    } else {
+                        swal("Atenção", res.message, "warning");
+                    }
+                })
+                .fail(function(err) {
+                    var msg = (err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : "Erro ao enviar o recebimento.";
+                    swal("Erro", msg, "error");
+                })
+                .always(function() {
+                    $btn.prop('disabled', false).html('<i class="fa fa-download"></i> Confirmar Baixa no SINIR');
+                });
+        });
+    </script>
 
     @include('pesagens.partials.cadastros-rapidos-scripts')
 @endsection

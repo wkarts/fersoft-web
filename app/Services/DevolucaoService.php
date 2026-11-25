@@ -457,7 +457,7 @@ class DevolucaoService{
                             if($i->perc_icms == 0){
                                 $VBC += $stdICMS->vBC = 0;
                             }else{
-                                $VBC += $stdICMS->vBC = $stdProd->vProd + $stdProd->vOutro + $i->vFrete - $stdProd->vDesc;
+                                $VBC += $stdICMS->vBC = $stdProd->vProd + ($stdProd->vOutro ?? 0) + $i->vFrete - ($stdProd->vDesc ?? 0);
                             }
                         }else{
                             $VBC += $i->vbc_manual;
@@ -533,7 +533,7 @@ class DevolucaoService{
                 }else{
 
                     $tempB = 100-$i->pRedBC;
-                    $valorTemp = $stdProd->vProd-$stdProd->vDesc;
+                    $valorTemp = $stdProd->vProd - ($stdProd->vDesc ?? 0);
                     $valorTemp = $this->format($valorTemp - ($valorTemp * ($tempB/100)));
 
                     if($devolucao->altera_manual == 0){
@@ -580,11 +580,11 @@ class DevolucaoService{
                         $stdICMS->pRedBC = $this->format($i->pRedBC);
 
                         $tempB = 100-$i->pRedBC;
-                        $VBC += $stdICMS->vBC = (($stdProd->vProd-$stdProd->vDesc) * ($tempB/100));
+                        $VBC += $stdICMS->vBC = (($stdProd->vProd - ($stdProd->vDesc ?? 0)) * ($tempB/100));
                         $stdICMS->pICMS = $this->format($i->perc_icms);
                         $stdICMS->modBC = 0;
 
-                        $stdICMS->vICMS = (($stdProd->vProd-$stdProd->vDesc) * ($tempB/100)) * ($stdICMS->pICMS/100);
+                        $stdICMS->vICMS = (($stdProd->vProd - ($stdProd->vDesc ?? 0)) * ($tempB/100)) * ($stdICMS->pICMS/100);
                         $somaICMS += $this->format($stdICMS->vICMS);
                     }else{
                         $stdICMS->pRedBC = $this->format($i->pRedBC);

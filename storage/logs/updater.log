@@ -1,0 +1,1 @@
+{"message":"A alteração de tipo/collation exige SQL_MODE estrito para impedir conversão silenciosa concorrente.","context":{"exception":"[objeto omitido]"},"level":400,"level_name":"ERROR","channel":"updater","datetime":"2026-11-25T07:20:21.776136-03:00","extra":{}}

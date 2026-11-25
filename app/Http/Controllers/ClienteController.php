@@ -259,6 +259,10 @@ class ClienteController extends Controller
                 $request->merge([ 'tiktok' => strtoupper($request->tiktok ?? '')]);
                 $request->merge([ 'whatsapp' => strtoupper($request->whatsapp ?? '')]);
 
+                // 🚀 ADICIONE ESTAS DUAS LINHAS AQUI NO SAVE DO CLIENTE:
+                $request->merge([ 'exige_rastreabilidade' => $request->input('exige_rastreabilidade', 0) ]);
+                $request->merge([ 'portal_nivel_visao'    => $request->input('portal_nivel_visao', 'simples') ]);
+
 
                 if($request->input('cidade_cobranca_id') != ""){
                     $cidade = $request->input('cidade_cobranca_id');
@@ -520,6 +524,10 @@ class ClienteController extends Controller
             $resp->observacao = $request->input('observacao') ?? '';
 
             $resp->informacao_nfe = $request->input('informacao_nfe') ?? '';
+
+            // 🚀 ADICIONE ESTAS DUAS LINHAS AQUI NA EDIÇÃO DO CLIENTE:
+            $resp->exige_rastreabilidade = $request->input('exige_rastreabilidade', 0);
+            $resp->portal_nivel_visao    = $request->input('portal_nivel_visao', 'simples');
 
             $fileName = "";
             if($request->hasFile('file')){

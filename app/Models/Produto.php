@@ -133,7 +133,10 @@ class Produto extends BaseModel
         'fabricante',
         'produto_prateleira_id',
         'qtd_minima_atacado',
-        'preco_atacado'
+        'preco_atacado',
+        'cod_ajuste_icms',
+        'cod_ajuste_doc',
+        'perc_cred_presumido',
     ];
 
     protected $appends = [ 'imgApp' ];
@@ -1604,5 +1607,17 @@ class Produto extends BaseModel
     public function embalagens()
     {
         return $this->hasMany(ProdutoEmbalagem::class, 'produto_id');
+    }
+
+    // 🚀 RELACIONAMENTOS DE RASTREAMENTO DE ATIVOS (CAÇAMBAS / MÁQUINAS)
+
+    public function clienteAtual()
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_atual_id');
+    }
+
+    public function fornecedorAtual()
+    {
+        return $this->belongsTo(Fornecedor::class, 'fornecedor_atual_id');
     }
 }

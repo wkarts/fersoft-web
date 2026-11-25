@@ -53,6 +53,7 @@ class Funcionario extends BaseModel
         'whatsapp_id',
         'permissao_nfe_whatsapp',
         'recebe_alerta_coleta',
+        'permissao_mtr_whatsapp',
     ];
 
     protected $appends = ['imgApp', 'img'];

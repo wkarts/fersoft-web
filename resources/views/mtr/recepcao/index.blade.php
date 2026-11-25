@@ -9,9 +9,11 @@
     <div class="card card-custom gutter-b">
         <div class="card-header border-0 py-5">
             <h3 class="card-title align-items-start flex-column">
-            <span class="card-label font-weight-bolder text-dark">
-                <i class="fa fa-clipboard-list text-success mr-2"></i> Recepção e Transporte de MTR (Portal SINIR)
-            </span>
+                <span class="card-label font-weight-bolder text-dark">
+                    <i class="fa fa-truck text-primary mr-1"></i>
+                    <i class="fa fa-recycle text-success mr-2"></i>
+                    Recepção e Transporte de MTR (Portal SINIR)
+                </span>
                 <span class="text-muted mt-1 font-size-sm">Consulta de manifestos externos e recebimento de cargas</span>
             </h3>
         </div>
@@ -31,71 +33,11 @@
                 </div>
             @endif
 
+            <!-- 1. MEUS MTRS COMO DESTINADOR (PARTE SUPERIOR) -->
             <div class="mb-5">
-                <div class="section-title">Meus MTRs como Transportador</div>
-
-                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento">
-                    <div class="row align-items-end">
-                        <div class="col-md-3 form-group mb-0">
-                            <label class="font-weight-bold">Data Inicial:</label>
-                            <input type="date" name="dt_inicio_transp" class="form-control form-control-sm" value="{{ request('dt_inicio_transp', date('Y-m-d', strtotime('-5 days'))) }}">
-                        </div>
-                        <div class="col-md-3 form-group mb-0">
-                            <label class="font-weight-bold">Data Final (Max. 5 dias):</label>
-                            <input type="date" name="dt_fim_transp" class="form-control form-control-sm" value="{{ request('dt_fim_transp', date('Y-m-d')) }}">
-                        </div>
-                        <div class="col-md-4 form-group mb-0">
-                            <label class="font-weight-bold">MTR Nº (Opcional):</label>
-                            <input type="text" name="mtr_transp" class="form-control form-control-sm" value="{{ request('mtr_transp') }}" placeholder="Número do manifesto">
-                        </div>
-                        <div class="col-md-2 form-group mb-0">
-                            <button type="submit" class="btn btn-sm btn-success font-weight-bold w-100">
-                                <i class="fa fa-search"></i> Pesquisa
-                            </button>
-                        </div>
-                    </div>
-                </form>
-
-                <div class="table-responsive">
-                    <table class="table table-bordered table-head-custom">
-                        <thead class="thead-light">
-                        <tr>
-                            <th>MTR Nº</th>
-                            <th>Data Emissão</th>
-                            <th>Gerador</th>
-                            <th>Destinador</th>
-                            <th>Situação</th>
-                            <th class="text-center">Ações</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @if(isset($mtrsTransportador) && count($mtrsTransportador) > 0)
-                            @foreach($mtrsTransportador as $t)
-                                <tr>
-                                    <td><strong>{{ $t['numeroMtr'] ?? '--' }}</strong></td>
-                                    <td>{{ isset($t['dataEmissao']) ? date('d/m/Y', $t['dataEmissao']/1000) : '--' }}</td>
-                                    <td>{{ $t['geradorNome'] ?? '--' }}</td>
-                                    <td>{{ $t['destinadorNome'] ?? '--' }}</td>
-                                    <td><span class="badge badge-light-success font-weight-bold">{{ $t['situacao'] ?? 'Ativo' }}</span></td>
-                                    <td class="text-center">
-                                        <a href="#" class="btn btn-xs btn-primary" title="Imprimir"><i class="fa fa-print"></i></a>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        @else
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado como transportador no período.</td>
-                            </tr>
-                        @endif
-                        </tbody>
-                    </table>
+                <div class="section-title" style="border-left-color: #3699ff;">
+                    <i class="fa fa-recycle text-success mr-1"></i> Meus MTRs como Destinador
                 </div>
-            </div>
-
-            <hr class="my-6">
-
-            <div>
-                <div class="section-title" style="border-left-color: #3699ff;">Meus MTRs como Destinador</div>
 
                 <div class="row">
                     <div class="col-md-6">
@@ -140,23 +82,36 @@
                 </div>
 
                 <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento">
+                    @if(request()->filled('dt_inicio_transp'))
+                        <input type="hidden" name="dt_inicio_transp" value="{{ request('dt_inicio_transp') }}">
+                    @endif
+                    @if(request()->filled('dt_fim_transp'))
+                        <input type="hidden" name="dt_fim_transp" value="{{ request('dt_fim_transp') }}">
+                    @endif
+                    @if(request()->filled('mtr_transp'))
+                        <input type="hidden" name="mtr_transp" value="{{ request('mtr_transp') }}">
+                    @endif
+
                     <div class="row align-items-end">
                         <div class="col-md-3 form-group mb-0">
                             <label class="font-weight-bold">Data Inicial:</label>
-                            <input type="date" name="dt_inicio_dest" class="form-control form-control-sm" value="{{ request('dt_inicio_dest', date('Y-m-d', strtotime('-5 days'))) }}">
+                            <input type="date" name="dt_inicio_dest" class="form-control form-control-sm" value="{{ request('dt_inicio_dest', date('Y-m-d')) }}">
                         </div>
                         <div class="col-md-3 form-group mb-0">
-                            <label class="font-weight-bold">Data Final (Max. 5 dias):</label>
+                            <label class="font-weight-bold">Data Final:</label>
                             <input type="date" name="dt_fim_dest" class="form-control form-control-sm" value="{{ request('dt_fim_dest', date('Y-m-d')) }}">
                         </div>
                         <div class="col-md-4 form-group mb-0">
                             <label class="font-weight-bold">MTR Nº (Opcional):</label>
                             <input type="text" name="mtr_dest" class="form-control form-control-sm" value="{{ request('mtr_dest') }}" placeholder="Número do manifesto">
                         </div>
-                        <div class="col-md-2 form-group mb-0">
-                            <button type="submit" class="btn btn-sm btn-primary font-weight-bold w-100">
+                        <div class="col-md-2 form-group mb-0 d-flex">
+                            <button type="submit" class="btn btn-sm btn-primary font-weight-bold w-100 mr-1">
                                 <i class="fa fa-search"></i> Pesquisa
                             </button>
+                            <a href="{{ route('mtr.recepcao.index') }}" class="btn btn-sm btn-secondary font-weight-bold" title="Limpar Filtros">
+                                <i class="fa fa-eraser"></i>
+                            </a>
                         </div>
                     </div>
                 </form>
@@ -192,6 +147,85 @@
                         @else
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado como destinador no período.</td>
+                            </tr>
+                        @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr class="my-6">
+
+            <!-- 2. MEUS MTRS COMO TRANSPORTADOR (PARTE INFERIOR) -->
+            <div>
+                <div class="section-title">
+                    <i class="fa fa-truck text-primary mr-1"></i> Meus MTRs como Transportador
+                </div>
+
+                <form method="GET" action="{{ route('mtr.recepcao.index') }}" class="box-recebimento">
+                    @if(request()->filled('dt_inicio_dest'))
+                        <input type="hidden" name="dt_inicio_dest" value="{{ request('dt_inicio_dest') }}">
+                    @endif
+                    @if(request()->filled('dt_fim_dest'))
+                        <input type="hidden" name="dt_fim_dest" value="{{ request('dt_fim_dest') }}">
+                    @endif
+                    @if(request()->filled('mtr_dest'))
+                        <input type="hidden" name="mtr_dest" value="{{ request('mtr_dest') }}">
+                    @endif
+
+                    <div class="row align-items-end">
+                        <div class="col-md-3 form-group mb-0">
+                            <label class="font-weight-bold">Data Inicial:</label>
+                            <input type="date" name="dt_inicio_transp" class="form-control form-control-sm" value="{{ request('dt_inicio_transp', date('Y-m-d')) }}">
+                        </div>
+                        <div class="col-md-3 form-group mb-0">
+                            <label class="font-weight-bold">Data Final:</label>
+                            <input type="date" name="dt_fim_transp" class="form-control form-control-sm" value="{{ request('dt_fim_transp', date('Y-m-d')) }}">
+                        </div>
+                        <div class="col-md-4 form-group mb-0">
+                            <label class="font-weight-bold">MTR Nº (Opcional):</label>
+                            <input type="text" name="mtr_transp" class="form-control form-control-sm" value="{{ request('mtr_transp') }}" placeholder="Número do manifesto">
+                        </div>
+                        <div class="col-md-2 form-group mb-0 d-flex">
+                            <button type="submit" class="btn btn-sm btn-success font-weight-bold w-100 mr-1">
+                                <i class="fa fa-search"></i> Pesquisa
+                            </button>
+                            <a href="{{ route('mtr.recepcao.index') }}" class="btn btn-sm btn-secondary font-weight-bold" title="Limpar Filtros">
+                                <i class="fa fa-eraser"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-head-custom">
+                        <thead class="thead-light">
+                        <tr>
+                            <th>MTR Nº</th>
+                            <th>Data Emissão</th>
+                            <th>Gerador</th>
+                            <th>Destinador</th>
+                            <th>Situação</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @if(isset($mtrsTransportador) && count($mtrsTransportador) > 0)
+                            @foreach($mtrsTransportador as $t)
+                                <tr>
+                                    <td><strong>{{ $t['numeroMtr'] ?? '--' }}</strong></td>
+                                    <td>{{ isset($t['dataEmissao']) ? date('d/m/Y', $t['dataEmissao']/1000) : '--' }}</td>
+                                    <td>{{ $t['geradorNome'] ?? '--' }}</td>
+                                    <td>{{ $t['destinadorNome'] ?? '--' }}</td>
+                                    <td><span class="badge badge-light-success font-weight-bold">{{ $t['situacao'] ?? 'Ativo' }}</span></td>
+                                    <td class="text-center">
+                                        <a href="#" class="btn btn-xs btn-primary" title="Imprimir"><i class="fa fa-print"></i></a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @else
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado como transportador no período.</td>
                             </tr>
                         @endif
                         </tbody>
@@ -238,9 +272,9 @@
                         </div>
 
                         <div class="row mb-3">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="font-weight-bold">Responsável pelo Recebimento: <span class="text-danger">*</span></label>
-                                <input type="text" name="responsavel" class="form-control" placeholder="Nome do responsável no pátio" required>
+                                <input type="text" name="responsavel" id="inputResponsavelRecebimento" class="form-control form-control-sm" placeholder="Nome do responsável no pátio" required>
                             </div>
                         </div>
 
@@ -307,6 +341,10 @@
                         $('#recGeradorNome').val(d.geradorNome || '');
                         $('#recTransportadorNome').val(d.transportadorNome || '');
 
+                        if(localStorage.getItem('mtr_ultimo_responsavel')) {
+                            $('#inputResponsavelRecebimento').val(localStorage.getItem('mtr_ultimo_responsavel'));
+                        }
+
                         var htmlRows = '';
                         if(d.residuos && d.residuos.length > 0) {
                             d.residuos.forEach(function(r, index) {
@@ -315,9 +353,10 @@
                                     <input type="hidden" name="residuos[${index}][cod_ibama]" value="${r.codigoIbama}">
                                     <input type="hidden" name="residuos[${index}][descricao]" value="${r.descricaoResiduo}">
                                     <input type="hidden" name="residuos[${index}][codigo_gerado]" value="${r.codigoGerado || ''}">
-                                    <input type="hidden" name="residuos[${index}][quantidade]" value="${r.quantidade}"> <!-- ESTA LINHA É NOVA E OBRIGATÓRIA -->
+                                    <input type="hidden" name="residuos[${index}][quantidade]" value="${r.quantidade}">
                                     <input type="hidden" name="residuos[${index}][unidade_medida]" value="${r.uniCodigo || 3}">
                                     <input type="hidden" name="residuos[${index}][tratamento_id]" value="${r.traCodigo || 43}">
+                                    <input type="hidden" name="residuos[${index}][acondicionamento_id]" value="${r.tiaCodigo || 8}">
                                     <input type="hidden" name="residuos[${index}][estado_fisico]" value="${r.tieCodigo || 1}">
                                     <input type="hidden" name="residuos[${index}][classe_residuo]" value="${r.claCodigo || 43}">
                                     <strong>${r.codigoIbama}</strong> - ${r.descricaoResiduo}
@@ -350,12 +389,15 @@
 
         $(document).on('input', '.qtd-recebida-input', function() {
             var idx = $(this).data('index');
-            var qtdEmitida = parseFloat($('#emitida_' + idx).text()) || 0;
-            var qtdRecebida = parseFloat($(this).val()) || 0;
-            var $justInput =$('#just_' + idx);
+            var textoEmitida = ($('#emitida_' + idx).text() || '0').replace(',', '.');
+            var textoRecebida = ($(this).val() || '0').replace(',', '.');
 
-            if (qtdRecebida !== qtdEmitida) {
-                $justInput.prop('disabled', false).prop('required', true).attr('placeholder', 'Digite o motivo da divergência');
+            var qtdEmitida = parseFloat(textoEmitida) || 0;
+            var qtdRecebida = parseFloat(textoRecebida) || 0;
+            var $justInput = $('#just_' + idx);
+
+            if (Math.abs(qtdRecebida - qtdEmitida) > 0.0001) {
+                $justInput.prop('disabled', false).prop('required', true).attr('placeholder', 'Obrigatório: informe o motivo da divergência');
             } else {
                 $justInput.prop('disabled', true).prop('required', false).val('').attr('placeholder', 'Obrigatório se peso divergente');
             }
@@ -371,6 +413,7 @@
                 <input type="hidden" name="residuos[${i}][descricao]" value="RESÍDUO BALANÇA">
                 <input type="hidden" name="residuos[${i}][estado_fisico]" value="1">
                 <input type="hidden" name="residuos[${i}][classe_residuo]" value="43">
+                <input type="hidden" name="residuos[${i}][acondicionamento_id]" value="8">
             </td>
             <td>
                 <select name="residuos[${i}][unidade_medida]" class="form-control form-control-sm">
@@ -382,13 +425,14 @@
             <td>
                 <select name="residuos[${i}][tratamento_id]" class="form-control form-control-sm">
                     <option value="43" selected>Reciclagem (43)</option>
+                    <option value="61">Triagem e Transbordo (61)</option>
+                    <option value="46">Triagem com Armazenamento (46)</option>
                     <option value="60">Coprocessamento (60)</option>
                     <option value="4">Aterro Resíduos Classe I (4)</option>
                     <option value="52">Aterro Sanitário - RSU (52)</option>
                 </select>
             </td>
             <td>
-                <!-- NOVO: Campo para digitar a quantidade que vem impressa no MTR -->
                 <input type="text" name="residuos[${i}][quantidade]" class="form-control form-control-sm text-center font-weight-bold text-primary" placeholder="Qtd Emitida" title="Copie a quantidade exata impressa no papel" required>
             </td>
             <td>
@@ -409,7 +453,13 @@
 
         $('#formRecebimentoMtr').on('submit', function(e) {
             e.preventDefault();
-            var $btn =$('#btnSalvarRecebimento');
+
+            var resp = $('#inputResponsavelRecebimento').val();
+            if(resp) {
+                localStorage.setItem('mtr_ultimo_responsavel', resp);
+            }
+
+            var $btn = $('#btnSalvarRecebimento');
             $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processando...');
 
             $.post('/mtr/receber-completo', $(this).serialize())

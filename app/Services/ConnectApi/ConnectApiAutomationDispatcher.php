@@ -13,14 +13,7 @@ class ConnectApiAutomationDispatcher
 {
     public function dispatch(ConnectApiWebhookEvent $event): void
     {
-        $normalized = (array) ($event->normalized_payload ?? []);
-
-        // Ecos de envios não podem iniciar ponto, fiscal nem regras de resposta.
-        // O payload original também cobre eventos antigos já presentes na fila.
-        if (ConnectApiWebhookNormalizer::isFromMe($normalized)
-            || ConnectApiWebhookNormalizer::isFromMe((array) ($event->payload ?? []))) {
-            return;
-        }
+        $normalized = $event->normalized_payload ?? [];
 
         if (($normalized['event'] ?? '') === 'messages-upsert') {
             // Módulo fiscal: assume somente comando fiscal explícito ou
@@ -63,7 +56,6 @@ class ConnectApiAutomationDispatcher
                         'key' => [
                             'id' => $normalized['message_id'] ?? null,
                             'remoteJid' => $remoteJid,
-                            'fromMe' => ConnectApiWebhookNormalizer::isFromMe($normalized),
                         ],
                         'pushName' => $normalized['push_name'] ?? null,
                         'message' => $message,

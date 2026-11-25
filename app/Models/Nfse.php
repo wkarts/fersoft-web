@@ -11,18 +11,18 @@ class Nfse extends BaseModel
     protected $fillable = [
         'empresa_id', 'filial_id', 'valor_total', 'estado', 'serie', 'codigo_verificacao', 'numero_nfse', 'url_xml',
         'url_pdf_nfse', 'url_pdf_rps', 'cliente_id', 'documento', 'razao_social', 'im', 'ie', 'cep',
-        'rua', 'numero', 'bairro', 'complemento', 'cidade_id', 'email', 'telefone', 'natureza_operacao', 'uuid'
+        'rua', 'numero', 'bairro', 'complemento', 'cidade_id', 'email', 'telefone', 'natureza_operacao', 'uuid', 'aliq_ibs_uf', 'aliq_cbs'
     ];
 
     public static function lastNfse(){
         $value = session('user_logged');
         $empresa_id = $value['empresa'];
-        
+
         $nfse = Nfse::
         where('numero_nfse', '!=', 0)
-        ->where('empresa_id', $empresa_id)
-        ->orderBy('numero_nfse', 'desc')
-        ->first();
+            ->where('empresa_id', $empresa_id)
+            ->orderBy('numero_nfse', 'desc')
+            ->first();
         return $nfse != null ? $nfse->numero_nfse : 1;
     }
 

@@ -212,6 +212,10 @@
                     <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #3b82f6; font-size: 0.76rem;">
                 🚗 OS Execução
             </span>
+                    <!-- NOVO: LEGENDA DA PORTARIA -->
+                    <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #475569; font-size: 0.76rem;">
+                🏢 Visita Agendada
+            </span>
                     <span class="badge badge-pill text-white px-3 py-2 font-weight-bold shadow-xs" style="background-color: #8b5cf6; font-size: 0.76rem;">
                 👤 Tarefa Pendente
             </span>
@@ -559,7 +563,7 @@
                 calendar = new FullCalendar.Calendar(calendarEl, {
                     locale: 'pt-br',
                     initialView: 'dayGridMonth',
-                    initialDate: '2026-09-01',
+                    //initialDate: '2026-09-01',
                     editable: false,
                     selectable: false,
                     dayMaxEvents: 3,

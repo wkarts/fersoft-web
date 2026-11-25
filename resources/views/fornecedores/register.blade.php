@@ -334,6 +334,38 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 🚀 BLOCO DE RASTREABILIDADE INDUSTRIAL & PORTAL -->
+                        <div class="row mt-4 mb-4 p-3 rounded" style="background: #f0f8ff; border: 1px solid #b8daff; border-left: 4px solid #3699FF;">
+                            <div class="col-12 mb-2">
+                                <h6 class="font-weight-bolder text-primary mb-0">
+                                    <i class="la la-sitemap text-primary"></i> Rastreabilidade de Lotes & Visão no Portal (Matriz / Filiais)
+                                </h6>
+                                <small class="text-muted">Configure se as entradas deste CNPJ geram lote de produção automático e o nível de detalhe exibido no Portal.</small>
+                            </div>
+
+                            <div class="form-group col-lg-4 col-md-6 mb-0 mt-2">
+                                <label class="col-form-label font-weight-bold text-dark">Gerar Lote de Rastreabilidade?</label>
+                                <select class="form-control" name="exige_rastreabilidade">
+                                    @php
+                                        // Compatível tanto com $fornecedor, $cliente ou $data
+                                        $regAtual = $fornecedor ?? ($cliente ?? ($data ?? null));
+                                        $valRastreio = old('exige_rastreabilidade', $regAtual->exige_rastreabilidade ?? 0);
+                                        $valPortal   = old('portal_nivel_visao', $regAtual->portal_nivel_visao ?? 'simples');
+                                    @endphp
+                                    <option value="0" {{ $valRastreio == 0 ? 'selected' : '' }}>🔴 NÃO (Operação Comum)</option>
+                                    <option value="1" {{ $valRastreio == 1 ? 'selected' : '' }}>🟢 SIM (Gerar Lote Automático na Balança)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group col-lg-5 col-md-6 mb-0 mt-2">
+                                <label class="col-form-label font-weight-bold text-dark">Nível de Visão no Portal (Agendamento / Consulta)</label>
+                                <select class="form-control" name="portal_nivel_visao">
+                                    <option value="simples" {{ $valPortal === 'simples' ? 'selected' : '' }}>📋 Simples (Apenas Agendamento e Coleta Padrão)</option>
+                                    <option value="completo" {{ $valPortal === 'completo' ? 'selected' : '' }}>🔍 Completo (Agendamento + Rastreio de Lote, Corte, MTR e NF-e por Raiz CNPJ)</option>
+                                </select>
+                            </div>
+                        </div>
                 </div>
                 <div class="card-footer">
 

@@ -36,6 +36,8 @@ use App\Models\VendaCaixaPreVenda;
 use Piggly\Pix\StaticPayload;
 use Piggly\Pix\Parser;
 use App\Models\Contigencia;
+use App\Models\Filial;
+use App\Services\NFCeService;
 
 class FrontBoxController extends Controller
 {
@@ -66,19 +68,19 @@ class FrontBoxController extends Controller
     private function getRascunhos(){
         return VendaCaixa::withoutDeleted()->
         where('rascunho', 1)
-        ->where('empresa_id', $this->empresa_id)
-        ->limit(20)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(20)
+            ->orderBy('id', 'desc')
+            ->get();
     }
 
     private function getConsignadas(){
         return VendaCaixa::withoutDeleted()->
         where('consignado', 1)
-        ->where('empresa_id', $this->empresa_id)
-        ->limit(50)
-        ->orderBy('id', 'desc')
-        ->get();
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(50)
+            ->orderBy('id', 'desc')
+            ->get();
     }
 
     public function edit(Request $request, $pv = false){
@@ -111,12 +113,12 @@ class FrontBoxController extends Controller
 
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($config->nat_op_padrao == 0){
 
@@ -128,7 +130,7 @@ class FrontBoxController extends Controller
         return $view;
 
         if($countProdutos > env("ASSINCRONO_PRODUTOS")){
-        // if($countProdutos > 10){
+            // if($countProdutos > 10){
 
             $view = $this->pdvAssincrono($venda);
             return $view;
@@ -136,48 +138,48 @@ class FrontBoxController extends Controller
 
             $naturezas = NaturezaOperacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $categorias = Categoria::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $produtos = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('inativo', false)
-            ->get();
+                ->where('inativo', false)
+                ->get();
 
             $produtosGroup = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('inativo', false)
-            ->where('valor_venda', '>', 0)
-            ->groupBy('referencia_grade')
-            ->get();
+                ->where('inativo', false)
+                ->where('valor_venda', '>', 0)
+                ->groupBy('referencia_grade')
+                ->get();
 
             $tributacao = Tributacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $tiposPagamento = VendaCaixa::tiposPagamento();
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $certificado = Certificado::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $usuario = Usuario::find(get_id_user());
 
             if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null){
 
                 return view("frontBox/alerta")
-                ->with('produtos', count($produtos))
-                ->with('categorias', count($categorias))
-                ->with('naturezas', $naturezas)
-                ->with('config', $config)
-                ->with('tributacao', $tributacao)
-                ->with('title', "Validação para Emitir");
+                    ->with('produtos', count($produtos))
+                    ->with('categorias', count($categorias))
+                    ->with('naturezas', $naturezas)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('title', "Validação para Emitir");
             }else{
 
                 if($config->nat_op_padrao == 0){
@@ -190,10 +192,10 @@ class FrontBoxController extends Controller
 
                     $produtos = Produto::
                     where('empresa_id', $this->empresa_id)
-                    ->where('inativo', false)
-                    ->where('valor_venda', '>', 0)
-                    ->orderBy('nome')
-                    ->get();
+                        ->where('inativo', false)
+                        ->where('valor_venda', '>', 0)
+                        ->orderBy('nome')
+                        ->get();
 
                     foreach($produtos as $p){
                         $p->listaPreco;
@@ -227,12 +229,12 @@ class FrontBoxController extends Controller
 
                     $categorias = Categoria::
                     where('empresa_id', $this->empresa_id)
-                    ->orderBy('nome')->get();
+                        ->orderBy('nome')->get();
 
                     $clientes = Cliente::orderBy('razao_social')
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('inativo', false)
-                    ->get();
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('inativo', false)
+                        ->get();
 
                     foreach($clientes as $c){
                         $c->totalEmAberto = 0;
@@ -244,7 +246,7 @@ class FrontBoxController extends Controller
 
                     $atalhos = ConfigCaixa::
                     where('usuario_id', get_id_user())
-                    ->first();
+                        ->first();
 
                     // $view = 'main';
                     // if($atalhos != null && $atalhos->modelo_pdv == 1){
@@ -275,9 +277,9 @@ class FrontBoxController extends Controller
                     $consignadas = $this->getConsignadas();
 
                     $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-                    ->where('ativo', 1)
-                    ->orderBy('nome', 'asc')
-                    ->get();
+                        ->where('ativo', 1)
+                        ->orderBy('nome', 'asc')
+                        ->get();
                     $vendedores = [];
                     foreach($usuarios as $u){
                         if($u->funcionario){
@@ -291,33 +293,33 @@ class FrontBoxController extends Controller
                     $grupos = GrupoCliente::get();
 
                     return view('frontBox/'.$view)
-                    ->with('frenteCaixa', true)
-                    ->with('tiposPagamento', $tiposPagamento)
-                    ->with('config', $config)
-                    ->with('rascunhos', $rascunhos)
-                    ->with('certificado', $certificado)
-                    ->with('listaPreco', $listas)
-                    ->with('atalhos', $atalhos)
-                    ->with('venda', $venda)
-                    ->with('venda', $venda)
-                    ->with('vendedores', $vendedores)
-                    ->with('disableFooter', true)
-                    ->with('usuario', $usuario)
-                    ->with('produtos', $produtos)
-                    ->with('produtosGroup', $produtosGroup)
-                    ->with('clientes', $clientes)
-                    ->with('categorias', $categorias)
-                    ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
-                    ->with('consignadas', $consignadas)
-                    ->with('pessoaFisicaOuJuridica', true)
-                    ->with('cidadeJs', true)
-                    ->with('cidades', $cidades)
-                    ->with('estados', $estados)
-                    ->with('acessores', $acessores)
-                    ->with('funcionarios', $funcionarios)
-                    ->with('grupos', $grupos)
-                    ->with('pais', $pais)
-                    ->with('title', 'Frente de Caixa');
+                        ->with('frenteCaixa', true)
+                        ->with('tiposPagamento', $tiposPagamento)
+                        ->with('config', $config)
+                        ->with('rascunhos', $rascunhos)
+                        ->with('certificado', $certificado)
+                        ->with('listaPreco', $listas)
+                        ->with('atalhos', $atalhos)
+                        ->with('venda', $venda)
+                        ->with('venda', $venda)
+                        ->with('vendedores', $vendedores)
+                        ->with('disableFooter', true)
+                        ->with('usuario', $usuario)
+                        ->with('produtos', $produtos)
+                        ->with('produtosGroup', $produtosGroup)
+                        ->with('clientes', $clientes)
+                        ->with('categorias', $categorias)
+                        ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                        ->with('consignadas', $consignadas)
+                        ->with('pessoaFisicaOuJuridica', true)
+                        ->with('cidadeJs', true)
+                        ->with('cidades', $cidades)
+                        ->with('estados', $estados)
+                        ->with('acessores', $acessores)
+                        ->with('funcionarios', $funcionarios)
+                        ->with('grupos', $grupos)
+                        ->with('pais', $pais)
+                        ->with('title', 'Frente de Caixa');
                 }
             }
         }
@@ -325,12 +327,12 @@ class FrontBoxController extends Controller
 
     public function numeroSequencial(){
         $verify = VendaCaixa::where('empresa_id', $this->empresa_id)
-        ->where('numero_sequencial', 0)
-        ->first();
+            ->where('numero_sequencial', 0)
+            ->first();
 
         if($verify){
             $vendas = VendaCaixa::where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $n = 1;
             foreach($vendas as $v){
@@ -345,12 +347,12 @@ class FrontBoxController extends Controller
         $this->numeroSequencial();
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         if($config == null){
             session()->flash('mensagem_erro', 'Informe a configuração!');
@@ -372,48 +374,48 @@ class FrontBoxController extends Controller
 
             $naturezas = NaturezaOperacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $categorias = Categoria::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $produtos = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('inativo', false)
-            ->get();
+                ->where('inativo', false)
+                ->get();
 
             $produtosGroup = Produto::
             where('empresa_id', $this->empresa_id)
-            ->where('inativo', false)
-            ->where('valor_venda', '>', 0)
-            ->groupBy('referencia_grade')
-            ->get();
+                ->where('inativo', false)
+                ->where('valor_venda', '>', 0)
+                ->groupBy('referencia_grade')
+                ->get();
 
             $tributacao = Tributacao::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
 
             $tiposPagamento = VendaCaixa::tiposPagamento();
             $config = ConfigNota::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $certificado = Certificado::
             where('empresa_id', $this->empresa_id)
-            ->first();
+                ->first();
 
             $usuario = Usuario::find(get_id_user());
 
             if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null){
 
                 return view("frontBox/alerta")
-                ->with('produtos', count($produtos))
-                ->with('categorias', count($categorias))
-                ->with('naturezas', $naturezas)
-                ->with('config', $config)
-                ->with('tributacao', $tributacao)
-                ->with('title', "Validação para Emitir");
+                    ->with('produtos', count($produtos))
+                    ->with('categorias', count($categorias))
+                    ->with('naturezas', $naturezas)
+                    ->with('config', $config)
+                    ->with('tributacao', $tributacao)
+                    ->with('title', "Validação para Emitir");
             }else{
 
                 if($config->nat_op_padrao == 0){
@@ -426,10 +428,10 @@ class FrontBoxController extends Controller
 
                     $produtos = Produto::
                     where('empresa_id', $this->empresa_id)
-                    ->where('inativo', false)
-                    ->where('valor_venda', '>', 0)
-                    ->orderBy('nome')
-                    ->get();
+                        ->where('inativo', false)
+                        ->where('valor_venda', '>', 0)
+                        ->orderBy('nome')
+                        ->get();
 
                     foreach($produtos as $p){
                         $p->listaPreco;
@@ -463,12 +465,12 @@ class FrontBoxController extends Controller
 
                     $categorias = Categoria::
                     where('empresa_id', $this->empresa_id)
-                    ->orderBy('nome')->get();
+                        ->orderBy('nome')->get();
 
                     $clientes = Cliente::orderBy('razao_social')
-                    ->where('empresa_id', $this->empresa_id)
-                    ->where('inativo', false)
-                    ->get();
+                        ->where('empresa_id', $this->empresa_id)
+                        ->where('inativo', false)
+                        ->get();
 
                     foreach($clientes as $c){
                         $c->totalEmAberto = 0;
@@ -481,7 +483,7 @@ class FrontBoxController extends Controller
 
                     $atalhos = ConfigCaixa::
                     where('usuario_id', get_id_user())
-                    ->first();
+                        ->first();
 
                     $view = 'main';
                     if($atalhos != null && $atalhos->modelo_pdv == 1){
@@ -494,9 +496,9 @@ class FrontBoxController extends Controller
 
                     $funcionarios = Funcionario::
                     where('funcionarios.empresa_id', $this->empresa_id)
-                    ->select('funcionarios.*')
-                    ->join('usuarios', 'usuarios.id', '=', 'funcionarios.usuario_id')
-                    ->get();
+                        ->select('funcionarios.*')
+                        ->join('usuarios', 'usuarios.id', '=', 'funcionarios.usuario_id')
+                        ->get();
 
                     $funcionarios = $this->validaCaixaAberto($funcionarios);
 
@@ -509,9 +511,9 @@ class FrontBoxController extends Controller
                     $consignadas = $this->getConsignadas();
 
                     $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-                    ->where('ativo', 1)
-                    ->orderBy('nome', 'asc')
-                    ->get();
+                        ->where('ativo', 1)
+                        ->orderBy('nome', 'asc')
+                        ->get();
                     $vendedores = [];
                     foreach($usuarios as $u){
                         if($u->funcionario){
@@ -526,35 +528,35 @@ class FrontBoxController extends Controller
                     $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
 
                     return view('frontBox/'.$view)
-                    ->with('frenteCaixa', true)
-                    ->with('tiposPagamento', $tiposPagamento)
-                    ->with('config', $config)
-                    ->with('certificado', $certificado)
-                    ->with('listaPreco', $listas)
-                    ->with('funcionarios', $funcionarios)
-                    ->with('rascunhos', $rascunhos)
-                    ->with('consignadas', $consignadas)
-                    ->with('atalhos', $atalhos)
-                    ->with('vendedores', $vendedores)
-                    ->with('estados', $estados)
-                    ->with('disableFooter', true)
-                    ->with('usuario', $usuario)
-                    ->with('produtos', $produtos)
-                    ->with('produtosGroup', $produtosGroup)
-                    ->with('clientes', $clientes)
-                    ->with('categorias', $categorias)
-                    ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                        ->with('frenteCaixa', true)
+                        ->with('tiposPagamento', $tiposPagamento)
+                        ->with('config', $config)
+                        ->with('certificado', $certificado)
+                        ->with('listaPreco', $listas)
+                        ->with('funcionarios', $funcionarios)
+                        ->with('rascunhos', $rascunhos)
+                        ->with('consignadas', $consignadas)
+                        ->with('atalhos', $atalhos)
+                        ->with('vendedores', $vendedores)
+                        ->with('estados', $estados)
+                        ->with('disableFooter', true)
+                        ->with('usuario', $usuario)
+                        ->with('produtos', $produtos)
+                        ->with('produtosGroup', $produtosGroup)
+                        ->with('clientes', $clientes)
+                        ->with('categorias', $categorias)
+                        ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
 
-                    ->with('pessoaFisicaOuJuridica', true)
-                    ->with('cidadeJs', true)
-                    ->with('cidades', $cidades)
-                    ->with('estados', $estados)
-                    ->with('acessores', $acessores)
-                    ->with('funcionarios', $funcionarios)
-                    ->with('grupos', $grupos)
-                    ->with('pais', $pais)
+                        ->with('pessoaFisicaOuJuridica', true)
+                        ->with('cidadeJs', true)
+                        ->with('cidades', $cidades)
+                        ->with('estados', $estados)
+                        ->with('acessores', $acessores)
+                        ->with('funcionarios', $funcionarios)
+                        ->with('grupos', $grupos)
+                        ->with('pais', $pais)
 
-                    ->with('title', 'Frente de Caixa');
+                        ->with('title', 'Frente de Caixa');
                 }
             }
         }
@@ -566,10 +568,10 @@ class FrontBoxController extends Controller
         foreach($funcionarios as $f){
             $aberturaNfe = AberturaCaixa::
             where('empresa_id', $this->empresa_id)
-            ->when($config->caixa_por_usuario == 1, function ($q) use ($f) {
-                return $q->where('usuario_id', $f->usuario_id);
-            })
-            ->orderBy('id', 'desc')->first();
+                ->when($config->caixa_por_usuario == 1, function ($q) use ($f) {
+                    return $q->where('usuario_id', $f->usuario_id);
+                })
+                ->orderBy('id', 'desc')->first();
             if($aberturaNfe != null){
 
                 if($aberturaNfe->status == 0){
@@ -585,10 +587,10 @@ class FrontBoxController extends Controller
     private function produtosMaisVendidos(){
 
         $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-        ->where('usuario_id', get_id_user())
-        ->where('status', 0)
-        ->orderBy('id', 'desc')
-        ->first();
+            ->where('usuario_id', get_id_user())
+            ->where('status', 0)
+            ->orderBy('id', 'desc')
+            ->first();
         $filial = -1;
 
         if($abertura){
@@ -600,18 +602,18 @@ class FrontBoxController extends Controller
 
         $itens = ItemVendaCaixa::
         selectRaw('item_venda_caixas.*, count(quantidade) as qtd')
-        ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
-        ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
-        ->where('venda_caixas.empresa_id', $this->empresa_id)
-        ->groupBy('item_venda_caixas.produto_id')
-        ->orderBy('qtd')
-        ->when(empresaComFilial(), function ($q) use ($filial) {
-            return $q->where(function($query) use ($filial){
-                $query->where('produtos.locais', 'like', "%{$filial}%");
-            });
-        })
-        ->limit(21)
-        ->get();
+            ->join('venda_caixas', 'venda_caixas.id', '=', 'item_venda_caixas.venda_caixa_id')
+            ->join('produtos', 'produtos.id', '=', 'item_venda_caixas.produto_id')
+            ->where('venda_caixas.empresa_id', $this->empresa_id)
+            ->groupBy('item_venda_caixas.produto_id')
+            ->orderBy('qtd')
+            ->when(empresaComFilial(), function ($q) use ($filial) {
+                return $q->where(function($query) use ($filial){
+                    $query->where('produtos.locais', 'like', "%{$filial}%");
+                });
+            })
+            ->limit(21)
+            ->get();
 
         $produtos = [];
         $add = [];
@@ -636,44 +638,44 @@ class FrontBoxController extends Controller
     protected function pdvAssincrono($venda = null, $edit = 0){
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $naturezas = NaturezaOperacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $tiposPagamento = VendaCaixa::tiposPagamento();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $usuario = Usuario::find(get_id_user());
         if(count($naturezas) == 0 || $config == null || count($categorias) == 0 || $tributacao == null || $produtos == 0){
 
             $p = view("frontBox/alerta")
-            ->with('produtos', $produtos)
-            ->with('categorias', count($categorias))
-            ->with('naturezas', $naturezas)
-            ->with('config', $config)
-            ->with('tributacao', $tributacao)
-            ->with('title', "Validação para Emitir");
+                ->with('produtos', $produtos)
+                ->with('categorias', count($categorias))
+                ->with('naturezas', $naturezas)
+                ->with('config', $config)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
 
             return $p;
         }else {
@@ -771,36 +773,36 @@ class FrontBoxController extends Controller
             $consignadas = $this->getConsignadas();
 
             $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-            ->where('status', 1)->get();
+                ->where('status', 1)->get();
 
             $p = view('frontBox/'.$view)
-            ->with('tiposPagamento', $tiposPagamento)
-            ->with('config', $config)
-            ->with('abertura', $abertura)
-            ->with('filial', $filial) // <- ESSA LINHA É ESSENCIAL
-            ->with('contasEmpresa', $contasEmpresa)
-            ->with('certificado', $certificado)
-            ->with('rascunhos', $rascunhos)
-            ->with('consignadas', $consignadas)
-            ->with('estados', $estados)
-            //->with('filial', $filial)
-            ->with('filial', $abertura && $abertura->filial ? $abertura->filial : null)
-            ->with('cidades', $cidades)
-            ->with('pais', $pais)
-            ->with('grupos', $grupos)
-            ->with('acessores', $acessores)
-            ->with('vendedores', $vendedores)
-            ->with('usuarios', $usuarios)
-            ->with('funcionarios', $funcionarios)
-            ->with('listaPreco', $listas)
-            ->with('produtosMaisVendidos', $produtosMaisVendidos)
-            ->with('atalhos', $atalhos)
-            ->with('disableFooter', true)
-            ->with('usuario', $usuario)
-            ->with('clientes', $clientes)
-            ->with('categorias', $categorias)
-            ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
-            ->with('title', 'Frente de Caixa');
+                ->with('tiposPagamento', $tiposPagamento)
+                ->with('config', $config)
+                ->with('abertura', $abertura)
+                ->with('filial', $filial) // <- ESSA LINHA É ESSENCIAL
+                ->with('contasEmpresa', $contasEmpresa)
+                ->with('certificado', $certificado)
+                ->with('rascunhos', $rascunhos)
+                ->with('consignadas', $consignadas)
+                ->with('estados', $estados)
+                //->with('filial', $filial)
+                ->with('filial', $abertura && $abertura->filial ? $abertura->filial : null)
+                ->with('cidades', $cidades)
+                ->with('pais', $pais)
+                ->with('grupos', $grupos)
+                ->with('acessores', $acessores)
+                ->with('vendedores', $vendedores)
+                ->with('usuarios', $usuarios)
+                ->with('funcionarios', $funcionarios)
+                ->with('listaPreco', $listas)
+                ->with('produtosMaisVendidos', $produtosMaisVendidos)
+                ->with('atalhos', $atalhos)
+                ->with('disableFooter', true)
+                ->with('usuario', $usuario)
+                ->with('clientes', $clientes)
+                ->with('categorias', $categorias)
+                ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                ->with('title', 'Frente de Caixa');
 
             if($venda != null){
                 $venda->cliente;
@@ -817,36 +819,42 @@ class FrontBoxController extends Controller
     private function getTotalContaCredito($cliente){
         return CreditoVenda::
         selectRaw('sum(vendas.valor_total) as total')
-        ->join('vendas', 'vendas.id', '=', 'credito_vendas.venda_id')
-        ->where('credito_vendas.cliente_id', $cliente->id)
-        ->where('status', 0)
-        ->first();
+            ->join('vendas', 'vendas.id', '=', 'credito_vendas.venda_id')
+            ->where('credito_vendas.cliente_id', $cliente->id)
+            ->where('status', 0)
+            ->first();
     }
 
     private function cancelarNFCe($venda){
-        $config = ConfigNota::
+        $configMatriz = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
-        $cnpj = str_replace(".", "", $config->cnpj);
-        $cnpj = str_replace("/", "", $cnpj);
-        $cnpj = str_replace("-", "", $cnpj);
-        $cnpj = str_replace(" ", "", $cnpj);
-        $nfe_service = new NFeService([
+        $isFilial = $venda->filial_id;
+        if($isFilial != null){
+            $config = Filial::findOrFail($isFilial);
+        }else{
+            $config = $configMatriz;
+        }
+
+        $cnpj = preg_replace('/[^0-9]/', '', $config->cnpj);
+
+        $nfe_service = new NFCeService([
             "atualizacao" => date('Y-m-d h:i:s'),
-            "tpAmb" => 2,
+            "tpAmb" => (int)($config->ambiente ?? $configMatriz->ambiente ?? 2),
             "razaosocial" => $config->razao_social,
-            "siglaUF" => $config->UF,
+            "siglaUF" => $config->UF ?? $configMatriz->UF,
             "cnpj" => $cnpj,
             "schemes" => config('fiscal.default_schemes'),
             "versao" => "4.00",
             "tokenIBPT" => "AAAAAAA",
-            "CSC" => "XTZOH6COASX5DYLKBUZXG5TABFG7ZFTQVSA2",
-            "CSCid" => "000001"
-        ], 65);
+            "CSC" => $config->csc ?? $configMatriz->csc,
+            "CSCid" => $config->csc_id ?? $configMatriz->csc_id,
+            "is_filial" => $isFilial
+        ], $this->empresa_id);
 
         $nfce = $nfe_service->cancelarNFCe($venda->id, "Troca de produtos requisitada pelo cliente");
-        return is_array($nfce);
+        return is_array($nfce) && !isset($nfce['erro']);
     }
 
     private function criarLog($objeto, $tipo = 'criar'){
@@ -883,9 +891,9 @@ class FrontBoxController extends Controller
                 $this->criarLog($venda, 'deletar');
                 $comissao = ComissaoVenda::
                 where('empresa_id', $this->empresa_id)
-                ->where('tabela', 'venda_caixas')
-                ->where('venda_id', $id)
-                ->first();
+                    ->where('tabela', 'venda_caixas')
+                    ->where('venda_id', $id)
+                    ->first();
 
                 if($comissao != null)
                     $comissao->delete();
@@ -898,22 +906,22 @@ class FrontBoxController extends Controller
                 if(!$venda->retorno_estoque){
                     foreach($venda->itens as $i){
                         if($i->produto->receita){
-    
+
                             $receita = $i->produto->receita;
                             foreach($receita->itens as $rec){
-    
+
                                 if($i->itemPedido != NULL && $i->itemPedido->tamanho != NULL){
                                     $totalSabores = count($i->itemPedido->sabores);
                                     $produtoPizza = ProdutoPizza::
                                     where('produto_id', $i->produto->delivery->id)
-                                    ->where('tamanho_id', $i->itemPedido->tamanho->id)
-                                    ->first();
-    
+                                        ->where('tamanho_id', $i->itemPedido->tamanho->id)
+                                        ->first();
+
                                     $stockMove->pluStock(
                                         $rec->produto_id, $i->quantidade *
                                         ((($rec->quantidade/$totalSabores)/$receita->pedacos)*$produtoPizza->tamanho->pedacos)/$receita->rendimento
                                     );
-    
+
                                 }else{
                                     $stockMove->pluStock($rec->produto_id,
                                         $i->quantidade);
@@ -980,34 +988,34 @@ class FrontBoxController extends Controller
                 }
 
                 $stockMove = new StockMove();
-    
+
                 $comissao = ComissaoVenda::
                 where('empresa_id', $this->empresa_id)
-                ->where('tabela', 'venda_caixas')
-                ->where('venda_id', $id)
-                ->first();
-    
+                    ->where('tabela', 'venda_caixas')
+                    ->where('venda_id', $id)
+                    ->first();
+
                 if($comissao != null)
                     $comissao->delete();
-    
+
                 foreach($venda->itens as $i){
                     if($i->produto->receita){
                         $receita = $i->produto->receita;
                         foreach($receita->itens as $rec){
-    
+
                             if($i->itemPedido != NULL && $i->itemPedido->tamanho != NULL){
                                 $totalSabores = count($i->itemPedido->sabores);
                                 $produtoPizza = ProdutoPizza::
                                 where('produto_id', $i->produto->delivery->id)
-                                ->where('tamanho_id', $i->itemPedido->tamanho->id)
-                                ->first();
-    
+                                    ->where('tamanho_id', $i->itemPedido->tamanho->id)
+                                    ->first();
+
                                 $stockMove->pluStock(
                                     $rec->produto_id, $i->quantidade
-                          *
+                                    *
                                     ((($rec->quantidade/$totalSabores)/$receita->pedacos)*$produtoPizza->tamanho->pedacos)/$receita->rendimento
                                 );
-    
+
                             }else{
                                 $stockMove->pluStock($rec->produto_id,
                                     $i->quantidade);
@@ -1076,8 +1084,8 @@ class FrontBoxController extends Controller
 
     public function deleteRascunhoPreVenda($id){
         $venda = VendaCaixaPreVenda
-        ::where('id', $id)
-        ->first();
+            ::where('id', $id)
+            ->first();
 
         $stockMove = new StockMove();
         foreach($venda->itens as $i){
@@ -1089,8 +1097,8 @@ class FrontBoxController extends Controller
                         $totalSabores = count($i->itemPedido->sabores);
                         $produtoPizza = ProdutoPizza::
                         where('produto_id', $i->produto->delivery->id)
-                        ->where('tamanho_id', $i->itemPedido->tamanho->id)
-                        ->first();
+                            ->where('tamanho_id', $i->itemPedido->tamanho->id)
+                            ->first();
 
                         $stockMove->pluStock(
                             $rec->produto_id, $i->quantidade *
@@ -1104,7 +1112,7 @@ class FrontBoxController extends Controller
                 }
             }else{
                 $stockMove->pluStock($i->produto_id,
-                        $i->quantidade); // -50 na altera valor compra
+                    $i->quantidade); // -50 na altera valor compra
             }
         }
 
@@ -1126,9 +1134,9 @@ class FrontBoxController extends Controller
     private function getContigencia(){
         $active = Contigencia::
         where('empresa_id', $this->empresa_id)
-        ->where('status', 1)
-        ->where('documento', 'NFCe')
-        ->first();
+            ->where('status', 1)
+            ->where('documento', 'NFCe')
+            ->first();
         return $active;
     }
 
@@ -1141,20 +1149,20 @@ class FrontBoxController extends Controller
         $start_date = $request->start_date;
         $end_date = $request->end_date;
         $vendas = VendaCaixa::where('contigencia', 1)
-        ->where('reenvio_contigencia', 0)
-        ->when(!empty($start_date), function ($query) use ($start_date) {
-            return $query->whereDate('created_at', '>=', $start_date);
-        })
-        ->when(!empty($end_date), function ($query) use ($end_date) {
-            return $query->whereDate('created_at', '<=', $end_date);
-        })
-        ->where('empresa_id', $this->empresa_id)->get();
+            ->where('reenvio_contigencia', 0)
+            ->when(!empty($start_date), function ($query) use ($start_date) {
+                return $query->whereDate('created_at', '>=', $start_date);
+            })
+            ->when(!empty($end_date), function ($query) use ($end_date) {
+                return $query->whereDate('created_at', '<=', $end_date);
+            })
+            ->where('empresa_id', $this->empresa_id)->get();
 
         return view('frontBox/contigencia')
-        ->with('vendas', $vendas)
-        ->with('start_date', $start_date)
-        ->with('end_date', $end_date)
-        ->with('title', 'NFCe em contigência');
+            ->with('vendas', $vendas)
+            ->with('start_date', $start_date)
+            ->with('end_date', $end_date)
+            ->with('title', 'NFCe em contigência');
     }
 
     public function list(){
@@ -1174,23 +1182,23 @@ class FrontBoxController extends Controller
         if($user->adm){
             $usuarios = Usuario::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
         }
         $usuario_id = get_id_user();
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', 0)
-        ->get();
+            ->where('inativo', 0)
+            ->get();
 
         $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-        ->where('ativo', 1)
-        ->orderBy('nome', 'asc')
-        ->get();
+            ->where('ativo', 1)
+            ->orderBy('nome', 'asc')
+            ->get();
         $vendedores = [];
         foreach($usuarios as $u){
             if($u->funcionario){
@@ -1204,19 +1212,19 @@ class FrontBoxController extends Controller
             }
         }
         return view('frontBox/list')
-        ->with('vendas', $vendas)
-        ->with('config', $config)
-        ->with('vendedores', $vendedores)
-        ->with('clientes', $clientes)
-        ->with('usuario_id', $usuario_id)
-        ->with('total', $total)
-        ->with('frenteCaixa', true)
-        ->with('certificado', $certificado)
-        ->with('contigencia', $this->getContigencia())
-        ->with('somaTiposPagamento', $somaTiposPagamento)
-        ->with('usuarios', $usuarios)
-        ->with('info', "Lista de vendas de Hoje: " . date("d/m/Y") )
-        ->with('title', 'Lista de Vendas na Frente de Caixa');
+            ->with('vendas', $vendas)
+            ->with('config', $config)
+            ->with('vendedores', $vendedores)
+            ->with('clientes', $clientes)
+            ->with('usuario_id', $usuario_id)
+            ->with('total', $total)
+            ->with('frenteCaixa', true)
+            ->with('certificado', $certificado)
+            ->with('contigencia', $this->getContigencia())
+            ->with('somaTiposPagamento', $somaTiposPagamento)
+            ->with('usuarios', $usuarios)
+            ->with('info', "Lista de vendas de Hoje: " . date("d/m/Y") )
+            ->with('title', 'Lista de Vendas na Frente de Caixa');
     }
 
     private function somaTiposPagamento($vendas){
@@ -1260,17 +1268,17 @@ class FrontBoxController extends Controller
 
         $vendas = VendaCaixa::
         withoutDeleted()
-        ->orderBy('id', 'desc')
-        ->where('empresa_id', $this->empresa_id)
-        ->limit(20)
-        ->when(optional($config)->caixa_por_usuario == 1, function ($q) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->get();
+            ->orderBy('id', 'desc')
+            ->where('empresa_id', $this->empresa_id)
+            ->limit(20)
+            ->when(optional($config)->caixa_por_usuario == 1, function ($q) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->get();
 
         $caixa = AberturaCaixa::where('status', 1)
-        ->where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->orderBy('id', 'desc')->first();
 
         foreach($vendas as $v){
             $v->impedeDelete = false;
@@ -1280,15 +1288,15 @@ class FrontBoxController extends Controller
         }
 
         return view('frontBox/devolucao')
-        ->with('config', $config)
-        ->with('vendas', $vendas)
-        ->with('frenteCaixa', true)
-        ->with('nome', '')
-        ->with('nfce', '')
-        ->with('valor', '')
-        ->with('data', '')
-        ->with('info', "Lista das ultimas 20 vendas")
-        ->with('title', 'Devolução NFCe');
+            ->with('config', $config)
+            ->with('vendas', $vendas)
+            ->with('frenteCaixa', true)
+            ->with('nome', '')
+            ->with('nfce', '')
+            ->with('valor', '')
+            ->with('data', '')
+            ->with('info', "Lista das ultimas 20 vendas")
+            ->with('title', 'Devolução NFCe');
     }
 
     public function filtro(Request $request){
@@ -1306,33 +1314,33 @@ class FrontBoxController extends Controller
 
         $vendas = VendaCaixa::
         withoutDeleted()
-        ->orderBy('id', 'desc')
-        ->where(function($query) use ($permissaoAcesso){
-            if($permissaoAcesso != null){
-                foreach ($permissaoAcesso as $value) {
-                    if($value == -1){
-                        $value = null;
+            ->orderBy('id', 'desc')
+            ->where(function($query) use ($permissaoAcesso){
+                if($permissaoAcesso != null){
+                    foreach ($permissaoAcesso as $value) {
+                        if($value == -1){
+                            $value = null;
+                        }
+                        $query->orWhere('venda_caixas.filial_id', $value);
                     }
-                    $query->orWhere('venda_caixas.filial_id', $value);
                 }
-            }
-        })
-        ->when($filial_id, function ($query) use ($filial_id) {
-            $filial_id = $filial_id == -1 ? null : $filial_id;
-            return $query->where('venda_caixas.filial_id', $filial_id);
-        })
-        ->when($codigo_venda, function ($query) use ($codigo_venda) {
-            return $query->where('venda_caixas.id', $codigo_venda);
-        })
-        // ->when($tipo_pagamento, function ($query) use ($tipo_pagamento) {
-        //     return $query->where('venda_caixas.tipo_pagamento', $tipo_pagamento);
-        // })
-        ->when($vendedor_id, function ($query) use ($vendedor_id) {
-            return $query->where('venda_caixas.vendedor_id', $vendedor_id);
-        })
-        ->when($cliente_id, function ($query) use ($cliente_id) {
-            return $query->where('venda_caixas.cliente_id', $cliente_id);
-        });
+            })
+            ->when($filial_id, function ($query) use ($filial_id) {
+                $filial_id = $filial_id == -1 ? null : $filial_id;
+                return $query->where('venda_caixas.filial_id', $filial_id);
+            })
+            ->when($codigo_venda, function ($query) use ($codigo_venda) {
+                return $query->where('venda_caixas.id', $codigo_venda);
+            })
+            // ->when($tipo_pagamento, function ($query) use ($tipo_pagamento) {
+            //     return $query->where('venda_caixas.tipo_pagamento', $tipo_pagamento);
+            // })
+            ->when($vendedor_id, function ($query) use ($vendedor_id) {
+                return $query->where('venda_caixas.vendedor_id', $vendedor_id);
+            })
+            ->when($cliente_id, function ($query) use ($cliente_id) {
+                return $query->where('venda_caixas.cliente_id', $cliente_id);
+            });
 
         if($dataInicial && $dataFinal){
             $vendas->whereBetween('created_at', [
@@ -1345,10 +1353,10 @@ class FrontBoxController extends Controller
         if($request->status != ""){
             if($request->status == "fiscal"){
                 $vendas->where('estado', 'APROVADO')
-                ->where('NFcNumero', '>', 0);
+                    ->where('NFcNumero', '>', 0);
             }else if($request->status == "nao_fiscal"){
                 $vendas->where('estado', 'DISPONIVEL')
-                ->where('NFcNumero', 0);
+                    ->where('NFcNumero', 0);
             }else if($request->status == "rascunho"){
                 $vendas->where('rascunho', 1);
             }
@@ -1407,17 +1415,17 @@ class FrontBoxController extends Controller
         if($user->adm){
             $usuarios = Usuario::
             where('empresa_id', $this->empresa_id)
-            ->get();
+                ->get();
         }
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $clientes = Cliente::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', 0)
-        ->get();
+            ->where('inativo', 0)
+            ->get();
 
         $vendedores = [];
         foreach($usuarios as $u){
@@ -1433,30 +1441,30 @@ class FrontBoxController extends Controller
         }
 
         return view('frontBox/list')
-        ->with('vendas', $vendas)
-        ->with('clientes', $clientes)
-        ->with('total', $total)
-        ->with('vendedores', $vendedores)
-        ->with('dataInicial', $dataInicial)
-        ->with('certificado', $certificado)
-        ->with('codigo_venda', $codigo_venda)
-        ->with('status', $request->status)
-        ->with('vendedor_id', $request->vendedor_id)
-        ->with('numero_nfce', $request->numero_nfce)
-        ->with('valor', $request->valor)
-        ->with('contigencia', $this->getContigencia())
-        ->with('somaTiposPagamento', $somaTiposPagamento)
-        ->with('info', "Lista de vendas período: $dataInicial até $dataFinal")
-        ->with('dataFinal', $dataFinal)
-        ->with('usuarios', $usuarios)
-        ->with('tipo_pagamento', $tipo_pagamento)
-        ->with('filial_id', $filial_id)
-        ->with('usuario_id', $usuario_id)
-        ->with('config', $config)
-        ->with('cliente_id', $cliente_id)
-        ->with('frenteCaixa', true)
-        ->with('info', "")
-        ->with('title', 'Filtro de Vendas na Frente de Caixa');
+            ->with('vendas', $vendas)
+            ->with('clientes', $clientes)
+            ->with('total', $total)
+            ->with('vendedores', $vendedores)
+            ->with('dataInicial', $dataInicial)
+            ->with('certificado', $certificado)
+            ->with('codigo_venda', $codigo_venda)
+            ->with('status', $request->status)
+            ->with('vendedor_id', $request->vendedor_id)
+            ->with('numero_nfce', $request->numero_nfce)
+            ->with('valor', $request->valor)
+            ->with('contigencia', $this->getContigencia())
+            ->with('somaTiposPagamento', $somaTiposPagamento)
+            ->with('info', "Lista de vendas período: $dataInicial até $dataFinal")
+            ->with('dataFinal', $dataFinal)
+            ->with('usuarios', $usuarios)
+            ->with('tipo_pagamento', $tipo_pagamento)
+            ->with('filial_id', $filial_id)
+            ->with('usuario_id', $usuario_id)
+            ->with('config', $config)
+            ->with('cliente_id', $cliente_id)
+            ->with('frenteCaixa', true)
+            ->with('info', "")
+            ->with('title', 'Filtro de Vendas na Frente de Caixa');
     }
 
 
@@ -1473,15 +1481,15 @@ class FrontBoxController extends Controller
 
         $vendas = VendaCaixa::filtroCliente($request->nome);
         return view('frontBox/devolucao')
-        ->with('vendas', $vendas)
-        ->with('frenteCaixa', true)
-        ->with('valor', '')
-        ->with('nome', $request->nome)
-        ->with('nfce', '')
-        ->with('data', '')
-        ->with('info', "Filtro cliente: $request->nome")
+            ->with('vendas', $vendas)
+            ->with('frenteCaixa', true)
+            ->with('valor', '')
+            ->with('nome', $request->nome)
+            ->with('nfce', '')
+            ->with('data', '')
+            ->with('info', "Filtro cliente: $request->nome")
 
-        ->with('title', 'Filtro por cliente');
+            ->with('title', 'Filtro por cliente');
     }
 
 
@@ -1489,14 +1497,14 @@ class FrontBoxController extends Controller
 
         $vendas = VendaCaixa::filtroNFCe($request->nfce);
         return view('frontBox/devolucao')
-        ->with('vendas', $vendas)
-        ->with('frenteCaixa', true)
-        ->with('valor', '')
-        ->with('nfce', $request->nfce)
-        ->with('nome', '')
-        ->with('data', '')
-        ->with('info', "Filtro NFCE: $request->nfce")
-        ->with('title', 'Filtro por NFCe');
+            ->with('vendas', $vendas)
+            ->with('frenteCaixa', true)
+            ->with('valor', '')
+            ->with('nfce', $request->nfce)
+            ->with('nome', '')
+            ->with('data', '')
+            ->with('info', "Filtro NFCE: $request->nfce")
+            ->with('title', 'Filtro por NFCe');
     }
 
     public function filtroData(Request $request){
@@ -1504,14 +1512,14 @@ class FrontBoxController extends Controller
         $vendas = VendaCaixa::filtroData2($request->data);
 
         return view('frontBox/devolucao')
-        ->with('vendas', $vendas)
-        ->with('frenteCaixa', true)
-        ->with('valor', '')
-        ->with('data', $request->data)
-        ->with('nome', '')
-        ->with('nfce', '')
-        ->with('info', "Filtro Data: $request->data")
-        ->with('title', 'Filtro por Data');
+            ->with('vendas', $vendas)
+            ->with('frenteCaixa', true)
+            ->with('valor', '')
+            ->with('data', $request->data)
+            ->with('nome', '')
+            ->with('nfce', '')
+            ->with('info', "Filtro Data: $request->data")
+            ->with('title', 'Filtro por Data');
     }
 
     public function filtroValor(Request $request){
@@ -1520,61 +1528,61 @@ class FrontBoxController extends Controller
 
         $vendas = VendaCaixa::filtroValor($valor);
         return view('frontBox/devolucao')
-        ->with('vendas', $vendas)
-        ->with('frenteCaixa', true)
-        ->with('nfce', '')
-        ->with('valor', $valor)
-        ->with('nome', '')
-        ->with('data', '')
-        ->with('info', "Filtro valor: $request->valor")
+            ->with('vendas', $vendas)
+            ->with('frenteCaixa', true)
+            ->with('nfce', '')
+            ->with('valor', $valor)
+            ->with('nome', '')
+            ->with('data', '')
+            ->with('info', "Filtro valor: $request->valor")
 
-        ->with('title', 'Filtro por Valor');
+            ->with('title', 'Filtro por Valor');
     }
 
     public function fechar(){
         $config = ConfigNota::where('empresa_id', $this->empresa_id)->first();
 
         $aberturaNfe = AberturaCaixa::where('ultima_venda_nfe', 0)
-        ->where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $aberturaNfce = AberturaCaixa::where('ultima_venda_nfce', 0)
-        ->where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $ultimaFechadaNfe = AberturaCaixa::where('ultima_venda_nfe', '>', 0)
-        ->where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $ultimaFechadaNfce = AberturaCaixa::where('ultima_venda_nfce', '>', 0)
-        ->where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->where('empresa_id', $this->empresa_id)
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $ultimaVendaCaixa = VendaCaixa::
         where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $ultimaVenda = Venda::
         where('empresa_id', $this->empresa_id)
-        ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-            return $q->where('usuario_id', get_id_user());
-        })
-        ->orderBy('id', 'desc')->first();
+            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                return $q->where('usuario_id', get_id_user());
+            })
+            ->orderBy('id', 'desc')->first();
 
         $vendas = [];
 
@@ -1584,22 +1592,22 @@ class FrontBoxController extends Controller
             $ultimaVenda = $ultimaVenda != null ? $ultimaVenda->id : 0;
 
             $vendasPdv = VendaCaixa
-            ::whereBetween('id', [($ultimaFechadaNfce != null ? $ultimaFechadaNfce->ultima_venda_nfce+1 : 0),
-                $ultimaVendaCaixa])
-            ->where('empresa_id', $this->empresa_id)
-            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-                return $q->where('usuario_id', get_id_user());
-            })
-            ->get();
+                ::whereBetween('id', [($ultimaFechadaNfce != null ? $ultimaFechadaNfce->ultima_venda_nfce+1 : 0),
+                    $ultimaVendaCaixa])
+                ->where('empresa_id', $this->empresa_id)
+                ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                    return $q->where('usuario_id', get_id_user());
+                })
+                ->get();
 
             $vendas = Venda
-            ::whereBetween('id', [($ultimaFechadaNfe != null ? $ultimaFechadaNfe->ultima_venda_nfe+1 : 0),
-                $ultimaVenda])
-            ->where('empresa_id', $this->empresa_id)
-            ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
-                return $q->where('usuario_id', get_id_user());
-            })
-            ->get();
+                ::whereBetween('id', [($ultimaFechadaNfe != null ? $ultimaFechadaNfe->ultima_venda_nfe+1 : 0),
+                    $ultimaVenda])
+                ->where('empresa_id', $this->empresa_id)
+                ->when($config->caixa_por_usuario == 1, function ($q) use ($config) {
+                    return $q->where('usuario_id', get_id_user());
+                })
+                ->get();
 
             $vendas = $this->agrupaVendas($vendas, $vendasPdv);
             $somaTiposPagamento = $this->somaTiposPagamento($vendas);
@@ -1607,10 +1615,10 @@ class FrontBoxController extends Controller
         }
 
         return view('frontBox/fechar_caixa')
-        ->with('vendas', $vendas)
-        ->with('abertura', $aberturaNfe != null ? $aberturaNfe : $aberturaNfce)
-        ->with('somaTiposPagamento', $somaTiposPagamento)
-        ->with('title', 'Fechar caixa');
+            ->with('vendas', $vendas)
+            ->with('abertura', $aberturaNfe != null ? $aberturaNfe : $aberturaNfce)
+            ->with('somaTiposPagamento', $somaTiposPagamento)
+            ->with('title', 'Fechar caixa');
 
     }
 
@@ -1634,14 +1642,14 @@ class FrontBoxController extends Controller
         $abertura = AberturaCaixa::find($id);
         $ultimaVendaCaixa = VendaCaixa::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')->first();
+            ->orderBy('id', 'desc')->first();
 
         $ultimaVenda = Venda::
         where('empresa_id', $this->empresa_id)
-        ->orderBy('id', 'desc')->first();
+            ->orderBy('id', 'desc')->first();
 
         $abertura->ultima_venda_nfce = $ultimaVendaCaixa != null ?
-        $ultimaVendaCaixa->id : 0;
+            $ultimaVendaCaixa->id : 0;
         $abertura->ultima_venda_nfe = $ultimaVenda != null ? $ultimaVenda->id : 0;
         $abertura->status = true;
         $abertura->valor_dinheiro_caixa = __replace($request->valor_dinheiro_caixa);
@@ -1656,7 +1664,7 @@ class FrontBoxController extends Controller
 
     public function fechamentos(){
         $aberturas = AberturaCaixa::where('ultima_venda', '>', 0)
-        ->where('empresa_id', $this->empresa_id)->get();
+            ->where('empresa_id', $this->empresa_id)->get();
         $arr = [];
 
         for($i = 0; $i < sizeof($aberturas); $i++){
@@ -1667,9 +1675,9 @@ class FrontBoxController extends Controller
                 $anterior = $aberturas[$i-1]->ultima_venda;
             }
             $vendas = VendaCaixa
-            ::whereBetween('id', [$anterior+1,
-                $atual])
-            ->get();
+                ::whereBetween('id', [$anterior+1,
+                    $atual])
+                ->get();
 
             $total = 0;
             foreach($vendas as $v){
@@ -1691,14 +1699,14 @@ class FrontBoxController extends Controller
         });
 
         return view('frontBox/fechamentos')
-        ->with('fechamentos', $arr)
-        ->with('title', 'Lista de Caixas');
+            ->with('fechamentos', $arr)
+            ->with('title', 'Lista de Caixas');
     }
 
     public function listaFechamento($id){
         $aberturas = AberturaCaixa::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
         $abertura = null;
         $inicio = 0;
         $fim = 0;
@@ -1719,39 +1727,39 @@ class FrontBoxController extends Controller
 
 
         $vendas = VendaCaixa
-        ::whereBetween('id', [$inicio,
-            $fim])
-        ->get();
+            ::whereBetween('id', [$inicio,
+                $fim])
+            ->get();
 
         $somaTiposPagamento = $this->somaTiposPagamento($vendas);
 
         return view('frontBox/lista_fecha_caixa')
-        ->with('vendas', $vendas)
-        ->with('abertura', $abertura)
-        ->with('filial', $filial) // <- ESSA LINHA É ESSENCIAL
-        ->with('somaTiposPagamento', $somaTiposPagamento)
-        ->with('title', 'Detalhe fecha caixa');
+            ->with('vendas', $vendas)
+            ->with('abertura', $abertura)
+            ->with('filial', $filial) // <- ESSA LINHA É ESSENCIAL
+            ->with('somaTiposPagamento', $somaTiposPagamento)
+            ->with('title', 'Detalhe fecha caixa');
     }
 
     public function config(){
 
         $config = ConfigCaixa::
         where('usuario_id', get_id_user())
-        ->first();
+            ->first();
 
         if($config != null)
             $config->tipos_pagamento = json_decode($config->tipos_pagamento);
 
         return view('frontBox/config')
-        ->with('config', $config)
-        ->with('title', 'Configuração Caixa');
+            ->with('config', $config)
+            ->with('title', 'Configuração Caixa');
     }
 
     public function configSave(Request $request){
         // $usuario = Usuario::find(get_id_user());
         $config = ConfigCaixa::
         where('usuario_id', get_id_user())
-        ->first();
+            ->first();
 
         if(!isset($request->tipos_pagamento)){
             $request->tipos_pagamento = [];
@@ -1859,19 +1867,19 @@ class FrontBoxController extends Controller
         }
 
         $trocas = $trocas->where('empresa_id', $this->empresa_id)
-        ->limit(20)
-        ->get();
+            ->limit(20)
+            ->get();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         return view('frontBox/troca')
-        ->with('config', $config)
-        ->with('trocas', $trocas)
-        ->with('frenteCaixa', true)
-        ->with('data', $data)
-        ->with('title', 'Troca de PDV');
+            ->with('config', $config)
+            ->with('trocas', $trocas)
+            ->with('frenteCaixa', true)
+            ->with('data', $data)
+            ->with('title', 'Troca de PDV');
     }
 
     public function editTroca(Request $request){
@@ -1900,58 +1908,58 @@ class FrontBoxController extends Controller
 
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $naturezas = NaturezaOperacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->get();
+            ->where('inativo', false)
+            ->get();
 
         $produtosGroup = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->where('valor_venda', '>', 0)
-        ->groupBy('referencia_grade')
-        ->get();
+            ->where('inativo', false)
+            ->where('valor_venda', '>', 0)
+            ->groupBy('referencia_grade')
+            ->get();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $tiposPagamento = VendaCaixa::tiposPagamento();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $usuario = Usuario::find(get_id_user());
 
         if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null){
 
             return view("frontBox/alerta")
-            ->with('produtos', count($produtos))
-            ->with('categorias', count($categorias))
-            ->with('naturezas', $naturezas)
-            ->with('config', $config)
-            ->with('tributacao', $tributacao)
-            ->with('title', "Validação para Emitir");
+                ->with('produtos', count($produtos))
+                ->with('categorias', count($categorias))
+                ->with('naturezas', $naturezas)
+                ->with('config', $config)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
         }else{
 
             if($config->nat_op_padrao == 0){
@@ -1964,10 +1972,10 @@ class FrontBoxController extends Controller
 
                 $produtos = Produto::
                 where('empresa_id', $this->empresa_id)
-                ->where('inativo', false)
-                ->where('valor_venda', '>', 0)
-                ->orderBy('nome')
-                ->get();
+                    ->where('inativo', false)
+                    ->where('valor_venda', '>', 0)
+                    ->orderBy('nome')
+                    ->get();
 
                 foreach($produtos as $p){
                     $p->listaPreco;
@@ -2001,12 +2009,12 @@ class FrontBoxController extends Controller
 
                 $categorias = Categoria::
                 where('empresa_id', $this->empresa_id)
-                ->orderBy('nome')->get();
+                    ->orderBy('nome')->get();
 
                 $clientes = Cliente::orderBy('razao_social')
-                ->where('empresa_id', $this->empresa_id)
-                ->where('inativo', false)
-                ->get();
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('inativo', false)
+                    ->get();
 
                 foreach($clientes as $c){
                     $c->totalEmAberto = 0;
@@ -2018,7 +2026,7 @@ class FrontBoxController extends Controller
 
                 $atalhos = ConfigCaixa::
                 where('usuario_id', get_id_user())
-                ->first();
+                    ->first();
 
                 $view = 'main';
                 if($atalhos != null && $atalhos->modelo_pdv == 1){
@@ -2034,9 +2042,9 @@ class FrontBoxController extends Controller
                 $rascunhos = $this->getRascunhos();
 
                 $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-                ->where('ativo', 1)
-                ->orderBy('nome', 'asc')
-                ->get();
+                    ->where('ativo', 1)
+                    ->orderBy('nome', 'asc')
+                    ->get();
                 $vendedores = [];
                 foreach($usuarios as $u){
                     if($u->funcionario){
@@ -2044,58 +2052,58 @@ class FrontBoxController extends Controller
                     }
                 }
 
-                    // Dados para o modal -> adicionar novo cliente
+                // Dados para o modal -> adicionar novo cliente
                 $estados = Cliente::estados();
                 $cidades = Cidade::all();
                 $pais = Pais::all();
                 $grupos = GrupoCliente::get();
                 $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
                 $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
-                    //
+                //
                 $produtosMaisVendidos = $this->produtosMaisVendidos();
                 $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-                ->where('usuario_id', get_id_user())
-                ->where('status', 0)
-                ->orderBy('id', 'desc')
-                ->first();
+                    ->where('usuario_id', get_id_user())
+                    ->where('status', 0)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
                 //$filial = $abertura != null ? $abertura->filial : null;
                 $filial = $abertura != null ? $abertura->filial()->first() : null;
 
                 $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-                ->where('status', 1)->get();
+                    ->where('status', 1)->get();
                 return view('frontBox/main3')
-                ->with('frenteCaixa', true)
-                ->with('is_troca', true)
-                ->with('vendedores', $vendedores)
-                ->with('contasEmpresa', $contasEmpresa)
-                ->with('filial', $filial)
-                ->with('produtosMaisVendidos', $produtosMaisVendidos)
-                ->with('tiposPagamento', $tiposPagamento)
-                ->with('config', $config)
-                ->with('rascunhos', $rascunhos)
-                ->with('certificado', $certificado)
-                ->with('listaPreco', $listas)
-                ->with('atalhos', $atalhos)
-                ->with('venda', $venda)
-                ->with('disableFooter', true)
-                ->with('usuario', $usuario)
-                ->with('produtos', $produtos)
-                ->with('produtosGroup', $produtosGroup)
-                ->with('clientes', $clientes)
-                ->with('categorias', $categorias)
-                ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                    ->with('frenteCaixa', true)
+                    ->with('is_troca', true)
+                    ->with('vendedores', $vendedores)
+                    ->with('contasEmpresa', $contasEmpresa)
+                    ->with('filial', $filial)
+                    ->with('produtosMaisVendidos', $produtosMaisVendidos)
+                    ->with('tiposPagamento', $tiposPagamento)
+                    ->with('config', $config)
+                    ->with('rascunhos', $rascunhos)
+                    ->with('certificado', $certificado)
+                    ->with('listaPreco', $listas)
+                    ->with('atalhos', $atalhos)
+                    ->with('venda', $venda)
+                    ->with('disableFooter', true)
+                    ->with('usuario', $usuario)
+                    ->with('produtos', $produtos)
+                    ->with('produtosGroup', $produtosGroup)
+                    ->with('clientes', $clientes)
+                    ->with('categorias', $categorias)
+                    ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
                     // para o modal -> adicionar novo cliente
-                ->with('pessoaFisicaOuJuridica', true)
-                ->with('cidadeJs', true)
-                ->with('cidades', $cidades)
-                ->with('estados', $estados)
-                ->with('acessores', $acessores)
-                ->with('funcionarios', $funcionarios)
-                ->with('grupos', $grupos)
-                ->with('pais', $pais)
+                    ->with('pessoaFisicaOuJuridica', true)
+                    ->with('cidadeJs', true)
+                    ->with('cidades', $cidades)
+                    ->with('estados', $estados)
+                    ->with('acessores', $acessores)
+                    ->with('funcionarios', $funcionarios)
+                    ->with('grupos', $grupos)
+                    ->with('pais', $pais)
                     //
-                ->with('title', 'Frente de Caixa - Troca');
+                    ->with('title', 'Frente de Caixa - Troca');
             }
         }
     }
@@ -2103,57 +2111,57 @@ class FrontBoxController extends Controller
     public function preVenda(Request $request){
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $naturezas = NaturezaOperacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->get();
+            ->where('inativo', false)
+            ->get();
 
         $produtosGroup = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->where('valor_venda', '>', 0)
-        ->groupBy('referencia_grade')
-        ->get();
+            ->where('inativo', false)
+            ->where('valor_venda', '>', 0)
+            ->groupBy('referencia_grade')
+            ->get();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $tiposPagamento = VendaCaixa::tiposPagamento();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $usuario = Usuario::find(get_id_user());
 
         if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null){
 
             return view("frontBox/alerta")
-            ->with('produtos', count($produtos))
-            ->with('categorias', count($categorias))
-            ->with('naturezas', $naturezas)
-            ->with('config', $config)
-            ->with('tributacao', $tributacao)
-            ->with('title', "Validação para Emitir");
+                ->with('produtos', count($produtos))
+                ->with('categorias', count($categorias))
+                ->with('naturezas', $naturezas)
+                ->with('config', $config)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
         }else{
 
             if($config->nat_op_padrao == 0){
@@ -2166,12 +2174,12 @@ class FrontBoxController extends Controller
 
                 $categorias = Categoria::
                 where('empresa_id', $this->empresa_id)
-                ->orderBy('nome')->get();
+                    ->orderBy('nome')->get();
 
                 $clientes = Cliente::orderBy('razao_social')
-                ->where('empresa_id', $this->empresa_id)
-                ->where('inativo', false)
-                ->get();
+                    ->where('empresa_id', $this->empresa_id)
+                    ->where('inativo', false)
+                    ->get();
 
                 foreach($clientes as $c){
                     $c->totalEmAberto = 0;
@@ -2183,7 +2191,7 @@ class FrontBoxController extends Controller
 
                 $atalhos = ConfigCaixa::
                 where('usuario_id', get_id_user())
-                ->first();
+                    ->first();
 
                 if($atalhos == null){
                     session()->flash('mensagem_erro', 'Informe a configuração primeiro!');
@@ -2198,17 +2206,17 @@ class FrontBoxController extends Controller
 
                 $rascunhos = $this->getRascunhos();
 
-                    // rascunhos de pré-venda do usuário
+                // rascunhos de pré-venda do usuário
                 $preVendaRascunhos = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)
-                ->where('prevenda_nivel', 1)
-                ->limit(100)
-                ->orderBy('updated_at', 'desc')
-                ->get();
+                    ->where('prevenda_nivel', 1)
+                    ->limit(100)
+                    ->orderBy('updated_at', 'desc')
+                    ->get();
 
                 $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-                ->where('ativo', 1)
-                ->orderBy('nome', 'asc')
-                ->get();
+                    ->where('ativo', 1)
+                    ->orderBy('nome', 'asc')
+                    ->get();
                 $vendedores = [];
                 foreach($usuarios as $u){
                     if($u->funcionario){
@@ -2216,64 +2224,64 @@ class FrontBoxController extends Controller
                     }
                 }
 
-                    // Dados para o modal -> adicionar novo cliente
+                // Dados para o modal -> adicionar novo cliente
                 $estados = Cliente::estados();
                 $cidades = Cidade::all();
                 $pais = Pais::all();
                 $grupos = GrupoCliente::get();
                 $acessores = Acessor::where('empresa_id', $this->empresa_id)->get();
                 $funcionarios = Funcionario::where('empresa_id', $this->empresa_id)->get();
-                    //
+                //
 
                 $produtosMaisVendidos = $this->produtosMaisVendidos();
                 $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-                ->where('usuario_id', get_id_user())
-                ->where('status', 0)
-                ->orderBy('id', 'desc')
-                ->first();
+                    ->where('usuario_id', get_id_user())
+                    ->where('status', 0)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
                 //$filial = $abertura != null ? $abertura->filial : null;
                 $filial = $abertura != null ? $abertura->filial()->first() : null;
 
                 $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-                ->where('status', 1)->get();
+                    ->where('status', 1)->get();
                 $viewBlade = view('frontBox/main3')
-                ->with('frenteCaixa', true)
-                ->with('preVenda', true)
-                ->with('preVendaRascunhos', $preVendaRascunhos)
-                ->with('produtosMaisVendidos', $produtosMaisVendidos)
-                ->with('vendedores', $vendedores)
-                ->with('contasEmpresa', $contasEmpresa)
-                ->with('tiposPagamento', $tiposPagamento)
-                ->with('config', $config)
-                ->with('certificado', $certificado)
-                ->with('listaPreco', $listas)
-                ->with('rascunhos', $rascunhos)
-                ->with('consignadas', $this->getConsignadas())
-                ->with('atalhos', $atalhos)
-                ->with('filial', $filial)
-                ->with('disableFooter', true)
-                ->with('usuario', $usuario)
+                    ->with('frenteCaixa', true)
+                    ->with('preVenda', true)
+                    ->with('preVendaRascunhos', $preVendaRascunhos)
+                    ->with('produtosMaisVendidos', $produtosMaisVendidos)
+                    ->with('vendedores', $vendedores)
+                    ->with('contasEmpresa', $contasEmpresa)
+                    ->with('tiposPagamento', $tiposPagamento)
+                    ->with('config', $config)
+                    ->with('certificado', $certificado)
+                    ->with('listaPreco', $listas)
+                    ->with('rascunhos', $rascunhos)
+                    ->with('consignadas', $this->getConsignadas())
+                    ->with('atalhos', $atalhos)
+                    ->with('filial', $filial)
+                    ->with('disableFooter', true)
+                    ->with('usuario', $usuario)
 
-                ->with('produtosGroup', $produtosGroup)
-                ->with('clientes', $clientes)
-                ->with('categorias', $categorias)
-                ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
-                     // para o modal -> adicionar novo cliente
-                ->with('pessoaFisicaOuJuridica', true)
-                ->with('cidadeJs', true)
-                ->with('cidades', $cidades)
-                ->with('estados', $estados)
-                ->with('acessores', $acessores)
-                ->with('funcionarios', $funcionarios)
-                ->with('grupos', $grupos)
-                ->with('pais', $pais)
+                    ->with('produtosGroup', $produtosGroup)
+                    ->with('clientes', $clientes)
+                    ->with('categorias', $categorias)
+                    ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                    // para o modal -> adicionar novo cliente
+                    ->with('pessoaFisicaOuJuridica', true)
+                    ->with('cidadeJs', true)
+                    ->with('cidades', $cidades)
+                    ->with('estados', $estados)
+                    ->with('acessores', $acessores)
+                    ->with('funcionarios', $funcionarios)
+                    ->with('grupos', $grupos)
+                    ->with('pais', $pais)
                     //
-                ->with('title', 'Pré-venda');
+                    ->with('title', 'Pré-venda');
 
                 if(isset($request->id)){
                     $venda = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)
-                    ->where('prevenda_nivel', 1)->find($request->id);
+                        ->where('prevenda_nivel', 1)->find($request->id);
                     $venda->cliente;
                     foreach($venda->itens as $it){
                         $it->produto;
@@ -2290,57 +2298,57 @@ class FrontBoxController extends Controller
     public function preVendaEdit(Request $request){
         $countProdutos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->count();
+            ->where('inativo', false)
+            ->count();
 
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $naturezas = NaturezaOperacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $categorias = Categoria::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $produtos = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->get();
+            ->where('inativo', false)
+            ->get();
 
         $produtosGroup = Produto::
         where('empresa_id', $this->empresa_id)
-        ->where('inativo', false)
-        ->where('valor_venda', '>', 0)
-        ->groupBy('referencia_grade')
-        ->get();
+            ->where('inativo', false)
+            ->where('valor_venda', '>', 0)
+            ->groupBy('referencia_grade')
+            ->get();
 
         $tributacao = Tributacao::
         where('empresa_id', $this->empresa_id)
-        ->get();
+            ->get();
 
         $tiposPagamento = VendaCaixa::tiposPagamento();
         $config = ConfigNota::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $certificado = Certificado::
         where('empresa_id', $this->empresa_id)
-        ->first();
+            ->first();
 
         $usuario = Usuario::find(get_id_user());
 
         if(count($naturezas) == 0 || count($produtos) == 0 || $config == null || count($categorias) == 0 || $tributacao == null){
 
             return view("frontBox/alerta")
-            ->with('produtos', count($produtos))
-            ->with('categorias', count($categorias))
-            ->with('naturezas', $naturezas)
-            ->with('config', $config)
-            ->with('tributacao', $tributacao)
-            ->with('title', "Validação para Emitir");
+                ->with('produtos', count($produtos))
+                ->with('categorias', count($categorias))
+                ->with('naturezas', $naturezas)
+                ->with('config', $config)
+                ->with('tributacao', $tributacao)
+                ->with('title', "Validação para Emitir");
         }else{
 
             if($config->nat_op_padrao == 0){
@@ -2353,11 +2361,11 @@ class FrontBoxController extends Controller
 
                 $categorias = Categoria::
                 where('empresa_id', $this->empresa_id)
-                ->orderBy('nome')->get();
+                    ->orderBy('nome')->get();
 
                 $clientes = Cliente::orderBy('razao_social')
-                ->where('empresa_id', $this->empresa_id)
-                ->get();
+                    ->where('empresa_id', $this->empresa_id)
+                    ->get();
 
                 foreach($clientes as $c){
                     $c->totalEmAberto = 0;
@@ -2369,7 +2377,7 @@ class FrontBoxController extends Controller
 
                 $atalhos = ConfigCaixa::
                 where('usuario_id', get_id_user())
-                ->first();
+                    ->first();
 
                 $view = 'main';
                 if($atalhos != null && $atalhos->modelo_pdv == 1){
@@ -2379,17 +2387,17 @@ class FrontBoxController extends Controller
 
                 $rascunhos = $this->getRascunhos();
 
-                    // rascunhos de pré-venda do usuário
+                // rascunhos de pré-venda do usuário
                 $preVendaRascunhos = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)
-                ->where('prevenda_nivel', 1)
-                ->limit(100)
-                ->orderBy('updated_at', 'desc')
-                ->get();
+                    ->where('prevenda_nivel', 1)
+                    ->limit(100)
+                    ->orderBy('updated_at', 'desc')
+                    ->get();
 
                 $usuarios = Usuario::where('empresa_id', $this->empresa_id)
-                ->where('ativo', 1)
-                ->orderBy('nome', 'asc')
-                ->get();
+                    ->where('ativo', 1)
+                    ->orderBy('nome', 'asc')
+                    ->get();
                 $vendedores = [];
                 foreach($usuarios as $u){
                     if($u->funcionario){
@@ -2397,7 +2405,7 @@ class FrontBoxController extends Controller
                     }
                 }
 
-                    // Dados para o modal -> adicionar novo cliente
+                // Dados para o modal -> adicionar novo cliente
                 $estados = Cliente::estados();
                 $cidades = Cidade::all();
                 $pais = Pais::all();
@@ -2408,54 +2416,54 @@ class FrontBoxController extends Controller
                 $produtosMaisVendidos = $this->produtosMaisVendidos();
                 $consignadas = $this->getConsignadas();
                 $abertura = AberturaCaixa::where('empresa_id', $this->empresa_id)
-                ->where('usuario_id', get_id_user())
-                ->where('status', 0)
-                ->orderBy('id', 'desc')
-                ->first();
+                    ->where('usuario_id', get_id_user())
+                    ->where('status', 0)
+                    ->orderBy('id', 'desc')
+                    ->first();
                 //$filial = $abertura != null ? $abertura->filial : null;
                 $filial = $abertura != null ? $abertura->filial()->first() : null;
 
                 $contasEmpresa = ContaEmpresa::where('empresa_id', $this->empresa_id)
-                ->where('status', 1)->get();
+                    ->where('status', 1)->get();
 
                 $viewBlade = view('frontBox/main3')
-                ->with('frenteCaixa', true)
-                ->with('preVenda', true)
-                ->with('preVendaRascunhos', $preVendaRascunhos)
-                ->with('vendedores', $vendedores)
-                ->with('tiposPagamento', $tiposPagamento)
-                ->with('config', $config)
-                ->with('filial', $filial)
-                ->with('contasEmpresa', $contasEmpresa)
-                ->with('certificado', $certificado)
-                ->with('listaPreco', $listas)
-                ->with('produtosMaisVendidos', $produtosMaisVendidos)
-                ->with('rascunhos', $rascunhos)
-                ->with('atalhos', $atalhos)
-                ->with('disableFooter', true)
-                ->with('usuario', $usuario)
-                ->with('consignadas', $consignadas)
+                    ->with('frenteCaixa', true)
+                    ->with('preVenda', true)
+                    ->with('preVendaRascunhos', $preVendaRascunhos)
+                    ->with('vendedores', $vendedores)
+                    ->with('tiposPagamento', $tiposPagamento)
+                    ->with('config', $config)
+                    ->with('filial', $filial)
+                    ->with('contasEmpresa', $contasEmpresa)
+                    ->with('certificado', $certificado)
+                    ->with('listaPreco', $listas)
+                    ->with('produtosMaisVendidos', $produtosMaisVendidos)
+                    ->with('rascunhos', $rascunhos)
+                    ->with('atalhos', $atalhos)
+                    ->with('disableFooter', true)
+                    ->with('usuario', $usuario)
+                    ->with('consignadas', $consignadas)
 
-                ->with('produtosGroup', $produtosGroup)
-                ->with('clientes', $clientes)
-                ->with('categorias', $categorias)
-                ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
-                     // para o modal -> adicionar novo cliente
-                ->with('pessoaFisicaOuJuridica', true)
-                ->with('cidadeJs', true)
-                ->with('cidades', $cidades)
-                ->with('estados', $estados)
-                ->with('acessores', $acessores)
-                ->with('funcionarios', $funcionarios)
-                ->with('grupos', $grupos)
-                ->with('pais', $pais)
-                ->with('editPrevenda', 1)
+                    ->with('produtosGroup', $produtosGroup)
+                    ->with('clientes', $clientes)
+                    ->with('categorias', $categorias)
+                    ->with('tiposPagamentoMulti', $tiposPagamentoMulti)
+                    // para o modal -> adicionar novo cliente
+                    ->with('pessoaFisicaOuJuridica', true)
+                    ->with('cidadeJs', true)
+                    ->with('cidades', $cidades)
+                    ->with('estados', $estados)
+                    ->with('acessores', $acessores)
+                    ->with('funcionarios', $funcionarios)
+                    ->with('grupos', $grupos)
+                    ->with('pais', $pais)
+                    ->with('editPrevenda', 1)
                     //
-                ->with('title', 'Pré-venda');
+                    ->with('title', 'Pré-venda');
 
                 if(isset($request->id)){
                     $venda = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)
-                    ->find($request->id);
+                        ->find($request->id);
                     $venda->cliente;
                     foreach($venda->itens as $it){
                         $it->produto;
