@@ -134,7 +134,7 @@ class Handler extends ExceptionHandler
         // 2) Flash + redirect com mensagem e mantém os inputs
         return redirect()->back()
             ->with('mensagem_erro', $message)
-            ->withInput();
+            ->withInput($request->except($this->dontFlash));
     }
 
     /**
@@ -172,7 +172,7 @@ class Handler extends ExceptionHandler
             return response($labels[$code] ?? 'Não foi possível concluir a solicitação do delivery.', $code);
         }
 
-        return redirect()->back()->withInput();
+        return redirect()->back()->withInput($request->except($this->dontFlash));
     }
 
     /**
@@ -188,7 +188,7 @@ class Handler extends ExceptionHandler
         $this->logContext('critical', $message, $e, $request);
         session()->flash('mensagem_erro', $message);
 
-        return redirect()->back()->withInput();
+        return redirect()->back()->withInput($request->except($this->dontFlash));
     }
 
     /**
@@ -204,7 +204,7 @@ class Handler extends ExceptionHandler
         $this->logContext('error', $message, $e, $request);
         session()->flash('mensagem_erro', $message);
 
-        return redirect()->back()->withInput();
+        return redirect()->back()->withInput($request->except($this->dontFlash));
     }
 
 

@@ -1278,6 +1278,10 @@ class Menu {
                         'rota' => '/filial'
                     ],
                     [
+                        'nome' => 'Pagamentos eletrônicos',
+                        'rota' => '/configuracao-pagamentos'
+                    ],
+                    [
                         'nome' => 'Configurar email',
                         'rota' => '/configEmail'
                     ],
