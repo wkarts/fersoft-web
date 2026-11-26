@@ -11,6 +11,13 @@ final readonly class Estabelecimento
 {
     public function __construct(public int $empresa, public int $local, public Usuario $usuario) {}
 
+    /** O seletor do cabeçalho grava -1 para a matriz; a integração usa zero. */
+    public static function localDoTopo(Usuario $usuario): int
+    {
+        $local = (int) $usuario->local_padrao;
+        return $local === -1 ? 0 : $local;
+    }
+
     public static function atual(bool $administrador = false): self
     {
         $empresa = (int) session('user_logged.empresa');
@@ -18,13 +25,13 @@ final readonly class Estabelecimento
         $admin = (bool) $usuario->adm || (bool) session('user_logged.super');
         $permissoes = json_decode($usuario->permissao ?? '[]', true) ?: [];
         abort_unless($admin || (!$administrador && in_array('/pagamentos-eletronicos', $permissoes, true)), 403);
-        $local = (int) ($usuario->local_padrao ?? -1);
+        $local = self::localDoTopo($usuario);
         $locais = json_decode($usuario->locais ?? '[]', true) ?: [-1];
         abort_unless(in_array($local ?: -1, array_map('intval', $locais), true), 403);
         if ($local > 0) {
             abort_unless(Filial::where('empresa_id', $empresa)->where('status', 1)->whereKey($local)->exists(), 403);
         }
-        return new self($empresa, max(0, $local), $usuario);
+        return new self($empresa, $local, $usuario);
     }
 
     public static function fiscal(int $empresa, int $local): Environment
