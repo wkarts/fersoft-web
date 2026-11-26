@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "03017ba5bae2944b3588dc7ae86fa0aa",
+    "content-hash": "5b083e6fde8fe44cb1ae16cc1246835d",
     "packages": [
         {
             "name": "argws/electronic-payments",
@@ -13,6 +13,12 @@
                 "type": "git",
                 "url": "https://github.com/wkarts/ARGWS-Electronic-Payments.git",
                 "reference": "e45b9c049560963bc284949f8370889e51f210e7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wkarts/ARGWS-Electronic-Payments/zipball/e45b9c049560963bc284949f8370889e51f210e7",
+                "reference": "e45b9c049560963bc284949f8370889e51f210e7",
+                "shasum": ""
             },
             "require": {
                 "ext-json": "*",
@@ -33,20 +39,21 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Argws\\ElectronicPayments\\": "src/",
-                    "Asaas\\Sdk\\": "vendor/argws/asaas-sdk-php/src/"
+                    "Asaas\\Sdk\\": "vendor/argws/asaas-sdk-php/src/",
+                    "Argws\\ElectronicPayments\\": "src/"
                 }
             },
-            "scripts": {
-                "test": [
-                    "@php tests/run.php"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "proprietary"
             ],
             "description": "Pagamentos eletrônicos para aplicações PHP, com adaptador Asaas para cobranças, recebimentos e extratos.",
-            "time": "2026-11-26T07:12:47+00:00"
+            "support": {
+                "issues": "https://github.com/wkarts/ARGWS-Electronic-Payments/issues",
+                "source": "https://github.com/wkarts/ARGWS-Electronic-Payments/tree/v0.1.2"
+            },
+            "time": "2026-11-26T07:12:47+00:00",
+            "published-time": "2026-11-26T07:13:25+00:00"
         },
         {
             "name": "argws/laravel-updater",
