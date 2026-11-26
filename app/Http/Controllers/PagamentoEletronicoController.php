@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Empresa, PagamentoCobranca, PagamentoConexao};
+use App\Models\{PagamentoCobranca, PagamentoConexao};
 use App\Services\Pagamentos\{Cobrancas, Estabelecimento};
-use Argws\ElectronicPayments\{ChargeId, Environment, PaymentMethod};
+use Argws\ElectronicPayments\{ChargeId, PaymentMethod};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class PagamentoEletronicoController extends Controller
 {
@@ -23,61 +22,15 @@ class PagamentoEletronicoController extends Controller
     {
         $site = Estabelecimento::atual();
         $conexoes = $site->conexoes()->get();
-        $ativa = $conexoes->firstWhere('selecionada', true);
         $fiscal = Estabelecimento::fiscal($site->empresa, $site->local);
+        $ativa = $conexoes->first(fn ($c) => $c->selecionada &&
+            ($c->ambiente === 'sandbox' || $fiscal->value === 'production'));
         $titulo = $request->filled('titulo') && $ativa
             ? $this->service->titulo($ativa, $request->integer('titulo'))->firstOrFail() : null;
         $cobrancas = PagamentoCobranca::with('conexao')->whereIn('conexao_id', $conexoes->pluck('id'))
             ->latest('id')->paginate(30);
         return view('pagamentos.index', compact('site', 'conexoes', 'ativa', 'fiscal', 'titulo', 'cobrancas'))
             ->with('title', 'Pagamentos eletrônicos');
-    }
-
-    public function configurar(Request $request)
-    {
-        $key = $request->input('credencial');
-        $secret = $request->input('segredo');
-        $request->request->remove('credencial');
-        $request->request->remove('segredo');
-        $site = Estabelecimento::atual(true);
-        abort_unless($request->input('estabelecimento') === $site->empresa.'-'.$site->local, 409, 'O estabelecimento mudou. Reabra a configuração.');
-        $request->validate(['ambiente' => 'required|in:sandbox,production', 'ativar' => 'nullable|boolean']);
-        abort_if(($key !== null && (!is_string($key) || strlen($key) > 4096)) ||
-            ($secret !== null && (!is_string($secret) || strlen($secret) < 32 || strlen($secret) > 255)), 422,
-            'Confira a chave e o token de autenticação do webhook (32 a 255 caracteres).');
-        $env = $request->input('ambiente');
-        $c = $site->conexoes()->firstOrNew(['ambiente' => $env], [
-            'empresa_id' => $site->empresa, 'local' => $site->local, 'webhook_id' => (string) Str::uuid(),
-        ]);
-        $c->account()->authorize(Estabelecimento::fiscal($site->empresa, $site->local));
-        abort_if(!$c->exists && (!$key || !$secret), 422, 'Informe a chave e o token do webhook.');
-        if ($key) {
-            $c->credencial = $key;
-            try {
-                $wallets = $this->service->connection($c)->sdk()->accountInfo->retrieveWalletid();
-            } catch (\Exception $e) {
-                abort(422, 'O Asaas não confirmou a carteira. Confira a credencial, o ambiente e a permissão de leitura da conta.');
-            }
-            $wallet = $wallets['data'][0]['id'] ?? null;
-            abort_unless(is_string($wallet) && $wallet !== '' && count($wallets['data']) === 1 && empty($wallets['hasMore']), 422,
-                'A chave precisa identificar uma única carteira Asaas.');
-            abort_if($c->exists && $c->carteira !== $wallet, 409, 'A nova chave pertence a uma carteira diferente.');
-            $c->carteira = $wallet;
-        }
-        if ($secret) {
-            $c->segredo = $secret;
-        }
-        DB::transaction(function () use ($site, $request, $c) {
-            Empresa::whereKey($site->empresa)->lockForUpdate()->firstOrFail();
-            if ($request->boolean('ativar')) {
-                $site->conexoes()->where('ambiente', '<>', $c->ambiente)->where('selecionada', true)->update(['selecionada' => null]);
-                $c->selecionada = true;
-            } else {
-                $c->selecionada = null;
-            }
-            $c->save();
-        });
-        return redirect()->route('pagamentos.index')->with('mensagem_sucesso', 'Configuração do estabelecimento salva.');
     }
 
     public function emitir(Request $request)
@@ -176,7 +129,8 @@ class PagamentoEletronicoController extends Controller
 
     public function relatorio(Request $request)
     {
-        $c = Estabelecimento::atual(true)->ativa();
+        $site = Estabelecimento::atual(true);
+        $c = $site->ativa();
         $reports = $this->service->provider($c)->reports();
         $catalogo = collect($reports->catalog())->keyBy('id');
         $id = (string) $request->query('relatorio', 'statement');
@@ -191,11 +145,9 @@ class PagamentoEletronicoController extends Controller
             }, $file->filename, ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'no-store']);
         }
         $dados = $request->boolean('consultar') ? $reports->page($id, $filters)['report'] : null;
-        $contas = $id === 'statement' && $c->ambiente === 'production'
-            ? \App\Models\ContaEmpresa::withoutGlobalScopes()->withoutDeleted()->where('empresa_id', $c->empresa_id)->where('filial_id', $c->local ?: null)
-                ->where('status', true)->when($c->conta_bancaria_id, fn ($q) => $q->whereKey($c->conta_bancaria_id))->pluck('nome', 'id')
-            : [];
-        return view('pagamentos.relatorio', compact('contas', 'c', 'catalogo', 'def', 'dados', 'filters'))->with('title', 'Relatórios Asaas');
+        $conta = $id === 'statement' && $c->ambiente === 'production' && $c->conta_bancaria_id
+            ? $site->contasBancarias()->whereKey($c->conta_bancaria_id)->value('nome') : null;
+        return view('pagamentos.relatorio', compact('conta', 'c', 'catalogo', 'def', 'dados', 'filters'))->with('title', 'Relatórios Asaas');
     }
 
     public function importar(Request $request, \App\Services\Pagamentos\ImportarExtrato $extrato)
@@ -203,17 +155,17 @@ class PagamentoEletronicoController extends Controller
         $site = Estabelecimento::atual(true);
         $c = $site->ativa();
         abort_unless($c->webhook_id === $request->input('conexao'), 409, 'Reabra o extrato no estabelecimento atual.');
-        $dados = $request->validate(['conta' => 'required|integer|min:1', 'inicio' => 'required|date_format:Y-m-d',
+        $dados = $request->validate(['inicio' => 'required|date_format:Y-m-d',
             'fim' => 'required|date_format:Y-m-d|after_or_equal:inicio']);
         abort_if((new \DateTimeImmutable($dados['inicio']))->diff(new \DateTimeImmutable($dados['fim']))->days > 30, 422,
             'Selecione um período de até 31 dias.');
-        $total = $extrato->executar($site, $c, $dados['conta'], $dados['inicio'], $dados['fim']);
+        $total = $extrato->executar($site, $c, $dados['inicio'], $dados['fim']);
         return redirect()->route('pagamentos.relatorio')->with('mensagem_sucesso', "$total lançamento(s) novo(s) na conciliação bancária.");
     }
 
     public function webhook(Request $request, string $chave)
     {
-        $c = PagamentoConexao::where('webhook_id', $chave)->first();
+        $c = PagamentoConexao::where('provedor', 'asaas')->where('webhook_id', $chave)->first();
         if (!$c) {
             return response()->json([], 404);
         }

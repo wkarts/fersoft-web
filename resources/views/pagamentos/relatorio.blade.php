@@ -26,16 +26,18 @@
         <button class="btn btn-primary" name="consultar" value="1">Consultar</button>
         <button class="btn btn-light-primary" name="csv" value="1">Baixar CSV</button>
     </form>
-    @if(count($contas))
+    @if($conta)
         <details class="my-3"><summary>Importar extrato para Conciliação Bancária</summary>
-        <form method="post" action="{{ route('pagamentos.importar') }}" onsubmit="return confirm('Importar o extrato desta carteira para a conta selecionada?')">@csrf
+        <form method="post" action="{{ route('pagamentos.importar') }}" onsubmit="return confirm('Importar o extrato desta carteira para a conta vinculada?')">@csrf
             <input type="hidden" name="conexao" value="{{ $c->webhook_id }}">
-            <label>Conta bancária do ERP <select class="form-control" required name="conta"><option value="">Selecione</option>@foreach($contas as $idConta=>$nome)<option value="{{ $idConta }}">{{ $nome }}</option>@endforeach</select></label>
+            <p>Conta bancária vinculada: <strong>{{ $conta }}</strong></p>
             <label>De <input required type="date" class="form-control" name="inicio"></label>
             <label>Até <input required type="date" class="form-control" name="fim"></label>
-            <p>A primeira importação vincula a carteira a esta conta. Os lançamentos entram como pendentes de conciliação.</p>
+            <p>Os lançamentos entram como pendentes de conciliação.</p>
             <button class="btn btn-primary">Importar período</button>
         </form></details>
+    @elseif($def['id'] === 'statement' && $c->ambiente === 'production')
+        <p>Vincule uma conta bancária ativa nos parâmetros de pagamento do estabelecimento para importar o extrato.</p>
     @endif
     @if($dados)
         <div class="table-responsive"><table class="table"><thead><tr>@foreach($dados['columns'] as $col) @if($col['visible'])<th>{{ $col['label'] }}</th>@endif @endforeach</tr></thead><tbody>

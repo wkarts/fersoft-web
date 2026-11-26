@@ -51,7 +51,7 @@ class PagamentosEletronicosTest extends TestCase
         $app->register(DatabaseServiceProvider::class);
         $app->register(EncryptionServiceProvider::class);
         $app->boot();
-        foreach (glob($app->databasePath('migrations/2026_11_26_15000*_create_pagamento_*')) as $migration) {
+        foreach (glob($app->databasePath('migrations/2026_11_26_15000[0-4]_*.php')) as $migration) {
             (require $migration)->up();
         }
         DB::statement('CREATE TABLE config_notas (empresa_id INTEGER, ambiente INTEGER)');
@@ -64,7 +64,8 @@ class PagamentosEletronicosTest extends TestCase
         $usuario = new Usuario;
         $usuario->id = 7;
         $this->site = new Estabelecimento(1, 0, $usuario);
-        $this->c = PagamentoConexao::create(['empresa_id' => 1, 'local' => 0, 'ambiente' => 'production',
+        \App\Models\PagamentoProvedor::create(['empresa_id' => 1, 'local' => 0, 'provedor' => 'asaas']);
+        $this->c = PagamentoConexao::create(['empresa_id' => 1, 'local' => 0, 'provedor' => 'asaas', 'ambiente' => 'production',
             'carteira' => 'teste', 'webhook_id' => (string) Str::uuid(), 'credencial' => 'credencial-ficticia',
             'segredo' => str_repeat('s', 32), 'selecionada' => true]);
         $this->http = new MockHandler;
@@ -134,7 +135,7 @@ class PagamentosEletronicosTest extends TestCase
         self::assertSame('simulation', $p->fresh()->conciliacao);
         self::assertEquals(0, DB::table('conta_recebers')->value('status'));
         $this->expectException(HttpException::class);
-        (new ImportarExtrato($this->service))->executar($this->site, $this->c, 1, '2026-11-01', '2026-11-10');
+        (new ImportarExtrato($this->service))->executar($this->site, $this->c, '2026-11-01', '2026-11-10');
     }
 
     public function test_divergencia_de_valor_segue_para_conferencia(): void
@@ -183,9 +184,10 @@ class PagamentosEletronicosTest extends TestCase
         DB::table('conta_empresas')->insert(['id' => 9, 'empresa_id' => 1, 'status' => 1]);
         $linha = ['id' => 'tr_1', 'date' => '2026-11-20', 'value' => -1.25, 'type' => 'PAYMENT_FEE'];
         $this->http->append($this->resposta(['data' => [$linha], 'hasMore' => false]), $this->resposta(['data' => [$linha], 'hasMore' => false]));
+        $this->c->update(['conta_bancaria_id' => 9]);
         $extrato = new ImportarExtrato($this->service);
-        self::assertSame(1, $extrato->executar($this->site, $this->c, 9, '2026-11-01', '2026-11-25'));
-        self::assertSame(0, $extrato->executar($this->site, $this->c, 9, '2026-11-01', '2026-11-25'));
+        self::assertSame(1, $extrato->executar($this->site, $this->c, '2026-11-01', '2026-11-25'));
+        self::assertSame(0, $extrato->executar($this->site, $this->c, '2026-11-01', '2026-11-25'));
         self::assertSame('debit', DB::table('bank_statement_transactions')->value('tipo'));
     }
 
@@ -224,5 +226,75 @@ class PagamentosEletronicosTest extends TestCase
         $this->expectException(HttpException::class);
         $this->service->reservarPdv($this->site, ['pagamento_eletronico' => $p->referencia, 'cliente' => 5,
             'tipo_pagamento' => '17'], 10.0);
+    }
+
+    public function test_configuracao_usa_a_filial_do_cadastro_e_respeita_a_empresa_e_as_permissoes(): void
+    {
+        DB::statement('CREATE TABLE usuarios (id INTEGER PRIMARY KEY, empresa_id INTEGER, adm INTEGER, locais TEXT, permissao TEXT, local_padrao INTEGER)');
+        DB::statement('CREATE TABLE filials (id INTEGER PRIMARY KEY, empresa_id INTEGER, status INTEGER, ambiente INTEGER)');
+        DB::table('usuarios')->insert(['id' => 7, 'empresa_id' => 1, 'adm' => 1, 'local_padrao' => -1,
+            'locais' => '[-1,8,9]', 'permissao' => '["/configNF","/filial"]']);
+        DB::table('filials')->insert([['id' => 8, 'empresa_id' => 1, 'status' => 1, 'ambiente' => 2],
+            ['id' => 9, 'empresa_id' => 2, 'status' => 1, 'ambiente' => 1]]);
+        session(['user_logged' => ['empresa' => 1, 'id' => 7, 'super' => false]]);
+        self::assertSame(0, Estabelecimento::paraParametros(0)->local);
+        $filial = Estabelecimento::paraParametros(8);
+        self::assertSame(8, $filial->local);
+        self::assertNull(Estabelecimento::paraParametros(9));
+        DB::table('usuarios')->update(['permissao' => '["/configNF"]']);
+        self::assertNull(Estabelecimento::paraParametros(8));
+
+        $cadastro = $filial->provedores()->create(['empresa_id' => 1, 'local' => 8, 'provedor' => 'asaas']);
+        $parametros = new \App\Services\Pagamentos\ParametrosAsaas($this->service);
+        try {
+            $parametros->salvar($filial, $cadastro, Request::create('/', 'PUT', ['ambiente' => 'production',
+                'credencial' => 'chave-de-teste', 'segredo' => str_repeat('s', 32), 'ativar' => 1]));
+            self::fail('Produção aceita para uma filial em homologação.');
+        } catch (HttpException $e) {
+            self::assertSame(409, $e->getStatusCode());
+        }
+        self::assertCount(0, $filial->conexoes()->get());
+        self::assertTrue($this->c->fresh()->selecionada);
+    }
+
+    public function test_provedor_tem_um_cadastro_e_credenciais_independentes_por_ambiente(): void
+    {
+        $dados = ['empresa_id' => 1, 'local' => 0, 'provedor' => 'asaas'];
+        $cadastro = $this->site->provedores()->firstOrCreate($dados);
+        self::assertCount(1, $this->site->provedores()->get());
+        $parametros = new \App\Services\Pagamentos\ParametrosAsaas($this->service);
+        $this->http->append($this->resposta(['data' => [['id' => 'carteira-sandbox']], 'hasMore' => false]));
+        $parametros->salvar($this->site, $cadastro, Request::create('/', 'PUT', ['ambiente' => 'sandbox',
+            'credencial' => 'credencial-sandbox', 'segredo' => str_repeat('h', 32), 'ativar' => 1]));
+        $sandbox = $this->site->ativa();
+        self::assertSame('sandbox', $sandbox->ambiente);
+        self::assertSame('credencial-sandbox', $sandbox->credencial);
+        self::assertNotSame('credencial-sandbox', $sandbox->getRawOriginal('credencial'));
+        self::assertNull($this->c->fresh()->selecionada);
+        $parametros->salvar($this->site, $cadastro, Request::create('/', 'PUT', ['ambiente' => 'production', 'ativar' => 1]));
+        self::assertSame($this->c->id, $this->site->ativa()->id);
+        self::assertNull($sandbox->fresh()->selecionada);
+        self::assertSame($this->c->webhook_id, $this->site->ativa()->webhook_id);
+    }
+
+    public function test_migracao_reagrupa_credenciais_existentes_preservando_webhook_e_chave(): void
+    {
+        $conexoes = require database_path('migrations/2026_11_26_150004_vincular_conexoes_a_provedores.php');
+        $provedores = require database_path('migrations/2026_11_26_150003_create_pagamento_provedores_table.php');
+        $conexoes->down();
+        $provedores->down();
+        $antiga = (array) DB::table('pagamento_conexoes')->first();
+        $sandbox = $antiga;
+        unset($sandbox['id']);
+        $sandbox['webhook_id'] = (string) Str::uuid();
+        $sandbox['ambiente'] = 'sandbox';
+        $sandbox['selecionada'] = null;
+        DB::table('pagamento_conexoes')->insert($sandbox);
+        $provedores->up();
+        $conexoes->up();
+        self::assertSame(1, $this->site->provedores()->count());
+        self::assertSame(2, $this->site->conexoes()->count());
+        self::assertSame($antiga['credencial'], $this->site->ativa()->getRawOriginal('credencial'));
+        self::assertSame($antiga['webhook_id'], $this->site->ativa()->webhook_id);
     }
 }

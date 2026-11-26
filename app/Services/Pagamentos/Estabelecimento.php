@@ -2,7 +2,7 @@
 
 namespace App\Services\Pagamentos;
 
-use App\Models\{ConfigNota, Filial, PagamentoConexao, Usuario};
+use App\Models\{ConfigNota, ContaEmpresa, Filial, PagamentoConexao, PagamentoProvedor, Usuario};
 use Argws\ElectronicPayments\Environment;
 
 final readonly class Estabelecimento
@@ -33,9 +33,41 @@ final readonly class Estabelecimento
         return (string) $ambiente === '1' ? Environment::Production : Environment::Sandbox;
     }
 
-    public function conexoes()
+    public static function paraParametros(int $local): ?self
     {
-        return PagamentoConexao::where('empresa_id', $this->empresa)->where('local', $this->local);
+        $empresa = (int) session('user_logged.empresa');
+        $usuario = Usuario::where('empresa_id', $empresa)->find(session('user_logged.id'));
+        if (!$usuario || (!$usuario->adm && !session('user_logged.super'))) {
+            return null;
+        }
+        $permissoes = json_decode($usuario->permissao ?? '[]', true) ?: [];
+        $locais = json_decode($usuario->locais ?? '[]', true) ?: [-1];
+        if (!session('user_logged.super') && !in_array($local ? '/filial' : '/configNF', $permissoes, true)) {
+            return null;
+        }
+        if (!in_array($local ?: -1, array_map('intval', $locais), true)) {
+            return null;
+        }
+        $existe = $local
+            ? Filial::withoutDeleted()->where('empresa_id', $empresa)->whereKey($local)->exists()
+            : ConfigNota::where('empresa_id', $empresa)->exists();
+        return $existe ? new self($empresa, $local, $usuario) : null;
+    }
+
+    public function contasBancarias()
+    {
+        return ContaEmpresa::withoutGlobalScopes()->withoutDeleted()->where('empresa_id', $this->empresa)
+            ->where('filial_id', $this->local ?: null)->where('status', true);
+    }
+
+    public function provedores()
+    {
+        return PagamentoProvedor::where('empresa_id', $this->empresa)->where('local', $this->local);
+    }
+
+    public function conexoes(string $provedor = 'asaas')
+    {
+        return PagamentoConexao::where('empresa_id', $this->empresa)->where('local', $this->local)->where('provedor', $provedor);
     }
 
     public static function disponivel(): ?PagamentoConexao
@@ -43,7 +75,7 @@ final readonly class Estabelecimento
         $atributos = request()->attributes;
         if (!$atributos->has('pagamentos.conexao')) {
             $c = null;
-            if (\Illuminate\Support\Facades\Schema::hasTable('pagamento_conexoes')) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('pagamento_conexoes', 'provedor')) {
                 try {
                     $site = self::atual();
                     $c = $site->conexoes()->where('selecionada', true)->first();

@@ -14,6 +14,7 @@ class Cobrancas
 
     public function connection(PagamentoConexao $c): Connection
     {
+        abort_unless($c->provedor === 'asaas', 409, 'Esta conexão pertence a outro provedor.');
         return new Connection($c->account(), fn () => Estabelecimento::fiscal($c->empresa_id, $c->local),
             fn () => $c->credencial);
     }

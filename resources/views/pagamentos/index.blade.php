@@ -4,31 +4,10 @@
     <h3>Pagamentos eletrônicos</h3>
     <p>{{ $site->local ? 'Filial #'.$site->local : 'Matriz' }} · Ambiente do emitente: {{ $fiscal->value === 'production' ? 'Produção' : 'Homologação' }}</p>
     @if ($site->usuario->adm || session('user_logged.super'))
-        <details class="mb-4"><summary>Configurar Asaas neste estabelecimento</summary>
-        @foreach (['sandbox' => 'Homologação', 'production' => 'Produção'] as $env => $nome)
-            @continue($env === 'production' && $fiscal->value !== 'production')
-            @php($conta = $conexoes->firstWhere('ambiente', $env))
-            <form method="post" action="{{ route('pagamentos.configurar') }}" class="border rounded p-3 mt-3">
-                @csrf
-                <input type="hidden" name="ambiente" value="{{ $env }}">
-                <input type="hidden" name="estabelecimento" value="{{ $site->empresa }}-{{ $site->local }}">
-                <h5>{{ $nome }}</h5>
-                <label>Chave de API Asaas <input class="form-control" type="password" autocomplete="new-password" name="credencial" @required(!$conta)></label>
-                <label>Token do webhook <input class="form-control" type="password" autocomplete="new-password" minlength="32" maxlength="255" name="segredo" @required(!$conta)></label>
-                @if($conta)
-                    <p>Deixe as credenciais em branco para conservar as atuais. Cadastre no Asaas os eventos de cobrança, o mesmo token e esta URL:</p>
-                    <code>{{ route('pagamentos.webhook', $conta->webhook_id) }}</code>
-                @endif
-                <div><label><input type="checkbox" name="ativar" value="1" @checked($conta?->selecionada)> Usar este ambiente nas novas cobranças</label></div>
-                <button class="btn btn-primary">Salvar {{ $nome }}</button>
-            </form>
-        @endforeach
-        </details>
         @if($ativa)<a class="btn btn-light-primary mb-3" href="{{ route('pagamentos.relatorio') }}">Extrato, recebimentos e relatórios</a>@endif
     @endif
     @if($ativa)
         <p>Ambiente selecionado: <strong>{{ $ativa->ambiente === 'sandbox' ? 'Homologação · cobranças simuladas' : 'Produção · cobranças reais' }}</strong></p>
-        @if($ativa->ambiente === 'sandbox' || $fiscal->value === 'production')
         <form method="post" action="{{ route('pagamentos.emitir') }}" class="mb-4">
             @csrf
             <input type="hidden" name="estabelecimento" value="{{ $site->empresa }}-{{ $site->local }}">
@@ -38,7 +17,6 @@
             <label>Forma de pagamento <select class="form-control" name="metodo"><option value="pix">Pix</option><option value="boleto">Boleto</option><option value="credit_card">Cartão de crédito</option></select></label>
             <button class="btn btn-success">Emitir cobrança</button>
         </form>
-        @endif
     @else
         <p>O Asaas está desativado neste estabelecimento.</p>
     @endif

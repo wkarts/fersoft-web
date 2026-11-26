@@ -5,6 +5,7 @@
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
+                    @include('pagamentos.parametros.estabelecimento', ['localPagamento' => 0])
                     <form id="config-nota-form" method="post" action="/configNF/save" enctype="multipart/form-data">
                         <input type="hidden" name="id" value="{{{ isset($config->id) ? $config->id : 0 }}}">
 

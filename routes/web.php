@@ -444,9 +444,16 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // Route::get('/backup', 'BackupController@index');
     Route::get('/backupSql', 'BackupController@sql');
 
+    foreach (['emitente' => 'configNF', 'filial' => 'filial/{filial}'] as $cadastro => $prefixo) {
+        Route::prefix($prefixo.'/pagamentos-eletronicos')->where(['filial' => '[1-9][0-9]*'])
+            ->name('parametros-pagamentos.'.$cadastro.'.')->group(function () {
+                Route::post('provedores', 'ParametroPagamentoController@adicionar')->name('adicionar');
+                Route::put('provedores/{provedor}', 'ParametroPagamentoController@salvar')->name('salvar');
+            });
+    }
+
     Route::prefix('pagamentos-eletronicos')->name('pagamentos.')->group(function () {
         Route::get('/', 'PagamentoEletronicoController@index')->name('index');
-        Route::post('configuracao', 'PagamentoEletronicoController@configurar')->name('configurar');
         Route::post('titulos', 'PagamentoEletronicoController@emitir')->name('emitir');
         Route::post('pdv', 'PagamentoEletronicoController@pdv')->name('pdv');
         Route::post('extrato/importar', 'PagamentoEletronicoController@importar')->name('importar');

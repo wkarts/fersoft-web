@@ -2,7 +2,7 @@
 
 namespace App\Services\Pagamentos;
 
-use App\Models\{BankStatementTransaction, ContaEmpresa, PagamentoConexao};
+use App\Models\{BankStatementTransaction, PagamentoConexao};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -10,11 +10,11 @@ class ImportarExtrato
 {
     public function __construct(private Cobrancas $cobrancas) {}
 
-    public function executar(Estabelecimento $site, PagamentoConexao $c, int $contaId, string $inicio, string $fim): int
+    public function executar(Estabelecimento $site, PagamentoConexao $c, string $inicio, string $fim): int
     {
         abort_unless($c->ambiente === 'production', 409, 'Somente extratos de produção podem entrar na conciliação bancária.');
-        $conta = ContaEmpresa::withoutGlobalScopes()->withoutDeleted()->where('empresa_id', $site->empresa)->where('filial_id', $site->local ?: null)
-            ->where('status', true)->findOrFail($contaId);
+        abort_unless($c->conta_bancaria_id, 409, 'Vincule a conta bancária nos parâmetros do provedor.');
+        $conta = $site->contasBancarias()->findOrFail($c->conta_bancaria_id);
         $reports = $this->cobrancas->provider($c)->reports();
         $offset = 0;
         $inseridos = 0;
@@ -24,7 +24,7 @@ class ImportarExtrato
             $inseridos += DB::transaction(function () use ($site, $conta, $c, $page, $inicio, $fim) {
                 $locked = PagamentoConexao::lockForUpdate()->findOrFail($c->id);
                 $locked->account()->authorize(Estabelecimento::fiscal($site->empresa, $site->local));
-                abort_if($locked->conta_bancaria_id && $locked->conta_bancaria_id != $conta->id, 409,
+                abort_if($locked->conta_bancaria_id != $conta->id, 409,
                     'Esta carteira já está vinculada a outra conta bancária do ERP.');
                 $novos = 0;
                 foreach ($page['rows'] as $row) {
@@ -41,9 +41,6 @@ class ImportarExtrato
                         'descricao' => Str::limit(trim(($row['type'] ?? '').' '.($row['description'] ?? '')), 250),
                     ]);
                     $novos += (int) $registro->wasRecentlyCreated;
-                }
-                if ($page['rows'] && !$locked->conta_bancaria_id) {
-                    $locked->update(['conta_bancaria_id' => $conta->id]);
                 }
                 return $novos;
             });
