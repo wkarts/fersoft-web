@@ -202,6 +202,9 @@ class Cobrancas
         if (!\Illuminate\Support\Facades\Schema::hasTable('pagamento_cobrancas')) {
             return;
         }
+        if ($pdv) {
+            \App\Models\VendaCaixa::where('empresa_id', $empresa)->whereKey($id)->lockForUpdate()->first(['id']);
+        }
         $titulos = ContaReceber::withoutGlobalScopes()->where('empresa_id', $empresa)
             ->where($pdv ? 'venda_caixa_id' : 'venda_id', $id)->lockForUpdate()->pluck('id');
         $cobradas = PagamentoCobranca::whereHas('conexao', fn ($q) => $q->where('empresa_id', $empresa)->where('ambiente', 'production'))

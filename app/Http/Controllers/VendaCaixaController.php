@@ -342,8 +342,8 @@ class VendaCaixaController extends Controller
                     if($fromPrevenda){
                         $result = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }else{
-                        $result = VendaCaixa::where('empresa_id', $this->empresa_id)->lockForUpdate()->findOrFail($venda['id']);
-                        app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, $result->id, true);
+                        app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, (int) $venda['id'], true);
+                        $result = VendaCaixa::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }
 
                     // Uma alteração comercial NÃO pode apagar a identidade fiscal

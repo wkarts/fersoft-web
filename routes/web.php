@@ -438,6 +438,12 @@ Route::group(['prefix' => '/payment', 'middleware' => 'verificaEmpresa'], functi
 });
 
 Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado', 'limiteArmazenamento'])->group(function () {
+    Route::get('/app-versions', 'AppVersionController@index');
+    Route::get('/app-versions/{appVersion}/pdf/{type?}', 'AppVersionController@downloadPdf')->where('type', 'current|cumulative');
+    Route::get('/app-versions/{appVersion}/html/{type?}', 'AppVersionController@html')->where('type', 'current|cumulative');
+    // Route::get('/backup', 'BackupController@index');
+    Route::get('/backupSql', 'BackupController@sql');
+
     Route::prefix('pagamentos-eletronicos')->name('pagamentos.')->group(function () {
         Route::get('/', 'PagamentoEletronicoController@index')->name('index');
         Route::post('configuracao', 'PagamentoEletronicoController@configurar')->name('configurar');
@@ -450,12 +456,6 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::post('cobrancas/{referencia}/sincronizar', 'PagamentoEletronicoController@sincronizar')->whereUuid('referencia')->name('sincronizar');
         Route::post('cobrancas/{referencia}/operacao', 'PagamentoEletronicoController@alterar')->whereUuid('referencia')->name('alterar');
     });
-
-    Route::get('/app-versions', 'AppVersionController@index');
-    Route::get('/app-versions/{appVersion}/pdf/{type?}', 'AppVersionController@downloadPdf')->where('type', 'current|cumulative');
-    Route::get('/app-versions/{appVersion}/html/{type?}', 'AppVersionController@html')->where('type', 'current|cumulative');
-    // Route::get('/backup', 'BackupController@index');
-    Route::get('/backupSql', 'BackupController@sql');
 
     Route::resource('nfse-config', 'NfseConfigController');
     Route::resource('caixa-empresa', 'CaixaEmpresaController');
