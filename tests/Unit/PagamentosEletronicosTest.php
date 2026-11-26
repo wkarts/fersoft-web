@@ -314,6 +314,29 @@ class PagamentosEletronicosTest extends TestCase
         Estabelecimento::locaisNaCentral($usuario);
     }
 
+    public function test_formulario_antigo_nao_altera_provedor_nem_acessos_apos_troca_no_topo(): void
+    {
+        DB::statement('CREATE TABLE usuarios (id INTEGER PRIMARY KEY, empresa_id INTEGER, local_padrao INTEGER)');
+        DB::table('usuarios')->insert(['id' => 7, 'empresa_id' => 1, 'local_padrao' => 8]);
+        session(['user_logged' => ['empresa' => 1, 'id' => 7, 'local_padrao' => -1, 'super' => true]]);
+        $controller = new \App\Http\Controllers\ParametroPagamentoController;
+        foreach (['adicionar', 'salvar', 'salvarAcessos'] as $acao) {
+            foreach (['/{local}', '/0'] as $uri) {
+                $request = Request::create('/0', 'POST', ['estabelecimento' => '1-0']);
+                $route = (new \Illuminate\Routing\Route(['POST'], $uri, fn () => null))->bind($request);
+                $request->setRouteResolver(fn () => $route);
+                try {
+                    $controller->$acao($request);
+                    self::fail('Formulário anterior à troca de estabelecimento foi aceito.');
+                } catch (HttpException $e) {
+                    self::assertSame(409, $e->getStatusCode());
+                }
+            }
+        }
+        self::assertSame(0, DB::table('pagamento_acessos')->count());
+        self::assertSame(1, DB::table('pagamento_provedores')->count());
+    }
+
     public function test_provedor_tem_um_cadastro_e_credenciais_independentes_por_ambiente(): void
     {
         $dados = ['empresa_id' => 1, 'local' => 0, 'provedor' => 'asaas'];

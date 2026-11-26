@@ -20,9 +20,13 @@ class ParametroPagamentoController extends Controller
         $locais = Estabelecimento::locaisNaCentral($usuario);
         $request->validate(['local' => 'sometimes|required|integer|min:0', 'provedor' => 'sometimes|required|string',
             'ambiente' => 'sometimes|required|in:sandbox,production']);
-        $padrao = max(0, (int) $usuario->local_padrao);
-        $local = $request->integer('local', isset($locais[$padrao]) ? $padrao : (int) array_key_first($locais));
-        abort_unless(isset($locais[$local]), 403, 'Nenhum estabelecimento autorizado para esta configuração.');
+        $local = Estabelecimento::localDoTopo($usuario);
+        abort_unless(isset($locais[$local]), 403, 'O estabelecimento ativo não está disponível para configuração.');
+        // Um link do ambiente anterior pode ter sido recarregado ao trocar o local no topo.
+        if ($request->has('local') && $request->integer('local') !== $local) {
+            return redirect()->route('configuracao-pagamentos.index');
+        }
+        $nomeLocal = $locais[$local];
         $site = new Estabelecimento((int) $usuario->empresa_id, $local, $usuario);
         $catalogo = config('pagamentos_eletronicos.provedores');
         $provedores = $site->provedores()->orderBy('provedor')->get()->keyBy('provedor');
@@ -37,19 +41,25 @@ class ParametroPagamentoController extends Controller
         abort_unless(isset($ambientes[$ambiente]), 403, 'Produção indisponível para este estabelecimento.');
         abort_if($codigo !== null && (!isset($catalogo[$codigo]) || !$provedores->has($codigo)), 404);
 
-        return view('pagamentos.parametros.estabelecimento', compact('locais', 'local', 'site', 'catalogo', 'provedores',
+        return view('pagamentos.parametros.estabelecimento', compact('nomeLocal', 'local', 'site', 'catalogo', 'provedores',
             'conexoes', 'ambientes', 'ambiente', 'codigo'))->with('title', 'Configuração de pagamentos eletrônicos');
     }
 
-    private function estabelecimento(Request $request): Estabelecimento
+    private function localDaRota(Request $request): int
     {
+        return (int) ($request->route('local') ?? $request->route('filial'));
+    }
+
+    private function estabelecimento(Request $request, Usuario $usuario): Estabelecimento
+    {
+        $local = Estabelecimento::localDoTopo($usuario);
+        abort_unless($this->localDaRota($request) === $local, 409,
+            'O estabelecimento ativo mudou. Reabra a configuração antes de salvar.');
         if ($request->route('local') !== null) {
-            $usuario = $this->administrador();
-            $local = (int) $request->route('local');
             abort_unless(isset(Estabelecimento::locaisNaCentral($usuario)[$local]), 403);
             $site = new Estabelecimento((int) $usuario->empresa_id, $local, $usuario);
         } else {
-            $site = Estabelecimento::paraParametros((int) $request->route('filial'));
+            $site = Estabelecimento::paraParametros($local);
             abort_unless($site, 403);
         }
         abort_unless($request->isMethod('GET') || $request->input('estabelecimento') === $site->empresa.'-'.$site->local, 409,
@@ -59,7 +69,11 @@ class ParametroPagamentoController extends Controller
 
     public function acessos(Request $request)
     {
-        $site = $this->estabelecimento($request);
+        $administrador = $this->administrador();
+        if ($this->localDaRota($request) !== Estabelecimento::localDoTopo($administrador)) {
+            return redirect()->route('configuracao-pagamentos.index');
+        }
+        $site = $this->estabelecimento($request, $administrador);
         $provedor = $site->provedores()->where('provedor', 'asaas')->firstOrFail();
         $usuarios = Usuario::where('empresa_id', $site->empresa)->orderBy('nome')->pluck('nome', 'id');
         $usuario = $request->integer('usuario');
@@ -72,7 +86,7 @@ class ParametroPagamentoController extends Controller
 
     public function salvarAcessos(Request $request)
     {
-        $site = $this->estabelecimento($request);
+        $site = $this->estabelecimento($request, $this->administrador());
         $provedor = $site->provedores()->where('provedor', 'asaas')->firstOrFail();
         $usuario = Usuario::where('empresa_id', $site->empresa)->findOrFail($request->route('usuario'));
         $dados = $request->validate(['recursos' => 'sometimes|array', 'recursos.*' => ['string', 'distinct',
@@ -86,7 +100,7 @@ class ParametroPagamentoController extends Controller
 
     public function adicionar(Request $request)
     {
-        $site = $this->estabelecimento($request);
+        $site = $this->estabelecimento($request, $this->administrador());
         $provedor = $request->input('provedor');
         abort_unless(is_string($provedor) && isset(config('pagamentos_eletronicos.provedores')[$provedor]), 422,
             'Selecione um provedor disponível.');
@@ -97,7 +111,7 @@ class ParametroPagamentoController extends Controller
 
     public function salvar(Request $request)
     {
-        $site = $this->estabelecimento($request);
+        $site = $this->estabelecimento($request, $this->administrador());
         $provedor = $request->route('provedor');
         $definicao = config('pagamentos_eletronicos.provedores')[$provedor] ?? null;
         abort_unless($definicao, 404);
