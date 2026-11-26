@@ -203,6 +203,20 @@ class PagamentosEletronicosTest extends TestCase
         $this->service->reservarPdv($this->site, $venda, 10);
     }
 
+    public function test_pdv_misto_confirma_somente_a_parcela_eletronica(): void
+    {
+        $itens = [['id' => 2, 'quantidade' => 1, 'valor' => 100]];
+        $p = $this->cobranca(null);
+        $p->update(['centavos' => 7000, 'parcela_pdv' => 1, 'carrinho_hash' => $this->service->assinaturaCarrinho($itens)]);
+        $this->http->append($this->resposta(array_replace($this->pagamento($p), ['value' => 70])));
+        $venda = ['pagamento_eletronico' => $p->referencia, 'cliente' => 5, 'itens' => $itens,
+            'pag_multi' => [['tipo' => '01', 'valor' => '30,00'], ['tipo' => '17', 'valor' => '70,00']]];
+        self::assertSame($p->id, $this->service->reservarPdv($this->site, $venda, 100)->id);
+        $venda['pag_multi'][0]['valor'] = '29,00';
+        $this->expectException(HttpException::class);
+        $this->service->reservarPdv($this->site, $venda, 100);
+    }
+
     public function test_pdv_recusa_venda_ainda_pendente(): void
     {
         $p = $this->cobranca(null);

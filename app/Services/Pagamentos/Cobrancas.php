@@ -29,6 +29,27 @@ class Cobrancas
             ->where('filial_id', $c->local ?: null)->whereKey($id);
     }
 
+    private function conferirParcela(array $parcelas, ?int $indice, string $forma, int $cobrado, int $total): void
+    {
+        if (!$parcelas) {
+            abort_unless($indice === null && $cobrado === $total, 409, 'O valor da cobrança diverge do total da venda.');
+            return;
+        }
+        $soma = 0;
+        $selecionada = null;
+        foreach ($parcelas as $posicao => $parcela) {
+            $valor = str_replace(',', '.', (string) ($parcela['valor'] ?? ''));
+            abort_unless(is_numeric($valor) && (float) $valor > 0, 422, 'Valor inválido no pagamento múltiplo.');
+            $centavos = (int) round((float) $valor * 100);
+            $soma += $centavos;
+            if ($posicao === $indice && ($parcela['tipo'] ?? null) === $forma) {
+                $selecionada = $centavos;
+            }
+        }
+        abort_unless($soma === $total && $selecionada === $cobrado, 409,
+            'Confira a parcela eletrônica e a soma das formas de pagamento.');
+    }
+
     public function assinaturaCarrinho(array $itens): string
     {
         abort_if(!$itens, 422, 'O carrinho está vazio.');
@@ -61,6 +82,8 @@ class Cobrancas
             } else {
                 $clienteId = $pdv['cliente'];
                 $centavos = (int) $pdv['centavos'];
+                $this->conferirParcela($pdv['parcelas'] ?? [], isset($pdv['parcela']) ? (int) $pdv['parcela'] : null,
+                    self::FORMAS[$metodo->value], $centavos, (int) $pdv['total']);
                 $data = today()->toDateString();
                 $origem = 'pdv-'.$site->usuario->id.'-'.$pdv['operacao'];
             }
@@ -71,9 +94,10 @@ class Cobrancas
             $assinatura = $tituloId ? null : $this->assinaturaCarrinho($pdv['itens']);
             $cobranca = PagamentoCobranca::firstOrCreate(['conexao_id' => $c->id, 'origem' => $origem, 'vigente' => true], [
                 'referencia' => (string) Str::uuid(), 'usuario_id' => $site->usuario->id, 'cliente_id' => $cliente->id,
-                'carrinho_hash' => $assinatura, 'centavos' => $centavos, 'metodo' => $metodo->value, 'conta_receber_id' => $tituloId,
+                'parcela_pdv' => $pdv['parcela'] ?? null, 'carrinho_hash' => $assinatura, 'centavos' => $centavos, 'metodo' => $metodo->value, 'conta_receber_id' => $tituloId,
             ]);
             abort_unless($cobranca->centavos == $centavos && $cobranca->cliente_id == $cliente->id &&
+                ($cobranca->parcela_pdv === null ? null : (int) $cobranca->parcela_pdv) === (isset($pdv['parcela']) ? (int) $pdv['parcela'] : null) &&
                 $cobranca->metodo === $metodo->value && $cobranca->carrinho_hash === $assinatura, 409, 'A operação já possui uma cobrança com outros dados.');
             return [$cobranca, $cliente, $data, $cobranca->wasRecentlyCreated];
         });
@@ -126,7 +150,7 @@ class Cobrancas
             $p->externo = $remote->id->id;
             $p->situacao = $remote->status->value;
             $p->conciliacao = $parecer->value;
-            if ($parecer === Reconciliation::Cancelled || $remote->status === \Argws\ElectronicPayments\ChargeStatus::Cancelled && $parecer === Reconciliation::Simulation) {
+            if ($parecer !== Reconciliation::Review && in_array($remote->status->value, ['cancelled', 'refunded'], true)) {
                 $p->vigente = null;
             }
             if ($p->conta_receber_id && !$p->baixada_em && in_array($parecer, [Reconciliation::PaymentConfirmed, Reconciliation::CreditAvailable], true)) {
@@ -173,6 +197,23 @@ class Cobrancas
         });
     }
 
+    public function protegerVenda(int $empresa, int $id, bool $pdv = false): void
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('pagamento_cobrancas')) {
+            return;
+        }
+        $titulos = ContaReceber::withoutGlobalScopes()->where('empresa_id', $empresa)
+            ->where($pdv ? 'venda_caixa_id' : 'venda_id', $id)->lockForUpdate()->pluck('id');
+        $cobradas = PagamentoCobranca::whereHas('conexao', fn ($q) => $q->where('empresa_id', $empresa)->where('ambiente', 'production'))
+            ->where('vigente', true)->where(function ($q) use ($pdv, $id, $titulos) {
+                $q->whereIn('conta_receber_id', $titulos);
+                if ($pdv) {
+                    $q->orWhere('venda_caixa_id', $id);
+                }
+            });
+        abort_if($cobradas->exists(), 409, 'Esta venda possui cobrança Asaas. Confira o recebimento antes de substituir os títulos ou alterar a venda.');
+    }
+
     public function reservarPdv(Estabelecimento $site, array $venda, float $total): PagamentoCobranca
     {
         $p = PagamentoCobranca::whereIn('conexao_id', $site->conexoes()->select('id'))
@@ -181,13 +222,15 @@ class Cobrancas
         $p->conexao->account()->authorize(Estabelecimento::fiscal($site->empresa, $site->local));
         abort_unless($p->conexao->ambiente === Environment::Production->value && !$p->venda_caixa_id && !$p->acao_pendente, 409,
             'A venda exige uma cobrança de produção disponível.');
+        $this->conferirParcela($venda['pag_multi'] ?? [], $p->parcela_pdv !== null ? (int) $p->parcela_pdv : null,
+            self::FORMAS[$p->metodo], (int) $p->centavos, (int) round($total * 100));
         $this->sincronizar($p);
         $p->refresh();
         abort_unless(
             in_array($p->conciliacao, ['payment_confirmed', 'credit_available'], true) &&
             $p->carrinho_hash === $this->assinaturaCarrinho($venda['itens'] ?? []) &&
-            $p->cliente_id == $venda['cliente'] && $p->centavos == round($total * 100) &&
-            self::FORMAS[$p->metodo] === $venda['tipo_pagamento'] && empty($venda['pag_multi']) &&
+            $p->cliente_id == $venda['cliente'] &&
+            ($p->parcela_pdv !== null || self::FORMAS[$p->metodo] === $venda['tipo_pagamento']) &&
             empty($venda['rascunho']) && empty($venda['consignado']) && max(0, (int) ($venda['filial_id'] ?? 0)) === $site->local,
             409, 'A cobrança deve estar confirmada em produção e corresponder a esta venda.');
         return $p;

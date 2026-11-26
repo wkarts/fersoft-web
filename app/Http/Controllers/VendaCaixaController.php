@@ -342,7 +342,8 @@ class VendaCaixaController extends Controller
                     if($fromPrevenda){
                         $result = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }else{
-                        $result = VendaCaixa::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
+                        $result = VendaCaixa::where('empresa_id', $this->empresa_id)->lockForUpdate()->findOrFail($venda['id']);
+                        app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, $result->id, true);
                     }
 
                     // Uma alteração comercial NÃO pode apagar a identidade fiscal
@@ -448,7 +449,7 @@ class VendaCaixaController extends Controller
                 // $contCredito = 1;
 
                 if(sizeof($pag_multi) > 0){
-                    foreach($pag_multi as $p){
+                    foreach($pag_multi as $indiceParcela => $p){
                         FaturaFrenteCaixa::create([
                             'valor' => __replace($p['valor']),
                             'forma_pagamento' => $p['tipo'],
@@ -457,7 +458,9 @@ class VendaCaixaController extends Controller
                             'venda_caixa_id' => $result->id
                         ]);
 
-                        if($p['vencimento'] != date('Y-m-d')){
+                        $pagoNoAsaas = $cobrancaEletronica && $cobrancaEletronica->parcela_pdv !== null
+                            && (int) $cobrancaEletronica->parcela_pdv === $indiceParcela;
+                        if(!$pagoNoAsaas && $p['vencimento'] != date('Y-m-d')){
                             $resultConta = ContaReceber::create([
                                 'venda_caixa_id' => $result->id,
                                 'venda_id' => NULL,

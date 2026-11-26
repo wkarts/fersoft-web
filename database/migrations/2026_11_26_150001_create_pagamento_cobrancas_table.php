@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('conta_receber_id')->nullable();
             $table->unsignedBigInteger('venda_caixa_id')->nullable();
             $table->char('carrinho_hash', 64)->nullable();
+            $table->unsignedInteger('parcela_pdv')->nullable();
             $table->unsignedBigInteger('cliente_id');
             $table->unsignedBigInteger('usuario_id');
             $table->unsignedBigInteger('centavos');

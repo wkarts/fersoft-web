@@ -41,11 +41,24 @@
         }
     });
     botao.addEventListener('click', async () => {
-        const metodo = {'17': 'pix', '03': 'credit_card', '15': 'boleto'}[document.getElementById('tipo-pagamento').value];
-        const centavos = Math.round((Number(TOTAL) + Number(VALORBAIRRO) + Number(VALORACRESCIMO) - Number(DESCONTO)) * 100);
+        const metodos = {'17': 'pix', '03': 'credit_card', '15': 'boleto'};
+        const seletor = document.getElementById('asaas-pdv-parcela');
+        const candidatas = PAGMULTI.map((p, indice) => ({...p, indice})).filter(p => metodos[p.tipo]);
+        const assinatura = JSON.stringify(candidatas.map(p => [p.indice, p.tipo, p.valor]));
+        if (seletor.dataset.opcoes !== assinatura) {
+            seletor.replaceChildren(new Option('Selecione a parcela', ''));
+            candidatas.forEach(p => seletor.add(new Option((p.indice + 1) + ' · ' + metodos[p.tipo] + ' · R$ ' + p.valor, p.indice)));
+            if (candidatas.length === 1) seletor.value = String(candidatas[0].indice);
+            seletor.dataset.opcoes = assinatura;
+        }
+        document.getElementById('asaas-pdv-parcela-label').hidden = !PAGMULTI.length;
+        const parcela = PAGMULTI.length && seletor.value !== '' ? Number(seletor.value) : null;
+        const metodo = metodos[PAGMULTI.length ? PAGMULTI[parcela]?.tipo : document.getElementById('tipo-pagamento').value];
+        const total = Math.round((Number(TOTAL) + Number(VALORBAIRRO) + Number(VALORACRESCIMO) - Number(DESCONTO)) * 100);
+        const centavos = parcela === null ? total : Math.round(Number(String(PAGMULTI[parcela].valor).replace(',', '.')) * 100);
         const filial = Math.max(0, Number.parseInt(document.getElementById('filial')?.value, 10) || 0);
-        if (!metodo || !CLIENTE?.id || !Number.isSafeInteger(centavos) || centavos <= 0 || PAGMULTI.length || filial !== Number(area.dataset.local)) {
-            mensagem.textContent = 'Selecione a filial ativa, um cliente e uma única forma de pagamento Pix, boleto ou cartão de crédito.';
+        if (!metodo || !CLIENTE?.id || !Number.isSafeInteger(centavos) || centavos <= 0 || filial !== Number(area.dataset.local)) {
+            mensagem.textContent = 'Selecione a filial ativa, o cliente e a forma ou parcela que será cobrada por Pix, boleto ou cartão.';
             return;
         }
         if (!operacao) operacao = {id: crypto.randomUUID()};
@@ -56,7 +69,7 @@
             const resposta = await fetch(area.dataset.url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.getElementById('_token').value},
-                body: JSON.stringify({operacao: operacao.id, cliente: CLIENTE.id, centavos, metodo, itens: ITENS.map(({id, quantidade, valor}) => ({id, quantidade, valor})), conexao: area.dataset.conexao})
+                body: JSON.stringify({operacao: operacao.id, cliente: CLIENTE.id, centavos, total, metodo, parcela, parcelas: PAGMULTI.map(({tipo, valor}) => ({tipo, valor})), itens: ITENS.map(({id, quantidade, valor}) => ({id, quantidade, valor})), conexao: area.dataset.conexao})
             });
             if (!resposta.ok) throw new Error('Confira os dados e o histórico em Financeiro → Pagamentos eletrônicos antes de tentar novamente.');
             const cobranca = await resposta.json();

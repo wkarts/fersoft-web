@@ -35,12 +35,12 @@ class PagamentoEletronicoController extends Controller
 
     public function configurar(Request $request)
     {
-        $site = Estabelecimento::atual(true);
-        abort_unless($request->input('estabelecimento') === $site->empresa.'-'.$site->local, 409, 'O estabelecimento mudou. Reabra a configuração.');
         $key = $request->input('credencial');
         $secret = $request->input('segredo');
         $request->request->remove('credencial');
         $request->request->remove('segredo');
+        $site = Estabelecimento::atual(true);
+        abort_unless($request->input('estabelecimento') === $site->empresa.'-'.$site->local, 409, 'O estabelecimento mudou. Reabra a configuração.');
         $request->validate(['ambiente' => 'required|in:sandbox,production', 'ativar' => 'nullable|boolean']);
         abort_if(($key !== null && (!is_string($key) || strlen($key) > 4096)) ||
             ($secret !== null && (!is_string($secret) || strlen($secret) < 32 || strlen($secret) > 255)), 422,
@@ -94,6 +94,8 @@ class PagamentoEletronicoController extends Controller
     {
         $site = Estabelecimento::atual();
         $dados = $request->validate(['metodo' => 'required|in:pix,boleto,credit_card', 'cliente' => 'required|integer|min:1',
+            'total' => 'required|integer|between:1,99999999999999', 'parcela' => 'nullable|integer|min:0',
+            'parcelas' => 'nullable|array', 'parcelas.*.tipo' => 'required|string', 'parcelas.*.valor' => 'required',
             'itens' => 'required|array|min:1', 'itens.*.id' => 'required|integer|min:1',
             'itens.*.quantidade' => 'required', 'itens.*.valor' => 'required', 'operacao' => 'required|uuid', 'centavos' => 'required|integer|between:1,99999999999999']);
         $p = $this->service->emitir($site, PaymentMethod::from($dados['metodo']), null, (string) $request->input('conexao'), $dados);
@@ -211,7 +213,10 @@ class PagamentoEletronicoController extends Controller
 
     public function webhook(Request $request, string $chave)
     {
-        $c = PagamentoConexao::where('webhook_id', $chave)->firstOrFail();
+        $c = PagamentoConexao::where('webhook_id', $chave)->first();
+        if (!$c) {
+            return response()->json([], 404);
+        }
         try {
             $event = $this->service->provider($c)->webhook($request->getContent(),
                 (string) $request->header('asaas-access-token'), $c->segredo);
@@ -225,7 +230,12 @@ class PagamentoEletronicoController extends Controller
                 $q->where('externo', $event->charge->id);
                 if ($event->reference) { $q->orWhere('referencia', $event->reference); }
             })->first();
-            if ($p && !$this->service->evento($p, $event)) {
+            try {
+                $processado = !$p || $this->service->evento($p, $event);
+            } catch (\Argws\ElectronicPayments\PaymentException $e) {
+                $processado = false;
+            }
+            if (!$processado) {
                 return response()->json([], 503);
             }
         }
