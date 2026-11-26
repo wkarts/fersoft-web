@@ -79,6 +79,29 @@ class PagamentosEletronicosTest extends TestCase
         };
     }
 
+    public function test_cache_antigo_oculta_pagamentos_em_telas_nativas_mesmo_com_conexao_ativa(): void
+    {
+        config(['pagamentos_eletronicos.provedores' => null,
+            'view.paths' => [resource_path('views')], 'view.compiled' => sys_get_temp_dir()]);
+        self::assertFalse(Estabelecimento::integracaoInstalada());
+        self::assertNull(Estabelecimento::disponivel());
+        foreach ([0, 8] as $local) {
+            self::assertSame('', trim(view('pagamentos.parametros.estabelecimento', ['localPagamento' => $local])->render()));
+        }
+        self::assertSame('', trim(view('pagamentos.pdv')->render()));
+    }
+
+    public function test_rotas_da_integracao_aguardam_a_ultima_migration(): void
+    {
+        config(['pagamentos_eletronicos' => require config_path('pagamentos_eletronicos.php')]);
+        $middleware = new \App\Http\Middleware\VerificaInstalacaoPagamentos;
+        self::assertTrue($middleware->handle(request(), fn () => true));
+
+        (require database_path('migrations/2026_11_26_150007_parametrizar_formas_de_pagamento.php'))->down();
+        $resposta = $middleware->handle(request(), fn () => self::fail('Integração liberada durante a atualização.'));
+        self::assertSame(503, $resposta->getStatusCode());
+    }
+
     public function test_erp_carrega_uma_unica_sdk_asaas_interna_ao_pacote_de_pagamentos(): void
     {
         $vendor = dirname(__DIR__, 2).'/vendor';

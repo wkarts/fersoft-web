@@ -22,11 +22,6 @@ class ConciliacaoController extends BaseController
         $this->listView     = 'financeiro.conciliacao.list';
 
         parent::__construct();
-        $this->middleware(function ($request, $next) {
-            $usuario = \App\Models\Usuario::where('empresa_id', $this->getEmpresaId())->find($this->getUsuarioId());
-            abort_unless($usuario && in_array('/financeiro/conciliacao', json_decode($usuario->permissao ?? '[]', true) ?: [], true), 403);
-            return $next($request);
-        });
     }
 
     public function rules(): array { return []; }

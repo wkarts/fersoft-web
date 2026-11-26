@@ -1,5 +1,7 @@
 @php
-    $sitePagamento = \Illuminate\Support\Facades\Schema::hasColumn('pagamento_conexoes', 'provedor')
+    $rotaParametros = 'parametros-pagamentos.'.($localPagamento ? 'filial' : 'emitente').'.';
+    $sitePagamento = \App\Services\Pagamentos\Estabelecimento::integracaoInstalada()
+        && \Illuminate\Support\Facades\Route::has($rotaParametros.'acessos')
         ? \App\Services\Pagamentos\Estabelecimento::paraParametros($localPagamento) : null;
 @endphp
 @if($sitePagamento)
@@ -7,7 +9,6 @@
         $catalogoPagamento = config('pagamentos_eletronicos.provedores');
         $provedores = $sitePagamento->provedores()->orderBy('provedor')->get();
         $disponiveis = array_diff_key($catalogoPagamento, $provedores->keyBy('provedor')->all());
-        $rotaParametros = 'parametros-pagamentos.'.($localPagamento ? 'filial' : 'emitente').'.';
         $destino = $localPagamento ? ['filial' => $localPagamento] : [];
         $ambienteFiscal = $sitePagamento::fiscal($sitePagamento->empresa, $localPagamento)->value;
         $conexoesPagamento = \App\Models\PagamentoConexao::where('empresa_id', $sitePagamento->empresa)

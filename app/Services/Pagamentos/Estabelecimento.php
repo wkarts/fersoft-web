@@ -3,7 +3,9 @@
 namespace App\Services\Pagamentos;
 
 use App\Models\{ConfigNota, ContaEmpresa, Filial, PagamentoConexao, PagamentoProvedor, Usuario};
+use Argws\ElectronicPayments\Asaas\AsaasProvider;
 use Argws\ElectronicPayments\Environment;
+use Illuminate\Support\Facades\Schema;
 
 final readonly class Estabelecimento
 {
@@ -70,12 +72,22 @@ final readonly class Estabelecimento
         return PagamentoConexao::where('empresa_id', $this->empresa)->where('local', $this->local)->where('provedor', $provedor);
     }
 
+    /** A integração só pode ser usada depois de atualizar configuração, vendor e banco. */
+    public static function integracaoInstalada(): bool
+    {
+        $provedores = config('pagamentos_eletronicos.provedores');
+        return is_array($provedores) && $provedores !== []
+            && enum_exists(Environment::class)
+            && method_exists(AsaasProvider::class, 'webhookWithTokenHash')
+            && Schema::hasColumn('pagamento_cobrancas', 'parcelamento_externo');
+    }
+
     public static function disponivel(): ?PagamentoConexao
     {
         $atributos = request()->attributes;
         if (!$atributos->has('pagamentos.conexao')) {
             $c = null;
-            if (\Illuminate\Support\Facades\Schema::hasColumn('pagamento_conexoes', 'provedor')) {
+            if (self::integracaoInstalada()) {
                 try {
                     $site = self::atual();
                     $c = $site->conexoes()->where('selecionada', true)->first();
