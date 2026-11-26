@@ -9,11 +9,16 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
 class AppVersionService
 {
+    // Estado apenas da operação atual, inclusive chamadas internas; nunca cache permanente.
+    private int $versionOperationDepth = 0;
+    private array $verifiedVersionSchemas = [];
+    private ?\Throwable $versionSchemaFailure = null;
     public function installedReleaseIdentity(): ?array
     {
         return (new InstalledReleaseIdentity())->resolve();
@@ -88,58 +93,72 @@ class AppVersionService
 
     public function currentOrFallback(): AppVersion
     {
-        $identity = $this->installedReleaseIdentity();
-        if ($identity !== null) {
-            return $this->reconcileInstalledRelease($identity);
-        }
+        $this->beginVersionOperation();
+        $identity = null;
+        $revision = null;
 
-        $current = $this->current();
-        $revision = $this->detectGitCommitHash();
-        if ($revision !== null && (!$current || !$this->revisionMatches($current->commit_hash, $revision))) {
-            return new AppVersion([
-                'version' => 'N/A',
-                'title' => 'Versão não identificada para a revisão instalada',
-                'commit_hash' => $revision,
-                'metadata' => ['identity_status' => 'unverified'],
-                'is_current' => true,
-            ]);
-        }
-        if ($current) {
-            if ($revision === null && $current->version !== $this->resolveInstalledVersion()) {
-                $this->syncFromManifest();
-                $this->syncFromArtifacts();
-                $current = $this->current();
+        try {
+            $identity = $this->installedReleaseIdentity();
+            if ($identity !== null) {
+                return $this->reconcileInstalledRelease($identity);
             }
+
+            $current = $this->current();
+            $revision = $this->detectGitCommitHash();
+            if ($revision !== null && (!$current || !$this->revisionMatches($current->commit_hash, $revision))) {
+                return new AppVersion([
+                    'version' => 'N/A',
+                    'title' => 'Versão não identificada para a revisão instalada',
+                    'commit_hash' => $revision,
+                    'metadata' => ['identity_status' => 'unverified'],
+                    'is_current' => true,
+                ]);
+            }
+            if ($current) {
+                if ($revision === null && $current->version !== $this->resolveInstalledVersion()) {
+                    $this->syncFromManifest();
+                    $this->syncFromArtifacts();
+                    $current = $this->current();
+                }
+            }
+            if ($current) {
+                return $current;
+            }
+
+            $this->syncFromManifest();
+            $this->syncFromArtifacts();
+
+            $current = $this->current();
+            if ($current) {
+                return $current;
+            }
+
+            $version = $this->resolveInstalledVersion();
+            [$major, $minor, $patch] = $this->splitVersion($version);
+
+            return new AppVersion([
+                'version' => $version,
+                'version_major' => $major,
+                'version_minor' => $minor,
+                'version_patch' => $patch,
+                'title' => 'Versão instalada (fallback)',
+                'is_current' => true,
+                // Sem identidade vinculada ao commit, não atribuir o HEAD a uma versão antiga.
+                'commit_hash' => null,
+            ]);
+        } catch (\Throwable $e) {
+            // A identificação exibida no login não pode depender de uma gravação bem-sucedida.
+            $this->logVersionStorageFailure($e);
+            return $this->installedVersionWithoutDatabase($identity, $revision);
+        } finally {
+            $this->endVersionOperation();
         }
-        if ($current) {
-            return $current;
-        }
-
-        $this->syncFromManifest();
-        $this->syncFromArtifacts();
-
-        $current = $this->current();
-        if ($current) {
-            return $current;
-        }
-
-        $version = $this->resolveInstalledVersion();
-        [$major, $minor, $patch] = $this->splitVersion($version);
-
-        return new AppVersion([
-            'version' => $version,
-            'version_major' => $major,
-            'version_minor' => $minor,
-            'version_patch' => $patch,
-            'title' => 'Versão instalada (fallback)',
-            'is_current' => true,
-            // Sem identidade vinculada ao commit, não atribuir o HEAD a uma versão antiga.
-            'commit_hash' => null,
-        ]);
     }
 
     private function reconcileInstalledRelease(array $identity): AppVersion
     {
+        $this->ensureAppVersionsAutoIncrement();
+
         return DB::transaction(function () use ($identity) {
             // createOrFirst trata a disputa pelo índice único em duas requisições.
             $record = AppVersion::query()->firstOrCreate(['version' => $identity['version']], [
@@ -176,6 +195,246 @@ class AppVersionService
 
             return $record;
         }, 3);
+    }
+
+    /** Repara somente o atributo ausente no formato conhecido de app_versions.id. */
+    private function ensureAppVersionsAutoIncrement(): void
+    {
+        try {
+            $model = new AppVersion();
+            $connection = $model->getConnection();
+            if (!in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+                return;
+            }
+
+            // PDO de escrita fixo: o modo da sessão, o lock e o ALTER usam a mesma conexão.
+            $pdo = $connection->getPdo();
+            $table = $connection->getTablePrefix().$model->getTable();
+            $schemaKey = spl_object_id($pdo).':'.$table;
+            if ($this->versionOperationDepth > 0 && isset($this->verifiedVersionSchemas[$schemaKey])) {
+                return;
+            }
+            $quotedTable = '`'.str_replace('`', '``', $table).'`';
+            $readColumn = function () use ($pdo, $table) {
+                $query = $pdo->prepare(
+                    'SELECT COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_COMMENT '
+                    . 'FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() '
+                    . 'AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+                );
+                $query->execute([$table, 'id']);
+                return $query->fetch(\PDO::FETCH_ASSOC);
+            };
+            $column = $readColumn();
+            if ($column && stripos((string) $column['EXTRA'], 'auto_increment') !== false) {
+                $this->rememberVersionSchema($schemaKey);
+                return;
+            }
+
+            // ALTER TABLE causa commit implícito; nunca executar dentro de transação alheia.
+            if ($connection->transactionLevel() > 0 || $pdo->inTransaction()) {
+                throw new \RuntimeException('app_versions.id sem AUTO_INCREMENT: reparo adiado por transação ativa.');
+            }
+
+            $database = (string) $pdo->query('SELECT DATABASE()')->fetchColumn();
+            $lockName = 'app_versions:repair:'.substr(hash('sha256', $database.'.'.$table), 0, 40);
+            $lock = $pdo->prepare('SELECT GET_LOCK(?, 0)');
+            $lock->execute([$lockName]);
+            if ((int) $lock->fetchColumn() !== 1) {
+                throw new \RuntimeException('Reparo de app_versions indisponível ou em execução por outra conexão.');
+            }
+
+            $originalMode = null;
+            $originalTimeout = null;
+            $repairFailure = null;
+            try {
+                // Outra requisição pode ter corrigido a coluna antes da aquisição do lock.
+                $column = $readColumn();
+                if ($column && stripos((string) $column['EXTRA'], 'auto_increment') !== false) {
+                    $this->rememberVersionSchema($schemaKey);
+                    return;
+                }
+                if (!$column
+                    || !preg_match('/^bigint(?:\(\d+\))? unsigned$/iD', trim((string) $column['COLUMN_TYPE']))
+                    || $column['IS_NULLABLE'] !== 'NO'
+                    || $column['COLUMN_DEFAULT'] !== null
+                    || trim((string) $column['EXTRA']) !== '') {
+                    throw new \RuntimeException('app_versions.id possui definição inesperada; reparo automático não aplicado.');
+                }
+                $primary = $pdo->prepare(
+                    "SELECT COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE "
+                    . "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = 'PRIMARY' "
+                    . 'ORDER BY ORDINAL_POSITION'
+                );
+                $primary->execute([$table]);
+                if ($primary->fetchAll(\PDO::FETCH_COLUMN) !== ['id']) {
+                    throw new \RuntimeException('app_versions.id precisa ser a única coluna da chave primária para este reparo.');
+                }
+
+                $session = $pdo->query(
+                    'SELECT @@SESSION.sql_mode AS modes, @@SESSION.lock_wait_timeout AS wait_timeout'
+                )->fetch(\PDO::FETCH_ASSOC);
+                if (!$session || !isset($session['modes'], $session['wait_timeout'])) {
+                    throw new \RuntimeException('Não foi possível ler a configuração da sessão para reparar app_versions.');
+                }
+                $originalMode = (string) $session['modes'];
+                $originalTimeout = (int) $session['wait_timeout'];
+                $modes = array_filter(array_map('trim', explode(',', $originalMode)));
+                if (!in_array('NO_AUTO_VALUE_ON_ZERO', array_map('strtoupper', $modes), true)) {
+                    $modes[] = 'NO_AUTO_VALUE_ON_ZERO';
+                }
+                $setMode = $pdo->prepare('SET SESSION sql_mode = ?');
+                $setMode->execute([implode(',', $modes)]);
+                // Limita a espera por metadata lock; não é um timeout da duração total do ALTER.
+                $pdo->exec('SET SESSION lock_wait_timeout = '.min($originalTimeout, 5));
+
+                $definition = 'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT';
+                if ((string) $column['COLUMN_COMMENT'] !== '') {
+                    $comment = $pdo->quote((string) $column['COLUMN_COMMENT']);
+                    if ($comment === false) {
+                        throw new \RuntimeException('Não foi possível preservar o comentário de app_versions.id.');
+                    }
+                    $definition .= ' COMMENT '.$comment;
+                }
+                $pdo->exec('ALTER TABLE '.$quotedTable.' MODIFY COLUMN `id` '.$definition);
+                $column = $readColumn();
+                if (!$column || stripos((string) $column['EXTRA'], 'auto_increment') === false) {
+                    throw new \RuntimeException('AUTO_INCREMENT de app_versions.id não confirmado após o reparo.');
+                }
+            } catch (\Throwable $e) {
+                $repairFailure = $e;
+                throw $e;
+            } finally {
+                $cleanupFailure = null;
+                // Cada limpeza é independente: uma falha não impede as demais tentativas.
+                try {
+                    if ($originalMode !== null) {
+                        $restore = $pdo->prepare('SET SESSION sql_mode = ?');
+                        $restore->execute([$originalMode]);
+                    }
+                } catch (\Throwable $e) {
+                    $cleanupFailure = $e;
+                    $this->logVersionStorageFailure($e, 'restore_sql_mode');
+                }
+                try {
+                    if ($originalTimeout !== null) {
+                        $pdo->exec('SET SESSION lock_wait_timeout = '.$originalTimeout);
+                    }
+                } catch (\Throwable $e) {
+                    $cleanupFailure ??= $e;
+                    $this->logVersionStorageFailure($e, 'restore_lock_timeout');
+                }
+                try {
+                    $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+                    $release->execute([$lockName]);
+                } catch (\Throwable $e) {
+                    $cleanupFailure ??= $e;
+                    $this->logVersionStorageFailure($e, 'release_lock');
+                }
+                if ($cleanupFailure !== null) {
+                    try {
+                        // Não reutilizar sessão cuja restauração/liberação não foi confirmada.
+                        $connection->disconnect();
+                    } catch (\Throwable $e) {
+                        $this->logVersionStorageFailure($e, 'disconnect');
+                    }
+                    // A limpeza nunca substitui a exceção que motivou a falha do reparo.
+                    if ($repairFailure === null) {
+                        throw $cleanupFailure;
+                    }
+                }
+            }
+            $this->rememberVersionSchema($schemaKey);
+        } catch (\Throwable $e) {
+            $this->versionSchemaFailure = $e;
+            throw $e;
+        }
+    }
+
+    private function installedVersionWithoutDatabase(?array $identity, ?string $revision): AppVersion
+    {
+        $version = 'N/A';
+        if ($identity !== null) {
+            $version = $identity['version'];
+            $revision = $identity['git_commit_sha'];
+        } else {
+            try {
+                $revision = $revision ?: $this->detectGitCommitHash();
+                // Sem identidade verificada, não vincular uma versão antiga ao HEAD atual.
+                if ($revision === null) {
+                    $version = $this->resolveInstalledVersion();
+                }
+            } catch (\Throwable $e) {
+                // Fallback final sem novas consultas ou tentativas de gravação.
+            }
+        }
+        [$major, $minor, $patch] = $this->splitVersion($version);
+        return new AppVersion([
+            'version' => $version,
+            'version_major' => $major,
+            'version_minor' => $minor,
+            'version_patch' => $patch,
+            'title' => $version === 'N/A' ? 'Versão não identificada para a revisão instalada' : 'Versão instalada (fallback)',
+            'commit_hash' => $revision,
+            'release_channel' => $identity['release_channel'] ?? null,
+            'build_number' => $identity['build_number'] ?? null,
+            'metadata' => [
+                'identity_status' => $identity !== null ? 'verified' : 'unverified',
+                'storage_status' => 'unavailable',
+                'installed_release' => $identity,
+            ],
+            'is_current' => true,
+        ]);
+    }
+
+    private function logVersionStorageFailure(\Throwable $e, string $operation = 'current_or_fallback'): void
+    {
+        if ($operation !== 'current_or_fallback') {
+            $category = 'schema_cleanup';
+            $message = 'Falha na limpeza da sessão do reparo de app_versions.';
+        } elseif ($e === $this->versionSchemaFailure) {
+            $category = 'schema';
+            $message = 'Falha ao verificar ou reparar app_versions; utilizando versão em memória.';
+        } elseif ($e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException) {
+            $category = 'database';
+            $message = 'Falha de banco no controle de versões; utilizando versão em memória.';
+        } else {
+            $category = 'version_resolution';
+            $message = 'Falha ao identificar ou sincronizar a versão; utilizando versão em memória.';
+        }
+        try {
+            Log::warning($message, [
+                'category' => $category,
+                'operation' => $operation,
+                'exception' => get_class($e),
+                'error' => $e->getMessage(),
+            ]);
+        } catch (\Throwable $loggingError) {
+            // Falha do canal de log também não deve impedir a renderização do login.
+        }
+    }
+
+    private function beginVersionOperation(): void
+    {
+        if ($this->versionOperationDepth === 0) {
+            $this->verifiedVersionSchemas = [];
+            $this->versionSchemaFailure = null;
+        }
+        ++$this->versionOperationDepth;
+    }
+
+    private function endVersionOperation(): void
+    {
+        if (--$this->versionOperationDepth === 0) {
+            $this->verifiedVersionSchemas = [];
+            $this->versionSchemaFailure = null;
+        }
+    }
+
+    private function rememberVersionSchema(string $schemaKey): void
+    {
+        if ($this->versionOperationDepth > 0) {
+            $this->verifiedVersionSchemas[$schemaKey] = true;
+        }
     }
 
     private function revisionMatches(?string $recorded, string $installed): bool
@@ -255,72 +514,79 @@ class AppVersionService
 
     public function syncFromArtifacts(?string $installedVersion = null): int
     {
-        $installedVersion = $installedVersion ?: $this->resolveInstalledVersion();
-        $identity = $this->installedReleaseIdentity();
-        $installedRevision = $identity !== null && $identity['version'] === $installedVersion
-            ? $identity['git_commit_sha'] : null;
+        $this->beginVersionOperation();
+        try {
+            $this->ensureAppVersionsAutoIncrement();
 
-        $versions = $this->artifactVersions();
-        $upserts = 0;
+            $installedVersion = $installedVersion ?: $this->resolveInstalledVersion();
+            $identity = $this->installedReleaseIdentity();
+            $installedRevision = $identity !== null && $identity['version'] === $installedVersion
+                ? $identity['git_commit_sha'] : null;
 
-        foreach ($versions as $version) {
-            [$major, $minor, $patch] = $this->splitVersion($version);
-            $base = 'releases/'.$version;
+            $versions = $this->artifactVersions();
+            $upserts = 0;
 
-            $currentHtmlPath = Storage::disk('local')->exists($base.'/current.html') ? $base.'/current.html' : null;
-            $cumulativeHtmlPath = Storage::disk('local')->exists($base.'/cumulative.html') ? $base.'/cumulative.html' : null;
-            $currentPdfPath = Storage::disk('local')->exists($base.'/current.pdf') ? $base.'/current.pdf' : null;
-            $cumulativePdfPath = Storage::disk('local')->exists($base.'/cumulative.pdf') ? $base.'/cumulative.pdf' : null;
+            foreach ($versions as $version) {
+                [$major, $minor, $patch] = $this->splitVersion($version);
+                $base = 'releases/'.$version;
 
-            $currentHtml = $currentHtmlPath ? Storage::disk('local')->get($currentHtmlPath) : null;
-            $cumulativeHtml = $cumulativeHtmlPath ? Storage::disk('local')->get($cumulativeHtmlPath) : null;
+                $currentHtmlPath = Storage::disk('local')->exists($base.'/current.html') ? $base.'/current.html' : null;
+                $cumulativeHtmlPath = Storage::disk('local')->exists($base.'/cumulative.html') ? $base.'/cumulative.html' : null;
+                $currentPdfPath = Storage::disk('local')->exists($base.'/current.pdf') ? $base.'/current.pdf' : null;
+                $cumulativePdfPath = Storage::disk('local')->exists($base.'/cumulative.pdf') ? $base.'/cumulative.pdf' : null;
 
-            $payload = [
-                'version_major' => $major,
-                'version_minor' => $minor,
-                'version_patch' => $patch,
-                'title' => 'Release '.$version,
-                'release_notes_current_html' => $currentHtml,
-                'release_notes_cumulative_html' => $cumulativeHtml,
-                'release_notes_current_html_path' => $currentHtmlPath,
-                'release_notes_cumulative_html_path' => $cumulativeHtmlPath,
-                'release_notes_current_pdf_path' => $currentPdfPath,
-                'release_notes_cumulative_pdf_path' => $cumulativePdfPath,
-                'release_notes_html' => $currentHtml,
-                'release_notes_pdf_path' => $cumulativePdfPath,
-                'release_notes_format' => $this->resolveFormat($currentHtml, $cumulativePdfPath),
-                'installed_at' => now(),
-            ];
+                $currentHtml = $currentHtmlPath ? Storage::disk('local')->get($currentHtmlPath) : null;
+                $cumulativeHtml = $cumulativeHtmlPath ? Storage::disk('local')->get($cumulativeHtmlPath) : null;
 
-            if ($version === $installedVersion && $installedRevision !== null) {
-                $payload['commit_hash'] = $installedRevision;
+                $payload = [
+                    'version_major' => $major,
+                    'version_minor' => $minor,
+                    'version_patch' => $patch,
+                    'title' => 'Release '.$version,
+                    'release_notes_current_html' => $currentHtml,
+                    'release_notes_cumulative_html' => $cumulativeHtml,
+                    'release_notes_current_html_path' => $currentHtmlPath,
+                    'release_notes_cumulative_html_path' => $cumulativeHtmlPath,
+                    'release_notes_current_pdf_path' => $currentPdfPath,
+                    'release_notes_cumulative_pdf_path' => $cumulativePdfPath,
+                    'release_notes_html' => $currentHtml,
+                    'release_notes_pdf_path' => $cumulativePdfPath,
+                    'release_notes_format' => $this->resolveFormat($currentHtml, $cumulativePdfPath),
+                    'installed_at' => now(),
+                ];
+
+                if ($version === $installedVersion && $installedRevision !== null) {
+                    $payload['commit_hash'] = $installedRevision;
+                }
+
+                $record = AppVersion::query()->updateOrCreate(
+                    ['version' => $version],
+                    $payload
+                );
+
+                $upserts += $record->wasRecentlyCreated ? 1 : 0;
             }
 
-            $record = AppVersion::query()->updateOrCreate(
-                ['version' => $version],
-                $payload
-            );
+            if ($installedVersion !== '') {
+                AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
+                AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
 
-            $upserts += $record->wasRecentlyCreated ? 1 : 0;
-        }
-
-        if ($installedVersion !== '') {
-            AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
-            AppVersion::query()->where('version', $installedVersion)->update(['is_current' => true]);
-
-            if ($installedRevision !== null) {
-                AppVersion::query()
-                    ->where('version', $installedVersion)
-                    ->update(['commit_hash' => $installedRevision]);
+                if ($installedRevision !== null) {
+                    AppVersion::query()
+                        ->where('version', $installedVersion)
+                        ->update(['commit_hash' => $installedRevision]);
+                }
             }
-        }
 
-        if ($identity !== null && $identity['version'] === $installedVersion) {
-            $record = $this->reconcileInstalledRelease($identity);
-            $upserts += $record->wasRecentlyCreated ? 1 : 0;
-        }
+            if ($identity !== null && $identity['version'] === $installedVersion) {
+                $record = $this->reconcileInstalledRelease($identity);
+                $upserts += $record->wasRecentlyCreated ? 1 : 0;
+            }
 
-        return $upserts;
+            return $upserts;
+        } finally {
+            $this->endVersionOperation();
+        }
     }
 
     private function artifactVersions(): Collection
@@ -449,175 +715,189 @@ class AppVersionService
 
     public function syncFromManifest(?string $manifestPath = null): int
     {
-        $manifestPath = $manifestPath ?: storage_path('app/releases/manifest.json');
-        if (!is_file($manifestPath)) {
-            return 0;
-        }
-
-        $raw = safe_file_get_contents($manifestPath);
-        $manifest = json_decode((string) $raw, true);
-        if (!is_array($manifest)) {
-            return 0;
-        }
-
-        $releases = collect(Arr::get($manifest, 'releases', []));
-        if ($releases->isEmpty()) {
-            return 0;
-        }
-
-        $currentVersion = ltrim((string) Arr::get($manifest, 'current_version', ''), 'vV');
-        $currentVersion = $this->normalizeSemanticVersion($currentVersion) ?? '';
-        $upserts = 0;
-
-        foreach ($releases as $release) {
-            if (!is_array($release)) {
-                continue;
+        $this->beginVersionOperation();
+        try {
+            $manifestPath = $manifestPath ?: storage_path('app/releases/manifest.json');
+            if (!is_file($manifestPath)) {
+                return 0;
             }
 
-            $version = ltrim((string) Arr::get($release, 'version', ''), 'vV');
-            $version = $this->normalizeSemanticVersion($version);
-            if ($version === null) {
-                continue;
+            $raw = safe_file_get_contents($manifestPath);
+            $manifest = json_decode((string) $raw, true);
+            if (!is_array($manifest)) {
+                return 0;
             }
 
-            [$major, $minor, $patch] = $this->splitVersion($version);
+            $releases = collect(Arr::get($manifest, 'releases', []));
+            if ($releases->isEmpty()) {
+                return 0;
+            }
 
-            $record = AppVersion::query()->updateOrCreate(
-                ['version' => $version],
-                [
-                    'version_major' => $major,
-                    'version_minor' => $minor,
-                    'version_patch' => $patch,
-                    'title' => Arr::get($release, 'title', 'Release '.$version),
-                    'release_notes_current_html' => Arr::get($release, 'current_html'),
-                    'release_notes_cumulative_html' => Arr::get($release, 'cumulative_html'),
-                    'release_notes_current_html_path' => Arr::get($release, 'current_html_path'),
-                    'release_notes_cumulative_html_path' => Arr::get($release, 'cumulative_html_path'),
-                    'release_notes_current_pdf_path' => Arr::get($release, 'current_pdf_path'),
-                    'release_notes_cumulative_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
-                    'release_notes_html' => Arr::get($release, 'current_html'),
-                    'release_notes_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
-                    'release_notes_format' => Arr::get($release, 'format', $this->resolveFormat(Arr::get($release, 'current_html'), Arr::get($release, 'cumulative_pdf_path'))),
-                    'released_at' => Arr::get($release, 'released_at'),
-                    'installed_at' => Arr::get($release, 'installed_at', now()),
-                    'build_number' => Arr::get($release, 'build_number'),
-                    'commit_hash' => $this->normalizeRevision((string) Arr::get($release, 'commit_hash')),
-                    'release_channel' => Arr::get($release, 'release_channel'),
-                    'author' => Arr::get($release, 'author'),
-                    'observations' => Arr::get($release, 'observations'),
-                    'metadata' => Arr::get($release, 'metadata', []),
-                    'is_current' => false,
-                ]
-            );
+            $this->ensureAppVersionsAutoIncrement();
 
-            $upserts += $record->wasRecentlyCreated ? 1 : 0;
+            $currentVersion = ltrim((string) Arr::get($manifest, 'current_version', ''), 'vV');
+            $currentVersion = $this->normalizeSemanticVersion($currentVersion) ?? '';
+            $upserts = 0;
+
+            foreach ($releases as $release) {
+                if (!is_array($release)) {
+                    continue;
+                }
+
+                $version = ltrim((string) Arr::get($release, 'version', ''), 'vV');
+                $version = $this->normalizeSemanticVersion($version);
+                if ($version === null) {
+                    continue;
+                }
+
+                [$major, $minor, $patch] = $this->splitVersion($version);
+
+                $record = AppVersion::query()->updateOrCreate(
+                    ['version' => $version],
+                    [
+                        'version_major' => $major,
+                        'version_minor' => $minor,
+                        'version_patch' => $patch,
+                        'title' => Arr::get($release, 'title', 'Release '.$version),
+                        'release_notes_current_html' => Arr::get($release, 'current_html'),
+                        'release_notes_cumulative_html' => Arr::get($release, 'cumulative_html'),
+                        'release_notes_current_html_path' => Arr::get($release, 'current_html_path'),
+                        'release_notes_cumulative_html_path' => Arr::get($release, 'cumulative_html_path'),
+                        'release_notes_current_pdf_path' => Arr::get($release, 'current_pdf_path'),
+                        'release_notes_cumulative_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
+                        'release_notes_html' => Arr::get($release, 'current_html'),
+                        'release_notes_pdf_path' => Arr::get($release, 'cumulative_pdf_path'),
+                        'release_notes_format' => Arr::get($release, 'format', $this->resolveFormat(Arr::get($release, 'current_html'), Arr::get($release, 'cumulative_pdf_path'))),
+                        'released_at' => Arr::get($release, 'released_at'),
+                        'installed_at' => Arr::get($release, 'installed_at', now()),
+                        'build_number' => Arr::get($release, 'build_number'),
+                        'commit_hash' => $this->normalizeRevision((string) Arr::get($release, 'commit_hash')),
+                        'release_channel' => Arr::get($release, 'release_channel'),
+                        'author' => Arr::get($release, 'author'),
+                        'observations' => Arr::get($release, 'observations'),
+                        'metadata' => Arr::get($release, 'metadata', []),
+                        'is_current' => false,
+                    ]
+                );
+
+                $upserts += $record->wasRecentlyCreated ? 1 : 0;
+            }
+
+            if ($currentVersion !== '') {
+                AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
+                AppVersion::query()->where('version', $currentVersion)->update(['is_current' => true]);
+            }
+
+            return $upserts;
+        } finally {
+            $this->endVersionOperation();
         }
-
-        if ($currentVersion !== '') {
-            AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
-            AppVersion::query()->where('version', $currentVersion)->update(['is_current' => true]);
-        }
-
-        return $upserts;
     }
 
     public function register(array $data): AppVersion
     {
-        if ((bool) Arr::get($data, 'bootstrap_from_artifacts', true)) {
-            $this->syncFromArtifacts(Arr::get($data, 'installed_version_for_sync'));
+        $this->beginVersionOperation();
+        try {
+            $this->ensureAppVersionsAutoIncrement();
+
+            if ((bool) Arr::get($data, 'bootstrap_from_artifacts', true)) {
+                $this->syncFromArtifacts(Arr::get($data, 'installed_version_for_sync'));
+            }
+
+            return DB::transaction(function () use ($data) {
+                $version = (string) Arr::get($data, 'version');
+                [$major, $minor, $patch] = $this->splitVersion($version);
+
+                $currentHtmlInput = $this->normalizeReleaseCurrentHtml(
+                    Arr::get($data, 'release_notes_current_html', Arr::get($data, 'release_notes_html')),
+                    (string) Arr::get($data, 'title', "Release {$version}"),
+                    $version,
+                    Arr::get($data, 'observations')
+                );
+
+                $isCurrent = (bool) Arr::get($data, 'is_current', true);
+                if ($isCurrent) {
+                    AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
+                }
+
+                $metadata = Arr::get($data, 'metadata', []);
+                if (!is_array($metadata)) {
+                    $metadata = [];
+                }
+
+                $record = AppVersion::query()->updateOrCreate(
+                    ['version' => $version],
+                    [
+                        'version_major' => Arr::get($data, 'version_major', $major),
+                        'version_minor' => Arr::get($data, 'version_minor', $minor),
+                        'version_patch' => Arr::get($data, 'version_patch', $patch),
+                        'title' => Arr::get($data, 'title'),
+                        'release_notes_current_html' => $currentHtmlInput,
+                        'release_notes_html' => $currentHtmlInput,
+                        'is_current' => $isCurrent,
+                        'released_at' => Arr::get($data, 'released_at'),
+                        'installed_at' => Arr::get($data, 'installed_at', now()),
+                        'build_number' => Arr::get($data, 'build_number'),
+                        'commit_hash' => $this->normalizeRevision((string) Arr::get($data, 'commit_hash')) ?: $this->resolveInstalledRevision(),
+                        'release_channel' => Arr::get($data, 'release_channel'),
+                        'author' => Arr::get($data, 'author'),
+                        'observations' => Arr::get($data, 'observations'),
+                        'metadata' => $metadata,
+                    ]
+                );
+
+                $record->refresh();
+
+                $history = AppVersion::query()
+                    ->orderByDesc('version_major')
+                    ->orderByDesc('version_minor')
+                    ->orderByDesc('version_patch')
+                    ->orderByDesc('installed_at')
+                    ->orderByDesc('id')
+                    ->get();
+
+                $cumulativeHtml = $this->buildCumulativeHtml($record, $history);
+
+                $paths = $this->persistHtmlFiles($record->version, $currentHtmlInput, $cumulativeHtml);
+                $pdfPaths = $this->persistPdfFiles($record->version, $currentHtmlInput, $cumulativeHtml, !(bool) Arr::get($data, 'skip_pdf', false));
+
+                $format = $this->resolveFormat($currentHtmlInput, $pdfPaths['cumulative_pdf_path']);
+
+                $record->fill([
+                    'release_notes_cumulative_html' => $cumulativeHtml,
+                    'release_notes_current_html_path' => $paths['current_html_path'],
+                    'release_notes_cumulative_html_path' => $paths['cumulative_html_path'],
+                    'release_notes_current_pdf_path' => $pdfPaths['current_pdf_path'],
+                    'release_notes_cumulative_pdf_path' => $pdfPaths['cumulative_pdf_path'],
+                    'release_notes_pdf_path' => $pdfPaths['cumulative_pdf_path'],
+                    'release_notes_format' => $format,
+                ]);
+
+                $metadata = $record->metadata ?? [];
+                if (!is_array($metadata)) {
+                    $metadata = [];
+                }
+
+                $metadata['generated_at'] = now()->toIso8601String();
+                $metadata['artifacts'] = [
+                    'current_html' => $paths['current_html_path'],
+                    'cumulative_html' => $paths['cumulative_html_path'],
+                    'current_pdf' => $pdfPaths['current_pdf_path'],
+                    'cumulative_pdf' => $pdfPaths['cumulative_pdf_path'],
+                ];
+
+                if ($pdfPaths['pdf_engine'] === null) {
+                    $metadata['pdf_warning'] = 'Engine de PDF indisponível no ambiente. HTML gerado normalmente.';
+                }
+
+                $record->metadata = $metadata;
+                $record->save();
+
+                return $record->fresh();
+            });
+        } finally {
+            $this->endVersionOperation();
         }
-
-        return DB::transaction(function () use ($data) {
-            $version = (string) Arr::get($data, 'version');
-            [$major, $minor, $patch] = $this->splitVersion($version);
-
-            $currentHtmlInput = $this->normalizeReleaseCurrentHtml(
-                Arr::get($data, 'release_notes_current_html', Arr::get($data, 'release_notes_html')),
-                (string) Arr::get($data, 'title', "Release {$version}"),
-                $version,
-                Arr::get($data, 'observations')
-            );
-
-            $isCurrent = (bool) Arr::get($data, 'is_current', true);
-            if ($isCurrent) {
-                AppVersion::query()->where('is_current', true)->update(['is_current' => false]);
-            }
-
-            $metadata = Arr::get($data, 'metadata', []);
-            if (!is_array($metadata)) {
-                $metadata = [];
-            }
-
-            $record = AppVersion::query()->updateOrCreate(
-                ['version' => $version],
-                [
-                    'version_major' => Arr::get($data, 'version_major', $major),
-                    'version_minor' => Arr::get($data, 'version_minor', $minor),
-                    'version_patch' => Arr::get($data, 'version_patch', $patch),
-                    'title' => Arr::get($data, 'title'),
-                    'release_notes_current_html' => $currentHtmlInput,
-                    'release_notes_html' => $currentHtmlInput,
-                    'is_current' => $isCurrent,
-                    'released_at' => Arr::get($data, 'released_at'),
-                    'installed_at' => Arr::get($data, 'installed_at', now()),
-                    'build_number' => Arr::get($data, 'build_number'),
-                    'commit_hash' => $this->normalizeRevision((string) Arr::get($data, 'commit_hash')) ?: $this->resolveInstalledRevision(),
-                    'release_channel' => Arr::get($data, 'release_channel'),
-                    'author' => Arr::get($data, 'author'),
-                    'observations' => Arr::get($data, 'observations'),
-                    'metadata' => $metadata,
-                ]
-            );
-
-            $record->refresh();
-
-            $history = AppVersion::query()
-                ->orderByDesc('version_major')
-                ->orderByDesc('version_minor')
-                ->orderByDesc('version_patch')
-                ->orderByDesc('installed_at')
-                ->orderByDesc('id')
-                ->get();
-
-            $cumulativeHtml = $this->buildCumulativeHtml($record, $history);
-
-            $paths = $this->persistHtmlFiles($record->version, $currentHtmlInput, $cumulativeHtml);
-            $pdfPaths = $this->persistPdfFiles($record->version, $currentHtmlInput, $cumulativeHtml, !(bool) Arr::get($data, 'skip_pdf', false));
-
-            $format = $this->resolveFormat($currentHtmlInput, $pdfPaths['cumulative_pdf_path']);
-
-            $record->fill([
-                'release_notes_cumulative_html' => $cumulativeHtml,
-                'release_notes_current_html_path' => $paths['current_html_path'],
-                'release_notes_cumulative_html_path' => $paths['cumulative_html_path'],
-                'release_notes_current_pdf_path' => $pdfPaths['current_pdf_path'],
-                'release_notes_cumulative_pdf_path' => $pdfPaths['cumulative_pdf_path'],
-                'release_notes_pdf_path' => $pdfPaths['cumulative_pdf_path'],
-                'release_notes_format' => $format,
-            ]);
-
-            $metadata = $record->metadata ?? [];
-            if (!is_array($metadata)) {
-                $metadata = [];
-            }
-
-            $metadata['generated_at'] = now()->toIso8601String();
-            $metadata['artifacts'] = [
-                'current_html' => $paths['current_html_path'],
-                'cumulative_html' => $paths['cumulative_html_path'],
-                'current_pdf' => $pdfPaths['current_pdf_path'],
-                'cumulative_pdf' => $pdfPaths['cumulative_pdf_path'],
-            ];
-
-            if ($pdfPaths['pdf_engine'] === null) {
-                $metadata['pdf_warning'] = 'Engine de PDF indisponível no ambiente. HTML gerado normalmente.';
-            }
-
-            $record->metadata = $metadata;
-            $record->save();
-
-            return $record->fresh();
-        });
     }
 
     private function splitVersion(string $version): array
@@ -638,7 +918,7 @@ class AppVersionService
         $number = '(?:0|[1-9][0-9]*)';
         $pre = '(?:0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)';
         if (strlen($normalized) > 30 || !preg_match('/^'.$number.'\.'.$number.'\.'.$number
-            .'(?:-'.$pre.'(?:\.'.$pre.')*)?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/D', $normalized)) {
+                .'(?:-'.$pre.'(?:\.'.$pre.')*)?(?:\+[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)?$/D', $normalized)) {
             return null;
         }
 
