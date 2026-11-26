@@ -180,6 +180,7 @@
 									</span></td>
 									<td class="datatable-cell"><span class="codigo" style="width: 200px;">
 										{{number_format($dp->valor_integral, $casasDecimais, ',', '.')}}
+                                        @include('pagamentos.atalho', ['titulo' => $dp])
 									</span></td>
 								</tr>
 								@endforeach

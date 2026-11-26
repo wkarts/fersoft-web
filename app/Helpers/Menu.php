@@ -564,6 +564,10 @@ class Menu {
                         'rota' => '/contasReceber'
                     ],
                     [
+                        'nome' => 'Pagamentos eletrônicos',
+                        'rota' => '/pagamentos-eletronicos'
+                    ],
+                    [
                         'nome' => 'Conciliação Bancária',
                         'rota' => '/financeiro/conciliacao'
                     ],

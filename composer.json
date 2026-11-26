@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "argws/electronic-payments": "^0.1.0",
         "argws/laravel-updater": "^0.1.212",
         "barryvdh/laravel-dompdf": "^3.1",
         "cloud-dfe/sdk-php": "^v0.4.4",
@@ -44,6 +45,10 @@
         "tiendanube/php-sdk": "^1.1",
         "webmaniabr/nfse": "^2.6"
     },
+    "repositories": [
+        {"type": "git", "url": "https://github.com/wkarts/ARGWS-Electronic-Payments.git"},
+        {"type": "git", "url": "https://github.com/wkarts/asaas-sdk-argws.git"}
+    ],
     "require-dev": {
         "fakerphp/faker": "^v1.24.1",
         "kitloong/laravel-migrations-generator": "^7.0.6",

@@ -4,8 +4,96 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7c7c342be7e6de1c5185c80e63f9bd14",
+    "content-hash": "187a7dc607b0669691cbca51489d98a4",
     "packages": [
+        {
+            "name": "argws/asaas-sdk-php",
+            "version": "v0.4.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wkarts/asaas-sdk-argws.git",
+                "reference": "be056d7cc5bb0a3e666c646dd1f09d57bdf49fce"
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.8",
+                "php": "^8.1",
+                "psr/log": "^3.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.56",
+                "phpstan/phpstan": "^1.10",
+                "phpunit/phpunit": "^10.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Asaas\\Sdk\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Asaas\\Sdk\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "asaas:build-openapi": [
+                    "php bin/build-openapi.php"
+                ],
+                "asaas:generate": [
+                    "php bin/generate-sdk.php"
+                ],
+                "asaas:sdk-build": [
+                    "php bin/build-openapi.php",
+                    "php bin/generate-sdk.php"
+                ],
+                "asaas:verify": [
+                    "php bin/verify-parity.php"
+                ],
+                "test": [
+                    "phpunit"
+                ],
+                "lint": [
+                    "phpstan analyse",
+                    "php-cs-fixer fix --dry-run --diff"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "SDK PHP NÃO OFICIAL para a API do Asaas. Baseada na SDK Java e gerada a partir da documentação/OpenAPI.",
+            "time": "2026-11-07T01:52:24+00:00"
+        },
+        {
+            "name": "argws/electronic-payments",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wkarts/ARGWS-Electronic-Payments.git",
+                "reference": "595779c0e3292f54ef0575692224ec4047f3e58e"
+            },
+            "require": {
+                "argws/asaas-sdk-php": "^0.4.0",
+                "guzzlehttp/guzzle": "^7.8",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Argws\\ElectronicPayments\\": "src/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "@php tests/run.php"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Pagamentos eletrônicos para aplicações PHP, com adaptador Asaas para cobranças, recebimentos e extratos.",
+            "time": "2026-11-26T05:39:15+00:00"
+        },
         {
             "name": "argws/laravel-updater",
             "version": "v0.1.223",
@@ -14716,5 +14804,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.11.0"
 }

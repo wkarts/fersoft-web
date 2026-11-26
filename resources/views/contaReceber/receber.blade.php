@@ -5,6 +5,7 @@
         <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
             <div class="col-lg-12">
                 <br>
+                @include('pagamentos.atalho', ['titulo' => $conta])
                 <form method="post" action="/contasReceber/receber">
                     @csrf
                     <input type="hidden" name="id" value="{{$conta->id}}">

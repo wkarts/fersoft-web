@@ -768,7 +768,7 @@ $('#finalizar-venda').click(() => {
 	if(TOTAL > 0){
 
 		let tipoPagamento = $('#tipo-pagamento').val()
-		if(tipoPagamento == 17){
+		if(tipoPagamento == 17 && !window.pagamentoEletronicoPdv?.referencia()){
 			$('#finalizar-venda').addClass('spinner')
 			$.get(path + 'vendasCaixa/pix', {valor: TOTAL-DESCONTO+VALORACRESCIMO})
 			.done((success) => {
@@ -2288,7 +2288,8 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 				let js = {
 					id: VENDA != null ? VENDA.id : 0,
 					itens: ITENS,
-					pag_multi: PAGMULTI,
+					pagamento_eletronico: window.pagamentoEletronicoPdv?.referencia(),
+                    pag_multi: PAGMULTI,
 					cliente: CLIENTE != null ? CLIENTE.id : null,
 					valor_total: TOTAL,
 					acrescimo: VALORBAIRRO + VALORACRESCIMO,
@@ -2337,6 +2338,7 @@ function finalizarVenda(acao, rascunho = 0, consignado = 0) {
 							_token: token
 						},
 						success: function(e){
+                            window.pagamentoEletronicoPdv?.concluir();
 							audioSuccess()
 							if(acao == 'fiscal'){
 								$('#preloader2').css('display', 'block');

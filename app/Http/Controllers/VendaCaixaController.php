@@ -251,6 +251,11 @@ class VendaCaixaController extends Controller
 
                 $totalVenda = str_replace(",", ".", $venda['valor_total']) + str_replace(",", ".", $venda['acrescimo']) - str_replace(",", ".", $venda['desconto']);
 
+                $cobrancaEletronica = empty($venda['pagamento_eletronico']) ? null :
+                    app(\App\Services\Pagamentos\Cobrancas::class)->reservarPdv(
+                        \App\Services\Pagamentos\Estabelecimento::atual(), $venda, $totalVenda
+                    );
+
                 $func = null;
                 $usr = null;
 
@@ -748,6 +753,10 @@ class VendaCaixaController extends Controller
                     $pedidoDeliveryVenda->save();
                 }
 
+                if ($cobrancaEletronica) {
+                    abort_unless((int) $result->filial_id === (int) $cobrancaEletronica->conexao->local, 409);
+                    $cobrancaEletronica->update(['venda_caixa_id' => $result->id]);
+                }
                 return $result;
             });
             echo json_encode($result);
