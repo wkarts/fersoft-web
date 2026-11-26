@@ -4,8 +4,57 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7c7c342be7e6de1c5185c80e63f9bd14",
+    "content-hash": "5b083e6fde8fe44cb1ae16cc1246835d",
     "packages": [
+        {
+            "name": "argws/electronic-payments",
+            "version": "v0.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wkarts/ARGWS-Electronic-Payments.git",
+                "reference": "e45b9c049560963bc284949f8370889e51f210e7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wkarts/ARGWS-Electronic-Payments/zipball/e45b9c049560963bc284949f8370889e51f210e7",
+                "reference": "e45b9c049560963bc284949f8370889e51f210e7",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.8",
+                "php": "^8.2",
+                "psr/log": "^3.0"
+            },
+            "replace": {
+                "argws/asaas-sdk-php": "0.4.0"
+            },
+            "type": "library",
+            "extra": {
+                "bundled-sdks": {
+                    "argws/asaas-sdk-php": {
+                        "reference": "be056d7cc5bb0a3e666c646dd1f09d57bdf49fce"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Asaas\\Sdk\\": "vendor/argws/asaas-sdk-php/src/",
+                    "Argws\\ElectronicPayments\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "proprietary"
+            ],
+            "description": "Pagamentos eletrônicos para aplicações PHP, com adaptador Asaas para cobranças, recebimentos e extratos.",
+            "support": {
+                "issues": "https://github.com/wkarts/ARGWS-Electronic-Payments/issues",
+                "source": "https://github.com/wkarts/ARGWS-Electronic-Payments/tree/v0.1.2"
+            },
+            "time": "2026-11-26T07:12:47+00:00",
+            "published-time": "2026-11-26T07:13:25+00:00"
+        },
         {
             "name": "argws/laravel-updater",
             "version": "v0.1.223",
@@ -14716,5 +14765,5 @@
         "php": "^8.2"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.11.0"
 }

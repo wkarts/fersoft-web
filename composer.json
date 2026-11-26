@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "argws/electronic-payments": "^0.1.2",
         "argws/laravel-updater": "^0.1.212",
         "barryvdh/laravel-dompdf": "^3.1",
         "cloud-dfe/sdk-php": "^v0.4.4",

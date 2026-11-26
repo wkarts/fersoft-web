@@ -3,6 +3,9 @@
 use Illuminate\Http\Request;
 use App\Http\Controllers\PontoWhatsAppController;
 
+Route::post('pagamentos-eletronicos/asaas/{chave}', 'PagamentoEletronicoController@webhook')
+    ->middleware(\App\Http\Middleware\VerificaInstalacaoPagamentos::class)->whereUuid('chave')->name('pagamentos.webhook');
+
 Route::group(['prefix' => 'appUser'],function(){
 	Route::post('/signup', 'AppUserController@signup');
 	Route::post('/login', 'AppUserController@login');
