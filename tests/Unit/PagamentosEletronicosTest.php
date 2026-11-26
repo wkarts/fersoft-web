@@ -79,6 +79,17 @@ class PagamentosEletronicosTest extends TestCase
         };
     }
 
+    public function test_erp_carrega_uma_unica_sdk_asaas_interna_ao_pacote_de_pagamentos(): void
+    {
+        $vendor = dirname(__DIR__, 2).'/vendor';
+        $sdk = 'argws/asaas-sdk-php';
+        $esperado = $vendor.'/argws/electronic-payments/vendor/'.$sdk.'/src/AsaasSdk.php';
+
+        self::assertDirectoryDoesNotExist($vendor.'/'.$sdk);
+        self::assertFileExists($esperado);
+        self::assertSame(realpath($esperado), (new \ReflectionClass(\Asaas\Sdk\AsaasSdk::class))->getFileName());
+    }
+
     private function cobranca(?int $titulo = 3): PagamentoCobranca
     {
         return PagamentoCobranca::create(['conexao_id' => $this->c->id, 'referencia' => (string) Str::uuid(),
