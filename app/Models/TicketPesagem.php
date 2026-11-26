@@ -86,7 +86,13 @@ class TicketPesagem extends BaseModel
 
     public function imagens()
     {
-        return $this->hasMany(PesagemTicketImagem::class, 'ticket_pesagem_id');
+        return $this->hasMany(PesagemTicketImagem::class, 'ticket_pesagem_id')->deBalanca();
+    }
+
+    public function fotosDispositivo()
+    {
+        return $this->hasMany(PesagemTicketImagem::class, 'ticket_pesagem_id')
+            ->where('storage_disk', PesagemTicketImagem::DISCO_DISPOSITIVO);
     }
 
     // Mutator para formatar o status

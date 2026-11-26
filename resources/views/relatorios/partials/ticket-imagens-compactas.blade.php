@@ -17,7 +17,7 @@
                     ->take($limiteImagens)
                     ->values();
             } else {
-                $imagensTicket = \App\Models\PesagemTicketImagem::query()
+                $imagensTicket = \App\Models\PesagemTicketImagem::query()->deBalanca()
                     ->where('ticket_pesagem_id', $ticket->id)
                     ->where('ativo', true)
                     ->whereNull('deleted_at')

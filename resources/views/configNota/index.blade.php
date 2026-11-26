@@ -312,6 +312,12 @@
 
 
                                                                     <hr>
+                                                                    <div class="form-group">
+                                                                        <label class="checkbox">
+                                                                            <input type="checkbox" name="pesagem_permitir_foto_dispositivo" value="1" {{ old('pesagem_permitir_foto_dispositivo', $config->pesagem_permitir_foto_dispositivo ?? false) ? 'checked' : '' }}>
+                                                                            <span></span> Permitir fotos pela câmera do dispositivo no ticket de pesagem
+                                                                        </label>
+                                                                    </div>
                                                                     <h6 class="mb-3">ADP Pesagem com câmeras, ticket e notificações</h6>
                                                                     @foreach([
                                                                     'pesagem_habilitar_preview_cameras' => 'Habilitar preview de câmeras no ticket de pesagem',

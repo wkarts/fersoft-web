@@ -3562,6 +3562,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
         Route::get('/list/{pesagem_id}', 'TicketPesagemController@list')->name('ticketsPesagem.list.pesagem');
         Route::get('/new', 'TicketPesagemController@register')->name('ticketsPesagem.register');
         Route::post('/save', 'TicketPesagemController@save')->name('ticketsPesagem.save');
+        Route::get('/pesagem/{pesagem}/fotos', 'TicketPesagemController@fotosDaPesagem')->whereNumber('pesagem')->name('ticketsPesagem.fotos');
+        Route::get('/{id}/fotos/{foto}', 'TicketPesagemController@fotoDispositivo')->whereNumber(['id', 'foto'])->name('ticketsPesagem.foto');
         Route::get('/edit/{id}', 'TicketPesagemController@edit')->name('ticketsPesagem.edit');
         Route::put('/update/{id}', 'TicketPesagemController@update')->name('ticketsPesagem.update');
         Route::delete('/delete/{id}', 'TicketPesagemController@delete')->name('ticketsPesagem.delete');

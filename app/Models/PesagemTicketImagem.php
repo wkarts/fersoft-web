@@ -40,6 +40,15 @@ class PesagemTicketImagem extends BaseModel
         'ativo' => 'boolean',
     ];
 
+    public const DISCO_DISPOSITIVO = 'fotos_ticket';
+
+    public function scopeDeBalanca($query)
+    {
+        return $query->where(function ($query) {
+            $query->whereNull('storage_disk')->orWhere('storage_disk', '<>', self::DISCO_DISPOSITIVO);
+        });
+    }
+
     public function ticket()
     {
         return $this->belongsTo(TicketPesagem::class, 'ticket_pesagem_id');

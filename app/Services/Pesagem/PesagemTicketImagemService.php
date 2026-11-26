@@ -25,7 +25,7 @@ class PesagemTicketImagemService
 
         // Reprocessamento seguro: se o ticket for editado ou salvo novamente,
         // remove imagens antigas antes de persistir as novas evidências.
-        $this->excluirDoTicket($ticket, true, false);
+        $this->excluirDoTicket($ticket, true, false, true);
 
         $config = ConfigNota::where('empresa_id', $ticket->empresa_id)->first();
         $storage = $this->resolverStorage($config);
@@ -288,11 +288,15 @@ class PesagemTicketImagemService
             || preg_match('~^[a-z]:/users/.+/appdata/local/~i', $normalized) === 1;
     }
 
-    public function excluirDoTicket(TicketPesagem $ticket, bool $apagarArquivos = true, bool $forceDelete = true): void
+    public function excluirDoTicket(TicketPesagem $ticket, bool $apagarArquivos = true, bool $forceDelete = true, bool $somenteBalanca = false): void
     {
         $query = PesagemTicketImagem::withTrashed()
             ->where('empresa_id', $ticket->empresa_id)
             ->where('ticket_pesagem_id', $ticket->id);
+
+        if ($somenteBalanca) {
+            $query->deBalanca();
+        }
 
         foreach ($query->get() as $imagem) {
             if ($apagarArquivos && $imagem->arquivo_path) {
