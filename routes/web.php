@@ -447,6 +447,8 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     foreach (['emitente' => 'configNF', 'filial' => 'filial/{filial}'] as $cadastro => $prefixo) {
         Route::prefix($prefixo.'/pagamentos-eletronicos')->where(['filial' => '[1-9][0-9]*'])
             ->name('parametros-pagamentos.'.$cadastro.'.')->group(function () {
+                Route::get('provedores/asaas/acessos', 'ParametroPagamentoController@acessos')->name('acessos');
+                Route::put('provedores/asaas/acessos/{usuario}', 'ParametroPagamentoController@salvarAcessos')->whereNumber('usuario')->name('acessos.salvar');
                 Route::post('provedores', 'ParametroPagamentoController@adicionar')->name('adicionar');
                 Route::put('provedores/{provedor}', 'ParametroPagamentoController@salvar')->name('salvar');
             });

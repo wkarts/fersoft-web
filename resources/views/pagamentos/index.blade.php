@@ -3,20 +3,25 @@
 <div class="card card-custom"><div class="card-body">
     <h3>Pagamentos eletrônicos</h3>
     <p>{{ $site->local ? 'Filial #'.$site->local : 'Matriz' }} · Ambiente do emitente: {{ $fiscal->value === 'production' ? 'Produção' : 'Homologação' }}</p>
-    @if ($site->usuario->adm || session('user_logged.super'))
+    @if ($temRelatorio)
         @if($ativa)<a class="btn btn-light-primary mb-3" href="{{ route('pagamentos.relatorio') }}">Extrato, recebimentos e relatórios</a>@endif
     @endif
     @if($ativa)
         <p>Ambiente selecionado: <strong>{{ $ativa->ambiente === 'sandbox' ? 'Homologação · cobranças simuladas' : 'Produção · cobranças reais' }}</strong></p>
+        @if($ativa->metodosAtivos())
         <form method="post" action="{{ route('pagamentos.emitir') }}" class="mb-4">
             @csrf
             <input type="hidden" name="estabelecimento" value="{{ $site->empresa }}-{{ $site->local }}">
             <input type="hidden" name="conexao" value="{{ $ativa->webhook_id }}">
             <label>Título a receber <input type="number" class="form-control" min="1" required name="titulo" value="{{ $titulo?->id }}"></label>
             @if($titulo) <span>{{ $titulo->referencia }} · R$ {{ number_format($titulo->valor_integral,2,',','.') }}</span> @endif
-            <label>Forma de pagamento <select class="form-control" name="metodo"><option value="pix">Pix</option><option value="boleto">Boleto</option><option value="credit_card">Cartão de crédito</option></select></label>
+            <label>Forma de pagamento <select class="form-control" name="metodo">@foreach($ativa->metodosAtivos() as $chave => $nome)<option value="{{ $chave }}">{{ $nome }}</option>@endforeach</select></label>
+            @if(isset($ativa->metodosAtivos()['credit_card']) && $ativa->max_parcelas_cartao > 1)
+                <label>Parcelas no cartão <input type="number" min="1" max="{{ $ativa->max_parcelas_cartao }}" name="numero_parcelas" value="1" class="form-control"></label>
+            @endif
             <button class="btn btn-success">Emitir cobrança</button>
         </form>
+        @endif
     @else
         <p>O Asaas está desativado neste estabelecimento.</p>
     @endif

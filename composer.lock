@@ -4,15 +4,15 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f607a685499a204474917ff25840bc34",
+    "content-hash": "03017ba5bae2944b3588dc7ae86fa0aa",
     "packages": [
         {
             "name": "argws/electronic-payments",
-            "version": "v0.1.1",
+            "version": "v0.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/wkarts/ARGWS-Electronic-Payments.git",
-                "reference": "0cab2ef5fdd59fa5816c6ee6206c9760a09025b8"
+                "reference": "e45b9c049560963bc284949f8370889e51f210e7"
             },
             "require": {
                 "ext-json": "*",
@@ -46,7 +46,7 @@
                 "proprietary"
             ],
             "description": "Pagamentos eletrônicos para aplicações PHP, com adaptador Asaas para cobranças, recebimentos e extratos.",
-            "time": "2026-11-26T06:52:08+00:00"
+            "time": "2026-11-26T07:12:47+00:00"
         },
         {
             "name": "argws/laravel-updater",

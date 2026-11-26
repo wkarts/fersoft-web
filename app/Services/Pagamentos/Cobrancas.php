@@ -65,13 +65,16 @@ class Cobrancas
         return hash('sha256', json_encode($linhas, JSON_THROW_ON_ERROR));
     }
 
-    public function emitir(Estabelecimento $site, PaymentMethod $metodo, ?int $tituloId, string $conexaoEsperada, array $pdv = []): PagamentoCobranca
+    public function emitir(Estabelecimento $site, PaymentMethod $metodo, ?int $tituloId, string $conexaoEsperada, array $pdv = [], int $numeroParcelas = 1): PagamentoCobranca
     {
         $c = $site->ativa();
-        [$cobranca, $cliente, $vencimento, $nova] = DB::transaction(function () use ($site, $c, $metodo, $tituloId, $conexaoEsperada, $pdv) {
+        [$cobranca, $cliente, $vencimento, $nova] = DB::transaction(function () use ($site, $c, $metodo, $tituloId, $conexaoEsperada, $pdv, $numeroParcelas) {
             // Serializa a reserva antes da primeira chamada remota.
             $atual = PagamentoConexao::lockForUpdate()->findOrFail($c->id);
             abort_unless($atual->selecionada && $atual->webhook_id === $conexaoEsperada, 409, 'O ambiente mudou. Reabra a tela.');
+            abort_unless(isset($atual->metodosAtivos()[$metodo->value]), 403, 'Forma de pagamento desativada neste estabelecimento.');
+            abort_unless($numeroParcelas >= 1 && $numeroParcelas <= ($metodo === PaymentMethod::CreditCard ? $atual->max_parcelas_cartao : 1),
+                422, 'Quantidade de parcelas incompatível com o estabelecimento ou a forma de pagamento.');
             if ($tituloId) {
                 $titulo = $this->titulo($c, $tituloId)->lockForUpdate()->firstOrFail();
                 abort_if($titulo->status || $titulo->valor_recebido > 0 || $titulo->boleto()->exists(), 409,
@@ -89,15 +92,15 @@ class Cobrancas
                 $origem = 'pdv-'.$site->usuario->id.'-'.$pdv['operacao'];
             }
             $cliente = Cliente::withoutDeleted()->where('empresa_id', $site->empresa)->findOrFail($clienteId);
-            abort_unless($centavos > 0 && trim($cliente->razao_social) !== '' &&
+            abort_unless($centavos >= $numeroParcelas && trim($cliente->razao_social) !== '' &&
                 in_array(strlen(preg_replace('/\D/', '', $cliente->cpf_cnpj ?? '')), [11, 14], true),
                 422, 'Informe valor positivo e cliente com nome e CPF/CNPJ.');
             $assinatura = $tituloId ? null : $this->assinaturaCarrinho($pdv['itens']);
             $cobranca = PagamentoCobranca::firstOrCreate(['conexao_id' => $c->id, 'origem' => $origem, 'vigente' => true], [
                 'referencia' => (string) Str::uuid(), 'usuario_id' => $site->usuario->id, 'cliente_id' => $cliente->id,
-                'parcela_pdv' => $pdv['parcela'] ?? null, 'carrinho_hash' => $assinatura, 'centavos' => $centavos, 'metodo' => $metodo->value, 'conta_receber_id' => $tituloId,
+                'numero_parcelas' => $numeroParcelas, 'parcela_pdv' => $pdv['parcela'] ?? null, 'carrinho_hash' => $assinatura, 'centavos' => $centavos, 'metodo' => $metodo->value, 'conta_receber_id' => $tituloId,
             ]);
-            abort_unless($cobranca->centavos == $centavos && $cobranca->cliente_id == $cliente->id &&
+            abort_unless($cobranca->numero_parcelas == $numeroParcelas && $cobranca->centavos == $centavos && $cobranca->cliente_id == $cliente->id &&
                 ($cobranca->parcela_pdv === null ? null : (int) $cobranca->parcela_pdv) === (isset($pdv['parcela']) ? (int) $pdv['parcela'] : null) &&
                 $cobranca->metodo === $metodo->value && $cobranca->carrinho_hash === $assinatura, 409, 'A operação já possui uma cobrança com outros dados.');
             return [$cobranca, $cliente, $data, $cobranca->wasRecentlyCreated];
@@ -113,10 +116,10 @@ class Cobrancas
                     preg_replace('/\D/', '', $cliente->cpf_cnpj), $ref, $cliente->email ?: null);
                 $enviada = true;
                 $remote = $api->create(new ChargeRequest($pagador, $cobranca->referencia, $cobranca->centavos,
-                    $metodo, new \DateTimeImmutable($vencimento)));
+                    $metodo, new \DateTimeImmutable($vencimento), $numeroParcelas));
                 // Um webhook pode ter conciliado a cobrança enquanto o POST estava em trânsito.
                 PagamentoCobranca::whereKey($cobranca->id)->whereNull('externo')
-                    ->update(['externo' => $remote->id->id, 'situacao' => $remote->status->value]);
+                    ->update(['externo' => $remote->id->id, 'parcelamento_externo' => $remote->installmentId, 'situacao' => $remote->status->value]);
                 $cobranca->refresh();
             } catch (\Throwable $e) {
                 if (!$enviada || ($e instanceof PaymentException && !$e->outcomeUnknown && $e->getCode() >= 400 && $e->getCode() < 500)) {
@@ -134,17 +137,28 @@ class Cobrancas
             $p = PagamentoCobranca::lockForUpdate()->findOrFail($cobranca->id);
             $c = $p->conexao;
             $api = $this->provider($c);
+            $parcelada = $p->numero_parcelas > 1;
+            $dataGrupo = null;
             if ($p->externo) {
-                abort_if($eventoExterno !== null && $eventoExterno !== $p->externo, 409);
+                abort_if(!$parcelada && $eventoExterno !== null && $eventoExterno !== $p->externo, 409);
                 $remote = $api->get(new ChargeId($c->account(), 'asaas', $p->externo));
             } else {
                 $matches = $api->findByReference($p->referencia);
-                if (count($matches) !== 1) {
+                if (!$matches || (!$parcelada && count($matches) !== 1)) {
                     $p->update(['conciliacao' => 'review']);
                     return null;
                 }
                 $remote = $matches[0];
-                abort_if($eventoExterno !== null && $eventoExterno !== $remote->id->id, 409);
+                abort_if(!$parcelada && $eventoExterno !== null && $eventoExterno !== $remote->id->id, 409);
+            }
+            if ($parcelada) {
+                $grupo = ParcelamentoCartao::conferir($p, $remote, $this, $eventoExterno);
+                if (!$grupo) {
+                    $p->update(['conciliacao' => 'review']);
+                    return null;
+                }
+                [$remote, $dataGrupo] = $grupo;
+                $p->parcelamento_externo = $remote->installmentId;
             }
             $parecer = Reconciliation::compare($remote, new ChargeId($c->account(), 'asaas', $p->externo ?: $remote->id->id),
                 $p->referencia, $p->centavos);
@@ -160,14 +174,16 @@ class Cobrancas
                     || ($titulo->cliente_id && $titulo->cliente_id != $p->cliente_id) || $titulo->boleto()->exists()) {
                     $p->conciliacao = Reconciliation::Review->value;
                 } else {
-                    $recebimentos = $api->reports()->page('payments', ['externalReference' => $p->referencia])['report'];
-                    $linha = $recebimentos['rows'][0] ?? [];
-                    $data = $linha['paymentDate'] ?? null;
-                    if (count($recebimentos['rows']) !== 1 || $recebimentos['has_more'] || ($linha['id'] ?? null) !== $p->externo
-                        || !$data || !preg_match('/^\d{4}-\d{2}-\d{2}$/D', $data)) {
-                        $p->conciliacao = Reconciliation::Review->value;
-                        $p->save();
-                        return $remote;
+                    $data = $dataGrupo;
+                    if (!$parcelada) {
+                        $recebimentos = $api->reports()->page('payments', ['externalReference' => $p->referencia])['report'];
+                        $linha = $recebimentos['rows'][0] ?? [];
+                        $data = $linha['paymentDate'] ?? null;
+                        if (count($recebimentos['rows']) !== 1 || $recebimentos['has_more'] || ($linha['id'] ?? null) !== $p->externo
+                            || !$data || !preg_match('/^\d{4}-\d{2}-\d{2}$/D', $data)) {
+                            $p->update(['conciliacao' => Reconciliation::Review->value]);
+                            return $remote;
+                        }
                     }
                     $titulo->status = true;
                     $titulo->valor_recebido = $titulo->valor_integral;

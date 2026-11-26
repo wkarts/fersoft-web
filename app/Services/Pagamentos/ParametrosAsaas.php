@@ -23,7 +23,7 @@ class ParametrosAsaas
         abort_if(!in_array($dados['ambiente'] ?? null, ['sandbox', 'production'], true)
             || !in_array($dados['ativar'] ?? '0', ['0', '1', 0, 1], true), 422, 'Selecione um ambiente válido.');
         abort_if(($chave !== null && (!is_string($chave) || strlen($chave) > 4096))
-            || ($segredo !== null && (!is_string($segredo) || strlen($segredo) < 32 || strlen($segredo) > 255)), 422,
+            || ($segredo !== null && (!is_string($segredo) || !preg_match('/\A[^\s\p{Z}\p{C}]{32,255}\z/u', $segredo) || stripos($segredo, '$aact_') === 0)), 422,
             'Confira a chave e o token do webhook (32 a 255 caracteres).');
         $ambiente = $dados['ambiente'];
         $contaId = $dados['conta_bancaria_id'] ?? null;
@@ -39,6 +39,18 @@ class ParametrosAsaas
             abort_if($ambiente === 'production' && Estabelecimento::fiscal($site->empresa, $site->local)->value !== 'production',
                 409, 'Este estabelecimento está em homologação.');
             abort_if(!$c->exists && (!$chave || !$segredo), 422, 'Informe a chave e o token do webhook.');
+            if ($request->has('configurar_metodos')) {
+                $metodos = $request->input('metodos', []);
+                abort_unless(is_array($metodos) && array_is_list($metodos), 422);
+                foreach ($metodos as $metodo) {
+                    abort_unless(is_string($metodo) && isset(PagamentoConexao::METODOS[$metodo]), 422);
+                }
+                $maximo = filter_var($request->input('max_parcelas_cartao'), FILTER_VALIDATE_INT,
+                    ['options' => ['min_range' => 1, 'max_range' => 2147483647]]);
+                abort_if($maximo === false, 422, 'Quantidade de parcelas inválida.');
+                $c->metodos = array_values(array_unique($metodos));
+                $c->max_parcelas_cartao = $maximo;
+            }
             if ($contaId !== null) {
                 abort_unless($site->contasBancarias()->whereKey($contaId)->exists(), 422, 'Conta bancária indisponível neste estabelecimento.');
                 abort_if($c->conta_bancaria_id && $c->conta_bancaria_id != $contaId, 409, 'Esta carteira já está vinculada a outra conta bancária.');
@@ -51,6 +63,9 @@ class ParametrosAsaas
                 $c->carteira = $carteira;
             }
             if ($segredo) {
+                $hash = \Argws\ElectronicPayments\Asaas\AsaasProvider::webhookTokenHash($segredo);
+                abort_if(PagamentoConexao::where('webhook_hash', $hash)->when($c->exists, fn ($q) => $q->where('id', '<>', $c->id))->exists(),
+                    422, 'Gere um token exclusivo para este estabelecimento e ambiente.');
                 $c->segredo = $segredo;
             }
             $c->selecionada = $request->boolean('ativar') ?: null;

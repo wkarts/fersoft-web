@@ -22,6 +22,11 @@ class ConciliacaoController extends BaseController
         $this->listView     = 'financeiro.conciliacao.list';
 
         parent::__construct();
+        $this->middleware(function ($request, $next) {
+            $usuario = \App\Models\Usuario::where('empresa_id', $this->getEmpresaId())->find($this->getUsuarioId());
+            abort_unless($usuario && in_array('/financeiro/conciliacao', json_decode($usuario->permissao ?? '[]', true) ?: [], true), 403);
+            return $next($request);
+        });
     }
 
     public function rules(): array { return []; }
@@ -30,12 +35,12 @@ class ConciliacaoController extends BaseController
     private function getEmpresaId()
     {
         $sessao = session('user_logged', []);
-        return $sessao['empresa_id'] ?? ($sessao['empresa'] ?? 1);
+        return $sessao['empresa'] ?? $sessao['empresa_id'] ?? null;
     }
 
     private function getUsuarioId()
     {
-        return session('user_logged')['id'] ?? 1;
+        return session('user_logged.id');
     }
 
     private function getFilialId()

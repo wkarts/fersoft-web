@@ -24,7 +24,7 @@
             </label>
         @endforeach
         <button class="btn btn-primary" name="consultar" value="1">Consultar</button>
-        <button class="btn btn-light-primary" name="csv" value="1">Baixar CSV</button>
+        @if($podeCsv)<button class="btn btn-light-primary" name="csv" value="1">Baixar CSV</button>@endif
     </form>
     @if($conta)
         <details class="my-3"><summary>Importar extrato para Conciliação Bancária</summary>
@@ -36,7 +36,7 @@
             <p>Os lançamentos entram como pendentes de conciliação.</p>
             <button class="btn btn-primary">Importar período</button>
         </form></details>
-    @elseif($def['id'] === 'statement' && $c->ambiente === 'production')
+    @elseif($podeImportar && $def['id'] === 'statement' && $c->ambiente === 'production')
         <p>Vincule uma conta bancária ativa nos parâmetros de pagamento do estabelecimento para importar o extrato.</p>
     @endif
     @if($dados)

@@ -24,6 +24,9 @@
                     <td>{{ !$ativaPagamento ? 'Inativo' : ($ativaPagamento->ambiente === 'sandbox' ? 'Homologação' : ($ambienteFiscal === 'production' ? 'Produção' : 'Bloqueado pelo ambiente fiscal')) }}</td>
                     <td>@isset($catalogoPagamento[$provedor->provedor])
                         <button class="btn btn-sm btn-light-primary" type="button" data-toggle="modal" data-target="#parametros-provedor-{{ $provedor->id }}">Configurar</button>
+                        @if($provedor->provedor === 'asaas')
+                            <a class="btn btn-sm btn-light-primary" href="{{ route($rotaParametros.'acessos', $destino) }}">Acessos por usuário</a>
+                        @endif
                     @endisset</td></tr>
             @empty
                 <tr><td colspan="3">Nenhum provedor adicionado neste estabelecimento.</td></tr>

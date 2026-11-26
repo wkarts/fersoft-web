@@ -51,7 +51,7 @@ class PagamentosEletronicosTest extends TestCase
         $app->register(DatabaseServiceProvider::class);
         $app->register(EncryptionServiceProvider::class);
         $app->boot();
-        foreach (glob($app->databasePath('migrations/2026_11_26_15000[0-4]_*.php')) as $migration) {
+        foreach (glob($app->databasePath('migrations/2026_11_26_15000[0-7]_*.php')) as $migration) {
             (require $migration)->up();
         }
         DB::statement('CREATE TABLE config_notas (empresa_id INTEGER, ambiente INTEGER)');
@@ -288,10 +288,80 @@ class PagamentosEletronicosTest extends TestCase
         self::assertSame($this->c->webhook_id, $this->site->ativa()->webhook_id);
     }
 
+    public function test_evento_de_uma_conexao_nao_autentica_com_token_de_outra(): void
+    {
+        $outra = $this->c->replicate(['webhook_id', 'carteira', 'selecionada']);
+        $outra->ambiente = 'sandbox';
+        $outra->webhook_id = (string) Str::uuid();
+        $outra->carteira = 'sandbox';
+        $outra->segredo = str_repeat('t', 32);
+        $outra->save();
+        $token = str_repeat('s', 32);
+        $request = Request::create('/', 'POST', [], [], [], ['HTTP_ASAAS_ACCESS_TOKEN' => $token], '{"event":"TRANSFER_DONE"}');
+        $controller = new PagamentoEletronicoController($this->service);
+        self::assertSame(403, $controller->webhook($request, $outra->webhook_id)->getStatusCode());
+        self::assertSame(204, $controller->webhook($request, $this->c->webhook_id)->getStatusCode());
+        self::assertNotSame($token, $this->c->getRawOriginal('segredo'));
+        self::assertSame(hash('sha256', $token), $this->c->webhook_hash);
+        self::assertArrayNotHasKey('webhook_hash', $this->c->toArray());
+    }
+
+    public function test_permissoes_de_extrato_saldo_csv_e_importacao_sao_individuais(): void
+    {
+        $acesso = \App\Services\Pagamentos\AcessoFinanceiro::class;
+        self::assertSame([], $acesso::doUsuario($this->site));
+        DB::table('pagamento_acessos')->insert(['provedor_id' => $this->site->provedores()->value('id'),
+            'usuario_id' => $this->site->usuario->id, 'recursos' => '["statement","exportar"]']);
+        $direitos = $acesso::doUsuario($this->site);
+        self::assertContains('statement', $direitos);
+        self::assertNotContains('importar', $direitos);
+        self::assertFalse($acesso::permiteCsv('statement', $direitos));
+        self::assertTrue($acesso::permiteCsv('statement', [...$direitos, 'balance']));
+        self::assertSame([], $acesso::doUsuario(new Estabelecimento(1, 4, $this->site->usuario)));
+        self::assertSame([], $acesso::doUsuario(new Estabelecimento(2, 0, $this->site->usuario)));
+        $this->site->usuario->id = 99;
+        self::assertSame([], $acesso::doUsuario($this->site));
+    }
+
+    public function test_forma_desligada_e_limite_de_parcelas_sao_validados_no_servidor(): void
+    {
+        $this->c->update(['metodos' => ['credit_card'], 'max_parcelas_cartao' => 3]);
+        foreach ([[PaymentMethod::Pix, 1, 403], [PaymentMethod::CreditCard, 4, 422]] as [$metodo, $quantidade, $esperado]) {
+            try {
+                $this->service->emitir($this->site, $metodo, 3, $this->c->webhook_id, numeroParcelas: $quantidade);
+                self::fail('A emissão deveria ser recusada.');
+            } catch (HttpException $e) {
+                self::assertSame($esperado, $e->getStatusCode());
+            }
+        }
+        self::assertSame(0, PagamentoCobranca::count());
+    }
+
+    public function test_cartao_parcelado_confere_grupo_e_baixa_apenas_apos_confirmacao_do_total(): void
+    {
+        $p = $this->cobranca();
+        $p->update(['metodo' => 'credit_card', 'numero_parcelas' => 2, 'parcelamento_externo' => 'inst_1']);
+        $linha = $this->pagamento($p);
+        $linha['value'] = 5;
+        $linha += ['installment' => 'inst_1', 'billingType' => 'CREDIT_CARD'];
+        $segunda = array_merge($linha, ['id' => 'pay_2', 'status' => 'PENDING']);
+        $this->http->append($this->resposta($linha), $this->resposta(['data' => [$linha, $segunda], 'hasMore' => false]));
+        $this->service->sincronizar($p, 'pay_2');
+        self::assertSame(0, DB::table('conta_recebers')->value('status'));
+        $segunda['status'] = 'CONFIRMED';
+        $this->http->append($this->resposta($linha), $this->resposta(['data' => [$linha, $segunda], 'hasMore' => false]));
+        $this->service->sincronizar($p, 'pay_2');
+        self::assertSame(1, DB::table('conta_recebers')->value('status'));
+        self::assertSame(10, DB::table('conta_recebers')->value('valor_recebido'));
+    }
+
     public function test_migracao_reagrupa_credenciais_existentes_preservando_webhook_e_chave(): void
     {
         $conexoes = require database_path('migrations/2026_11_26_150004_vincular_conexoes_a_provedores.php');
         $provedores = require database_path('migrations/2026_11_26_150003_create_pagamento_provedores_table.php');
+        (require database_path('migrations/2026_11_26_150006_create_pagamento_acessos_table.php'))->down();
+        $hashes = require database_path('migrations/2026_11_26_150005_add_webhook_hash_to_pagamento_conexoes.php');
+        $hashes->down();
         $conexoes->down();
         $provedores->down();
         $antiga = (array) DB::table('pagamento_conexoes')->first();
@@ -303,6 +373,8 @@ class PagamentosEletronicosTest extends TestCase
         DB::table('pagamento_conexoes')->insert($sandbox);
         $provedores->up();
         $conexoes->up();
+        $hashes->up();
+        self::assertSame(2, $this->site->conexoes()->whereNull('webhook_hash')->count());
         self::assertSame(1, $this->site->provedores()->count());
         self::assertSame(2, $this->site->conexoes()->count());
         self::assertSame($antiga['credencial'], $this->site->ativa()->getRawOriginal('credencial'));

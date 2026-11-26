@@ -41,7 +41,9 @@
         }
     });
     botao.addEventListener('click', async () => {
-        const metodos = {'17': 'pix', '03': 'credit_card', '15': 'boleto'};
+        const habilitados = area.dataset.metodos.split(',');
+        const metodos = Object.fromEntries(Object.entries({'17': 'pix', '03': 'credit_card', '15': 'boleto'})
+            .filter(([, metodo]) => habilitados.includes(metodo)));
         const seletor = document.getElementById('asaas-pdv-parcela');
         const candidatas = PAGMULTI.map((p, indice) => ({...p, indice})).filter(p => metodos[p.tipo]);
         const assinatura = JSON.stringify(candidatas.map(p => [p.indice, p.tipo, p.valor]));
@@ -69,7 +71,7 @@
             const resposta = await fetch(area.dataset.url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.getElementById('_token').value},
-                body: JSON.stringify({operacao: operacao.id, cliente: CLIENTE.id, centavos, total, metodo, parcela, parcelas: PAGMULTI.map(({tipo, valor}) => ({tipo, valor})), itens: ITENS.map(({id, quantidade, valor}) => ({id, quantidade, valor})), conexao: area.dataset.conexao})
+                body: JSON.stringify({operacao: operacao.id, cliente: CLIENTE.id, centavos, total, metodo, numero_parcelas: metodo === 'credit_card' ? Number(document.getElementById('asaas-pdv-numero-parcelas')?.value ?? 1) : 1, parcela, parcelas: PAGMULTI.map(({tipo, valor}) => ({tipo, valor})), itens: ITENS.map(({id, quantidade, valor}) => ({id, quantidade, valor})), conexao: area.dataset.conexao})
             });
             if (!resposta.ok) throw new Error('Confira os dados e o histórico em Financeiro → Pagamentos eletrônicos antes de tentar novamente.');
             const cobranca = await resposta.json();
