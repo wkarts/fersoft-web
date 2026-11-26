@@ -80,7 +80,7 @@ class BoletoController extends Controller
 			'posto' => $request->posto ?? ''
 		];
 
-		$boleto = Boleto::create($data);
+		$boleto = $this->criarBoleto($data);
 
 		$empresa = Empresa::find($this->empresa_id);
 		$boletoHelper = new BoletoHelper($empresa);
@@ -156,11 +156,24 @@ class BoletoController extends Controller
 		}
 	}
 
+    private function criarBoleto(array $dados)
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($dados) {
+            $titulo = ContaReceber::where('empresa_id', $this->empresa_id)->whereKey($dados['conta_id'])->lockForUpdate()->firstOrFail();
+            if (\Illuminate\Support\Facades\Schema::hasTable('pagamento_cobrancas')) {
+                $eletronica = \App\Models\PagamentoCobranca::where('conta_receber_id', $titulo->id)->where('vigente', true)
+                    ->whereHas('conexao', fn ($q) => $q->where('empresa_id', $this->empresa_id)->where('ambiente', 'production'))->exists();
+                abort_if($eletronica, 409, 'O título já possui uma cobrança eletrônica de produção.');
+            }
+            return Boleto::create($dados);
+        });
+    }
+
 	private function gerarMultiStore($boletos){
 		$empresa = Empresa::find($this->empresa_id);
 		$boletoHelper = new BoletoHelper($empresa);
 		foreach($boletos as $b){
-			$boleto = Boleto::create($b);
+			$boleto = $this->criarBoleto($b);
 			$result = $boletoHelper->gerar($boleto);
 		}
 		return $result;

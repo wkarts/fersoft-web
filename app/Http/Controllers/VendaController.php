@@ -1101,6 +1101,7 @@ class VendaController extends Controller
                     return 'ja_removida';
                 }
 
+                app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, $venda->id);
                 $this->criarLog($venda, 'deletar');
 
                 $comissao = ComissaoVenda::where('empresa_id', $this->empresa_id)
@@ -2298,6 +2299,7 @@ class VendaController extends Controller
     }
 
     private function deleteFatura($venda){
+        app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, $venda->id);
         ContaReceber::where('venda_id', $venda->id)->delete();
     }
 

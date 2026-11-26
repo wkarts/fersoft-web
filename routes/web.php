@@ -444,6 +444,29 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // Route::get('/backup', 'BackupController@index');
     Route::get('/backupSql', 'BackupController@sql');
 
+    foreach (['emitente' => 'configNF', 'filial' => 'filial/{filial}'] as $cadastro => $prefixo) {
+        Route::prefix($prefixo.'/pagamentos-eletronicos')->where(['filial' => '[1-9][0-9]*'])
+            ->middleware(\App\Http\Middleware\VerificaInstalacaoPagamentos::class)
+            ->name('parametros-pagamentos.'.$cadastro.'.')->group(function () {
+                Route::get('provedores/asaas/acessos', 'ParametroPagamentoController@acessos')->name('acessos');
+                Route::put('provedores/asaas/acessos/{usuario}', 'ParametroPagamentoController@salvarAcessos')->whereNumber('usuario')->name('acessos.salvar');
+                Route::post('provedores', 'ParametroPagamentoController@adicionar')->name('adicionar');
+                Route::put('provedores/{provedor}', 'ParametroPagamentoController@salvar')->name('salvar');
+            });
+    }
+
+    Route::middleware(\App\Http\Middleware\VerificaInstalacaoPagamentos::class)->prefix('pagamentos-eletronicos')->name('pagamentos.')->group(function () {
+        Route::get('/', 'PagamentoEletronicoController@index')->name('index');
+        Route::post('titulos', 'PagamentoEletronicoController@emitir')->name('emitir');
+        Route::post('pdv', 'PagamentoEletronicoController@pdv')->name('pdv');
+        Route::post('extrato/importar', 'PagamentoEletronicoController@importar')->name('importar');
+        Route::post('pdv/liberar', 'PagamentoEletronicoController@liberarPdv')->name('pdv.liberar');
+        Route::get('relatorios', 'PagamentoEletronicoController@relatorio')->name('relatorio');
+        Route::get('cobrancas/{referencia}', 'PagamentoEletronicoController@detalhe')->whereUuid('referencia')->name('detalhe');
+        Route::post('cobrancas/{referencia}/sincronizar', 'PagamentoEletronicoController@sincronizar')->whereUuid('referencia')->name('sincronizar');
+        Route::post('cobrancas/{referencia}/operacao', 'PagamentoEletronicoController@alterar')->whereUuid('referencia')->name('alterar');
+    });
+
     Route::resource('nfse-config', 'NfseConfigController');
     Route::resource('caixa-empresa', 'CaixaEmpresaController');
     Route::get('/nfse-config-remove-logo', 'NfseConfigController@removeLogo')->name('nfse-config.remove-logo');

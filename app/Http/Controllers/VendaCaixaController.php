@@ -251,6 +251,11 @@ class VendaCaixaController extends Controller
 
                 $totalVenda = str_replace(",", ".", $venda['valor_total']) + str_replace(",", ".", $venda['acrescimo']) - str_replace(",", ".", $venda['desconto']);
 
+                $cobrancaEletronica = empty($venda['pagamento_eletronico']) ? null :
+                    app(\App\Services\Pagamentos\Cobrancas::class)->reservarPdv(
+                        \App\Services\Pagamentos\Estabelecimento::atual(), $venda, $totalVenda
+                    );
+
                 $func = null;
                 $usr = null;
 
@@ -337,6 +342,7 @@ class VendaCaixaController extends Controller
                     if($fromPrevenda){
                         $result = VendaCaixaPreVenda::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }else{
+                        app(\App\Services\Pagamentos\Cobrancas::class)->protegerVenda($this->empresa_id, (int) $venda['id'], true);
                         $result = VendaCaixa::where('empresa_id', $this->empresa_id)->findOrFail($venda['id']);
                     }
 
@@ -443,7 +449,7 @@ class VendaCaixaController extends Controller
                 // $contCredito = 1;
 
                 if(sizeof($pag_multi) > 0){
-                    foreach($pag_multi as $p){
+                    foreach($pag_multi as $indiceParcela => $p){
                         FaturaFrenteCaixa::create([
                             'valor' => __replace($p['valor']),
                             'forma_pagamento' => $p['tipo'],
@@ -452,7 +458,9 @@ class VendaCaixaController extends Controller
                             'venda_caixa_id' => $result->id
                         ]);
 
-                        if($p['vencimento'] != date('Y-m-d')){
+                        $pagoNoAsaas = $cobrancaEletronica && $cobrancaEletronica->parcela_pdv !== null
+                            && (int) $cobrancaEletronica->parcela_pdv === $indiceParcela;
+                        if(!$pagoNoAsaas && $p['vencimento'] != date('Y-m-d')){
                             $resultConta = ContaReceber::create([
                                 'venda_caixa_id' => $result->id,
                                 'venda_id' => NULL,
@@ -748,6 +756,10 @@ class VendaCaixaController extends Controller
                     $pedidoDeliveryVenda->save();
                 }
 
+                if ($cobrancaEletronica) {
+                    abort_unless((int) $result->filial_id === (int) $cobrancaEletronica->conexao->local, 409);
+                    $cobrancaEletronica->update(['venda_caixa_id' => $result->id]);
+                }
                 return $result;
             });
             echo json_encode($result);
