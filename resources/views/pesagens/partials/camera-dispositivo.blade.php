@@ -1,4 +1,5 @@
 <fieldset class="form-group col-lg-12" data-camera-ticket>
+    <div class="d-flex flex-wrap" data-fotos-salvas></div>
     <button type="button" class="btn btn-outline-primary" data-acao="abrir">
         <i class="fa fa-camera" aria-hidden="true"></i> Tirar foto
     </button>

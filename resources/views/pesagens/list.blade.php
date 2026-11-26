@@ -1162,7 +1162,7 @@
                                     <th style="width: 15%; white-space: nowrap;">Ações</th>
                                 </tr>
                                 </thead>
-                                <tbody id="listaTickets" data-fotos-url="{{ route('ticketsPesagem.fotos', $pesagem->id) }}">
+                                <tbody id="listaTickets">
                                 @forelse($pesagem->tickets as $ticket)
                                     <tr id="ticket-{{ $ticket->id }}" class="datatable-row">
                                         <td class="datatable-cell">{{ $ticket->id }}</td>
@@ -2827,7 +2827,7 @@
                         : ((ticket.producaoLote && ticket.producaoLote.codigo_lote) ? ticket.producaoLote.codigo_lote : '---');
 
                     tabelaTickets.append(`
-                <tr id="ticket-${ticket.id}" class="datatable-row">
+                <tr class="datatable-row">
                     <td class="datatable-cell">${ticket.id}</td>
                     <td id="produto-${ticket.id}" class="datatable-cell">${ticket.produto ? ticket.produto.nome : 'N/A'}</td>
                     <td id="lote-${ticket.id}" class="datatable-cell font-weight-bold text-primary">${loteLabel}</td>
@@ -2853,7 +2853,6 @@
                 </tr>
             `);
                 });
-                CameraTicket.carregarGalerias(tabelaTickets[0]);
 
                 tabelaTickets.closest('.table-responsive').css({
                     'max-height': '200px',
@@ -2919,7 +2918,7 @@
         function resetForm(modalSelector) {
             var $modal = $(modalSelector);
             var $form = $modal.find('#formTicket');
-            CameraTicket.limpar($form[0]);
+            window.CameraTicket?.limpar($form[0]);
             var fixado = $form.find('#fixar_produto_flag').val() === '1';
 
             // Campos de controle
@@ -3076,7 +3075,7 @@
 
                 let multipart;
                 try {
-                    multipart = CameraTicket.preparar(form[0]);
+                    multipart = window.CameraTicket?.preparar(form[0]);
                 } catch (erro) {
                     abrirModalMensagem('Aviso', erro.message);
                     setTicketSaving(form, false);
@@ -3116,7 +3115,9 @@
                     'Deseja editar este ticket de pesagem? As alterações serão registradas na auditoria.',
                     function () {
                         $.get(`/ticketsPesagem/edit/${ticketId}`, function (data) {
-                            CameraTicket.limpar($(modalSelector).find('#formTicket')[0]);
+                            const formulario = $(modalSelector).find('#formTicket')[0];
+                            window.CameraTicket?.limpar(formulario);
+                            window.CameraTicket?.mostrarSalvas(formulario, data.imagens_persistidas_json);
                             $(modalSelector).find('#ticket_id').val(data.id);
                             $(modalSelector).find('#edicao_confirmada').val('1');
                             $(modalSelector).find('#produto_id').val(data.produto_id).trigger('change');
@@ -3249,7 +3250,6 @@
 
             const modalId = $(this).attr('id'); // Identifica o modal atual
             const pesagemId = modalId.replace('modalTickets', ''); // Extrai o ID da pesagem
-            CameraTicket.carregarGalerias($modalTicketAberto.find('#listaTickets')[0]);
             ativarEventosTickets(`#${modalId}`, pesagemId); // Ativa eventos dinamicamente
         });
 

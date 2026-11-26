@@ -13,7 +13,7 @@
 
     if ($permitirImagem && !empty($ticket->id)) {
         try {
-            $imagensTicket = \App\Models\PesagemTicketImagem::query()->deBalanca()
+            $imagensTicket = \App\Models\PesagemTicketImagem::query()
                 ->where('ticket_pesagem_id', $ticket->id)
                 ->where('ativo', true)
                 ->whereNull('deleted_at')

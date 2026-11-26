@@ -36,12 +36,6 @@ return [
             'throw' => false,
         ],
 
-        'fotos_ticket' => [
-            'driver' => 'local',
-            'root' => storage_path('app/fotos_ticket'),
-            'throw' => true,
-        ],
-
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

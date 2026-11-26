@@ -166,42 +166,36 @@ window.CameraTicket = (() => {
         if (area && !capturas.has(area)) capturas.set(area, iniciar(area));
     }, true);
 
-    function galeria(fotos) {
-        const grupo = document.createElement('details');
-        const titulo = document.createElement('summary');
-        titulo.textContent = 'Fotos do dispositivo (' + fotos.length + ')';
-        grupo.append(titulo);
-        grupo.addEventListener('toggle', () => {
-            if (!grupo.open || grupo.children.length > 1) return;
-            fotos.forEach(foto => {
-                const link = document.createElement('a');
-                link.href = foto.url;
-                link.target = '_blank';
-                link.rel = 'noopener';
-                link.className = 'd-block my-2';
-                const imagem = document.createElement('img');
-                imagem.src = foto.url;
-                imagem.width = 96;
-                imagem.alt = foto.legenda || 'Câmera do dispositivo';
-                link.append(imagem, document.createTextNode(' ' + (foto.legenda || 'Abrir foto')));
-                grupo.append(link);
-            });
-        });
-        return grupo;
-    }
-
     return {
         preparar: form => capturas.get(form.querySelector('[data-camera-ticket]'))?.preparar(form),
-        limpar: form => capturas.get(form.querySelector('[data-camera-ticket]'))?.limpar(),
-        carregarGalerias(tabela) {
-            if (!tabela || !tabela.rows.length) return;
-            $.getJSON(tabela.dataset.fotosUrl).done(dados => {
-                for (const linha of tabela.rows) {
-                    const fotos = dados[linha.id.replace('ticket-', '')];
-                    if (fotos?.length && !linha.querySelector('details')) {
-                        linha.lastElementChild.append(galeria(fotos));
-                    }
+        limpar(form) {
+            capturas.get(form.querySelector('[data-camera-ticket]'))?.limpar();
+            form.querySelector('[data-fotos-salvas]')?.replaceChildren();
+        },
+        mostrarSalvas(form, referencias) {
+            const area = form.querySelector('[data-fotos-salvas]');
+            if (!area || !Array.isArray(referencias)) return;
+            area.replaceChildren();
+            referencias.forEach(foto => {
+                if (!foto?.arquivo_url) return;
+                let url;
+                try {
+                    url = new URL(foto.arquivo_url, document.baseURI);
+                } catch {
+                    return;
                 }
+                if (!['https:', 'http:'].includes(url.protocol)) return;
+                const link = document.createElement('a');
+                link.href = url.href;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.className = 'mr-2 mb-2';
+                const miniatura = document.createElement('img');
+                miniatura.src = url.href;
+                miniatura.width = 96;
+                miniatura.alt = 'Foto do ticket ' + (foto.id || '');
+                link.append(miniatura);
+                area.append(link);
             });
         }
     };

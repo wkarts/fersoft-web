@@ -3,10 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TicketPesagem;
-use App\Models\PesagemTicketImagem;
 use App\Models\Usuario;
-use App\Services\Pesagem\TicketFotoDispositivoService;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Models\Pesagem;
@@ -154,6 +151,12 @@ class TicketPesagemController extends BaseController
                 ? BinaryPayloadSanitizer::sanitizeJsonString($snapshotsRaw)
                 : null;
             $data['camera_snapshot_at'] = $request->filled('camera_snapshots_json') ? now() : null;
+            if ($ticketExistente && !$request->filled('camera_snapshots_json')) {
+                unset($data['camera_snapshots_json'], $data['camera_snapshot_at']);
+                if (!$request->filled('balanca_evidence_json')) {
+                    unset($data['balanca_evidence_json']);
+                }
+            }
             $data['usuario_id'] = $this->usuario_id;
             $data['filial_id'] = $this->filial_id ?? null;
 
@@ -280,7 +283,7 @@ class TicketPesagemController extends BaseController
                 // 🔹 Atualização do ticket
                 $ticket = $ticketExistente;
 
-                if (!$fotos && $ticket->fotosDispositivo()->exists() && (int) $ticket->filial_id !== (int) $data['filial_id']) {
+                if (!$fotos && (int) $ticket->filial_id !== (int) $data['filial_id'] && $ticket->imagens()->where('metadata_json->origem', 'dispositivo')->exists()) {
                     return response()->json(['error' => 'O ticket com fotos deve permanecer no estabelecimento de origem.'], 403);
                 }
 
@@ -291,7 +294,7 @@ class TicketPesagemController extends BaseController
                 }
                 $dadosAnteriores = BinaryPayloadSanitizer::sanitize($ticket->getAttributes()); // Snapshot sem relações Eloquent
                 if ($fotos) {
-                    $ticket = app(TicketFotoDispositivoService::class)->salvar(
+                    $ticket = app(PesagemTicketImagemService::class)->salvarComFotos(
                         $ticket, $data, $fotos, $this->usuario_id, (bool) $config->pesagem_bloquear_edicao_ticket_concluido
                     );
                     if (!$ticket) {
@@ -316,7 +319,7 @@ class TicketPesagemController extends BaseController
 
                 try {
                     $ticket = $fotos
-                        ? app(TicketFotoDispositivoService::class)->salvar(new TicketPesagem(), $data, $fotos, $this->usuario_id, false)
+                        ? app(PesagemTicketImagemService::class)->salvarComFotos(new TicketPesagem(), $data, $fotos, $this->usuario_id, false)
                         : TicketPesagem::create($data);
                 } catch (QueryException $e) {
                     $ehDuplicidade = (string) $e->getCode() === '23000'
@@ -383,17 +386,22 @@ class TicketPesagemController extends BaseController
 
             // Persistência física das imagens capturadas pelas câmeras ADP.
             // A imagem vem do navegador como data:image/base64 e o Laravel salva em public/S3/MinIO.
-            $imagensPersistidas = [];
+            $imagensPersistidas = $fotos ? json_decode($ticket->camera_snapshots_json, true) : [];
             if ($request->filled('camera_snapshots_json')) {
                 try {
                     $imagensPersistidas = app(PesagemTicketImagemService::class)
                         ->persistirDoTicket($ticket->fresh(), $snapshotsRaw);
 
-                    $referenciasPersistidas = array_values(array_filter(
+                    $referenciasAdp = array_values(array_filter(
                         $imagensPersistidas,
                         static fn (array $item) => (bool) ($item['success'] ?? false)
                     ));
 
+                    $referenciasPersistidas = $referenciasAdp;
+                    if ($ticket->imagens()->where('metadata_json->origem', 'dispositivo')->exists()) {
+                        $referenciasPersistidas = app(PesagemTicketImagemService::class)->referenciasDoTicket($ticket);
+                        $imagensPersistidas = array_merge($referenciasPersistidas, array_filter($imagensPersistidas, fn ($item) => !$item['success']));
+                    }
                     if (Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json')) {
                         $ticket->imagens_persistidas_json = $referenciasPersistidas;
                     }
@@ -407,7 +415,7 @@ class TicketPesagemController extends BaseController
                     );
                     $ticket->balanca_evidence_json = $this->evidenciaPersistidaSemBase64(
                         $evidenceRaw,
-                        $referenciasPersistidas
+                        $referenciasAdp
                     );
                     $ticket->camera_snapshot_at = now();
                     $ticket->saveQuietly();
@@ -600,7 +608,7 @@ class TicketPesagemController extends BaseController
 
     private function respostaTicketExistente(TicketPesagem $ticket, array $fotos)
     {
-        if ($fotos && $ticket->fotosDispositivo()->whereIn('metadata_json->chave', array_column($fotos, 'chave'))->count() !== count($fotos)) {
+        if ($fotos && $ticket->imagens()->where('metadata_json->origem', 'dispositivo')->whereIn('metadata_json->chave', array_column($fotos, 'chave'))->count() !== count($fotos)) {
             return response()->json(['error' => 'O ticket já existe e as fotos desta tentativa ainda não estão nele. Abra o ticket para anexá-las.'], 409);
         }
         return response()->json([
@@ -625,47 +633,14 @@ class TicketPesagemController extends BaseController
         return $local > 0 ? $local : null;
     }
 
-    private function ticketsDasFotos()
-    {
-        abort_unless($this->podeAcessarFotos(), 403);
-        $local = $this->filialAtivaDasFotos();
-        return TicketPesagem::where('empresa_id', $this->empresa_id)
-            ->where('filial_id', $local)
-            ->whereHas('pesagem', fn ($query) => $query->where('empresa_id', $this->empresa_id)->where('filial_id', $local));
-    }
-
-    public function fotosDaPesagem($pesagem)
-    {
-        $fotos = PesagemTicketImagem::where('empresa_id', $this->empresa_id)
-            ->where('storage_disk', PesagemTicketImagem::DISCO_DISPOSITIVO)
-            ->where('ativo', true)
-            ->whereIn('ticket_pesagem_id', $this->ticketsDasFotos()->where('pesagem_id', $pesagem)->select('id'))
-            ->orderBy('id')->get(['id', 'ticket_pesagem_id', 'metadata_json'])
-            ->groupBy('ticket_pesagem_id')->map(fn ($itens) => $itens->map(fn ($foto) => [
-                'url' => route('ticketsPesagem.foto', [$foto->ticket_pesagem_id, $foto->id]),
-                'legenda' => $foto->metadata_json['legenda'] ?? null,
-            ]));
-        return response()->json($fotos)->header('Cache-Control', 'private, no-store');
-    }
-
-    public function fotoDispositivo($id, $foto)
-    {
-        $ticket = $this->ticketsDasFotos()->findOrFail($id);
-        $imagem = $ticket->fotosDispositivo()->where('empresa_id', $this->empresa_id)->where('ativo', true)->findOrFail($foto);
-        return Storage::disk(PesagemTicketImagem::DISCO_DISPOSITIVO)->response($imagem->arquivo_path, 'foto.jpg', [
-            'Cache-Control' => 'private, no-store',
-            'Content-Type' => 'image/jpeg',
-            'X-Content-Type-Options' => 'nosniff',
-        ]);
-    }
-
     public function delete($id)
     {
         try {
             // Busca o ticket; a auditoria de exclusão é responsabilidade do BaseModel.
             $ticket = TicketPesagem::where('empresa_id', $this->empresa_id)->findOrFail($id);
-            if ($ticket->fotosDispositivo()->exists()) {
-                $ticket = $this->ticketsDasFotos()->findOrFail($id);
+            if ((int) $ticket->filial_id !== (int) $this->filialAtivaDasFotos()
+                && $ticket->imagens()->where('metadata_json->origem', 'dispositivo')->exists()) {
+                return redirect()->back()->withErrors(['error' => 'Selecione o estabelecimento deste ticket.']);
             }
 
             // 🔹 Exclui imagens físicas e registros vinculados ao ticket antes da exclusão.
@@ -695,7 +670,11 @@ class TicketPesagemController extends BaseController
      */
     public function edit($id)
     {
-        $ticket = TicketPesagem::findOrFail($id);
+        $ticket = TicketPesagem::where('empresa_id', $this->empresa_id)->findOrFail($id);
+        if ((int) $ticket->filial_id !== (int) $this->filialAtivaDasFotos()
+            && $ticket->imagens()->where('metadata_json->origem', 'dispositivo')->exists()) {
+            return response()->json(['error' => 'Selecione o estabelecimento deste ticket.'], 403);
+        }
         return response()->json($ticket); // Retorna os dados em JSON para preencher a modal
     }
 

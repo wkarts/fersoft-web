@@ -40,7 +40,7 @@ class TicketFotoDispositivoTest extends TestCase
             $table->float('peso_liquido_bruto')->nullable();
         });
         foreach (['*create_tickets_pesagem_table', '*add_evidence_fields_to_tickets_pesagem_table',
-            '*create_pesagem_ticket_imagens_table', '*add_snapshot_storage_and_multi_destinations_to_config_notas',
+            '*create_pesagem_ticket_imagens_table', '*add_imagens_persistidas_json_to_tickets_pesagem_table', '*add_snapshot_storage_and_multi_destinations_to_config_notas',
             '*add_pesagem_permitir_foto_dispositivo_to_config_notas'] as $nome) {
             (require glob(database_path('migrations/'.$nome.'.php'))[0])->up();
         }
@@ -48,7 +48,11 @@ class TicketFotoDispositivoTest extends TestCase
             $table->string('peso_origem')->nullable();
             $table->integer('producao_lote_id')->nullable();
         });
-        Storage::fake(PesagemTicketImagem::DISCO_DISPOSITIVO);
+        DB::table('config_notas')->update([
+            'pesagem_snapshot_disk' => 'public',
+            'pesagem_snapshot_base_path' => 'capturas-empresa',
+        ]);
+        Storage::fake('public');
         session(['user_logged' => ['empresa' => 1, 'id' => 7, 'super' => true, 'local_padrao' => -1]]);
         $this->controller = new class extends TicketPesagemController {
             public function __construct()
@@ -88,34 +92,70 @@ class TicketFotoDispositivoTest extends TestCase
         $resposta = $this->controller->save($pedido);
         $this->assertSame(200, $resposta->status(), $resposta->getContent());
         $ticket = TicketPesagem::firstOrFail();
-        $foto = $ticket->fotosDispositivo()->firstOrFail();
+        $foto = $ticket->imagens()->firstOrFail();
+        $this->assertSame('dispositivo', $foto->metadata_json['origem']);
         $this->assertSame(7, $foto->metadata_json['usuario_id']);
         $this->assertSame('Lacre', $foto->metadata_json['legenda']);
-        Storage::disk('fotos_ticket')->assertExists($foto->arquivo_path);
+        $this->assertNull($foto->adp_camera_id);
+        $this->assertSame('public', $foto->storage_disk);
+        $this->assertSame('capturas-empresa', $foto->storage_base_path);
+        $this->assertSame('capturas-empresa/1/1/'.$ticket->id, dirname($foto->arquivo_path));
+        Storage::disk('public')->assertExists($foto->arquivo_path);
+        $this->assertSame($foto->arquivo_path, $ticket->imagens_persistidas_json[0]['arquivo_path']);
+        $this->assertSame($foto->imagem_url, json_decode($ticket->camera_snapshots_json, true)[0]['arquivo_url']);
         $this->assertSame(200, $this->controller->save($pedido)->status());
         $this->assertSame(1, TicketPesagem::count());
-        $this->assertSame(1, $ticket->fotosDispositivo()->count());
+        $this->assertSame(1, $ticket->imagens()->count());
 
         $edicao = $this->pedido();
-        $edicao->merge(['edicao_confirmada' => true, 'token' => $ticket->token]);
+        $adp = UploadedFile::fake()->image('balanca.jpg', 32, 32);
+        $snapshot = json_encode([['image_data_url' => 'data:image/jpeg;base64,'.base64_encode($adp->get())]]);
+        $edicao->merge(['edicao_confirmada' => true, 'token' => $ticket->token, 'camera_snapshots_json' => $snapshot]);
         $this->assertSame(200, $this->controller->update($edicao, $ticket->id)->status());
         $this->assertSame(200, $this->controller->update($edicao, $ticket->id)->status());
-        $this->assertSame(2, $ticket->fotosDispositivo()->count());
+        $ticket->refresh();
+        $this->assertSame(3, $ticket->imagens()->count());
+        $this->assertCount(3, $ticket->imagens_persistidas_json);
+        $evidencias = json_decode($ticket->balanca_evidence_json, true)['cameras'];
+        $this->assertCount(1, $evidencias);
+        $arquivoAdp = $evidencias[0]['arquivo_path'];
+        $this->assertSame(dirname($foto->arquivo_path), dirname($arquivoAdp));
+        Storage::disk('public')->assertExists($arquivoAdp);
 
-        PesagemTicketImagem::create(['empresa_id' => 1, 'ticket_pesagem_id' => $ticket->id, 'camera_uuid' => 'legada']);
-        $this->assertSame(1, $ticket->imagens()->count());
-        $servico = app(PesagemTicketImagemService::class);
-        $servico->persistirDoTicket($ticket, [['image_url' => 'https://camera.example/imagem.jpg']]);
-        $this->assertSame(1, $ticket->imagens()->count());
-        $this->assertSame('https://camera.example/imagem.jpg', $ticket->imagens()->first()->arquivo_url);
-        $this->assertSame(2, $ticket->fotosDispositivo()->count());
-        $galeria = $this->controller->fotosDaPesagem(1)->getData(true);
-        $this->assertSame('Lacre', $galeria[$ticket->id][0]['legenda']);
-        $this->assertSame(200, $this->controller->fotoDispositivo($ticket->id, $foto->id)->getStatusCode());
-        session(['user_logged.local_padrao' => 9]);
-        $this->assertEmpty($this->controller->fotosDaPesagem(1)->getData(true));
-        $servico->excluirDoTicket($ticket);
-        Storage::disk('fotos_ticket')->assertMissing($foto->arquivo_path);
+        $recoleta = Request::create('/ticketsPesagem/update/'.$ticket->id, 'POST', $edicao->except(['fotos_dispositivo', 'quantidade_fotos']));
+        $this->assertSame(200, $this->controller->update($recoleta, $ticket->id)->status());
+        $ticket->refresh();
+        $this->assertCount(3, $ticket->imagens_persistidas_json);
+        $this->assertContains($foto->arquivo_path, array_column($ticket->imagens_persistidas_json, 'arquivo_path'));
+        Storage::disk('public')->assertMissing($arquivoAdp);
+        Storage::disk('public')->assertExists($foto->arquivo_path);
+        $this->assertStringNotContainsString('base64', $ticket->camera_snapshots_json);
+        $this->assertStringNotContainsString('base64,', json_encode($foto->metadata_json));
+        app(PesagemTicketImagemService::class)->excluirDoTicket($ticket);
+        $this->assertEmpty(Storage::disk('public')->allFiles());
+    }
+
+    public function test_destino_local_padrao_usa_diretorio_publico_original(): void
+    {
+        $publico = storage_path('framework/testing/publico-'.Str::uuid());
+        $this->app->usePublicPath($publico);
+        DB::table('config_notas')->update([
+            'pesagem_permitir_foto_dispositivo' => true,
+            'pesagem_snapshot_disk' => 'public_path',
+            'pesagem_snapshot_base_path' => 'pesagem_ticket_imagens',
+        ]);
+        try {
+            $this->assertSame(200, $this->controller->save($this->pedido())->status());
+            $ticket = TicketPesagem::firstOrFail();
+            $foto = $ticket->imagens()->firstOrFail();
+            $this->assertSame('pesagem_ticket_imagens/1/1/'.$ticket->id, dirname($foto->arquivo_path));
+            $this->assertFileExists(public_path($foto->arquivo_path));
+            $this->assertSame(asset($foto->arquivo_path), $foto->imagem_url);
+            $detalhe = $this->controller->edit($ticket->id)->getData(true);
+            $this->assertSame($foto->arquivo_path, $detalhe['imagens_persistidas_json'][0]['arquivo_path']);
+        } finally {
+            \Illuminate\Support\Facades\File::deleteDirectory($publico);
+        }
     }
 
     public function test_foto_manual_nao_supre_evidencia_obrigatoria_da_balanca(): void
@@ -153,6 +193,6 @@ class TicketFotoDispositivoTest extends TestCase
         $resposta = $this->controller->save($this->pedido());
         $this->assertSame(500, $resposta->status());
         $this->assertSame(0, TicketPesagem::count());
-        $this->assertEmpty(Storage::disk('fotos_ticket')->allFiles());
+        $this->assertEmpty(Storage::disk('public')->allFiles());
     }
 }
