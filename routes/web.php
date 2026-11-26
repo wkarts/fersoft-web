@@ -492,6 +492,15 @@ Route::middleware(['verificaEmpresa', 'validaAcesso', 'verificaContratoAssinado'
     // Route::get('/backup', 'BackupController@index');
     Route::get('/backupSql', 'BackupController@sql');
 
+    Route::middleware(\App\Http\Middleware\VerificaInstalacaoPagamentos::class)
+        ->prefix('configuracao-pagamentos')->name('configuracao-pagamentos.')->where(['local' => '[0-9]+'])->group(function () {
+            Route::get('/', 'ParametroPagamentoController@index')->name('index');
+            Route::post('{local}/provedores', 'ParametroPagamentoController@adicionar')->name('adicionar');
+            Route::put('{local}/provedores/{provedor}', 'ParametroPagamentoController@salvar')->name('salvar');
+            Route::get('{local}/provedores/asaas/acessos', 'ParametroPagamentoController@acessos')->name('acessos');
+            Route::put('{local}/provedores/asaas/acessos/{usuario}', 'ParametroPagamentoController@salvarAcessos')->whereNumber('usuario')->name('acessos.salvar');
+        });
+
     foreach (['emitente' => 'configNF', 'filial' => 'filial/{filial}'] as $cadastro => $prefixo) {
         Route::prefix($prefixo.'/pagamentos-eletronicos')->where(['filial' => '[1-9][0-9]*'])
             ->middleware(\App\Http\Middleware\VerificaInstalacaoPagamentos::class)
