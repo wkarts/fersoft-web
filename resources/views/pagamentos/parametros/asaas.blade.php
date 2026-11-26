@@ -3,7 +3,7 @@
     @method('PUT')
     <input type="hidden" name="ambiente" value="{{ $ambiente }}">
     <input type="hidden" name="estabelecimento" value="{{ $site->empresa }}-{{ $local }}">
-    <fieldset class="mb-4">
+    <div class="pg-secao"><fieldset>
         <legend class="h6 mb-3">Credenciais de {{ $ambientes[$ambiente] }}</legend>
         @if($conexao)<p class="text-muted">Preencha apenas as credenciais que deseja substituir.</p>@endif
         <div class="row">
@@ -20,19 +20,25 @@
                 <small id="pag-aviso-token" class="form-text text-muted" aria-live="polite"></small>
             </div>
         </div>
+        <label for="pag-webhook">URL do webhook · {{ $ambientes[$ambiente] }}</label>
         @if($conexao)
             @if(!$conexao->webhook_hash)<p class="text-warning">Gere um token exclusivo para voltar a receber eventos neste ambiente.</p>@endif
-            <label for="pag-webhook">URL de recebimento no Asaas</label>
-            <input id="pag-webhook" class="form-control" readonly value="{{ route('pagamentos.webhook', $conexao->webhook_id) }}">
+            <div class="input-group">
+                <input id="pag-webhook" class="form-control" readonly value="{{ route('pagamentos.webhook', $conexao->webhook_id) }}">
+                <div class="input-group-append"><button id="pag-copiar" class="btn btn-light-primary" type="button">Copiar URL</button></div>
+            </div>
+            <small class="form-text" aria-live="polite" id="pag-copia-status"></small>
+        @else
+            <p class="mb-0">A URL estará disponível após salvar as credenciais deste ambiente.</p>
         @endif
-    </fieldset>
-    <fieldset class="border-top pt-4 mb-4">
+    </fieldset></div>
+    <div class="pg-secao"><fieldset>
         <legend class="h6 mb-3">Formas de pagamento</legend>
         <input type="hidden" name="configurar_metodos" value="1">
         <div class="row align-items-center">
             <div class="col-12 col-md-7 mb-3">
                 @foreach(\App\Models\PagamentoConexao::METODOS as $id => $nome)
-                    <div class="custom-control custom-checkbox custom-control-inline my-1">
+                    <div class="custom-control custom-checkbox custom-control-inline my-1 pg-opcao">
                         <input class="custom-control-input" id="pag-metodo-{{ $id }}" type="checkbox" name="metodos[]" value="{{ $id }}" @checked(!$conexao || isset($conexao->metodosAtivos()[$id]))>
                         <label class="custom-control-label" for="pag-metodo-{{ $id }}">{{ $nome }}</label>
                     </div>
@@ -52,9 +58,9 @@
                 @endforeach
             </select>
         @endif
-    </fieldset>
-    <div class="border-top pt-4">
-        <div class="custom-control custom-checkbox mb-4">
+    </fieldset></div>
+    <div class="pg-rodape">
+        <div class="custom-control custom-checkbox">
             <input class="custom-control-input" id="pag-ativar" name="ativar" type="checkbox" value="1" @checked($conexao?->selecionada)>
             <label class="custom-control-label" for="pag-ativar">Usar {{ $ambientes[$ambiente] }} nas novas cobranças deste estabelecimento</label>
         </div>
@@ -62,6 +68,21 @@
     </div>
 </form>
 <script>
+    const copiarWebhook = document.getElementById('pag-copiar');
+    if (copiarWebhook) {
+        copiarWebhook.addEventListener('click', async function () {
+            const campo = document.getElementById('pag-webhook');
+            const status = document.getElementById('pag-copia-status');
+            try {
+                await navigator.clipboard.writeText(campo.value);
+                status.textContent = 'URL copiada.';
+            } catch {
+                campo.focus();
+                campo.select();
+                status.textContent = 'URL selecionada. Use a opção Copiar do navegador.';
+            }
+        });
+    }
     document.getElementById('pag-gerar').addEventListener('click', function () {
         const campo = this.form.elements.segredo;
         const bytes = crypto.getRandomValues(new Uint8Array(32));

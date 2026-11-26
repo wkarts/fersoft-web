@@ -1,0 +1,54 @@
+.pg-config {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: clamp(16px, 3vw, 36px);
+    --pg-linha: rgba(122, 139, 161, .28);
+    --pg-suave: rgba(98, 139, 201, .09);
+}
+.pg-config .pg-cabecalho, .pg-config .pg-barra, .pg-config .pg-acoes, .pg-config .pg-identidade {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+.pg-config .pg-cabecalho, .pg-config .pg-barra { justify-content: space-between; flex-wrap: wrap; }
+.pg-config .pg-cabecalho { margin-bottom: 1.5rem; }
+.pg-config h1 { margin: .3rem 0 0; font-size: clamp(1.5rem, 2.3vw, 2rem); font-weight: 650; }
+.pg-config h2, .pg-config h3, .pg-config legend { margin: 0; font-weight: 600; }
+.pg-config h2 { font-size: 1.2rem; }
+.pg-config h3, .pg-config legend { font-size: 1.08rem; }
+.pg-config .pg-origem, .pg-config .pg-voltar { font-size: .94rem; }
+.pg-config .pg-local, .pg-config .pg-estado { display: inline-flex; gap: .4rem; align-items: center; line-height: 1.4; }
+.pg-config .pg-local { padding: .45rem .8rem; border: 1px solid var(--pg-linha); border-radius: .55rem; font-weight: 550; }
+.pg-config .pg-local i { color: var(--primary, #1674c0); }
+.pg-config .pg-painel { border: 1px solid var(--pg-linha); border-radius: .85rem; overflow: hidden; }
+.pg-config .pg-titulo, .pg-config .pg-barra { padding: 1.25rem 1.5rem; }
+.pg-config .pg-provedor, .pg-config .pg-adicionar, .pg-config .pg-vazio, .pg-config .pg-secao, .pg-config .pg-rodape {
+    margin: 0;
+    padding: 1.5rem;
+    border-top: 1px solid var(--pg-linha);
+}
+.pg-config .pg-provedor { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(0, 1fr) auto; gap: 1rem; align-items: center; }
+.pg-config .pg-icone { border-radius: .65rem; background: var(--pg-suave); padding: .8rem; }
+.pg-config .pg-icone i { color: var(--primary, #1674c0); font-size: 1.65rem; }
+.pg-config .pg-estado { margin-top: .3rem; font-size: .92rem; }
+.pg-config .pg-estado::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; background: #8896a7; }
+.pg-config .pg-em-uso::before { background: #14845e; }
+.pg-config .pg-metodos small { display: block; }
+.pg-config .pg-acoes { flex-wrap: wrap; }
+.pg-config .pg-adicionar, .pg-config .pg-rodape { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.pg-config .pg-adicionar > div { flex: 1 1 14rem; max-width: 28rem; }
+.pg-config .pg-rodape { justify-content: space-between; align-items: center; background: var(--pg-suave); }
+.pg-config .pg-ambientes { display: inline-flex; flex-wrap: wrap; padding: .25rem; border: 1px solid var(--pg-linha); border-radius: .55rem; }
+.pg-config .pg-ambientes a { padding: .42rem .8rem; color: inherit; border-radius: .35rem; }
+.pg-config .pg-ambientes [aria-current] { color: #fff; background: var(--primary, #1674c0); font-weight: 600; }
+.pg-config .pg-secao fieldset { margin: 0; min-width: 0; }
+.pg-config .pg-opcao { border: 1px solid var(--pg-linha); border-radius: .4rem; padding: .55rem .85rem .55rem 2.45rem; }
+.pg-config .pg-opcao:focus-within { outline: 2px solid var(--primary, #1674c0); }
+@media (max-width: 720px) {
+    .pg-config .pg-provedor { grid-template-columns: 1fr; }
+    .pg-config .pg-metodos:empty { display: none; }
+    .pg-config .pg-cabecalho { align-items: flex-start; }
+    .pg-config .pg-titulo, .pg-config .pg-barra, .pg-config .pg-secao, .pg-config .pg-rodape,
+    .pg-config .pg-provedor, .pg-config .pg-adicionar, .pg-config .pg-vazio { padding: 1rem; }
+}
