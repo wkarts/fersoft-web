@@ -13,8 +13,11 @@ class ParametrosAsaas
 
     public function salvar(Estabelecimento $site, PagamentoProvedor $provedor, Request $request): void
     {
-        $chave = $request->input('credencial');
-        $segredo = $request->input('segredo');
+        $entrada = $request->isJson() ? $request->json() : $request->request;
+        $chave = $entrada->all()['credencial'] ?? null;
+        $segredo = $entrada->all()['segredo'] ?? null;
+        $entrada->remove('credencial');
+        $entrada->remove('segredo');
         $dados = $request->only(['ambiente', 'ativar', 'conta_bancaria_id']);
         // Falhas de validação nunca devem gravar os segredos em old_input.
         abort_if(!in_array($dados['ambiente'] ?? null, ['sandbox', 'production'], true)

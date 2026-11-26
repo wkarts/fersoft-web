@@ -24,13 +24,13 @@
         }
     </style>
     <div class=" d-flex flex-column flex-column-fluid" id="kt_content">
+        @isset($config->id)
+            @include('pagamentos.parametros.estabelecimento', ['localPagamento' => (int) $config->id])
+        @endisset
         <div class="card card-custom gutter-b example example-compact">
             <div class="container @if(env('ANIMACAO')) animate__animated @endif animate__backInLeft">
                 <div class="col-lg-12">
                     <br>
-                    @isset($config->id)
-                        @include('pagamentos.parametros.estabelecimento', ['localPagamento' => (int) $config->id])
-                    @endisset
                     <form method="post" action="{{{ isset($config) ? route('filial.update', [$config->id]) : route('filial.store') }}}" enctype="multipart/form-data">
                         @isset($config)
                             @method('put')
