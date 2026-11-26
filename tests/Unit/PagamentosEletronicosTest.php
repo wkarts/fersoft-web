@@ -85,8 +85,8 @@ class PagamentosEletronicosTest extends TestCase
             'view.paths' => [resource_path('views')], 'view.compiled' => sys_get_temp_dir()]);
         self::assertFalse(Estabelecimento::integracaoInstalada());
         self::assertNull(Estabelecimento::disponivel());
-        foreach ([0, 8] as $local) {
-            self::assertSame('', trim(view('pagamentos.parametros.estabelecimento', ['localPagamento' => $local])->render()));
+        foreach (['configNota/index', 'filial/create'] as $view) {
+            self::assertStringNotContainsString('pagamentos.parametros', file_get_contents(resource_path('views/'.$view.'.blade.php')));
         }
         self::assertSame('', trim(view('pagamentos.pdv')->render()));
     }
@@ -289,6 +289,29 @@ class PagamentosEletronicosTest extends TestCase
         }
         self::assertCount(0, $filial->conexoes()->get());
         self::assertTrue($this->c->fresh()->selecionada);
+    }
+
+    public function test_central_limita_matriz_e_filiais_por_empresa_usuario_e_permissao_administrativa(): void
+    {
+        DB::statement('CREATE TABLE filials (id INTEGER PRIMARY KEY, empresa_id INTEGER, status INTEGER, nome_fantasia TEXT, razao_social TEXT, descricao TEXT)');
+        foreach ([[8, 1, 1], [9, 2, 1], [10, 1, 1], [11, 1, 0]] as [$id, $empresa, $status]) {
+            DB::table('filials')->insert(['id' => $id, 'empresa_id' => $empresa, 'status' => $status, 'nome_fantasia' => 'Loja '.$id]);
+        }
+        $usuario = $this->site->usuario;
+        $usuario->empresa_id = 1;
+        $usuario->adm = 1;
+        $usuario->locais = '[-1,8,9,11]';
+        $usuario->permissao = '["/configuracao-pagamentos"]';
+        $empresa = new \App\Models\Empresa;
+        $empresa->permissao = $usuario->permissao;
+        $usuario->setRelation('empresa', $empresa);
+        self::assertSame([0 => 'Matriz', 8 => 'Filial #8 · Loja 8'], Estabelecimento::locaisNaCentral($usuario));
+
+        $usuario->locais = '[8]';
+        self::assertSame([8 => 'Filial #8 · Loja 8'], Estabelecimento::locaisNaCentral($usuario));
+        $usuario->adm = 0;
+        $this->expectException(HttpException::class);
+        Estabelecimento::locaisNaCentral($usuario);
     }
 
     public function test_provedor_tem_um_cadastro_e_credenciais_independentes_por_ambiente(): void

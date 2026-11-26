@@ -35,6 +35,31 @@ final readonly class Estabelecimento
         return (string) $ambiente === '1' ? Environment::Production : Environment::Sandbox;
     }
 
+    /** Estabelecimentos que o administrador pode parametrizar na central da empresa. */
+    public static function locaisNaCentral(Usuario $usuario): array
+    {
+        $super = session('user_logged.super');
+        $permissoes = json_decode($usuario->permissao ?? '[]', true) ?: [];
+        if (!$super) {
+            abort_unless($usuario->adm && in_array('/configuracao-pagamentos', $permissoes, true), 403);
+            $permissoesEmpresa = json_decode($usuario->empresa?->permissao ?? '[]', true) ?: $permissoes;
+            abort_unless(\App\Models\Empresa::validaLink('/configuracao-pagamentos', $permissoesEmpresa), 403);
+        }
+
+        $ids = array_map('intval', json_decode($usuario->locais ?? '[]', true) ?: [-1]);
+        $locais = [];
+        if (in_array(-1, $ids, true) && ConfigNota::where('empresa_id', $usuario->empresa_id)->exists()) {
+            $locais[0] = 'Matriz';
+        }
+        $filiais = Filial::withoutDeleted()->where('empresa_id', $usuario->empresa_id)->where('status', 1)
+            ->whereIn('id', $ids)->orderBy('nome_fantasia')->get(['id', 'nome_fantasia', 'razao_social', 'descricao']);
+        foreach ($filiais as $filial) {
+            $nome = $filial->nome_fantasia ?: ($filial->descricao ?: $filial->razao_social);
+            $locais[$filial->id] = 'Filial #'.$filial->id.($nome ? ' · '.$nome : '');
+        }
+        return $locais;
+    }
+
     public static function paraParametros(int $local): ?self
     {
         $empresa = (int) session('user_logged.empresa');
