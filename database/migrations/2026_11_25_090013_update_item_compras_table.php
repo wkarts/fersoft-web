@@ -17,29 +17,13 @@ return new class extends Migration
             throw new \RuntimeException('Tabela esperada ausente: item_compras');
         }
 
-        if (DB::selectOne('SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_icms`) > 3 LIMIT 1') !== null) {
-            throw new \RuntimeException('item_compras.cst_icms: valores incompatíveis; nenhum registro foi alterado.');
-        }
+        $this->applyColumnDefinition('item_compras', 'cst_icms', 'varchar(10) DEFAULT NULL');
 
-        if (DB::selectOne('SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_ipi`) > 3 LIMIT 1') !== null) {
-            throw new \RuntimeException('item_compras.cst_ipi: valores incompatíveis; nenhum registro foi alterado.');
-        }
+        $this->applyColumnDefinition('item_compras', 'cst_ipi', 'varchar(10) DEFAULT NULL');
 
-        if (DB::selectOne('SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_pis`) > 3 LIMIT 1') !== null) {
-            throw new \RuntimeException('item_compras.cst_pis: valores incompatíveis; nenhum registro foi alterado.');
-        }
+        $this->applyColumnDefinition('item_compras', 'cst_pis', 'varchar(10) DEFAULT NULL');
 
-        if (DB::selectOne('SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_cofins`) > 3 LIMIT 1') !== null) {
-            throw new \RuntimeException('item_compras.cst_cofins: valores incompatíveis; nenhum registro foi alterado.');
-        }
-
-        $this->applyColumnDefinition('item_compras', 'cst_icms', 'varchar(3) DEFAULT NULL');
-
-        $this->applyColumnDefinition('item_compras', 'cst_ipi', 'varchar(3) DEFAULT NULL');
-
-        $this->applyColumnDefinition('item_compras', 'cst_pis', 'varchar(3) DEFAULT NULL');
-
-        $this->applyColumnDefinition('item_compras', 'cst_cofins', 'varchar(3) DEFAULT NULL');
+        $this->applyColumnDefinition('item_compras', 'cst_cofins', 'varchar(10) DEFAULT NULL');
 
         $this->ensureColumn('item_compras', 'v_receita', function (Blueprint $table) {
             $table->decimal('v_receita', 18, 6)->nullable();
@@ -48,7 +32,7 @@ return new class extends Migration
 
     public function down()
     {
-        // Migration somente evolutiva.
+        // Não volta para VARCHAR(3): isso poderia truncar registros gravados após a ampliação.
         return;
     }
 
@@ -67,9 +51,9 @@ return new class extends Migration
     {
         $definitions = [
             'cst_icms' => [
-                'sql' => 'varchar(3) DEFAULT NULL',
+                'sql' => 'varchar(10) DEFAULT NULL',
                 'expected' => [
-                    'COLUMN_TYPE' => 'varchar(3)',
+                    'COLUMN_TYPE' => 'varchar(10)',
                     'IS_NULLABLE' => 'YES',
                     'COLUMN_DEFAULT' => null,
                     'EXTRA' => '',
@@ -86,12 +70,12 @@ return new class extends Migration
                     'COLLATION_NAME' => 'utf8mb4_unicode_ci',
                     'COLUMN_COMMENT' => '',
                 ],
-                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_icms`) > 3 LIMIT 1',
+                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_icms`) > 10 LIMIT 1',
             ],
             'cst_ipi' => [
-                'sql' => 'varchar(3) DEFAULT NULL',
+                'sql' => 'varchar(10) DEFAULT NULL',
                 'expected' => [
-                    'COLUMN_TYPE' => 'varchar(3)',
+                    'COLUMN_TYPE' => 'varchar(10)',
                     'IS_NULLABLE' => 'YES',
                     'COLUMN_DEFAULT' => null,
                     'EXTRA' => '',
@@ -108,12 +92,12 @@ return new class extends Migration
                     'COLLATION_NAME' => 'utf8mb4_unicode_ci',
                     'COLUMN_COMMENT' => '',
                 ],
-                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_ipi`) > 3 LIMIT 1',
+                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_ipi`) > 10 LIMIT 1',
             ],
             'cst_pis' => [
-                'sql' => 'varchar(3) DEFAULT NULL',
+                'sql' => 'varchar(10) DEFAULT NULL',
                 'expected' => [
-                    'COLUMN_TYPE' => 'varchar(3)',
+                    'COLUMN_TYPE' => 'varchar(10)',
                     'IS_NULLABLE' => 'YES',
                     'COLUMN_DEFAULT' => null,
                     'EXTRA' => '',
@@ -130,12 +114,12 @@ return new class extends Migration
                     'COLLATION_NAME' => 'utf8mb4_unicode_ci',
                     'COLUMN_COMMENT' => '',
                 ],
-                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_pis`) > 3 LIMIT 1',
+                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_pis`) > 10 LIMIT 1',
             ],
             'cst_cofins' => [
-                'sql' => 'varchar(3) DEFAULT NULL',
+                'sql' => 'varchar(10) DEFAULT NULL',
                 'expected' => [
-                    'COLUMN_TYPE' => 'varchar(3)',
+                    'COLUMN_TYPE' => 'varchar(10)',
                     'IS_NULLABLE' => 'YES',
                     'COLUMN_DEFAULT' => null,
                     'EXTRA' => '',
@@ -152,7 +136,7 @@ return new class extends Migration
                     'COLLATION_NAME' => 'utf8mb4_unicode_ci',
                     'COLUMN_COMMENT' => '',
                 ],
-                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_cofins`) > 3 LIMIT 1',
+                'guard' => 'SELECT 1 AS found FROM `item_compras` WHERE CHAR_LENGTH(`cst_cofins`) > 10 LIMIT 1',
             ],
         ];
         $definitions = [$columnName => $definitions[$columnName]];
@@ -188,6 +172,17 @@ return new class extends Migration
                 $alterations[] = "ADD COLUMN `{$name}` " . $definition['sql'];
                 continue;
             }
+            // Capacidade mínima de dez caracteres para instalações novas e já atualizadas.
+            // Preserva VARCHAR maior; nunca reduz tamanho nem modifica os códigos existentes.
+            // Os demais atributos continuam sujeitos às verificações existentes abaixo.
+            if (preg_match('/^varchar\((\d+)\)$/iD', trim((string) $current->COLUMN_TYPE), $length)) {
+                $currentLength = (int) $length[1];
+                $desiredLength = max(10, $currentLength);
+                $definition['expected']['COLUMN_TYPE'] = "varchar({$desiredLength})";
+                $definition['sql'] = "varchar({$desiredLength}) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL";
+                $definition['guard'] = "SELECT 1 AS found FROM `{$tableName}` WHERE CHAR_LENGTH(`{$name}`) > {$desiredLength} LIMIT 1";
+            }
+
             // Preserva NULLs existentes ao ampliar ou atualizar a definição da coluna.
             if ($current->IS_NULLABLE === 'YES' && $definition['expected']['IS_NULLABLE'] === 'NO') {
                 $definition['expected']['IS_NULLABLE'] = 'YES';
@@ -199,16 +194,15 @@ return new class extends Migration
             $matchesPrevious = $definition['previous'] !== null
                 && $this->columnMatches($current, $definition['previous']);
 
-            // Variante legada confirmada na homologação: IPI/PIS/COFINS VARCHAR(2).
-            // Aceita somente essa diferença de tamanho; os demais atributos são conferidos.
+            // Aceita os tamanhos VARCHAR legados, inclusive os três caracteres
+            // aplicados pela migration anterior. Os demais atributos são conferidos.
             if (!$matchesPrevious && $definition['previous'] !== null
-                && in_array($name, ['cst_ipi', 'cst_pis', 'cst_cofins'], true)) {
+                && preg_match('/^varchar\([1-9]\d*\)$/iD', trim((string) $current->COLUMN_TYPE))) {
                 $legacyDefinition = $definition['previous'];
-                $legacyDefinition['COLUMN_TYPE'] = 'varchar(2)';
+                $legacyDefinition['COLUMN_TYPE'] = $current->COLUMN_TYPE;
                 $legacyDefinition['IS_NULLABLE'] = $current->IS_NULLABLE;
                 $matchesPrevious = $this->columnMatches($current, $legacyDefinition);
             }
-
 
             // Diferenças apenas de nulabilidade não impedem uma alteração compatível.
             if (!$matchesPrevious && in_array($current->IS_NULLABLE, ['YES', 'NO'], true)) {
@@ -314,3 +308,4 @@ return new class extends Migration
     }
 
 };
+
