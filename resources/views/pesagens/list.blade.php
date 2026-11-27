@@ -1130,6 +1130,10 @@
                                 </div>
                             </div>
 
+                            @if($configNota->pesagem_permitir_foto_dispositivo ?? false)
+                                @include('pesagens.partials.camera-dispositivo')
+                            @endif
+
                             <div class="form-group col-lg-12 text-right">
                                 <button type="button" class="btn btn-secondary" id="btnCancelarTicket">Cancelar</button>
                                 <button type="submit" class="btn btn-primary btn-salvar-ticket">Salvar Ticket</button>
@@ -1534,6 +1538,8 @@
     {{--    Controle de Carregamento de Scripts     --}}
     <script src="{{ asset('js/axios.min.js') }}"></script>
     <script src="{{ asset('js/adp-runtime-client.js') }}"></script>
+
+    <script src="{{ asset('js/pesagem-camera-dispositivo.js') }}"></script>
 
     {{--    Controle de Pesagens    --}}
     <script type="text/javascript">
@@ -2896,6 +2902,7 @@
             $form.data('salvandoTicket', salvando === true);
             const $btn = $form.find('.btn-salvar-ticket');
             $btn.prop('disabled', salvando === true);
+            $form.find('[data-camera-ticket]').prop('disabled', salvando === true);
             $btn.html(salvando === true
                 ? '<i class="fa fa-spinner fa-spin"></i> Salvando...'
                 : 'Salvar Ticket');
@@ -2911,6 +2918,7 @@
         function resetForm(modalSelector) {
             var $modal = $(modalSelector);
             var $form = $modal.find('#formTicket');
+            window.CameraTicket?.limpar($form[0]);
             var fixado = $form.find('#fixar_produto_flag').val() === '1';
 
             // Campos de controle
@@ -3065,11 +3073,19 @@
                     }
                 }
 
-                // Envia requisição AJAX
+                let multipart;
+                try {
+                    multipart = window.CameraTicket?.preparar(form[0]);
+                } catch (erro) {
+                    abrirModalMensagem('Aviso', erro.message);
+                    setTicketSaving(form, false);
+                    return;
+                }
+                // O PHP recebe arquivos em POST; o campo _method mantém a rota PUT na edição.
                 $.ajax({
                     url: url,
-                    type: method,
-                    data: form.serialize(),
+                    type: multipart ? 'POST' : method,
+                    ...(multipart ? {data: multipart, processData: false, contentType: false} : {data: form.serialize()}),
                     success: function (response) {
                         abrirModalMensagem('Sucesso', response.success);
                         carregarTickets(pesagemId);
@@ -3099,6 +3115,9 @@
                     'Deseja editar este ticket de pesagem? As alterações serão registradas na auditoria.',
                     function () {
                         $.get(`/ticketsPesagem/edit/${ticketId}`, function (data) {
+                            const formulario = $(modalSelector).find('#formTicket')[0];
+                            window.CameraTicket?.limpar(formulario);
+                            window.CameraTicket?.mostrarSalvas(formulario, data.imagens_persistidas_json);
                             $(modalSelector).find('#ticket_id').val(data.id);
                             $(modalSelector).find('#edicao_confirmada').val('1');
                             $(modalSelector).find('#produto_id').val(data.produto_id).trigger('change');

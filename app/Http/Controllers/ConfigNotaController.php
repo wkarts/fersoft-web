@@ -142,6 +142,7 @@ class ConfigNotaController extends Controller
             'conectar_automaticamente_balanca_padrao_usuario' => $request->boolean('conectar_automaticamente_balanca_padrao_usuario'),
             'conectar_automaticamente_balanca_ao_selecionar' => $request->boolean('conectar_automaticamente_balanca_ao_selecionar'),
             'pesagem_habilitar_preview_cameras' => $request->boolean('pesagem_habilitar_preview_cameras'),
+            'pesagem_permitir_foto_dispositivo' => $request->boolean('pesagem_permitir_foto_dispositivo'),
             'pesagem_exigir_imagem_quando_balanca_tem_camera' => $request->boolean('pesagem_exigir_imagem_quando_balanca_tem_camera'),
             'pesagem_auto_concluir_ticket' => $request->boolean('pesagem_auto_concluir_ticket'),
             'pesagem_bloquear_edicao_ticket_concluido' => $request->boolean('pesagem_bloquear_edicao_ticket_concluido'),
@@ -317,6 +318,7 @@ class ConfigNotaController extends Controller
                 'conectar_automaticamente_balanca_padrao_usuario' => $request->conectar_automaticamente_balanca_padrao_usuario,
                 'conectar_automaticamente_balanca_ao_selecionar' => $request->conectar_automaticamente_balanca_ao_selecionar,
                 'pesagem_habilitar_preview_cameras' => $request->pesagem_habilitar_preview_cameras,
+                'pesagem_permitir_foto_dispositivo' => $request->pesagem_permitir_foto_dispositivo,
                 'pesagem_exigir_imagem_quando_balanca_tem_camera' => $request->pesagem_exigir_imagem_quando_balanca_tem_camera,
                 'pesagem_auto_concluir_ticket' => $request->pesagem_auto_concluir_ticket,
                 'pesagem_bloquear_edicao_ticket_concluido' => $request->pesagem_bloquear_edicao_ticket_concluido,
@@ -435,6 +437,7 @@ class ConfigNotaController extends Controller
             $config->conectar_automaticamente_balanca_padrao_usuario = $request->conectar_automaticamente_balanca_padrao_usuario;
             $config->conectar_automaticamente_balanca_ao_selecionar = $request->conectar_automaticamente_balanca_ao_selecionar;
             $config->pesagem_habilitar_preview_cameras = $request->pesagem_habilitar_preview_cameras;
+            $config->pesagem_permitir_foto_dispositivo = $request->pesagem_permitir_foto_dispositivo;
             $config->pesagem_exigir_imagem_quando_balanca_tem_camera = $request->pesagem_exigir_imagem_quando_balanca_tem_camera;
             $config->pesagem_auto_concluir_ticket = $request->pesagem_auto_concluir_ticket;
             $config->pesagem_bloquear_edicao_ticket_concluido = $request->pesagem_bloquear_edicao_ticket_concluido;

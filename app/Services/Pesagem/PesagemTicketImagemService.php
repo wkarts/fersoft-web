@@ -6,8 +6,10 @@ use App\Models\AdpCamera;
 use App\Models\ConfigNota;
 use App\Models\PesagemTicketImagem;
 use App\Models\TicketPesagem;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Support\BinaryPayloadSanitizer;
@@ -17,23 +19,81 @@ class PesagemTicketImagemService
     public function persistirDoTicket(TicketPesagem $ticket, mixed $snapshots): array
     {
         $items = $this->normalizarSnapshots($snapshots);
-        $salvas = [];
-
         if (!$items) {
             return [];
         }
 
         // Reprocessamento seguro: se o ticket for editado ou salvo novamente,
         // remove imagens antigas antes de persistir as novas evidências.
-        $this->excluirDoTicket($ticket, true, false);
+        $this->excluirDoTicket($ticket, true, false, true);
 
+        return $this->persistirImagens($ticket, $items);
+    }
+
+    /** Acrescenta as capturas ao ticket usando o mesmo gravador das imagens da balança. */
+    public function salvarComFotos(TicketPesagem $ticket, array $dados, array $fotos, int $usuarioId, bool $bloquearConcluido): ?TicketPesagem
+    {
+        $gravados = [];
+        try {
+            return DB::transaction(function () use ($ticket, $dados, $fotos, $usuarioId, $bloquearConcluido, &$gravados) {
+                if ($ticket->exists) {
+                    $ticket = TicketPesagem::where('empresa_id', $dados['empresa_id'])
+                        ->where('pesagem_id', $dados['pesagem_id'])->where('filial_id', $dados['filial_id'])
+                        ->lockForUpdate()->findOrFail($ticket->id);
+                    $existentes = $ticket->imagens()->where('metadata_json->origem', 'dispositivo')
+                        ->whereIn('metadata_json->chave', array_column($fotos, 'chave'))->get()
+                        ->map(fn ($imagem) => $imagem->metadata_json['chave'])->all();
+                    $fotos = array_filter($fotos, fn ($foto) => !in_array($foto['chave'], $existentes, true));
+                    if (!$fotos) {
+                        return null;
+                    }
+                    if ($bloquearConcluido && $ticket->status === 'concluído') {
+                        throw new \DomainException('Este ticket já está concluído e não pode ser editado.');
+                    }
+                }
+                $ticket->fill($dados)->save();
+                $this->persistirImagens($ticket, $fotos, $usuarioId, $gravados);
+                $referencias = $this->referenciasDoTicket($ticket);
+                $ticket->camera_snapshots_json = json_encode($referencias, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                if (Schema::hasColumn('tickets_pesagem', 'imagens_persistidas_json')) {
+                    $ticket->imagens_persistidas_json = $referencias;
+                }
+                $ticket->camera_snapshot_at = now();
+                $ticket->saveQuietly();
+                return $ticket;
+            });
+        } catch (\Throwable $e) {
+            foreach ($gravados as [$disk, $path]) {
+                $this->deleteArquivo($disk, $path);
+            }
+            throw $e;
+        }
+    }
+
+    private function persistirImagens(TicketPesagem $ticket, array $items, ?int $usuarioDispositivo = null, array &$gravados = []): array
+    {
+        $salvas = [];
         $config = ConfigNota::where('empresa_id', $ticket->empresa_id)->first();
         $storage = $this->resolverStorage($config);
 
-        $ordem = 1;
+        $ordem = $usuarioDispositivo === null ? 1 : 1 + (int) $ticket->imagens()->max('ordem');
         foreach ($items as $item) {
             $cameraUuid = (string) data_get($item, 'uuid', data_get($item, 'camera_uuid', data_get($item, 'response.snapshot.uuid', '')));
-            $source = $this->extrairImagem($item);
+            if ($usuarioDispositivo !== null) {
+                $source = ['data' => $item['arquivo']->get(), 'mime' => 'image/jpeg', 'url' => null, 'kind' => 'dispositivo'];
+                $item = [
+                    'origem' => 'dispositivo', 'usuario_id' => $usuarioDispositivo,
+                    'legenda' => $item['legenda'] ?? null, 'chave' => $item['chave'],
+                    'capturado_em' => $item['capturado_em'],
+                    'camera_descricao' => $item['legenda'] ?? 'Câmera do dispositivo',
+                ];
+                $cameraUuid = '';
+            } else {
+                $source = $this->extrairImagem($item);
+                if (($item['origem'] ?? null) === 'dispositivo') {
+                    unset($item['origem']);
+                }
+            }
 
             if (!$source['data'] && !$source['url']) {
                 $salvas[] = [
@@ -74,6 +134,9 @@ class PesagemTicketImagemService
                     $externalMetadata = $uploaded;
                 } else {
                     $this->putArquivo($storage['disk'], $arquivoPath, $source['data'], $storage['visibility']);
+                    if ($usuarioDispositivo !== null) {
+                        $gravados[] = [$storage['disk'], $arquivoPath];
+                    }
                     $arquivoUrl = $this->buildUrl($storage['disk'], $arquivoPath);
                 }
                 $bytes = strlen($source['data']);
@@ -136,22 +199,33 @@ class PesagemTicketImagemService
                 'storage_base_path' => $storage['base_path'],
             ]);
 
-            $salvas[] = [
-                'success' => true,
-                'id' => $registro->id,
-                'camera_uuid' => $registro->camera_uuid,
-                'arquivo_path' => $registro->arquivo_path,
-                'arquivo_url' => $registro->imagem_url,
-                'storage_disk' => $registro->storage_disk,
-                'mime_type' => $registro->mime_type,
-                'tamanho_bytes' => $registro->tamanho_bytes,
-                'largura' => $registro->largura,
-                'altura' => $registro->altura,
-                'capturado_em' => optional($registro->capturado_em)->toIso8601String(),
-            ];
+            $salvas[] = $this->referencia($registro);
         }
 
         return $salvas;
+    }
+
+    public function referenciasDoTicket(TicketPesagem $ticket): array
+    {
+        return $ticket->imagens()->where('ativo', true)->orderBy('id')->get()
+            ->map(fn ($imagem) => $this->referencia($imagem))->all();
+    }
+
+    private function referencia(PesagemTicketImagem $registro): array
+    {
+        return [
+            'success' => true,
+            'id' => $registro->id,
+            'camera_uuid' => $registro->camera_uuid,
+            'arquivo_path' => $registro->arquivo_path,
+            'arquivo_url' => $registro->imagem_url,
+            'storage_disk' => $registro->storage_disk,
+            'mime_type' => $registro->mime_type,
+            'tamanho_bytes' => $registro->tamanho_bytes,
+            'largura' => $registro->largura,
+            'altura' => $registro->altura,
+            'capturado_em' => optional($registro->capturado_em)->toIso8601String(),
+        ];
     }
 
     /**
@@ -288,11 +362,17 @@ class PesagemTicketImagemService
             || preg_match('~^[a-z]:/users/.+/appdata/local/~i', $normalized) === 1;
     }
 
-    public function excluirDoTicket(TicketPesagem $ticket, bool $apagarArquivos = true, bool $forceDelete = true): void
+    public function excluirDoTicket(TicketPesagem $ticket, bool $apagarArquivos = true, bool $forceDelete = true, bool $somenteBalanca = false): void
     {
         $query = PesagemTicketImagem::withTrashed()
             ->where('empresa_id', $ticket->empresa_id)
             ->where('ticket_pesagem_id', $ticket->id);
+
+        if ($somenteBalanca) {
+            $query->where(function ($origem) {
+                $origem->whereNull('metadata_json->origem')->orWhere('metadata_json->origem', '<>', 'dispositivo');
+            });
+        }
 
         foreach ($query->get() as $imagem) {
             if ($apagarArquivos && $imagem->arquivo_path) {
@@ -699,7 +779,9 @@ class PesagemTicketImagemService
             $options['visibility'] = $visibility;
         }
 
-        Storage::disk($disk)->put($path, $data, $options);
+        if (!Storage::disk($disk)->put($path, $data, $options)) {
+            throw new \RuntimeException('Não foi possível gravar a imagem do ticket de pesagem.');
+        }
     }
 
     private function deleteArquivo(string $disk, string $path): void
